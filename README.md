@@ -84,6 +84,18 @@ try{
 }
 ```
 
+Probably you may not like throwing exeptions. Me too. Exeption `not_found_exception` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns nullptr.
+
+```c++
+if(auto user = storage.get_no_throw<User>(insertedId)){
+    cout << "user = " << user->firstName << " " << user->lastName << endl;
+}else{
+    cout << "no user with id " << insertedId << endl;
+}
+```
+
+`std::shared_ptr` is used as optional in `sqlite_orm`. Of course there is class optional in C++14 located at `std::experimental::optional`. But we don't want to use it until it is `experimental`.
+
 We can also update our user. It updates row by id provided in `user` object and sets all other non `primary_key` fields to values stored in the passed `user` object. So you can just assign members to `user` object you want and call `update`
 
 ```c++
