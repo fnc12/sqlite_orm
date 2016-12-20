@@ -56,7 +56,7 @@ auto storage = sqlite_orm::make_storage("db.sqlite",
                                                                                        sqlite_orm::not_null())));
 ```
 
-Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column. To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like `not_null`, `primary_key` or `autoincrement` (order isn't important).
+Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like `not_null`, `primary_key` or `autoincrement` (order isn't important).
 
 # CRUD
 
