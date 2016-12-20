@@ -104,3 +104,7 @@ Also we can extract all objects into `std::vector`.
 auto allUsers = storage.get_all<User>();
 cout << "all users count = " << allUsers.size() << endl;
 ```
+
+# Installation
+
+Just put `src/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no normal dependency manager for C++ yet.
