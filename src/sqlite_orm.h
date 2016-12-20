@@ -575,7 +575,6 @@ namespace sqlite_orm {
         O get(int id) throw (not_found_exception, std::runtime_error) {
             std::shared_ptr<O> res;
             withDatabase([&](auto db) {
-                //                using TableNames::categories;
                 auto query = "select * from " + table.name + " where id = " + std::to_string(id);
                 data_t<std::shared_ptr<O>> data{*this, &res};
                 auto rc = sqlite3_exec(db,
@@ -606,6 +605,37 @@ namespace sqlite_orm {
             }else{
                 throw not_found_exception{};
             }
+        }
+        
+        template<class O>
+        std::shared_ptr<O> get_no_throw(int id) throw(std::runtime_error) {
+            std::shared_ptr<O> res;
+            withDatabase([&](auto db) {
+                auto query = "select * from " + table.name + " where id = " + std::to_string(id);
+                data_t<std::shared_ptr<O>> data{*this, &res};
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &d = *(data_t<std::shared_ptr<O>>*)data;
+                                           auto &res = *d.res;
+                                           auto t = d.t;
+                                           if(argc){
+                                               res = std::make_shared<O>();
+                                               auto index = 0;
+                                               t.table.for_each_column([&] (auto c) {
+                                                   auto &o = *res;
+                                                   auto member_pointer = c.member_pointer;
+                                                   auto value = row_extrator<typename decltype(c)::field_type>().extract(argv[index++]);
+                                                   o.*member_pointer = value;
+                                               });
+                                           }
+                                           return 0;
+                                       }, &data, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            });
+            return res;
         }
         
         /**
