@@ -105,6 +105,10 @@ auto allUsers = storage.get_all<User>();
 cout << "all users count = " << allUsers.size() << endl;
 ```
 
+# Notes
+
+To work well your data model class must be default constructable and must not have const fields mapped to database cause they are assigned during queries. Otherwise code won't compile on line with member assignment operator.
+
 # Installation
 
 Just put `src/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no normal dependency manager for C++ yet.
