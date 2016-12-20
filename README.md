@@ -26,9 +26,9 @@ struct User{
 
 ```
 
-So we need have database with predefined schema like `CREATE TABLE users (id integer primary key autoincrement, first_name text not null, last_name text not null, birth_date integer not null, image_url text not null, type_id integer not null)`
+So we have database with predefined schema like `CREATE TABLE users (id integer primary key autoincrement, first_name text not null, last_name text not null, birth_date integer not null, image_url text not null, type_id integer not null)`
 
-Now we tell `sqlite_orm` library about schema and provide database filename. We create `storage` service object that has CRUD interface. Also we create every table and every column like. All code is intuitive.
+Now we tell `sqlite_orm` library about schema and provide database filename. We create `storage` service object that has CRUD interface. Also we create every table and every column. All code is intuitive and minimalistic.
 
 ```c++
 
@@ -56,7 +56,7 @@ auto storage = sqlite_orm::make_storage("db.sqlite",
                                                                                        sqlite_orm::not_null())));
 ```
 
-Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column. To create a column you have to pass two arguments at least: its name is the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like `not_null`, `primary_key` or `autoincrement` (order isn't important).
+Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column. To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like `not_null`, `primary_key` or `autoincrement` (order isn't important).
 
 # CRUD
 
@@ -98,7 +98,7 @@ And delete. To delete you have to pass id only, not whole object. Also we need t
 storage.remove<User>(insertedId)
 ```
 
-Also we cann extract all objects into `std::vector`.
+Also we can extract all objects into `std::vector`.
 
 ```c++
 auto allUsers = storage.get_all<User>();
