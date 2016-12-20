@@ -117,6 +117,15 @@ auto allUsers = storage.get_all<User>();
 cout << "all users count = " << allUsers.size() << endl;
 ```
 
+# Select count(*)
+
+No comments. Just watch the code.
+
+```c++
+auto usersCount = storage.count<User>();
+cout << "users count = " << usersCount << endl;
+```
+
 # Notes
 
 To work well your data model class must be default constructable and must not have const fields mapped to database cause they are assigned during queries. Otherwise code won't compile on line with member assignment operator.
