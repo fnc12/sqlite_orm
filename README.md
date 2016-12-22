@@ -5,7 +5,7 @@ SQLite ORM light header only library for modern C++
 
 * **Intuitive syntax**
 * **Built with modern C++14 features (no macros)**
-* **Follows single responsibility principle** - no need write code inside you data model classes
+* **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
 * **The only dependency - libsqlite3**
 * **C++ standart code style**
@@ -56,7 +56,7 @@ auto storage = sqlite_orm::make_storage("db.sqlite",
                                                                                        sqlite_orm::not_null())));
 ```
 
-Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column. To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like `not_null`, `primary_key` or `autoincrement` (order isn't important).
+Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like `not_null`, `primary_key` or `autoincrement` (order isn't important).
 
 # CRUD
 
@@ -84,6 +84,18 @@ try{
 }
 ```
 
+Probably you may not like throwing exeptions. Me too. Exeption `not_found_exception` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns nullptr.
+
+```c++
+if(auto user = storage.get_no_throw<User>(insertedId)){
+    cout << "user = " << user->firstName << " " << user->lastName << endl;
+}else{
+    cout << "no user with id " << insertedId << endl;
+}
+```
+
+`std::shared_ptr` is used as optional in `sqlite_orm`. Of course there is class optional in C++14 located at `std::experimental::optional`. But we don't want to use it until it is `experimental`.
+
 We can also update our user. It updates row by id provided in `user` object and sets all other non `primary_key` fields to values stored in the passed `user` object. So you can just assign members to `user` object you want and call `update`
 
 ```c++
@@ -103,6 +115,15 @@ Also we can extract all objects into `std::vector`.
 ```c++
 auto allUsers = storage.get_all<User>();
 cout << "all users count = " << allUsers.size() << endl;
+```
+
+# Select count(*)
+
+No comments. Just watch the code.
+
+```c++
+auto usersCount = storage.count<User>();
+cout << "users count = " << usersCount << endl;
 ```
 
 # Notes
