@@ -59,48 +59,10 @@ namespace sqlite_orm {
         const std::string name;
         field_type object_type::*member_pointer;
         
-        /*constexpr bool has_autoincrement() {
-         return has<autoincrement>();
-         }
-         
-         constexpr bool has_not_null() {
-         return has<not_null>();
-         }*/
-        
         template<class Opt>
         constexpr bool has() {
             return tuple_contains_type<Opt, options_type>::value;
         }
-        
-        /*template<class O1, class O2, class ...Opts>
-         constexpr bool has_any() {
-         if(has<O1>() || has<O2>()) {
-         return true;
-         }else{
-         return this->has_any<Opts...>();
-         }
-         }
-         
-         template<class O1>
-         constexpr bool has_any() {
-         return has<O1>();
-         }*/
-        
-        //        template<class ...Opt>
-        //        constexpr bool has_any();
-        
-        /*template<class Opt, class ...Opts>
-         constexpr bool has_any() {
-         if(has<Opt>()){
-         return true;
-         }else{
-         return this->has_any<Opts...>();
-         }
-         }
-         
-         constexpr bool has_any() {
-         return false;
-         }*/
         
         template<class O1, class O2, class ...Opts>
         constexpr bool has_every() {
@@ -114,6 +76,26 @@ namespace sqlite_orm {
         template<class O1>
         constexpr bool has_every() {
             return has<O1>();
+        }
+    };
+    
+    /**
+     *  This class accepts c++ type and transfers it to sqlite name (int -> integer, std::string -> text)
+     */
+    template<class T>
+    struct type_printer;
+    
+    template<>
+    struct type_printer<int> {
+        inline std::string print() {
+            return "integer";
+        }
+    };
+    
+    template<>
+    struct type_printer<std::string> {
+        inline std::string print() {
+            return "text";
         }
     };
     
@@ -148,11 +130,10 @@ namespace sqlite_orm {
         template<class Op, class L>
         void for_each_column_with(L l) {}
         
-        /*template<class ...Op, class L>
-         void for_each_column_exept(L l){}
-         
-         template<class ...Op, class L>
-         void for_each_column_with(L l) {}*/
+        int columns_count() const {
+            return 0;
+        }
+        
     };
     
     template<typename H, typename... T>
@@ -163,6 +144,10 @@ namespace sqlite_orm {
         table_impl(H h, T ...t) : col(h), Super(t...) {}
         
         column_type col;
+        
+        int columns_count() const {
+            return 1 + Super::columns_count();
+        }
         
         /**
          *  column_names implementation. Notice that result will be reversed.
@@ -261,6 +246,10 @@ namespace sqlite_orm {
             std::reverse(res.begin(),
                          res.end());
             return res;
+        }
+        
+        int columns_count() const {
+            return impl.columns_count();
         }
         
         /**
@@ -723,8 +712,58 @@ namespace sqlite_orm {
             return res;
         }
         
-        void checkSchema() {
-            
+        void drop_table() throw (std::runtime_error) {
+            withDatabase([=] (auto db) {
+                std::stringstream ss;
+                ss << "DROP TABLE " << table.name;
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //  done..
+                    }else{
+                        throw std::runtime_error(sqlite3_errmsg(db));
+                    }
+                }else {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            });
+        }
+        
+        void check_schema() throw (std::runtime_error) {
+            auto gottaCreateTable = !this->table_exists(table.name);
+            if(!gottaCreateTable){
+                //  TODO:   get table_info, compare with actual schema and recreate table if needed..
+            }else{
+                create_table();
+            }
+        }
+        
+        bool table_exists(const std::string &tableName) throw(std::runtime_error) {
+            bool res = false;
+            withDatabase([&] (auto db) {
+                std::stringstream ss;
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '" << "table" << "' AND name = '" << tableName << "'";
+                auto query = ss.str();
+//                auto query = "SELECT COUNT(*) FROM sqlite_master WHERE type = ? AND name = ?";
+                data_t<bool> data{*this, &res};
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName) -> int {
+                                           auto &d = *(data_t<bool>*)data;
+                                           auto &res = *d.res;
+//                                           auto t = d.t;
+                                           if(argc){
+                                               res = std::atoi(argv[0]);
+                                           }
+//                                           res = argc > 0;
+                                           return 0;
+                                       }, &data, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            });
+            return res;
         }
         
     protected:
@@ -740,6 +779,54 @@ namespace sqlite_orm {
                 std::cerr << "error " << sqlite3_errmsg(db) << std::endl;
             }
             sqlite3_close(db);
+        }
+        
+        struct table_info {
+            int cid;
+            std::string name;
+            std::string type;
+            bool notnull;
+            std::string dflt_value;
+            bool pk;
+        };
+        
+        void create_table() throw (std::runtime_error) {
+            withDatabase([=] (auto db) {
+                std::stringstream ss;
+                ss << "CREATE TABLE " << table.name << " ( ";
+                auto columns_count = table.columns_count();
+                auto index = 0;
+                table.for_each_column([&] (auto c) {
+                    ss << c.name << " ";
+                    ss << type_printer<typename decltype(c)::field_type>().print() << " ";
+                    if(c.template has<primary_key>()) {
+                        ss << "primary key ";
+                    }
+                    if(c.template has<autoincrement>()) {
+                        ss << "autoincrement ";
+                    }
+                    if(c.template has<not_null>()) {
+                        ss << "not null ";
+                    }
+                    if(index < columns_count - 1) {
+                        ss << ", ";
+                    }
+                    index++;
+                });
+                ss << ") ";
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //                        res = int(sqlite3_last_insert_rowid(db));
+                        //  done..
+                    }else{
+                        throw std::runtime_error(sqlite3_errmsg(db));
+                    }
+                }else {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            });
         }
     };
     
