@@ -32,28 +32,29 @@ Now we tell `sqlite_orm` library about schema and provide database filename. We 
 
 ```c++
 
-auto storage = sqlite_orm::make_storage("db.sqlite",
-                                        sqlite_orm::make_table("users",
-                                                               sqlite_orm::make_column("id",
-                                                                                       &User::id,
-                                                                                       sqlite_orm::autoincrement(),
-                                                                                       sqlite_orm::not_null(),
-                                                                                       sqlite_orm::primary_key()),
-                                                               sqlite_orm::make_column("first_name",
-                                                                                       &User::firstName,
-                                                                                       sqlite_orm::not_null()),
-                                                               sqlite_orm::make_column("last_name",
-                                                                                       &User::lastName,
-                                                                                       sqlite_orm::not_null()),
-                                                               sqlite_orm::make_column("birth_date",
-                                                                                       &User::birthDate,
-                                                                                       sqlite_orm::not_null()),
-                                                               sqlite_orm::make_column("image_url",
-                                                                                       &User::imageUrl,
-                                                                                       sqlite_orm::not_null()),
-                                                               sqlite_orm::make_column("type_id",
-                                                                                       &User::typeId,
-                                                                                       sqlite_orm::not_null())));
+using namespace sqlite_orm;
+auto storage = make_storage("db.sqlite",
+                            make_table("users",
+                                       make_column("id",
+                                                   &User::id,
+                                                   autoincrement(),
+                                                   not_null(),
+                                                   primary_key()),
+                                       make_column("first_name",
+                                                   &User::firstName,
+                                                   not_null()),
+                                       make_column("last_name",
+                                                   &User::lastName,
+                                                   not_null()),
+                                       make_column("birth_date",
+                                                   &User::birthDate,
+                                                   not_null()),
+                                       make_column("image_url",
+                                                   &User::imageUrl,
+                                                   not_null()),
+                                       make_column("type_id",
+                                                   &User::typeId,
+                                                   not_null())));
 ```
 
 Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like `not_null`, `primary_key` or `autoincrement` (order isn't important).
