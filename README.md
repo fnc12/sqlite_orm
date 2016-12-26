@@ -7,7 +7,7 @@ SQLite ORM light header only library for modern C++
 * **Built with modern C++14 features (no macros)**
 * **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
-* **The only dependency - libsqlite3**
+* **The only dependency** - libsqlite3
 * **C++ standart code style**
 * **No undefined behaviour** - if something goes wrong lib throws an exeption
 
