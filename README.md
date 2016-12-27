@@ -118,13 +118,14 @@ auto allUsers = storage.get_all<User>();
 cout << "all users count = " << allUsers.size() << endl;
 ```
 
-# Select count(*)
-
-No comments. Just watch the code.
+# Aggregate Functions
 
 ```c++
-auto usersCount = storage.count<User>();
+auto usersCount = storage.count<User>();    //  maps into 'select count(*) from users'
 cout << "users count = " << usersCount << endl;
+
+auto averageId = storage.avg(&User::id);    //  maps into 'select avg(id) from users'
+cout << "averageId = " << averageId << endl;
 ```
 
 # Notes
