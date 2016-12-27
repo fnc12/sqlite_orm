@@ -126,6 +126,8 @@ cout << "users count = " << usersCount << endl;
 
 auto averageId = storage.avg(&User::id);    //  maps into 'select avg(id) from users'
 cout << "averageId = " << averageId << endl;
+auto averageBirthDate = storage.avg(&User::birthDate);  //  maps into 'select avg(birth_date) from users'
+cout << "averageBirthDate = " << averageBirthDate << endl;
 ```
 
 # Notes
