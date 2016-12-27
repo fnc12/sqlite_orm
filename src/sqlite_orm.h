@@ -21,20 +21,23 @@ using std::endl;
 namespace sqlite_orm {
     
     //  got from here http://stackoverflow.com/questions/25958259/how-do-i-find-out-if-a-tuple-contains-a-type
-    template <typename T, typename Tuple>
-    struct has_type;
-    
-    template <typename T>
-    struct has_type<T, std::tuple<>> : std::false_type {};
-    
-    template <typename T, typename U, typename... Ts>
-    struct has_type<T, std::tuple<U, Ts...>> : has_type<T, std::tuple<Ts...>> {};
-    
-    template <typename T, typename... Ts>
-    struct has_type<T, std::tuple<T, Ts...>> : std::true_type {};
-    
-    template <typename T, typename Tuple>
-    using tuple_contains_type = typename has_type<T, Tuple>::type;
+    namespace tuple_helper {
+        
+        template <typename T, typename Tuple>
+        struct has_type;
+        
+        template <typename T>
+        struct has_type<T, std::tuple<>> : std::false_type {};
+        
+        template <typename T, typename U, typename... Ts>
+        struct has_type<T, std::tuple<U, Ts...>> : has_type<T, std::tuple<Ts...>> {};
+        
+        template <typename T, typename... Ts>
+        struct has_type<T, std::tuple<T, Ts...>> : std::true_type {};
+        
+        template <typename T, typename Tuple>
+        using tuple_contains_type = typename has_type<T, Tuple>::type;
+    }
     
     struct autoincrement {};
     
@@ -61,7 +64,7 @@ namespace sqlite_orm {
         
         template<class Opt>
         constexpr bool has() {
-            return tuple_contains_type<Opt, options_type>::value;
+            return tuple_helper::tuple_contains_type<Opt, options_type>::value;
         }
         
         template<class O1, class O2, class ...Opts>
@@ -87,15 +90,25 @@ namespace sqlite_orm {
     
     template<>
     struct type_printer<int> {
-        inline std::string print() {
-            return "integer";
+        inline const std::string& print() {
+            static const std::string res = "INTEGER";
+            return res;
         }
     };
     
     template<>
     struct type_printer<std::string> {
-        inline std::string print() {
-            return "text";
+        inline const std::string& print() {
+            static const std::string res = "TEXT";
+            return res;
+        }
+    };
+    
+    template<>
+    struct type_printer<double> {
+        inline const std::string& print() {
+            static const std::string res = "REAL";
+            return res;
         }
     };
     
@@ -123,6 +136,9 @@ namespace sqlite_orm {
         
         template<class L>
         void for_each_column(L l) {}
+        
+        template<class F, class L>
+        void for_each_column_with_field_type(L l) {}
         
         template<class Op, class L>
         void for_each_column_exept(L l){}
@@ -183,10 +199,34 @@ namespace sqlite_orm {
             Super::for_each_column(l);
         }
         
+//        template<typename CFT = typename column_type::field_type>
+        /*template<class F, class L, class = typename std::enable_if<std::is_same<F, typename column_type::field_type>::value>::type>
+        void for_each_column_with_field_type(L l) {
+            l(col);
+            Super::template for_each_column_with_field_type<F, L>(l);
+        }*/
+        
+        template<class F, class L>
+        void for_each_column_with_field_type(L l) {
+//            cout<<"typename column_type::field_type = "<<typeid(typename column_type::field_type).name()<<endl;
+//            cout<<"F = "<<typeid(F).name()<<endl;
+//            cout<<"std::is_same<F, typename column_type::field_type>::value = "<<std::is_same<F, typename column_type::field_type>::value<<endl;
+            Super::template for_each_column_with_field_type<F, L>(l);
+        }
+        
+        template<class F, class L>
+        void for_each_column_with_field_type(typename std::enable_if<std::is_same<F, typename column_type::field_type>::value, L>::type l) {
+//            cout<<"typename column_type::field_type = "<<typeid(typename column_type::field_type).name()<<endl;
+//            cout<<"F = "<<typeid(F).name()<<endl;
+//            cout<<"custom version"<<endl;
+            l(col);
+            Super::template for_each_column_with_field_type<F, L>(l);
+        }
+        
         /**
          *  Working version of `for_each_column_exept`. Calls lambda and fire super's function.
          */
-        template<class Op, class L, std::enable_if<!tuple_contains_type<Op, typename column_type::options_type>::value>>
+        template<class Op, class L, std::enable_if<!tuple_helper::tuple_contains_type<Op, typename column_type::options_type>::value>>
         void for_each_column_exept(L l) {
             l(col);
             Super::template for_each_column_exept<Op, L>(l);
@@ -203,7 +243,7 @@ namespace sqlite_orm {
         /**
          *  Working version of `for_each_column_with`. Calls lambda and fire super's function.
          */
-        template<class Op, class L, std::enable_if<tuple_contains_type<Op, typename column_type::options_type>::value>>
+        template<class Op, class L, std::enable_if<tuple_helper::tuple_contains_type<Op, typename column_type::options_type>::value>>
         void for_each_column_with(L l) {
             l(col);
             Super::template for_each_column_with<Op, L>(l);
@@ -274,6 +314,11 @@ namespace sqlite_orm {
             impl.for_each_column(l);
         }
         
+        template<class F, class L>
+        void for_each_column_with_field_type(L l) {
+            impl.template for_each_column_with_field_type<F, L>(l);
+        }
+        
         /**
          *  Iterates all columns exept ones that have specified options and fires passed lambda. 
          *  Lambda must have one and only templated argument Otherwise code will not compile.
@@ -311,35 +356,65 @@ namespace sqlite_orm {
      *  Helper class used for binding fields to sqlite3 statements.
      */
     template<class V>
-    struct statement_binder {
-        
-        int bind(sqlite3_stmt*, int index, const V &value);
-    };
+    struct statement_binder;
     
     /**
      *  Specialization for int.
      */
     template<>
-    int statement_binder<int>::bind(sqlite3_stmt *stmt, int index, const int &value) {
-        return sqlite3_bind_int(stmt, index++, value);
-    }
+    struct statement_binder<int> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const int &value) {
+            return sqlite3_bind_int(stmt, index++, value);
+        }
+    };
+    
+    template<>
+    struct statement_binder<double> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const double &value) {
+            return sqlite3_bind_double(stmt, index++, value);
+//            return sqlite3_bind_int(stmt, index++, value);
+        }
+    };
     
     /**
      *  Specialization for std::string.
      */
     template<>
-    int statement_binder<std::string>::bind(sqlite3_stmt *stmt, int index, const std::string &value) {
-        return sqlite3_bind_text(stmt, index++, value.c_str(), -1, SQLITE_TRANSIENT);
-    }
+    struct statement_binder<std::string> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const std::string &value) {
+            return sqlite3_bind_text(stmt, index++, value.c_str(), -1, SQLITE_TRANSIENT);
+        }
+    };
     
-    /*template<class T>
-     int statement_binder<std::shared_ptr<T>>::bind(sqlite3_stmt *stmt, int index, const std::shared_ptr<T> &value) {
-     if(value){
-     
-     }else{
-     
-     }
-     }*/
+    /**
+     *  Specialization for std::nullptr_t.
+     */
+    template<>
+    struct statement_binder<std::nullptr_t> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const std::nullptr_t &) {
+            return sqlite3_bind_null(stmt, index++);
+        }
+    };
+    
+    /**
+     *  Specialization for optional type (std::shared_ptr).
+     */
+    template<class T>
+    struct statement_binder<std::shared_ptr<T>>{
+        
+        int bind(sqlite3_stmt *stmt, int index, const std::shared_ptr<T> &value) {
+            if(value){
+                return statement_binder<T>().bind(stmt, index, *value);
+            }else{
+//                return sqlite3_bind_null(stmt, index++);
+                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+            }
+        }
+    };
     
     /**
      *  Helper class used to cast values from argv to V class 
@@ -381,6 +456,9 @@ namespace sqlite_orm {
         };
     };
     
+    /**
+     *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
+     */
     template<class T>
     struct storage {
         typedef T table_type;
@@ -655,6 +733,48 @@ namespace sqlite_orm {
             return res;
         }
         
+        template<class F, class O>
+        double avg(F O::*m) throw (std::runtime_error) {
+            double res = 0;
+            withDatabase([&](auto db) {
+                std::stringstream ss;
+                ss << "select avg(";
+                std::string columnName;
+                table.template for_each_column_with_field_type<F>([&](auto c) {
+//                    cout<<"c.name = "<<c.name<<endl;
+                    if(c.member_pointer == m) {
+//                        cout<<"found"<<endl;
+                        columnName = c.name;
+                    }else{
+                        cout<<"not found"<<endl;
+                    }
+                });
+                if(columnName.length()){
+                    ss << columnName << ") from "<< table.name;
+                    auto query = ss.str();
+                    data_t<double> data{*this, &res};
+                    auto rc = sqlite3_exec(db,
+                                           query.c_str(),
+                                           [](void *data, int argc, char **argv,char **azColName)->int{
+                                               auto &d = *(data_t<double>*)data;
+                                               auto &res = *d.res;
+                                               auto t = d.t;
+                                               if(argc){
+                                                   res = std::atof(argv[0]);
+                                               }
+                                               return 0;
+                                           }, &data, nullptr);
+                    if(rc != SQLITE_OK) {
+                        throw std::runtime_error(sqlite3_errmsg(db));
+                    }
+                }else{
+                    throw std::runtime_error("column not found");
+                }
+//                cout<<"columnName = "<<columnName<<endl;
+            });
+            return res;
+        }
+        
         /**
          *  Insert routine. Inserts object with all non primary key fields in passed object. Id of passed
          *  object doesn't matter.
@@ -712,10 +832,10 @@ namespace sqlite_orm {
             return res;
         }
         
-        void drop_table() throw (std::runtime_error) {
+        void drop_table(const std::string &tableName) throw (std::runtime_error) {
             withDatabase([=] (auto db) {
                 std::stringstream ss;
-                ss << "DROP TABLE " << table.name;
+                ss << "DROP TABLE " << tableName;
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -729,6 +849,32 @@ namespace sqlite_orm {
                 }
             });
         }
+        
+        /*std::vector<std::string> table_names() throw (std::runtime_error) {
+            std::vector<std::string> res;
+            withDatabase([&] (auto db) {
+                std::string query(".tables");
+                //                auto query = "SELECT COUNT(*) FROM sqlite_master WHERE type = ? AND name = ?";
+                data_t<std::vector<std::string>> data{*this, &res};
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName) -> int {
+                                           auto &d = *(data_t<std::vector<std::string>>*)data;
+                                           auto &res = *d.res;
+                                           //                                           auto t = d.t;
+                                           if(argc){
+//                                               res = std::atoi(argv[0]);
+                                               res.emplace_back(argv[0]);
+                                           }
+                                           //                                           res = argc > 0;
+                                           return 0;
+                                       }, &data, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            });
+            return res;
+        }*/
         
         void check_schema() throw (std::runtime_error) {
             auto gottaCreateTable = !this->table_exists(table.name);
@@ -766,6 +912,48 @@ namespace sqlite_orm {
             return res;
         }
         
+        struct table_info {
+            int cid;
+            std::string name;
+            std::string type;
+            bool notnull;
+            std::string dflt_value;
+            bool pk;
+        };
+        
+        std::vector<table_info> get_table_info(const std::string &tableName) throw (std::runtime_error) {
+            std::vector<table_info> res;
+            withDatabase([&] (auto db) {
+                auto query = "PRAGMA table_info(" + tableName + ")";
+                //                auto query = "SELECT COUNT(*) FROM sqlite_master WHERE type = ? AND name = ?";
+                data_t<std::vector<table_info>> data{*this, &res};
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName) -> int {
+                                           auto &d = *(data_t<std::vector<table_info>>*)data;
+                                           auto &res = *d.res;
+                                           //                                           auto t = d.t;
+                                           if(argc){
+                                               auto index = 0;
+                                               auto cid = std::atoi(argv[index++]);
+                                               std::string name = argv[index++];
+                                               std::string type = argv[index++];
+                                               bool notnull = std::atoi(argv[index++]);
+                                               std::string dflt_value = argv[index] ? argv[index] : "";
+                                               index++;
+                                               bool pk = std::atoi(argv[index++]);
+                                               res.emplace_back(table_info{cid, name, type, notnull, dflt_value, pk});
+                                           }
+                                           //                                           res = argc > 0;
+                                           return 0;
+                                       }, &data, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            });
+            return res;
+        }
+        
     protected:
         std::string filename;
         T table;
@@ -781,20 +969,11 @@ namespace sqlite_orm {
             sqlite3_close(db);
         }
         
-        struct table_info {
-            int cid;
-            std::string name;
-            std::string type;
-            bool notnull;
-            std::string dflt_value;
-            bool pk;
-        };
-        
         void create_table() throw (std::runtime_error) {
             withDatabase([=] (auto db) {
                 std::stringstream ss;
                 ss << "CREATE TABLE " << table.name << " ( ";
-                auto columns_count = table.columns_count();
+                auto columnsCount = table.columns_count();
                 auto index = 0;
                 table.for_each_column([&] (auto c) {
                     ss << c.name << " ";
@@ -808,7 +987,7 @@ namespace sqlite_orm {
                     if(c.template has<not_null>()) {
                         ss << "not null ";
                     }
-                    if(index < columns_count - 1) {
+                    if(index < columnsCount - 1) {
                         ss << ", ";
                     }
                     index++;
@@ -818,7 +997,6 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        //                        res = int(sqlite3_last_insert_rowid(db));
                         //  done..
                     }else{
                         throw std::runtime_error(sqlite3_errmsg(db));
