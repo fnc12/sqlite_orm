@@ -121,13 +121,19 @@ cout << "all users count = " << allUsers.size() << endl;
 # Aggregate Functions
 
 ```c++
-auto usersCount = storage.count<User>();    //  maps into 'select count(*) from users'
-cout << "users count = " << usersCount << endl;
-
-auto averageId = storage.avg(&User::id);    //  maps into 'select avg(id) from users'
+auto averageId = storage.avg(&User::id);    //  maps to 'select avg(id) from users'
 cout << "averageId = " << averageId << endl;
 auto averageBirthDate = storage.avg(&User::birthDate);  //  maps into 'select avg(birth_date) from users'
 cout << "averageBirthDate = " << averageBirthDate << endl;
+
+auto usersCount = storage.count<User>();    //  maps to 'select count(*) from users'
+cout << "users count = " << usersCount << endl;
+
+auto countId = storage.count(&User::id);    //  maps to 'select count(id) from users'
+cout << "countId = " << countId << endl;
+auto countFirstName = storage.count(&User::firstName);   //  maps to 'select count(first_name) from users'
+cout << "countFirstName = " << countFirstName << endl;
+
 ```
 
 # Notes
