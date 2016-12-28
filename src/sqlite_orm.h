@@ -293,6 +293,23 @@ namespace sqlite_orm {
         }
         
         /**
+         *  Searches column name by class member pointer passed as first argument.
+         *  @return column name or empty string if nothing found.
+         */
+        template<class F, class O>
+        std::string find_column_name(F O::*m) throw() {
+            std::string res;
+            this->template for_each_column_with_field_type<F>([&](auto c) {
+                if(c.member_pointer == m) {
+                    res = c.name;
+                }/*else{
+                    cout<<"not found"<<endl;
+                }*/
+            });
+            return res;
+        }
+        
+        /**
          *  @return vector of column names that have options provided as template arguments (not_null, autoincrement).
          */
         template<class ...Op>
@@ -706,7 +723,7 @@ namespace sqlite_orm {
         }
         
         /**
-         *  Select count(*) with not conditions routine.
+         *  Select count(*) with no conditions routine.
          *  @return Number of O object in table.
          */
         template<class O>
@@ -734,21 +751,49 @@ namespace sqlite_orm {
         }
         
         template<class F, class O>
+        int count(F O::*m) throw (std::runtime_error) {
+            int res = 0;
+            withDatabase([&](auto db){
+                std::stringstream ss;
+                ss << "select count(";
+                auto columnName = table.find_column_name(m);
+                if(columnName.length()){
+                    ss << columnName << ") from "<< table.name;
+                    auto query = ss.str();
+                    data_t<int> data{*this, &res};
+                    auto rc = sqlite3_exec(db,
+                                           query.c_str(),
+                                           [](void *data, int argc, char **argv,char **azColName)->int{
+                                               auto &d = *(data_t<int>*)data;
+                                               auto &res = *d.res;
+                                               auto t = d.t;
+                                               if(argc){
+                                                   res = std::atoi(argv[0]);
+                                               }
+                                               return 0;
+                                           }, &data, nullptr);
+                    if(rc != SQLITE_OK) {
+                        throw std::runtime_error(sqlite3_errmsg(db));
+                    }
+                }else{
+                    throw std::runtime_error("column not found");
+                }
+            });
+            return res;
+        }
+        
+        /**
+         *  AVG(X) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return average value from db.
+         */
+        template<class F, class O>
         double avg(F O::*m) throw (std::runtime_error) {
             double res = 0;
             withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "select avg(";
-                std::string columnName;
-                table.template for_each_column_with_field_type<F>([&](auto c) {
-//                    cout<<"c.name = "<<c.name<<endl;
-                    if(c.member_pointer == m) {
-//                        cout<<"found"<<endl;
-                        columnName = c.name;
-                    }else{
-                        cout<<"not found"<<endl;
-                    }
-                });
+                auto columnName = table.find_column_name(m);
                 if(columnName.length()){
                     ss << columnName << ") from "<< table.name;
                     auto query = ss.str();
