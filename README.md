@@ -122,17 +122,25 @@ cout << "all users count = " << allUsers.size() << endl;
 
 ```c++
 auto averageId = storage.avg(&User::id);    //  maps to 'select avg(id) from users'
-cout << "averageId = " << averageId << endl;
+cout << "averageId = " << averageId << endl;        //  averageId = 4.5
+    
 auto averageBirthDate = storage.avg(&User::birthDate);  //  maps into 'select avg(birth_date) from users'
-cout << "averageBirthDate = " << averageBirthDate << endl;
-
+cout << "averageBirthDate = " << averageBirthDate << endl;      //  averageBirthDate = 6.64416e+08
+  
 auto usersCount = storage.count<User>();    //  maps to 'select count(*) from users'
-cout << "users count = " << usersCount << endl;
-
+cout << "users count = " << usersCount << endl;     //  users count = 8
+    
 auto countId = storage.count(&User::id);    //  maps to 'select count(id) from users'
-cout << "countId = " << countId << endl;
+cout << "countId = " << countId << endl;        //  countId = 8
+
 auto countFirstName = storage.count(&User::firstName);   //  maps to 'select count(first_name) from users'
-cout << "countFirstName = " << countFirstName << endl;
+cout << "countFirstName = " << countFirstName << endl;      //  countFirstName = 8
+
+auto concatedUserId = storage.group_concat(&User::id);      //  maps to 'select group_concat(id) from users'
+cout << "concatedUserId = " << concatedUserId << endl;      //  concatedUserId = 1,2,3,4,5,6,7,8
+    
+auto concatedUserIdWithDashes = storage.group_concat(&User::id, "---");     //  maps to 'select group_concat(id, "---") from users'
+cout << "concatedUserIdWithDashes = " << concatedUserIdWithDashes << endl;      //  concatedUserIdWithDashes = 1---2---3---4---5---6---7---8
 
 ```
 
