@@ -535,6 +535,16 @@ namespace sqlite_orm {
         int count(F O::*m, const std::string &filename) throw (std::runtime_error) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in count");
         }
+        
+        template<class F, class O>
+        std::string group_concat(F O::*m, const std::string &filename) throw (std::runtime_error) {
+            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
+        }
+        
+        template<class F, class O>
+        std::string group_concat(F O::*m, const std::string &y, const std::string &filename) throw (std::runtime_error) {
+            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
+        }
     };
     
     template<class H, class ...Ts>
@@ -596,8 +606,8 @@ namespace sqlite_orm {
         
         template<class O, class HH = typename H::object_type>
         typename std::enable_if<!std::is_same<O, HH>::value, int>::type insert(const O &o, const std::string &filename) throw (std::runtime_error) {
-            cout<<"std::is_same<O, HH>::value = "<<std::is_same<O, HH>::value<<endl;
-            cout<<"O = "<<typeid(O).name()<<", HH = "<<typeid(HH).name()<<endl;
+//            cout<<"std::is_same<O, HH>::value = "<<std::is_same<O, HH>::value<<endl;
+//            cout<<"O = "<<typeid(O).name()<<", HH = "<<typeid(HH).name()<<endl;
             return Super::template insert(o, filename);
         }
         
@@ -654,6 +664,78 @@ namespace sqlite_orm {
         }
         
         template<class F, class O, class HH = typename H::object_type>
+        typename std::enable_if<!std::is_same<O, HH>::value, std::string>::type group_concat(F O::*m, const std::string &y, const std::string &filename) throw (std::runtime_error) {
+            return Super::group_concat(m, y, filename);
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        typename std::enable_if<std::is_same<O, HH>::value, std::string>::type group_concat(F O::*m, const std::string &y, const std::string &filename) throw (std::runtime_error) {
+            std::string res;
+            withDatabase([&](auto db) {
+                std::stringstream ss;
+                ss << "select group_concat(";
+                auto columnName = table.find_column_name(m);
+                if(columnName.length()){
+                    ss << columnName << ",\"" << y << "\") from "<< table.name;
+                    auto query = ss.str();
+                    data_t<std::string, decltype(this)> data{this, &res};
+                    auto rc = sqlite3_exec(db,
+                                           query.c_str(),
+                                           [](void *data, int argc, char **argv,char **azColName)->int{
+                                               auto &d = *(data_t<std::string, decltype(this)>*)data;
+                                               auto &res = *d.res;
+                                               if(argc){
+                                                   res = argv[0];
+                                               }
+                                               return 0;
+                                           }, &data, nullptr);
+                    if(rc != SQLITE_OK) {
+                        throw std::runtime_error(sqlite3_errmsg(db));
+                    }
+                }else{
+                    throw std::runtime_error("column not found");
+                }
+            }, filename);
+            return res;
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        typename std::enable_if<!std::is_same<O, HH>::value, std::string>::type group_concat(F O::*m, const std::string &filename) throw (std::runtime_error) {
+            return Super::group_concat(m, filename);
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        typename std::enable_if<std::is_same<O, HH>::value, std::string>::type group_concat(F O::*m, const std::string &filename) throw (std::runtime_error) {
+            std::string res;
+            withDatabase([&](auto db) {
+                std::stringstream ss;
+                ss << "select group_concat(";
+                auto columnName = table.find_column_name(m);
+                if(columnName.length()){
+                    ss << columnName << ") from "<< table.name;
+                    auto query = ss.str();
+                    data_t<std::string, decltype(this)> data{this, &res};
+                    auto rc = sqlite3_exec(db,
+                                           query.c_str(),
+                                           [](void *data, int argc, char **argv,char **azColName)->int{
+                                               auto &d = *(data_t<std::string, decltype(this)>*)data;
+                                               auto &res = *d.res;
+                                               if(argc){
+                                                   res = argv[0];
+                                               }
+                                               return 0;
+                                           }, &data, nullptr);
+                    if(rc != SQLITE_OK) {
+                        throw std::runtime_error(sqlite3_errmsg(db));
+                    }
+                }else{
+                    throw std::runtime_error("column not found");
+                }
+            }, filename);
+            return res;
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
         typename std::enable_if<!std::is_same<O, HH>::value, double>::type avg(F O::*m, const std::string &filename) throw (std::runtime_error) {
             return Super::template avg(m, filename);
         }
@@ -686,7 +768,6 @@ namespace sqlite_orm {
                 }else{
                     throw std::runtime_error("column not found");
                 }
-                //                cout<<"columnName = "<<columnName<<endl;
             }, filename);
             return res;
         }
@@ -1090,6 +1171,21 @@ namespace sqlite_orm {
         double avg(F O::*m) throw (std::runtime_error) {
 //            static_assert(impl.template type_is_mapped<O>(), "Type is not mapped in avg");
             return impl.template avg(m, filename);
+        }
+        
+        /**
+         *  GROUP_CONCAT(X) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return group_concat query result.
+         */
+        template<class F, class O>
+        std::string group_concat(F O::*m) throw (std::runtime_error) {
+            return impl.group_concat(m, filename);
+        }
+        
+        template<class F, class O>
+        std::string group_concat(F O::*m, const std::string &y) throw (std::runtime_error) {
+            return impl.group_concat(m, y, filename);
         }
         
         /**
