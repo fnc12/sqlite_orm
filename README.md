@@ -142,6 +142,18 @@ cout << "concatedUserId = " << concatedUserId << endl;      //  concatedUserId =
 auto concatedUserIdWithDashes = storage.group_concat(&User::id, "---");     //  maps to 'select group_concat(id, "---") from users'
 cout << "concatedUserIdWithDashes = " << concatedUserIdWithDashes << endl;      //  concatedUserIdWithDashes = 1---2---3---4---5---6---7---8
 
+if(auto maxId = storage.max(&User::id)){    //  maps to 'select max(id) from users'
+    cout << "maxId = " << *maxId <<endl;    //  maxId = 12  (maxId is std::shared_ptr<int>)
+}else{
+    cout << "maxId is null" << endl;
+}
+    
+if(auto maxFirstName = storage.max(&User::firstName)){
+    cout << "maxFirstName = " << *maxFirstName << endl; //  maxFirstName = Jonh (maxFirstName is std::shared_ptr<std::string>)
+}else{
+    cout << "maxFirstName is null" << endl;
+}
+
 ```
 
 # Notes
