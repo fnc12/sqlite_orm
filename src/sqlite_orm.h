@@ -545,6 +545,11 @@ namespace sqlite_orm {
         std::string group_concat(F O::*m, const std::string &y, const std::string &filename) throw (std::runtime_error) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
         }
+        
+        template<class F, class O>
+        std::shared_ptr<F> max(F O::*m, const std::string &filename) throw (std::runtime_error) {
+            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
+        }
     };
     
     template<class H, class ...Ts>
@@ -686,6 +691,44 @@ namespace sqlite_orm {
                                                auto &res = *d.res;
                                                if(argc){
                                                    res = argv[0];
+                                               }
+                                               return 0;
+                                           }, &data, nullptr);
+                    if(rc != SQLITE_OK) {
+                        throw std::runtime_error(sqlite3_errmsg(db));
+                    }
+                }else{
+                    throw std::runtime_error("column not found");
+                }
+            }, filename);
+            return res;
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        typename std::enable_if<!std::is_same<O, HH>::value, std::shared_ptr<F>>::type max(F O::*m, const std::string &filename) throw (std::runtime_error) {
+            return Super::max(m, filename);
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        typename std::enable_if<std::is_same<O, HH>::value, std::shared_ptr<F>>::type max(F O::*m, const std::string &filename) throw (std::runtime_error) {
+            std::shared_ptr<F> res;
+            withDatabase([&](auto db) {
+                std::stringstream ss;
+                ss << "select max(";
+                auto columnName = table.find_column_name(m);
+                if(columnName.length()){
+                    ss << columnName << ") from "<< table.name;
+                    auto query = ss.str();
+                    data_t<std::shared_ptr<F>, decltype(this)> data{this, &res};
+                    auto rc = sqlite3_exec(db,
+                                           query.c_str(),
+                                           [](void *data, int argc, char **argv,char **azColName)->int{
+                                               auto &d = *(data_t<std::shared_ptr<F>, decltype(this)>*)data;
+                                               auto &res = *d.res;
+                                               if(argc){
+                                                   if(argv[0]){
+                                                       res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
+                                                   }
                                                }
                                                return 0;
                                            }, &data, nullptr);
@@ -1143,7 +1186,7 @@ namespace sqlite_orm {
         }
         
         /**
-         *  Select count(*) with no conditions routine.
+         *  SELECT COUNT(*) with no conditions routine. https://www.sqlite.org/lang_aggfunc.html#count
          *  @return Number of O object in table.
          */
         template<class O>
@@ -1153,7 +1196,7 @@ namespace sqlite_orm {
         }
         
         /**
-         *  Select count(X)
+         *  SELECT COUNT(X) https://www.sqlite.org/lang_aggfunc.html#count
          *  @param m member pointer to class mapped to the storage.
          */
         template<class F, class O>
@@ -1163,7 +1206,7 @@ namespace sqlite_orm {
         }
         
         /**
-         *  AVG(X) query.
+         *  AVG(X) query.   https://www.sqlite.org/lang_aggfunc.html#avg
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return average value from db.
          */
@@ -1174,7 +1217,7 @@ namespace sqlite_orm {
         }
         
         /**
-         *  GROUP_CONCAT(X) query.
+         *  GROUP_CONCAT(X) query.  https://www.sqlite.org/lang_aggfunc.html#groupconcat
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return group_concat query result.
          */
@@ -1183,9 +1226,19 @@ namespace sqlite_orm {
             return impl.group_concat(m, filename);
         }
         
+        /**
+         *  GROUP_CONCAT(X, Y) query.   https://www.sqlite.org/lang_aggfunc.html#groupconcat
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return group_concat query result.
+         */
         template<class F, class O>
         std::string group_concat(F O::*m, const std::string &y) throw (std::runtime_error) {
             return impl.group_concat(m, y, filename);
+        }
+        
+        template<class F, class O>
+        std::shared_ptr<F> max(F O::*m) throw (std::runtime_error) {
+            return impl.max(m, filename);
         }
         
         /**
