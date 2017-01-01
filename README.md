@@ -148,7 +148,7 @@ if(auto maxId = storage.max(&User::id)){    //  maps to 'select max(id) from use
     cout << "maxId is null" << endl;
 }
     
-if(auto maxFirstName = storage.max(&User::firstName)){
+if(auto maxFirstName = storage.max(&User::firstName)){  //  maps to 'select max(first_name) from users'
     cout << "maxFirstName = " << *maxFirstName << endl; //  maxFirstName = Jonh (maxFirstName is std::shared_ptr<std::string>)
 }else{
     cout << "maxFirstName is null" << endl;
