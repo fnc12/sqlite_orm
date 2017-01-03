@@ -154,6 +154,18 @@ if(auto maxFirstName = storage.max(&User::firstName)){  //  maps to 'select max(
     cout << "maxFirstName is null" << endl;
 }
 
+if(auto minId = storage.min(&User::id)){    //  maps to 'select min(id) from users'
+    cout << "minId = " << *minId << endl;   //  minId = 1
+}else{
+    cout << "minId is null" << endl;
+}
+
+if(auto minLastName = storage.min(&User::lastName)){    //  maps to 'select min(last_name) from users'
+    cout << "minLastName = " << *minLastName << endl;   //  minLastName = Doe
+}else{
+    cout << "minLastName is null" << endl;
+}
+
 ```
 
 # Notes
