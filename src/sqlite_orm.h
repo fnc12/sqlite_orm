@@ -464,6 +464,16 @@ namespace sqlite_orm {
     };
     
     /**
+     *  Specialization for double.
+     */
+    template<>
+    struct row_extrator<double> {
+        double extract(const char *row_value) {
+            return std::atof(row_value);
+        }
+    };
+    
+    /**
      *  Exeption thrown if nothing was found in database with specified id.
      */
     struct not_found_exception : public std::exception {
@@ -691,6 +701,44 @@ namespace sqlite_orm {
                                                auto &res = *d.res;
                                                if(argc){
                                                    res = argv[0];
+                                               }
+                                               return 0;
+                                           }, &data, nullptr);
+                    if(rc != SQLITE_OK) {
+                        throw std::runtime_error(sqlite3_errmsg(db));
+                    }
+                }else{
+                    throw std::runtime_error("column not found");
+                }
+            }, filename);
+            return res;
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        typename std::enable_if<!std::is_same<O, HH>::value, std::shared_ptr<F>>::type min(F O::*m, const std::string &filename) throw (std::runtime_error) {
+            return Super::min(m, filename);
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        typename std::enable_if<std::is_same<O, HH>::value, std::shared_ptr<F>>::type min(F O::*m, const std::string &filename) throw (std::runtime_error) {
+            std::shared_ptr<F> res;
+            withDatabase([&](auto db) {
+                std::stringstream ss;
+                ss << "select min(";
+                auto columnName = table.find_column_name(m);
+                if(columnName.length()){
+                    ss << columnName << ") from "<< table.name;
+                    auto query = ss.str();
+                    data_t<std::shared_ptr<F>, decltype(this)> data{this, &res};
+                    auto rc = sqlite3_exec(db,
+                                           query.c_str(),
+                                           [](void *data, int argc, char **argv,char **azColName)->int{
+                                               auto &d = *(data_t<std::shared_ptr<F>, decltype(this)>*)data;
+                                               auto &res = *d.res;
+                                               if(argc){
+                                                   if(argv[0]){
+                                                       res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
+                                                   }
                                                }
                                                return 0;
                                            }, &data, nullptr);
@@ -1239,6 +1287,11 @@ namespace sqlite_orm {
         template<class F, class O>
         std::shared_ptr<F> max(F O::*m) throw (std::runtime_error) {
             return impl.max(m, filename);
+        }
+        
+        template<class F, class O>
+        std::shared_ptr<F> min(F O::*m) throw (std::runtime_error) {
+            return impl.min(m, filename);
         }
         
         /**
