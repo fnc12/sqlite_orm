@@ -5,6 +5,7 @@ SQLite ORM light header only library for modern C++
 
 * **Intuitive syntax**
 * **Built with modern C++14 features (no macros)**
+* **Migrations functionality**
 * **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
@@ -167,6 +168,28 @@ if(auto minLastName = storage.min(&User::lastName)){    //  maps to 'select min(
 }
 
 ```
+
+# Migrations functionality
+
+There are no explicit `up` and `down` functions that are used to be used in migrations. Instead `sqlite_orm` offers `sync_schema` function that takes responsibility of comparing actual db file schema with one you specified in `make_storage` call and if something is not equal it alters or drops/creates schema.
+
+```c++
+
+storage.sync_schema();
+```
+
+Please beware that `sync_schema` doesn't guarantee that data will be saved. It *tries* to save it only. Below you can see rules list that `sync_schema` follows during call:
+* if there are excess tables exist in db they are ignored (not dropped)
+* every table from storage is compared with it's db analog and 
+    * if table doesn't exist it is created
+    * if table exists its colums are being compared with table_info from db and
+        * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
+        * if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command and table data will not be dropped
+        * if there is any column existing in both db and storage but differs by any of properties (type, pk, notnull, dflt_value) table will be dropped and recreated
+
+The reason of this kinda weird behaviour is the fact that `sqlite3` doesn't have `DROP COLUMN` query but has `ADD COLUMN`. Of course one can use temporary table to save all data. Probably it will be implemented in next versions of `sqlite_orm` lib (with `bool preserve = false` argument probably).
+
+The best practice is to call this function right after storage creation.
 
 # Notes
 
