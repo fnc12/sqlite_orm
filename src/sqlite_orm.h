@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <memory>
 #include <typeinfo>
+#include <regex>
+#include <map>
 
 using std::cout;
 using std::endl;
@@ -51,6 +53,121 @@ namespace sqlite_orm {
         
         static value_type value = t;
     };
+    
+    enum class sqlite_type {
+        INTEGER,
+        TEXT,
+        BLOB,
+        REAL,
+//        NUMERIC,      //  numeric and real are the same for c++
+    };
+    
+    /**
+     *  @param str case doesn't matter - it is uppercased before comparing.
+     */
+    std::shared_ptr<sqlite_type> to_sqlite_type(const std::string &str) {
+        auto asciiStringToUpper = [](std::string &s){
+            std::transform(s.begin(),
+                           s.end(),
+                           s.begin(),
+                           [](char c){
+                               return std::toupper(c);
+                           });
+        };
+        auto upperStr = str;
+        asciiStringToUpper(upperStr);
+        
+        static std::map<sqlite_type, std::vector<std::regex>> typeMap = {
+            { sqlite_type::INTEGER, {
+                std::regex("INT"),
+                std::regex("INTEGER"),
+                std::regex("TINYINT"),
+                std::regex("SMALLINT"),
+                std::regex("MEDIUMINT"),
+                std::regex("BIGINT"),
+                std::regex("UNSIGNED BIG INT"),
+                std::regex("INT2"),
+                std::regex("INT8"),
+            } }, { sqlite_type::TEXT, {
+                std::regex("CHARACTER\\([[:digit:]]+\\)"),
+                std::regex("VARCHAR\\([[:digit:]]+\\)"),
+                std::regex("VARYING CHARACTER\\([[:digit:]]+\\)"),
+                std::regex("NCHAR\\([[:digit:]]+\\)"),
+                std::regex("NATIVE CHARACTER\\([[:digit:]]+\\)"),
+                std::regex("NVARCHAR\\([[:digit:]]+\\)"),
+                std::regex("CLOB"),
+                std::regex("TEXT"),
+            } }, { sqlite_type::BLOB, {
+                std::regex("BLOB"),
+            } }, { sqlite_type::REAL, {
+                std::regex("REAL"),
+                std::regex("DOUBLE"),
+                std::regex("DOUBLE PRECISION"),
+                std::regex("FLOAT"),
+                std::regex("NUMERIC"),
+                std::regex("DECIMAL\\([[:digit:]]+,[[:digit:]]+\\)"),
+                std::regex("BOOLEAN"),
+                std::regex("DATE"),
+                std::regex("DATETIME"),
+            } },
+        };
+        
+        /*static std::vector<std::regex> integerRegexes = {
+            std::regex("INT"),
+            std::regex("INTEGER"),
+            std::regex("TINYINT"),
+            std::regex("SMALLINT"),
+            std::regex("MEDIUMINT"),
+            std::regex("BIGINT"),
+            std::regex("UNSIGNED BIG INT"),
+            std::regex("INT2"),
+            std::regex("INT8"),
+        };*/
+        for(auto &p : typeMap) {
+            for(auto &r : p.second) {
+                if(std::regex_match(upperStr, r)){
+                    return std::make_shared<sqlite_type>(p.first);
+                }
+            }
+        }
+        /*if(std::find(integerNames.begin(),
+                     integerNames.end(),
+                     upperStr) != integerNames.end()){
+            return std::make_shared<sqlite_type>(sqlite_type::INTEGER);
+        }*/
+        /*static std::vector<std::regex> textRegexes = {
+            std::regex("CHARACTER\\([[:digit:]]+\\)"),
+            std::regex("VARCHAR\\([[:digit:]]+\\)"),
+            std::regex("VARYING CHARACTER\\([[:digit:]]+\\)"),
+            std::regex("NCHAR\\([[:digit:]]+\\)"),
+            std::regex("NATIVE CHARACTER\\([[:digit:]]+\\)"),
+            std::regex("NVARCHAR\\([[:digit:]]+\\)"),
+            std::regex("CLOB"),
+            std::regex("TEXT"),
+//            std::regex("(CHARACTER)([[:digit:]]+)"),
+        };*/
+        /*if(std::find(textNames.begin(),
+                     textNames.end(),
+                     upperStr) != textNames.end()){
+            return std::make_shared<sqlite_type>(sqlite_type::TEXT);
+        }*/
+        /*for(auto &r : textRegexes) {
+            if(std::regex_match(upperStr, r)){
+                return std::make_shared<sqlite_type>(sqlite_type::TEXT);
+            }
+        }
+        
+        static std::vector<std::regex> blobRegexes = {
+            std::regex("BLOB"),
+        };
+        for(auto &r : blobRegexes) {
+            if(std::regex_match(upperStr, r)){
+                return std::make_shared<sqlite_type>(sqlite_type::BLOB);
+            }
+        }*/
+        
+        return {};
+    }
     
     template<class O, class T, class ...Op>
     struct column {
@@ -332,7 +449,7 @@ namespace sqlite_orm {
         /**
          *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise code will
          *  not compile.
-         *  @param L Lambda type. Do not specify it explicitly.
+         *  @class L Lambda type. Do not specify it explicitly.
          *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
          */
         template<class L>
@@ -1309,9 +1426,11 @@ namespace sqlite_orm {
                                                        });
                     if(dbColumnInfoIt != dbTableInfo.end()){
                         auto &dbColumnInfo = *dbColumnInfoIt;
-                        auto dbColumnInfoTypeLowerCase = dbColumnInfo.type;
-                        auto storageColumnInfoTypeLowerCase = storageColumnInfo.type;
-                        std::transform(dbColumnInfoTypeLowerCase.begin(),
+                        auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
+//                        auto dbColumnInfoTypeLowerCase = dbColumnInfo.type;
+                        auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
+//                        auto storageColumnInfoTypeLowerCase = storageColumnInfo.type;
+                        /*std::transform(dbColumnInfoTypeLowerCase.begin(),
                                        dbColumnInfoTypeLowerCase.end(),
                                        dbColumnInfoTypeLowerCase.begin(),
                                        [=](char c){
@@ -1322,19 +1441,30 @@ namespace sqlite_orm {
                                        storageColumnInfoTypeLowerCase.begin(),
                                        [=](char c){
                                            return std::tolower(int(c));
-                                       });
-                        auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
-                                               dbColumnInfoTypeLowerCase == storageColumnInfoTypeLowerCase &&
-                                               dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                                               dbColumnInfo.dflt_value == storageColumnInfo.dflt_value &&
-                                               dbColumnInfo.pk == storageColumnInfo.pk;
-                        if(!columnsAreEqual){
+                                       });*/
+                        if(dbColumnInfoType && storageColumnInfoType) {
+                            auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
+                            *dbColumnInfoType == *storageColumnInfoType &&
+                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                            dbColumnInfo.dflt_value == storageColumnInfo.dflt_value &&
+                            dbColumnInfo.pk == storageColumnInfo.pk;
+                            if(!columnsAreEqual){
+                                gottaCreateTable = true;
+                                break;
+                            }
+                            dbTableInfo.erase(dbColumnInfoIt);
+                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                            --storageColumnInfoIndex;
+                        }else{
+                            if(!storageColumnInfoType){
+                                cout<<"unknown column type "<<storageColumnInfo.type<<endl;
+                            }
+                            if(!dbColumnInfoType){
+                                cout<<"unknown column type "<<dbColumnInfo.type<<endl;
+                            }
                             gottaCreateTable = true;
                             break;
                         }
-                        dbTableInfo.erase(dbColumnInfoIt);
-                        storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
-                        --storageColumnInfoIndex;
                     }else{
                         columnsToAdd.push_back(&storageColumnInfo);
                     }
