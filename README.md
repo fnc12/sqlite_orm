@@ -21,13 +21,13 @@ struct User{
     std::string firstName;
     std::string lastName;
     int birthDate;
-    std::string imageUrl;
+    std::shared_ptr<std::string> imageUrl;      
     int typeId;
-}
+};
 
 ```
 
-So we have database with predefined schema like `CREATE TABLE users (id integer primary key autoincrement, first_name text not null, last_name text not null, birth_date integer not null, image_url text not null, type_id integer not null)`
+So we have database with predefined schema like `CREATE TABLE users (id integer primary key autoincrement, first_name text not null, last_name text not null, birth_date integer not null, image_url text, type_id integer not null)`
 
 Now we tell `sqlite_orm` library about schema and provide database filename. We create `storage` service object that has CRUD interface. Also we create every table and every column. All code is intuitive and minimalistic.
 
@@ -39,37 +39,35 @@ auto storage = make_storage("db.sqlite",
                                        make_column("id",
                                                    &User::id,
                                                    autoincrement(),
-                                                   not_null(),
                                                    primary_key()),
                                        make_column("first_name",
-                                                   &User::firstName,
-                                                   not_null()),
+                                                   &User::firstName),
                                        make_column("last_name",
-                                                   &User::lastName,
-                                                   not_null()),
+                                                   &User::lastName),
                                        make_column("birth_date",
-                                                   &User::birthDate,
-                                                   not_null()),
+                                                   &User::birthDate),
                                        make_column("image_url",
-                                                   &User::imageUrl,
-                                                   not_null()),
+                                                   &User::imageUrl),
                                        make_column("type_id",
-                                                   &User::typeId,
-                                                   not_null())));
+                                                   &User::typeId)));
 ```
 
-Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like `not_null`, `primary_key` or `autoincrement` (order isn't important).
+Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like ~~`not_null`~~ (deduced from type), `primary_key` or `autoincrement` (order isn't important).
 
 # CRUD
 
 Let's create and insert new `User` into database. First we need to create a `User` object with any id and call `insert` function. It will return id of just created user or throw exeption if something goes wrong.
 
 ```c++
-User user{-1, "Jonh", "Doe", 664416000, "", 3 };
+User user{-1, "Jonh", "Doe", 664416000, std::make_shared<std::string>("url_to_heaven"), 3 };
     
 auto insertedId = storage.insert(user);
-cout << "insertedId = " << insertedId << endl;
+cout << "insertedId = " << insertedId << endl;      //  insertedId = 8
 user.id = insertedId;
+
+User secondUser{-1, "Alice", "Inwonder", 831168000, {} , 2};
+insertedId = storage.insert(secondUser);
+secondUser.id = insertedId;
 
 ```
 
@@ -86,7 +84,7 @@ try{
 }
 ```
 
-Probably you may not like throwing exeptions. Me too. Exeption `not_found_exception` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns nullptr.
+Probably you may not like throwing exeptions. Me too. Exeption `not_found_exception` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
 
 ```c++
 if(auto user = storage.get_no_throw<User>(insertedId)){
@@ -116,7 +114,10 @@ Also we can extract all objects into `std::vector`.
 
 ```c++
 auto allUsers = storage.get_all<User>();
-cout << "all users count = " << allUsers.size() << endl;
+cout << "allUsers (" << allUsers.size() << "):" << endl;
+for(auto &user : allUsers) {
+    cout << storage.dump(user) << endl; //  dump returns std::string with json-like style object info. For example: { id : '1', first_name : 'Jonh', last_name : 'Doe', birth_date : '664416000', image_url : '0x10090c3d8', type_id : '3' }
+}
 ```
 
 # Aggregate Functions
@@ -134,8 +135,8 @@ cout << "users count = " << usersCount << endl;     //  users count = 8
 auto countId = storage.count(&User::id);    //  maps to 'select count(id) from users'
 cout << "countId = " << countId << endl;        //  countId = 8
 
-auto countFirstName = storage.count(&User::firstName);   //  maps to 'select count(first_name) from users'
-cout << "countFirstName = " << countFirstName << endl;      //  countFirstName = 8
+auto countImageUrl = storage.count(&User::imageUrl);   //  maps to 'select count(image_url) from users'
+cout << "countImageUrl = " << countImageUrl << endl;      //  countImageUrl = 5
 
 auto concatedUserId = storage.group_concat(&User::id);      //  maps to 'select group_concat(id) from users'
 cout << "concatedUserId = " << concatedUserId << endl;      //  concatedUserId = 1,2,3,4,5,6,7,8
