@@ -43,7 +43,7 @@ namespace sqlite_orm {
     
     struct autoincrement {};
     
-    struct not_null {};
+//    struct not_null {};
     
     struct primary_key {};
     
@@ -169,6 +169,15 @@ namespace sqlite_orm {
         return {};
     }
     
+    template<class T>
+    struct type_is_nullable : public std::false_type {};
+    
+    template<class T>
+    struct type_is_nullable<std::shared_ptr<T>> : public std::true_type {};
+    
+    template<class T>
+    struct type_is_nullable<std::unique_ptr<T>> : public std::true_type {};
+    
     template<class O, class T, class ...Op>
     struct column {
         typedef O object_type;
@@ -178,6 +187,10 @@ namespace sqlite_orm {
         
         const std::string name;
         field_type object_type::*member_pointer;
+        
+        bool not_null() const {
+            return !type_is_nullable<field_type>::value;
+        }
         
         template<class Opt>
         constexpr bool has() {
@@ -226,6 +239,24 @@ namespace sqlite_orm {
         inline const std::string& print() {
             static const std::string res = "REAL";
             return res;
+        }
+    };
+    
+    template<class T>
+    struct type_printer<std::shared_ptr<T>> {
+        inline const std::string& print() {
+            /*static const std::string res = "REAL";
+            return res;*/
+            return type_printer<T>().print();
+        }
+    };
+    
+    template<class T>
+    struct type_printer<std::unique_ptr<T>> {
+        inline const std::string& print() {
+            /*static const std::string res = "REAL";
+             return res;*/
+            return type_printer<T>().print();
         }
     };
     
@@ -492,7 +523,8 @@ namespace sqlite_orm {
                     -1,
                     col.name,
                     type_printer<typename decltype(col)::field_type>().print(),
-                    col.template has<not_null>(),
+//                    col.template has<not_null>(),
+                    col.not_null(),
                     "",
                     col.template has<primary_key>(),
                 };
@@ -615,6 +647,28 @@ namespace sqlite_orm {
         }
     };
     
+    template<class T>
+    struct row_extrator<std::shared_ptr<T>> {
+        std::shared_ptr<T> extract(const char *row_value) {
+            if(row_value){
+                return std::make_shared<T>(row_extrator<T>().extract(row_value));
+            }else{
+                return {};
+            }
+        }
+    };
+    
+    template<class T>
+    struct row_extrator<std::unique_ptr<T>> {
+        std::shared_ptr<T> extract(const char *row_value) {
+            if(row_value){
+                return std::make_shared<T>(row_extrator<T>().extract(row_value));
+            }else{
+                return {};
+            }
+        }
+    };
+    
     /**
      *  Exeption thrown if nothing was found in database with specified id.
      */
@@ -703,6 +757,11 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
+        template<class O>
+        std::string dump(const O &o, const std::string &filename) throw (std::runtime_error) {
+            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
+        }
+        
         void sync_schema(const std::string &filename) throw (std::runtime_error) {
             return;
         }
@@ -771,7 +830,8 @@ namespace sqlite_orm {
                     if(c.template has<autoincrement>()) {
                         ss << "autoincrement ";
                     }
-                    if(c.template has<not_null>()) {
+                    if(c.not_null()){
+//                    if(c.template has<not_null>()) {
                         ss << "not null ";
                     }
                     if(index < columnsCount - 1) {
@@ -1186,7 +1246,7 @@ namespace sqlite_orm {
         template<class O, class HH = typename H::object_type>
         typename std::enable_if<std::is_same<O, HH>::value, std::vector<O>>::type get_all(const std::string &filename) throw(std::runtime_error) {
             std::vector<O> res;
-            withDatabase([&](auto db) {
+            this->withDatabase([&](auto db) {
                 auto query = "select * from " + table.name;
                 data_t<std::vector<O>, decltype(this)> data{this, &res};
                 auto rc = sqlite3_exec(db,
@@ -1274,6 +1334,30 @@ namespace sqlite_orm {
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
             }, filename);
+        }
+        
+        template<class O, class HH = typename H::object_type>
+        std::string dump(const O &o, const typename std::enable_if<!std::is_same<O, HH>::value, std::string>::type &filename) throw (std::runtime_error) {
+            return Super::dump(o, filename);
+        }
+        
+        template<class O, class HH = typename H::object_type>
+        std::string dump(const O &o, const typename std::enable_if<std::is_same<O, HH>::value, std::string>::type &filename) throw (std::runtime_error) {
+            std::stringstream ss;
+            ss << "{ ";
+            auto columnsCount = table.columns_count();
+            auto index = 0;
+            table.for_each_column([&] (auto c) {
+                auto &value = o.*c.member_pointer;
+                ss << c.name << " : '" << value << "'";
+                if(index < columnsCount - 1) {
+                    ss << ", ";
+                }else{
+                    ss << " }";
+                }
+                ++index;
+            });
+            return ss.str();
         }
         
         template<class O, class HH = typename H::object_type>
@@ -1507,14 +1591,13 @@ namespace sqlite_orm {
         typedef storage_impl<Ts...> impl_type;
         
         /**
-         *  @param filename database filename.
-         *  @param table table created by function `make_table`
+         *  @param filename_ database filename.
          */
         storage(const std::string &filename_, impl_type impl_):filename(filename_), impl(impl_){}
         
         /**
          *  Delete routine.
-         *  @param O Object's type. Must be specified explicitly.
+         *  O is an object's type. Must be specified explicitly.
          *  @param id id of object to be removed.
          */
         template<class O>
@@ -1526,7 +1609,7 @@ namespace sqlite_orm {
         
         /**
          *  Update routine. Sets all non primary key fields where primary key is equal.
-         *  @param O Object type. May be not specified explicitly cause it can be deduced by
+         *  O is a object type. May be not specified explicitly cause it can be deduced by
          *      compiler from first parameter.
          *  @param o object to be updated.
          */
@@ -1627,6 +1710,11 @@ namespace sqlite_orm {
         template<class F, class O>
         std::shared_ptr<F> min(F O::*m) throw (std::runtime_error) {
             return impl.min(m, filename);
+        }
+        
+        template<class O>
+        std::string dump(const O &o) throw (std::runtime_error) {
+            return impl.dump(o, filename);
         }
         
         /**

@@ -61,5 +61,29 @@ int main() {
     assert(*to_sqlite_type("DATETIME") == sqlite_type::REAL);
     
     
+    
+    assert(type_is_nullable<bool>::value == false);
+    assert(type_is_nullable<char>::value == false);
+    assert(type_is_nullable<unsigned char>::value == false);
+    assert(type_is_nullable<signed char>::value == false);
+    assert(type_is_nullable<short>::value == false);
+    assert(type_is_nullable<unsigned short>::value == false);
+    assert(type_is_nullable<int>::value == false);
+    assert(type_is_nullable<unsigned int>::value == false);
+    assert(type_is_nullable<long>::value == false);
+    assert(type_is_nullable<unsigned long>::value == false);
+    assert(type_is_nullable<long long>::value == false);
+    assert(type_is_nullable<unsigned long long>::value == false);
+    assert(type_is_nullable<float>::value == false);
+    assert(type_is_nullable<double>::value == false);
+    assert(type_is_nullable<long double>::value == false);
+    assert(type_is_nullable<long double>::value == false);
+    assert(type_is_nullable<std::string>::value == false);
+    assert(type_is_nullable<std::shared_ptr<int>>::value == true);
+    assert(type_is_nullable<std::shared_ptr<std::string>>::value == true);
+    assert(type_is_nullable<std::unique_ptr<int>>::value == true);
+    assert(type_is_nullable<std::unique_ptr<std::string>>::value == true);
+    
+    
 //    assert(false);
 }
