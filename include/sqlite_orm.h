@@ -357,15 +357,8 @@ namespace sqlite_orm {
             Super::for_each_column(l);
         }
         
-//        template<typename CFT = typename column_type::field_type>
-        /*template<class F, class L, class = typename std::enable_if<std::is_same<F, typename column_type::field_type>::value>::type>
-        void for_each_column_with_field_type(L l) {
-            l(col);
-            Super::template for_each_column_with_field_type<F, L>(l);
-        }*/
-        
         template<class F, class L>
-        void for_each_column_with_field_type(L l) {
+        void for_each_column_with_field_type(L l, typename std::enable_if<!std::is_same<F, typename column_type::field_type>::value>::type * = nullptr) {
 //            cout<<"typename column_type::field_type = "<<typeid(typename column_type::field_type).name()<<endl;
 //            cout<<"F = "<<typeid(F).name()<<endl;
 //            cout<<"std::is_same<F, typename column_type::field_type>::value = "<<std::is_same<F, typename column_type::field_type>::value<<endl;
@@ -373,7 +366,7 @@ namespace sqlite_orm {
         }
         
         template<class F, class L>
-        void for_each_column_with_field_type(typename std::enable_if<std::is_same<F, typename column_type::field_type>::value, L>::type l) {
+        void for_each_column_with_field_type(L l, typename std::enable_if<std::is_same<F, typename column_type::field_type>::value>::type * = nullptr) {
 //            cout<<"typename column_type::field_type = "<<typeid(typename column_type::field_type).name()<<endl;
 //            cout<<"F = "<<typeid(F).name()<<endl;
 //            cout<<"custom version"<<endl;
@@ -856,12 +849,12 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, int>::type insert(const O &o, const std::string &filename) /*throw (std::runtime_error)*/ {
+        int insert(const O &o, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::template insert(o, filename);
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, int>::type insert(const O &o, const std::string &filename) /*throw (std::runtime_error)*/ {
+        int insert(const O &o, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             int res = 0;
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
@@ -913,12 +906,12 @@ namespace sqlite_orm {
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, std::string>::type group_concat(F O::*m, const std::string &y, const std::string &filename) /*throw (std::runtime_error)*/ {
+        std::string group_concat(F O::*m, const std::string &y, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::group_concat(m, y, filename);
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, std::string>::type group_concat(F O::*m, const std::string &y, const std::string &filename) /*throw (std::runtime_error)*/ {
+        std::string group_concat(F O::*m, const std::string &y, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             std::string res;
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
@@ -949,12 +942,12 @@ namespace sqlite_orm {
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, std::shared_ptr<F>>::type min(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        std::shared_ptr<F> min(F O::*m, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::min(m, filename);
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, std::shared_ptr<F>>::type min(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        std::shared_ptr<F> min(F O::*m, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             std::shared_ptr<F> res;
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
@@ -987,12 +980,12 @@ namespace sqlite_orm {
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, std::shared_ptr<F>>::type max(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        std::shared_ptr<F> max(F O::*m, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::max(m, filename);
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, std::shared_ptr<F>>::type max(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        std::shared_ptr<F> max(F O::*m, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             std::shared_ptr<F> res;
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
@@ -1025,12 +1018,12 @@ namespace sqlite_orm {
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, std::string>::type group_concat(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        std::string group_concat(F O::*m, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::group_concat(m, filename);
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, std::string>::type group_concat(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        std::string group_concat(F O::*m, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             std::string res;
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
@@ -1061,12 +1054,12 @@ namespace sqlite_orm {
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, double>::type avg(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        double avg(F O::*m, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::template avg(m, filename);
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, double>::type avg(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        double avg(F O::*m, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             double res = 0;
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
@@ -1098,12 +1091,12 @@ namespace sqlite_orm {
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, int>::type count(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        int count(F O::*m, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::template count(m, filename);
         }
         
         template<class F, class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, int>::type count(F O::*m, const std::string &filename) /*throw (std::runtime_error)*/ {
+        int count(F O::*m, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             int res = 0;
             this->withDatabase([&](auto db){
                 std::stringstream ss;
@@ -1135,12 +1128,12 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, int>::type count(const std::string &filename) /*throw (std::runtime_error)*/ {
+        int count(const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::template count<O>(filename);
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, int>::type count(const std::string &filename) /*throw (std::runtime_error)*/ {
+        int count(const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             int res = 0;
             this->withDatabase([&](auto db) {
                 auto query = "select count(*) from " + table.name;
@@ -1164,12 +1157,12 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, std::shared_ptr<O>>::type get_no_throw(int id, const std::string &filename) /*throw(std::runtime_error)*/ {
+        std::shared_ptr<O> get_no_throw(int id, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
             return Super::template get_no_throw<O>(id, filename);
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, std::shared_ptr<O>>::type get_no_throw(int id, const std::string &filename) /*throw(std::runtime_error)*/ {
+        std::shared_ptr<O> get_no_throw(int id, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
             std::shared_ptr<O> res;
             withDatabase([&](auto db) {
                 auto query = "select * from " + table.name + " where id = " + std::to_string(id);
@@ -1200,12 +1193,12 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, O>::type get(int id, const std::string &filename) /*throw (not_found_exception, std::runtime_error)*/ {
+        O get(int id, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (not_found_exception, std::runtime_error)*/ {
             return Super::template get<O>(id, filename);
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, O>::type get(int id, const std::string &filename) /*throw (not_found_exception, std::runtime_error)*/ {
+        O get(int id, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (not_found_exception, std::runtime_error)*/ {
             std::shared_ptr<O> res;
             withDatabase([&](auto db) {
                 auto query = "select * from " + table.name + " where id = " + std::to_string(id);
@@ -1240,12 +1233,12 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<!std::is_same<O, HH>::value, std::vector<O>>::type get_all(const std::string &filename) /*throw(std::runtime_error)*/ {
+        std::vector<O> get_all(const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
             return Super::template get_all<O>(filename);
         }
         
         template<class O, class HH = typename H::object_type>
-        typename std::enable_if<std::is_same<O, HH>::value, std::vector<O>>::type get_all(const std::string &filename) /*throw(std::runtime_error)*/ {
+        std::vector<O> get_all(const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
             std::vector<O> res;
             this->withDatabase([&](auto db) {
                 auto query = "select * from " + table.name;
@@ -1276,12 +1269,12 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        void update(const O &o, const typename std::enable_if<!std::is_same<O, HH>::value, std::string>::type &filename) /*throw (std::runtime_error)*/ {
+        void update(const O &o, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             Super::template update(o, filename);
         }
         
         template<class O, class HH = typename H::object_type>
-        void update(const O &o, const typename std::enable_if<std::is_same<O, HH>::value, std::string>::type &filename) /*throw (std::runtime_error)*/ {
+        void update(const O &o, const std::string &filename,  typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "update " << table.name << " set ";
@@ -1338,12 +1331,12 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        std::string dump(const O &o, const typename std::enable_if<!std::is_same<O, HH>::value, std::string>::type &filename) /*throw (std::runtime_error)*/ {
+        std::string dump(const O &o, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             return Super::dump(o, filename);
         }
         
         template<class O, class HH = typename H::object_type>
-        std::string dump(const O &o, const typename std::enable_if<std::is_same<O, HH>::value, std::string>::type &filename) /*throw (std::runtime_error)*/ {
+        std::string dump(const O &o, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             std::stringstream ss;
             ss << "{ ";
             auto columnsCount = table.columns_count();
@@ -1362,12 +1355,12 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        void remove(int id, const typename std::enable_if<!std::is_same<O, HH>::value, std::string>::type &filename) /*throw (std::runtime_error)*/ {
+        void remove(int id, const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             Super::template remove<O>(id, filename);
         }
         
         template<class O, class HH = typename H::object_type>
-        void remove(int id, const typename std::enable_if<std::is_same<O, HH>::value, std::string>::type &filename) /*throw (std::runtime_error)*/ {
+        void remove(int id, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "delete from " << table.name;
