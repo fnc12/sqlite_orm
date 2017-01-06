@@ -16,6 +16,7 @@
 #include <typeinfo>
 #include <regex>
 #include <map>
+#include <cctype>
 
 using std::cout;
 using std::endl;
@@ -1609,7 +1610,7 @@ namespace sqlite_orm {
         
         /**
          *  Update routine. Sets all non primary key fields where primary key is equal.
-         *  O is a object type. May be not specified explicitly cause it can be deduced by
+         *  O is an object type. May be not specified explicitly cause it can be deduced by
          *      compiler from first parameter.
          *  @param o object to be updated.
          */
@@ -1621,7 +1622,7 @@ namespace sqlite_orm {
         
         /**
          *  Select * with no conditions routine.
-         *  @param O Object type to be extracted. Must be specified explicitly.
+         *  O is an object type to be extracted. Must be specified explicitly.
          *  @return All objects of type O stored in database at the moment.
          */
         template<class O>
@@ -1632,7 +1633,7 @@ namespace sqlite_orm {
         
         /**
          *  Select * by id routine.
-         *  @param O Object type to be extracted. Must be specified explicitly.
+         *  O is an object type to be extracted. Must be specified explicitly.
          *  @return Object of type O where id is equal parameter passed or throws `not_found_exception`
          *  if there is no object with such id.
          */
