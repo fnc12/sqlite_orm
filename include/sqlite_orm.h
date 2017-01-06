@@ -867,7 +867,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "INSERT INTO " << table.name << " (";
                 std::vector<std::string> columnNames;
-                table.template for_each_column([&] (auto c) {
+                table.for_each_column([&] (auto c) {
                     if(!c.template has<primary_key>()) {
                         columnNames.emplace_back(c.name);
                     }
@@ -894,7 +894,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     auto index = 1;
-                    table.template for_each_column([&] (auto c) {
+                    table.for_each_column([&] (auto c) {
                         if(!c.template has<primary_key>()){
                             auto &value = o.*c.member_pointer;
                             statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
@@ -1286,7 +1286,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "update " << table.name << " set ";
                 std::vector<std::string> setColumnNames;
-                table.template for_each_column( [&] (auto c) {
+                table.for_each_column( [&] (auto c) {
                     if(!c.template has<primary_key>()) {
                         setColumnNames.emplace_back(c.name);
                     }
@@ -1314,13 +1314,13 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     auto index = 1;
-                    table.template for_each_column([&] (auto c) {
+                    table.for_each_column([&] (auto c) {
                         if(!c.template has<primary_key>()) {
                             auto &value = o.*c.member_pointer;
                             statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
                         }
                     });
-                    table.template for_each_column([&] (auto c) {
+                    table.for_each_column([&] (auto c) {
                         if(c.template has<primary_key>()) {
                             auto &value = o.*c.member_pointer;
                             statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
@@ -1373,7 +1373,7 @@ namespace sqlite_orm {
                 ss << "delete from " << table.name;
                 ss << " where ";
                 std::vector<std::string> primaryKeyColumnNames;
-                table.template for_each_column([&] (auto c) {
+                table.for_each_column([&] (auto c) {
                     if(c.template has<primary_key>()) {
                         primaryKeyColumnNames.emplace_back(c.name);
                     }
@@ -1617,7 +1617,7 @@ namespace sqlite_orm {
         template<class O>
         void update(const O &o) /*throw (std::runtime_error)*/ {
 //            static_assert(impl.template type_is_mapped<O>(), "Type is not mapped in update");
-            impl.template update(o, filename);
+            impl.update(o, filename);
         }
         
         /**
@@ -1669,7 +1669,7 @@ namespace sqlite_orm {
         template<class F, class O>
         int count(F O::*m) /*throw (std::runtime_error)*/ {
 //            static_assert(impl.template type_is_mapped<O>(), "Type is not mapped in count");
-            return impl.template count(m, filename);
+            return impl.count(m, filename);
         }
         
         /**
@@ -1680,7 +1680,7 @@ namespace sqlite_orm {
         template<class F, class O>
         double avg(F O::*m) /*throw (std::runtime_error)*/ {
 //            static_assert(impl.template type_is_mapped<O>(), "Type is not mapped in avg");
-            return impl.template avg(m, filename);
+            return impl.avg(m, filename);
         }
         
         /**
@@ -1726,7 +1726,7 @@ namespace sqlite_orm {
         template<class O>
         int insert(const O &o) /*throw (std::runtime_error)*/ {
 //            static_assert(impl.template type_is_mapped<O>(), "Type is not mapped in insert");
-            return impl.template insert(o, filename);
+            return impl.insert(o, filename);
         }
         
         /**
