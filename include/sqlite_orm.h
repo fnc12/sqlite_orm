@@ -812,10 +812,10 @@ namespace sqlite_orm {
         void create_table(const std::string &filename) /*throw (std::runtime_error)*/ {
             this->withDatabase([=] (auto db) {
                 std::stringstream ss;
-                ss << "CREATE TABLE " << table.name << " ( ";
-                auto columnsCount = table.columns_count();
+                ss << "CREATE TABLE " << this->table.name << " ( ";
+                auto columnsCount = this->table.columns_count();
                 auto index = 0;
-                table.for_each_column([&] (auto c) {
+                this->table.for_each_column([&] (auto c) {
                     ss << c.name << " ";
                     ss << type_printer<typename decltype(c)::field_type>().print() << " ";
                     if(c.template has<primary_key>()) {
@@ -858,9 +858,9 @@ namespace sqlite_orm {
             int res = 0;
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
-                ss << "INSERT INTO " << table.name << " (";
+                ss << "INSERT INTO " << this->table.name << " (";
                 std::vector<std::string> columnNames;
-                table.for_each_column([&] (auto c) {
+                this->table.for_each_column([&] (auto c) {
                     if(!c.template has<primary_key>()) {
                         columnNames.emplace_back(c.name);
                     }
@@ -887,7 +887,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     auto index = 1;
-                    table.for_each_column([&] (auto c) {
+                    this->table.for_each_column([&] (auto c) {
                         if(!c.template has<primary_key>()){
                             auto &value = o.*c.member_pointer;
                             statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
@@ -916,9 +916,9 @@ namespace sqlite_orm {
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "select group_concat(";
-                auto columnName = table.find_column_name(m);
+                auto columnName = this->table.find_column_name(m);
                 if(columnName.length()){
-                    ss << columnName << ",\"" << y << "\") from "<< table.name;
+                    ss << columnName << ",\"" << y << "\") from "<< this->table.name;
                     auto query = ss.str();
                     data_t<std::string, decltype(this)> data{this, &res};
                     auto rc = sqlite3_exec(db,
@@ -952,9 +952,9 @@ namespace sqlite_orm {
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "select min(";
-                auto columnName = table.find_column_name(m);
+                auto columnName = this->table.find_column_name(m);
                 if(columnName.length()){
-                    ss << columnName << ") from "<< table.name;
+                    ss << columnName << ") from "<< this->table.name;
                     auto query = ss.str();
                     data_t<std::shared_ptr<F>, decltype(this)> data{this, &res};
                     auto rc = sqlite3_exec(db,
@@ -990,9 +990,9 @@ namespace sqlite_orm {
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "select max(";
-                auto columnName = table.find_column_name(m);
+                auto columnName = this->table.find_column_name(m);
                 if(columnName.length()){
-                    ss << columnName << ") from "<< table.name;
+                    ss << columnName << ") from "<< this->table.name;
                     auto query = ss.str();
                     data_t<std::shared_ptr<F>, decltype(this)> data{this, &res};
                     auto rc = sqlite3_exec(db,
@@ -1028,9 +1028,9 @@ namespace sqlite_orm {
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "select group_concat(";
-                auto columnName = table.find_column_name(m);
+                auto columnName = this->table.find_column_name(m);
                 if(columnName.length()){
-                    ss << columnName << ") from "<< table.name;
+                    ss << columnName << ") from "<< this->table.name;
                     auto query = ss.str();
                     data_t<std::string, decltype(this)> data{this, &res};
                     auto rc = sqlite3_exec(db,
@@ -1064,9 +1064,9 @@ namespace sqlite_orm {
             this->withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "select avg(";
-                auto columnName = table.find_column_name(m);
+                auto columnName = this->table.find_column_name(m);
                 if(columnName.length()){
-                    ss << columnName << ") from "<< table.name;
+                    ss << columnName << ") from "<< this->table.name;
                     auto query = ss.str();
                     data_t<double, decltype(this)> data{this, &res};
                     auto rc = sqlite3_exec(db,
@@ -1101,9 +1101,9 @@ namespace sqlite_orm {
             this->withDatabase([&](auto db){
                 std::stringstream ss;
                 ss << "select count(";
-                auto columnName = table.find_column_name(m);
+                auto columnName = this->table.find_column_name(m);
                 if(columnName.length()){
-                    ss << columnName << ") from "<< table.name;
+                    ss << columnName << ") from "<< this->table.name;
                     auto query = ss.str();
                     data_t<int, decltype(this)> data{this, &res};
                     auto rc = sqlite3_exec(db,
@@ -1136,7 +1136,7 @@ namespace sqlite_orm {
         int count(const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             int res = 0;
             this->withDatabase([&](auto db) {
-                auto query = "select count(*) from " + table.name;
+                auto query = "select count(*) from " + this->table.name;
                 data_t<int, decltype(this)> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1165,7 +1165,7 @@ namespace sqlite_orm {
         std::shared_ptr<O> get_no_throw(int id, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
             std::shared_ptr<O> res;
             withDatabase([&](auto db) {
-                auto query = "select * from " + table.name + " where id = " + std::to_string(id);
+                auto query = "select * from " + this->table.name + " where id = " + std::to_string(id);
                 data_t<std::shared_ptr<O>, decltype(this)> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1201,7 +1201,7 @@ namespace sqlite_orm {
         O get(int id, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (not_found_exception, std::runtime_error)*/ {
             std::shared_ptr<O> res;
             withDatabase([&](auto db) {
-                auto query = "select * from " + table.name + " where id = " + std::to_string(id);
+                auto query = "select * from " + this->table.name + " where id = " + std::to_string(id);
                 data_t<std::shared_ptr<O>, decltype(this)> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1241,7 +1241,7 @@ namespace sqlite_orm {
         std::vector<O> get_all(const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
             std::vector<O> res;
             this->withDatabase([&](auto db) {
-                auto query = "select * from " + table.name;
+                auto query = "select * from " + this->table.name;
                 data_t<std::vector<O>, decltype(this)> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1277,9 +1277,9 @@ namespace sqlite_orm {
         void update(const O &o, const std::string &filename,  typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             withDatabase([&](auto db) {
                 std::stringstream ss;
-                ss << "update " << table.name << " set ";
+                ss << "update " << this->table.name << " set ";
                 std::vector<std::string> setColumnNames;
-                table.for_each_column( [&] (auto c) {
+                this->table.for_each_column( [&] (auto c) {
                     if(!c.template has<primary_key>()) {
                         setColumnNames.emplace_back(c.name);
                     }
@@ -1293,7 +1293,7 @@ namespace sqlite_orm {
                     }
                 }
                 ss << "where ";
-                auto primaryKeyColumnNames = table.template column_names_with<primary_key>();
+                auto primaryKeyColumnNames = this->table.template column_names_with<primary_key>();
                 for(auto i = 0; i < primaryKeyColumnNames.size(); ++i) {
                     ss << primaryKeyColumnNames[i] << " = ?";
                     if(i < primaryKeyColumnNames.size() - 1) {
@@ -1307,13 +1307,13 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     auto index = 1;
-                    table.for_each_column([&] (auto c) {
+                    this->table.for_each_column([&] (auto c) {
                         if(!c.template has<primary_key>()) {
                             auto &value = o.*c.member_pointer;
                             statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
                         }
                     });
-                    table.for_each_column([&] (auto c) {
+                    this->table.for_each_column([&] (auto c) {
                         if(c.template has<primary_key>()) {
                             auto &value = o.*c.member_pointer;
                             statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
@@ -1339,9 +1339,9 @@ namespace sqlite_orm {
         std::string dump(const O &o, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             std::stringstream ss;
             ss << "{ ";
-            auto columnsCount = table.columns_count();
+            auto columnsCount = this->table.columns_count();
             auto index = 0;
-            table.for_each_column([&] (auto c) {
+            this->table.for_each_column([&] (auto c) {
                 auto &value = o.*c.member_pointer;
                 ss << c.name << " : '" << value << "'";
                 if(index < columnsCount - 1) {
@@ -1363,10 +1363,10 @@ namespace sqlite_orm {
         void remove(int id, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
             withDatabase([&](auto db) {
                 std::stringstream ss;
-                ss << "delete from " << table.name;
+                ss << "delete from " << this->table.name;
                 ss << " where ";
                 std::vector<std::string> primaryKeyColumnNames;
-                table.for_each_column([&] (auto c) {
+                this->table.for_each_column([&] (auto c) {
                     if(c.template has<primary_key>()) {
                         primaryKeyColumnNames.emplace_back(c.name);
                     }
@@ -1383,7 +1383,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     auto index = 1;
-                    table.template for_each_column_with<primary_key>([&] (auto c) {
+                    this->table.template for_each_column_with<primary_key>([&] (auto c) {
                         typedef typename decltype(c)::field_type field_type;
                         statement_binder<field_type>().bind(stmt, index++, std::to_string(id));
                     });
@@ -1458,7 +1458,7 @@ namespace sqlite_orm {
         void add_column(table_info &ti, const std::string &filename) /*throw (std::runtime_error)*/ {
             this->withDatabase([&] (auto db) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << table.name << " ADD COLUMN " << ti.name << " ";
+                ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name << " ";
                 ss << ti.type << " ";
                 if(ti.pk){
 //                if(c.template has<primary_key>()) {
@@ -1486,11 +1486,11 @@ namespace sqlite_orm {
         }
         
         void sync_schema(const std::string &filename) /*throw (std::runtime_error)*/ {
-            auto gottaCreateTable = !this->table_exists(table.name, filename);
+            auto gottaCreateTable = !this->table_exists(this->table.name, filename);
             if(!gottaCreateTable){
                 //  TODO:   get table_info, compare with actual schema and recreate table if needed..
-                auto dbTableInfo = get_table_info(table.name, filename);
-                auto storageTableInfo = table.get_table_info();
+                auto dbTableInfo = get_table_info(this->table.name, filename);
+                auto storageTableInfo = this->table.get_table_info();
 //                cout<<endl;
                 std::vector<table_info*> columnsToAdd;
                 for(auto storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
@@ -1551,24 +1551,24 @@ namespace sqlite_orm {
                     gottaCreateTable = dbTableInfo.size() > 0;
                 }
                 if(gottaCreateTable){
-                    this->drop_table(table.name, filename);
+                    this->drop_table(this->table.name, filename);
                     this->create_table(filename);
-                    cout<<"table "<<table.name<<" dropped and recreated"<<endl;
+                    cout<<"table "<<this->table.name<<" dropped and recreated"<<endl;
                 }else{
                     if(columnsToAdd.size()){
 //                        cout<<"columnsToAdd = "<<columnsToAdd.size()<<endl;
                         for(auto columnPointer : columnsToAdd) {
                             this->add_column(*columnPointer, filename);
-                            cout<<"column "<<columnPointer->name<<" added to table "<<table.name<<endl;
+                            cout<<"column "<<columnPointer->name<<" added to table "<<this->table.name<<endl;
                         }
                     }else{
-                        cout<<"table "<<table.name<<" is synced"<<endl;
+                        cout<<"table "<<this->table.name<<" is synced"<<endl;
                     }
 //                    cout<<"excess columns = "<<dbTableInfo.size()<<endl;
                 }
             }else{
                 this->create_table(filename);
-                cout<<"table "<<table.name<<" created"<<endl;
+                cout<<"table "<<this->table.name<<" created"<<endl;
             }
             Super::sync_schema(filename);
         }
