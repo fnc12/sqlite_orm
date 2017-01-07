@@ -170,6 +170,42 @@ if(auto minLastName = storage.min(&User::lastName)){    //  maps to 'select min(
 
 ```
 
+# Where conditions
+
+You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`.
+
+For example: let's select users with id lesser then 10:
+
+```c++
+auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10)));
+cout << "idLesserThan10 count = " << idLesserThan10.size() << endl;
+for(auto &user : idLesserThan10) {
+    cout << storage.dump(user) << endl;
+}
+```
+
+Or select all users who's first name is not equal "John":
+
+```c++
+auto notJohn = storage.get_all<User>(where(is_not_equal(&User::firstName, "John")));
+cout << "notJohn count = " << notJohn.size() << endl;
+for(auto &user : notJohn) {
+    cout << storage.dump(user) << endl;
+}
+```
+
+Also we can implement `get` by id with `get_all` and `where` like this:
+
+```c++
+auto idEquals2 = storage.get_all<User>(where(is_equal(2, &User::id)));
+cout << "idEquals2 count = " << idEquals2.size() << endl;
+if(idEquals2.size()){
+    cout << storage.dump(idEquals2.front()) << endl;
+}else{
+    cout << "user with id 2 doesn't exist" << endl;
+}
+```
+
 # Migrations functionality
 
 There are no explicit `up` and `down` functions that are used to be used in migrations. Instead `sqlite_orm` offers `sync_schema` function that takes responsibility of comparing actual db file schema with one you specified in `make_storage` call and if something is not equal it alters or drops/creates schema.
