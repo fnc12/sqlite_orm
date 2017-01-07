@@ -177,7 +177,7 @@ You also can select objects with custom where conditions with `=`, `!=`, `>`, `>
 For example: let's select users with id lesser then 10:
 
 ```c++
-auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10)));
+auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10))); //  maps to 'select * from users where ( id < 10 )`
 cout << "idLesserThan10 count = " << idLesserThan10.size() << endl;
 for(auto &user : idLesserThan10) {
     cout << storage.dump(user) << endl;
@@ -187,7 +187,7 @@ for(auto &user : idLesserThan10) {
 Or select all users who's first name is not equal "John":
 
 ```c++
-auto notJohn = storage.get_all<User>(where(is_not_equal(&User::firstName, "John")));
+auto notJohn = storage.get_all<User>(where(is_not_equal(&User::firstName, "John")));    //  maps to 'select * from users where ( first_name != 'John' ) '
 cout << "notJohn count = " << notJohn.size() << endl;
 for(auto &user : notJohn) {
     cout << storage.dump(user) << endl;
@@ -197,7 +197,7 @@ for(auto &user : notJohn) {
 Also we can implement `get` by id with `get_all` and `where` like this:
 
 ```c++
-auto idEquals2 = storage.get_all<User>(where(is_equal(2, &User::id)));
+auto idEquals2 = storage.get_all<User>(where(is_equal(2, &User::id)));  //  maps to 'select * from users where ( 2 = id )'
 cout << "idEquals2 count = " << idEquals2.size() << endl;
 if(idEquals2.size()){
     cout << storage.dump(idEquals2.front()) << endl;
