@@ -217,6 +217,12 @@ Looks like magic but it works very simple. Functions
 
 simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or literal. Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "where" keyword before condition text. Next resulted string appends to query string and is being processed further. 
 
+If you omit `where` function in `get_all` it will return all objects from a table:
+
+```c++
+auto allUsers = storage.get_all<User>();
+```
+
 # Migrations functionality
 
 There are no explicit `up` and `down` functions that are used to be used in migrations. Instead `sqlite_orm` offers `sync_schema` function that takes responsibility of comparing actual db file schema with one you specified in `make_storage` call and if something is not equal it alters or drops/creates schema.
