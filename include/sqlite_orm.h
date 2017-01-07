@@ -344,7 +344,7 @@ namespace sqlite_orm {
         using binary_condition<L, R>::binary_condition;
         
         operator std::string () const {
-            return "<";
+            return "<=";
         }
     };
     
