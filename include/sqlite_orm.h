@@ -269,6 +269,125 @@ namespace sqlite_orm {
         return {name, m};
     }
     
+    template<class L, class R>
+    struct binary_condition {
+        L l;
+        R r;
+        
+        binary_condition(L l_, R r_):l(l_),r(r_){}
+    };
+    
+    template<typename L, typename R>
+    std::true_type is_base_of_binary_condition_impl( binary_condition<L, R> const volatile& );
+    
+    std::false_type is_base_of_binary_condition_impl( ... );
+    
+    template<typename T>
+    bool is_base_of_binary_condition(T&& t) {
+        return decltype(is_base_of_binary_condition_impl(t))::value;
+    }
+    
+    template<class L, class R>
+    struct is_equal_t : public binary_condition<L, R> {
+        
+        using binary_condition<L, R>::binary_condition;
+        
+        operator std::string () const {
+            return "=";
+        }
+        
+    };
+    
+    template<class L, class R>
+    struct is_not_equal_t : public binary_condition<L, R> {
+        
+        using binary_condition<L, R>::binary_condition;
+        
+        operator std::string () const {
+            return "!=";
+        }
+    };
+    
+    template<class L, class R>
+    struct greater_than_t : public binary_condition<L, R> {
+        
+        using binary_condition<L, R>::binary_condition;
+        
+        operator std::string () const {
+            return ">";
+        }
+    };
+    
+    template<class L, class R>
+    struct greater_or_equal_t : public binary_condition<L, R> {
+        
+        using binary_condition<L, R>::binary_condition;
+        
+        operator std::string () const {
+            return ">=";
+        }
+    };
+    
+    template<class L, class R>
+    struct lesser_than_t : public binary_condition<L, R> {
+        
+        using binary_condition<L, R>::binary_condition;
+        
+        operator std::string () const {
+            return "<";
+        }
+    };
+    
+    template<class L, class R>
+    struct lesser_or_equal_t : public binary_condition<L, R> {
+        
+        using binary_condition<L, R>::binary_condition;
+        
+        operator std::string () const {
+            return "<";
+        }
+    };
+    
+    template<class L, class R>
+    is_equal_t<L, R> is_equal(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    is_not_equal_t<L, R> is_not_equal(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    greater_than_t<L, R> greater_than(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    lesser_than_t<L, R> lesser_than(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class C>
+    struct where_t {
+        C c;
+    };
+    
+    template<class C>
+    where_t<C> where(C c) {
+        return {c};
+    }
+    
     struct table_info {
         int cid;
         std::string name;
@@ -385,15 +504,17 @@ namespace sqlite_orm {
             Super::template for_each_column_with<Op, L>(l);
         }
 
-    private:
+    protected:
+        
         template<class L>
         void apply_to_col_if(L& l, std::true_type) {
             l(col);
         }
-
+        
         template<class L>
         void apply_to_col_if(L& l, std::false_type) {}
-
+        
+    private:
         typedef table_impl<T...> Super;
     };
     
@@ -682,8 +803,8 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in insert");
         }
         
-        template<class O>
-        std::vector<O> get_all(const std::string &filename) /*throw(std::runtime_error)*/ {
+        template<class O, class ...Args>
+        std::vector<O> get_all(const std::string &filename, Args ...args) /*throw(std::runtime_error)*/ {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_all");
         }
         
@@ -1218,27 +1339,116 @@ namespace sqlite_orm {
             }
         }
         
-        template<class O, class HH = typename H::object_type>
-        std::vector<O> get_all(const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
-            return Super::template get_all<O>(filename);
+        template<class T>
+        std::string string_from_condition_half(T t) {
+            return std::to_string(t);
         }
         
-        template<class O, class HH = typename H::object_type>
-        std::vector<O> get_all(const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
+        std::string string_from_condition_half(const std::string &t) {
+//            return t;
+            std::stringstream ss;
+            ss << "'" << t << "'";
+            return ss.str();
+        }
+        
+        std::string string_from_condition_half(const char *t) {
+            std::stringstream ss;
+            ss << "'" << t << "'";
+            return ss.str();
+        }
+        
+        template<class F, class O>
+        std::string string_from_condition_half(F O::*m) {
+            return this->table.find_column_name(m);
+        }
+        
+//        template<class L, class R>
+        template<class C>
+        std::string process_where(C c) {
+            auto leftString = this->string_from_condition_half(c.l);
+            auto rightString = this->string_from_condition_half(c.r);
+            std::stringstream ss;
+            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+            return ss.str();
+        }
+        
+        /*template<class L, class R>
+        std::string process_where(is_not_equal_t<L, R> c) {
+            auto leftString = this->string_from_condition_half(c.l);
+            auto rightString = this->string_from_condition_half(c.r);
+            std::stringstream ss;
+            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+            return ss.str();
+        }
+        
+        template<class L, class R>
+        std::string process_where(greater_then_t<L, R> c) {
+            auto leftString = this->string_from_condition_half(c.l);
+            auto rightString = this->string_from_condition_half(c.r);
+            std::stringstream ss;
+            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+            return ss.str();
+        }
+        
+        template<class L, class R>
+        std::string process_where(lesser_then_t<L, R> c) {
+            auto leftString = this->string_from_condition_half(c.l);
+            auto rightString = this->string_from_condition_half(c.r);
+            std::stringstream ss;
+            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+            return ss.str();
+        }*/
+        
+        template<class C>
+        void process_single_condition(std::stringstream &ss, where_t<C> w) {
+            ss << " where ";
+            auto whereString = this->process_where(w.c);
+            ss << "(" << whereString << ")";
+        }
+        
+        /**
+         *  Recursion end.
+         */
+        template<class ...Args>
+        void process_conditions(std::stringstream &ss, Args ...args) {
+            //..
+        }
+        
+        template<class C, class ...Args>
+        void process_conditions(std::stringstream &ss, C c, Args ...args) {
+            this->process_single_condition(ss, c);
+            this->process_conditions(ss, args...);
+        }
+        
+        template<class O, class HH = typename H::object_type, class ...Args>
+        std::vector<O> get_all(const std::string &filename, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
+            return Super::template get_all<O>(filename, nullptr, args...);
+        }
+        
+        template<class O, class HH = typename H::object_type, class ...Args>
+        std::vector<O> get_all(const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             std::vector<O> res;
-            this->withDatabase([&](auto db) {
-                auto query = "select * from " + this->table.name;
-                data_t<std::vector<O>, storage_impl*> data{this, &res};
+            this->withDatabase([&res, this, &args...](auto db) {
+                std::stringstream ss;
+                ss << "select * from " << this->table.name << " ";
+                this->process_conditions(ss, args...);
+                auto query = ss.str();
+//                auto query = "select * from " + this->table.name;
+//                data_t<std::vector<O>, storage_impl*> data{this, &res};
+                typedef std::tuple<std::vector<O>*, storage_impl*> date_tuple_t;
+                date_tuple_t data{&res, this};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName) -> int {
-                                           auto &d = *(data_t<std::vector<O>, storage_impl*>*)data;
-                                           auto &res = *d.res;
-                                           auto t = d.t;
+                                           auto &d = *(date_tuple_t*)data;
+//                                           auto &res = *d.res;
+                                           auto &res = *std::get<0>(d);
+//                                           auto t = d.t;
+                                           auto t = std::get<1>(d);
                                            if(argc){
                                                O o;
                                                auto index = 0;
-                                               t->table.for_each_column([&] (auto c) {
+                                               t->table.for_each_column([&index, &o, argv] (auto c) {
                                                    auto member_pointer = c.member_pointer;
                                                    auto value = row_extrator<typename decltype(c)::field_type>().extract(argv[index++]);
                                                    o.*member_pointer = value;
@@ -1371,7 +1581,7 @@ namespace sqlite_orm {
                     auto index = 1;
                     this->table.template for_each_column_with<primary_key>([&] (auto c) {
                         typedef typename decltype(c)::field_type field_type;
-                        statement_binder<field_type>().bind(stmt, index++, std::to_string(id));
+                        statement_binder<field_type>().bind(stmt, index++, id);
                     });
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return;
@@ -1604,10 +1814,10 @@ namespace sqlite_orm {
          *  O is an object type to be extracted. Must be specified explicitly.
          *  @return All objects of type O stored in database at the moment.
          */
-        template<class O>
-        std::vector<O> get_all() /*throw(std::runtime_error)*/ {
+        template<class O, class ...Args>
+        std::vector<O> get_all(Args ...args) /*throw(std::runtime_error)*/ {
 //            static_assert(impl.template type_is_mapped<O>(), "Type is not mapped in get_all");
-            return impl.template get_all<O>(filename);
+            return impl.template get_all<O>(filename, nullptr, args...);
         }
         
         /**
