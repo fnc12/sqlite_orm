@@ -372,7 +372,7 @@ namespace sqlite_orm {
         template<class Op, class L>
         void for_each_column_exept(L l) {
             using has_opt = tuple_helper::tuple_contains_type<Op, typename column_type::options_type>;
-            apply_to_col_if(l, std::bool_constant<!has_opt::value>{});
+            apply_to_col_if(l, std::integral_constant<bool, !has_opt::value>{});
             Super::template for_each_column_exept<Op, L>(l);
         }
 
