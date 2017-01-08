@@ -172,7 +172,7 @@ if(auto minLastName = storage.min(&User::lastName)){    //  maps to 'select min(
 
 # Where conditions
 
-You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`.
+You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`, `IN`.
 
 For example: let's select users with id lesser then 10:
 
@@ -203,6 +203,22 @@ if(idEquals2.size()){
     cout << storage.dump(idEquals2.front()) << endl;
 }else{
     cout << "user with id 2 doesn't exist" << endl;
+}
+```
+
+Lets try the `IN` operator:
+
+```c++
+auto evenLesserTen10 = storage.get_all<User>(where(in(&User::id, {2, 4, 6, 8, 10})));   //  maps to select * from users where id in (2, 4, 6, 8, 10)
+cout << "evenLesserTen10 count = " << evenLesserTen10.size() << endl;
+for(auto &user : evenLesserTen10) {
+    cout << storage.dump(user) << endl;
+}
+
+auto doesAndWhites = storage.get_all<User>(where(in(&User::lastName, {"Doe", "White"})));   //  maps to select * from users where last_name in ("Doe", "White")
+cout << "doesAndWhites count = " << doesAndWhites.size() << endl;
+for(auto &user : doesAndWhites) {
+    cout << storage.dump(user) << endl;
 }
 ```
 
