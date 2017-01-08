@@ -17,6 +17,7 @@
 #include <regex>
 #include <map>
 #include <cctype>
+#include <initializer_list>
 
 using std::cout;
 using std::endl;
@@ -112,18 +113,6 @@ namespace sqlite_orm {
                 std::regex("DATETIME"),
             } },
         };
-        
-        /*static std::vector<std::regex> integerRegexes = {
-            std::regex("INT"),
-            std::regex("INTEGER"),
-            std::regex("TINYINT"),
-            std::regex("SMALLINT"),
-            std::regex("MEDIUMINT"),
-            std::regex("BIGINT"),
-            std::regex("UNSIGNED BIG INT"),
-            std::regex("INT2"),
-            std::regex("INT8"),
-        };*/
         for(auto &p : typeMap) {
             for(auto &r : p.second) {
                 if(std::regex_match(upperStr, r)){
@@ -131,41 +120,6 @@ namespace sqlite_orm {
                 }
             }
         }
-        /*if(std::find(integerNames.begin(),
-                     integerNames.end(),
-                     upperStr) != integerNames.end()){
-            return std::make_shared<sqlite_type>(sqlite_type::INTEGER);
-        }*/
-        /*static std::vector<std::regex> textRegexes = {
-            std::regex("CHARACTER\\([[:digit:]]+\\)"),
-            std::regex("VARCHAR\\([[:digit:]]+\\)"),
-            std::regex("VARYING CHARACTER\\([[:digit:]]+\\)"),
-            std::regex("NCHAR\\([[:digit:]]+\\)"),
-            std::regex("NATIVE CHARACTER\\([[:digit:]]+\\)"),
-            std::regex("NVARCHAR\\([[:digit:]]+\\)"),
-            std::regex("CLOB"),
-            std::regex("TEXT"),
-//            std::regex("(CHARACTER)([[:digit:]]+)"),
-        };*/
-        /*if(std::find(textNames.begin(),
-                     textNames.end(),
-                     upperStr) != textNames.end()){
-            return std::make_shared<sqlite_type>(sqlite_type::TEXT);
-        }*/
-        /*for(auto &r : textRegexes) {
-            if(std::regex_match(upperStr, r)){
-                return std::make_shared<sqlite_type>(sqlite_type::TEXT);
-            }
-        }
-        
-        static std::vector<std::regex> blobRegexes = {
-            std::regex("BLOB"),
-        };
-        for(auto &r : blobRegexes) {
-            if(std::regex_match(upperStr, r)){
-                return std::make_shared<sqlite_type>(sqlite_type::BLOB);
-            }
-        }*/
         
         return {};
     }
@@ -277,7 +231,7 @@ namespace sqlite_orm {
         binary_condition(L l_, R r_):l(l_),r(r_){}
     };
     
-    template<typename L, typename R>
+    /*template<typename L, typename R>
     std::true_type is_base_of_binary_condition_impl( binary_condition<L, R> const volatile& );
     
     std::false_type is_base_of_binary_condition_impl( ... );
@@ -285,7 +239,7 @@ namespace sqlite_orm {
     template<typename T>
     bool is_base_of_binary_condition(T&& t) {
         return decltype(is_base_of_binary_condition_impl(t))::value;
-    }
+    }*/
     
     template<class L, class R>
     struct is_equal_t : public binary_condition<L, R> {
@@ -347,6 +301,22 @@ namespace sqlite_orm {
             return "<=";
         }
     };
+    
+    template<class L, class E>
+    struct in_t {
+        L l;    //  left expression..
+        std::vector<E> values;       //  values..
+    };
+    
+    template<class L, class E>
+    in_t<L, E> in(L l, std::initializer_list<E> values) {
+        return {std::move(l), std::move(values)};
+    }
+    
+    /*template<class L, class E, class O>
+    in_t<L, E> in(L l, O beg, O en) {
+        return {std::move(l), std::vector<E>(beg, en)};
+    }*/
     
     template<class L, class R>
     is_equal_t<L, R> is_equal(L l, R r) {
@@ -1271,7 +1241,7 @@ namespace sqlite_orm {
         template<class O, class HH = typename H::object_type>
         std::shared_ptr<O> get_no_throw(int id, const std::string &filename, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw(std::runtime_error)*/ {
             std::shared_ptr<O> res;
-            withDatabase([&](auto db) {
+            this->withDatabase([&](auto db) {
                 auto query = "select * from " + this->table.name + " where id = " + std::to_string(id);
                 data_t<std::shared_ptr<O>, decltype(this)> data{this, &res};
                 auto rc = sqlite3_exec(db,
@@ -1340,35 +1310,50 @@ namespace sqlite_orm {
         }
         
         template<class T>
-        std::string string_from_condition_half(T t) {
+        std::string string_from_expression(T t) {
             return std::to_string(t);
         }
         
-        std::string string_from_condition_half(const std::string &t) {
+        std::string string_from_expression(const std::string &t) {
 //            return t;
             std::stringstream ss;
             ss << "'" << t << "'";
             return ss.str();
         }
         
-        std::string string_from_condition_half(const char *t) {
+        std::string string_from_expression(const char *t) {
             std::stringstream ss;
             ss << "'" << t << "'";
             return ss.str();
         }
         
         template<class F, class O>
-        std::string string_from_condition_half(F O::*m) {
+        std::string string_from_expression(F O::*m) {
             return this->table.find_column_name(m);
         }
         
-//        template<class L, class R>
         template<class C>
         std::string process_where(C c) {
-            auto leftString = this->string_from_condition_half(c.l);
-            auto rightString = this->string_from_condition_half(c.r);
+            auto leftString = this->string_from_expression(c.l);
+            auto rightString = this->string_from_expression(c.r);
             std::stringstream ss;
             ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+            return ss.str();
+        }
+        
+        template<class L, class E>
+        std::string process_where(in_t<L, E> &inCondition) {
+            std::stringstream ss;
+            auto leftString = this->string_from_expression(inCondition.l);
+            ss << leftString << " IN (";
+            for(auto index = 0; index < inCondition.values.size(); ++index) {
+                auto &value = inCondition.values[index];
+                ss << " " << this->string_from_expression(value);
+                if(index < inCondition.values.size() - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << " )";
             return ss.str();
         }
         
