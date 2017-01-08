@@ -255,7 +255,7 @@ Please beware that `sync_schema` doesn't guarantee that data will be saved. It *
     * if table exists its colums are being compared with table_info from db and
         * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
         * if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command and table data will not be dropped
-        * if there is any column existing in both db and storage but differs by any of properties (type, pk, notnull, dflt_value) table will be dropped and recreated
+        * if there is any column existing in both db and storage but differs by any of properties (type, pk, notnull) table will be dropped and recreated (dflt_value isn't checked cause there can be ambiguity in default values, please beware).
 
 The reason of this kinda weird behaviour is the fact that `sqlite3` doesn't have `DROP COLUMN` query but has `ADD COLUMN`. Of course one can use temporary table to save all data. Probably it will be implemented in next versions of `sqlite_orm` lib (with `bool preserve = false` argument probably).
 
