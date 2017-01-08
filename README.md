@@ -230,6 +230,7 @@ Looks like magic but it works very simple. Functions
 * greater_or_equal
 * lesser_than
 * lesser_or_equal
+* in
 
 simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or literal. Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "where" keyword before condition text. Next resulted string appends to query string and is being processed further. 
 
