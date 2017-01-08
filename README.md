@@ -172,7 +172,7 @@ if(auto minLastName = storage.min(&User::lastName)){    //  maps to 'select min(
 
 # Where conditions
 
-You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`.
+You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`, `IN`.
 
 For example: let's select users with id lesser then 10:
 
@@ -206,6 +206,22 @@ if(idEquals2.size()){
 }
 ```
 
+Lets try the `IN` operator:
+
+```c++
+auto evenLesserTen10 = storage.get_all<User>(where(in(&User::id, {2, 4, 6, 8, 10})));   //  maps to select * from users where id in (2, 4, 6, 8, 10)
+cout << "evenLesserTen10 count = " << evenLesserTen10.size() << endl;
+for(auto &user : evenLesserTen10) {
+    cout << storage.dump(user) << endl;
+}
+
+auto doesAndWhites = storage.get_all<User>(where(in(&User::lastName, {"Doe", "White"})));   //  maps to select * from users where last_name in ("Doe", "White")
+cout << "doesAndWhites count = " << doesAndWhites.size() << endl;
+for(auto &user : doesAndWhites) {
+    cout << storage.dump(user) << endl;
+}
+```
+
 Looks like magic but it works very simple. Functions
 
 * is_equal
@@ -215,7 +231,7 @@ Looks like magic but it works very simple. Functions
 * lesser_than
 * lesser_or_equal
 
-simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or literal. Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "where" keyword before condition text. Next resulted string appends to query string and is being processed further. 
+simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or literal. Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "where" keyword before condition text. Next resulted string appends to query string and is being processed further.
 
 If you omit `where` function in `get_all` it will return all objects from a table:
 
