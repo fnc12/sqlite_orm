@@ -170,6 +170,59 @@ if(auto minLastName = storage.min(&User::lastName)){    //  maps to 'select min(
 
 ```
 
+# Where conditions
+
+You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`.
+
+For example: let's select users with id lesser then 10:
+
+```c++
+auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10))); //  maps to 'select * from users where ( id < 10 )`
+cout << "idLesserThan10 count = " << idLesserThan10.size() << endl;
+for(auto &user : idLesserThan10) {
+    cout << storage.dump(user) << endl;
+}
+```
+
+Or select all users who's first name is not equal "John":
+
+```c++
+auto notJohn = storage.get_all<User>(where(is_not_equal(&User::firstName, "John")));    //  maps to 'select * from users where ( first_name != 'John' ) '
+cout << "notJohn count = " << notJohn.size() << endl;
+for(auto &user : notJohn) {
+    cout << storage.dump(user) << endl;
+}
+```
+
+Also we can implement `get` by id with `get_all` and `where` like this:
+
+```c++
+auto idEquals2 = storage.get_all<User>(where(is_equal(2, &User::id)));  //  maps to 'select * from users where ( 2 = id )'
+cout << "idEquals2 count = " << idEquals2.size() << endl;
+if(idEquals2.size()){
+    cout << storage.dump(idEquals2.front()) << endl;
+}else{
+    cout << "user with id 2 doesn't exist" << endl;
+}
+```
+
+Looks like magic but it works very simple. Functions
+
+* is_equal
+* is_not_equal
+* greater_than
+* greater_or_equal
+* lesser_than
+* lesser_or_equal
+
+simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or literal. Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "where" keyword before condition text. Next resulted string appends to query string and is being processed further. 
+
+If you omit `where` function in `get_all` it will return all objects from a table:
+
+```c++
+auto allUsers = storage.get_all<User>();
+```
+
 # Migrations functionality
 
 There are no explicit `up` and `down` functions that are used to be used in migrations. Instead `sqlite_orm` offers `sync_schema` function that takes responsibility of comparing actual db file schema with one you specified in `make_storage` call and if something is not equal it alters or drops/creates schema.
