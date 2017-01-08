@@ -86,7 +86,7 @@ namespace sqlite_orm {
         
         static std::map<sqlite_type, std::vector<std::regex>> typeMap = {
             { sqlite_type::INTEGER, {
-                std::regex("INT"),
+                std::regex("INT*?"),
                 std::regex("INTEGER"),
                 std::regex("TINYINT"),
                 std::regex("SMALLINT"),
