@@ -49,12 +49,17 @@ namespace sqlite_orm {
     
     struct primary_key {};
     
-    template<class T, T t>
-    struct default_value {
+    template<class T>
+    struct default_t {
         typedef T value_type;
         
-        static value_type value = t;
+        value_type value;
     };
+    
+    template<class T>
+    default_t<T> default_value(T t) {
+        return {t};
+    }
     
     enum class sqlite_type {
         INTEGER,
@@ -142,6 +147,7 @@ namespace sqlite_orm {
         
         const std::string name;
         field_type object_type::*member_pointer;
+        options_type options;
         
         bool not_null() const {
             return !type_is_nullable<field_type>::value;
@@ -220,7 +226,7 @@ namespace sqlite_orm {
      */
     template<class O, class T, class ...Op>
     column<O, T, Op...> make_column(const std::string &name, T O::*m, Op ...options){
-        return {name, m};
+        return {name, m, std::make_tuple(options...)};
     }
     
     template<class L, class R>
@@ -1705,7 +1711,7 @@ namespace sqlite_orm {
                             auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
                             *dbColumnInfoType == *storageColumnInfoType &&
                             dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                            dbColumnInfo.dflt_value == storageColumnInfo.dflt_value &&
+//                            dbColumnInfo.dflt_value == storageColumnInfo.dflt_value &&
                             dbColumnInfo.pk == storageColumnInfo.pk;
                             if(!columnsAreEqual){
                                 gottaCreateTable = true;
