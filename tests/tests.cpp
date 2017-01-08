@@ -18,6 +18,7 @@ int main() {
     
     //  int
     assert(*to_sqlite_type("INT") == sqlite_type::INTEGER);
+    assert(*to_sqlite_type("integeer") == sqlite_type::INTEGER);
     assert(*to_sqlite_type("INTEGER") == sqlite_type::INTEGER);
     assert(*to_sqlite_type("TINYINT") == sqlite_type::INTEGER);
     assert(*to_sqlite_type("SMALLINT") == sqlite_type::INTEGER);
