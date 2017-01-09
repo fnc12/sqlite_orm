@@ -316,7 +316,7 @@ namespace sqlite_orm {
     };
     
     template<class L, class E>
-    in_t<L, E> in(L l, std::initializer_list<E> values) {
+    in_t<L, E> in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values)};
     }
     
@@ -1463,7 +1463,7 @@ namespace sqlite_orm {
         
         template<class O, class HH = typename H::object_type>
         void update(const O &o, const std::string &filename,  typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) /*throw (std::runtime_error)*/ {
-            withDatabase([&](auto db) {
+            this->withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "update " << this->table.name << " set ";
                 std::vector<std::string> setColumnNames;
