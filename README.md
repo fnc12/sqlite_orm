@@ -323,7 +323,7 @@ To work well your data model class must be default constructable and must not ha
 
 # Installation
 
-Just put `include/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no normal dependency manager for C++ yet.
+Just put `include/sqlite_orm/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no normal dependency manager for C++ yet.
 
 # Requirements
 
