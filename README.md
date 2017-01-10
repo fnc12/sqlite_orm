@@ -5,6 +5,8 @@ SQLite ORM light header only library for modern C++
 
 * **Intuitive syntax**
 * **Built with modern C++14 features (no macros)**
+* **CRUD support**
+* **Transactions support**
 * **Migrations functionality**
 * **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
@@ -267,12 +269,49 @@ Please beware that `sync_schema` doesn't guarantee that data will be saved. It *
     * if table doesn't exist it is created
     * if table exists its colums are being compared with table_info from db and
         * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
-        * if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command and table data will not be dropped
+        * if there are columns in storage that do not exist in db they will be added using 'ALTER TABLE ... ADD COLUMN ...' command and table data will not be dropped
         * if there is any column existing in both db and storage but differs by any of properties (type, pk, notnull) table will be dropped and recreated (dflt_value isn't checked cause there can be ambiguity in default values, please beware).
 
 The reason of this kinda weird behaviour is the fact that `sqlite3` doesn't have `DROP COLUMN` query but has `ADD COLUMN`. Of course one can use temporary table to save all data. Probably it will be implemented in next versions of `sqlite_orm` lib (with `bool preserve = false` argument probably).
 
 The best practice is to call this function right after storage creation.
+
+# Transactions
+
+There are two ways to begin and commit/rollback transactions:
+* explicitly call `begin_transaction();`, `rollback();` or `commit();` functions
+* use `transaction` function which begins transaction implicitly and takes a lambda argument which returns true for commit and false for rollback.
+
+Example for explicit call:
+
+```c++
+auto secondUser = storage.get<User>(2);
+
+storage.begin_transaction();
+secondUser.typeId = 3;
+storage.update(secondUser);
+storage.rollback(); //  or storage.commit();
+
+secondUser = storage.get<decltype(secondUser)>(secondUser.id);
+assert(secondUser.typeId != 3);
+```
+
+Example for implicit call:
+
+```c++
+storage.transaction([&] () mutable {    //  mutable keyword allows make non-const function calls
+    auto secondUser = storage.get<User>(2);
+    secondUser.typeId = 1;
+    storage.update(secondUser);
+    auto gottaRollback = bool(rand() % 2);
+    if(gottaRollback){  //  dummy condition for test
+        return false;   //  exits lambda and calls ROLLBACK
+    }
+    return true;        //  exits lambda and calls COMMIT
+});
+```
+
+The second way guarantess that `commit` or `rollback` will be called. You can use either way.
 
 # Notes
 
