@@ -320,6 +320,11 @@ namespace sqlite_orm {
         return {std::move(l), std::move(values)};
     }
     
+    template<class L, class E>
+    in_t<L, E> in(L l, std::initializer_list<E> values) {
+        return {std::move(l), std::move(values)};
+    }
+    
     /*template<class L, class E, class O>
     in_t<L, E> in(L l, O beg, O en) {
         return {std::move(l), std::vector<E>(beg, en)};
