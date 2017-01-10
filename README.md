@@ -25,6 +25,11 @@ struct User{
     int typeId;
 };
 
+struct UserType {
+    int id;
+    std::string name;
+};
+
 ```
 
 So we have database with predefined schema like `CREATE TABLE users (id integer primary key autoincrement, first_name text not null, last_name text not null, birth_date integer not null, image_url text, type_id integer not null)`
@@ -49,7 +54,15 @@ auto storage = make_storage("db.sqlite",
                                        make_column("image_url",
                                                    &User::imageUrl),
                                        make_column("type_id",
-                                                   &User::typeId)));
+                                                   &User::typeId)),
+                            make_table("user_types",
+                                       make_column("id",
+                                                   &UserType::id,
+                                                   autoincrement(),
+                                                   primary_key()),
+                                       make_column("name",
+                                                   &UserType::name,
+                                                   default_value("name_placeholder"))));
 ```
 
 Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about schema options like ~~`not_null`~~ (deduced from type), `primary_key` or `autoincrement` (order isn't important).
