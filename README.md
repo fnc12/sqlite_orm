@@ -25,6 +25,11 @@ struct User{
     int typeId;
 };
 
+struct UserType {
+    int id;
+    std::string name;
+};
+
 ```
 
 So we have database with predefined schema like `CREATE TABLE users (id integer primary key autoincrement, first_name text not null, last_name text not null, birth_date integer not null, image_url text, type_id integer not null)`
@@ -35,6 +40,14 @@ Now we tell `sqlite_orm` library about schema and provide database filename. We 
 
 using namespace sqlite_orm;
 auto storage = make_storage("db.sqlite",
+                            make_table("user_types",
+                                       make_column("id",
+                                                   &UserType::id,
+                                                   autoincrement(),
+                                                   primary_key()),
+                                       make_column("name",
+                                                   &UserType::name,
+                                                   default_value("name_placeholder"))),
                             make_table("users",
                                        make_column("id",
                                                    &User::id,
