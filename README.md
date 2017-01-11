@@ -38,7 +38,7 @@ So we have database with predefined schema like
 
 `CREATE TABLE users (id integer primary key autoincrement, first_name text not null, last_name text not null, birth_date integer not null, image_url text, type_id integer not null)`
 
-`CREATE TABLE user_types (id integer primary key autoincrement, name text not null)`
+`CREATE TABLE user_types (id integer primary key autoincrement, name text not null DEFAULT 'name_placeholder')`
 
 Now we tell `sqlite_orm` library about schema and provide database filename. We create `storage` service object that has CRUD interface. Also we create every table and every column. All code is intuitive and minimalistic.
 
