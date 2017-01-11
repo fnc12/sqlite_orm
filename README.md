@@ -226,7 +226,7 @@ auto id5and7 = storage.get_all<User>(where(lesser_or_equal(&User::id, 7) and gre
 cout << "id5and7 count = " << id5and7.size() << endl;
 for(auto &user : id5and7) {
     cout << storage.dump(user) << endl;
-
+}
 ```
 
 Or let's just export two users with id 10 or id 16 (of course if these users exist):
