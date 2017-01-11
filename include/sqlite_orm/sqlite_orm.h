@@ -230,8 +230,55 @@ namespace sqlite_orm {
         return {name, m, std::make_tuple(options...)};
     }
     
+    struct condition_t {};
+    
+    template<class C>
+    struct negated_condition_t : public condition_t {
+        C c;
+        
+        negated_condition_t(C c_):c(c_){}
+        
+        operator std::string () const {
+            return "NOT";
+        }
+    };
+    
     template<class L, class R>
-    struct binary_condition {
+    struct and_condition_t : public condition_t {
+        L l;
+        R r;
+        
+        and_condition_t(L l_, R r_):l(l_),r(r_){}
+        
+        operator std::string () const {
+            return "AND";
+        }
+    };
+    
+    template<class L, class R>
+    struct or_condition_t : public condition_t {
+        L l;
+        R r;
+        
+        or_condition_t(L l_, R r_):l(l_),r(r_){}
+        
+        operator std::string () const {
+            return "OR";
+        }
+    };
+    
+    template<class L, class R, typename = typename std::enable_if<std::is_base_of<condition_t, L>::value && std::is_base_of<condition_t, R>::value>::type>
+    and_condition_t<L, R> operator &&(const L &l, const R &r) {
+        return {l, r};
+    }
+    
+    template<class L, class R, typename = typename std::enable_if<std::is_base_of<condition_t, L>::value && std::is_base_of<condition_t, R>::value>::type>
+    or_condition_t<L, R> operator ||(const L &l, const R &r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    struct binary_condition : public condition_t {
         L l;
         R r;
         
@@ -257,6 +304,10 @@ namespace sqlite_orm {
             return "=";
         }
         
+        negated_condition_t<is_equal_t<L, R>> operator!() const {
+            return {*this};
+        }
+        
     };
     
     template<class L, class R>
@@ -266,6 +317,10 @@ namespace sqlite_orm {
         
         operator std::string () const {
             return "!=";
+        }
+        
+        negated_condition_t<is_not_equal_t<L, R>> operator!() const {
+            return {*this};
         }
     };
     
@@ -277,6 +332,10 @@ namespace sqlite_orm {
         operator std::string () const {
             return ">";
         }
+        
+        negated_condition_t<greater_than_t<L, R>> operator!() const {
+            return {*this};
+        }
     };
     
     template<class L, class R>
@@ -286,6 +345,10 @@ namespace sqlite_orm {
         
         operator std::string () const {
             return ">=";
+        }
+        
+        negated_condition_t<greater_or_equal_t<L, R>> operator!() const {
+            return {*this};
         }
     };
     
@@ -297,6 +360,10 @@ namespace sqlite_orm {
         operator std::string () const {
             return "<";
         }
+        
+        negated_condition_t<lesser_than_t<L, R>> operator!() const {
+            return {*this};
+        }
     };
     
     template<class L, class R>
@@ -307,13 +374,26 @@ namespace sqlite_orm {
         operator std::string () const {
             return "<=";
         }
+        
+        negated_condition_t<lesser_or_equal_t<L, R>> operator!() const {
+            return {*this};
+        }
     };
     
     template<class L, class E>
     struct in_t {
         L l;    //  left expression..
         std::vector<E> values;       //  values..
+        
+        negated_condition_t<in_t<L, E>> operator!() const {
+            return {*this};
+        }
     };
+    
+    /*template<class C>
+    inline negated_condition_t<C> operator!(const C &c) {
+        return {c};
+    }*/
     
     template<class L, class E>
     in_t<L, E> in(L l, std::vector<E> values) {
@@ -1420,6 +1500,29 @@ namespace sqlite_orm {
         }
         
         template<class C>
+        std::string process_where(negated_condition_t<C> &c) {
+            std::stringstream ss;
+            ss << " " << static_cast<std::string>(c) << " ";
+            auto cString = this->process_where(c.c);
+            ss << " (" << cString << " )";
+            return ss.str();
+        }
+        
+        template<class L, class R>
+        std::string process_where(and_condition_t<L, R> &c) {
+            std::stringstream ss;
+            ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
+            return ss.str();
+        }
+        
+        template<class L, class R>
+        std::string process_where(or_condition_t<L, R> &c) {
+            std::stringstream ss;
+            ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
+            return ss.str();
+        }
+        
+        template<class C>
         std::string process_where(C c) {
             auto leftString = this->string_from_expression(c.l);
             auto rightString = this->string_from_expression(c.r);
@@ -1443,33 +1546,6 @@ namespace sqlite_orm {
             ss << " )";
             return ss.str();
         }
-        
-        /*template<class L, class R>
-        std::string process_where(is_not_equal_t<L, R> c) {
-            auto leftString = this->string_from_condition_half(c.l);
-            auto rightString = this->string_from_condition_half(c.r);
-            std::stringstream ss;
-            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
-            return ss.str();
-        }
-        
-        template<class L, class R>
-        std::string process_where(greater_then_t<L, R> c) {
-            auto leftString = this->string_from_condition_half(c.l);
-            auto rightString = this->string_from_condition_half(c.r);
-            std::stringstream ss;
-            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
-            return ss.str();
-        }
-        
-        template<class L, class R>
-        std::string process_where(lesser_then_t<L, R> c) {
-            auto leftString = this->string_from_condition_half(c.l);
-            auto rightString = this->string_from_condition_half(c.r);
-            std::stringstream ss;
-            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
-            return ss.str();
-        }*/
         
         template<class C>
         void process_single_condition(std::stringstream &ss, where_t<C> w) {
