@@ -213,6 +213,43 @@ for(auto &user : notJohn) {
 }
 ```
 
+By the way one can implement not equal in a different way using C++ negation operator:
+
+```c++
+auto notJohn2 = storage.get_all<User>(where(not is_equal(&User::firstName, "John")));
+```
+
+You can use `!` and `not` in this case cause they are equal. Also you can chain several conditions with `and` and `or` operators. Let's try to get users with query with conditions like `where id >= 5 and id <= 7 and not id = 6`:
+
+```c++
+auto id5and7 = storage.get_all<User>(where(lesser_or_equal(&User::id, 7) and greater_or_equal(&User::id, 5) and not is_equal(&User::id, 6)));
+cout << "id5and7 count = " << id5and7.size() << endl;
+for(auto &user : id5and7) {
+    cout << storage.dump(user) << endl;
+
+```
+
+Or let's just export two users with id 10 or id 16 (of course if these users exist):
+
+```c++
+auto id10or16 = storage.get_all<User>(where(is_equal(&User::id, 10) or is_equal(&User::id, 16)));
+cout << "id10or16 count = " << id10or16.size() << endl;
+for(auto &user : id10or16) {
+    cout << storage.dump(user) << endl;
+}
+```
+
+In fact you can chain together any number of different conditions with any operator from `and`, `or` and `not`. All conditions are templated so there is no runtime overhead. And this makes `sqlite_orm` the most powerful **sqlite** C++ ORM library.
+
+Moreover you can use parentheses to set the priority of query conditions:
+
+```c++
+auto cuteConditions = storage.get_all<User>(where((is_equal(&User::firstName, "John") or is_equal(&User::firstName, "Alex")) and is_equal(&User::id, 4)));  //  where (first_name = 'John' or first_name = 'Alex') and id = 4
+cout << "cuteConditions count = " << cuteConditions.size() << endl; //  cuteConditions count = 1
+cuteConditions = storage.get_all<User>(where(is_equal(&User::firstName, "John") or (is_equal(&User::firstName, "Alex") and is_equal(&User::id, 4))));   //  where first_name = 'John' or (first_name = 'Alex' and id = 4)
+cout << "cuteConditions count = " << cuteConditions.size() << endl; //  cuteConditions count = 2
+```
+
 Also we can implement `get` by id with `get_all` and `where` like this:
 
 ```c++
