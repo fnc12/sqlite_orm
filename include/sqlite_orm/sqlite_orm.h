@@ -1897,8 +1897,20 @@ namespace sqlite_orm {
                     if(columnsToAdd.size()){
 //                        cout<<"columnsToAdd = "<<columnsToAdd.size()<<endl;
                         for(auto columnPointer : columnsToAdd) {
-                            this->add_column(*columnPointer, db);
-                            cout<<"column "<<columnPointer->name<<" added to table "<<this->table.name<<endl;
+                            if(columnPointer->notnull && columnPointer->dflt_value.empty()){
+                                gottaCreateTable = true;
+                                break;
+                            }
+                        }
+                        if(!gottaCreateTable){
+                            for(auto columnPointer : columnsToAdd) {
+                                this->add_column(*columnPointer, db);
+                                cout<<"column "<<columnPointer->name<<" added to table "<<this->table.name<<endl;
+                            }
+                        }else{
+                            this->drop_table(this->table.name, db);
+                            this->create_table(db);
+                            cout<<"table "<<this->table.name<<" dropped and recreated"<<endl;
                         }
                     }else{
                         cout<<"table "<<this->table.name<<" is synced"<<endl;
