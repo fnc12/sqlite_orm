@@ -74,9 +74,9 @@ int storedKeysCount() {
 
 int main(int argc, char **argv) {
     
-    cout<<argv[0]<<endl;
+    cout << argv[0] << endl;    //  to know executable path in case if you need to access sqlite directly from sqlite client
     
-    getStorage().sync_schema();
+    getStorage().sync_schema(); //  to create table if it doesn't exist
     
     struct {
         std::string userId = "userId";
@@ -88,15 +88,15 @@ int main(int argc, char **argv) {
     setValue(keys.userName, "Peter");
     
     auto userId = getValue(keys.userId);
-    cout << "userId = " << userId << endl;
+    cout << "userId = " << userId << endl;  //  userId = 6
     
     auto userName = getValue(keys.userName);
-    cout << "userName = " << userName << endl;
+    cout << "userName = " << userName << endl;  //  userName = Peter
     
     auto userGender = getValue(keys.userGender);
-    cout << "userGender = " << userGender << endl;
+    cout << "userGender = " << userGender << endl;  //  userGender =
     
     auto kvsCount = storedKeysCount();
-    cout << "kvsCount = " << kvsCount << endl;
+    cout << "kvsCount = " << kvsCount << endl;  //  kvsCount = 2
     
 }
