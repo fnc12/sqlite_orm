@@ -296,6 +296,12 @@ If you omit `where` function in `get_all` it will return all objects from a tabl
 auto allUsers = storage.get_all<User>();
 ```
 
+Also you can use `remove_all` function to perform `DELETE FROM ... WHERE` query with the same type of conditions.
+
+```c++
+storage.remove_all<User>(where(lesser_than(&User::id, 100)));
+```
+
 # Migrations functionality
 
 There are no explicit `up` and `down` functions that are used to be used in migrations. Instead `sqlite_orm` offers `sync_schema` function that takes responsibility of comparing actual db file schema with one you specified in `make_storage` call and if something is not equal it alters or drops/creates schema.
@@ -352,6 +358,20 @@ storage.transaction([&] () mutable {    //  mutable keyword allows make non-cons
     return true;        //  exits lambda and calls COMMIT
 });
 ```
+
+Trancations are useful with `changes` sqlite function that returns number of rows modified.
+
+```c++
+storage.transaction([&] () mutable {
+    storage.remove_all<User>(where(lesser_than(&User::id, 100)));
+    auto usersRemoved = storage.changes();
+    cout << "usersRemoved = " << usersRemoved << endl;
+    return true;
+});
+```
+
+It will print a number of deleted users (rows). But if you call `changes` without a transaction and your database is located in file not in RAM the result will be 0 always cause `sqlite_orm` opens and closes connection every time you call a function without a transaction.
+
 
 The second way guarantess that `commit` or `rollback` will be called. You can use either way.
 
