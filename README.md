@@ -15,7 +15,7 @@ SQLite ORM light header only library for modern C++
 * **C++ standart code style**
 * **No undefined behaviour** - if something goes wrong lib throws an exeption
 
-`sqlite_orm` library allows to create easy data model mappings to your database schema. It is built to manage (CRUD) objects with id of integer type. It also allows you to specify table names and column names explicitly no matter how your classes actually named. Take a look at example:
+`sqlite_orm` library allows to create easy data model mappings to your database schema. It is built to manage (CRUD) objects with a single column with primary key and without it. It also allows you to specify table names and column names explicitly no matter how your classes actually named. Take a look at example:
 
 ```c++
 
@@ -139,6 +139,8 @@ for(auto &user : allUsers) {
     cout << storage.dump(user) << endl; //  dump returns std::string with json-like style object info. For example: { id : '1', first_name : 'Jonh', last_name : 'Doe', birth_date : '664416000', image_url : '0x10090c3d8', type_id : '3' }
 }
 ```
+
+CRUD functions `get`, `get_no_throw`, `remove`, `update` (no `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::runtime_error` will be throw cause `sqlite_orm` cannot detect an id.
 
 # Aggregate Functions
 
