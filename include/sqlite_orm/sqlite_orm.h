@@ -72,7 +72,7 @@ namespace sqlite_orm {
     /**
      *  @param str case doesn't matter - it is uppercased before comparing.
      */
-    std::shared_ptr<sqlite_type> to_sqlite_type(const std::string &str) {
+    inline std::shared_ptr<sqlite_type> to_sqlite_type(const std::string &str) {
         auto asciiStringToUpper = [](std::string &s){
             std::transform(s.begin(),
                            s.end(),
