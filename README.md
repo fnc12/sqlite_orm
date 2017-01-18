@@ -361,6 +361,8 @@ storage.transaction([&] () mutable {    //  mutable keyword allows make non-cons
 });
 ```
 
+The second way guarantess that `commit` or `rollback` will be called. You can use either way.
+
 Trancations are useful with `changes` sqlite function that returns number of rows modified.
 
 ```c++
@@ -373,9 +375,6 @@ storage.transaction([&] () mutable {
 ```
 
 It will print a number of deleted users (rows). But if you call `changes` without a transaction and your database is located in file not in RAM the result will be 0 always cause `sqlite_orm` opens and closes connection every time you call a function without a transaction.
-
-
-The second way guarantess that `commit` or `rollback` will be called. You can use either way.
 
 # Notes
 
