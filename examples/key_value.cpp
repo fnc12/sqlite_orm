@@ -7,9 +7,9 @@
  database.
  To perform this we create schema with table `key_value` and two columns: key:string and value:string. There is no
  primary key so we are unable to use CRUD functions like `get`, `get_no_throw`, `remove`, `update`. And there is no need to use
- these functions actually. We use non-CRUD functions `remove_all`, `insert` (it is non-CRUSH cause it doesn't require a table to have a
+ these functions actually. We use non-CRUD functions `remove_all`, `insert` (it is non-CRUD cause it doesn't require a table to have a
  primary key column) and `get_all`. `setValue` function takes two string arguments: key and value. It creates a KeyValue
- object (KeyValue is a class mapped to storage) with arguments and performs a transaction. Within this transaction
+ object (KeyValue is a class mapped to the storage) with arguments and performs a transaction. Within this transaction
  first we call `REMOVE FROM key_value WHERE key = '%key%'` and next `INSERT INTO key_value values (%key%, %value%)`.
  After this there is a row in the `key_value` table with key and value passed into `setValue` function.
  `getValue` performs `get_all` with specific condition: `SELECT * FROM key_value WHERE key = '%key%'` and returns a front value if result
