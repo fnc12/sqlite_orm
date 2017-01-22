@@ -330,7 +330,7 @@ The best practice is to call this function right after storage creation.
 
 There are two ways to begin and commit/rollback transactions:
 * explicitly call `begin_transaction();`, `rollback();` or `commit();` functions
-* use `transaction` function which begins transaction implicitly and takes a lambda argument which returns true for commit and false for rollback.
+* use `transaction` function which begins transaction implicitly and takes a lambda argument which returns true for commit and false for rollback. All storage calls performed in lambda can be commited or rollbacked by returning `true` or `false`.
 
 Example for explicit call:
 
