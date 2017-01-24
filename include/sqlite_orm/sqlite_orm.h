@@ -540,9 +540,6 @@ namespace sqlite_orm {
 
         template<class F, class L>
         void for_each_column_with_field_type(L l) {
-//            cout<<"typename column_type::field_type = "<<typeid(typename column_type::field_type).name()<<endl;
-//            cout<<"F = "<<typeid(F).name()<<endl;
-//            cout<<"custom version"<<endl;
             apply_to_col_if(l, std::is_same<F, typename column_type::field_type>{});
             Super::template for_each_column_with_field_type<F, L>(l);
         }
@@ -605,6 +602,18 @@ namespace sqlite_orm {
             auto res = impl.column_names();
             std::reverse(res.begin(),
                          res.end());
+            return res;
+        }
+        
+        std::string primary_key_column_name() {
+            std::string res;
+            impl.template for_each_column_with<primary_key>([&](auto &c){
+                if(res.empty()){
+                    res = c.name;
+                }else{
+                    throw std::runtime_error("table " + this->name + " has > 1 primary key columns");
+                }
+            });
             return res;
         }
         
@@ -892,8 +901,8 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_all");
         }
         
-        template<class O>
-        O get(int id, sqlite3 *db) {
+        template<class O, class I>
+        O get(I id, sqlite3 *db) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get");
         }
         
@@ -902,13 +911,13 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in update");
         }
         
-        template<class O>
-        std::shared_ptr<O> get_no_throw(int id, sqlite3 *db) {
+        template<class O, class I>
+        std::shared_ptr<O> get_no_throw(I id, sqlite3 *db) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_no_throw");
         }
         
-        template<class O>
-        void remove(int id, sqlite3 *db) {
+        template<class O, class I>
+        void remove(I id, sqlite3 *db) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in remove");
         }
         
@@ -1102,53 +1111,50 @@ namespace sqlite_orm {
         template<class O, class HH = typename H::object_type>
         int insert(const O &o, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             int res = 0;
-//            auto db = connection.get_db();
-//            this->withDatabase([&](auto db) {
-                std::stringstream ss;
-                ss << "INSERT INTO " << this->table.name << " (";
-                std::vector<std::string> columnNames;
-                this->table.for_each_column([&] (auto c) {
-                    if(!c.template has<primary_key>()) {
-                        columnNames.emplace_back(c.name);
+            std::stringstream ss;
+            ss << "INSERT INTO " << this->table.name << " (";
+            std::vector<std::string> columnNames;
+            this->table.for_each_column([&] (auto c) {
+                if(!c.template has<primary_key>()) {
+                    columnNames.emplace_back(c.name);
+                }
+            });
+            
+            for(auto i = 0; i < columnNames.size(); ++i) {
+                ss << columnNames[i];
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                }else{
+                    ss << ") ";
+                }
+            }
+            ss << "VALUES(";
+            for(auto i = 0; i < columnNames.size(); ++i) {
+                ss << "?";
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                }else{
+                    ss << ")";
+                }
+            }
+            auto query = ss.str();
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                auto index = 1;
+                this->table.for_each_column([&, &o = o] (auto c) {
+                    if(!c.template has<primary_key>()){
+                        auto &value = o.*c.member_pointer;
+                        statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
                     }
                 });
-                
-                for(auto i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << ") ";
-                    }
-                }
-                ss << "VALUES(";
-                for(auto i = 0; i < columnNames.size(); ++i) {
-                    ss << "?";
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << ")";
-                    }
-                }
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    auto index = 1;
-                    this->table.for_each_column([&, &o = o] (auto c) {
-                        if(!c.template has<primary_key>()){
-                            auto &value = o.*c.member_pointer;
-                            statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
-                        }
-                    });
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        res = int(sqlite3_last_insert_rowid(db));
-                    }else{
-                        throw std::runtime_error(sqlite3_errmsg(db));
-                    }
-                }else {
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    res = int(sqlite3_last_insert_rowid(db));
+                }else{
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
+            }else {
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
             return res;
         }
         
@@ -1406,16 +1412,21 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class O, class HH = typename H::object_type>
-        std::shared_ptr<O> get_no_throw(int id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class O, class I, class HH = typename H::object_type>
+        std::shared_ptr<O> get_no_throw(I id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
             return Super::template get_no_throw<O>(id, db);
         }
         
-        template<class O, class HH = typename H::object_type>
-        std::shared_ptr<O> get_no_throw(int id, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class O, class I, class HH = typename H::object_type>
+        std::shared_ptr<O> get_no_throw(I id, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::shared_ptr<O> res;
-//            this->withDatabase([&](auto db) {
-                auto query = "select * from " + this->table.name + " where id = " + std::to_string(id);
+            std::stringstream ss;
+            ss << "SELECT * FROM " << this->table.name << " WHERE ";
+            auto primaryKeyColumnName = this->table.primary_key_column_name();
+            if(primaryKeyColumnName.size()){
+                ss << primaryKeyColumnName << " = " << string_from_expression(id);
+                auto query = ss.str();
+                //            auto query = "SELECT * FROM " + this->table.name + " WHERE id = " + std::to_string(id);
                 data_t<std::shared_ptr<O>, decltype(this)> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1438,27 +1449,38 @@ namespace sqlite_orm {
                 if(rc != SQLITE_OK) {
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
-            return res;
+                return res;
+            }else{
+                throw std::runtime_error("table " + this->table.name + " has no primary key column");
+            }
         }
         
-        template<class O, class HH = typename H::object_type>
-        O get(int id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class O, class I, class HH = typename H::object_type>
+        O get(I id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
             return Super::template get<O>(id, db);
         }
         
-        template<class O, class HH = typename H::object_type>
-        O get(int id, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class O, class I, class HH = typename H::object_type>
+        O get(I id, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::shared_ptr<O> res;
-//            withDatabase([&](auto db) {
-                auto query = "select * from " + this->table.name + " where id = " + std::to_string(id);
-                data_t<std::shared_ptr<O>, storage_impl*> data{this, &res};
+            std::stringstream ss;
+            ss << "SELECT * FROM " << this->table.name << " WHERE ";
+            auto primaryKeyColumnName = this->table.primary_key_column_name();
+            if(primaryKeyColumnName.size()){
+                ss << primaryKeyColumnName << " = " << string_from_expression(id);
+                auto query = ss.str();
+                //            auto query = "SELECT * FROM " + this->table.name + " where id = " + std::to_string(id);
+                typedef std::tuple<storage_impl*, decltype(res)*> data_tuple_t;
+                data_tuple_t dataTuple = std::make_tuple(this, &res);
+//                data_t<std::shared_ptr<O>, storage_impl*> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &d = *(data_t<std::shared_ptr<O>, storage_impl*>*)data;
-                                           auto &res = *d.res;
-                                           auto t = d.t;
+                                           auto &d = *(data_tuple_t*)data;
+//                                           auto &res = *d.res;
+                                           auto &res = *std::get<1>(d);
+//                                           auto t = d.t;
+                                           auto t = std::get<0>(d);
                                            if(argc){
                                                res = std::make_shared<O>();
                                                auto index = 0;
@@ -1470,15 +1492,17 @@ namespace sqlite_orm {
                                                });
                                            }
                                            return 0;
-                                       }, &data, nullptr);
+                                       }, &dataTuple, nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
-            if(res){
-                return *res;
+                if(res){
+                    return *res;
+                }else{
+                    throw not_found_exception{};
+                }
             }else{
-                throw not_found_exception{};
+                throw std::runtime_error("table " + this->table.name + " has no primary key column");
             }
         }
         
@@ -1718,13 +1742,13 @@ namespace sqlite_orm {
             return ss.str();
         }
         
-        template<class O, class HH = typename H::object_type>
-        void remove(int id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class O, class I, class HH = typename H::object_type>
+        void remove(I id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
             Super::template remove<O>(id, db);
         }
         
-        template<class O, class HH = typename H::object_type>
-        void remove(int id, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class O, class I, class HH = typename H::object_type>
+        void remove(I id, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::stringstream ss;
             ss << "DELETE FROM " << this->table.name;
             ss << " WHERE ";
@@ -1953,8 +1977,8 @@ namespace sqlite_orm {
          *  O is an object's type. Must be specified explicitly.
          *  @param id id of object to be removed.
          */
-        template<class O>
-        void remove(int id) {
+        template<class O, class I>
+        void remove(I id) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2011,8 +2035,8 @@ namespace sqlite_orm {
          *  @return Object of type O where id is equal parameter passed or throws `not_found_exception`
          *  if there is no object with such id.
          */
-        template<class O>
-        O get(int id) {
+        template<class O, class I>
+        O get(I id) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2028,9 +2052,8 @@ namespace sqlite_orm {
          *  The same as `get` function but doesn't throw an exeption if noting found but returns std::shared_ptr with null value.
          *  throws std::runtime_error iin case of db error.
          */
-        template<class O>
-        std::shared_ptr<O> get_no_throw(int id) {
-//            database_connection connection(this->filename);
+        template<class O, class I>
+        std::shared_ptr<O> get_no_throw(I id) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2247,7 +2270,7 @@ namespace sqlite_orm {
             impl.sync_schema(db);
         }
         
-        void transaction(std::function<bool()> f) {
+        bool transaction(std::function<bool()> f) {
             this->begin_transaction();
             auto db = this->currentTransaction->get_db();
             auto shouldCommit = f();
@@ -2257,6 +2280,7 @@ namespace sqlite_orm {
                 impl.rollback(db);
             }
             this->currentTransaction = nullptr;
+            return shouldCommit;
         }
         
         void begin_transaction() {
