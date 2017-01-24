@@ -379,11 +379,15 @@ It will print a number of deleted users (rows). But if you call `changes` withou
 Also a `transaction` function returns `true` if transaction is commited and `false` if it is rollbacked. It can be useful if your next moves depend on transaction result:
 
 ```c++
-auto commited = storage.transaction([&] () mutable {
-    storage.remove_all<User>(where(lesser_than(&User::id, 100)));
-    auto usersRemoved = storage.changes();
-    cout << "usersRemoved = " << usersRemoved << endl;
-    return true;
+auto commited = storage.transaction([&] () mutable {    
+    auto secondUser = storage.get<User>(2);
+    secondUser.typeId = 1;
+    storage.update(secondUser);
+    auto gottaRollback = bool(rand() % 2);
+    if(gottaRollback){  //  dummy condition for test
+        return false;   //  exits lambda and calls ROLLBACK
+    }
+    return true;        //  exits lambda and calls COMMIT
 });
 if(commited){
     cout << "Commited successfully, go on." << endl;
