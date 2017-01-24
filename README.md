@@ -376,6 +376,22 @@ storage.transaction([&] () mutable {
 
 It will print a number of deleted users (rows). But if you call `changes` without a transaction and your database is located in file not in RAM the result will be 0 always cause `sqlite_orm` opens and closes connection every time you call a function without a transaction.
 
+Also a `transaction` function returns `true` if transaction is commited and `false` if it is rollbacked. It can be useful if your next moves depend on transaction result:
+
+```c++
+auto commited = storage.transaction([&] () mutable {
+    storage.remove_all<User>(where(lesser_than(&User::id, 100)));
+    auto usersRemoved = storage.changes();
+    cout << "usersRemoved = " << usersRemoved << endl;
+    return true;
+});
+if(commited){
+    cout << "Commited successfully, go on." << endl;
+}else{
+    cerr << "Commit failed, process an error" << endl;
+}
+```
+
 # Notes
 
 To work well your data model class must be default constructable and must not have const fields mapped to database cause they are assigned during queries. Otherwise code won't compile on line with member assignment operator.
