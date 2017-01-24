@@ -304,6 +304,33 @@ Also you can use `remove_all` function to perform `DELETE FROM ... WHERE` query 
 storage.remove_all<User>(where(lesser_than(&User::id, 100)));
 ```
 
+# Pure select
+
+if you need to extract only a single column (`select %column_name% from %table_name% where %conditions%`) you can use non-CRUD `select` function:
+
+```c++
+auto allIds = storage.select(&User::id);    //  maps to `select id from users`
+cout << "allIds count = " << allIds.size() << endl; //  allIds is std::vector<int>
+for(auto &id : allIds) {
+    cout << id << " ";
+}
+cout << endl;
+
+auto doeIds = storage.select(&User::id, where(is_equal(&User::lastName, "Doe")));   //  maps to `select id from users where last_name = 'Doe'`
+cout << "doeIds count = " << doeIds.size() << endl; //  doeIds is std::vector<int>
+for(auto &doeId : doeIds) {
+    cout << doeId << " ";
+}
+cout << endl;
+
+auto allLastNames = storage.select(&User::lastName, where(lesser_than(&User::id, 300)));    //  maps to `select last_name from users where id < 300`
+cout << "allLastNames count = " << allLastNames.size() << endl; //  allLastNames is std::vector<std::string>
+for(auto &lastName : allLastNames) {
+    cout << lastName << " ";
+}
+cout << endl;
+```
+
 # Migrations functionality
 
 There are no explicit `up` and `down` functions that are used to be used in migrations. Instead `sqlite_orm` offers `sync_schema` function that takes responsibility of comparing actual db file schema with one you specified in `make_storage` call and if something is not equal it alters or drops/creates schema.
