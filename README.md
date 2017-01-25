@@ -10,6 +10,7 @@ SQLite ORM light header only library for modern C++
 * **Transactions support**
 * **Migrations functionality**
 * **Powerful conditions**
+* **ORDER BY support**
 * **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
@@ -330,6 +331,47 @@ for(auto &lastName : allLastNames) {
     cout << lastName << " ";
 }
 cout << endl;
+```
+
+# ORDER BY support
+
+ORDER BY query option can be applied to `get_all` and `select` functions just like `where` but with `order_by` function. It can be mixed with WHERE in a single query. Examples:
+
+```c++
+//  `SELECT * FROM users ORDER BY id`
+auto orderedUsers = storage.get_all<User>(order_by(&User::id));
+cout << "orderedUsers count = " << orderedUsers.size() << endl;
+for(auto &user : orderedUsers) {
+    cout << storage.dump(user) << endl;
+}
+
+//  `SELECT * FROM users WHERE id < 250 ORDER BY first_name`
+auto orderedUsers2 = storage.get_all<User>(where(lesser_than(&User::id, 250)), order_by(&User::firstName));
+cout << "orderedUsers2 count = " << orderedUsers2.size() << endl;
+for(auto &user : orderedUsers2) {
+    cout << storage.dump(user) << endl;
+}
+
+//  `SELECT * FROM users WHERE id > 100 ORDER BY first_name ASC`
+auto orderedUsers3 = storage.get_all<User>(where(greater_than(&User::id, 100)), order_by(asc(&User::firstName)));
+cout << "orderedUsers3 count = " << orderedUsers3.size() << endl;
+for(auto &user : orderedUsers3) {
+    cout << storage.dump(user) << endl;
+}
+
+//  `SELECT * FROM users ORDER BY id DESC`
+auto orderedUsers4 = storage.get_all<User>(order_by(desc(&User::id)));
+cout << "orderedUsers4 count = " << orderedUsers4.size() << endl;
+for(auto &user : orderedUsers4) {
+    cout << storage.dump(user) << endl;
+}
+
+//  `SELECT first_name FROM users ORDER BY ID DESC`
+auto orderedFirstNames = storage.select(&User::firstName, order_by(desc(&User::id)));
+cout << "orderedFirstNames count = " << orderedFirstNames.size() << endl;
+for(auto &firstName : orderedFirstNames) {
+    cout << "firstName = " << firstName << endl;
+}
 ```
 
 # Migrations functionality
