@@ -305,9 +305,9 @@ Also you can use `remove_all` function to perform `DELETE FROM ... WHERE` query 
 storage.remove_all<User>(where(lesser_than(&User::id, 100)));
 ```
 
-# Pure select
+# Raw select
 
-If you need to extract only a single column (`select %column_name% from %table_name% where %conditions%`) you can use non-CRUD `select` function:
+If you need to extract only a single column (`select %column_name% from %table_name% where %conditions%`) you can use a non-CRUD `select` function:
 
 ```c++
 auto allIds = storage.select(&User::id);    //  maps to `select id from users`
