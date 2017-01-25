@@ -450,6 +450,37 @@ namespace sqlite_orm {
         return {c};
     }
     
+    template<class O>
+    struct order_by_t {
+        //F O::*m;
+        O o;
+    };
+    
+    template<class O>
+    struct asc_t {
+        O o;
+    };
+    
+    template<class O>
+    struct desc_t {
+        O o;
+    };
+    
+    template<class O>
+    order_by_t<O> order_by(O o) {
+        return {o};
+    }
+    
+    template<class O>
+    asc_t<O> asc(O o) {
+        return {o};
+    }
+    
+    template<class O>
+    desc_t<O> desc(O o) {
+        return {o};
+    }
+    
     struct table_info {
         int cid;
         std::string name;
@@ -1563,12 +1594,27 @@ namespace sqlite_orm {
             return this->table.find_column_name(m);
         }
         
+        template<class O>
+        std::string string_from_expression(asc_t<O> &a) {
+            std::stringstream ss;
+            ss << this->string_from_expression(a.o) << " ASC ";
+            return ss.str();
+        }
+        
+        
+        template<class O>
+        std::string string_from_expression(desc_t<O> &a) {
+            std::stringstream ss;
+            ss << this->string_from_expression(a.o) << " DESC ";
+            return ss.str();
+        }
+        
         template<class C>
         std::string process_where(negated_condition_t<C> &c) {
             std::stringstream ss;
             ss << " " << static_cast<std::string>(c) << " ";
             auto cString = this->process_where(c.c);
-            ss << " (" << cString << " )";
+            ss << " (" << cString << " ) ";
             return ss.str();
         }
         
@@ -1611,11 +1657,41 @@ namespace sqlite_orm {
             return ss.str();
         }
         
+        template<class O>
+        std::string process_order_by(order_by_t<O> &orderBy) {
+            std::stringstream ss;
+            auto columnName = this->string_from_expression(orderBy.o);
+            ss << columnName << " ";
+            return ss.str();
+        }
+        
+        /*template<class O>
+        std::string process_order_by(asc_t<O> &a) {
+            std::stringstream ss;
+            auto str = this->string_from_expression(a.o);
+            ss << str << "ASC ";
+            return ss.str();
+        }*/
+        
         template<class C>
         void process_single_condition(std::stringstream &ss, where_t<C> w) {
-            ss << " where ";
+            ss << " WHERE ";
             auto whereString = this->process_where(w.c);
-            ss << "(" << whereString << ")";
+            ss << "(" << whereString << ") ";
+        }
+        
+        template<class O>
+        void process_single_condition(std::stringstream &ss, order_by_t<O> orderBy) {
+            ss << "ORDER BY ";
+            auto orderByString = this->process_order_by(orderBy);
+            ss << orderByString << " ";
+        }
+        
+        template<class O>
+        void process_single_condition(std::stringstream &ss, asc_t<O> ascOrderBy) {
+            ss << "ORDER BY ";
+            auto orderByString = this->process_order_by(ascOrderBy);
+            ss << orderByString << " ";
         }
         
         /**
