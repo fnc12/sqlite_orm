@@ -431,7 +431,7 @@ storage.transaction([&] () mutable {    //  mutable keyword allows make non-cons
 });
 ```
 
-The second way guarantess that `commit` or `rollback` will be called. You can use either way.
+The second way guarantees that `commit` or `rollback` will be called. You can use either way.
 
 Trancations are useful with `changes` sqlite function that returns number of rows modified.
 
