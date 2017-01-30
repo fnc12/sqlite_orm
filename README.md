@@ -389,7 +389,7 @@ Please beware that `sync_schema` doesn't guarantee that data will be saved. It *
 * every table from storage is compared with it's db analog and 
     * if table doesn't exist it is created
     * if table exists its colums are being compared with table_info from db and
-        * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated if `preserved` is false, and table will be copied into temporary table without excess columns, source table will be dropped, copied table will be renamed to source table (sqlite remove column technique). `preserve` is the first argument in `sync_schema` function. It's default value is `false`. Beware that setting it to `true` may take time for copying table rows.
+        * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated if `preserve` is `false`, and table will be copied into temporary table without excess columns, source table will be dropped, copied table will be renamed to source table (sqlite remove column technique) if `preserve` is `true`. `preserve` is the first argument in `sync_schema` function. It's default value is `false`. Beware that setting it to `true` may take time for copying table rows.
         * if there are columns in storage that do not exist in db they will be added using 'ALTER TABLE ... ADD COLUMN ...' command and table data will not be dropped but if any of added columns is null but has not default value table will be dropped and recreated
         * if there is any column existing in both db and storage but differs by any of properties (type, pk, notnull) table will be dropped and recreated (dflt_value isn't checked cause there can be ambiguity in default values, please beware).
 
