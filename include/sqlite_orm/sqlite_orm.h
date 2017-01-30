@@ -997,7 +997,7 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
-        void sync_schema(sqlite3 *db) {
+        void sync_schema(sqlite3 *db, bool preserve) {
             return;
         }
         
@@ -1049,34 +1049,36 @@ namespace sqlite_orm {
             }
         }
         
-        /*void withDatabase(std::function<void(sqlite3*)> lambda, const std::string &filename) {
-            sqlite3 *db;
-            auto rc = sqlite3_open(filename.c_str(), &db);
-            if(rc == SQLITE_OK){
-                lambda(db);
-            }else{
-                std::cerr << "error " << sqlite3_errmsg(db) << std::endl;
-            }
-            sqlite3_close(db);
-        }*/
-        
         void drop_table(const std::string &tableName, sqlite3 *db) {
-//            withDatabase([=] (auto db) {
-//            auto db = connection.get_db();
-                std::stringstream ss;
-                ss << "DROP TABLE " << tableName;
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    }else{
-                        throw std::runtime_error(sqlite3_errmsg(db));
-                    }
-                }else {
+            std::stringstream ss;
+            ss << "DROP TABLE " << tableName;
+            auto query = ss.str();
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    //  done..
+                }else{
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
+            }else {
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
+        }
+        
+        void rename_table(sqlite3 *db, const std::string &oldName, const std::string &newName) {
+            std::stringstream ss;
+            ss << "ALTER TABLE " << oldName << " RENAME TO " << newName;
+            auto query = ss.str();
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    //  done..
+                }else{
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            }else {
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
         }
     };
     
@@ -1091,52 +1093,42 @@ namespace sqlite_orm {
         template<class T>
         constexpr bool type_is_mapped() const {
             return Super::template type_is_mapped<T>();
-//            return res;
         }
         
-        /*template<class T, class HH = H>
-        constexpr typename std::enable_if<std::is_same<T, HH>::value, bool>::type type_is_mapped() {
-            return true;
-        }*/
-        
         void create_table(sqlite3 *db) {
-//            auto db = connection.get_db();
-//            this->withDatabase([=] (auto db) {
-                std::stringstream ss;
-                ss << "CREATE TABLE " << this->table.name << " ( ";
-                auto columnsCount = this->table.columns_count();
-                auto index = 0;
-                this->table.for_each_column([columnsCount, &index, &ss] (auto c) {
-                    ss << c.name << " ";
-                    ss << type_printer<typename decltype(c)::field_type>().print() << " ";
-                    if(c.template has<primary_key>()) {
-                        ss << "primary key ";
-                    }
-                    if(c.template has<autoincrement>()) {
-                        ss << "autoincrement ";
-                    }
-                    if(c.not_null()){
-//                    if(c.template has<not_null>()) {
-                        ss << "not null ";
-                    }
-                    if(index < columnsCount - 1) {
-                        ss << ", ";
-                    }
-                    index++;
-                });
-                ss << ") ";
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    }else{
-                        throw std::runtime_error(sqlite3_errmsg(db));
-                    }
-                }else {
+            std::stringstream ss;
+            ss << "CREATE TABLE " << this->table.name << " ( ";
+            auto columnsCount = this->table.columns_count();
+            auto index = 0;
+            this->table.for_each_column([columnsCount, &index, &ss] (auto c) {
+                ss << c.name << " ";
+                ss << type_printer<typename decltype(c)::field_type>().print() << " ";
+                if(c.template has<primary_key>()) {
+                    ss << "PRIMARY KEY ";
+                }
+                if(c.template has<autoincrement>()) {
+                    ss << "AUTOINCREMENT ";
+                }
+                if(c.not_null()){
+                    ss << "NOT NULL ";
+                }
+                if(index < columnsCount - 1) {
+                    ss << ", ";
+                }
+                index++;
+            });
+            ss << ") ";
+            auto query = ss.str();
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    //  done..
+                }else{
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
+            }else {
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
         }
         
         template<class O, class HH = typename H::object_type>
@@ -1202,33 +1194,27 @@ namespace sqlite_orm {
         template<class F, class O, class HH = typename H::object_type>
         std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::string res;
-//            auto db = connection.get
-//            this->withDatabase([&](auto db) {
-                std::stringstream ss;
-                ss << "select group_concat(";
-                auto columnName = this->table.find_column_name(m);
-                if(columnName.length()){
-                    ss << columnName << ",\"" << y << "\") from "<< this->table.name;
-                    auto query = ss.str();
-//                    data_t<std::string, storage_impl*> data{this, &res};
-                    auto rc = sqlite3_exec(db,
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **azColName)->int{
-//                                               auto &d = *(data_t<std::string, storage_impl*>*)data;
-//                                               auto &res = *d.res;
-                                               auto &res = *(std::string*)data;
-                                               if(argc){
-                                                   res = argv[0];
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::runtime_error(sqlite3_errmsg(db));
-                    }
-                }else{
-                    throw std::runtime_error("column not found");
+            std::stringstream ss;
+            ss << "SELECT GROUP_CONCAT(";
+            auto columnName = this->table.find_column_name(m);
+            if(columnName.length()){
+                ss << columnName << ",\"" << y << "\") FROM "<< this->table.name;
+                auto query = ss.str();
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &res = *(std::string*)data;
+                                           if(argc){
+                                               res = argv[0];
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
+            }else{
+                throw std::runtime_error("column not found");
+            }
             return res;
         }
         
@@ -1240,34 +1226,29 @@ namespace sqlite_orm {
         template<class F, class O, class HH = typename H::object_type>
         std::shared_ptr<F> min(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::shared_ptr<F> res;
-//            this->withDatabase([&](auto db) {
-                std::stringstream ss;
-                ss << "select min(";
-                auto columnName = this->table.find_column_name(m);
-                if(columnName.length()){
-                    ss << columnName << ") from "<< this->table.name;
-                    auto query = ss.str();
-//                    data_t<std::shared_ptr<F>, storage_impl*> data{this, &res};
-                    auto rc = sqlite3_exec(db,
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **azColName)->int{
-//                                               auto &d = *(data_t<std::shared_ptr<F>, storage_impl*>*)data;
-//                                               auto &res = *d.res;
-                                               auto &res = *(std::shared_ptr<F>*)data;
-                                               if(argc){
-                                                   if(argv[0]){
-                                                       res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
-                                                   }
+            std::stringstream ss;
+            ss << "SELECT MIN(";
+            auto columnName = this->table.find_column_name(m);
+            if(columnName.length()){
+                ss << columnName << ") FROM "<< this->table.name;
+                auto query = ss.str();
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &res = *(std::shared_ptr<F>*)data;
+                                           if(argc){
+                                               if(argv[0]){
+                                                   res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
                                                }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::runtime_error(sqlite3_errmsg(db));
-                    }
-                }else{
-                    throw std::runtime_error("column not found");
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
+            }else{
+                throw std::runtime_error("column not found");
+            }
             return res;
         }
         
@@ -1279,33 +1260,31 @@ namespace sqlite_orm {
         template<class F, class O, class HH = typename H::object_type>
         std::shared_ptr<F> max(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::shared_ptr<F> res;
-//            this->withDatabase([&](auto db) {
-                std::stringstream ss;
-                ss << "select max(";
-                auto columnName = this->table.find_column_name(m);
-                if(columnName.length()){
-                    ss << columnName << ") from "<< this->table.name;
-                    auto query = ss.str();
-                    data_t<std::shared_ptr<F>, storage_impl*> data{this, &res};
-                    auto rc = sqlite3_exec(db,
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **azColName)->int{
-                                               auto &d = *(data_t<std::shared_ptr<F>, storage_impl*>*)data;
-                                               auto &res = *d.res;
-                                               if(argc){
-                                                   if(argv[0]){
-                                                       res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
-                                                   }
+            std::stringstream ss;
+            ss << "SELECT MAX(";
+            auto columnName = this->table.find_column_name(m);
+            if(columnName.length()){
+                ss << columnName << ") FROM "<< this->table.name;
+                auto query = ss.str();
+                data_t<std::shared_ptr<F>, storage_impl*> data{this, &res};
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &d = *(data_t<std::shared_ptr<F>, storage_impl*>*)data;
+                                           auto &res = *d.res;
+                                           if(argc){
+                                               if(argv[0]){
+                                                   res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
                                                }
-                                               return 0;
-                                           }, &data, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::runtime_error(sqlite3_errmsg(db));
-                    }
-                }else{
-                    throw std::runtime_error("column not found");
+                                           }
+                                           return 0;
+                                       }, &data, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
+            }else{
+                throw std::runtime_error("column not found");
+            }
             return res;
         }
         
@@ -1391,12 +1370,9 @@ namespace sqlite_orm {
             if(columnName.length()){
                 ss << columnName << ") from "<< this->table.name;
                 auto query = ss.str();
-//                data_t<double, storage_impl*> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName)->int{
-//                                           auto &d = *(data_t<double, storage_impl*>*)data;
-//                                           auto &res = *d.res;
                                            auto &res = *(double*)data;
                                            if(argc){
                                                res = std::atof(argv[0]);
@@ -1420,32 +1396,29 @@ namespace sqlite_orm {
         template<class F, class O, class HH = typename H::object_type>
         int count(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             int res = 0;
-//            this->withDatabase([&](auto db){
-                std::stringstream ss;
-                ss << "select count(";
-                auto columnName = this->table.find_column_name(m);
-                if(columnName.length()){
-                    ss << columnName << ") from "<< this->table.name;
-                    auto query = ss.str();
-                    data_t<int, storage_impl*> data{this, &res};
-                    auto rc = sqlite3_exec(db,
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **azColName)->int{
-                                               auto &d = *(data_t<int, storage_impl*>*)data;
-                                               auto &res = *d.res;
-//                                               auto t = d.t;
-                                               if(argc){
-                                                   res = std::atoi(argv[0]);
-                                               }
-                                               return 0;
-                                           }, &data, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::runtime_error(sqlite3_errmsg(db));
-                    }
-                }else{
-                    throw std::runtime_error("column not found");
+            std::stringstream ss;
+            ss << "select count(";
+            auto columnName = this->table.find_column_name(m);
+            if(columnName.length()){
+                ss << columnName << ") from "<< this->table.name;
+                auto query = ss.str();
+                data_t<int, storage_impl*> data{this, &res};
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &d = *(data_t<int, storage_impl*>*)data;
+                                           auto &res = *d.res;
+                                           if(argc){
+                                               res = std::atoi(argv[0]);
+                                           }
+                                           return 0;
+                                       }, &data, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
                 }
-//            }, filename);
+            }else{
+                throw std::runtime_error("column not found");
+            }
             return res;
         }
         
@@ -1664,14 +1637,6 @@ namespace sqlite_orm {
             ss << columnName << " ";
             return ss.str();
         }
-        
-        /*template<class O>
-        std::string process_order_by(asc_t<O> &a) {
-            std::stringstream ss;
-            auto str = this->string_from_expression(a.o);
-            ss << str << "ASC ";
-            return ss.str();
-        }*/
         
         template<class C>
         void process_single_condition(std::stringstream &ss, where_t<C> w) {
@@ -1970,14 +1935,53 @@ namespace sqlite_orm {
             }
         }
         
-        void sync_schema(sqlite3 *db) {
+        /**
+         *  Copies current table to another table with a given **name**.
+         *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
+         */
+        void copy_table(sqlite3 *db, const std::string &name) {
+            std::stringstream ss;
+            ss << "CREATE TABLE " << name << " AS SELECT ";
+            auto columnNames = this->table.column_names();
+            for(auto i = 0; i < columnNames.size(); ++i) {
+                ss << columnNames[i];
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                }else{
+                    ss << " ";
+                }
+            }
+            ss << " FROM " << this->table.name;
+            auto query = ss.str();
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    return;
+                }else{
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            }else{
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
+        }
+        
+        void sync_schema(sqlite3 *db, bool preserve) {
+            
+            //  first let's see if table with such name exists..
             auto gottaCreateTable = !this->table_exists(this->table.name, db);
             if(!gottaCreateTable){
+                
+                //  now get current table info from db using `PRAGMA table_info` query..
                 auto dbTableInfo = get_table_info(this->table.name, db);
+                
+                //  get table info provided in `make_table` call..
                 auto storageTableInfo = this->table.get_table_info();
+                
+                //  this vector will contain pointers to columns that gotta be added..
                 std::vector<table_info*> columnsToAdd;
+                
                 for(auto storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
-//                for(auto &storageColumnInfo : storageTableInfo) {
+                    
                     auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
                     auto &columnName = storageColumnInfo.name;
                     auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
@@ -2017,7 +2021,35 @@ namespace sqlite_orm {
                     }
                 }
                 if(!gottaCreateTable){  //  if all storage columns are equal to actual db columns but there are excess columns at the db..
-                    gottaCreateTable = dbTableInfo.size() > 0;
+                    if(dbTableInfo.size() > 0){
+                        if(!preserve){
+                            gottaCreateTable = true;
+                        }else{
+                            
+                            //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
+                            //  a name already exists we append suffix 1, then 2, etc until we find a free name..
+                            auto backupTableName = this->table.name + "_backup";
+                            if(this->table_exists(backupTableName, db)){
+                                int suffix = 1;
+                                do{
+                                    auto anotherBackupTableName = backupTableName + std::to_string(suffix);
+                                    if(!this->table_exists(anotherBackupTableName, db)){
+                                        backupTableName = anotherBackupTableName;
+                                        break;
+                                    }
+                                    ++suffix;
+                                }while(true);
+                            }
+                            
+                            //  perform `CREATE TABLE t1_backup AS SELECT a, b FROM t1`
+                            this->copy_table(db, backupTableName);
+                            
+                            this->drop_table(this->table.name, db);
+                            
+                            this->rename_table(db, backupTableName, this->table.name);
+                        }
+                    }
+                    //gottaCreateTable = dbTableInfo.size() > 0;
                 }
                 if(gottaCreateTable){
                     this->drop_table(this->table.name, db);
@@ -2025,7 +2057,6 @@ namespace sqlite_orm {
                     cout<<"table "<<this->table.name<<" dropped and recreated"<<endl;
                 }else{
                     if(columnsToAdd.size()){
-//                        cout<<"columnsToAdd = "<<columnsToAdd.size()<<endl;
                         for(auto columnPointer : columnsToAdd) {
                             if(columnPointer->notnull && columnPointer->dflt_value.empty()){
                                 gottaCreateTable = true;
@@ -2045,13 +2076,12 @@ namespace sqlite_orm {
                     }else{
                         cout<<"table "<<this->table.name<<" is synced"<<endl;
                     }
-//                    cout<<"excess columns = "<<dbTableInfo.size()<<endl;
                 }
             }else{
                 this->create_table(db);
                 cout<<"table "<<this->table.name<<" created"<<endl;
             }
-            Super::sync_schema(db);
+            Super::sync_schema(db, preserve);
         }
         
     private:
@@ -2381,8 +2411,10 @@ namespace sqlite_orm {
          *  as you specified in `make_storage` function call. A good point is that if you have no db file at all it will be created and 
          *  all tables also will be created with exact tables and columns you specified in `make_storage`, `make_table` and `make_column` call.
          *  The best practice is to call this function right after storage creation.
+         *  @param preserve affects on function behaviour in case it is needed to remove a column. If it is `false` so table will be dropped 
+         *  if there is column to remove, if `true` -  table is copies into another table, dropped and copied table is renamed with source table name.
          */
-        void sync_schema() {
+        void sync_schema(bool preserve = false) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2391,7 +2423,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            impl.sync_schema(db);
+            impl.sync_schema(db, preserve);
         }
         
         bool transaction(std::function<bool()> f) {
