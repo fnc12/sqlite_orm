@@ -379,8 +379,9 @@ for(auto &firstName : orderedFirstNames) {
 There are no explicit `up` and `down` functions that are used to be used in migrations. Instead `sqlite_orm` offers `sync_schema` function that takes responsibility of comparing actual db file schema with one you specified in `make_storage` call and if something is not equal it alters or drops/creates schema.
 
 ```c++
-
 storage.sync_schema();
+//  or
+storage.sync_schema(true);
 ```
 
 Please beware that `sync_schema` doesn't guarantee that data will be saved. It *tries* to save it only. Below you can see rules list that `sync_schema` follows during call:
@@ -388,11 +389,9 @@ Please beware that `sync_schema` doesn't guarantee that data will be saved. It *
 * every table from storage is compared with it's db analog and 
     * if table doesn't exist it is created
     * if table exists its colums are being compared with table_info from db and
-        * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
+        * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated if `preserve` is `false`, and table will be copied into temporary table without excess columns, source table will be dropped, copied table will be renamed to source table (sqlite remove column technique) if `preserve` is `true`. `preserve` is the first argument in `sync_schema` function. It's default value is `false`. Beware that setting it to `true` may take time for copying table rows.
         * if there are columns in storage that do not exist in db they will be added using 'ALTER TABLE ... ADD COLUMN ...' command and table data will not be dropped but if any of added columns is null but has not default value table will be dropped and recreated
         * if there is any column existing in both db and storage but differs by any of properties (type, pk, notnull) table will be dropped and recreated (dflt_value isn't checked cause there can be ambiguity in default values, please beware).
-
-The reason of this kinda weird behaviour is the fact that `sqlite3` doesn't have `DROP COLUMN` query but has `ADD COLUMN`. Of course one can use temporary table to save all data. Probably it will be implemented in next versions of `sqlite_orm` lib (with `bool preserve = false` argument probably).
 
 The best practice is to call this function right after storage creation.
 
