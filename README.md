@@ -333,6 +333,21 @@ for(auto &lastName : allLastNames) {
 cout << endl;
 ```
 
+Also you're able to select several column in a vector of tuples. Example:
+
+```c++
+//  `SELECT first_name, last_name FROM users WHERE id > 250 ORDER BY id`
+auto partialSelect = storage.select(columns(&User::firstName, &User::lastName),
+                                    where(greater_than(&User::id, 250)),
+                                    order_by(&User::id));
+cout << "partialSelect count = " << partialSelect.size() << endl;
+for(auto &t : partialSelect) {
+    auto &firstName = std::get<0>(t);
+    auto &lastName = std::get<1>(t);
+    cout << firstName << " " << lastName << endl;
+}
+```
+
 # ORDER BY support
 
 ORDER BY query option can be applied to `get_all` and `select` functions just like `where` but with `order_by` function. It can be mixed with WHERE in a single query. Examples:
