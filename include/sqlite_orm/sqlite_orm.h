@@ -237,6 +237,52 @@ namespace sqlite_orm {
     };
     
     /**
+     *  Used to print members mapped to objects.
+     */
+    template<class T>
+    struct field_printer {
+        std::string operator()(const T &t) const {
+            return std::to_string(t);
+        }
+    };
+    
+    template<>
+    struct field_printer<std::string> {
+        std::string operator()(const std::string &t) const {
+            return t;
+        }
+    };
+    
+    template<>
+    struct field_printer<std::nullptr_t> {
+        std::string operator()(const std::nullptr_t &) const {
+            return "null";
+        }
+    };
+    
+    template<class T>
+    struct field_printer<std::shared_ptr<T>> {
+        std::string operator()(const std::shared_ptr<T> &t) const {
+            if(t){
+                return field_printer<T>()(*t);
+            }else{
+                return field_printer<std::nullptr_t>()(nullptr);
+            }
+        }
+    };
+    
+    template<class T>
+    struct field_printer<std::unique_ptr<T>> {
+        std::string operator()(const std::unique_ptr<T> &t) const {
+            if(t){
+                return field_printer<T>()(*t);
+            }else{
+                return field_printer<std::nullptr_t>()(nullptr);
+            }
+        }
+    };
+    
+    /**
      *  Column builder function. You should use it to create columns and not constructor.
      */
     template<class O, class T, class ...Op>
@@ -298,16 +344,6 @@ namespace sqlite_orm {
         
         binary_condition(L l_, R r_):l(l_),r(r_){}
     };
-    
-    /*template<typename L, typename R>
-    std::true_type is_base_of_binary_condition_impl( binary_condition<L, R> const volatile& );
-    
-    std::false_type is_base_of_binary_condition_impl( ... );
-    
-    template<typename T>
-    bool is_base_of_binary_condition(T&& t) {
-        return decltype(is_base_of_binary_condition_impl(t))::value;
-    }*/
     
     template<class L, class R>
     struct is_equal_t : public binary_condition<L, R> {
@@ -1942,8 +1978,9 @@ namespace sqlite_orm {
             auto columnsCount = this->table.columns_count();
             auto index = 0;
             this->table.for_each_column([&] (auto c) {
+                typedef typename decltype(c)::field_type field_type;
                 auto &value = o.*c.member_pointer;
-                ss << c.name << " : '" << value << "'";
+                ss << c.name << " : '" << field_printer<field_type>()(value) << "'";
                 if(index < columnsCount - 1) {
                     ss << ", ";
                 }else{
