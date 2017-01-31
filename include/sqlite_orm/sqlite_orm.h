@@ -43,9 +43,23 @@ namespace sqlite_orm {
         using tuple_contains_type = typename has_type<T, Tuple>::type;
     }
     
-    struct autoincrement {};
+    template<class T>
+    struct field_extractor;
     
-//    struct not_null {};
+    template<class F, class O>
+    struct field_extractor<F O::*> {
+        typedef F type;
+    };
+    
+    template<class ...Args>
+    struct object_type_extractor;
+    
+    template<class F, class O, class ...Args>
+    struct object_type_extractor<F O::*, Args...> {
+        typedef O type;
+    };
+    
+    struct autoincrement {};
     
     struct primary_key {};
     
@@ -390,11 +404,6 @@ namespace sqlite_orm {
         }
     };
     
-    /*template<class C>
-    inline negated_condition_t<C> operator!(const C &c) {
-        return {c};
-    }*/
-    
     template<class L, class E>
     in_t<L, E> in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values)};
@@ -404,11 +413,6 @@ namespace sqlite_orm {
     in_t<L, E> in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values)};
     }
-    
-    /*template<class L, class E, class O>
-    in_t<L, E> in(L l, O beg, O en) {
-        return {std::move(l), std::vector<E>(beg, en)};
-    }*/
     
     template<class L, class R>
     is_equal_t<L, R> is_equal(L l, R r) {
@@ -452,7 +456,6 @@ namespace sqlite_orm {
     
     template<class O>
     struct order_by_t {
-        //F O::*m;
         O o;
     };
     
@@ -479,6 +482,43 @@ namespace sqlite_orm {
     template<class O>
     desc_t<O> desc(O o) {
         return {o};
+    }
+    
+    template<class ...Args>
+    struct columns_t {
+        
+        template<class L>
+        void for_each(L l) {
+            //..
+        }
+        
+        int count() {
+            return 0;
+        }
+    };
+    
+    template<class F, class O, class ...Args>
+    struct columns_t<F O::*, Args...> : public columns_t<Args...> {
+        F O::*m;
+        
+        columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
+        
+        template<class L>
+        void for_each(L l) {
+            l(this->m);
+            Super::for_each(l);
+        }
+        
+        int count() {
+            return 1 + Super::count();
+        }
+    private:
+        typedef columns_t<Args...> Super;
+    };
+    
+    template<class ...Args>
+    columns_t<Args...> columns(Args ...args) {
+        return {args...};
     }
     
     struct table_info {
@@ -872,6 +912,38 @@ namespace sqlite_orm {
         }
     };
     
+    template<class ...Args>
+    struct row_extrator<std::tuple<Args...>> {
+        
+        std::tuple<Args...> extract(char **argv) {
+            std::tuple<Args...> res;
+            this->extract<std::tuple_size<decltype(res)>::value>(res, argv);
+            return res;
+        }
+        
+    protected:
+        
+        template<size_t I, typename std::enable_if<I != 0>::type * = nullptr>
+        void extract(std::tuple<Args...> &t, char **argv) {
+            typedef typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type tuple_type;
+            std::get<I - 1>(t) = row_extrator<tuple_type>().extract(argv[I - 1]);
+//            if(I > -1) {
+                this->extract<I - 1>(t, argv);
+//            }
+        }
+        
+        template<size_t I, typename std::enable_if<I == 0>::type * = nullptr>
+        void extract(std::tuple<Args...> &t, char **argv) {
+            //..
+        }
+    };
+    
+    /*template<>
+    template<>
+    void row_extrator<>::extract<0>(std::tuple<> &t, char **argv) {
+        //..
+    }*/
+    
     /**
      *  Exeption thrown if nothing was found in database with specified id.
      */
@@ -969,6 +1041,15 @@ namespace sqlite_orm {
         
         template<class F, class O, class ...Args>
         std::vector<F> select(F O::*m, sqlite3 *db, std::nullptr_t) {
+            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in select");
+        }
+        
+        template<
+        class ...Args,
+        class R = std::tuple<typename field_extractor<Args>::type...>,
+        class O = typename object_type_extractor<Args...>::type,
+        class ...Conds>
+        std::vector<R> select(sqlite3 *db, columns_t<Args...> cols, std::nullptr_t, Conds ...conds) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in select");
         }
         
@@ -1321,6 +1402,61 @@ namespace sqlite_orm {
                     throw std::runtime_error("column not found");
                 }
 //            }, filename);
+            return res;
+        }
+        
+        template<
+        class ...Args,
+        class R = std::tuple<typename field_extractor<Args>::type...>,
+        class HH = typename H::object_type,
+        class O = typename object_type_extractor<Args...>::type,
+        class ...Conds>
+        std::vector<R> select(sqlite3 *db, columns_t<Args...> cols, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Conds ...conds) {
+            return Super::select(db, cols, nullptr, conds...);
+        }
+        
+        template<
+        class ...Args,
+        class R = std::tuple<typename field_extractor<Args>::type...>,
+        class HH = typename H::object_type,
+        class O = typename object_type_extractor<Args...>::type,
+        class ...Conds>
+        std::vector<R> select(sqlite3 *db, columns_t<Args...> cols, typename std::enable_if<std::is_same<O, HH>::value>::type *, Conds ...conds) {
+            std::vector<R> res;
+            std::stringstream ss;
+            ss << "SELECT ";
+            std::vector<std::string> columnNames;
+            columnNames.reserve(cols.count());
+            cols.for_each([&](auto &m) {
+                auto columnName = this->table.find_column_name(m);
+                if(columnName.length()){
+                    columnNames.push_back(columnName);
+                }else{
+                    throw std::runtime_error("column not found");
+                }
+            });
+            for(auto i = 0; i < columnNames.size(); ++i) {
+                ss << columnNames[i];
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                }else{
+                    ss << " ";
+                }
+            }
+            ss << " FROM " << this->table.name << " ";
+            this->process_conditions(ss, conds...);
+            auto query = ss.str();
+            auto rc = sqlite3_exec(db,
+                                   query.c_str(),
+                                   [](void *data, int argc, char **argv,char **azColName) -> int {
+                                       auto &res = *(std::vector<R>*)data;
+                                       auto value = row_extrator<R>().extract(argv);
+                                       res.push_back(value);
+                                       return 0;
+                                   }, &res, nullptr);
+            if(rc != SQLITE_OK) {
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
             return res;
         }
         
@@ -2337,6 +2473,19 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
             return impl.select(m, db, nullptr, args...);
+        }
+        
+        template<class ...Args, class R = std::tuple<typename field_extractor<Args>::type...>, class ...Conds>
+        std::vector<R> select(columns_t<Args...> cols, Conds ...conds) {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return impl.select(db, cols, nullptr, conds...);
         }
         
         template<class O>
