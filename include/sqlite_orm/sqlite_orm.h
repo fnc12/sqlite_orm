@@ -290,6 +290,33 @@ namespace sqlite_orm {
         return {name, m, std::make_tuple(options...)};
     }
     
+    struct limit_t {
+        int lim;
+        bool has_offset = false;
+        bool offset_is_implicit = false;
+        int off = 0;
+    };
+    
+    struct offset_t {
+        int off;
+    };
+    
+    offset_t offset(int off) {
+        return {off};
+    }
+    
+    limit_t limit(int lim) {
+        return {lim};
+    }
+    
+    limit_t limit(int off, int lim) {
+        return {lim, true, true, off};
+    }
+    
+    limit_t limit(int lim, offset_t offt) {
+        return {lim, true, false, offt.off };
+    }
+    
     struct condition_t {};
     
     template<class C>
@@ -1808,6 +1835,20 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(orderBy.o);
             ss << columnName << " ";
             return ss.str();
+        }
+        
+        void process_single_condition(std::stringstream &ss, limit_t limt) {
+            ss << "LIMIT ";
+            if(limt.has_offset) {
+                if(limt.offset_is_implicit){
+                    ss << limt.off << ", " << limt.lim;
+                }else{
+                    ss << limt.lim << " OFFSET " << limt.off;
+                }
+            }else{
+                ss << limt.lim;
+            }
+            ss << " ";
         }
         
         template<class C>
