@@ -138,7 +138,7 @@ Also we can extract all objects into `std::vector`.
 auto allUsers = storage.get_all<User>();
 cout << "allUsers (" << allUsers.size() << "):" << endl;
 for(auto &user : allUsers) {
-    cout << storage.dump(user) << endl; //  dump returns std::string with json-like style object info. For example: { id : '1', first_name : 'Jonh', last_name : 'Doe', birth_date : '664416000', image_url : '0x10090c3d8', type_id : '3' }
+    cout << storage.dump(user) << endl; //  dump returns std::string with json-like style object info. For example: { id : '1', first_name : 'Jonh', last_name : 'Doe', birth_date : '664416000', image_url : 'https://cdn1.iconfinder.com/data/icons/man-icon-set/100/man_icon-21-512.png', type_id : '3' }
 }
 ```
 
