@@ -10,7 +10,7 @@ SQLite ORM light header only library for modern C++
 * **Transactions support**
 * **Migrations functionality**
 * **Powerful conditions**
-* **ORDER BY support**
+* **ORDER BY and LIMIT, OFFSET support**
 * **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
@@ -388,6 +388,47 @@ for(auto &firstName : orderedFirstNames) {
     cout << "firstName = " << firstName << endl;
 }
 ```
+
+# LIMIT and OFFSET
+
+There are three available versions of `LIMIT`/`OFFSET` options:
+
+- LIMIT %limit%
+- LIMIT %limit% OFFSET %offset%
+- LIMIT %offset%, %limit%
+
+All these versions available with the same interface:
+
+```c++
+//  `SELECT first_name, last_name FROM users WHERE id > 250 ORDER BY id LIMIT 5`
+auto limited5 = storage.get_all<User>(where(greater_than(&User::id, 250)),
+                                      order_by(&User::id),
+                                      limit(5));
+cout << "limited5 count = " << limited5.size() << endl;
+for(auto &user : limited5) {
+    cout << storage.dump(user) << endl;
+}
+
+//  `SELECT first_name, last_name FROM users WHERE id > 250 ORDER BY id LIMIT 5, 10`
+auto limited5comma10 = storage.get_all<User>(where(greater_than(&User::id, 250)),
+                                             order_by(&User::id),
+                                             limit(5, 10));
+cout << "limited5comma10 count = " << limited5comma10.size() << endl;
+for(auto &user : limited5comma10) {
+    cout << storage.dump(user) << endl;
+}
+
+//  `SELECT first_name, last_name FROM users WHERE id > 250 ORDER BY id LIMIT 5 OFFSET 10`
+auto limit5offset10 = storage.get_all<User>(where(greater_than(&User::id, 250)),
+                                            order_by(&User::id),
+                                            limit(5, offset(10)));
+cout << "limit5offset10 count = " << limit5offset10.size() << endl;
+for(auto &user : limit5offset10) {
+    cout << storage.dump(user) << endl;
+}
+```
+
+Please beware that queries `LIMIT 5, 10` and `LIMIT 5 OFFSET 10` mean different. `LIMIT 5, 10` means `LIMIT 10 OFFSET 5`.
 
 # Migrations functionality
 
