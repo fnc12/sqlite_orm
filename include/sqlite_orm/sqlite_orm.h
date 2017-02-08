@@ -1102,6 +1102,16 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in avg");
         }
         
+        template<class F, class O>
+        std::shared_ptr<F> sum(F O::*m, sqlite3 *db) {
+            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in sum");
+        }
+        
+        template<class F, class O>
+        double total(F O::*m, sqlite3 *db) {
+            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in total");
+        }
+        
         template<class F, class O, class ...Args>
         std::vector<F> select(F O::*m, sqlite3 *db, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in select");
@@ -1326,6 +1336,70 @@ namespace sqlite_orm {
                 }
             }else {
                 throw std::runtime_error(sqlite3_errmsg(db));
+            }
+            return res;
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        double total(F O::*m, sqlite3 *db,  typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            return Super::total(m, db);
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        double total(F O::*m, sqlite3 *db,  typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            double res;
+            std::stringstream ss;
+            ss << "SELECT TOTAL(";
+            auto columnName = this->table.find_column_name(m);
+            if(columnName.length()){
+                ss << columnName << ") FROM "<< this->table.name;
+                auto query = ss.str();
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &res = *(double*)data;
+                                           if(argc){
+                                               res = row_extrator<double>().extract(argv[0]);
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            }else{
+                throw std::runtime_error("column not found");
+            }
+            return res;
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            return Super::sum(m, db);
+        }
+        
+        template<class F, class O, class HH = typename H::object_type>
+        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::shared_ptr<F> res;
+            std::stringstream ss;
+            ss << "SELECT SUM(";
+            auto columnName = this->table.find_column_name(m);
+            if(columnName.length()){
+                ss << columnName << ") FROM "<< this->table.name;
+                auto query = ss.str();
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &res = *(std::shared_ptr<F>*)data;
+                                           if(argc){
+                                               res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            }else{
+                throw std::runtime_error("column not found");
             }
             return res;
         }
@@ -2538,6 +2612,32 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
             return impl.min(m, db);
+        }
+        
+        template<class F, class O>
+        std::shared_ptr<F> sum(F O::*m) {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return impl.sum(m, db);
+        }
+        
+        template<class F, class O>
+        double total(F O::*m) {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return impl.total(m, db);
         }
         
         template<class F, class O, class ...Args>
