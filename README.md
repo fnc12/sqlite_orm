@@ -186,11 +186,23 @@ if(auto minId = storage.min(&User::id)){    //  maps to 'select min(id) from use
     cout << "minId is null" << endl;
 }
 
-if(auto minLastName = storage.min(&User::lastName)){    //  maps to 'select min(last_name) from users'
-    cout << "minLastName = " << *minLastName << endl;   //  minLastName = Doe (minLastName is std::shared_ptr<std::string>)
+//  SELECT MIN(last_name) FROM users
+if(auto minLastName = storage.min(&User::lastName)){
+    cout << "minLastName = " << *minLastName << endl;   //  minLastName = Doe
 }else{
     cout << "minLastName is null" << endl;
 }
+
+//  SELECT SUM(id) FROM users
+if(auto sumId = storage.sum(&User::id)){    //  sumId is std::shared_ptr<int>
+    cout << "sumId = " << *sumId << endl;
+}else{
+    cout << "sumId is null" << endl;
+}
+
+//  SELECT TOTAL(id) FROM users
+auto totalId = storage.total(&User::id);
+cout << "totalId = " << totalId << endl;    //  totalId is double (always)
 
 ```
 
