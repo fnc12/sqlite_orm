@@ -2380,13 +2380,13 @@ namespace sqlite_orm {
      *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
      */
     template<class ...Ts>
-    struct storage {
+    struct storage_t {
         typedef storage_impl<Ts...> impl_type;
         
         /**
          *  @param filename_ database filename.
          */
-        storage(const std::string &filename_, impl_type impl_):filename(filename_), impl(impl_){}
+        storage_t(const std::string &filename_, impl_type impl_):filename(filename_), impl(impl_){}
         
         template<class O, class ...Args>
         void remove_all(Args ...args) {
@@ -2794,7 +2794,7 @@ namespace sqlite_orm {
     };
     
     template<class ...Ts>
-    storage<Ts...> make_storage(const std::string &filename, Ts ...tables) {
+    storage_t<Ts...> make_storage(const std::string &filename, Ts ...tables) {
         return {filename, storage_impl<Ts...>(tables...)};
     }
     
