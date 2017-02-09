@@ -154,7 +154,7 @@ namespace sqlite_orm {
     struct type_is_nullable<std::unique_ptr<T>> : public std::true_type {};
     
     template<class O, class T, class ...Op>
-    struct column {
+    struct column_t {
         typedef O object_type;
         typedef T field_type;
         typedef std::tuple<Op...> options_type;
@@ -286,7 +286,7 @@ namespace sqlite_orm {
      *  Column builder function. You should use it to create columns and not constructor.
      */
     template<class O, class T, class ...Op>
-    column<O, T, Op...> make_column(const std::string &name, T O::*m, Op ...options){
+    column_t<O, T, Op...> make_column(const std::string &name, T O::*m, Op ...options){
         return {name, m, std::make_tuple(options...)};
     }
     
@@ -715,7 +715,7 @@ namespace sqlite_orm {
      *  Table interface class. Implementation is hidden in `table_impl` class.
      */
     template<class ...Cs>
-    struct table {
+    struct table_t {
         typedef table_impl<Cs...> impl_type;
         typedef typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type object_type;
         
@@ -846,7 +846,7 @@ namespace sqlite_orm {
      *  cause table class is templated and its constructing too (just like std::make_shared or std::make_pair).
      */
     template<class ...Cs>
-    table<Cs...> make_table(const std::string &name, Cs ...args) {
+    table_t<Cs...> make_table(const std::string &name, Cs ...args) {
         return {name, table_impl<Cs...>(args...)};
     }
     
