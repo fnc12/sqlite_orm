@@ -1,8 +1,6 @@
 # SQLite ORM
 SQLite ORM light header only library for modern C++
 
-![GIF with mapped queries table](http://imgur.com/a/37TOs)
-
 # Advantages
 
 * **Intuitive syntax**
