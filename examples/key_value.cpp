@@ -39,7 +39,7 @@ auto& getStorage() {
                                                   make_column("key",
                                                               &KeyValue::key),
                                                   make_column("value",
-                                                              &KeyValue::value)));;
+                                                              &KeyValue::value)));
     return storage;
 }
 

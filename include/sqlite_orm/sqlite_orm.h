@@ -301,19 +301,19 @@ namespace sqlite_orm {
         int off;
     };
     
-    offset_t offset(int off) {
+    inline offset_t offset(int off) {
         return {off};
     }
     
-    limit_t limit(int lim) {
+    inline limit_t limit(int lim) {
         return {lim};
     }
     
-    limit_t limit(int off, int lim) {
+    inline limit_t limit(int off, int lim) {
         return {lim, true, true, off};
     }
     
-    limit_t limit(int lim, offset_t offt) {
+    inline limit_t limit(int lim, offset_t offt) {
         return {lim, true, false, offt.off };
     }
     
@@ -1256,13 +1256,17 @@ namespace sqlite_orm {
             auto index = 0;
             this->table.for_each_column([columnsCount, &index, &ss] (auto c) {
                 ss << c.name << " ";
-                ss << type_printer<typename decltype(c)::field_type>().print() << " ";
+                typedef typename decltype(c)::field_type field_type;
+                ss << type_printer<field_type>().print() << " ";
                 if(c.template has<primary_key>()) {
                     ss << "PRIMARY KEY ";
                 }
                 if(c.template has<autoincrement>()) {
                     ss << "AUTOINCREMENT ";
                 }
+                /*if(c.template has<default_t<field_type>>()){
+                    ff
+                }*/
                 if(c.not_null()){
                     ss << "NOT NULL ";
                 }
@@ -1323,7 +1327,7 @@ namespace sqlite_orm {
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                 auto index = 1;
-                this->table.for_each_column([&, &o = o] (auto c) {
+                this->table.for_each_column([&o, &index, &stmt] (auto c) {
                     if(!c.template has<primary_key>()){
                         auto &value = o.*c.member_pointer;
                         statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
