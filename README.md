@@ -323,21 +323,25 @@ storage.remove_all<User>(where(lesser_than(&User::id, 100)));
 If you need to extract only a single column (`select %column_name% from %table_name% where %conditions%`) you can use a non-CRUD `select` function:
 
 ```c++
-auto allIds = storage.select(&User::id);    //  maps to `select id from users`
+
+//  SELECT id FROM users
+auto allIds = storage.select(&User::id);    
 cout << "allIds count = " << allIds.size() << endl; //  allIds is std::vector<int>
 for(auto &id : allIds) {
     cout << id << " ";
 }
 cout << endl;
 
-auto doeIds = storage.select(&User::id, where(is_equal(&User::lastName, "Doe")));   //  maps to `select id from users where last_name = 'Doe'`
+//  SELECT id FROM users WHERE last_name = 'Doe'
+auto doeIds = storage.select(&User::id, where(is_equal(&User::lastName, "Doe")));
 cout << "doeIds count = " << doeIds.size() << endl; //  doeIds is std::vector<int>
 for(auto &doeId : doeIds) {
     cout << doeId << " ";
 }
 cout << endl;
 
-auto allLastNames = storage.select(&User::lastName, where(lesser_than(&User::id, 300)));    //  maps to `select last_name from users where id < 300`
+//  SELECT last_name FROM users WHERE id < 300
+auto allLastNames = storage.select(&User::lastName, where(lesser_than(&User::id, 300)));    
 cout << "allLastNames count = " << allLastNames.size() << endl; //  allLastNames is std::vector<std::string>
 for(auto &lastName : allLastNames) {
     cout << lastName << " ";
@@ -412,7 +416,7 @@ There are three available versions of `LIMIT`/`OFFSET` options:
 All these versions available with the same interface:
 
 ```c++
-//  `SELECT first_name, last_name FROM users WHERE id > 250 ORDER BY id LIMIT 5`
+//  `SELECT * FROM users WHERE id > 250 ORDER BY id LIMIT 5`
 auto limited5 = storage.get_all<User>(where(greater_than(&User::id, 250)),
                                       order_by(&User::id),
                                       limit(5));
@@ -421,7 +425,7 @@ for(auto &user : limited5) {
     cout << storage.dump(user) << endl;
 }
 
-//  `SELECT first_name, last_name FROM users WHERE id > 250 ORDER BY id LIMIT 5, 10`
+//  `SELECT * FROM users WHERE id > 250 ORDER BY id LIMIT 5, 10`
 auto limited5comma10 = storage.get_all<User>(where(greater_than(&User::id, 250)),
                                              order_by(&User::id),
                                              limit(5, 10));
@@ -430,7 +434,7 @@ for(auto &user : limited5comma10) {
     cout << storage.dump(user) << endl;
 }
 
-//  `SELECT first_name, last_name FROM users WHERE id > 250 ORDER BY id LIMIT 5 OFFSET 10`
+//  `SELECT * FROM users WHERE id > 250 ORDER BY id LIMIT 5 OFFSET 10`
 auto limit5offset10 = storage.get_all<User>(where(greater_than(&User::id, 250)),
                                             order_by(&User::id),
                                             limit(5, offset(10)));
