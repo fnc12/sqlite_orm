@@ -467,6 +467,34 @@ namespace sqlite_orm {
         }
     };
     
+    template<class T>
+    struct is_null_t {
+        T t;
+        
+        negated_condition_t<is_null_t<T>> operator!() const {
+            return {*this};
+        }
+    };
+    
+    template<class T>
+    struct is_not_null_t {
+        T t;
+        
+        negated_condition_t<is_not_null_t<T>> operator!() const {
+            return {*this};
+        }
+    };
+    
+    template<class T>
+    is_not_null_t<T> is_not_null(T t) {
+        return {t};
+    }
+    
+    template<class T>
+    is_null_t<T> is_null(T t) {
+        return {t};
+    }
+    
     template<class L, class E>
     in_t<L, E> in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values)};
@@ -1859,6 +1887,20 @@ namespace sqlite_orm {
             return ss.str();
         }
         
+        template<class T>
+        std::string process_where(is_null_t<T> &c) {
+            std::stringstream ss;
+            ss << this->string_from_expression(c.t) << " IS NULL ";
+            return ss.str();
+        }
+        
+        template<class T>
+        std::string process_where(is_not_null_t<T> &c) {
+            std::stringstream ss;
+            ss << this->string_from_expression(c.t) << " IS NOT NULL ";
+            return ss.str();
+        }
+        
         template<class C>
         std::string process_where(negated_condition_t<C> &c) {
             std::stringstream ss;
@@ -2033,7 +2075,7 @@ namespace sqlite_orm {
         template<class O, class HH = typename H::object_type>
         void update(const O &o, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::stringstream ss;
-            ss << "update " << this->table.name << " set ";
+            ss << "UPDATE " << this->table.name << " SET ";
             std::vector<std::string> setColumnNames;
             this->table.for_each_column( [&] (auto c) {
                 if(!c.template has<primary_key>()) {
@@ -2048,12 +2090,12 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-            ss << "where ";
+            ss << "WHERE ";
             auto primaryKeyColumnNames = this->table.template column_names_with<primary_key>();
             for(auto i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 ss << primaryKeyColumnNames[i] << " = ?";
                 if(i < primaryKeyColumnNames.size() - 1) {
-                    ss << " and ";
+                    ss << " AND ";
                 }else{
                     ss << " ";
                 }
@@ -2129,7 +2171,7 @@ namespace sqlite_orm {
             for(auto i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 ss << primaryKeyColumnNames[i] << " =  ?";
                 if(i < primaryKeyColumnNames.size() - 1) {
-                    ss << " and ";
+                    ss << " AND ";
                 }else{
                     ss << " ";
                 }
