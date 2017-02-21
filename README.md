@@ -303,6 +303,8 @@ Looks like magic but it works very simple. Functions
 * greater_or_equal
 * lesser_than
 * lesser_or_equal
+* is_null
+* is_not_null
 
 simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or literal. Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "where" keyword before condition text. Next resulted string appends to query string and is being processed further.
 
@@ -347,6 +349,22 @@ for(auto &lastName : allLastNames) {
     cout << lastName << " ";
 }
 cout << endl;
+
+//  SELECT id FROM users WHERE image_url IS NULL
+auto idsWithoutUrls = storage.select(&User::id, where(is_null(&User::imageUrl)));
+for(auto id : idsWithoutUrls) {
+    cout << "id without image url " << id << endl;
+}
+
+//  SELECT id FROM users WHERE image_url IS NOT NULL
+auto idsWithUrl = storage.select(&User::id, where(is_not_null(&User::imageUrl)));
+for(auto id : idsWithUrl) {
+    cout << "id with image url " << id << endl;
+}
+auto idsWithUrl2 = storage.select(&User::id, where(not is_null(&User::imageUrl)));
+assert(std::equal(idsWithUrl2.begin(),
+                  idsWithUrl2.end(),
+                  idsWithUrl.begin()));
 ```
 
 Also you're able to select several column in a vector of tuples. Example:
