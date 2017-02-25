@@ -2432,7 +2432,14 @@ namespace sqlite_orm {
         /**
          *  @param filename_ database filename.
          */
-        storage_t(const std::string &filename_, impl_type impl_):filename(filename_), impl(impl_){}
+        storage_t(const std::string &filename_, impl_type impl_):
+        filename(filename_),
+        impl(impl_),
+        inMemory(filename_.empty() or filename_ == ":memory:"){
+            if(inMemory){
+                currentTransaction = std::make_shared<database_connection>(this->filename);
+            }
+        }
         
         template<class O, class ...Args>
         void remove_all(Args ...args) {
@@ -2564,7 +2571,6 @@ namespace sqlite_orm {
          */
         template<class F, class O>
         int count(F O::*m) {
-//            database_connection connection(this->filename);
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2583,7 +2589,6 @@ namespace sqlite_orm {
          */
         template<class F, class O>
         double avg(F O::*m) {
-//            database_connection connection(this->filename);
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2602,7 +2607,6 @@ namespace sqlite_orm {
          */
         template<class F, class O>
         std::string group_concat(F O::*m) {
-//            database_connection connection(this->filename);
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2621,7 +2625,6 @@ namespace sqlite_orm {
          */
         template<class F, class O>
         std::string group_concat(F O::*m, const std::string &y) {
-//            database_connection connection(this->filename);
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2635,7 +2638,6 @@ namespace sqlite_orm {
         
         template<class F, class O>
         std::shared_ptr<F> max(F O::*m) {
-//            database_connection connection(this->filename);
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2686,6 +2688,9 @@ namespace sqlite_orm {
             return impl.total(m, db);
         }
         
+        /**
+         *  Select a single column into std::vector<T>.
+         */
         template<class F, class O, class ...Args>
         std::vector<F> select(F O::*m, Args ...args) {
             std::shared_ptr<database_connection> connection;
@@ -2699,6 +2704,9 @@ namespace sqlite_orm {
             return impl.select(m, db, nullptr, args...);
         }
         
+        /**
+         *  Select several columns into std::vector<std::tuple<...>>.
+         */
         template<class ...Args, class R = std::tuple<typename field_extractor<Args>::type...>, class ...Conds>
         std::vector<R> select(columns_t<Args...> cols, Conds ...conds) {
             std::shared_ptr<database_connection> connection;
@@ -2712,6 +2720,10 @@ namespace sqlite_orm {
             return impl.select(db, cols, nullptr, conds...);
         }
         
+        /**
+         *  Returns a string representation of object of a class mapped to the storage.
+         *  Type of string has json-like style.
+         */
         template<class O>
         std::string dump(const O &o) {
             std::shared_ptr<database_connection> connection;
@@ -2758,6 +2770,9 @@ namespace sqlite_orm {
             impl.drop_table(tableName, db);
         }
         
+        /**
+         *  sqlite3_changes function.
+         */
         int changes() {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
@@ -2768,6 +2783,21 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
             return sqlite3_changes(db);
+        }
+        
+        /**
+         *  sqlite3_total_changes function.
+         */
+        int total_changes() {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return sqlite3_total_changes(db);
         }
         
         /**
@@ -2808,35 +2838,48 @@ namespace sqlite_orm {
             }else{
                 impl.rollback(db);
             }
-            this->currentTransaction = nullptr;
+            if(!inMemory){
+                this->currentTransaction = nullptr;
+            }
             return shouldCommit;
         }
         
         void begin_transaction() {
-            if(this->currentTransaction) throw std::runtime_error("cannot start a transaction within a transaction");
-            this->currentTransaction = std::make_shared<database_connection>(this->filename);
+            if(!inMemory){
+                if(this->currentTransaction) throw std::runtime_error("cannot start a transaction within a transaction");
+                this->currentTransaction = std::make_shared<database_connection>(this->filename);
+            }
             auto db = this->currentTransaction->get_db();
             impl.begin_transaction(db);
         }
         
         void commit() {
-            if(!this->currentTransaction) throw std::runtime_error("cannot commit - no transaction is active");
+            if(!inMemory){
+                if(!this->currentTransaction) throw std::runtime_error("cannot commit - no transaction is active");
+            }
             auto db = this->currentTransaction->get_db();
             impl.commit(db);
-            this->currentTransaction = nullptr;
+            if(!inMemory){
+                this->currentTransaction = nullptr;
+            }
         }
         
         void rollback() {
-            if(!this->currentTransaction) throw std::runtime_error("cannot rollback - no transaction is active");
+            if(!inMemory){
+                if(!this->currentTransaction) throw std::runtime_error("cannot rollback - no transaction is active");
+            }
             auto db = this->currentTransaction->get_db();
             impl.rollback(db);
-            this->currentTransaction = nullptr;
+            if(!inMemory){
+                this->currentTransaction = nullptr;
+            }
         }
         
     protected:
         std::string filename;
         impl_type impl;
         std::shared_ptr<database_connection> currentTransaction;
+        const bool inMemory;
     };
     
     template<class ...Ts>
