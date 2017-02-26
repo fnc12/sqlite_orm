@@ -564,6 +564,8 @@ To manage in memory database just provide `:memory:` or `""` instead as filename
 
 To work well your data model class must be default constructable and must not have const fields mapped to database cause they are assigned during queries. Otherwise code won't compile on line with member assignment operator.
 
+For more details please check the project [wiki](https://github.com/fnc12/sqlite_orm/wiki).
+
 # Installation
 
 Just put `include/sqlite_orm/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no normal dependency manager for C++ yet.
