@@ -3,6 +3,7 @@ SQLite ORM light header only library for modern C++
 
 # Advantages
 
+* **No raw string queries**
 * **Intuitive syntax**
 * **Built with modern C++14 features (no macros)**
 * **CRUD support**
@@ -214,7 +215,8 @@ You also can select objects with custom where conditions with `=`, `!=`, `>`, `>
 For example: let's select users with id lesser then 10:
 
 ```c++
-auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10))); //  maps to 'select * from users where ( id < 10 )`
+'SELECT * FROM users WHERE id < 10`
+auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10)));
 cout << "idLesserThan10 count = " << idLesserThan10.size() << endl;
 for(auto &user : idLesserThan10) {
     cout << storage.dump(user) << endl;
@@ -224,7 +226,8 @@ for(auto &user : idLesserThan10) {
 Or select all users who's first name is not equal "John":
 
 ```c++
-auto notJohn = storage.get_all<User>(where(is_not_equal(&User::firstName, "John")));    //  maps to 'select * from users where ( first_name != 'John' ) '
+'SELECT * FROM users WHERE first_name != 'John' '
+auto notJohn = storage.get_all<User>(where(is_not_equal(&User::firstName, "John")));
 cout << "notJohn count = " << notJohn.size() << endl;
 for(auto &user : notJohn) {
     cout << storage.dump(user) << endl;
