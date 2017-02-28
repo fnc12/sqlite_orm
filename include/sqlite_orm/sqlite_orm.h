@@ -1120,13 +1120,13 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in remove");
         }
         
-        template<class O>
-        int count(sqlite3 *db, std::nullptr_t) {
+        template<class O, class ...Args>
+        int count(sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in count");
         }
         
-        template<class F, class O>
-        double avg(F O::*m, sqlite3 *db, std::nullptr_t) {
+        template<class F, class O, class ...Args>
+        double avg(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in avg");
         }
         
@@ -1154,8 +1154,8 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in select");
         }
         
-        template<class F, class O>
-        int count(F O::*m, sqlite3 *db, std::nullptr_t) {
+        template<class F, class O, class ...Args>
+        int count(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in count");
         }
         
@@ -1631,7 +1631,7 @@ namespace sqlite_orm {
         
         template<class F, class O, class HH = typename H::object_type, class ...Args>
         std::vector<F> select(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::select(m, db, nullptr);
+            return Super::select(m, db, nullptr, args...);
         }
         
         template<class F, class O, class HH = typename H::object_type, class ...Args>
@@ -1661,19 +1661,20 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        double avg(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class HH = typename H::object_type, class ...Args>
+        double avg(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
             return Super::template avg(m, db);
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        double avg(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class HH = typename H::object_type, class ...Args>
+        double avg(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             double res = 0;
             std::stringstream ss;
             ss << "SELECT avg(";
             auto columnName = this->table.find_column_name(m);
             if(columnName.length()){
-                ss << columnName << ") from "<< this->table.name;
+                ss << columnName << ") from "<< this->table.name << " ";
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1693,31 +1694,33 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        int count(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            return Super::template count(m, db);
+        template<class F, class O, class HH = typename H::object_type, class ...Args>
+        int count(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
+            return Super::template count(m, db, args...);
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        int count(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class HH = typename H::object_type, class ...Args>
+        int count(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             int res = 0;
             std::stringstream ss;
-            ss << "select count(";
+            ss << "SELECT COUNT(";
             auto columnName = this->table.find_column_name(m);
             if(columnName.length()){
-                ss << columnName << ") from "<< this->table.name;
+                ss << columnName << ") FROM "<< this->table.name << " ";
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
-                data_t<int, storage_impl*> data{this, &res};
+//                data_t<int, storage_impl*> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &d = *(data_t<int, storage_impl*>*)data;
-                                           auto &res = *d.res;
+//                                           auto &d = *(data_t<int, storage_impl*>*)data;
+//                                           auto &res = *d.res;
+                                           auto &res = *(int*)data;
                                            if(argc){
                                                res = std::atoi(argv[0]);
                                            }
                                            return 0;
-                                       }, &data, nullptr);
+                                       }, &res, nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
@@ -1727,32 +1730,34 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class O, class HH = typename H::object_type>
-        int count(sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            return Super::template count<O>(db, nullptr);
+        template<class O, class HH = typename H::object_type, class ...Args>
+        int count(sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
+            return Super::template count<O>(db, nullptr, args...);
         }
         
-        template<class O, class HH = typename H::object_type>
-        int count(sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class O, class HH = typename H::object_type, class ...Args>
+        int count(sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             int res = 0;
-//            this->withDatabase([&](auto db) {
-                auto query = "select count(*) from " + this->table.name;
-                data_t<int, storage_impl*> data{this, &res};
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &d = *(data_t<int, storage_impl*>*)data;
-                                           auto &res = *d.res;
-//                                           auto t = d.t; 
-                                           if(argc){
-                                               res = std::atoi(argv[0]);
-                                           }
-                                           return 0;
-                                       }, &data, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-//            }, filename);
+            std::stringstream ss;
+            ss << "SELECT COUNT(*) FROM " << this->table.name << " ";
+//            auto query =  + this->table.name;
+            this->process_conditions(ss, args...);
+            auto query = ss.str();
+//            data_t<int, storage_impl*> data{this, &res};
+            auto rc = sqlite3_exec(db,
+                                   query.c_str(),
+                                   [](void *data, int argc, char **argv,char **azColName)->int{
+//                                       auto &d = *(data_t<int, storage_impl*>*)data;
+//                                       auto &res = *d.res;
+                                       auto &res = *(int*)data;
+                                       if(argc){
+                                           res = std::atoi(argv[0]);
+                                       }
+                                       return 0;
+                                   }, &res, nullptr);
+            if(rc != SQLITE_OK) {
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
             return res;
         }
         
@@ -2220,7 +2225,6 @@ namespace sqlite_orm {
         std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
             std::vector<table_info> res;
             auto query = "PRAGMA table_info(" + tableName + ")";
-            //                auto query = "SELECT COUNT(*) FROM sqlite_master WHERE type = ? AND name = ?";
             data_t<std::vector<table_info>, storage_impl*> data{this, &res};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
@@ -2551,9 +2555,8 @@ namespace sqlite_orm {
          *  SELECT COUNT(*) with no conditions routine. https://www.sqlite.org/lang_aggfunc.html#count
          *  @return Number of O object in table.
          */
-        template<class O>
-        int count() {
-//            database_connection connection(this->filename);
+        template<class O, class ...Args>
+        int count(Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2562,15 +2565,15 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.template count<O>(db);
+            return impl.template count<O>(db, nullptr, args...);
         }
         
         /**
          *  SELECT COUNT(X) https://www.sqlite.org/lang_aggfunc.html#count
          *  @param m member pointer to class mapped to the storage.
          */
-        template<class F, class O>
-        int count(F O::*m) {
+        template<class F, class O, class ...Args>
+        int count(F O::*m, Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2579,7 +2582,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.count(m, db);
+            return impl.count(m, db, nullptr, args...);
         }
         
         /**
@@ -2587,8 +2590,8 @@ namespace sqlite_orm {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return average value from db.
          */
-        template<class F, class O>
-        double avg(F O::*m) {
+        template<class F, class O, class ...Args>
+        double avg(F O::*m, Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2597,7 +2600,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.avg(m, db);
+            return impl.avg(m, db, nullptr, args...);
         }
         
         /**
@@ -2636,6 +2639,11 @@ namespace sqlite_orm {
             return impl.group_concat(m, y, db);
         }
         
+        /**
+         *  MAX(x) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return std::shared_ptr with max value or null if sqlite engine returned null.
+         */
         template<class F, class O>
         std::shared_ptr<F> max(F O::*m) {
             std::shared_ptr<database_connection> connection;
@@ -2649,6 +2657,11 @@ namespace sqlite_orm {
             return impl.max(m, db);
         }
         
+        /**
+         *  MIN(x) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return std::shared_ptr with min value or null if sqlite engine returned null.
+         */
         template<class F, class O>
         std::shared_ptr<F> min(F O::*m) {
             std::shared_ptr<database_connection> connection;
@@ -2662,6 +2675,11 @@ namespace sqlite_orm {
             return impl.min(m, db);
         }
         
+        /**
+         *  SUM(x) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return std::shared_ptr with sum value or null if sqlite engine returned null.
+         */
         template<class F, class O>
         std::shared_ptr<F> sum(F O::*m) {
             std::shared_ptr<database_connection> connection;
@@ -2675,6 +2693,11 @@ namespace sqlite_orm {
             return impl.sum(m, db);
         }
         
+        /**
+         *  TOTAL(x) query.
+         *  @param m is a class member pointer (the same you passed into make_column).
+         *  @return total value (the same as SUM but not nullable. More details here https://www.sqlite.org/lang_aggfunc.html)
+         */
         template<class F, class O>
         double total(F O::*m) {
             std::shared_ptr<database_connection> connection;
