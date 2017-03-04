@@ -1159,13 +1159,13 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in count");
         }
         
-        template<class F, class O>
-        std::string group_concat(F O::*m, sqlite3 *db, std::nullptr_t) {
+        template<class F, class O, class ...Args>
+        std::string group_concat(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
         }
         
-        template<class F, class O>
-        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, std::nullptr_t) {
+        template<class F, class O, class ...Args>
+        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
         }
         
@@ -1436,19 +1436,20 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
             return Super::group_concat(m, y, db);
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             std::string res;
             std::stringstream ss;
             ss << "SELECT GROUP_CONCAT(";
             auto columnName = this->table.find_column_name(m);
             if(columnName.length()){
-                ss << columnName << ",\"" << y << "\") FROM "<< this->table.name;
+                ss << columnName << ",\"" << y << "\") FROM "<< this->table.name << " ";
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1538,32 +1539,34 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        std::string group_concat(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            return Super::group_concat(m, db);
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        std::string group_concat(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
+            return Super::group_concat(m, db, nullptr, args...);
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        std::string group_concat(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        std::string group_concat(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             std::string res;
 //            this->withDatabase([&](auto db) {
                 std::stringstream ss;
-                ss << "select group_concat(";
+                ss << "SELECT GROUP_CONCAT(";
                 auto columnName = this->table.find_column_name(m);
                 if(columnName.length()){
-                    ss << columnName << ") from "<< this->table.name;
+                    ss << columnName << ") FROM "<< this->table.name << " ";
+                    this->process_conditions(ss, args...);
                     auto query = ss.str();
-                    data_t<std::string, storage_impl*> data{this, &res};
+//                    data_t<std::string, storage_impl*> data{this, &res};
                     auto rc = sqlite3_exec(db,
                                            query.c_str(),
                                            [](void *data, int argc, char **argv,char **azColName)->int{
-                                               auto &d = *(data_t<std::string, storage_impl*>*)data;
-                                               auto &res = *d.res;
+//                                               auto &d = *(data_t<std::string, storage_impl*>*)data;
+//                                               auto &res = *d.res;
+                                               auto &res = *(std::string*)data;
                                                if(argc){
                                                    res = argv[0];
                                                }
                                                return 0;
-                                           }, &data, nullptr);
+                                           }, &res, nullptr);
                     if(rc != SQLITE_OK) {
                         throw std::runtime_error(sqlite3_errmsg(db));
                     }
@@ -1673,7 +1676,7 @@ namespace sqlite_orm {
             ss << "SELECT avg(";
             auto columnName = this->table.find_column_name(m);
             if(columnName.length()){
-                ss << columnName << ") from "<< this->table.name << " ";
+                ss << columnName << ") FROM "<< this->table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
@@ -2608,8 +2611,8 @@ namespace sqlite_orm {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return group_concat query result.
          */
-        template<class F, class O>
-        std::string group_concat(F O::*m) {
+        template<class F, class O, class ...Args>
+        std::string group_concat(F O::*m, Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2618,7 +2621,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.group_concat(m, db);
+            return impl.group_concat(m, db, nullptr, args...);
         }
         
         /**
@@ -2626,8 +2629,8 @@ namespace sqlite_orm {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return group_concat query result.
          */
-        template<class F, class O>
-        std::string group_concat(F O::*m, const std::string &y) {
+        template<class F, class O, class ...Args>
+        std::string group_concat(F O::*m, const std::string &y, Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2636,7 +2639,12 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.group_concat(m, y, db);
+            return impl.group_concat(m, y, db, nullptr, args...);
+        }
+        
+        template<class F, class O, class ...Args>
+        std::string group_concat(F O::*m, const char *y, Args ...args) {
+            return this->group_concat(m, std::string(y), args...);
         }
         
         /**
