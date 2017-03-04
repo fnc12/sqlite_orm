@@ -215,7 +215,7 @@ You also can select objects with custom where conditions with `=`, `!=`, `>`, `>
 For example: let's select users with id lesser then 10:
 
 ```c++
-'SELECT * FROM users WHERE id < 10`
+'SELECT * FROM users WHERE id < 10'
 auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10)));
 cout << "idLesserThan10 count = " << idLesserThan10.size() << endl;
 for(auto &user : idLesserThan10) {
