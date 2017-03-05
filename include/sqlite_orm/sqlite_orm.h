@@ -1169,8 +1169,8 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
         }
         
-        template<class F, class O>
-        std::shared_ptr<F> max(F O::*m, sqlite3 *db, std::nullptr_t) {
+        template<class F, class O, class ...Args>
+        std::shared_ptr<F> max(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
@@ -1503,33 +1503,35 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        std::shared_ptr<F> max(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            return Super::max(m, db);
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        std::shared_ptr<F> max(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
+            return Super::max(m, db, nullptr, args...);
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        std::shared_ptr<F> max(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        std::shared_ptr<F> max(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             std::shared_ptr<F> res;
             std::stringstream ss;
             ss << "SELECT MAX(";
             auto columnName = this->table.find_column_name(m);
             if(columnName.length()){
-                ss << columnName << ") FROM "<< this->table.name;
+                ss << columnName << ") FROM " << this->table.name << " ";
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
-                data_t<std::shared_ptr<F>, storage_impl*> data{this, &res};
+//                data_t<std::shared_ptr<F>, storage_impl*> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &d = *(data_t<std::shared_ptr<F>, storage_impl*>*)data;
-                                           auto &res = *d.res;
+//                                           auto &d = *(data_t<std::shared_ptr<F>, storage_impl*>*)data;
+//                                           auto &res = *d.res;
+                                           auto &res = *(std::shared_ptr<F>*)data;
                                            if(argc){
                                                if(argv[0]){
                                                    res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
                                                }
                                            }
                                            return 0;
-                                       }, &data, nullptr);
+                                       }, &res, nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
@@ -2652,8 +2654,8 @@ namespace sqlite_orm {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return std::shared_ptr with max value or null if sqlite engine returned null.
          */
-        template<class F, class O>
-        std::shared_ptr<F> max(F O::*m) {
+        template<class F, class O, class ...Args>
+        std::shared_ptr<F> max(F O::*m, Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2662,7 +2664,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.max(m, db);
+            return impl.max(m, db, nullptr, args...);
         }
         
         /**
