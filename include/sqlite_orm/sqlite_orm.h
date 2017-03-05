@@ -41,6 +41,47 @@ namespace sqlite_orm {
         
         template <typename T, typename Tuple>
         using tuple_contains_type = typename has_type<T, Tuple>::type;
+        
+        template<int N, class ...Args>
+        struct iterator {
+            
+            template<class L>
+            void operator()(std::tuple<Args...> &t, L l) {
+                l(std::get<N>(t));
+                iterator<N - 1, Args...>()(t, l);
+            }
+        };
+        
+        template<class ...Args>
+        struct iterator<0, Args...>{
+            template<class L>
+            void operator()(std::tuple<Args...> &t, L l) {
+                l(std::get<0>(t));
+            }
+        };
+        
+        
+        /*template<class ...Args>
+        struct iterator {
+            
+            template<class L>
+            void operator()(std::tuple<Args...> &t, L l) {
+                //..
+            }
+        };
+        
+        template<class H, class ...Tail>
+        struct iterator<H, Tail...> : public iterator<Tail...> {
+            
+            typedef iterator<Tail...> super;
+            typedef std::tuple<Tail...> tail_tuple_t;
+            
+            template<class L>
+            void operator()(std::tuple<H, Tail...> &t, L l) {
+                super::operator()(static_cast<std::tuple<Tail...>>(t), l);
+                l(std::get<std::tuple_size<tail_tuple_t>>(t));
+            }
+        };*/
     }
     
     template<class T>
@@ -576,6 +617,17 @@ namespace sqlite_orm {
     }
     
     template<class ...Args>
+    struct group_by_t {
+        std::tuple<Args...> args;
+    };
+    
+    template<class ...Args>
+    group_by_t<Args...> group_by(Args ...args) {
+//        return {args...};
+        return {std::make_tuple(args...)};
+    }
+    
+    template<class ...Args>
     struct columns_t {
         
         template<class L>
@@ -895,6 +947,18 @@ namespace sqlite_orm {
         }
     };
     
+    /**
+     *  Specialization for long.
+     */
+    template<>
+    struct statement_binder<long> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const long &value) {
+//            return sqlite3_bind_int(stmt, index++, value);
+            return sqlite3_bind_int64(stmt, index, static_cast<sqlite3_int64>(value));
+        }
+    };
+    
     template<>
     struct statement_binder<double> {
         
@@ -962,6 +1026,16 @@ namespace sqlite_orm {
     };
     
     /**
+     *  Specialization for long.
+     */
+    template<>
+    struct row_extrator<long> {
+        long extract(const char *row_value) {
+            return std::atol(row_value);
+        }
+    };
+    
+    /**
      *  Specialization for std::string.
      */
     template<>
@@ -1018,9 +1092,7 @@ namespace sqlite_orm {
         void extract(std::tuple<Args...> &t, char **argv) {
             typedef typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type tuple_type;
             std::get<I - 1>(t) = row_extrator<tuple_type>().extract(argv[I - 1]);
-//            if(I > -1) {
-                this->extract<I - 1>(t, argv);
-//            }
+            this->extract<I - 1>(t, argv);
         }
         
         template<size_t I, typename std::enable_if<I == 0>::type * = nullptr>
@@ -1028,12 +1100,6 @@ namespace sqlite_orm {
             //..
         }
     };
-    
-    /*template<>
-    template<>
-    void row_extrator<>::extract<0>(std::tuple<> &t, char **argv) {
-        //..
-    }*/
     
     /**
      *  Exeption thrown if nothing was found in database with specified id.
@@ -1266,6 +1332,29 @@ namespace sqlite_orm {
             }else {
                 throw std::runtime_error(sqlite3_errmsg(db));
             }
+        }
+        
+        std::string current_timestamp(sqlite3 *db) {
+            std::string res;
+            std::stringstream ss;
+            ss << "SELECT CURRENT_TIMESTAMP";
+            auto query = ss.str();
+            auto rc = sqlite3_exec(db,
+                                   query.c_str(),
+                                   [](void *data, int argc, char **argv,char **azColName)->int{
+                                       auto &res = *(std::string*)data;
+                                       if(argc){
+//                                           res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
+                                           if(argv[0]){
+                                               res = row_extrator<std::string>().extract(argv[0]);
+                                           }
+                                       }
+                                       return 0;
+                                   }, &res, nullptr);
+            if(rc != SQLITE_OK) {
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
+            return res;
         }
     };
     
@@ -1872,6 +1961,26 @@ namespace sqlite_orm {
             }
         }
         
+        /*template<int N, class ...Args>
+        void _strings_from_expressions(std::vector<std::string> &res, std::tuple<Args...> &t) {
+            auto expression = this->string_from_expression(std::get<N - 1>(t));
+            res.push_back(expression);
+            this->_strings_from_expressions<N - 1>(res, t);
+        }
+        
+        template<class ...Args>
+        void _strings_from_expressions<0, Args...>(std::vector<std::string> &res, std::tuple<Args...> &t) {
+            //..
+        }*/
+        
+        template<class ...Args>
+        std::vector<std::string> strings_from_expressions(std::tuple<Args...> &t) {
+            std::vector<std::string> res;
+            res.reserve(std::tuple_size<std::tuple<Args...>>::value);
+            this->_strings_from_expressions<std::tuple_size<std::tuple<Args...>>::value>(res, t);
+            return res;
+        }
+        
         template<class T>
         std::string string_from_expression(T t) {
             return std::to_string(t);
@@ -2014,6 +2123,24 @@ namespace sqlite_orm {
             ss << orderByString << " ";
         }
         
+        template<class ...Args>
+        void process_single_condition(std::stringstream &ss, group_by_t<Args...> groupBy) {
+            std::vector<std::string> expressions;
+            typedef std::tuple<Args...> typle_t;
+            tuple_helper::iterator<std::tuple_size<typle_t>::value - 1, Args...>()(groupBy.args, [&](auto &v){
+                auto expression = this->string_from_expression(v);
+                expressions.push_back(expression);
+            });
+            ss << "GROUP BY ";
+            for(auto i = 0; i < expressions.size(); ++i) {
+                ss << expressions[i];
+                if(i < expressions.size() - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << " ";
+        }
+        
         /**
          *  Recursion end.
          */
@@ -2042,6 +2169,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             typedef std::tuple<std::vector<O>*, storage_impl*> date_tuple_t;
             date_tuple_t data{&res, this};
+//            date_tuple_t data
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **azColName) -> int {
@@ -2919,6 +3047,18 @@ namespace sqlite_orm {
             if(!inMemory){
                 this->currentTransaction = nullptr;
             }
+        }
+        
+        std::string current_timestamp() {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return impl.current_timestamp(db);
         }
         
     protected:
