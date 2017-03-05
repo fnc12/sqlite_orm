@@ -1049,11 +1049,11 @@ namespace sqlite_orm {
      *  Help class. Used to pass data to sqlite C callback. Doesn't need
      *  to be used explicitly by user.
      */
-    template<class O, class H>
+    /*template<class O, class H>
     struct data_t {
         H t;
         O *res;
-    };
+    };*/
     
     struct database_connection {
         
@@ -1130,13 +1130,13 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in avg");
         }
         
-        template<class F, class O>
-        std::shared_ptr<F> sum(F O::*m, sqlite3 *db) {
+        template<class F, class O, class ...Args>
+        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in sum");
         }
         
-        template<class F, class O>
-        double total(F O::*m, sqlite3 *db) {
+        template<class F, class O, class ...Args>
+        double total(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in total");
         }
         
@@ -1377,19 +1377,20 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        double total(F O::*m, sqlite3 *db,  typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            return Super::total(m, db);
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        double total(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
+            return Super::total(m, db, nullptr, args...);
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        double total(F O::*m, sqlite3 *db,  typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        double total(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             double res;
             std::stringstream ss;
             ss << "SELECT TOTAL(";
             auto columnName = this->table.find_column_name(m);
             if(columnName.length()){
-                ss << columnName << ") FROM "<< this->table.name;
+                ss << columnName << ") FROM "<< this->table.name << " ";
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1409,19 +1410,20 @@ namespace sqlite_orm {
             return res;
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            return Super::sum(m, db);
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
+            return Super::sum(m, db, nullptr, args...);
         }
         
-        template<class F, class O, class HH = typename H::object_type>
-        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        template<class F, class O, class ...Args, class HH = typename H::object_type>
+        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             std::shared_ptr<F> res;
             std::stringstream ss;
             ss << "SELECT SUM(";
             auto columnName = this->table.find_column_name(m);
             if(columnName.length()){
-                ss << columnName << ") FROM "<< this->table.name;
+                ss << columnName << ") FROM "<< this->table.name << " ";
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -1786,14 +1788,18 @@ namespace sqlite_orm {
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
                 auto query = ss.str();
-                //            auto query = "SELECT * FROM " + this->table.name + " WHERE id = " + std::to_string(id);
-                data_t<std::shared_ptr<O>, decltype(this)> data{this, &res};
+//                data_t<std::shared_ptr<O>, decltype(this)> data{this, &res};
+                typedef std::tuple<decltype(this), decltype(&res)> Data;
+                Data aTuple = std::make_tuple(this, &res);
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &d = *(data_t<std::shared_ptr<O>, decltype(this)>*)data;
-                                           auto &res = *d.res;
-                                           auto t = d.t;
+                                           auto &aTuple = *(Data*)data;
+//                                           auto &d = *(data_t<std::shared_ptr<O>, decltype(this)>*)data;
+//                                           auto &res = *d.res;
+                                           auto &res = *std::get<1>(aTuple);
+//                                           auto t = d.t;
+                                           auto t = std::get<0>(aTuple);
                                            if(argc){
                                                res = std::make_shared<O>();
                                                auto index = 0;
@@ -1805,7 +1811,7 @@ namespace sqlite_orm {
                                                });
                                            }
                                            return 0;
-                                       }, &data, nullptr);
+                                       }, &aTuple, nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::runtime_error(sqlite3_errmsg(db));
                 }
@@ -2215,18 +2221,18 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '" << "table" << "' AND name = '" << tableName << "'";
             auto query = ss.str();
-            data_t<bool, storage_impl*> data{this, &res};
+//            data_t<bool, storage_impl*> data{this, &res};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **azColName) -> int {
-                                       auto &d = *(data_t<bool, storage_impl*>*)data;
-                                       auto &res = *d.res;
-                                       //                                           auto t = d.t;
+//                                       auto &d = *(data_t<bool, storage_impl*>*)data;
+//                                       auto &res = *d.res;
+                                       auto &res = *(bool*)data;
                                        if(argc){
                                            res = !!std::atoi(argv[0]);
                                        }
                                        return 0;
-                                   }, &data, nullptr);
+                                   }, &res, nullptr);
             if(rc != SQLITE_OK) {
                 throw std::runtime_error(sqlite3_errmsg(db));
             }
@@ -2236,12 +2242,13 @@ namespace sqlite_orm {
         std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
             std::vector<table_info> res;
             auto query = "PRAGMA table_info(" + tableName + ")";
-            data_t<std::vector<table_info>, storage_impl*> data{this, &res};
+//            data_t<std::vector<table_info>, storage_impl*> data{this, &res};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **azColName) -> int {
-                                       auto &d = *(data_t<std::vector<table_info>, storage_impl*>*)data;
-                                       auto &res = *d.res;
+//                                       auto &d = *(data_t<std::vector<table_info>, storage_impl*>*)data;
+//                                       auto &res = *d.res;
+                                       auto &res = *(std::vector<table_info>*)data;
                                        if(argc){
                                            auto index = 0;
                                            auto cid = std::atoi(argv[index++]);
@@ -2254,7 +2261,7 @@ namespace sqlite_orm {
                                            res.emplace_back(table_info{cid, name, type, notnull, dflt_value, pk});
                                        }
                                        return 0;
-                                   }, &data, nullptr);
+                                   }, &res, nullptr);
             if(rc != SQLITE_OK) {
                 throw std::runtime_error(sqlite3_errmsg(db));
             }
@@ -2696,8 +2703,8 @@ namespace sqlite_orm {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return std::shared_ptr with sum value or null if sqlite engine returned null.
          */
-        template<class F, class O>
-        std::shared_ptr<F> sum(F O::*m) {
+        template<class F, class O, class ...Args>
+        std::shared_ptr<F> sum(F O::*m, Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2706,7 +2713,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.sum(m, db);
+            return impl.sum(m, db, nullptr, args...);
         }
         
         /**
@@ -2714,8 +2721,8 @@ namespace sqlite_orm {
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return total value (the same as SUM but not nullable. More details here https://www.sqlite.org/lang_aggfunc.html)
          */
-        template<class F, class O>
-        double total(F O::*m) {
+        template<class F, class O, class ...Args>
+        double total(F O::*m, Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2724,7 +2731,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.total(m, db);
+            return impl.total(m, db, nullptr, args...);
         }
         
         /**
