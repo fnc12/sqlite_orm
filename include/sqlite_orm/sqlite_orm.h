@@ -47,8 +47,8 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(std::tuple<Args...> &t, L l) {
-                l(std::get<N>(t));
                 iterator<N - 1, Args...>()(t, l);
+                l(std::get<N>(t));
             }
         };
         
