@@ -1156,8 +1156,8 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in insert");
         }
         
-        template<class O, class ...Args>
-        std::vector<O> get_all(sqlite3 *db, std::nullptr_t, Args ...args) {
+        template<class O, class C, class ...Args>
+        C get_all(sqlite3 *db, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_all");
         }
         
@@ -2155,19 +2155,19 @@ namespace sqlite_orm {
             this->process_conditions(ss, args...);
         }
         
-        template<class O, class HH = typename H::object_type, class ...Args>
-        std::vector<O> get_all(sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
+        template<class O, class C, class HH = typename H::object_type, class ...Args>
+        C get_all(sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
             return Super::template get_all<O>(db, nullptr, args...);
         }
         
-        template<class O, class HH = typename H::object_type, class ...Args>
-        std::vector<O> get_all(sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            std::vector<O> res;
+        template<class O, class C, class HH = typename H::object_type, class ...Args>
+        C get_all(sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
+            C res;
             std::stringstream ss;
             ss << "SELECT * FROM " << this->table.name << " ";
             this->process_conditions(ss, args...);
             auto query = ss.str();
-            typedef std::tuple<std::vector<O>*, storage_impl*> date_tuple_t;
+            typedef std::tuple<C*, storage_impl*> date_tuple_t;
             date_tuple_t data{&res, this};
 //            date_tuple_t data
             auto rc = sqlite3_exec(db,
@@ -2646,8 +2646,8 @@ namespace sqlite_orm {
          *  O is an object type to be extracted. Must be specified explicitly.
          *  @return All objects of type O stored in database at the moment.
          */
-        template<class O, class ...Args>
-        std::vector<O> get_all(Args ...args) {
+        template<class O, class C = std::vector<O>, class ...Args>
+        C get_all(Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2656,7 +2656,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.template get_all<O>(db, nullptr, args...);
+            return impl.template get_all<O, C>(db, nullptr, args...);
         }
         
         /**
