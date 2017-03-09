@@ -144,6 +144,14 @@ for(auto &user : allUsers) {
 }
 ```
 
+And one can specify return container type explicitly: let's get all users in `std::list`, not `std::vector`:
+
+```
+auto allUsersList = storage.get_all<User, std::list<User>>();
+```
+
+Container must be STL compatible (must have `push_back(T&&)` function in this case).
+
 CRUD functions `get`, `get_no_throw`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::runtime_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `key_value.cpp` example in `examples` folder.
 
 # Aggregate Functions
