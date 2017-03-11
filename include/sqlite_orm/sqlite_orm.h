@@ -2184,7 +2184,8 @@ namespace sqlite_orm {
                                                auto value = row_extrator<typename decltype(c)::field_type>().extract(argv[index++]);
                                                o.*member_pointer = value;
                                            });
-                                           res.emplace_back(std::move(o));
+//                                           res.emplace_back(std::move(o));
+                                           res.push_back(std::move(o));
                                        }
                                        return 0;
                                    }, &data, nullptr);
