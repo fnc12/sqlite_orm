@@ -2157,7 +2157,7 @@ namespace sqlite_orm {
         
         template<class O, class C, class HH = typename H::object_type, class ...Args>
         C get_all(sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::template get_all<O>(db, nullptr, args...);
+            return Super::template get_all<O, C>(db, nullptr, args...);
         }
         
         template<class O, class C, class HH = typename H::object_type, class ...Args>
