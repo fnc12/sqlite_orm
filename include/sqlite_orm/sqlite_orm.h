@@ -688,7 +688,7 @@ namespace sqlite_orm {
         std::vector<std::string> column_names_with() { return{}; }
         
         template<class L>
-        void for_each_column(L l) {}
+        void for_each_column(L /*l*/) {}
         
         template<class F, class L>
         void for_each_column_with_field_type(L l) {}
@@ -710,7 +710,7 @@ namespace sqlite_orm {
         typedef H column_type;
         typedef std::tuple<T...> tail_types;
         
-        table_impl(H h, T ...t) : col(h), Super(t...) {}
+        table_impl(H h, T ...t) : Super(t...), col(h) {}
         
         column_type col;
         
@@ -1250,7 +1250,7 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
-        void sync_schema(sqlite3 *db, bool preserve) {
+        void sync_schema(sqlite3 */*db*/, bool /*preserve*/) {
             return;
         }
         
@@ -1362,7 +1362,7 @@ namespace sqlite_orm {
     struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
         typedef H table_type;
         
-        storage_impl(H h, Ts ...ts) : table(h), Super(ts...) {}
+        storage_impl(H h, Ts ...ts) : Super(ts...), table(h) {}
         
         table_type table;
         
@@ -1428,18 +1428,19 @@ namespace sqlite_orm {
                 }
             });
             
-            for(auto i = 0; i < columnNames.size(); ++i) {
+            auto columnNamesCount = int(columnNames.size());
+            for(auto i = 0; i < columnNamesCount; ++i) {
                 ss << columnNames[i];
-                if(i < columnNames.size() - 1) {
+                if(i < columnNamesCount - 1) {
                     ss << ", ";
                 }else{
                     ss << ") ";
                 }
             }
             ss << "VALUES(";
-            for(auto i = 0; i < columnNames.size(); ++i) {
+            for(auto i = 0; i < columnNamesCount; ++i) {
                 ss << "?";
-                if(i < columnNames.size() - 1) {
+                if(i < columnNamesCount - 1) {
                     ss << ", ";
                 }else{
                     ss << ")";
@@ -2145,7 +2146,7 @@ namespace sqlite_orm {
          *  Recursion end.
          */
         template<class ...Args>
-        void process_conditions(std::stringstream &ss, Args ...args) {
+        void process_conditions(std::stringstream &/*ss*/, Args ...args) {
             //..
         }
         
@@ -2172,7 +2173,7 @@ namespace sqlite_orm {
 //            date_tuple_t data
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv,char **azColName) -> int {
+                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
                                        auto &d = *(date_tuple_t*)data;
                                        auto &res = *std::get<0>(d);
                                        auto t = std::get<1>(d);
@@ -2374,7 +2375,7 @@ namespace sqlite_orm {
 //            data_t<std::vector<table_info>, storage_impl*> data{this, &res};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv,char **azColName) -> int {
+                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
 //                                       auto &d = *(data_t<std::vector<table_info>, storage_impl*>*)data;
 //                                       auto &res = *d.res;
                                        auto &res = *(std::vector<table_info>*)data;
@@ -2409,7 +2410,8 @@ namespace sqlite_orm {
             }
             auto query = ss.str();
             sqlite3_stmt *stmt;
-            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+            auto prepareResult = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
+            if (prepareResult == SQLITE_OK) {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     return;
                 }else{
@@ -2428,9 +2430,10 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "CREATE TABLE " << name << " AS SELECT ";
             auto columnNames = this->table.column_names();
-            for(auto i = 0; i < columnNames.size(); ++i) {
+            auto columnNamesCount = int(columnNames.size());
+            for(auto i = 0; i < columnNamesCount; ++i) {
                 ss << columnNames[i];
-                if(i < columnNames.size() - 1) {
+                if(i < columnNamesCount - 1) {
                     ss << ", ";
                 }else{
                     ss << " ";
@@ -2465,7 +2468,8 @@ namespace sqlite_orm {
                 //  this vector will contain pointers to columns that gotta be added..
                 std::vector<table_info*> columnsToAdd;
                 
-                for(auto storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
+                auto storageTableInfoCount = int(storageTableInfo.size());
+                for(auto storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfoCount; ++storageColumnInfoIndex) {
                     
                     auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
                     auto &columnName = storageColumnInfo.name;
