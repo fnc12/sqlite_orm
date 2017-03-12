@@ -235,8 +235,29 @@ namespace sqlite_orm {
     template<class T>
     struct type_printer;
     
+    struct integer_printer {
+        inline const std::string& print() {
+            static const std::string res = "INTEGER";
+            return res;
+        }
+    };
+    
+    struct text_printer {
+        inline const std::string& print() {
+            static const std::string res = "TEXT";
+            return res;
+        }
+    };
+    
+    struct real_printer {
+        inline const std::string& print() {
+            static const std::string res = "REAL";
+            return res;
+        }
+    };
+    
     template<>
-    struct type_printer<int> {
+    struct type_printer<int> /*: public integer_printer*/ {
         inline const std::string& print() {
             static const std::string res = "INTEGER";
             return res;
@@ -244,7 +265,7 @@ namespace sqlite_orm {
     };
     
     template<>
-    struct type_printer<std::string> {
+    struct type_printer<std::string> /*: public text_printer*/ {
         inline const std::string& print() {
             static const std::string res = "TEXT";
             return res;
@@ -252,7 +273,7 @@ namespace sqlite_orm {
     };
     
     template<>
-    struct type_printer<double> {
+    struct type_printer<double> /*: public real_printer*/ {
         inline const std::string& print() {
             static const std::string res = "REAL";
             return res;
@@ -260,19 +281,15 @@ namespace sqlite_orm {
     };
     
     template<class T>
-    struct type_printer<std::shared_ptr<T>> {
+    struct type_printer<std::shared_ptr<T>> /*: public type_printer<T>*/ {
         inline const std::string& print() {
-            /*static const std::string res = "REAL";
-            return res;*/
             return type_printer<T>().print();
         }
     };
     
     template<class T>
-    struct type_printer<std::unique_ptr<T>> {
+    struct type_printer<std::unique_ptr<T>> /*: public type_printer<T>*/ {
         inline const std::string& print() {
-            /*static const std::string res = "REAL";
-             return res;*/
             return type_printer<T>().print();
         }
     };
@@ -2468,8 +2485,8 @@ namespace sqlite_orm {
                 //  this vector will contain pointers to columns that gotta be added..
                 std::vector<table_info*> columnsToAdd;
                 
-                auto storageTableInfoCount = int(storageTableInfo.size());
-                for(auto storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfoCount; ++storageColumnInfoIndex) {
+//                auto storageTableInfoCount = int(storageTableInfo.size());
+                for(auto storageColumnInfoIndex = 0; storageColumnInfoIndex < int(storageTableInfo.size()); ++storageColumnInfoIndex) {
                     
                     auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
                     auto &columnName = storageColumnInfo.name;
