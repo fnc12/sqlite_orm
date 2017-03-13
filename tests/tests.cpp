@@ -174,6 +174,13 @@ void testSyncSchema() {
         assert(userFromDb.name == oldUser.name);
     }
     
+    auto usersCountBefore = newStorage.count<UserAfter>();
+    
+    newStorage.sync_schema();
+    
+    auto usersCountAfter = newStorage.count<UserAfter>();
+    assert(usersCountBefore == usersCountAfter);
+    
 }
 
 int main() {
