@@ -159,40 +159,50 @@ CRUD functions `get`, `get_no_throw`, `remove`, `update` (not `insert`) work onl
 # Aggregate Functions
 
 ```c++
-auto averageId = storage.avg(&User::id);    //  maps to 'select avg(id) from users'
+//  SELECT AVG(id) FROM users
+auto averageId = storage.avg(&User::id);    
 cout << "averageId = " << averageId << endl;        //  averageId = 4.5
     
-auto averageBirthDate = storage.avg(&User::birthDate);  //  maps into 'select avg(birth_date) from users'
+//  SELECT AVG(birth_date) FROM users
+auto averageBirthDate = storage.avg(&User::birthDate);  
 cout << "averageBirthDate = " << averageBirthDate << endl;      //  averageBirthDate = 6.64416e+08
   
-auto usersCount = storage.count<User>();    //  maps to 'select count(*) from users'
+//  SELECT COUNT(*) FROM users
+auto usersCount = storage.count<User>();    
 cout << "users count = " << usersCount << endl;     //  users count = 8
-    
-auto countId = storage.count(&User::id);    //  maps to 'select count(id) from users'
+
+//  SELECT COUNT(id) FROM users
+auto countId = storage.count(&User::id);    
 cout << "countId = " << countId << endl;        //  countId = 8
 
-auto countImageUrl = storage.count(&User::imageUrl);   //  maps to 'select count(image_url) from users'
+//  SELECT COUNT(image_url) FROM users
+auto countImageUrl = storage.count(&User::imageUrl);   
 cout << "countImageUrl = " << countImageUrl << endl;      //  countImageUrl = 5
 
-auto concatedUserId = storage.group_concat(&User::id);      //  maps to 'select group_concat(id) from users'
+//  SELECT GROUP_CONCAT(id) FROM users
+auto concatedUserId = storage.group_concat(&User::id);      
 cout << "concatedUserId = " << concatedUserId << endl;      //  concatedUserId = 1,2,3,4,5,6,7,8
-    
-auto concatedUserIdWithDashes = storage.group_concat(&User::id, "---");     //  maps to 'select group_concat(id, "---") from users'
+
+//  SELECT GROUP_CONCAT(id, "---") FROM users
+auto concatedUserIdWithDashes = storage.group_concat(&User::id, "---");     
 cout << "concatedUserIdWithDashes = " << concatedUserIdWithDashes << endl;      //  concatedUserIdWithDashes = 1---2---3---4---5---6---7---8
 
-if(auto maxId = storage.max(&User::id)){    //  maps to 'select max(id) from users'
+//  SELECT MAX(id) FROM users
+if(auto maxId = storage.max(&User::id)){    
     cout << "maxId = " << *maxId <<endl;    //  maxId = 12  (maxId is std::shared_ptr<int>)
 }else{
     cout << "maxId is null" << endl;
 }
     
-if(auto maxFirstName = storage.max(&User::firstName)){  //  maps to 'select max(first_name) from users'
+//  SELECT MAX(first_name) FROM users
+if(auto maxFirstName = storage.max(&User::firstName)){ 
     cout << "maxFirstName = " << *maxFirstName << endl; //  maxFirstName = Jonh (maxFirstName is std::shared_ptr<std::string>)
 }else{
     cout << "maxFirstName is null" << endl;
 }
 
-if(auto minId = storage.min(&User::id)){    //  maps to 'select min(id) from users'
+//  SELECT MIN(id) FROM users
+if(auto minId = storage.min(&User::id)){    
     cout << "minId = " << *minId << endl;   //  minId = 1 (minId is std::shared_ptr<int>)
 }else{
     cout << "minId is null" << endl;
@@ -225,7 +235,7 @@ You also can select objects with custom where conditions with `=`, `!=`, `>`, `>
 For example: let's select users with id lesser then 10:
 
 ```c++
-'SELECT * FROM users WHERE id < 10'
+//  SELECT * FROM users WHERE id < 10
 auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10)));
 cout << "idLesserThan10 count = " << idLesserThan10.size() << endl;
 for(auto &user : idLesserThan10) {
@@ -236,7 +246,7 @@ for(auto &user : idLesserThan10) {
 Or select all users who's first name is not equal "John":
 
 ```c++
-'SELECT * FROM users WHERE first_name != 'John' '
+//  SELECT * FROM users WHERE first_name != 'John'
 auto notJohn = storage.get_all<User>(where(is_not_equal(&User::firstName, "John")));
 cout << "notJohn count = " << notJohn.size() << endl;
 for(auto &user : notJohn) {
