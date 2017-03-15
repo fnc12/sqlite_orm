@@ -648,7 +648,7 @@ namespace sqlite_orm {
     struct columns_t {
         
         template<class L>
-        void for_each(L l) {
+        void for_each(L /*l*/) {
             //..
         }
         
@@ -708,13 +708,13 @@ namespace sqlite_orm {
         void for_each_column(L /*l*/) {}
         
         template<class F, class L>
-        void for_each_column_with_field_type(L l) {}
+        void for_each_column_with_field_type(L /*l*/) {}
         
         template<class Op, class L>
-        void for_each_column_exept(L l){}
+        void for_each_column_exept(L /*l*/){}
         
         template<class Op, class L>
-        void for_each_column_with(L l) {}
+        void for_each_column_with(L /*l*/) {}
         
         int columns_count() const {
             return 0;
@@ -1169,62 +1169,62 @@ namespace sqlite_orm {
         }
         
         template<class O>
-        int insert(const O &o, sqlite3 *db, std::nullptr_t) {
+        int insert(const O &o, sqlite3 */*db*/, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in insert");
         }
         
         template<class O, class C, class ...Args>
-        C get_all(sqlite3 *db, std::nullptr_t, Args ...args) {
+        C get_all(sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_all");
         }
         
         template<class O, class I>
-        O get(I id, sqlite3 *db, std::nullptr_t) {
+        O get(I id, sqlite3 */*db*/, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get");
         }
         
         template<class O>
-        void update(const O &o, sqlite3 *db, std::nullptr_t) {
+        void update(const O &o, sqlite3 */*db*/, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in update");
         }
         
         template<class O, class I>
-        std::shared_ptr<O> get_no_throw(I id, sqlite3 *db, std::nullptr_t) {
+        std::shared_ptr<O> get_no_throw(I id, sqlite3 */*db*/, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_no_throw");
         }
         
         template<class O, class I>
-        void remove(I id, sqlite3 *db, std::nullptr_t) {
+        void remove(I id, sqlite3 */*db*/, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in remove");
         }
         
         template<class O>
-        void remove_all(sqlite3 *db, std::nullptr_t) {
+        void remove_all(sqlite3 */*db*/, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in remove");
         }
         
         template<class O, class ...Args>
-        int count(sqlite3 *db, std::nullptr_t, Args ...args) {
+        int count(sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in count");
         }
         
         template<class F, class O, class ...Args>
-        double avg(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
+        double avg(F O::*m, sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in avg");
         }
         
         template<class F, class O, class ...Args>
-        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
+        std::shared_ptr<F> sum(F O::*m, sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in sum");
         }
         
         template<class F, class O, class ...Args>
-        double total(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
+        double total(F O::*m, sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in total");
         }
         
         template<class F, class O, class ...Args>
-        std::vector<F> select(F O::*m, sqlite3 *db, std::nullptr_t) {
+        std::vector<F> select(F O::*m, sqlite3 */*db*/, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in select");
         }
         
@@ -1233,37 +1233,37 @@ namespace sqlite_orm {
         class R = std::tuple<typename field_extractor<Args>::type...>,
         class O = typename object_type_extractor<Args...>::type,
         class ...Conds>
-        std::vector<R> select(sqlite3 *db, columns_t<Args...> cols, std::nullptr_t, Conds ...conds) {
+        std::vector<R> select(sqlite3 */*db*/, columns_t<Args...> cols, std::nullptr_t, Conds ...conds) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in select");
         }
         
         template<class F, class O, class ...Args>
-        int count(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
+        int count(F O::*m, sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in count");
         }
         
         template<class F, class O, class ...Args>
-        std::string group_concat(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
+        std::string group_concat(F O::*m, sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
         }
         
         template<class F, class O, class ...Args>
-        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, std::nullptr_t, Args ...args) {
+        std::string group_concat(F O::*m, const std::string &y, sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
         }
         
         template<class F, class O, class ...Args>
-        std::shared_ptr<F> max(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
+        std::shared_ptr<F> max(F O::*m, sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
         template<class F, class O, class ...Args>
-        std::shared_ptr<F> min(F O::*m, sqlite3 *db, std::nullptr_t, Args ...args) {
+        std::shared_ptr<F> min(F O::*m, sqlite3 */*db*/, std::nullptr_t, Args ...args) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in min");
         }
         
         template<class O>
-        std::string dump(const O &o, sqlite3 *db, std::nullptr_t) {
+        std::string dump(const O &o, sqlite3 */*db*/, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
@@ -2383,7 +2383,7 @@ namespace sqlite_orm {
 //            data_t<bool, storage_impl*> data{this, &res};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv,char **azColName) -> int {
+                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
 //                                       auto &d = *(data_t<bool, storage_impl*>*)data;
 //                                       auto &res = *d.res;
                                        auto &res = *(bool*)data;
@@ -2417,7 +2417,7 @@ namespace sqlite_orm {
                                            std::string dflt_value = argv[index] ? argv[index] : "";
                                            index++;
                                            bool pk = !!std::atoi(argv[index++]);
-                                           res.emplace_back(table_info{cid, name, type, notnull, dflt_value, pk});
+                                           res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
                                        }
                                        return 0;
                                    }, &res, nullptr);
