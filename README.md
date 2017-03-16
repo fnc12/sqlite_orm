@@ -322,6 +322,7 @@ for(auto &user : doesAndWhites) {
 And `BETWEEN`:
 
 ```c++
+//  SELECT * FROM users WHERE id BETWEEN 66 AND 68
 auto betweenId = storage.get_all<User>(where(between(&User::id, 66, 68)));
 cout << "betweenId = " << betweenId.size() << endl;
 for(auto &user : betweenId) {
