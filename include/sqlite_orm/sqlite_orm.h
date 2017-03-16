@@ -656,6 +656,22 @@ namespace sqlite_orm {
         return {std::make_tuple(args...)};
     }
     
+    template<class A, class T>
+    struct between_t {
+        A expr;
+        T b1;
+        T b2;
+        
+        operator std::string() const {
+            return "BETWEEN";
+        }
+    };
+    
+    template<class A, class T>
+    between_t<A, T> between(A expr, T b1, T b2) {
+        return {expr, b1, b2};
+    }
+    
     template<class ...Args>
     struct columns_t {
         
@@ -1142,16 +1158,6 @@ namespace sqlite_orm {
         };
     };
     
-    /**
-     *  Help class. Used to pass data to sqlite C callback. Doesn't need
-     *  to be used explicitly by user.
-     */
-    /*template<class O, class H>
-    struct data_t {
-        H t;
-        O *res;
-    };*/
-    
     struct database_connection {
         
         database_connection(const std::string &filename) {
@@ -1159,7 +1165,6 @@ namespace sqlite_orm {
             if(rc != SQLITE_OK){
                 throw std::runtime_error(sqlite3_errmsg(this->db));
             }
-//            sqlite3_close(db);
         }
         
         ~database_connection() {
@@ -2125,6 +2130,14 @@ namespace sqlite_orm {
             return ss.str();
         }
         
+        template<class A, class T>
+        std::string process_where(between_t<A, T> &bw) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(bw.expr);
+            ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1) << " AND " << this->string_from_expression(bw.b2) << " ";
+            return ss.str();
+        }
+        
         template<class O>
         std::string process_order_by(order_by_t<O> &orderBy) {
             std::stringstream ss;
@@ -2416,12 +2429,9 @@ namespace sqlite_orm {
         std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
             std::vector<table_info> res;
             auto query = "PRAGMA table_info(" + tableName + ")";
-//            data_t<std::vector<table_info>, storage_impl*> data{this, &res};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
-//                                       auto &d = *(data_t<std::vector<table_info>, storage_impl*>*)data;
-//                                       auto &res = *d.res;
                                        auto &res = *(std::vector<table_info>*)data;
                                        if(argc){
                                            auto index = 0;
