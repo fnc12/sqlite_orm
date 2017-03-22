@@ -2752,7 +2752,7 @@ namespace sqlite_orm {
         /**
          *  Select * by id routine.
          *  throws sqlite_orm::not_found_exeption if object not found with given id.
-         *  throws std::runtime_error iin case of db error.
+         *  throws std::runtime_error in case of db error.
          *  O is an object type to be extracted. Must be specified explicitly.
          *  @return Object of type O where id is equal parameter passed or throws `not_found_exception`
          *  if there is no object with such id.
