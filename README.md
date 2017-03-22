@@ -230,7 +230,7 @@ cout << "totalId = " << totalId << endl;    //  totalId is double (always)
 
 # Where conditions
 
-You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`, `IN`.
+You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`, `IN` and `BETWEEN`.
 
 For example: let's select users with id lesser then 10:
 
@@ -315,6 +315,17 @@ for(auto &user : evenLesserTen10) {
 auto doesAndWhites = storage.get_all<User>(where(in(&User::lastName, {"Doe", "White"})));   //  maps to select * from users where last_name in ("Doe", "White")
 cout << "doesAndWhites count = " << doesAndWhites.size() << endl;
 for(auto &user : doesAndWhites) {
+    cout << storage.dump(user) << endl;
+}
+```
+
+And `BETWEEN`:
+
+```c++
+//  SELECT * FROM users WHERE id BETWEEN 66 AND 68
+auto betweenId = storage.get_all<User>(where(between(&User::id, 66, 68)));
+cout << "betweenId = " << betweenId.size() << endl;
+for(auto &user : betweenId) {
     cout << storage.dump(user) << endl;
 }
 ```
