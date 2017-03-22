@@ -950,7 +950,13 @@ namespace sqlite_orm {
             this->for_each_column([&res](auto col){
                 std::string dft;
                 if(auto d = col.default_value()) {
-                    dft = *d;
+                    typedef typename decltype(col)::field_type field_type;
+                    auto needQuotes = std::is_base_of<text_printer, type_printer<field_type>>::value;
+                    if(needQuotes){
+                        dft = "'" + *d + "'";
+                    }else{
+                        dft = *d;
+                    }
                 }
                 table_info i{
                     -1,
