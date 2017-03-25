@@ -195,13 +195,25 @@ namespace sqlite_orm {
     }
     
     template<class T>
-    struct type_is_nullable : public std::false_type {};
+    struct type_is_nullable : public std::false_type {
+        bool operator()(const T &t) const {
+            return true;
+        }
+    };
     
     template<class T>
-    struct type_is_nullable<std::shared_ptr<T>> : public std::true_type {};
+    struct type_is_nullable<std::shared_ptr<T>> : public std::true_type {
+        bool operator()(const std::shared_ptr<T> &t) const {
+            return static_cast<bool>(t);
+        }
+    };
     
     template<class T>
-    struct type_is_nullable<std::unique_ptr<T>> : public std::true_type {};
+    struct type_is_nullable<std::unique_ptr<T>> : public std::true_type {
+        bool operator()(const std::unique_ptr<T> &t) const {
+            return static_cast<bool>(t);
+        }
+    };
     
 //    template<class T>
     struct default_value_extractor {
@@ -2029,16 +2041,21 @@ namespace sqlite_orm {
         std::string string_from_expression(T t) {
 //            if( field_printer<T>)
 //            return std::to_string(t);
-            auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
-            std::stringstream ss;
-            if(needQuotes){
-                ss << "'";
+            auto isNullable = type_is_nullable<T>::value;
+            if(isNullable and !type_is_nullable<T>()(t)){
+                return "NULL";
+            }else{
+                auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
+                std::stringstream ss;
+                if(needQuotes){
+                    ss << "'";
+                }
+                ss << field_printer<T>()(t);
+                if(needQuotes){
+                    ss << "'";
+                }
+                return ss.str();
             }
-            ss << field_printer<T>()(t);
-            if(needQuotes){
-                ss << "'";
-            }
-            return ss.str();
 //            return field_printer<T>()(t);
         }
         
