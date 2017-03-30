@@ -24,6 +24,9 @@ using std::endl;
 
 namespace sqlite_orm {
     
+    typedef sqlite_int64 int64;
+    typedef sqlite_uint64 uint64;
+    
     //  got from here http://stackoverflow.com/questions/25958259/how-do-i-find-out-if-a-tuple-contains-a-type
     namespace tuple_helper {
         
@@ -3087,6 +3090,18 @@ namespace sqlite_orm {
             return sqlite3_total_changes(db);
         }
         
+        int64 last_insert_rowid() {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return sqlite3_last_insert_rowid(db);
+        }
+        
         /**
          *  This is a cute function used to replace migration up/down functionality.
          *  It performs check storage schema with actual db schema and:
@@ -3130,6 +3145,13 @@ namespace sqlite_orm {
             }
             return shouldCommit;
         }
+        
+        /*void transaction(std::function<void()> f) {
+            this->transaction([&]{
+                f();
+                return true;
+            });
+        }*/
         
         void begin_transaction() {
             if(!inMemory){
