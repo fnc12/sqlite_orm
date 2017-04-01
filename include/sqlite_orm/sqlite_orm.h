@@ -218,6 +218,51 @@ namespace sqlite_orm {
         }
     };
     
+    /**
+     *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
+     */
+    template<class T>
+    struct type_printer;
+    
+    struct integer_printer {
+        inline const std::string& print() {
+            static const std::string res = "INTEGER";
+            return res;
+        }
+    };
+    
+    struct text_printer {
+        inline const std::string& print() {
+            static const std::string res = "TEXT";
+            return res;
+        }
+    };
+    
+    struct real_printer {
+        inline const std::string& print() {
+            static const std::string res = "REAL";
+            return res;
+        }
+    };
+    
+    template<>
+    struct type_printer<int> : public integer_printer {};
+    
+    template<>
+    struct type_printer<std::string> : public text_printer {};
+    
+    template<>
+    struct type_printer<const char*> : public text_printer {};
+    
+    template<>
+    struct type_printer<double> : public real_printer {};
+    
+    template<class T>
+    struct type_printer<std::shared_ptr<T>> : public type_printer<T> {};
+    
+    template<class T>
+    struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
+    
 //    template<class T>
     struct default_value_extractor {
         
@@ -229,7 +274,14 @@ namespace sqlite_orm {
         template<class T>
         std::shared_ptr<std::string> operator() (const default_t<T> &t) {
             std::stringstream ss;
+            auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
+            if(needQuotes){
+                ss << "'";
+            }
             ss << t.value;
+            if(needQuotes){
+                ss << "'";
+            }
             return std::make_shared<std::string>(ss.str());
         }
     };
@@ -279,48 +331,6 @@ namespace sqlite_orm {
             return res;
         }
     };
-    
-    /**
-     *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
-     */
-    template<class T>
-    struct type_printer;
-    
-    struct integer_printer {
-        inline const std::string& print() {
-            static const std::string res = "INTEGER";
-            return res;
-        }
-    };
-    
-    struct text_printer {
-        inline const std::string& print() {
-            static const std::string res = "TEXT";
-            return res;
-        }
-    };
-    
-    struct real_printer {
-        inline const std::string& print() {
-            static const std::string res = "REAL";
-            return res;
-        }
-    };
-    
-    template<>
-    struct type_printer<int> : public integer_printer {};
-    
-    template<>
-    struct type_printer<std::string> : public text_printer {};
-    
-    template<>
-    struct type_printer<double> : public real_printer {};
-    
-    template<class T>
-    struct type_printer<std::shared_ptr<T>> : public type_printer<T> {};
-    
-    template<class T>
-    struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
     
     /**
      *  Used to print members mapped to objects.
@@ -2248,7 +2258,17 @@ namespace sqlite_orm {
         C get_all(sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             C res;
             std::stringstream ss;
-            ss << "SELECT * FROM " << this->table.name << " ";
+            ss << "SELECT ";
+            auto columnNames = this->table.column_names();
+            for(auto i = 0; i < columnNames.size(); ++i) {
+                ss << columnNames[i];
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                }else{
+                    ss << " ";
+                }
+            }
+            ss << "FROM " << this->table.name << " ";
             this->process_conditions(ss, args...);
             auto query = ss.str();
             typedef std::tuple<C*, storage_impl*> date_tuple_t;
