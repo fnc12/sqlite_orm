@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
     
     assert(!storage.count<RapArtist>());
     
-    storage.insert(RapArtist{ -1, "The Weeknd"});
+    storage.insert(RapArtist{ -1, "The Weeknd" });
     
     storage.transaction([&]{
         storage.insert(RapArtist{ -1, "Drake" });

@@ -121,7 +121,7 @@ namespace sqlite_orm {
     };
 }
 
-int main(int argc, char **argv) {
+int main(int/* argc*/, char **/*argv*/) {
     using namespace sqlite_orm;
     auto storage = make_storage("",
                                 make_table("superheros",

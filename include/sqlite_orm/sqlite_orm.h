@@ -1008,6 +1008,17 @@ namespace sqlite_orm {
         return {name, table_impl<Cs...>(args...)};
     }
     
+    struct statement_finalizer {
+        sqlite3_stmt *stmt = nullptr;
+        
+        inline statement_finalizer(sqlite3_stmt *stmt_):stmt(stmt_){}
+        
+        inline ~statement_finalizer() {
+            sqlite3_finalize(this->stmt);
+        }
+    
+    };
+    
     /**
      *  Helper class used for binding fields to sqlite3 statements.
      */
@@ -1327,6 +1338,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
@@ -1343,6 +1355,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
@@ -1359,6 +1372,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
@@ -1375,6 +1389,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
@@ -1391,6 +1406,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
@@ -1453,7 +1469,6 @@ namespace sqlite_orm {
                 if(c.template has<autoincrement>()) {
                     ss << "AUTOINCREMENT ";
                 }
-//                if(c.template has<default_t<field_type>>()){
                 if(auto defaultValue = c.default_value()){
                     ss << "DEFAULT " << *defaultValue << " ";
                 }
@@ -1469,6 +1484,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
@@ -1517,6 +1533,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 auto index = 1;
                 this->table.for_each_column([&o, &index, &stmt] (auto c) {
                     if(!c.template has<primary_key>()){
@@ -1684,12 +1701,9 @@ namespace sqlite_orm {
                 ss << columnName << ") FROM " << this->table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
-//                data_t<std::shared_ptr<F>, storage_impl*> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName)->int{
-//                                           auto &d = *(data_t<std::shared_ptr<F>, storage_impl*>*)data;
-//                                           auto &res = *d.res;
                                            auto &res = *(std::shared_ptr<F>*)data;
                                            if(argc){
                                                if(argv[0]){
@@ -1715,7 +1729,6 @@ namespace sqlite_orm {
         template<class F, class O, class ...Args, class HH = typename H::object_type>
         std::string group_concat(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             std::string res;
-//            this->withDatabase([&](auto db) {
                 std::stringstream ss;
                 ss << "SELECT GROUP_CONCAT(";
                 auto columnName = this->table.find_column_name(m);
@@ -1723,12 +1736,9 @@ namespace sqlite_orm {
                     ss << columnName << ") FROM "<< this->table.name << " ";
                     this->process_conditions(ss, args...);
                     auto query = ss.str();
-//                    data_t<std::string, storage_impl*> data{this, &res};
                     auto rc = sqlite3_exec(db,
                                            query.c_str(),
                                            [](void *data, int argc, char **argv,char **azColName)->int{
-//                                               auto &d = *(data_t<std::string, storage_impl*>*)data;
-//                                               auto &res = *d.res;
                                                auto &res = *(std::string*)data;
                                                if(argc){
                                                    res = argv[0];
@@ -1741,7 +1751,6 @@ namespace sqlite_orm {
                 }else{
                     throw std::runtime_error("column not found");
                 }
-//            }, filename);
             return res;
         }
         
@@ -1841,7 +1850,7 @@ namespace sqlite_orm {
         double avg(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
             double res = 0;
             std::stringstream ss;
-            ss << "SELECT avg(";
+            ss << "SELECT AVG(";
             auto columnName = this->table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< this->table.name << " ";
@@ -1880,12 +1889,9 @@ namespace sqlite_orm {
                 ss << columnName << ") FROM "<< this->table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
-//                data_t<int, storage_impl*> data{this, &res};
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName)->int{
-//                                           auto &d = *(data_t<int, storage_impl*>*)data;
-//                                           auto &res = *d.res;
                                            auto &res = *(int*)data;
                                            if(argc){
                                                res = std::atoi(argv[0]);
@@ -1911,15 +1917,11 @@ namespace sqlite_orm {
             int res = 0;
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM " << this->table.name << " ";
-//            auto query =  + this->table.name;
             this->process_conditions(ss, args...);
             auto query = ss.str();
-//            data_t<int, storage_impl*> data{this, &res};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **azColName)->int{
-//                                       auto &d = *(data_t<int, storage_impl*>*)data;
-//                                       auto &res = *d.res;
                                        auto &res = *(int*)data;
                                        if(argc){
                                            res = std::atoi(argv[0]);
@@ -2312,6 +2314,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     return;
                 }else{
@@ -2359,6 +2362,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 auto index = 1;
                 this->table.for_each_column([&, &o = o] (auto c) {
                     if(!c.template has<primary_key>()) {
@@ -2434,6 +2438,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 auto index = 1;
                 this->table.template for_each_column_with<primary_key>([&] (auto c) {
                     typedef typename decltype(c)::field_type field_type;
@@ -2515,6 +2520,7 @@ namespace sqlite_orm {
             sqlite3_stmt *stmt;
             auto prepareResult = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
             if (prepareResult == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     return;
                 }else{
@@ -2573,6 +2579,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer(stmt);
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     return;
                 }else{
@@ -2714,6 +2721,21 @@ namespace sqlite_orm {
     template<class ...Ts>
     struct storage_t {
         typedef storage_impl<Ts...> impl_type;
+        
+        template<class T, class ...Args>
+        struct view_t {
+            typedef T mapped_type;
+            
+            storage_t &storage;
+            
+            size_t size() {
+                return this->storage.template count<T>();
+            }
+            
+            bool empty() {
+                return !this->size();
+            }
+        };
         
         /**
          *  @param filename_ database filename.
