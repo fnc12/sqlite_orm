@@ -118,6 +118,11 @@ namespace sqlite_orm {
                 throw std::runtime_error("incorrect gender string (" + std::string(row_value) + ")");
             }
         }
+        
+        Gender extract(sqlite3_stmt *stmt, int columnIndex) {
+            auto str = sqlite3_column_text(stmt, columnIndex);
+            return this->extract((const char*)str);
+        }
     };
 }
 

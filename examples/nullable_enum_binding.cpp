@@ -91,6 +91,11 @@ namespace sqlite_orm {
                 return Gender::None;
             }
         }
+        
+        Gender extract(sqlite3_stmt *stmt, int columnIndex) {
+            auto str = sqlite3_column_text(stmt, columnIndex);
+            return this->extract((const char*)str);
+        }
     };
     
     /**
@@ -138,7 +143,8 @@ int main(int argc, char **argv) {
     });
     
     cout << "All users :" << endl;
-    for(auto &user : storage.get_all<User>()) {
+//    for(auto &user : storage.get_all<User>()) {
+    for(auto &user : storage.view<User>()) {
         cout << storage.dump(user) << endl;
     }
     
