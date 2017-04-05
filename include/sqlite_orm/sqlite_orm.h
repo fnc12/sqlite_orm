@@ -249,6 +249,9 @@ namespace sqlite_orm {
     struct type_printer<int> : public integer_printer {};
     
     template<>
+    struct type_printer<bool> : public integer_printer {};
+    
+    template<>
     struct type_printer<std::string> : public text_printer {};
     
     template<>
@@ -1037,6 +1040,17 @@ namespace sqlite_orm {
     };
     
     /**
+     *  Specialization for bool.
+     */
+    template<>
+    struct statement_binder<bool> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const bool &value) {
+            return sqlite3_bind_int(stmt, index++, value);
+        }
+    };
+    
+    /**
      *  Specialization for long.
      */
     template<>
@@ -1119,6 +1133,20 @@ namespace sqlite_orm {
         }
         
         int extract(sqlite3_stmt *stmt, int columnIndex) {
+            return sqlite3_column_int(stmt, columnIndex);
+        }
+    };
+    
+    /**
+     *  Specialization for bool.
+     */
+    template<>
+    struct row_extrator<bool> {
+        bool extract(const char *row_value) {
+            return std::atoi(row_value);
+        }
+        
+        bool extract(sqlite3_stmt *stmt, int columnIndex) {
             return sqlite3_column_int(stmt, columnIndex);
         }
     };
@@ -2790,7 +2818,7 @@ namespace sqlite_orm {
                 
                 void extract_value(decltype(temp) &temp) {
                     temp = std::make_shared<T>();
-                    auto db = this->view.connection->get_db();
+//                    auto db = this->view.connection->get_db();
                     auto &storage = this->view.storage;
                     auto &impl = storage.template get_impl<T>();
                     auto index = 0;
