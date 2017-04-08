@@ -42,12 +42,28 @@ int main(int argc, char **argv) {
     storage.insert(MarvelHero{ -1, "Natasha Romanoff", "Black widow" });
     storage.insert(MarvelHero{ -1, "Groot", "I am Groot!" });
     
+    cout << "Heros count = " << storage.count<MarvelHero>() << endl;
+    
     //  iterate through heros - iteration takes less memory than `get_all` because
     //  iteration fetches row by row once it is needed. If you break at any iteration
     //  statement will be cleared without fetching remaining rows.
     for(auto &hero : storage.view<MarvelHero>()) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
+    
+    cout << "====" << endl;
+    
+    //  one can iterate with custom where conditions..
+    for(auto &hero : storage.view<MarvelHero>(where(is_equal(&MarvelHero::name, "Thor")))) {
+        cout << "hero = " << storage.dump(hero) << endl;
+    }
+    
+    cout << "Heros with LENGTH(name) < 6 :" << endl;
+    for(auto &hero : storage.view<MarvelHero>(where(lesser_than(length(&MarvelHero::name), 6)))) {
+        cout << "hero = " << storage.dump(hero) << endl;
+    }
+    
+    
     
     return 0;
 }

@@ -72,28 +72,49 @@ namespace sqlite_orm {
             }
         };
         
-        
-        /*template<class ...Args>
-        struct iterator {
-            
-            template<class L>
-            void operator()(std::tuple<Args...> &t, L l) {
-                //..
+        /*template<typename F, typename Tuple, bool Enough, int TotalArgs, int... N>
+        struct call_impl
+        {
+            auto static call(F f, Tuple&& t)
+            {
+                return call_impl<F, Tuple, TotalArgs == 1 + sizeof...(N),
+                TotalArgs, N..., sizeof...(N)
+                >::call(f, std::forward<Tuple>(t));
             }
         };
         
-        template<class H, class ...Tail>
-        struct iterator<H, Tail...> : public iterator<Tail...> {
-            
-            typedef iterator<Tail...> super;
-            typedef std::tuple<Tail...> tail_tuple_t;
-            
-            template<class L>
-            void operator()(std::tuple<H, Tail...> &t, L l) {
-                super::operator()(static_cast<std::tuple<Tail...>>(t), l);
-                l(std::get<std::tuple_size<tail_tuple_t>>(t));
+        template<typename F, typename Tuple, int TotalArgs, int... N>
+        struct call_impl<F, Tuple, true, TotalArgs, N...>
+        {
+            auto static call(F f, Tuple&& t)
+            {
+                return f(std::get<N>(std::forward<Tuple>(t))...);
             }
-        };*/
+        };
+        
+        template<typename F, typename Tuple>
+        auto call(F f, Tuple&& t)
+        {
+            typedef typename std::decay<Tuple>::type type;
+            return call_impl<F, Tuple, 0 == std::tuple_size<type>::value,
+            std::tuple_size<type>::value
+            >::call(f, std::forward<Tuple>(t));
+        }*/
+        
+        /*template<typename F, typename Tuple, size_t ...S >
+        decltype(auto) apply_tuple_impl(F&& fn, Tuple&& t, std::index_sequence<S...>)
+        {
+            return std::forward<F>(fn)(std::get<S>(std::forward<Tuple>(t))...);
+        }
+        template<typename F, typename Tuple>
+        decltype(auto) apply_from_tuple(F&& fn, Tuple&& t)
+        {
+            std::size_t constexpr tSize
+            = std::tuple_size<typename std::remove_reference<Tuple>::type>::value;
+            return apply_tuple_impl(std::forward<F>(fn),
+                                    std::forward<Tuple>(t),
+                                    std::make_index_sequence<tSize>());
+        }*/
     }
     
     template<class T>
@@ -694,6 +715,20 @@ namespace sqlite_orm {
             return "BETWEEN";
         }
     };
+    
+    template<class T>
+    struct length_t {
+        T t;
+        
+        operator std::string() const {
+            return "LENGTH";
+        }
+    };
+    
+    template<class T>
+    length_t<T> length(T t) {
+        return {t};
+    }
     
     template<class A, class T>
     between_t<A, T> between(A expr, T b1, T b2) {
@@ -2172,6 +2207,14 @@ namespace sqlite_orm {
             return this->table.find_column_name(m);
         }
         
+        template<class T>
+        std::string string_from_expression(length_t<T> &len) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(len.t);
+            ss << static_cast<std::string>(len) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
         template<class O>
         std::string string_from_expression(asc_t<O> &a) {
             std::stringstream ss;
@@ -2808,6 +2851,18 @@ namespace sqlite_orm {
             
             storage_t &storage;
             std::shared_ptr<database_connection> connection;
+//            std::tuple<Args...> options;
+            
+            const std::string query;
+            
+            view_t(storage_t &stor, decltype(connection) conn, Args ...args):
+            storage(stor),
+            connection(conn),
+            query([&]{
+                std::string q;
+                stor.template generate_select_asterisk<T>(&q, args...);
+                return q;
+            }()){}
             
             struct iterator_t {
                 
@@ -2818,14 +2873,12 @@ namespace sqlite_orm {
                 
                 void extract_value(decltype(temp) &temp) {
                     temp = std::make_shared<T>();
-//                    auto db = this->view.connection->get_db();
                     auto &storage = this->view.storage;
                     auto &impl = storage.template get_impl<T>();
                     auto index = 0;
                     impl.table.for_each_column([&index, &temp, this] (auto c) {
                         auto member_pointer = c.member_pointer;
                         auto value = row_extrator<typename decltype(c)::field_type>().extract(this->stmt, index++);
-//                        auto value = row_extrator<typename decltype(c)::field_type>().extract(argv[index++]);
                         (*temp).*member_pointer = value;
                     });
                 }
@@ -2904,8 +2957,10 @@ namespace sqlite_orm {
             
             iterator_t begin() {
                 sqlite3_stmt *stmt = nullptr;
-                std::string query;
-                this->storage.template generate_select_asterisk<T>(query);
+//                std::string query;
+//                tuple_helper::call(std::bind(&storage_t<Ts...>::template generate_select_asterisk<T>, this->storage, std::ref(query)), options);
+//                tuple_helper::apply_from_tuple(std::bind(&storage_t<Ts...>::template generate_select_asterisk<T>, this->storage, std::ref(query)), options);
+//                this->storage.template generate_select_asterisk<T>(query);
                 auto db = this->connection->get_db();
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK){
@@ -2944,7 +2999,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return {*this, connection};
+            return {*this, connection, args...};
         }
         
         template<class O, class ...Args>
@@ -3006,7 +3061,7 @@ namespace sqlite_orm {
          *  @return impl for O
          */
         template<class O, class ...Args>
-        auto& generate_select_asterisk(std::string &query, Args ...args) {
+        auto& generate_select_asterisk(std::string *query, Args ...args) {
             std::stringstream ss;
             ss << "SELECT ";
             auto &impl = this->get_impl<O>();
@@ -3021,7 +3076,9 @@ namespace sqlite_orm {
             }
             ss << "FROM " << impl.table.name << " ";
             impl.process_conditions(ss, args...);
-            query = ss.str();
+            if(query){
+                *query = ss.str();
+            }
             return impl;
         }
         
@@ -3062,7 +3119,7 @@ namespace sqlite_orm {
             impl.process_conditions(ss, args...);
             auto query = ss.str();*/
             std::string query;
-            auto &impl = this->generate_select_asterisk<O>(query, args...);
+            auto &impl = this->generate_select_asterisk<O>(&query, args...);
             
             typedef std::tuple<C*, decltype(&impl)> date_tuple_t;
             date_tuple_t data{&res, &impl};
