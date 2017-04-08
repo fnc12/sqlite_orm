@@ -181,6 +181,22 @@ void testSyncSchema() {
     auto usersCountAfter = newStorage.count<UserAfter>();
     assert(usersCountBefore == usersCountAfter);
     
+    //  test select..
+    auto ids = newStorage.select(&UserAfter::id);
+    auto users = newStorage.get_all<UserAfter>();
+    decltype(ids) idsFromGetAll;
+    idsFromGetAll.reserve(users.size());
+    std::transform(users.begin(),
+                   users.end(),
+                   std::back_inserter(idsFromGetAll),
+                   [=](auto &user) {
+                       return user.id;
+                   });
+    assert(std::equal(ids.begin(),
+                      ids.end(),
+                      idsFromGetAll.begin(),
+                      idsFromGetAll.end()));
+    
 }
 
 int main() {

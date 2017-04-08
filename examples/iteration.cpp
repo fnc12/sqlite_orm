@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     
-    
+    auto nameLengths = storage.select(&MarvelHero::name);
     
     return 0;
 }
