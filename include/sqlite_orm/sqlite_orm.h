@@ -1652,6 +1652,16 @@ namespace sqlite_orm {
             return Super::template get_impl<O>();
         }
         
+        template<class O, class F, class HH = typename H::object_type>
+        std::string column_name(F O::*m, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            return this->table.find_column_name(m);
+        }
+        
+        template<class O, class F, class HH = typename H::object_type>
+        std::string column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            return Super::column_name(m);
+        }
+        
         template<class O, class HH = typename H::object_type>
         int insert(const O &o, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
             return Super::template insert(o, db);
@@ -1709,390 +1719,7 @@ namespace sqlite_orm {
             return res;
         }
         
-        /*template<class F, class O, class ...Args, class HH = typename H::object_type>
-        double total(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::total(m, db, nullptr, args...);
-        }
-        
-        template<class F, class O, class ...Args, class HH = typename H::object_type>
-        double total(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            double res;
-            std::stringstream ss;
-            ss << "SELECT TOTAL(";
-            auto columnName = this->table.find_column_name(m);
-            if(columnName.length()){
-                ss << columnName << ") FROM "<< this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &res = *(double*)data;
-                                           if(argc){
-                                               res = row_extrator<double>().extract(argv[0]);
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::sum(m, db, nullptr, args...);
-        }
-        
-        template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::shared_ptr<F> sum(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            std::shared_ptr<F> res;
-            std::stringstream ss;
-            ss << "SELECT SUM(";
-            auto columnName = this->table.find_column_name(m);
-            if(columnName.length()){
-                ss << columnName << ") FROM "<< this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &res = *(std::shared_ptr<F>*)data;
-                                           if(argc){
-                                               res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::group_concat(m, y, db);
-        }
-        
-        template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::string group_concat(F O::*m, const std::string &y, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            std::string res;
-            std::stringstream ss;
-            ss << "SELECT GROUP_CONCAT(";
-            auto columnName = this->table.find_column_name(m);
-            if(columnName.length()){
-                ss << columnName << ",\"" << y << "\") FROM "<< this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &res = *(std::string*)data;
-                                           if(argc){
-                                               res = argv[0];
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::shared_ptr<F> min(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::min(m, db, nullptr, args...);
-        }
-        
-        template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::shared_ptr<F> min(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            std::shared_ptr<F> res;
-            std::stringstream ss;
-            ss << "SELECT MIN(";
-            auto columnName = this->table.find_column_name(m);
-            if(columnName.length()){
-                ss << columnName << ") FROM " << this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &res = *(std::shared_ptr<F>*)data;
-                                           if(argc){
-                                               if(argv[0]){
-                                                   res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
-                                               }
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::shared_ptr<F> max(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::max(m, db, nullptr, args...);
-        }
-        
-        template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::shared_ptr<F> max(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            std::shared_ptr<F> res;
-            std::stringstream ss;
-            ss << "SELECT MAX(";
-            auto columnName = this->table.find_column_name(m);
-            if(columnName.length()){
-                ss << columnName << ") FROM " << this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &res = *(std::shared_ptr<F>*)data;
-                                           if(argc){
-                                               if(argv[0]){
-                                                   res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
-                                               }
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::string group_concat(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::group_concat(m, db, nullptr, args...);
-        }
-        
-        template<class F, class O, class ...Args, class HH = typename H::object_type>
-        std::string group_concat(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            std::string res;
-            std::stringstream ss;
-            ss << "SELECT GROUP_CONCAT(";
-            auto columnName = this->table.find_column_name(m);
-            if(columnName.length()){
-                ss << columnName << ") FROM "<< this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &res = *(std::string*)data;
-                                           if(argc){
-                                               res = argv[0];
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<
-        class ...Args,
-        class R = std::tuple<typename field_extractor<Args>::type...>,
-        class HH = typename H::object_type,
-        class O = typename object_type_extractor<Args...>::type,
-        class ...Conds>
-        std::vector<R> select(sqlite3 *db, columns_t<Args...> cols, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Conds ...conds) {
-            return Super::select(db, cols, nullptr, conds...);
-        }*/
-        
-        /*template<
-        class ...Args,
-        class R = std::tuple<typename field_extractor<Args>::type...>,
-        class HH = typename H::object_type,
-        class O = typename object_type_extractor<Args...>::type,
-        class ...Conds>
-        std::vector<R> select(sqlite3 *db, columns_t<Args...> cols, typename std::enable_if<std::is_same<O, HH>::value>::type *, Conds ...conds) {
-            std::vector<R> res;
-            std::stringstream ss;
-            ss << "SELECT ";
-            std::vector<std::string> columnNames;
-            columnNames.reserve(cols.count());
-            cols.for_each([&](auto &m) {
-                auto columnName = this->table.find_column_name(m);
-                if(columnName.length()){
-                    columnNames.push_back(columnName);
-                }else{
-                    throw std::runtime_error("column not found");
-                }
-            });
-            for(auto i = 0; i < columnNames.size(); ++i) {
-                ss << columnNames[i];
-                if(i < columnNames.size() - 1) {
-                    ss << ", ";
-                }else{
-                    ss << " ";
-                }
-            }
-            ss << " FROM " << this->table.name << " ";
-            this->process_conditions(ss, conds...);
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db,
-                                   query.c_str(),
-                                   [](void *data, int argc, char **argv,char **azColName) -> int {
-                                       auto &res = *(std::vector<R>*)data;
-                                       auto value = row_extrator<R>().extract(argv);
-                                       res.push_back(value);
-                                       return 0;
-                                   }, &res, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
-            }
-            return res;
-        }*/
-        
-        /*template<class F, class O, class HH = typename H::object_type, class ...Args>
-        std::vector<F> select(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::select(m, db, nullptr, args...);
-        }
-        
-        template<class F, class O, class HH = typename H::object_type, class ...Args>
-        std::vector<F> select(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            std::vector<F> res;
-            std::stringstream ss;
-            ss << "SELECT ";
-//            auto columnName = this->table.find_column_name(m);
-            auto columnName = this->string_from_expression(m);
-            if(columnName.length()){
-                ss << columnName << " FROM " << this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName) -> int {
-                                           auto &res = *(std::vector<F>*)data;
-                                           auto value = row_extrator<F>().extract(argv[0]);
-                                           res.push_back(value);
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<class F, class O, class HH = typename H::object_type, class ...Args>
-        double avg(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::template avg(m, db);
-        }
-        
-        template<class F, class O, class HH = typename H::object_type, class ...Args>
-        double avg(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            double res = 0;
-            std::stringstream ss;
-            ss << "SELECT AVG(";
-            auto columnName = this->table.find_column_name(m);
-            if(columnName.length()){
-                ss << columnName << ") FROM "<< this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &res = *(double*)data;
-                                           if(argc){
-                                               res = std::atof(argv[0]);
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<class F, class O, class HH = typename H::object_type, class ...Args>
-        int count(F O::*m, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::template count(m, db, args...);
-        }
-        
-        template<class F, class O, class HH = typename H::object_type, class ...Args>
-        int count(F O::*m, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            int res = 0;
-            std::stringstream ss;
-            ss << "SELECT COUNT(";
-            auto columnName = this->table.find_column_name(m);
-            if(columnName.length()){
-                ss << columnName << ") FROM "<< this->table.name << " ";
-                this->process_conditions(ss, args...);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
-                                           auto &res = *(int*)data;
-                                           if(argc){
-                                               res = std::atoi(argv[0]);
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else{
-                throw std::runtime_error("column not found");
-            }
-            return res;
-        }*/
-        
-        /*template<class O, class HH = typename H::object_type, class ...Args>
-        int count(sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::template count<O>(db, nullptr, args...);
-        }
-        
-        template<class O, class HH = typename H::object_type, class ...Args>
-        int count(sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            int res = 0;
-            std::stringstream ss;
-            ss << "SELECT COUNT(*) FROM " << this->table.name << " ";
-            this->process_conditions(ss, args...);
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db,
-                                   query.c_str(),
-                                   [](void *data, int argc, char **argv,char **azColName)->int{
-                                       auto &res = *(int*)data;
-                                       if(argc){
-                                           res = std::atoi(argv[0]);
-                                       }
-                                       return 0;
-                                   }, &res, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
-            }
-            return res;
-        }*/
-        
-        template<class O, class I, class HH = typename H::object_type>
+        /*template<class O, class I, class HH = typename H::object_type>
         std::shared_ptr<O> get_no_throw(I id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
             return Super::template get_no_throw<O>(id, db, nullptr);
         }
@@ -2106,17 +1733,13 @@ namespace sqlite_orm {
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
                 auto query = ss.str();
-//                data_t<std::shared_ptr<O>, decltype(this)> data{this, &res};
                 typedef std::tuple<decltype(this), decltype(&res)> Data;
                 Data aTuple = std::make_tuple(this, &res);
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **azColName)->int{
                                            auto &aTuple = *(Data*)data;
-//                                           auto &d = *(data_t<std::shared_ptr<O>, decltype(this)>*)data;
-//                                           auto &res = *d.res;
                                            auto &res = *std::get<1>(aTuple);
-//                                           auto t = d.t;
                                            auto t = std::get<0>(aTuple);
                                            if(argc){
                                                res = std::make_shared<O>();
@@ -2137,9 +1760,9 @@ namespace sqlite_orm {
             }else{
                 throw std::runtime_error("table " + this->table.name + " has no primary key column");
             }
-        }
+        }*/
         
-        template<class O, class I, class HH = typename H::object_type>
+        /*template<class O, class I, class HH = typename H::object_type>
         O get(I id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
             return Super::template get<O>(id, db, nullptr);
         }
@@ -2193,290 +1816,6 @@ namespace sqlite_orm {
                 }
             }else{
                 throw std::runtime_error("table " + this->table.name + " has no primary key column");
-            }
-        }
-        
-        /*template<class ...Args>
-        std::vector<std::string> strings_from_expressions(std::tuple<Args...> &t) {
-            std::vector<std::string> res;
-            res.reserve(std::tuple_size<std::tuple<Args...>>::value);
-            this->_strings_from_expressions<std::tuple_size<std::tuple<Args...>>::value>(res, t);
-            return res;
-        }*/
-        
-        template<class T>
-        std::string string_from_expression(T t) {
-            auto isNullable = type_is_nullable<T>::value;
-            if(isNullable and !type_is_nullable<T>()(t)){
-                return "NULL";
-            }else{
-                auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
-                std::stringstream ss;
-                if(needQuotes){
-                    ss << "'";
-                }
-                ss << field_printer<T>()(t);
-                if(needQuotes){
-                    ss << "'";
-                }
-                return ss.str();
-            }
-        }
-        
-        std::string string_from_expression(const std::string &t) {
-            std::stringstream ss;
-            ss << "'" << t << "'";
-            return ss.str();
-        }
-        
-        std::string string_from_expression(const char *t) {
-            std::stringstream ss;
-            ss << "'" << t << "'";
-            return ss.str();
-        }
-        
-        template<class F, class O>
-        std::string string_from_expression(F O::*m) {
-            return this->table.find_column_name(m);
-        }
-        
-        template<class T>
-        std::string string_from_expression(length_t<T> &len) {
-            std::stringstream ss;
-            auto expr = this->string_from_expression(len.t);
-            ss << static_cast<std::string>(len) << "(" << expr << ") ";
-            return ss.str();
-        }
-        
-        template<class O>
-        std::string string_from_expression(asc_t<O> &a) {
-            std::stringstream ss;
-            ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
-            return ss.str();
-        }
-        
-        
-        template<class O>
-        std::string string_from_expression(desc_t<O> &a) {
-            std::stringstream ss;
-            ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
-            return ss.str();
-        }
-        
-        template<class T>
-        std::string process_where(is_null_t<T> &c) {
-            std::stringstream ss;
-            ss << this->string_from_expression(c.t) << " " << static_cast<std::string>(c) << " ";
-            return ss.str();
-        }
-        
-        template<class T>
-        std::string process_where(is_not_null_t<T> &c) {
-            std::stringstream ss;
-            ss << this->string_from_expression(c.t) << " " << static_cast<std::string>(c) << " ";
-            return ss.str();
-        }
-        
-        template<class C>
-        std::string process_where(negated_condition_t<C> &c) {
-            std::stringstream ss;
-            ss << " " << static_cast<std::string>(c) << " ";
-            auto cString = this->process_where(c.c);
-            ss << " (" << cString << " ) ";
-            return ss.str();
-        }
-        
-        template<class L, class R>
-        std::string process_where(and_condition_t<L, R> &c) {
-            std::stringstream ss;
-            ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
-            return ss.str();
-        }
-        
-        template<class L, class R>
-        std::string process_where(or_condition_t<L, R> &c) {
-            std::stringstream ss;
-            ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
-            return ss.str();
-        }
-        
-        template<class C>
-        std::string process_where(C c) {
-            auto leftString = this->string_from_expression(c.l);
-            auto rightString = this->string_from_expression(c.r);
-            std::stringstream ss;
-            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
-            return ss.str();
-        }
-        
-        template<class L, class E>
-        std::string process_where(in_t<L, E> &inCondition) {
-            std::stringstream ss;
-            auto leftString = this->string_from_expression(inCondition.l);
-            ss << leftString << " IN (";
-            for(auto index = 0; index < inCondition.values.size(); ++index) {
-                auto &value = inCondition.values[index];
-                ss << " " << this->string_from_expression(value);
-                if(index < inCondition.values.size() - 1) {
-                    ss << ", ";
-                }
-            }
-            ss << " )";
-            return ss.str();
-        }
-        
-        template<class A, class T>
-        std::string process_where(between_t<A, T> &bw) {
-            std::stringstream ss;
-            auto expr = this->string_from_expression(bw.expr);
-            ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1) << " AND " << this->string_from_expression(bw.b2) << " ";
-            return ss.str();
-        }
-        
-        template<class O>
-        std::string process_order_by(order_by_t<O> &orderBy) {
-            std::stringstream ss;
-            auto columnName = this->string_from_expression(orderBy.o);
-            ss << columnName << " ";
-            return ss.str();
-        }
-        
-        void process_single_condition(std::stringstream &ss, limit_t limt) {
-            ss << static_cast<std::string>(limt) << " ";
-            if(limt.has_offset) {
-                if(limt.offset_is_implicit){
-                    ss << limt.off << ", " << limt.lim;
-                }else{
-                    ss << limt.lim << " OFFSET " << limt.off;
-                }
-            }else{
-                ss << limt.lim;
-            }
-            ss << " ";
-        }
-        
-        template<class C>
-        void process_single_condition(std::stringstream &ss, where_t<C> w) {
-            ss << static_cast<std::string>(w) << " ";
-            auto whereString = this->process_where(w.c);
-            ss << "(" << whereString << ") ";
-        }
-        
-        template<class O>
-        void process_single_condition(std::stringstream &ss, order_by_t<O> orderBy) {
-            ss << static_cast<std::string>(orderBy) << " ";
-            auto orderByString = this->process_order_by(orderBy);
-            ss << orderByString << " ";
-        }
-        
-        /*template<class O>
-        void process_single_condition(std::stringstream &ss, asc_t<O> ascOrderBy) {
-            ss << "ORDER BY ";
-            auto orderByString = this->process_order_by(ascOrderBy);
-            ss << orderByString << " ";
-        }*/
-        
-        template<class ...Args>
-        void process_single_condition(std::stringstream &ss, group_by_t<Args...> groupBy) {
-            std::vector<std::string> expressions;
-            typedef std::tuple<Args...> typle_t;
-            tuple_helper::iterator<std::tuple_size<typle_t>::value - 1, Args...>()(groupBy.args, [&](auto &v){
-                auto expression = this->string_from_expression(v);
-                expressions.push_back(expression);
-            });
-            ss << static_cast<std::string>(groupBy) << " ";
-            for(auto i = 0; i < expressions.size(); ++i) {
-                ss << expressions[i];
-                if(i < expressions.size() - 1) {
-                    ss << ", ";
-                }
-            }
-            ss << " ";
-        }
-        
-        /**
-         *  Recursion end.
-         */
-        template<class ...Args>
-        void process_conditions(std::stringstream &/*ss*/, Args ...args) {
-            //..
-        }
-        
-        template<class C, class ...Args>
-        void process_conditions(std::stringstream &ss, C c, Args ...args) {
-            this->process_single_condition(ss, c);
-            this->process_conditions(ss, args...);
-        }
-        
-        /*template<class O, class C, class HH = typename H::object_type, class ...Args>
-        C get_all(sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            return Super::template get_all<O, C>(db, nullptr, args...);
-        }
-        
-        template<class O, class C, class HH = typename H::object_type, class ...Args>
-        C get_all(sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            C res;
-            std::stringstream ss;
-            ss << "SELECT ";
-            auto columnNames = this->table.column_names();
-            for(auto i = 0; i < columnNames.size(); ++i) {
-                ss << columnNames[i];
-                if(i < columnNames.size() - 1) {
-                    ss << ", ";
-                }else{
-                    ss << " ";
-                }
-            }
-            ss << "FROM " << this->table.name << " ";
-            this->process_conditions(ss, args...);
-            auto query = ss.str();
-            typedef std::tuple<C*, storage_impl*> date_tuple_t;
-            date_tuple_t data{&res, this};
-            auto rc = sqlite3_exec(db,
-                                   query.c_str(),
-                                   [](void *data, int argc, char **argv,char **) -> int {
-                                       auto &d = *(date_tuple_t*)data;
-                                       auto &res = *std::get<0>(d);
-                                       auto t = std::get<1>(d);
-                                       if(argc){
-                                           O o;
-                                           auto index = 0;
-                                           t->table.for_each_column([&index, &o, argv] (auto c) {
-                                               auto member_pointer = c.member_pointer;
-                                               auto value = row_extrator<typename decltype(c)::field_type>().extract(argv[index++]);
-                                               o.*member_pointer = value;
-                                           });
-                                           res.push_back(std::move(o));
-                                       }
-                                       return 0;
-                                   }, &data, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
-            }
-            return res;
-        }*/
-        
-        /*template<class O, class HH = typename H::object_type, class ...Args>
-        void remove_all(sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type *, Args ...args) {
-            Super::template remove_all<O>(db, nullptr, args...);
-        }
-        
-        template<class O, class HH = typename H::object_type, class ...Args>
-        void remove_all(sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type *, Args ...args) {
-            std::stringstream ss;
-            ss << "DELETE FROM " << this->table.name << " ";
-            this->process_conditions(ss, args...);
-            auto query = ss.str();
-            sqlite3_stmt *stmt;
-            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                statement_finalizer finalizer{stmt};
-                if (sqlite3_step(stmt) == SQLITE_DONE) {
-                    return;
-                }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
             }
         }*/
         
@@ -3000,10 +2339,212 @@ namespace sqlite_orm {
             }
         }
         
+    protected:
+        
         template<class O>
         auto& get_impl() {
             return this->impl.template get_impl<O>();
         }
+        
+        template<class T>
+        std::string string_from_expression(T t) {
+            auto isNullable = type_is_nullable<T>::value;
+            if(isNullable and !type_is_nullable<T>()(t)){
+                return "NULL";
+            }else{
+                auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
+                std::stringstream ss;
+                if(needQuotes){
+                    ss << "'";
+                }
+                ss << field_printer<T>()(t);
+                if(needQuotes){
+                    ss << "'";
+                }
+                return ss.str();
+            }
+        }
+        
+        std::string string_from_expression(const std::string &t) {
+            std::stringstream ss;
+            ss << "'" << t << "'";
+            return ss.str();
+        }
+        
+        std::string string_from_expression(const char *t) {
+            std::stringstream ss;
+            ss << "'" << t << "'";
+            return ss.str();
+        }
+        
+        template<class F, class O>
+        std::string string_from_expression(F O::*m) {
+//            return this->table.name + "." + this->table.find_column_name(m);
+            return this->impl.column_name(m);
+        }
+        
+        template<class T>
+        std::string string_from_expression(length_t<T> &len) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(len.t);
+            ss << static_cast<std::string>(len) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class O>
+        std::string string_from_expression(asc_t<O> &a) {
+            std::stringstream ss;
+            ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
+            return ss.str();
+        }
+        
+        
+        template<class O>
+        std::string string_from_expression(desc_t<O> &a) {
+            std::stringstream ss;
+            ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
+            return ss.str();
+        }
+        
+        template<class T>
+        std::string process_where(is_null_t<T> &c) {
+            std::stringstream ss;
+            ss << this->string_from_expression(c.t) << " " << static_cast<std::string>(c) << " ";
+            return ss.str();
+        }
+        
+        template<class T>
+        std::string process_where(is_not_null_t<T> &c) {
+            std::stringstream ss;
+            ss << this->string_from_expression(c.t) << " " << static_cast<std::string>(c) << " ";
+            return ss.str();
+        }
+        
+        template<class C>
+        std::string process_where(negated_condition_t<C> &c) {
+            std::stringstream ss;
+            ss << " " << static_cast<std::string>(c) << " ";
+            auto cString = this->process_where(c.c);
+            ss << " (" << cString << " ) ";
+            return ss.str();
+        }
+        
+        template<class L, class R>
+        std::string process_where(and_condition_t<L, R> &c) {
+            std::stringstream ss;
+            ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
+            return ss.str();
+        }
+        
+        template<class L, class R>
+        std::string process_where(or_condition_t<L, R> &c) {
+            std::stringstream ss;
+            ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
+            return ss.str();
+        }
+        
+        template<class C>
+        std::string process_where(C c) {
+            auto leftString = this->string_from_expression(c.l);
+            auto rightString = this->string_from_expression(c.r);
+            std::stringstream ss;
+            ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+            return ss.str();
+        }
+        
+        template<class L, class E>
+        std::string process_where(in_t<L, E> &inCondition) {
+            std::stringstream ss;
+            auto leftString = this->string_from_expression(inCondition.l);
+            ss << leftString << " IN (";
+            for(auto index = 0; index < inCondition.values.size(); ++index) {
+                auto &value = inCondition.values[index];
+                ss << " " << this->string_from_expression(value);
+                if(index < inCondition.values.size() - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << " )";
+            return ss.str();
+        }
+        
+        template<class A, class T>
+        std::string process_where(between_t<A, T> &bw) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(bw.expr);
+            ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1) << " AND " << this->string_from_expression(bw.b2) << " ";
+            return ss.str();
+        }
+        
+        template<class O>
+        std::string process_order_by(order_by_t<O> &orderBy) {
+            std::stringstream ss;
+            auto columnName = this->string_from_expression(orderBy.o);
+            ss << columnName << " ";
+            return ss.str();
+        }
+        
+        void process_single_condition(std::stringstream &ss, limit_t limt) {
+            ss << static_cast<std::string>(limt) << " ";
+            if(limt.has_offset) {
+                if(limt.offset_is_implicit){
+                    ss << limt.off << ", " << limt.lim;
+                }else{
+                    ss << limt.lim << " OFFSET " << limt.off;
+                }
+            }else{
+                ss << limt.lim;
+            }
+            ss << " ";
+        }
+        
+        template<class C>
+        void process_single_condition(std::stringstream &ss, where_t<C> w) {
+            ss << static_cast<std::string>(w) << " ";
+            auto whereString = this->process_where(w.c);
+            ss << "(" << whereString << ") ";
+        }
+        
+        template<class O>
+        void process_single_condition(std::stringstream &ss, order_by_t<O> orderBy) {
+            ss << static_cast<std::string>(orderBy) << " ";
+            auto orderByString = this->process_order_by(orderBy);
+            ss << orderByString << " ";
+        }
+        
+        template<class ...Args>
+        void process_single_condition(std::stringstream &ss, group_by_t<Args...> groupBy) {
+            std::vector<std::string> expressions;
+            typedef std::tuple<Args...> typle_t;
+            tuple_helper::iterator<std::tuple_size<typle_t>::value - 1, Args...>()(groupBy.args, [&](auto &v){
+                auto expression = this->string_from_expression(v);
+                expressions.push_back(expression);
+            });
+            ss << static_cast<std::string>(groupBy) << " ";
+            for(auto i = 0; i < expressions.size(); ++i) {
+                ss << expressions[i];
+                if(i < expressions.size() - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << " ";
+        }
+        
+        /**
+         *  Recursion end.
+         */
+        template<class ...Args>
+        void process_conditions(std::stringstream &, Args ...args) {
+            //..
+        }
+        
+        template<class C, class ...Args>
+        void process_conditions(std::stringstream &ss, C c, Args ...args) {
+            this->process_single_condition(ss, c);
+            this->process_conditions(ss, args...);
+        }
+        
+    public:
         
         template<class T, class ...Args>
         view_t<T, Args...> view(Args ...args) {
@@ -3032,7 +2573,7 @@ namespace sqlite_orm {
             auto &impl = this->get_impl<O>();
             std::stringstream ss;
             ss << "DELETE FROM " << impl.table.name << " ";
-            impl.process_conditions(ss, args...);
+            this->process_conditions(ss, args...);
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -3107,7 +2648,7 @@ namespace sqlite_orm {
                 }
             }
             ss << "FROM " << impl.table.name << " ";
-            impl.process_conditions(ss, args...);
+            this->process_conditions(ss, args...);
             if(query){
                 *query = ss.str();
             }
@@ -3132,7 +2673,6 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
 //            return impl.template get_all<O, C>(db, nullptr, args...);
-//#if false
             C res;
             
             /*std::stringstream ss;
@@ -3177,7 +2717,6 @@ namespace sqlite_orm {
                 throw std::runtime_error(sqlite3_errmsg(db));
             }
             return res;
-//#endif
         }
         
         /**
@@ -3198,7 +2737,56 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.template get<O>(id, db);
+//            return impl.template get<O>(id, db);
+            auto &impl = this->get_impl<O>();
+            std::shared_ptr<O> res;
+            std::stringstream ss;
+            ss << "SELECT ";
+            auto columnNames = impl.table.column_names();
+            for(auto i = 0; i < columnNames.size(); ++i) {
+                ss << columnNames[i];
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                }else{
+                    ss << " ";
+                }
+            }
+            ss << "FROM " << impl.table.name << " WHERE ";
+            auto primaryKeyColumnName = impl.table.primary_key_column_name();
+            if(primaryKeyColumnName.size()){
+                ss << primaryKeyColumnName << " = " << string_from_expression(id);
+                auto query = ss.str();
+                typedef std::tuple<decltype(&impl), decltype(res)*> data_tuple_t;
+                data_tuple_t dataTuple = std::make_tuple(&impl, &res);
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &d = *(data_tuple_t*)data;
+                                           auto &res = *std::get<1>(d);
+                                           auto t = std::get<0>(d);
+                                           if(argc){
+                                               res = std::make_shared<O>();
+                                               auto index = 0;
+                                               t->table.for_each_column([&] (auto c) {
+                                                   auto &o = *res;
+                                                   auto member_pointer = c.member_pointer;
+                                                   auto value = row_extrator<typename decltype(c)::field_type>().extract(argv[index++]);
+                                                   o.*member_pointer = value;
+                                               });
+                                           }
+                                           return 0;
+                                       }, &dataTuple, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+                if(res){
+                    return *res;
+                }else{
+                    throw not_found_exception{};
+                }
+            }else{
+                throw std::runtime_error("table " + impl.table.name + " has no primary key column");
+            }
         }
         
         /**
@@ -3215,7 +2803,53 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.template get_no_throw<O>(id, db);
+//            return impl.template get_no_throw<O>(id, db);
+            auto &impl = this->get_impl<O>();
+            std::shared_ptr<O> res;
+            std::stringstream ss;
+            ss << "SELECT ";
+            auto columnNames = impl.table.column_names();
+            for(auto i = 0; i < columnNames.size(); ++i) {
+                ss << columnNames[i];
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                }else{
+                    ss << " ";
+                }
+            }
+            ss << "FROM " << impl.table.name << " WHERE ";
+//            ss << "SELECT * FROM " << impl.table.name << " WHERE ";
+            auto primaryKeyColumnName = impl.table.primary_key_column_name();
+            if(primaryKeyColumnName.size()){
+                ss << primaryKeyColumnName << " = " << string_from_expression(id);
+                auto query = ss.str();
+                typedef std::tuple<decltype(&impl), decltype(&res)> Data;
+                Data aTuple = std::make_tuple(&impl, &res);
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                           auto &aTuple = *(Data*)data;
+                                           auto &res = *std::get<1>(aTuple);
+                                           auto t = std::get<0>(aTuple);
+                                           if(argc){
+                                               res = std::make_shared<O>();
+                                               auto index = 0;
+                                               t->table.for_each_column([&] (auto c) {
+                                                   auto &o = *res;
+                                                   auto member_pointer = c.member_pointer;
+                                                   auto value = row_extrator<typename decltype(c)::field_type>().extract(argv[index++]);
+                                                   o.*member_pointer = value;
+                                               });
+                                           }
+                                           return 0;
+                                       }, &aTuple, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+                return res;
+            }else{
+                throw std::runtime_error("table " + impl.table.name + " has no primary key column");
+            }
         }
         
         /**
@@ -3237,7 +2871,7 @@ namespace sqlite_orm {
             int res = 0;
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM " << impl.table.name << " ";
-            impl.process_conditions(ss, args...);
+            this->process_conditions(ss, args...);
             auto query = ss.str();
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
@@ -3276,7 +2910,7 @@ namespace sqlite_orm {
             auto columnName = impl.table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -3319,7 +2953,7 @@ namespace sqlite_orm {
             auto columnName = impl.table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -3362,7 +2996,7 @@ namespace sqlite_orm {
             auto columnName = impl.table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -3405,7 +3039,7 @@ namespace sqlite_orm {
             auto columnName = impl.table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ",\"" << y << "\") FROM "<< impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -3453,7 +3087,7 @@ namespace sqlite_orm {
             auto columnName = impl.table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ") FROM " << impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -3498,7 +3132,7 @@ namespace sqlite_orm {
             auto columnName = impl.table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ") FROM " << impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -3543,11 +3177,11 @@ namespace sqlite_orm {
             auto columnName = impl.table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
                                            auto &res = *(std::shared_ptr<F>*)data;
                                            if(argc){
                                                res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
@@ -3586,11 +3220,11 @@ namespace sqlite_orm {
             auto columnName = impl.table.find_column_name(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
                                            auto &res = *(double*)data;
                                            if(argc){
                                                res = row_extrator<double>().extract(argv[0]);
@@ -3626,14 +3260,14 @@ namespace sqlite_orm {
             auto &impl = this->get_impl<O>();
             //            auto columnName = this->table.find_column_name(m);
 //            std::vector<std::string> tablesNames;
-            auto columnName = impl.string_from_expression(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << " FROM " << impl.table.name << " ";
-                impl.process_conditions(ss, args...);
+                this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName) -> int {
+                                       [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
                                            auto &res = *(std::vector<F>*)data;
                                            auto value = row_extrator<F>().extract(argv[0]);
                                            res.push_back(value);
@@ -3674,7 +3308,7 @@ namespace sqlite_orm {
             columnNames.reserve(cols.count());
             cols.for_each([&](auto &m) {
 //                auto columnName = impl.table.find_column_name(m);
-                auto columnName = impl.string_from_expression(m);
+                auto columnName = this->string_from_expression(m);
                 if(columnName.length()){
                     columnNames.push_back(columnName);
                 }else{
@@ -3690,7 +3324,7 @@ namespace sqlite_orm {
                 }
             }
             ss << " FROM " << impl.table.name << " ";
-            impl.process_conditions(ss, conds...);
+            this->process_conditions(ss, conds...);
             auto query = ss.str();
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
