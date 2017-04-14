@@ -794,9 +794,10 @@ namespace sqlite_orm {
         }
     };
     
-    template<class F, class O, class ...Args>
-    struct columns_t<F O::*, Args...> : public columns_t<Args...> {
-        F O::*m;
+    template<class T, class ...Args>
+    struct columns_t<T, Args...> : public columns_t<Args...> {
+//        F O::*m;
+        T m;
         
         columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
         
@@ -2570,9 +2571,19 @@ namespace sqlite_orm {
             return impl;
         }
         
+        template<class T>
+        std::string parse_table_name(T &t) {
+            return {};
+        }
+        
         template<class F, class O>
         std::string parse_table_name(F O::*m) {
             return this->impl.template find_table_name<O>();
+        }
+        
+        template<class T>
+        std::string parse_table_name(length_t<T> &len) {
+            return this->parse_table_name(len.t);
         }
         
         template<class ...Args>
@@ -2583,12 +2594,30 @@ namespace sqlite_orm {
         template<class H, class ...Args>
         std::vector<std::string> parse_table_names(H h, Args ...args) {
             auto res = this->parse_table_names(std::forward<Args>(args)...);
-            auto tableName = this->parse_table_name(std::move(h));
-            if(std::find(res.begin(),
-                         res.end(),
-                         tableName) == res.end()) {
-                res.push_back(tableName);
+            auto tableName = this->parse_table_name(h);
+            if(tableName.length()){
+                if(std::find(res.begin(),
+                             res.end(),
+                             tableName) == res.end()) {
+                    res.push_back(tableName);
+                }
             }
+            return res;
+        }
+        
+        template<class ...Args>
+        std::vector<std::string> parse_table_names(columns_t<Args...> &cols) {
+            std::vector<std::string> res;
+            cols.for_each([&](auto &m){
+                auto tableName = this->parse_table_name(m);
+                if(tableName.length()){
+                    if(std::find(res.begin(),
+                                 res.end(),
+                                 tableName) == res.end()) {
+                        res.push_back(tableName);
+                    }
+                }
+            });
             return res;
         }
         
@@ -3195,18 +3224,21 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "SELECT ";
 //            auto &impl = this->get_impl<O>();
-            auto tableNames = this->parse_table_names(m);
             //            auto columnName = this->table.find_column_name(m);
 //            std::vector<std::string> tablesNames;
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << " FROM " ;
-                for(auto i = 0; i < int(tableNames.size()); ++i) {
-                    ss << tableNames[i];
-                    if(i < int(tableNames.size()) - 1) {
-                        ss << ",";
+                ss << columnName << " ";
+                auto tableNames = this->parse_table_names(m);
+                if(tableNames.size()){
+                    ss << "FROM " ;
+                    for(auto i = 0; i < int(tableNames.size()); ++i) {
+                        ss << tableNames[i];
+                        if(i < int(tableNames.size()) - 1) {
+                            ss << ",";
+                        }
+                        ss << " ";
                     }
-                    ss << " ";
                 }
 //                ss << impl.table.name << " ";
                 this->process_conditions(ss, args...);
@@ -3234,8 +3266,9 @@ namespace sqlite_orm {
          */
         template<class ...Args,
         class R = std::tuple<typename column_result_t<Args>::type...>,
-        class ...Conds,
-        class O = typename object_type_extractor<Args...>::type>
+        class ...Conds//,
+//        class O = typename object_type_extractor<Args...>::type
+        >
         std::vector<R> select(columns_t<Args...> cols, Conds ...conds) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
@@ -3246,7 +3279,7 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
 //            return impl.select(db, cols, nullptr, conds...);
-            auto &impl = this->get_impl<O>();
+//            auto &impl = this->get_impl<O>();
             std::vector<R> res;
             std::stringstream ss;
             ss << "SELECT ";
@@ -3269,7 +3302,18 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-            ss << " FROM " << impl.table.name << " ";
+//            ss << impl.table.name << " ";
+            auto tableNames = this->parse_table_names(cols);
+            if(tableNames.size()){
+                ss << " FROM ";
+                for(auto i = 0; i < int(tableNames.size()); ++i) {
+                    ss << tableNames[i];
+                    if(i < int(tableNames.size()) - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+            }
             this->process_conditions(ss, conds...);
             auto query = ss.str();
             auto rc = sqlite3_exec(db,

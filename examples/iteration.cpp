@@ -27,7 +27,6 @@ int main(int argc, char **argv) {
                                                        &MarvelHero::abilities)));
     storage.sync_schema();
     
-    //  remove all old tweet if they do exist
     storage.remove_all<MarvelHero>();
     
     //  insert values..
@@ -53,7 +52,7 @@ int main(int argc, char **argv) {
     
     cout << "====" << endl;
     
-    //  one can iterate with custom where conditions..
+    //  one can iterate with custom WHERE conditions..
     for(auto &hero : storage.view<MarvelHero>(where(is_equal(&MarvelHero::name, "Thor")))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
