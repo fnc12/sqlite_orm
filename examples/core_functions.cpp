@@ -17,6 +17,7 @@ struct MarvelHero {
     int id;
     std::string name;
     std::string abilities;
+    short points;
 };
 
 int main(int argc, char **argv) {
@@ -29,22 +30,24 @@ int main(int argc, char **argv) {
                                            make_column("name",
                                                        &MarvelHero::name),
                                            make_column("abilities",
-                                                       &MarvelHero::abilities)));
+                                                       &MarvelHero::abilities),
+                                           make_column("points",
+                                                       &MarvelHero::points)));
     storage.sync_schema();
     
     storage.remove_all<MarvelHero>();
     
     //  insert values..
-    storage.insert(MarvelHero{ -1, "Tony Stark", "Iron man, playboy, billionaire, philanthropist" });
-    storage.insert(MarvelHero{ -1, "Thor", "Storm god" });
-    storage.insert(MarvelHero{ -1, "Vision", "Min Stone" });
-    storage.insert(MarvelHero{ -1, "Captain America", "Vibranium shield" });
-    storage.insert(MarvelHero{ -1, "Hulk", "Strength" });
-    storage.insert(MarvelHero{ -1, "Star Lord", "Humor" });
-    storage.insert(MarvelHero{ -1, "Peter Parker", "Spiderman" });
-    storage.insert(MarvelHero{ -1, "Clint Barton", "Hawkeye" });
-    storage.insert(MarvelHero{ -1, "Natasha Romanoff", "Black widow" });
-    storage.insert(MarvelHero{ -1, "Groot", "I am Groot!" });
+    storage.insert(MarvelHero{ -1, "Tony Stark", "Iron man, playboy, billionaire, philanthropist", 5 });
+    storage.insert(MarvelHero{ -1, "Thor", "Storm god", -10 });
+    storage.insert(MarvelHero{ -1, "Vision", "Min Stone", 4 });
+    storage.insert(MarvelHero{ -1, "Captain America", "Vibranium shield", -3 });
+    storage.insert(MarvelHero{ -1, "Hulk", "Strength", -15 });
+    storage.insert(MarvelHero{ -1, "Star Lord", "Humor", 19 });
+    storage.insert(MarvelHero{ -1, "Peter Parker", "Spiderman", 16 });
+    storage.insert(MarvelHero{ -1, "Clint Barton", "Hawkeye", -11 });
+    storage.insert(MarvelHero{ -1, "Natasha Romanoff", "Black widow", 8 });
+    storage.insert(MarvelHero{ -1, "Groot", "I am Groot!", 2 });
     
     //  SELECT LENGTH(name) FROM marvel
     auto nameLengths = storage.select(length(&MarvelHero::name));   //  nameLengths is std::vector<int>
@@ -75,6 +78,26 @@ int main(int argc, char **argv) {
     //  SELECT LENGTH(1990), LENGTH(CURRENT_TIMESTAMP)
     auto customTwo = storage.select(columns(length(1990), length(storage.current_timestamp())));
     cout << "customTwo = {" << std::get<0>(customTwo.front()) << ", " << std::get<1>(customTwo.front()) << "}" << endl;
+    
+    //  SELECT ABS(points) FROM marvel
+    auto absPoints = storage.select(abs(&MarvelHero::points));  //  std::vector<std::shared_ptr<int>>
+    cout << "absPoints: ";
+    for(auto &value : absPoints) {
+        if(value) {
+            cout << *value;
+        }else{
+            cout << "null";
+        }
+        cout << " ";
+    }
+    cout << endl;
+    
+    //  SELECT name FROM marvel WHERE ABS(points) < 5
+    auto namesByAbs = storage.select(&MarvelHero::name, where(lesser_than(abs(&MarvelHero::points), 5)));
+    cout << "namesByAbs.size = " << namesByAbs.size() << endl;
+    for(auto &name : namesByAbs) {
+        cout << name << endl;
+    }
     
     return 0;
 }

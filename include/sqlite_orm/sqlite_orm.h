@@ -72,50 +72,6 @@ namespace sqlite_orm {
                 //..
             }
         };
-        
-        /*template<typename F, typename Tuple, bool Enough, int TotalArgs, int... N>
-        struct call_impl
-        {
-            auto static call(F f, Tuple&& t)
-            {
-                return call_impl<F, Tuple, TotalArgs == 1 + sizeof...(N),
-                TotalArgs, N..., sizeof...(N)
-                >::call(f, std::forward<Tuple>(t));
-            }
-        };
-        
-        template<typename F, typename Tuple, int TotalArgs, int... N>
-        struct call_impl<F, Tuple, true, TotalArgs, N...>
-        {
-            auto static call(F f, Tuple&& t)
-            {
-                return f(std::get<N>(std::forward<Tuple>(t))...);
-            }
-        };
-        
-        template<typename F, typename Tuple>
-        auto call(F f, Tuple&& t)
-        {
-            typedef typename std::decay<Tuple>::type type;
-            return call_impl<F, Tuple, 0 == std::tuple_size<type>::value,
-            std::tuple_size<type>::value
-            >::call(f, std::forward<Tuple>(t));
-        }*/
-        
-        /*template<typename F, typename Tuple, size_t ...S >
-        decltype(auto) apply_tuple_impl(F&& fn, Tuple&& t, std::index_sequence<S...>)
-        {
-            return std::forward<F>(fn)(std::get<S>(std::forward<Tuple>(t))...);
-        }
-        template<typename F, typename Tuple>
-        decltype(auto) apply_from_tuple(F&& fn, Tuple&& t)
-        {
-            std::size_t constexpr tSize
-            = std::tuple_size<typename std::remove_reference<Tuple>::type>::value;
-            return apply_tuple_impl(std::forward<F>(fn),
-                                    std::forward<Tuple>(t),
-                                    std::make_index_sequence<tSize>());
-        }*/
     }
     
     template<class T>
@@ -126,13 +82,13 @@ namespace sqlite_orm {
         typedef F type;
     };
     
-    template<class ...Args>
+    /*template<class ...Args>
     struct object_type_extractor;
     
     template<class F, class O, class ...Args>
     struct object_type_extractor<F O::*, Args...> {
         typedef O type;
-    };
+    };*/
     
     struct autoincrement {};
     
@@ -274,6 +230,9 @@ namespace sqlite_orm {
     struct type_printer<bool> : public integer_printer {};
     
     template<>
+    struct type_printer<short> : public integer_printer {};
+    
+    template<>
     struct type_printer<std::string> : public text_printer {};
     
     template<>
@@ -411,360 +370,385 @@ namespace sqlite_orm {
         return {name, m, std::make_tuple(options...)};
     }
     
-    struct limit_t {
-        int lim;
-        bool has_offset = false;
-        bool offset_is_implicit = false;
-        int off = 0;
+    namespace conditions {
         
-        operator std::string () const {
-            return "LIMIT";
-        }
-    };
+        struct limit_t {
+            int lim;
+            bool has_offset = false;
+            bool offset_is_implicit = false;
+            int off = 0;
+            
+            operator std::string () const {
+                return "LIMIT";
+            }
+        };
+        
+        struct offset_t {
+            int off;
+        };
+        
+        struct condition_t {};
+        
+        template<class C>
+        struct negated_condition_t : public condition_t {
+            C c;
+            
+            negated_condition_t(C c_):c(c_){}
+            
+            operator std::string () const {
+                return "NOT";
+            }
+        };
+        
+        template<class L, class R>
+        struct and_condition_t : public condition_t {
+            L l;
+            R r;
+            
+            and_condition_t(L l_, R r_):l(l_),r(r_){}
+            
+            operator std::string () const {
+                return "AND";
+            }
+        };
+        
+        template<class L, class R>
+        struct or_condition_t : public condition_t {
+            L l;
+            R r;
+            
+            or_condition_t(L l_, R r_):l(l_),r(r_){}
+            
+            operator std::string () const {
+                return "OR";
+            }
+        };
+        
+        template<class L, class R>
+        struct binary_condition : public condition_t {
+            L l;
+            R r;
+            
+            binary_condition(L l_, R r_):l(l_),r(r_){}
+        };
+        
+        template<class L, class R>
+        struct is_equal_t : public binary_condition<L, R> {
+            
+            using binary_condition<L, R>::binary_condition;
+            
+            operator std::string () const {
+                return "=";
+            }
+            
+            negated_condition_t<is_equal_t<L, R>> operator!() const {
+                return {*this};
+            }
+            
+        };
+        
+        template<class L, class R>
+        struct is_not_equal_t : public binary_condition<L, R> {
+            
+            using binary_condition<L, R>::binary_condition;
+            
+            operator std::string () const {
+                return "!=";
+            }
+            
+            negated_condition_t<is_not_equal_t<L, R>> operator!() const {
+                return {*this};
+            }
+        };
+        
+        template<class L, class R>
+        struct greater_than_t : public binary_condition<L, R> {
+            
+            using binary_condition<L, R>::binary_condition;
+            
+            operator std::string () const {
+                return ">";
+            }
+            
+            negated_condition_t<greater_than_t<L, R>> operator!() const {
+                return {*this};
+            }
+        };
+        
+        template<class L, class R>
+        struct greater_or_equal_t : public binary_condition<L, R> {
+            
+            using binary_condition<L, R>::binary_condition;
+            
+            operator std::string () const {
+                return ">=";
+            }
+            
+            negated_condition_t<greater_or_equal_t<L, R>> operator!() const {
+                return {*this};
+            }
+        };
+        
+        template<class L, class R>
+        struct lesser_than_t : public binary_condition<L, R> {
+            
+            using binary_condition<L, R>::binary_condition;
+            
+            operator std::string () const {
+                return "<";
+            }
+            
+            negated_condition_t<lesser_than_t<L, R>> operator!() const {
+                return {*this};
+            }
+        };
+        
+        template<class L, class R>
+        struct lesser_or_equal_t : public binary_condition<L, R> {
+            
+            using binary_condition<L, R>::binary_condition;
+            
+            operator std::string () const {
+                return "<=";
+            }
+            
+            negated_condition_t<lesser_or_equal_t<L, R>> operator!() const {
+                return {*this};
+            }
+        };
+        
+        template<class L, class E>
+        struct in_t {
+            L l;    //  left expression..
+            std::vector<E> values;       //  values..
+            
+            negated_condition_t<in_t<L, E>> operator!() const {
+                return {*this};
+            }
+            
+            operator std::string () const {
+                return "IN";
+            }
+        };
+        
+        template<class T>
+        struct is_null_t {
+            T t;
+            
+            negated_condition_t<is_null_t<T>> operator!() const {
+                return {*this};
+            }
+            
+            operator std::string () const {
+                return "IS NULL";
+            }
+        };
+        
+        template<class T>
+        struct is_not_null_t {
+            T t;
+            
+            negated_condition_t<is_not_null_t<T>> operator!() const {
+                return {*this};
+            }
+            
+            operator std::string () const {
+                return "IS NOT NULL";
+            }
+        };
+        
+        template<class C>
+        struct where_t {
+            C c;
+            
+            operator std::string() const {
+                return "WHERE";
+            }
+        };
+        
+        template<class O>
+        struct order_by_t {
+            O o;
+            
+            operator std::string() const {
+                return "ORDER BY";
+            }
+        };
+        
+        template<class O>
+        struct asc_t {
+            O o;
+            
+            operator std::string() const {
+                return "ASC";
+            }
+        };
+        
+        template<class O>
+        struct desc_t {
+            O o;
+            
+            operator std::string() const {
+                return "DESC";
+            }
+        };
+        
+        template<class ...Args>
+        struct group_by_t {
+            std::tuple<Args...> args;
+            
+            operator std::string() const {
+                return "GROUP BY";
+            }
+        };
+        
+        template<class A, class T>
+        struct between_t {
+            A expr;
+            T b1;
+            T b2;
+            
+            operator std::string() const {
+                return "BETWEEN";
+            }
+        };
+        
+    }
     
-    struct offset_t {
-        int off;
-    };
-    
-    inline offset_t offset(int off) {
+    inline conditions::offset_t offset(int off) {
         return {off};
     }
     
-    inline limit_t limit(int lim) {
+    inline conditions::limit_t limit(int lim) {
         return {lim};
     }
     
-    inline limit_t limit(int off, int lim) {
+    inline conditions::limit_t limit(int off, int lim) {
         return {lim, true, true, off};
     }
     
-    inline limit_t limit(int lim, offset_t offt) {
+    inline conditions::limit_t limit(int lim, conditions::offset_t offt) {
         return {lim, true, false, offt.off };
     }
     
-    struct condition_t {};
-    
-    template<class C>
-    struct negated_condition_t : public condition_t {
-        C c;
-        
-        negated_condition_t(C c_):c(c_){}
-        
-        operator std::string () const {
-            return "NOT";
-        }
-    };
-    
-    template<class L, class R>
-    struct and_condition_t : public condition_t {
-        L l;
-        R r;
-        
-        and_condition_t(L l_, R r_):l(l_),r(r_){}
-        
-        operator std::string () const {
-            return "AND";
-        }
-    };
-    
-    template<class L, class R>
-    struct or_condition_t : public condition_t {
-        L l;
-        R r;
-        
-        or_condition_t(L l_, R r_):l(l_),r(r_){}
-        
-        operator std::string () const {
-            return "OR";
-        }
-    };
-    
-    template<class L, class R, typename = typename std::enable_if<std::is_base_of<condition_t, L>::value && std::is_base_of<condition_t, R>::value>::type>
-    and_condition_t<L, R> operator &&(const L &l, const R &r) {
+    template<class L, class R, typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type>
+    conditions::and_condition_t<L, R> operator &&(const L &l, const R &r) {
         return {l, r};
     }
     
-    template<class L, class R, typename = typename std::enable_if<std::is_base_of<condition_t, L>::value && std::is_base_of<condition_t, R>::value>::type>
-    or_condition_t<L, R> operator ||(const L &l, const R &r) {
+    template<class L, class R, typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type>
+    conditions::or_condition_t<L, R> operator ||(const L &l, const R &r) {
         return {l, r};
     }
     
-    template<class L, class R>
-    struct binary_condition : public condition_t {
-        L l;
-        R r;
-        
-        binary_condition(L l_, R r_):l(l_),r(r_){}
-    };
-    
-    template<class L, class R>
-    struct is_equal_t : public binary_condition<L, R> {
-        
-        using binary_condition<L, R>::binary_condition;
-        
-        operator std::string () const {
-            return "=";
-        }
-        
-        negated_condition_t<is_equal_t<L, R>> operator!() const {
-            return {*this};
-        }
-        
-    };
-    
-    template<class L, class R>
-    struct is_not_equal_t : public binary_condition<L, R> {
-        
-        using binary_condition<L, R>::binary_condition;
-        
-        operator std::string () const {
-            return "!=";
-        }
-        
-        negated_condition_t<is_not_equal_t<L, R>> operator!() const {
-            return {*this};
-        }
-    };
-    
-    template<class L, class R>
-    struct greater_than_t : public binary_condition<L, R> {
-        
-        using binary_condition<L, R>::binary_condition;
-        
-        operator std::string () const {
-            return ">";
-        }
-        
-        negated_condition_t<greater_than_t<L, R>> operator!() const {
-            return {*this};
-        }
-    };
-    
-    template<class L, class R>
-    struct greater_or_equal_t : public binary_condition<L, R> {
-        
-        using binary_condition<L, R>::binary_condition;
-        
-        operator std::string () const {
-            return ">=";
-        }
-        
-        negated_condition_t<greater_or_equal_t<L, R>> operator!() const {
-            return {*this};
-        }
-    };
-    
-    template<class L, class R>
-    struct lesser_than_t : public binary_condition<L, R> {
-        
-        using binary_condition<L, R>::binary_condition;
-        
-        operator std::string () const {
-            return "<";
-        }
-        
-        negated_condition_t<lesser_than_t<L, R>> operator!() const {
-            return {*this};
-        }
-    };
-    
-    template<class L, class R>
-    struct lesser_or_equal_t : public binary_condition<L, R> {
-        
-        using binary_condition<L, R>::binary_condition;
-        
-        operator std::string () const {
-            return "<=";
-        }
-        
-        negated_condition_t<lesser_or_equal_t<L, R>> operator!() const {
-            return {*this};
-        }
-    };
-    
-    template<class L, class E>
-    struct in_t {
-        L l;    //  left expression..
-        std::vector<E> values;       //  values..
-        
-        negated_condition_t<in_t<L, E>> operator!() const {
-            return {*this};
-        }
-    };
-    
     template<class T>
-    struct is_null_t {
-        T t;
-        
-        negated_condition_t<is_null_t<T>> operator!() const {
-            return {*this};
-        }
-        
-        operator std::string () const {
-            return "IS NULL";
-        }
-    };
-    
-    template<class T>
-    struct is_not_null_t {
-        T t;
-        
-        negated_condition_t<is_not_null_t<T>> operator!() const {
-            return {*this};
-        }
-        
-        operator std::string () const {
-            return "IS NOT NULL";
-        }
-    };
-    
-    template<class T>
-    is_not_null_t<T> is_not_null(T t) {
+    conditions::is_not_null_t<T> is_not_null(T t) {
         return {t};
     }
     
     template<class T>
-    is_null_t<T> is_null(T t) {
+    conditions::is_null_t<T> is_null(T t) {
         return {t};
     }
     
     template<class L, class E>
-    in_t<L, E> in(L l, std::vector<E> values) {
+    conditions::in_t<L, E> in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values)};
     }
     
     template<class L, class E>
-    in_t<L, E> in(L l, std::initializer_list<E> values) {
+    conditions::in_t<L, E> in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values)};
     }
     
     template<class L, class R>
-    is_equal_t<L, R> is_equal(L l, R r) {
+    conditions::is_equal_t<L, R> is_equal(L l, R r) {
         return {l, r};
     }
     
     template<class L, class R>
-    is_not_equal_t<L, R> is_not_equal(L l, R r) {
+    conditions::is_not_equal_t<L, R> is_not_equal(L l, R r) {
         return {l, r};
     }
     
     template<class L, class R>
-    greater_than_t<L, R> greater_than(L l, R r) {
+    conditions::greater_than_t<L, R> greater_than(L l, R r) {
         return {l, r};
     }
     
     template<class L, class R>
-    greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
+    conditions::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
         return {l, r};
     }
     
     template<class L, class R>
-    lesser_than_t<L, R> lesser_than(L l, R r) {
+    conditions::lesser_than_t<L, R> lesser_than(L l, R r) {
         return {l, r};
     }
     
     template<class L, class R>
-    lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
+    conditions::lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
         return {l, r};
     }
     
     template<class C>
-    struct where_t {
-        C c;
-        
-        operator std::string() const {
-            return "WHERE";
-        }
-    };
-    
-    template<class C>
-    where_t<C> where(C c) {
+    conditions::where_t<C> where(C c) {
         return {c};
     }
     
     template<class O>
-    struct order_by_t {
-        O o;
-        
-        operator std::string() const {
-            return "ORDER BY";
-        }
-    };
-    
-    template<class O>
-    struct asc_t {
-        O o;
-        
-        operator std::string() const {
-            return "ASC";
-        }
-    };
-    
-    template<class O>
-    struct desc_t {
-        O o;
-        
-        operator std::string() const {
-            return "DESC";
-        }
-    };
-    
-    template<class O>
-    order_by_t<O> order_by(O o) {
+    conditions::order_by_t<O> order_by(O o) {
         return {o};
     }
     
     template<class O>
-    asc_t<O> asc(O o) {
+    conditions::asc_t<O> asc(O o) {
         return {o};
     }
     
     template<class O>
-    desc_t<O> desc(O o) {
+    conditions::desc_t<O> desc(O o) {
         return {o};
     }
     
     template<class ...Args>
-    struct group_by_t {
-        std::tuple<Args...> args;
-        
-        operator std::string() const {
-            return "GROUP BY";
-        }
-    };
-    
-    template<class ...Args>
-    group_by_t<Args...> group_by(Args ...args) {
+    conditions::group_by_t<Args...> group_by(Args ...args) {
         return {std::make_tuple(args...)};
     }
     
-    template<class A, class T>
-    struct between_t {
-        A expr;
-        T b1;
-        T b2;
+    namespace core_functions {
         
-        operator std::string() const {
-            return "BETWEEN";
-        }
-    };
+        template<class T>
+        struct length_t {
+            T t;
+            
+            operator std::string() const {
+                return "LENGTH";
+            }
+        };
+        
+        template<class T>
+        struct abs_t {
+            T t;
+            
+            operator std::string() const {
+                return "ABS";
+            }
+        };
+    }
     
     template<class T>
-    struct length_t {
-        T t;
-        
-        operator std::string() const {
-            return "LENGTH";
-        }
-    };
+    core_functions::length_t<T> length(T t) {
+        return {t};
+    }
     
     template<class T>
-    length_t<T> length(T t) {
+    core_functions::abs_t<T> abs(T t) {
         return {t};
     }
     
     template<class A, class T>
-    between_t<A, T> between(A expr, T b1, T b2) {
+    conditions::between_t<A, T> between(A expr, T b1, T b2) {
         return {expr, b1, b2};
     }
     
@@ -777,8 +761,13 @@ namespace sqlite_orm {
     };
     
     template<class T>
-    struct column_result_t<length_t<T>> {
+    struct column_result_t<core_functions::length_t<T>> {
         typedef int type;
+    };
+    
+    template<class T>
+    struct column_result_t<core_functions::abs_t<T>> {
+        typedef std::shared_ptr<double> type;
     };
     
     template<class ...Args>
@@ -796,7 +785,6 @@ namespace sqlite_orm {
     
     template<class T, class ...Args>
     struct columns_t<T, Args...> : public columns_t<Args...> {
-//        F O::*m;
         T m;
         
         columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
@@ -843,16 +831,16 @@ namespace sqlite_orm {
         std::vector<std::string> column_names_with() { return{}; }
         
         template<class L>
-        void for_each_column(L /*l*/) {}
+        void for_each_column(L) {}
         
         template<class F, class L>
-        void for_each_column_with_field_type(L /*l*/) {}
+        void for_each_column_with_field_type(L) {}
         
         template<class Op, class L>
-        void for_each_column_exept(L /*l*/){}
+        void for_each_column_exept(L){}
         
         template<class Op, class L>
-        void for_each_column_with(L /*l*/) {}
+        void for_each_column_with(L) {}
         
         int columns_count() const {
             return 0;
@@ -1133,6 +1121,17 @@ namespace sqlite_orm {
     };
     
     /**
+     *  Specialization for short.
+     */
+    template<>
+    struct statement_binder<short> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const short &value) {
+            return sqlite3_bind_int(stmt, index++, value);
+        }
+    };
+    
+    /**
      *  Specialization for long.
      */
     template<>
@@ -1230,6 +1229,20 @@ namespace sqlite_orm {
         
         bool extract(sqlite3_stmt *stmt, int columnIndex) {
             return sqlite3_column_int(stmt, columnIndex);
+        }
+    };
+    
+    /**
+     *  Specialization for short.
+     */
+    template<>
+    struct row_extrator<short> {
+        short extract(const char *row_value) {
+            return std::atoi(row_value);
+        }
+        
+        short extract(sqlite3_stmt *stmt, int columnIndex) {
+            return static_cast<short>(sqlite3_column_int(stmt, columnIndex));
         }
     };
     
@@ -1384,105 +1397,36 @@ namespace sqlite_orm {
         }
         
         template<class O>
-        int insert(const O &/*o*/, sqlite3 */*db*/, std::nullptr_t) {
+        int insert(const O &, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in insert");
         }
         
-        /*template<class O, class C, class ...Args>
-        C get_all(sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_all");
-        }*/
-        
         template<class O, class I>
-        O get(I /*id*/, sqlite3 */*db*/, std::nullptr_t) {
+        O get(I, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get");
         }
         
         template<class O>
-        void update(const O &/*o*/, sqlite3 */*db*/, std::nullptr_t) {
+        void update(const O &, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in update");
         }
         
         template<class O, class I>
-        std::shared_ptr<O> get_no_throw(I /*id*/, sqlite3 */*db*/, std::nullptr_t) {
+        std::shared_ptr<O> get_no_throw(I, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_no_throw");
         }
         
         template<class O, class I>
-        void remove(I /*id*/, sqlite3 */*db*/, std::nullptr_t) {
+        void remove(I, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in remove");
         }
-        
-        /*template<class O>
-        void remove_all(sqlite3 *, std::nullptr_t) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in remove");
-        }*/
-        
-        /*template<class O, class ...Args>
-        int count(sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in count");
-        }*/
-        
-        /*template<class F, class O, class ...Args>
-        double avg(F O::*, sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in avg");
-        }*/
-        
-        /*template<class F, class O, class ...Args>
-        std::shared_ptr<F> sum(F O::*, sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in sum");
-        }*/
-        
-        /*template<class F, class O, class ...Args>
-        double total(F O::*, sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in total");
-        }*/
-        
-        /*template<class F, class O, class ...Args>
-        std::vector<F> select(F O::*, sqlite3 *, std::nullptr_t) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in select");
-        }*/
-        
-        /*template<
-        class ...Args,
-        class R = std::tuple<typename field_extractor<Args>::type...>,
-        class O = typename object_type_extractor<Args...>::type,
-        class ...Conds>
-        std::vector<R> select(sqlite3 *, columns_t<Args...>, std::nullptr_t, Conds ...conds) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in select");
-        }*/
-        
-        /*template<class F, class O, class ...Args>
-        int count(F O::*, sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in count");
-        }*/
-        
-        /*template<class F, class O, class ...Args>
-        std::string group_concat(F O::*, sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
-        }
-        
-        template<class F, class O, class ...Args>
-        std::string group_concat(F O::*, const std::string &y, sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in group_concat");
-        }*/
-        
-        /*template<class F, class O, class ...Args>
-        std::shared_ptr<F> max(F O::*, sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
-        }*/
-        
-        /*template<class F, class O, class ...Args>
-        std::shared_ptr<F> min(F O::*, sqlite3 *, std::nullptr_t, Args ...args) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in min");
-        }*/
         
         template<class O>
         std::string dump(const O &, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
-        void sync_schema(sqlite3 */*db*/, bool /*preserve*/) {
+        void sync_schema(sqlite3 *, bool) {
             return;
         }
         
@@ -1496,10 +1440,12 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
         
@@ -1513,10 +1459,12 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
         
@@ -1530,10 +1478,12 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
         
@@ -1547,10 +1497,12 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
         
@@ -1564,10 +1516,12 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
         
@@ -1578,7 +1532,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv,char **/*azColName*/)->int{
+                                   [](void *data, int argc, char **argv, char **)->int{
                                        auto &res = *(std::string*)data;
                                        if(argc){
                                            if(argv[0]){
@@ -1588,7 +1542,8 @@ namespace sqlite_orm {
                                        return 0;
                                    }, &res, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
             return res;
         }
@@ -2300,15 +2255,23 @@ namespace sqlite_orm {
         }
         
         template<class T>
-        std::string string_from_expression(length_t<T> &len) {
+        std::string string_from_expression(core_functions::length_t<T> &len) {
             std::stringstream ss;
             auto expr = this->string_from_expression(len.t);
             ss << static_cast<std::string>(len) << "(" << expr << ") ";
             return ss.str();
         }
         
+        template<class T>
+        std::string string_from_expression(core_functions::abs_t<T> &a) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(a.t);
+            ss << static_cast<std::string>(a) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
         template<class O>
-        std::string string_from_expression(asc_t<O> &a) {
+        std::string string_from_expression(conditions::asc_t<O> &a) {
             std::stringstream ss;
             ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
             return ss.str();
@@ -2316,28 +2279,28 @@ namespace sqlite_orm {
         
         
         template<class O>
-        std::string string_from_expression(desc_t<O> &a) {
+        std::string string_from_expression(conditions::desc_t<O> &a) {
             std::stringstream ss;
             ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
             return ss.str();
         }
         
         template<class T>
-        std::string process_where(is_null_t<T> &c) {
+        std::string process_where(conditions::is_null_t<T> &c) {
             std::stringstream ss;
             ss << this->string_from_expression(c.t) << " " << static_cast<std::string>(c) << " ";
             return ss.str();
         }
         
         template<class T>
-        std::string process_where(is_not_null_t<T> &c) {
+        std::string process_where(conditions::is_not_null_t<T> &c) {
             std::stringstream ss;
             ss << this->string_from_expression(c.t) << " " << static_cast<std::string>(c) << " ";
             return ss.str();
         }
         
         template<class C>
-        std::string process_where(negated_condition_t<C> &c) {
+        std::string process_where(conditions::negated_condition_t<C> &c) {
             std::stringstream ss;
             ss << " " << static_cast<std::string>(c) << " ";
             auto cString = this->process_where(c.c);
@@ -2346,14 +2309,14 @@ namespace sqlite_orm {
         }
         
         template<class L, class R>
-        std::string process_where(and_condition_t<L, R> &c) {
+        std::string process_where(conditions::and_condition_t<L, R> &c) {
             std::stringstream ss;
             ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
             return ss.str();
         }
         
         template<class L, class R>
-        std::string process_where(or_condition_t<L, R> &c) {
+        std::string process_where(conditions::or_condition_t<L, R> &c) {
             std::stringstream ss;
             ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
             return ss.str();
@@ -2369,10 +2332,10 @@ namespace sqlite_orm {
         }
         
         template<class L, class E>
-        std::string process_where(in_t<L, E> &inCondition) {
+        std::string process_where(conditions::in_t<L, E> &inCondition) {
             std::stringstream ss;
             auto leftString = this->string_from_expression(inCondition.l);
-            ss << leftString << " IN (";
+            ss << leftString << " " << static_cast<std::string>(inCondition) << " (";
             for(auto index = 0; index < inCondition.values.size(); ++index) {
                 auto &value = inCondition.values[index];
                 ss << " " << this->string_from_expression(value);
@@ -2385,7 +2348,7 @@ namespace sqlite_orm {
         }
         
         template<class A, class T>
-        std::string process_where(between_t<A, T> &bw) {
+        std::string process_where(conditions::between_t<A, T> &bw) {
             std::stringstream ss;
             auto expr = this->string_from_expression(bw.expr);
             ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1) << " AND " << this->string_from_expression(bw.b2) << " ";
@@ -2393,14 +2356,14 @@ namespace sqlite_orm {
         }
         
         template<class O>
-        std::string process_order_by(order_by_t<O> &orderBy) {
+        std::string process_order_by(conditions::order_by_t<O> &orderBy) {
             std::stringstream ss;
             auto columnName = this->string_from_expression(orderBy.o);
             ss << columnName << " ";
             return ss.str();
         }
         
-        void process_single_condition(std::stringstream &ss, limit_t limt) {
+        void process_single_condition(std::stringstream &ss, conditions::limit_t limt) {
             ss << static_cast<std::string>(limt) << " ";
             if(limt.has_offset) {
                 if(limt.offset_is_implicit){
@@ -2415,21 +2378,21 @@ namespace sqlite_orm {
         }
         
         template<class C>
-        void process_single_condition(std::stringstream &ss, where_t<C> w) {
+        void process_single_condition(std::stringstream &ss, conditions::where_t<C> w) {
             ss << static_cast<std::string>(w) << " ";
             auto whereString = this->process_where(w.c);
             ss << "(" << whereString << ") ";
         }
         
         template<class O>
-        void process_single_condition(std::stringstream &ss, order_by_t<O> orderBy) {
+        void process_single_condition(std::stringstream &ss, conditions::order_by_t<O> orderBy) {
             ss << static_cast<std::string>(orderBy) << " ";
             auto orderByString = this->process_order_by(orderBy);
             ss << orderByString << " ";
         }
         
         template<class ...Args>
-        void process_single_condition(std::stringstream &ss, group_by_t<Args...> groupBy) {
+        void process_single_condition(std::stringstream &ss, conditions::group_by_t<Args...> groupBy) {
             std::vector<std::string> expressions;
             typedef std::tuple<Args...> typle_t;
             tuple_helper::iterator<std::tuple_size<typle_t>::value - 1, Args...>()(groupBy.args, [&](auto &v){
@@ -2582,8 +2545,13 @@ namespace sqlite_orm {
         }
         
         template<class T>
-        std::string parse_table_name(length_t<T> &len) {
+        std::string parse_table_name(core_functions::length_t<T> &len) {
             return this->parse_table_name(len.t);
+        }
+        
+        template<class T>
+        std::string parse_table_name(core_functions::abs_t<T> &a) {
+            return this->parse_table_name(a.t);
         }
         
         template<class ...Args>
