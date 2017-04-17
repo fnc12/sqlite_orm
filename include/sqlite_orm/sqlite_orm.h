@@ -1583,7 +1583,7 @@ namespace sqlite_orm {
             auto columnsCount = this->table.columns_count();
             auto index = 0;
             this->table.for_each_column([columnsCount, &index, &ss] (auto c) {
-                ss << c.name << " ";
+                ss << "'" << c.name << "' ";
                 typedef typename decltype(c)::field_type field_type;
                 ss << type_printer<field_type>().print() << " ";
                 if(c.template has<primary_key>()) {
@@ -1667,7 +1667,7 @@ namespace sqlite_orm {
             
             auto columnNamesCount = int(columnNames.size());
             for(auto i = 0; i < columnNamesCount; ++i) {
-                ss << columnNames[i];
+                ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNamesCount - 1) {
                     ss << ", ";
                 }else{
@@ -2541,14 +2541,15 @@ namespace sqlite_orm {
             auto &impl = this->get_impl<O>();
             auto columnNames = impl.table.column_names();
             for(auto i = 0; i < columnNames.size(); ++i) {
-                ss << columnNames[i];
+//                ss << impl.table.name << "." << columnNames[i];
+                ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNames.size() - 1) {
                     ss << ", ";
                 }else{
                     ss << " ";
                 }
             }
-            ss << "FROM " << impl.table.name << " ";
+            ss << "FROM '" << impl.table.name << "' ";
             this->process_conditions(ss, args...);
             if(query){
                 *query = ss.str();
@@ -2628,24 +2629,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.template get_all<O, C>(db, nullptr, args...);
             C res;
-            
-            /*std::stringstream ss;
-            ss << "SELECT ";
-            auto &impl = this->get_impl<O>();
-            auto columnNames = impl.table.column_names();
-            for(auto i = 0; i < columnNames.size(); ++i) {
-                ss << columnNames[i];
-                if(i < columnNames.size() - 1) {
-                    ss << ", ";
-                }else{
-                    ss << " ";
-                }
-            }
-            ss << "FROM " << impl.table.name << " ";
-            impl.process_conditions(ss, args...);
-            auto query = ss.str();*/
             std::string query;
             auto &impl = this->generate_select_asterisk<O>(&query, args...);
             
@@ -2653,7 +2637,7 @@ namespace sqlite_orm {
             date_tuple_t data{&res, &impl};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
+                                   [](void *data, int argc, char **argv,char **) -> int {
                                        auto &d = *(date_tuple_t*)data;
                                        auto &res = *std::get<0>(d);
                                        auto t = std::get<1>(d);
