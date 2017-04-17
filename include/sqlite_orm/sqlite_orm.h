@@ -613,6 +613,16 @@ namespace sqlite_orm {
             }
         };
         
+        template<class A, class T>
+        struct like_t {
+            A a;
+            T t;
+            
+            operator std::string() const {
+                return "LIKE";
+            }
+        };
+        
     }
     
     inline conditions::offset_t offset(int off) {
@@ -716,6 +726,16 @@ namespace sqlite_orm {
         return {std::make_tuple(args...)};
     }
     
+    template<class A, class T>
+    conditions::between_t<A, T> between(A expr, T b1, T b2) {
+        return {expr, b1, b2};
+    }
+    
+    template<class A, class T>
+    conditions::like_t<A, T> like(A a, T t) {
+        return {a, t};
+    }
+    
     namespace core_functions {
         
         template<class T>
@@ -745,11 +765,6 @@ namespace sqlite_orm {
     template<class T>
     core_functions::abs_t<T> abs(T t) {
         return {t};
-    }
-    
-    template<class A, class T>
-    conditions::between_t<A, T> between(A expr, T b1, T b2) {
-        return {expr, b1, b2};
     }
     
     template<class T>
@@ -2344,6 +2359,13 @@ namespace sqlite_orm {
                 }
             }
             ss << " )";
+            return ss.str();
+        }
+        
+        template<class A, class T>
+        std::string process_where(conditions::like_t<A, T> &l) {
+            std::stringstream ss;
+            ss << this->string_from_expression(l.a) << " " << static_cast<std::string>(l) << " " << this->string_from_expression(l.t) << " ";
             return ss.str();
         }
         
