@@ -827,6 +827,15 @@ namespace sqlite_orm {
             
         };
         
+        template<class T>
+        struct sum_t {
+            T t;
+            
+            operator std::string() const {
+                return "SUM";
+            }
+        };
+        
     }
     
     template<class T>
@@ -841,6 +850,11 @@ namespace sqlite_orm {
     
     inline aggregate_functions::count_asterisk_t count() {
         return {};
+    }
+    
+    template<class T>
+    aggregate_functions::sum_t<T> sum(T t) {
+        return {t};
     }
     
     template<class T>
@@ -874,6 +888,11 @@ namespace sqlite_orm {
     template<>
     struct column_result_t<aggregate_functions::count_asterisk_t> {
         typedef int type;
+    };
+    
+    template<class T>
+    struct column_result_t<aggregate_functions::sum_t<T>> {
+        typedef std::shared_ptr<double> type;
     };
     
     template<class ...Args>
@@ -2328,12 +2347,20 @@ namespace sqlite_orm {
             return this->impl.column_name(m);
         }
         
+        template<class T>
+        std::string string_from_expression(aggregate_functions::sum_t<T> &f) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
         std::string string_from_expression(aggregate_functions::count_asterisk_t &f) {
             std::stringstream ss;
-//            auto expr = this->string_from_expression(f);
             ss << static_cast<std::string>(f) << "(*) ";
             return ss.str();
         }
+        
         template<class T>
         std::string string_from_expression(aggregate_functions::count_t<T> &f) {
             std::stringstream ss;
