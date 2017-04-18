@@ -810,11 +810,37 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T>
+        struct count_t {
+            T t;
+            
+            operator std::string() const {
+                return "COUNT";
+            }
+        };
+        
+        struct count_asterisk_t {
+            
+            operator std::string() const {
+                return "COUNT";
+            }
+            
+        };
+        
     }
     
     template<class T>
     aggregate_functions::avg_t<T> avg(T t) {
         return {t};
+    }
+    
+    template<class T>
+    aggregate_functions::count_t<T> count(T t) {
+        return {t};
+    }
+    
+    inline aggregate_functions::count_asterisk_t count() {
+        return {};
     }
     
     template<class T>
@@ -838,6 +864,16 @@ namespace sqlite_orm {
     template<class T>
     struct column_result_t<aggregate_functions::avg_t<T>> {
         typedef double type;
+    };
+    
+    template<class T>
+    struct column_result_t<aggregate_functions::count_t<T>> {
+        typedef int type;
+    };
+    
+    template<>
+    struct column_result_t<aggregate_functions::count_asterisk_t> {
+        typedef int type;
     };
     
     template<class ...Args>
@@ -2292,6 +2328,20 @@ namespace sqlite_orm {
             return this->impl.column_name(m);
         }
         
+        std::string string_from_expression(aggregate_functions::count_asterisk_t &f) {
+            std::stringstream ss;
+//            auto expr = this->string_from_expression(f);
+            ss << static_cast<std::string>(f) << "(*) ";
+            return ss.str();
+        }
+        template<class T>
+        std::string string_from_expression(aggregate_functions::count_t<T> &f) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
         template<class T>
         std::string string_from_expression(aggregate_functions::avg_t<T> &a) {
             std::stringstream ss;
@@ -2596,6 +2646,11 @@ namespace sqlite_orm {
         template<class F, class O>
         std::string parse_table_name(F O::*m) {
             return this->impl.template find_table_name<O>();
+        }
+        
+        template<class T>
+        std::string parse_table_name(aggregate_functions::count_t<T> &f) {
+            return this->parse_table_name(f.t);
         }
         
         template<class T>
