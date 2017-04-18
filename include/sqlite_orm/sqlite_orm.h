@@ -623,6 +623,38 @@ namespace sqlite_orm {
             }
         };
         
+        template<class ...Args>
+        struct columns_t {
+            
+            template<class L>
+            void for_each(L ) {
+                //..
+            }
+            
+            int count() {
+                return 0;
+            }
+        };
+        
+        template<class T, class ...Args>
+        struct columns_t<T, Args...> : public columns_t<Args...> {
+            T m;
+            
+            columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
+            
+            template<class L>
+            void for_each(L l) {
+                l(this->m);
+                Super::for_each(l);
+            }
+            
+            int count() {
+                return 1 + Super::count();
+            }
+        private:
+            typedef columns_t<Args...> Super;
+        };
+        
     }
     
     inline conditions::offset_t offset(int off) {
@@ -767,6 +799,24 @@ namespace sqlite_orm {
         return {t};
     }
     
+    namespace aggregate_functions {
+        
+        template<class T>
+        struct avg_t {
+            T t;
+            
+            operator std::string() const {
+                return "AVG";
+            }
+        };
+        
+    }
+    
+    template<class T>
+    aggregate_functions::avg_t<T> avg(T t) {
+        return {t};
+    }
+    
     template<class T>
     struct column_result_t;
     
@@ -785,40 +835,13 @@ namespace sqlite_orm {
         typedef std::shared_ptr<double> type;
     };
     
-    template<class ...Args>
-    struct columns_t {
-        
-        template<class L>
-        void for_each(L ) {
-            //..
-        }
-        
-        int count() {
-            return 0;
-        }
-    };
-    
-    template<class T, class ...Args>
-    struct columns_t<T, Args...> : public columns_t<Args...> {
-        T m;
-        
-        columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
-        
-        template<class L>
-        void for_each(L l) {
-            l(this->m);
-            Super::for_each(l);
-        }
-        
-        int count() {
-            return 1 + Super::count();
-        }
-    private:
-        typedef columns_t<Args...> Super;
+    template<class T>
+    struct column_result_t<aggregate_functions::avg_t<T>> {
+        typedef double type;
     };
     
     template<class ...Args>
-    columns_t<Args...> columns(Args ...args) {
+    conditions::columns_t<Args...> columns(Args ...args) {
         return {args...};
     }
     
@@ -2270,6 +2293,14 @@ namespace sqlite_orm {
         }
         
         template<class T>
+        std::string string_from_expression(aggregate_functions::avg_t<T> &a) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(a.t);
+            ss << static_cast<std::string>(a) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T>
         std::string string_from_expression(core_functions::length_t<T> &len) {
             std::stringstream ss;
             auto expr = this->string_from_expression(len.t);
@@ -2568,6 +2599,11 @@ namespace sqlite_orm {
         }
         
         template<class T>
+        std::string parse_table_name(aggregate_functions::avg_t<T> &a) {
+            return this->parse_table_name(a.t);
+        }
+        
+        template<class T>
         std::string parse_table_name(core_functions::length_t<T> &len) {
             return this->parse_table_name(len.t);
         }
@@ -2597,7 +2633,7 @@ namespace sqlite_orm {
         }
         
         template<class ...Args>
-        std::vector<std::string> parse_table_names(columns_t<Args...> &cols) {
+        std::vector<std::string> parse_table_names(conditions::columns_t<Args...> &cols) {
             std::vector<std::string> res;
             cols.for_each([&](auto &m){
                 auto tableName = this->parse_table_name(m);
@@ -3240,10 +3276,9 @@ namespace sqlite_orm {
          */
         template<class ...Args,
         class R = std::tuple<typename column_result_t<Args>::type...>,
-        class ...Conds//,
-//        class O = typename object_type_extractor<Args...>::type
+        class ...Conds
         >
-        std::vector<R> select(columns_t<Args...> cols, Conds ...conds) {
+        std::vector<R> select(conditions::columns_t<Args...> cols, Conds ...conds) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3252,8 +3287,6 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.select(db, cols, nullptr, conds...);
-//            auto &impl = this->get_impl<O>();
             std::vector<R> res;
             std::stringstream ss;
             ss << "SELECT ";
