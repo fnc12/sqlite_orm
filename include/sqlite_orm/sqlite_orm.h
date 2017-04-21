@@ -845,6 +845,15 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T>
+        struct min_t {
+            T t;
+            
+            operator std::string() const {
+                return "MIN";
+            }
+        };
+        
     }
     
     template<class T>
@@ -868,6 +877,11 @@ namespace sqlite_orm {
     
     template<class T>
     aggregate_functions::max_t<T> max(T t) {
+        return {t};
+    }
+    
+    template<class T>
+    aggregate_functions::min_t<T> min(T t) {
         return {t};
     }
     
@@ -911,6 +925,11 @@ namespace sqlite_orm {
     
     template<class T>
     struct column_result_t<aggregate_functions::max_t<T>> {
+        typedef std::shared_ptr<typename column_result_t<T>::type> type;
+    };
+    
+    template<class T>
+    struct column_result_t<aggregate_functions::min_t<T>> {
         typedef std::shared_ptr<typename column_result_t<T>::type> type;
     };
     
@@ -2364,6 +2383,14 @@ namespace sqlite_orm {
         std::string string_from_expression(F O::*m) {
 //            return this->table.name + "." + this->table.find_column_name(m);
             return this->impl.column_name(m);
+        }
+        
+        template<class T>
+        std::string string_from_expression(aggregate_functions::min_t<T> &f) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
         }
         
         template<class T>
