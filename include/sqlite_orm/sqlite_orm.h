@@ -837,6 +837,15 @@ namespace sqlite_orm {
         };
         
         template<class T>
+        struct total_t {
+            T t;
+            
+            operator std::string() const {
+                return "TOTAL";
+            }
+        };
+        
+        template<class T>
         struct max_t {
             T t;
             
@@ -886,6 +895,11 @@ namespace sqlite_orm {
     }
     
     template<class T>
+    aggregate_functions::total_t<T> total(T t) {
+        return {t};
+    }
+    
+    template<class T>
     struct column_result_t;
     
     template<class O, class F>
@@ -921,6 +935,11 @@ namespace sqlite_orm {
     template<class T>
     struct column_result_t<aggregate_functions::sum_t<T>> {
         typedef std::shared_ptr<double> type;
+    };
+    
+    template<class T>
+    struct column_result_t<aggregate_functions::total_t<T>> {
+        typedef double type;
     };
     
     template<class T>
@@ -2395,6 +2414,14 @@ namespace sqlite_orm {
         
         template<class T>
         std::string string_from_expression(aggregate_functions::max_t<T> &f) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T>
+        std::string string_from_expression(aggregate_functions::total_t<T> &f) {
             std::stringstream ss;
             auto expr = this->string_from_expression(f.t);
             ss << static_cast<std::string>(f) << "(" << expr << ") ";
