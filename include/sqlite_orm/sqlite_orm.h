@@ -872,6 +872,16 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T>
+        struct group_concat_double_t {
+            T t;
+            std::string y;
+            
+            operator std::string() const {
+                return "GROUP_CONCAT";
+            }
+        };
+        
     }
     
     template<class T>
@@ -911,6 +921,11 @@ namespace sqlite_orm {
     template<class T>
     aggregate_functions::group_concat_single_t<T> group_concat(T t) {
         return {t};
+    }
+    
+    template<class T, class Y>
+    aggregate_functions::group_concat_double_t<T> group_concat(T t, Y y) {
+        return {t, y};
     }
     
     template<class T>
@@ -958,6 +973,11 @@ namespace sqlite_orm {
     
     template<class T>
     struct column_result_t<aggregate_functions::group_concat_single_t<T>> {
+        typedef std::string type;
+    };
+    
+    template<class T>
+    struct column_result_t<aggregate_functions::group_concat_double_t<T>> {
         typedef std::string type;
     };
     
@@ -2424,6 +2444,15 @@ namespace sqlite_orm {
         }
         
         template<class T>
+        std::string string_from_expression(aggregate_functions::group_concat_double_t<T> &f) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.t);
+            auto expr2 = this->string_from_expression(f.y);
+            ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ") ";
+            return ss.str();
+        }
+        
+        template<class T>
         std::string string_from_expression(aggregate_functions::group_concat_single_t<T> &f) {
             std::stringstream ss;
             auto expr = this->string_from_expression(f.t);
@@ -2800,6 +2829,11 @@ namespace sqlite_orm {
         
         template<class T>
         std::string parse_table_name(aggregate_functions::total_t<T> &f) {
+            return this->parse_table_name(f.t);
+        }
+        
+        template<class T>
+        std::string parse_table_name(aggregate_functions::group_concat_double_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
