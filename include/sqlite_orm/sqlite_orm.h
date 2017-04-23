@@ -863,6 +863,15 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T>
+        struct group_concat_single_t {
+            T t;
+            
+            operator std::string() const {
+                return "GROUP_CONCAT";
+            }
+        };
+        
     }
     
     template<class T>
@@ -896,6 +905,11 @@ namespace sqlite_orm {
     
     template<class T>
     aggregate_functions::total_t<T> total(T t) {
+        return {t};
+    }
+    
+    template<class T>
+    aggregate_functions::group_concat_single_t<T> group_concat(T t) {
         return {t};
     }
     
@@ -940,6 +954,11 @@ namespace sqlite_orm {
     template<class T>
     struct column_result_t<aggregate_functions::total_t<T>> {
         typedef double type;
+    };
+    
+    template<class T>
+    struct column_result_t<aggregate_functions::group_concat_single_t<T>> {
+        typedef std::string type;
     };
     
     template<class T>
@@ -2405,6 +2424,14 @@ namespace sqlite_orm {
         }
         
         template<class T>
+        std::string string_from_expression(aggregate_functions::group_concat_single_t<T> &f) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T>
         std::string string_from_expression(aggregate_functions::min_t<T> &f) {
             std::stringstream ss;
             auto expr = this->string_from_expression(f.t);
@@ -2754,6 +2781,31 @@ namespace sqlite_orm {
         template<class F, class O>
         std::string parse_table_name(F O::*m) {
             return this->impl.template find_table_name<O>();
+        }
+        
+        template<class T>
+        std::string parse_table_name(aggregate_functions::min_t<T> &f) {
+            return this->parse_table_name(f.t);
+        }
+        
+        template<class T>
+        std::string parse_table_name(aggregate_functions::max_t<T> &f) {
+            return this->parse_table_name(f.t);
+        }
+        
+        template<class T>
+        std::string parse_table_name(aggregate_functions::sum_t<T> &f) {
+            return this->parse_table_name(f.t);
+        }
+        
+        template<class T>
+        std::string parse_table_name(aggregate_functions::total_t<T> &f) {
+            return this->parse_table_name(f.t);
+        }
+        
+        template<class T>
+        std::string parse_table_name(aggregate_functions::group_concat_single_t<T> &f) {
+            return this->parse_table_name(f.t);
         }
         
         template<class T>
