@@ -74,20 +74,12 @@ namespace sqlite_orm {
         };
     }
     
-    template<class T>
+    /*template<class T>
     struct field_extractor;
     
     template<class F, class O>
     struct field_extractor<F O::*> {
         typedef F type;
-    };
-    
-    /*template<class ...Args>
-    struct object_type_extractor;
-    
-    template<class F, class O, class ...Args>
-    struct object_type_extractor<F O::*, Args...> {
-        typedef O type;
     };*/
     
     struct autoincrement {};
@@ -247,7 +239,6 @@ namespace sqlite_orm {
     template<class T>
     struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
     
-//    template<class T>
     struct default_value_extractor {
         
         template<class A>
@@ -673,12 +664,20 @@ namespace sqlite_orm {
         return {lim, true, false, offt.off };
     }
     
-    template<class L, class R, typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type>
+    template<
+        class L,
+        class R,
+        typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type
+    >
     conditions::and_condition_t<L, R> operator &&(const L &l, const R &r) {
         return {l, r};
     }
     
-    template<class L, class R, typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type>
+    template<
+        class L,
+        class R,
+        typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type
+    >
     conditions::or_condition_t<L, R> operator ||(const L &l, const R &r) {
         return {l, r};
     }
@@ -928,6 +927,23 @@ namespace sqlite_orm {
         return {t, y};
     }
     
+    namespace internal {
+        
+        template<class T>
+        struct distinct_t {
+            T t;
+            
+            operator std::string() const {
+                return "DISTINCT";
+            }
+        };
+    }
+    
+    template<class T>
+    internal::distinct_t<T> distinct(T t) {
+        return {t};
+    }
+    
     template<class T>
     struct column_result_t;
     
@@ -989,6 +1005,11 @@ namespace sqlite_orm {
     template<class T>
     struct column_result_t<aggregate_functions::min_t<T>> {
         typedef std::shared_ptr<typename column_result_t<T>::type> type;
+    };
+    
+    template<class T>
+    struct column_result_t<internal::distinct_t<T>> {
+        typedef typename column_result_t<T>::type type;
     };
     
     template<class ...Args>
@@ -2515,6 +2536,14 @@ namespace sqlite_orm {
         }
         
         template<class T>
+        std::string string_from_expression(internal::distinct_t<T> &f) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T>
         std::string string_from_expression(core_functions::length_t<T> &len) {
             std::stringstream ss;
             auto expr = this->string_from_expression(len.t);
@@ -2862,6 +2891,11 @@ namespace sqlite_orm {
             return this->parse_table_name(a.t);
         }
         
+        template<class T>
+        std::string parse_table_name(internal::distinct_t<T> &f) {
+            return this->parse_table_name(f.t);
+        }
+        
         template<class ...Args>
         std::vector<std::string> parse_table_names(Args ...args) {
             return {};
@@ -3095,20 +3129,22 @@ namespace sqlite_orm {
             auto &impl = this->get_impl<O>();
             int res = 0;
             std::stringstream ss;
-            ss << "SELECT COUNT(*) FROM " << impl.table.name << " ";
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::count()) << "(*) FROM " << impl.table.name << " ";
             this->process_conditions(ss, args...);
             auto query = ss.str();
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv,char **azColName)->int{
+                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
                                        auto &res = *(int*)data;
                                        if(argc){
-                                           res = std::atoi(argv[0]);
+//                                           res = std::atoi(argv[0]);
+                                           res = row_extrator<int>().extract(argv[0]);
                                        }
                                        return 0;
                                    }, &res, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
             return res;
         }
@@ -3131,23 +3167,26 @@ namespace sqlite_orm {
             auto &impl = this->get_impl<O>();
             int res = 0;
             std::stringstream ss;
-            ss << "SELECT COUNT(";
-            auto columnName = impl.table.find_column_name(m);
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::count(0)) << "(";
+//            auto columnName = impl.table.find_column_name(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
                                            auto &res = *(int*)data;
                                            if(argc){
-                                               res = std::atoi(argv[0]);
+//                                               res = std::atoi(argv[0]);
+                                               res = row_extrator<int>().extract(argv[0]);
                                            }
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
                 throw std::runtime_error("column not found");
@@ -3174,8 +3213,9 @@ namespace sqlite_orm {
             auto &impl = this->get_impl<O>();
             double res = 0;
             std::stringstream ss;
-            ss << "SELECT AVG(";
-            auto columnName = impl.table.find_column_name(m);
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::avg(0)) << "(";
+//            auto columnName = impl.table.find_column_name(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
                 this->process_conditions(ss, args...);
@@ -3185,12 +3225,14 @@ namespace sqlite_orm {
                                        [](void *data, int argc, char **argv,char **azColName)->int{
                                            auto &res = *(double*)data;
                                            if(argc){
-                                               res = std::atof(argv[0]);
+//                                               res = std::atof(argv[0]);
+                                               res = row_extrator<double>().extract(argv[0]);
                                            }
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
                 throw std::runtime_error("column not found");
@@ -3217,23 +3259,26 @@ namespace sqlite_orm {
             auto &impl = this->get_impl<O>();
             std::string res;
             std::stringstream ss;
-            ss << "SELECT GROUP_CONCAT(";
-            auto columnName = impl.table.find_column_name(m);
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::group_concat(0)) << "(";
+//            auto columnName = impl.table.find_column_name(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
                                            auto &res = *(std::string*)data;
                                            if(argc){
-                                               res = argv[0];
+//                                               res = argv[0];
+                                               res = row_extrator<std::string>().extract(argv[0]);
                                            }
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
                 throw std::runtime_error("column not found");
@@ -3256,27 +3301,29 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.group_concat(m, y, db, nullptr, args...);
             auto &impl = this->get_impl<O>();
             std::string res;
             std::stringstream ss;
-            ss << "SELECT GROUP_CONCAT(";
-            auto columnName = impl.table.find_column_name(m);
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::group_concat(0)) << "(";
+//            auto columnName = impl.table.find_column_name(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ",\"" << y << "\") FROM "<< impl.table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
                                            auto &res = *(std::string*)data;
                                            if(argc){
-                                               res = argv[0];
+//                                               res = argv[0];
+                                               res = row_extrator<std::string>().extract(argv[0]);
                                            }
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
                 throw std::runtime_error("column not found");
@@ -3304,12 +3351,12 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.max(m, db, nullptr, args...);
             auto &impl = this->get_impl<O>();
             std::shared_ptr<F> res;
             std::stringstream ss;
-            ss << "SELECT MAX(";
-            auto columnName = impl.table.find_column_name(m);
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::max(0)) << "(";
+//            auto columnName = impl.table.find_column_name(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM " << impl.table.name << " ";
                 this->process_conditions(ss, args...);
@@ -3326,7 +3373,8 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
                 throw std::runtime_error("column not found");
@@ -3349,19 +3397,19 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.min(m, db, nullptr, args...);
             auto &impl = this->get_impl<O>();
             std::shared_ptr<F> res;
             std::stringstream ss;
-            ss << "SELECT MIN(";
-            auto columnName = impl.table.find_column_name(m);
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::min(0)) << "(";
+//            auto columnName = impl.table.find_column_name(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM " << impl.table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
+                                       [](void *data, int argc, char **argv,char **)->int{
                                            auto &res = *(std::shared_ptr<F>*)data;
                                            if(argc){
                                                if(argv[0]){
@@ -3371,7 +3419,8 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
                 throw std::runtime_error("column not found");
@@ -3394,19 +3443,19 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.sum(m, db, nullptr, args...);
             auto &impl = this->get_impl<O>();
             std::shared_ptr<F> res;
             std::stringstream ss;
-            ss << "SELECT SUM(";
-            auto columnName = impl.table.find_column_name(m);
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::sum(0)) << "(";
+//            auto columnName = impl.table.find_column_name(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM "<< impl.table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
+                                       [](void *data, int argc, char **argv,char **)->int{
                                            auto &res = *(std::shared_ptr<F>*)data;
                                            if(argc){
                                                res = std::make_shared<F>(row_extrator<F>().extract(argv[0]));
@@ -3414,7 +3463,8 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
                 throw std::runtime_error("column not found");
@@ -3438,18 +3488,31 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
 //            return impl.total(m, db, nullptr, args...);
-            auto &impl = this->get_impl<O>();
+//            auto &impl = this->get_impl<O>();
             double res;
             std::stringstream ss;
-            ss << "SELECT TOTAL(";
-            auto columnName = impl.table.find_column_name(m);
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::total(0)) << "(";
+//            auto columnName = impl.table.find_column_name(m);
+            auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << ") FROM "<< impl.table.name << " ";
+                ss << columnName << ") ";
+                auto tableNames = this->parse_table_names(m);
+                if(tableNames.size()){
+                    ss << "FROM " ;
+                    for(auto i = 0; i < int(tableNames.size()); ++i) {
+                        ss << tableNames[i];
+                        if(i < int(tableNames.size()) - 1) {
+                            ss << ",";
+                        }
+                        ss << " ";
+                    }
+                }
+//                ss << "FROM "<< impl.table.name << " ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
+                                       [](void *data, int argc, char **argv,char **)->int{
                                            auto &res = *(double*)data;
                                            if(argc){
                                                res = row_extrator<double>().extract(argv[0]);
@@ -3457,7 +3520,8 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
                 throw std::runtime_error("column not found");
@@ -3478,13 +3542,9 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.select(m, db, nullptr, args...);
             std::vector<R> res;
             std::stringstream ss;
             ss << "SELECT ";
-//            auto &impl = this->get_impl<O>();
-            //            auto columnName = this->table.find_column_name(m);
-//            std::vector<std::string> tablesNames;
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << " ";
