@@ -29,3 +29,4 @@ script:
   - clang++ -std=c++1y examples/nullable_enum_binding.cpp -I include/sqlite_orm/ -lsqlite3
   - clang++ -std=c++1y examples/select.cpp -I include/sqlite_orm/ -lsqlite3
   - clang++ -std=c++1y examples/subentities.cpp -I include/sqlite_orm/ -lsqlite3
+  - clang++ -std=c++1y tests/tests.cpp -I include/sqlite_orm/ -lsqlite3
