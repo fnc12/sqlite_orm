@@ -13,7 +13,7 @@ os:
   - linux
 
 install:
-  - sudo apt-get install sqlite3 libsqlite3-dev
+  - sudo apt-get install sqlite3 libsqlite3-dev clang++-3.9
 
 script:
-  - clang++ -std=c++14 examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3
+  - CXX -std=c++14 examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3
