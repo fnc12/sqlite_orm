@@ -14,18 +14,6 @@ os:
 
 install:
   - sudo apt-get install sqlite3 libsqlite3-dev
-  # clang 3.4
-  - if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi
-  - if [ "$CXX" == "clang++" ]; then export CXXFLAGS="-std=c++0x -stdlib=libc++"; fi
-  - if [ "$CXX" == "clang++" ]; then svn co --quiet http://llvm.org/svn/llvm-project/libcxx/trunk libcxx; fi
 
-  - if [ "$CXX" == "clang++" ]; then cd libcxx/lib && bash buildit; fi
-  - if [ "$CXX" == "clang++" ]; then sudo cp ./libc++.so.1.0 /usr/lib/; fi
-  - if [ "$CXX" == "clang++" ]; then sudo mkdir /usr/include/c++/v1; fi
-  - if [ "$CXX" == "clang++" ]; then cd .. && sudo cp -r include/* /usr/include/c++/v1/; fi
-  - if [ "$CXX" == "clang++" ]; then cd /usr/lib && sudo ln -sf libc++.so.1.0 libc++.so; fi
-  - if [ "$CXX" == "clang++" ]; then sudo ln -sf libc++.so.1.0 libc++.so.1 && cd $cwd; fi
-
-  - if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
 script:
-  - clang -std=c++1y -stdlib=libc++ examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3
+  - clang -std=c++1y examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3
