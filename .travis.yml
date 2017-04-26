@@ -1,0 +1,15 @@
+
+language: cpp
+
+compiler:
+  - clang
+  - gcc
+
+os:
+  - linux
+
+install:
+  - sudo apt-get install -qq gcc-4.8 g++-4.8 sqlite3 libsqlite3-dev
+
+script:
+  - g++ -std=c++14 examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3
