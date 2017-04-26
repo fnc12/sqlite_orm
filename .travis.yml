@@ -6,6 +6,9 @@ sudo: required
 compiler:
   - clang
 
+env:
+  - COMPILER=g++-4.9
+
 os:
   - linux
 
