@@ -1,4 +1,5 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm)
 
 # SQLite ORM
 SQLite ORM light header only library for modern C++
@@ -16,7 +17,7 @@ SQLite ORM light header only library for modern C++
 * **Migrations functionality**
 * **Powerful conditions**
 * **ORDER BY and LIMIT, OFFSET support**
-* **GROUP BY support**
+* **GROUP BY / DISTINCT support**
 * **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
