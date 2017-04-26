@@ -199,9 +199,59 @@ void testSyncSchema() {
     
 }
 
+void testSelect() {
+    sqlite3 *db;
+    auto dbFileName = "test.db";
+    auto rc = sqlite3_open(dbFileName, &db);
+    assert(rc == SQLITE_OK);
+    auto sql = "CREATE TABLE IF NOT EXISTS WORDS("
+    "ID INTEGER PRIMARY        KEY AUTOINCREMENT      NOT NULL,"
+    "CURRENT_WORD          TEXT     NOT NULL,"
+    "BEFORE_WORD           TEXT     NOT NULL,"
+    "AFTER_WORD            TEXT     NOT NULL,"
+    "OCCURANCES            INT      NOT NULL);";
+    
+    char *errMsg = nullptr;
+    rc = sqlite3_exec(db, sql, nullptr, nullptr, &errMsg);
+    assert(rc == SQLITE_OK);
+    
+    sqlite3_stmt *stmt;
+    sql = "INSERT INTO WORDS (CURRENT_WORD, BEFORE_WORD, AFTER_WORD, OCCURANCES) VALUES(?, ?, ?, ?)";
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    assert(rc == SQLITE_OK);
+    
+    sqlite3_bind_text(stmt, 1, "best", -1, nullptr);
+    sqlite3_bind_text(stmt, 2, "behaviour", -1, nullptr);
+    sqlite3_bind_text(stmt, 3, "hey", -1, nullptr);
+    sqlite3_bind_int(stmt, 4, 5);
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        cout << sqlite3_errmsg(db) << endl;
+        assert(0);
+    }
+    sqlite3_finalize(stmt);
+    
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    assert(rc == SQLITE_OK);
+    sqlite3_bind_text(stmt, 1, "corruption", -1, nullptr);
+    sqlite3_bind_text(stmt, 2, "blood", -1, nullptr);
+    sqlite3_bind_text(stmt, 3, "brothers", -1, nullptr);
+    sqlite3_bind_int(stmt, 4, 15);
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        cout << sqlite3_errmsg(db) << endl;
+        assert(0);
+    }
+    sqlite3_finalize(stmt);
+    
+    sqlite3_close(db);
+}
+
 int main() {
     
     testTypeParsing();
     
     testSyncSchema();
+    
+    testSelect();
 }
