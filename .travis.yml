@@ -14,6 +14,9 @@ os:
 
 install:
   - sudo apt-get install sqlite3 libsqlite3-dev
+  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
+  - sudo apt-get update -qq
+  - sudo apt-get install g++-4.9
 
 script:
   - clang -std=c++1y examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3
