@@ -120,6 +120,7 @@ int main(int argc, char **argv) {
     });
     storage.commit();
     
+    //  SELECT 'NAME' FROM 'COMPANY'
     auto pureNames = storage.select(&Employee::name);
     cout << "NAME" << endl;
     cout << "----------" << endl;
@@ -129,6 +130,7 @@ int main(int argc, char **argv) {
     cout << endl;
     
     using namespace sqlite_orm;
+    //  SELECT DISTINCT 'NAME' FROM 'COMPANY'
     auto distinctNames = storage.select(distinct(&Employee::name));
     cout << "NAME" << endl;
     cout << "----------" << endl;
@@ -137,5 +139,12 @@ int main(int argc, char **argv) {
     }
     cout << endl;
     
+    //  SELECT DISTINCT 'ADDRESS', 'NAME' FROM 'COMPANY'
+    auto severalColumns = storage.select(distinct(columns(&Employee::address, &Employee::name)));
+    cout << "ADDRESS" << '\t' << "NAME" << endl;
+    cout << "----------" << endl;
+    for(auto &t : severalColumns) {
+        cout << std::get<0>(t) << '\t' << std::get<1>(t) << endl;
+    }
     return 0;
 }

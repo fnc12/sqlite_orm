@@ -614,38 +614,6 @@ namespace sqlite_orm {
             }
         };
         
-        template<class ...Args>
-        struct columns_t {
-            
-            template<class L>
-            void for_each(L ) {
-                //..
-            }
-            
-            int count() {
-                return 0;
-            }
-        };
-        
-        template<class T, class ...Args>
-        struct columns_t<T, Args...> : public columns_t<Args...> {
-            T m;
-            
-            columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
-            
-            template<class L>
-            void for_each(L l) {
-                l(this->m);
-                Super::for_each(l);
-            }
-            
-            int count() {
-                return 1 + Super::count();
-            }
-        private:
-            typedef columns_t<Args...> Super;
-        };
-        
     }
     
     inline conditions::offset_t offset(int off) {
@@ -937,11 +905,50 @@ namespace sqlite_orm {
                 return "DISTINCT";
             }
         };
+        
+        template<class ...Args>
+        struct columns_t {
+            bool distinct = false;
+            
+            template<class L>
+            void for_each(L ) {
+                //..
+            }
+            
+            int count() {
+                return 0;
+            }
+        };
+        
+        template<class T, class ...Args>
+        struct columns_t<T, Args...> : public columns_t<Args...> {
+            T m;
+            
+            columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
+            
+            template<class L>
+            void for_each(L l) {
+                l(this->m);
+                Super::for_each(l);
+            }
+            
+            int count() {
+                return 1 + Super::count();
+            }
+        private:
+            typedef columns_t<Args...> Super;
+        };
     }
     
     template<class T>
     internal::distinct_t<T> distinct(T t) {
         return {t};
+    }
+    
+    template<class ...Args>
+    internal::columns_t<Args...> distinct(internal::columns_t<Args...> cols) {
+        cols.distinct = true;
+        return cols;
     }
     
     template<class T>
@@ -1013,7 +1020,7 @@ namespace sqlite_orm {
     };
     
     template<class ...Args>
-    conditions::columns_t<Args...> columns(Args ...args) {
+    internal::columns_t<Args...> columns(Args ...args) {
         return {args...};
     }
     
@@ -2897,7 +2904,7 @@ namespace sqlite_orm {
         }
         
         template<class ...Args>
-        std::vector<std::string> parse_table_names(Args ...args) {
+        std::vector<std::string> parse_table_names(Args .../*args*/) {
             return {};
         }
         
@@ -2916,7 +2923,7 @@ namespace sqlite_orm {
         }
         
         template<class ...Args>
-        std::vector<std::string> parse_table_names(conditions::columns_t<Args...> &cols) {
+        std::vector<std::string> parse_table_names(internal::columns_t<Args...> &cols) {
             std::vector<std::string> res;
             cols.for_each([&](auto &m){
                 auto tableName = this->parse_table_name(m);
@@ -3587,7 +3594,7 @@ namespace sqlite_orm {
         class R = std::tuple<typename column_result_t<Args>::type...>,
         class ...Conds
         >
-        std::vector<R> select(conditions::columns_t<Args...> cols, Conds ...conds) {
+        std::vector<R> select(internal::columns_t<Args...> cols, Conds ...conds) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3599,6 +3606,9 @@ namespace sqlite_orm {
             std::vector<R> res;
             std::stringstream ss;
             ss << "SELECT ";
+            if(cols.distinct) {
+                ss << static_cast<std::string>(distinct(0)) << " ";
+            }
             std::vector<std::string> columnNames;
             columnNames.reserve(cols.count());
             cols.for_each([&](auto &m) {
