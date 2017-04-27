@@ -3627,6 +3627,65 @@ namespace sqlite_orm {
         }
         
         /**
+         *  This is REPLACE (INSERT OR REPLACE) function.
+         *  Also if you need to insert value with knows id you should
+         *  also you this function instead of insert cause inserts ignores
+         *  id and creates own one.
+         */
+        template<class O>
+        void replace(const O &o) {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            auto &impl = get_impl<O>();
+            std::stringstream ss;
+            ss << "REPLACE INTO " << impl.table.name << " (";
+            auto columnNames = impl.table.column_names();
+            auto columnNamesCount = int(columnNames.size());
+            for(auto i = 0; i < columnNamesCount; ++i) {
+                ss << "\"" << columnNames[i] << "\"";
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }else{
+                    ss << ") ";
+                }
+            }
+            ss << "VALUES(";
+            for(auto i = 0; i < columnNamesCount; ++i) {
+                ss << "?";
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }else{
+                    ss << ")";
+                }
+            }
+            auto query = ss.str();
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer{stmt};
+                auto index = 1;
+                impl.table.for_each_column([&o, &index, &stmt] (auto c) {
+                    auto &value = o.*c.member_pointer;
+                    statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
+                });
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    //..
+                }else{
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
+                }
+            }else {
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
+        }
+        
+        /**
          *  Insert routine. Inserts object with all non primary key fields in passed object. Id of passed
          *  object doesn't matter.
          *  @return id of just created object.
