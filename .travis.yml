@@ -19,15 +19,25 @@ install:
   - sudo apt-get install g++-4.9
 
 script:
-  - clang++ -std=c++1y examples/core_functions.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/distinct.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/enum_binding.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/group_by.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/iteration.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/key_value.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/nullable_enum_binding.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/select.cpp -I include/sqlite_orm/ -lsqlite3
-  - clang++ -std=c++1y examples/subentities.cpp -I include/sqlite_orm/ -lsqlite3
+  - clang++ -std=c++1y examples/core_functions.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/distinct.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/enum_binding.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/group_by.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/iteration.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/key_value.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/nullable_enum_binding.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/select.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/subentities.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
   - clang++ -std=c++1y tests/tests.cpp -I include/sqlite_orm/ -lsqlite3 -o tests.out
   - ./tests.out

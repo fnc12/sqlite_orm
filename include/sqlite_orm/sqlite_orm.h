@@ -1613,10 +1613,10 @@ namespace sqlite_orm {
             throw std::runtime_error("no impl with type " + std::string(typeid(O).name()));
         }
         
-        template<class O>
+        /*template<class O>
         int insert(const O &, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in insert");
-        }
+        }*/
         
         template<class O, class I>
         O get(I, sqlite3 *, std::nullptr_t) {
@@ -1850,62 +1850,15 @@ namespace sqlite_orm {
             return Super::column_name(m);
         }
         
-        template<class O, class HH = typename H::object_type>
+        /*template<class O, class HH = typename H::object_type>
         int insert(const O &o, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
             return Super::template insert(o, db);
         }
         
         template<class O, class HH = typename H::object_type>
         int insert(const O &o, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
-            int res = 0;
-            std::stringstream ss;
-            ss << "INSERT INTO " << this->table.name << " (";
-            std::vector<std::string> columnNames;
-            this->table.for_each_column([&] (auto c) {
-                if(!c.template has<primary_key>()) {
-                    columnNames.emplace_back(c.name);
-                }
-            });
             
-            auto columnNamesCount = int(columnNames.size());
-            for(auto i = 0; i < columnNamesCount; ++i) {
-                ss << "\"" << columnNames[i] << "\"";
-                if(i < columnNamesCount - 1) {
-                    ss << ", ";
-                }else{
-                    ss << ") ";
-                }
-            }
-            ss << "VALUES(";
-            for(auto i = 0; i < columnNamesCount; ++i) {
-                ss << "?";
-                if(i < columnNamesCount - 1) {
-                    ss << ", ";
-                }else{
-                    ss << ")";
-                }
-            }
-            auto query = ss.str();
-            sqlite3_stmt *stmt;
-            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                statement_finalizer finalizer{stmt};
-                auto index = 1;
-                this->table.for_each_column([&o, &index, &stmt] (auto c) {
-                    if(!c.template has<primary_key>()){
-                        auto &value = o.*c.member_pointer;
-                        statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
-                    }
-                });
-                if (sqlite3_step(stmt) == SQLITE_DONE) {
-                    res = int(sqlite3_last_insert_rowid(db));
-                }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
-                }
-            }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
-            }
-            return res;
-        }
+        }*/
         
         template<class O, class HH = typename H::object_type>
         void update(const O &o, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
@@ -3688,7 +3641,56 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.insert(o, db);
+//            return impl.insert(o, db);
+            auto &impl = get_impl<O>();
+            int res = 0;
+            std::stringstream ss;
+            ss << "INSERT INTO " << impl.table.name << " (";
+            std::vector<std::string> columnNames;
+            impl.table.for_each_column([&] (auto c) {
+                if(!c.template has<primary_key>()) {
+                    columnNames.emplace_back(c.name);
+                }
+            });
+            
+            auto columnNamesCount = int(columnNames.size());
+            for(auto i = 0; i < columnNamesCount; ++i) {
+                ss << "\"" << columnNames[i] << "\"";
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }else{
+                    ss << ") ";
+                }
+            }
+            ss << "VALUES(";
+            for(auto i = 0; i < columnNamesCount; ++i) {
+                ss << "?";
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }else{
+                    ss << ")";
+                }
+            }
+            auto query = ss.str();
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer{stmt};
+                auto index = 1;
+                impl.table.for_each_column([&o, &index, &stmt] (auto c) {
+                    if(!c.template has<primary_key>()){
+                        auto &value = o.*c.member_pointer;
+                        statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
+                    }
+                });
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    res = int(sqlite3_last_insert_rowid(db));
+                }else{
+                    throw std::runtime_error(sqlite3_errmsg(db));
+                }
+            }else {
+                throw std::runtime_error(sqlite3_errmsg(db));
+            }
+            return res;
         }
         
         /**
