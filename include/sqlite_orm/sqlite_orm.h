@@ -68,7 +68,7 @@ namespace sqlite_orm {
         struct iterator<N> {
             
             template<class L>
-            void operator()(std::tuple<> &t, L l) {
+            void operator()(std::tuple<> &/*t*/, L /*l*/) {
                 //..
             }
         };
@@ -169,7 +169,7 @@ namespace sqlite_orm {
     
     template<class T>
     struct type_is_nullable : public std::false_type {
-        bool operator()(const T &t) const {
+        bool operator()(const T &/*t*/) const {
             return true;
         }
     };
@@ -242,7 +242,7 @@ namespace sqlite_orm {
     struct default_value_extractor {
         
         template<class A>
-        std::shared_ptr<std::string> operator() (const A &a) {
+        std::shared_ptr<std::string> operator() (const A &/*a*/) {
             return {};
         }
         
@@ -1145,7 +1145,7 @@ namespace sqlite_orm {
         }
         
         template<class L>
-        void apply_to_col_if(L& l, std::false_type) {}
+        void apply_to_col_if(L& /*l*/, std::false_type) {}
         
     private:
         typedef table_impl<T...> Super;
@@ -1564,7 +1564,7 @@ namespace sqlite_orm {
         }
         
         template<size_t I, typename std::enable_if<I == 0>::type * = nullptr>
-        void extract(std::tuple<Args...> &t, char **argv) {
+        void extract(std::tuple<Args...> &/*t*/, char **/*argv*/) {
             //..
         }
     };
@@ -1927,7 +1927,7 @@ namespace sqlite_orm {
         }
         
         template<class O, class HH = typename H::object_type>
-        std::string dump(const O &o, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+        std::string dump(const O &o, sqlite3 */*db*/, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::stringstream ss;
             ss << "{ ";
             auto columnsCount = this->table.columns_count();
@@ -2421,7 +2421,8 @@ namespace sqlite_orm {
         template<class F, class O>
         std::string string_from_expression(F O::*m) {
 //            return this->table.name + "." + this->table.find_column_name(m);
-            return this->impl.column_name(m);
+//            return this->impl.column_name(m);
+            return "\"" + this->impl.column_name(m) + "\"";
         }
         
         template<class T>
@@ -2669,7 +2670,7 @@ namespace sqlite_orm {
          *  Recursion end.
          */
         template<class ...Args>
-        void process_conditions(std::stringstream &, Args ...args) {
+        void process_conditions(std::stringstream &, Args .../*args*/) {
             //..
         }
         
@@ -2792,12 +2793,12 @@ namespace sqlite_orm {
         }
         
         template<class T>
-        std::string parse_table_name(T &t) {
+        std::string parse_table_name(T &/*t*/) {
             return {};
         }
         
         template<class F, class O>
-        std::string parse_table_name(F O::*m) {
+        std::string parse_table_name(F O::*/*m*/) {
             return this->impl.template find_table_name<O>();
         }
         
@@ -2933,7 +2934,8 @@ namespace sqlite_orm {
                                        return 0;
                                    }, &data, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
             return res;
         }
@@ -2956,14 +2958,13 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.template get<O>(id, db);
             auto &impl = this->get_impl<O>();
             std::shared_ptr<O> res;
             std::stringstream ss;
             ss << "SELECT ";
             auto columnNames = impl.table.column_names();
             for(auto i = 0; i < columnNames.size(); ++i) {
-                ss << columnNames[i];
+                ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNames.size() - 1) {
                     ss << ", ";
                 }else{
@@ -2979,7 +2980,7 @@ namespace sqlite_orm {
                 data_tuple_t dataTuple = std::make_tuple(&impl, &res);
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
                                            auto &d = *(data_tuple_t*)data;
                                            auto &res = *std::get<1>(d);
                                            auto t = std::get<0>(d);
@@ -3029,7 +3030,7 @@ namespace sqlite_orm {
             ss << "SELECT ";
             auto columnNames = impl.table.column_names();
             for(auto i = 0; i < columnNames.size(); ++i) {
-                ss << columnNames[i];
+                ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNames.size() - 1) {
                     ss << ", ";
                 }else{
@@ -3046,7 +3047,7 @@ namespace sqlite_orm {
                 Data aTuple = std::make_tuple(&impl, &res);
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
                                            auto &aTuple = *(Data*)data;
                                            auto &res = *std::get<1>(aTuple);
                                            auto t = std::get<0>(aTuple);
@@ -3182,7 +3183,7 @@ namespace sqlite_orm {
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
                                            auto &res = *(double*)data;
                                            if(argc){
 //                                               res = std::atof(argv[0]);
@@ -3524,7 +3525,7 @@ namespace sqlite_orm {
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
+                                       [](void *data, int /*argc*/, char **argv,char **/*azColName*/) -> int {
                                            auto &res = *(std::vector<R>*)data;
                                            auto value = row_extrator<R>().extract(argv[0]);
                                            res.push_back(value);
@@ -3597,7 +3598,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv,char **azColName) -> int {
+                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
                                        auto &res = *(std::vector<R>*)data;
                                        auto value = row_extrator<R>().extract(argv);
                                        res.push_back(value);
