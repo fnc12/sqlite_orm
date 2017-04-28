@@ -239,27 +239,30 @@ namespace sqlite_orm {
     template<class T>
     struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
     
-    struct default_value_extractor {
+    namespace internal {
         
-        template<class A>
-        std::shared_ptr<std::string> operator() (const A &/*a*/) {
-            return {};
-        }
-        
-        template<class T>
-        std::shared_ptr<std::string> operator() (const default_t<T> &t) {
-            std::stringstream ss;
-            auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
-            if(needQuotes){
-                ss << "'";
+        struct default_value_extractor {
+            
+            template<class A>
+            std::shared_ptr<std::string> operator() (const A &/*a*/) {
+                return {};
             }
-            ss << t.value;
-            if(needQuotes){
-                ss << "'";
+            
+            template<class T>
+            std::shared_ptr<std::string> operator() (const default_t<T> &t) {
+                std::stringstream ss;
+                auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
+                if(needQuotes){
+                    ss << "'";
+                }
+                ss << t.value;
+                if(needQuotes){
+                    ss << "'";
+                }
+                return std::make_shared<std::string>(ss.str());
             }
-            return std::make_shared<std::string>(ss.str());
-        }
-    };
+        };
+    }
     
     template<class O, class T, class ...Op>
     struct column_t {
@@ -298,7 +301,7 @@ namespace sqlite_orm {
         std::shared_ptr<std::string> default_value() {
             std::shared_ptr<std::string> res;
             tuple_helper::iterator<std::tuple_size<options_type>::value - 1, Op...>()(options, [&](auto &v){
-                auto dft = default_value_extractor()(v);
+                auto dft = internal::default_value_extractor()(v);
                 if(dft){
                     res = dft;
                 }
@@ -676,7 +679,17 @@ namespace sqlite_orm {
     }
     
     template<class L, class R>
+    conditions::is_equal_t<L, R> eq(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
     conditions::is_not_equal_t<L, R> is_not_equal(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    conditions::is_not_equal_t<L, R> ne(L l, R r) {
         return {l, r};
     }
     
@@ -686,7 +699,17 @@ namespace sqlite_orm {
     }
     
     template<class L, class R>
+    conditions::greater_than_t<L, R> gt(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
     conditions::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    conditions::greater_or_equal_t<L, R> ge(L l, R r) {
         return {l, r};
     }
     
@@ -696,7 +719,17 @@ namespace sqlite_orm {
     }
     
     template<class L, class R>
+    conditions::lesser_than_t<L, R> lt(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
     conditions::lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    conditions::lesser_or_equal_t<L, R> le(L l, R r) {
         return {l, r};
     }
     
