@@ -1940,13 +1940,13 @@ namespace sqlite_orm {
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
-                this->table.for_each_column([&, &o = o] (auto c) {
+                this->table.for_each_column([&o, stmt, &index] (auto c) {
                     if(!c.template has<primary_key>()) {
                         auto &value = o.*c.member_pointer;
                         statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
                     }
                 });
-                this->table.for_each_column([&, &o = o] (auto c) {
+                this->table.for_each_column([&o, stmt, &index] (auto c) {
                     if(c.template has<primary_key>()) {
                         auto &value = o.*c.member_pointer;
                         statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
