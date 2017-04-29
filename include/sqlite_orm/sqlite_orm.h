@@ -1638,13 +1638,14 @@ namespace sqlite_orm {
         
         template<class T>
         constexpr bool type_is_mapped() const {
-            return false;
+            return std::integral_constant<bool, false>::value;
         }
         
-        template<class O>
+        /*template<class O>
         auto& get_impl() {
+//            static_assert(false, "type is not mapped to storage");
             throw std::runtime_error("no impl with type " + std::string(typeid(O).name()));
-        }
+        }*/
         
         /*template<class O>
         int insert(const O &, sqlite3 *, std::nullptr_t) {
@@ -1807,8 +1808,15 @@ namespace sqlite_orm {
         
         table_type table;
         
-        template<class T>
-        constexpr bool type_is_mapped() const {
+        template<class T, class HH = typename H::object_type>
+        constexpr bool type_is_mapped(typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
+//            return Super::template type_is_mapped<T>();
+//            return true;
+            return std::integral_constant<bool, true>::value;
+        }
+        
+        template<class T, class HH = typename H::object_type>
+        constexpr bool type_is_mapped(typename std::enable_if<!std::is_same<T, HH>::value>::type* = nullptr) const {
             return Super::template type_is_mapped<T>();
         }
         
@@ -2416,6 +2424,12 @@ namespace sqlite_orm {
     protected:
         
         template<class O>
+        void assert_mapped_type() {
+            typedef std::tuple<typename Ts::object_type...> mapped_types_tuples;
+            static_assert(tuple_helper::has_type<O, mapped_types_tuples>::value, "type is not mapped to a storage");
+        }
+        
+        template<class O>
         auto& get_impl() {
             return this->impl.template get_impl<O>();
         }
@@ -2717,6 +2731,8 @@ namespace sqlite_orm {
         
         template<class T, class ...Args>
         view_t<T, Args...> view(Args ...args) {
+            this->assert_mapped_type<T>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2730,6 +2746,8 @@ namespace sqlite_orm {
         
         template<class O, class ...Args>
         void remove_all(Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2764,6 +2782,8 @@ namespace sqlite_orm {
          */
         template<class O, class I>
         void remove(I id) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2783,6 +2803,8 @@ namespace sqlite_orm {
          */
         template<class O>
         void update(const O &o) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2934,6 +2956,8 @@ namespace sqlite_orm {
          */
         template<class O, class C = std::vector<O>, class ...Args>
         C get_all(Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2983,6 +3007,8 @@ namespace sqlite_orm {
          */
         template<class O, class I>
         O get(I id) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3048,6 +3074,8 @@ namespace sqlite_orm {
          */
         template<class O, class I>
         std::shared_ptr<O> get_no_throw(I id) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3111,6 +3139,8 @@ namespace sqlite_orm {
          */
         template<class O, class ...Args>
         int count(Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3119,7 +3149,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return impl.template count<O>(db, nullptr, args...);
+            
             auto &impl = this->get_impl<O>();
             int res = 0;
             std::stringstream ss;
@@ -3149,6 +3179,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         int count(F O::*m, Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3195,6 +3227,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         double avg(F O::*m, Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3241,6 +3275,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         std::string group_concat(F O::*m, Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3287,6 +3323,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         std::string group_concat(F O::*m, const std::string &y, Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3337,6 +3375,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         std::shared_ptr<F> max(F O::*m, Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3357,7 +3397,7 @@ namespace sqlite_orm {
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **azColName)->int{
+                                       [](void *data, int argc, char **argv,char **/*azColName*/)->int{
                                            auto &res = *(std::shared_ptr<F>*)data;
                                            if(argc){
                                                if(argv[0]){
@@ -3383,6 +3423,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         std::shared_ptr<F> min(F O::*m, Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3429,6 +3471,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         std::shared_ptr<F> sum(F O::*m, Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3473,6 +3517,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         double total(F O::*m, Args ...args) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3631,7 +3677,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
+                                   [](void *data, int /*argc*/, char **argv,char **/*azColName*/) -> int {
                                        auto &res = *(std::vector<R>*)data;
                                        auto value = row_extrator<R>().extract(argv);
                                        res.push_back(value);
@@ -3649,6 +3695,8 @@ namespace sqlite_orm {
          */
         template<class O>
         std::string dump(const O &o) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3668,6 +3716,8 @@ namespace sqlite_orm {
          */
         template<class O>
         void replace(const O &o) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -3726,6 +3776,8 @@ namespace sqlite_orm {
          */
         template<class O>
         int insert(const O &o) {
+            this->assert_mapped_type<O>();
+            
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
