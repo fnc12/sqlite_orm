@@ -1355,7 +1355,7 @@ namespace sqlite_orm {
     struct statement_binder<int> {
         
         int bind(sqlite3_stmt *stmt, int index, const int &value) {
-            return sqlite3_bind_int(stmt, index++, value);
+            return sqlite3_bind_int(stmt, index, value);
         }
     };
     
@@ -1366,7 +1366,7 @@ namespace sqlite_orm {
     struct statement_binder<bool> {
         
         int bind(sqlite3_stmt *stmt, int index, const bool &value) {
-            return sqlite3_bind_int(stmt, index++, value);
+            return sqlite3_bind_int(stmt, index, value);
         }
     };
     
@@ -1377,7 +1377,7 @@ namespace sqlite_orm {
     struct statement_binder<short> {
         
         int bind(sqlite3_stmt *stmt, int index, const short &value) {
-            return sqlite3_bind_int(stmt, index++, value);
+            return sqlite3_bind_int(stmt, index, value);
         }
     };
     
@@ -1397,7 +1397,7 @@ namespace sqlite_orm {
     struct statement_binder<double> {
         
         int bind(sqlite3_stmt *stmt, int index, const double &value) {
-            return sqlite3_bind_double(stmt, index++, value);
+            return sqlite3_bind_double(stmt, index, value);
 //            return sqlite3_bind_int(stmt, index++, value);
         }
     };
@@ -1409,7 +1409,7 @@ namespace sqlite_orm {
     struct statement_binder<std::string> {
         
         int bind(sqlite3_stmt *stmt, int index, const std::string &value) {
-            return sqlite3_bind_text(stmt, index++, value.c_str(), -1, SQLITE_TRANSIENT);
+            return sqlite3_bind_text(stmt, index, value.c_str(), -1, SQLITE_TRANSIENT);
         }
     };
     
@@ -1420,7 +1420,7 @@ namespace sqlite_orm {
     struct statement_binder<std::nullptr_t> {
         
         int bind(sqlite3_stmt *stmt, int index, const std::nullptr_t &) {
-            return sqlite3_bind_null(stmt, index++);
+            return sqlite3_bind_null(stmt, index);
         }
     };
     
