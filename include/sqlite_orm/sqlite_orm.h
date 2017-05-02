@@ -787,6 +787,24 @@ namespace sqlite_orm {
                 return "ABS";
             }
         };
+        
+        template<class T>
+        struct lower_t {
+            T t;
+            
+            operator std::string() const {
+                return "LOWER";
+            }
+        };
+        
+        template<class T>
+        struct upper_t {
+            T t;
+            
+            operator std::string() const {
+                return "UPPER";
+            }
+        };
     }
     
     template<class T>
@@ -796,6 +814,16 @@ namespace sqlite_orm {
     
     template<class T>
     core_functions::abs_t<T> abs(T t) {
+        return {t};
+    }
+    
+    template<class T>
+    core_functions::lower_t<T> lower(T t) {
+        return {t};
+    }
+    
+    template<class T>
+    core_functions::upper_t<T> upper(T t) {
         return {t};
     }
     
@@ -1000,6 +1028,16 @@ namespace sqlite_orm {
     template<class T>
     struct column_result_t<core_functions::abs_t<T>> {
         typedef std::shared_ptr<double> type;
+    };
+    
+    template<class T>
+    struct column_result_t<core_functions::lower_t<T>> {
+        typedef std::string type;
+    };
+    
+    template<class T>
+    struct column_result_t<core_functions::upper_t<T>> {
+        typedef std::string type;
     };
     
     template<class T>
@@ -2560,6 +2598,22 @@ namespace sqlite_orm {
         }
         
         template<class T>
+        std::string string_from_expression(core_functions::upper_t<T> &a) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(a.t);
+            ss << static_cast<std::string>(a) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T>
+        std::string string_from_expression(core_functions::lower_t<T> &a) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(a.t);
+            ss << static_cast<std::string>(a) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T>
         std::string string_from_expression(core_functions::abs_t<T> &a) {
             std::stringstream ss;
             auto expr = this->string_from_expression(a.t);
@@ -2900,6 +2954,16 @@ namespace sqlite_orm {
         template<class T>
         std::string parse_table_name(core_functions::length_t<T> &len) {
             return this->parse_table_name(len.t);
+        }
+        
+        template<class T>
+        std::string parse_table_name(core_functions::upper_t<T> &a) {
+            return this->parse_table_name(a.t);
+        }
+        
+        template<class T>
+        std::string parse_table_name(core_functions::lower_t<T> &a) {
+            return this->parse_table_name(a.t);
         }
         
         template<class T>

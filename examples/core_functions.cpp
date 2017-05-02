@@ -21,6 +21,8 @@ struct MarvelHero {
 };
 
 int main(int argc, char **argv) {
+    cout << "path = " << argv[0] << endl;
+    
     using namespace sqlite_orm;
     auto storage = make_storage("core_functions.sqlite",
                                 make_table("marvel",
@@ -98,6 +100,28 @@ int main(int argc, char **argv) {
     for(auto &name : namesByAbs) {
         cout << name << endl;
     }
+    cout << endl;
+    
+    //  SELECT length(abs(points)) FROM marvel
+    auto twoFunctions = storage.select(length(abs(&MarvelHero::points)));
+    cout << "twoFunctions.size = " << twoFunctions.size() << endl;
+    cout << endl;
+    
+    //  SELECT LOWER(name) FROM marvel
+    auto lowerNames = storage.select(lower(&MarvelHero::name));
+    cout << "lowerNames.size = " << lowerNames.size() << endl;
+    for(auto &name : lowerNames) {
+        cout << name << endl;
+    }
+    cout << endl;
+    
+    //  SELECT UPPER(abilities) FROM marvel
+    auto upperAbilities = storage.select(upper(&MarvelHero::abilities));
+    cout << "upperAbilities.size = " << upperAbilities.size() << endl;
+    for(auto &abilities : upperAbilities) {
+        cout << abilities << endl;
+    }
+    cout << endl;
     
     return 0;
 }
