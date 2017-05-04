@@ -262,6 +262,20 @@ namespace sqlite_orm {
                 return std::make_shared<std::string>(ss.str());
             }
         };
+        
+        /**
+         *  Result of concatenation || operator
+         */
+        template<class L, class R>
+        struct conc_t {
+            L l;
+            R r;
+        };
+    }
+    
+    template<class L, class R>
+    internal::conc_t<L, R> conc(L l, R r) {
+        return {l, r};
     }
     
     template<class O, class T, class ...Op>
@@ -1088,6 +1102,11 @@ namespace sqlite_orm {
     template<class T>
     struct column_result_t<internal::distinct_t<T>> {
         typedef typename column_result_t<T>::type type;
+    };
+    
+    template<class L, class R>
+    struct column_result_t<internal::conc_t<L, R>> {
+        typedef std::string type;
     };
     
     template<class ...Args>
@@ -2505,6 +2524,10 @@ namespace sqlite_orm {
         
         template<class F, class O>
         std::string string_from_expression(F O::*m) {
+//            return this->impl.template find_table_name<O>() + "." + this->impl.column_name(m);
+            
+            
+            
 //            return this->table.name + "." + this->table.find_column_name(m);
 //            return this->impl.column_name(m);
             return "\"" + this->impl.column_name(m) + "\"";
@@ -2524,6 +2547,15 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto expr = this->string_from_expression(f.t);
             ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class L, class R>
+        std::string string_from_expression(internal::conc_t<L, R> &f) {
+            std::stringstream ss;
+            auto lhs = this->string_from_expression(f.l);
+            auto rhs = this->string_from_expression(f.r);
+            ss << "(" << lhs << " || " << rhs << ") ";
             return ss.str();
         }
         

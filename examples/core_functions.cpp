@@ -123,5 +123,13 @@ int main(int argc, char **argv) {
     }
     cout << endl;
     
+    //  SELECT LOWER(name) || '@marvel.com' FROM marvel
+    auto emails = storage.select(conc(lower(&MarvelHero::name), "@marvel.com"));
+    cout << "emails.size = " << emails.size() << endl;
+    for(auto &email : emails) {
+        cout << email << endl;
+    }
+    cout << endl;
+    
     return 0;
 }
