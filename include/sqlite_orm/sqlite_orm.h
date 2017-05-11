@@ -219,6 +219,12 @@ namespace sqlite_orm {
     struct type_printer<int> : public integer_printer {};
     
     template<>
+    struct type_printer<long> : public integer_printer {};
+    
+    template<>
+    struct type_printer<long long> : public integer_printer {};
+    
+    template<>
     struct type_printer<bool> : public integer_printer {};
     
     template<>
@@ -3221,7 +3227,8 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &aTuple, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
                 return res;
             }else{

@@ -12,6 +12,7 @@
 
 #include <cassert>
 #include <vector>
+#include <string>
 
 using namespace sqlite_orm;
 
@@ -216,9 +217,25 @@ void testSelect() {
     assert(rc == SQLITE_OK);
     
     sqlite3_stmt *stmt;
+    
+    //  delete previous words. This command is excess in travis or other docker based CI tools
+    //  but it is required on local machine
+    sql = "DELETE FROM WORDS";
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+    assert(rc == SQLITE_OK);
+    
+    rc = sqlite3_step(stmt);
+    if(rc != SQLITE_DONE){
+        cout << sqlite3_errmsg(db) << endl;
+        assert(0);
+    }
+    sqlite3_finalize(stmt);
+    
     sql = "INSERT INTO WORDS (CURRENT_WORD, BEFORE_WORD, AFTER_WORD, OCCURANCES) VALUES(?, ?, ?, ?)";
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
     assert(rc == SQLITE_OK);
+    
+    //  INSERT [ ID, 'best', 'behaviour', 'hey', 5 ]
     
     sqlite3_bind_text(stmt, 1, "best", -1, nullptr);
     sqlite3_bind_text(stmt, 2, "behaviour", -1, nullptr);
@@ -230,6 +247,10 @@ void testSelect() {
         assert(0);
     }
     sqlite3_finalize(stmt);
+    
+    auto firstId = sqlite3_last_insert_rowid(db);
+    
+    //  INSERT [ ID, 'corruption', 'blood', 'brothers', 15 ]
     
     rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
     assert(rc == SQLITE_OK);
@@ -244,7 +265,112 @@ void testSelect() {
     }
     sqlite3_finalize(stmt);
     
+    auto secondId = sqlite3_last_insert_rowid(db);
+    
     sqlite3_close(db);
+    
+    struct Word {
+        int id;
+        std::string currentWord;
+        std::string beforeWord;
+        std::string afterWord;
+        int occurances;
+    };
+    
+    auto storage = make_storage(dbFileName,
+                                make_table("WORDS",
+                                           make_column("ID",
+                                                       &Word::id,
+                                                       primary_key(),
+                                                       autoincrement()),
+                                           make_column("CURRENT_WORD",
+                                                       &Word::currentWord),
+                                           make_column("BEFORE_WORD",
+                                                       &Word::beforeWord),
+                                           make_column("AFTER_WORD",
+                                                       &Word::afterWord),
+                                           make_column("OCCURANCES",
+                                                       &Word::occurances)));
+    
+    storage.sync_schema();  //  sync schema must not alter any data cause schemas are the same
+    
+    assert(storage.count<Word>() == 2);
+    
+    auto firstRow = storage.get_no_throw<Word>(firstId);
+    assert(firstRow);
+    assert(firstRow->currentWord == "best");
+    assert(firstRow->beforeWord == "behaviour");
+    assert(firstRow->afterWord == "hey");
+    assert(firstRow->occurances == 5);
+    
+    auto secondRow = storage.get_no_throw<Word>(secondId);
+    assert(secondRow);
+    assert(secondRow->currentWord == "corruption");
+    assert(secondRow->beforeWord == "blood");
+    assert(secondRow->afterWord == "brothers");
+    assert(secondRow->occurances == 15);
+    
+    auto cols = columns(&Word::id,
+                        &Word::currentWord,
+                        &Word::beforeWord,
+                        &Word::afterWord,
+                        &Word::occurances);
+    auto rawTuples = storage.select(cols, where(eq(&Word::id, firstId)));
+    assert(rawTuples.size() == 1);
+    
+    {
+        auto &firstTuple = rawTuples.front();
+        assert(std::get<0>(firstTuple) == firstId);
+        assert(std::get<1>(firstTuple) == "best");
+        assert(std::get<2>(firstTuple) == "behaviour");
+        assert(std::get<3>(firstTuple) == "hey");
+        assert(std::get<4>(firstTuple) == 5);
+    }
+    
+    rawTuples = storage.select(cols, where(eq(&Word::id, secondId)));
+    assert(rawTuples.size() == 1);
+    
+    {
+        auto &secondTuple = rawTuples.front();
+        assert(std::get<0>(secondTuple) == secondId);
+        assert(std::get<1>(secondTuple) == "corruption");
+        assert(std::get<2>(secondTuple) == "blood");
+        assert(std::get<3>(secondTuple) == "brothers");
+        assert(std::get<4>(secondTuple) == 15);
+    }
+    
+    auto ordr = order_by(&Word::id);
+    
+    auto idsOnly = storage.select(&Word::id, ordr);
+    assert(idsOnly.size() == 2);
+    
+    assert(idsOnly[0] == firstId);
+    assert(idsOnly[1] == secondId);
+    
+    auto currentWordsOnly = storage.select(&Word::currentWord, ordr);
+    assert(currentWordsOnly.size() == 2);
+    
+    assert(currentWordsOnly[0] == "best");
+    assert(currentWordsOnly[1] == "corruption");
+    
+    auto beforeWordsOnly = storage.select(&Word::beforeWord, ordr);
+    assert(beforeWordsOnly.size() == 2);
+    
+    assert(beforeWordsOnly[0] == "behaviour");
+    assert(beforeWordsOnly[1] == "blood");
+    
+    auto afterWordsOnly = storage.select(&Word::afterWord, ordr);
+    assert(afterWordsOnly.size() == 2);
+    
+    assert(afterWordsOnly[0] == "hey");
+    assert(afterWordsOnly[1] == "brothers");
+    
+    auto occurencesOnly = storage.select(&Word::occurances, ordr);
+    assert(occurencesOnly.size() == 2);
+    
+    assert(occurencesOnly[0] == 5);
+    assert(occurencesOnly[1] == 15);
+    
 }
 
 int main() {
