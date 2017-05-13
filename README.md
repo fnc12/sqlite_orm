@@ -137,6 +137,14 @@ user.imageUrl = "https://cdn1.iconfinder.com/data/icons/man-icon-set/100/man_ico
 storage.update(user);
 ```
 
+Also there is a non-CRUD uodate version `update_all`:
+
+```c++
+storage.update_all(set(&User::lastName, "Hardey",
+                       &User::typeId, 2),
+                   where(eq(&User::firstName, "Tom")));
+```
+
 And delete. To delete you have to pass id only, not whole object. Also we need to explicitly tell which class of object we want to delete. Function name is `remove` not `delete` cause `delete` is a reseved word in C++.
 
 ```c++
