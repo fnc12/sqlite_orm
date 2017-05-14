@@ -2944,8 +2944,8 @@ namespace sqlite_orm {
             }
         }
         
-        template<class ...Args, class W>
-        void update_all(internal::set_t<Args...> set, conditions::where_t<W> wh) {
+        template<class ...Args, class ...Wargs>
+        void update_all(internal::set_t<Args...> set, Wargs ...wh) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -2984,7 +2984,7 @@ namespace sqlite_orm {
                             ss << ", ";
                         }
                     }
-                    this->process_conditions(ss, wh);
+                    this->process_conditions(ss, wh...);
                     auto query = ss.str();
                     sqlite3_stmt *stmt;
                     if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
