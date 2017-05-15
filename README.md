@@ -137,7 +137,7 @@ user.imageUrl = "https://cdn1.iconfinder.com/data/icons/man-icon-set/100/man_ico
 storage.update(user);
 ```
 
-Also there is a non-CRUD uodate version `update_all`:
+Also there is a non-CRUD update version `update_all`:
 
 ```c++
 storage.update_all(set(&User::lastName, "Hardey",
