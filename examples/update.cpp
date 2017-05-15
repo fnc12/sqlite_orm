@@ -45,55 +45,13 @@ int main(int argc, char **argv) {
     stor->remove_all<Employee>();
     
     //  insert initial values
-    stor->replace(Employee{
-        1,
-        "Paul",
-        32,
-        "California",
-        20000.0,
-    });
-    stor->replace(Employee{
-        2,
-        "Allen",
-        25,
-        "Texas",
-        15000.0,
-    });
-    stor->replace(Employee{
-        3,
-        "Teddy",
-        23,
-        "Norway",
-        20000.0,
-    });
-    stor->replace(Employee{
-        4,
-        "Mark",
-        25,
-        "Rich-Mond",
-        65000.0,
-    });
-    stor->replace(Employee{
-        5,
-        "David",
-        27,
-        "Texas",
-        85000.0,
-    });
-    stor->replace(Employee{
-        6,
-        "Kim",
-        22,
-        "South-Hall",
-        45000.0,
-    });
-    stor->replace(Employee{
-        7,
-        "James",
-        24,
-        "Houston",
-        10000.0,
-    });
+    stor->replace(Employee{ 1, "Paul", 32, "California", 20000.0 });
+    stor->replace(Employee{ 2, "Allen", 25, "Texas", 15000.0 });
+    stor->replace(Employee{ 3, "Teddy", 23, "Norway", 20000.0 });
+    stor->replace(Employee{ 4, "Mark", 25, "Rich-Mond", 65000.0 });
+    stor->replace(Employee{ 5, "David", 27, "Texas", 85000.0 });
+    stor->replace(Employee{ 6, "Kim", 22, "South-Hall", 45000.0 });
+    stor->replace(Employee{ 7, "James", 24, "Houston", 10000.0 });
     
     //  show 'COMPANY' table contents
     for(auto &employee : stor->view<Employee>()) {
