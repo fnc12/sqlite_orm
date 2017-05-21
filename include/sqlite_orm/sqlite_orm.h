@@ -846,20 +846,20 @@ namespace sqlite_orm {
             }
         };
         
-        template<class ...Args>
+        /*template<class ...Args>
         struct char_t_ {
             std::tuple<Args...> args;
             
             operator std::string() const {
                 return "CHAR";
             }
-        };
+        };*/
     }
     
-    template<class ...Args>
+    /*template<class ...Args>
     core_functions::char_t_<Args...> char_(Args ...args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
-    }
+    }*/
     
     inline core_functions::changes_t changes() {
         return {};
@@ -1117,10 +1117,10 @@ namespace sqlite_orm {
         typedef int type;
     };
     
-    template<class ...Args>
+    /*template<class ...Args>
     struct column_result_t<core_functions::char_t_<Args...>> {
         typedef std::string type;
-    };
+    };*/
     
     template<>
     struct column_result_t<core_functions::changes_t> {
@@ -2673,7 +2673,7 @@ namespace sqlite_orm {
             return ss.str();
         }
         
-        template<class ...Args>
+        /*template<class ...Args>
         std::string string_from_expression(core_functions::char_t_<Args...> &f) {
             std::stringstream ss;
             typedef decltype(f.args) tuple_t;
@@ -2696,7 +2696,7 @@ namespace sqlite_orm {
             }
             ss << ") ";
             return ss.str();
-        }
+        }*/
         
         template<class T>
         std::string string_from_expression(core_functions::upper_t<T> &a) {
@@ -2727,7 +2727,7 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
             return ss.str();
-        }&/
+        }&*/
         
         
         /*template<class O>
@@ -3190,7 +3190,7 @@ namespace sqlite_orm {
             return this->parse_table_name(len.t);
         }
         
-        template<class ...Args>
+        /*template<class ...Args>
         std::set<std::string> parse_table_name(core_functions::char_t_<Args...> &f) {
             std::set<std::string> res;
             //return this->parse_table_name(len.t);
@@ -3200,7 +3200,7 @@ namespace sqlite_orm {
                 res.insert(tableNames.begin(), tableNames.end());
             });
             return res;
-        }
+        }*/
         
         template<class T>
         std::set<std::string> parse_table_name(core_functions::upper_t<T> &a) {

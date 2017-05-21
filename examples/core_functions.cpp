@@ -134,9 +134,9 @@ int main(int argc, char **argv) {
         return false;
     });
     
-    //  SELECT CHAR(67,72,65,82)
+    /*//  SELECT CHAR(67,72,65,82)
     auto charString = storage.select(char_(67,72,65,82)).front();
-    cout << "SELECT CHAR(67,72,65,82) = *" << charString << "*" << endl;
+    cout << "SELECT CHAR(67,72,65,82) = *" << charString << "*" << endl;*/
     
     //  SELECT LOWER(name) || '@marvel.com' FROM marvel
     /*auto emails = storage.select(conc(lower(&MarvelHero::name), "@marvel.com"));
