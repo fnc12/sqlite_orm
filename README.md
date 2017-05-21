@@ -473,21 +473,21 @@ for(auto &user : orderedUsers2) {
 }
 
 //  `SELECT * FROM users WHERE id > 100 ORDER BY first_name ASC`
-auto orderedUsers3 = storage.get_all<User>(where(greater_than(&User::id, 100)), order_by(asc(&User::firstName)));
+auto orderedUsers3 = storage.get_all<User>(where(greater_than(&User::id, 100)), order_by(&User::firstName).asc());
 cout << "orderedUsers3 count = " << orderedUsers3.size() << endl;
 for(auto &user : orderedUsers3) {
     cout << storage.dump(user) << endl;
 }
 
 //  `SELECT * FROM users ORDER BY id DESC`
-auto orderedUsers4 = storage.get_all<User>(order_by(desc(&User::id)));
+auto orderedUsers4 = storage.get_all<User>(order_by(&User::id).desc());
 cout << "orderedUsers4 count = " << orderedUsers4.size() << endl;
 for(auto &user : orderedUsers4) {
     cout << storage.dump(user) << endl;
 }
 
 //  `SELECT first_name FROM users ORDER BY ID DESC`
-auto orderedFirstNames = storage.select(&User::firstName, order_by(desc(&User::id)));
+auto orderedFirstNames = storage.select(&User::firstName, order_by(&User::id).desc());
 cout << "orderedFirstNames count = " << orderedFirstNames.size() << endl;
 for(auto &firstName : orderedFirstNames) {
     cout << "firstName = " << firstName << endl;
