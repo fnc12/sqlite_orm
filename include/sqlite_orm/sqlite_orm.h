@@ -845,6 +845,20 @@ namespace sqlite_orm {
                 return "CHANGES";
             }
         };
+        
+        template<class ...Args>
+        struct char_t_ {
+            std::tuple<Args...> args;
+            
+            operator std::string() const {
+                return "CHAR";
+            }
+        };
+    }
+    
+    template<class ...Args>
+    core_functions::char_t_<Args...> char_(Args ...args) {
+        return {std::make_tuple(std::forward<Args>(args)...)};
     }
     
     inline core_functions::changes_t changes() {
@@ -1101,6 +1115,11 @@ namespace sqlite_orm {
     template<class T>
     struct column_result_t<core_functions::length_t<T>> {
         typedef int type;
+    };
+    
+    template<class ...Args>
+    struct column_result_t<core_functions::char_t_<Args...>> {
+        typedef std::string type;
     };
     
     template<>
@@ -2546,7 +2565,10 @@ namespace sqlite_orm {
             
 //            return this->table.name + "." + this->table.find_column_name(m);
 //            return this->impl.column_name(m);
-            return "\"" + this->impl.column_name(m) + "\"";
+            std::stringstream ss;
+            ss << this->impl.template find_table_name<O>() << ".";
+            ss << "\"" << this->impl.column_name(m) << "\"";
+            return ss.str();
         }
         
         template<class T>
@@ -2648,6 +2670,31 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto expr = this->string_from_expression(len.t);
             ss << static_cast<std::string>(len) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class ...Args>
+        std::string string_from_expression(core_functions::char_t_<Args...> &f) {
+            std::stringstream ss;
+            typedef decltype(f.args) tuple_t;
+            std::vector<std::string> args;
+            args.reserve(std::tuple_size<tuple_t>::value);
+            tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.args, [&](auto &v){
+                auto expression = this->string_from_expression(v);
+//                args.push_back(expression);
+                args.insert(args.begin(), expression);
+            });
+            ss << static_cast<std::string>(f) << "(";
+            auto lim = int(args.size());
+            for(auto i = 0; i < lim; ++i) {
+                ss << args[i];
+                if(i < lim - 1) {
+                    ss << ", ";
+                }else{
+                    ss << " ";
+                }
+            }
+            ss << ") ";
             return ss.str();
         }
         
@@ -3000,19 +3047,20 @@ namespace sqlite_orm {
             
             std::stringstream ss;
             ss << "UPDATE ";
-            std::vector<std::string> tableNames;
-            set.for_each([this, &tableNames](auto &lhs, auto &/*rhs*/){
+            std::set<std::string> tableNamesSet;
+            set.for_each([this, &tableNamesSet](auto &lhs, auto &/*rhs*/){
                 auto tableName = this->parse_table_name(lhs);
-                auto it = std::find(tableNames.begin(),
+                /*auto it = std::find(tableNames.begin(),
                                     tableNames.end(),
                                     tableName);
                 if(it == tableNames.end()){
-                    tableNames.push_back(tableName);
-                }
+                    tableNames.insert(tableName);
+                }*/
+                tableNamesSet.insert(tableName.begin(), tableName.end());
             });
-            if(tableNames.size()){
-                if(tableNames.size() == 1){
-                    ss << tableNames.front() << " ";
+            if(tableNamesSet.size()){
+                if(tableNamesSet.size() == 1){
+                    ss << *tableNamesSet.begin() << " ";
                     ss << static_cast<std::string>(set) << " ";
                     std::vector<std::string> setPairs;
                     set.for_each([this, &setPairs](auto &lhs, auto &rhs){
@@ -3085,111 +3133,130 @@ namespace sqlite_orm {
         }
         
         template<class T>
-        std::string parse_table_name(T &/*t*/) {
+        std::set<std::string> parse_table_name(T &) {
             return {};
         }
         
         template<class F, class O>
-        std::string parse_table_name(F O::*/*m*/) {
-            return this->impl.template find_table_name<O>();
+        std::set<std::string> parse_table_name(F O::*) {
+            /*std::set<std::string> res;
+            res.insert(this->impl.template find_table_name<O>());
+            return res;*/
+            return {this->impl.template find_table_name<O>()};
         }
         
         template<class T>
-        std::string parse_table_name(aggregate_functions::min_t<T> &f) {
+        std::set<std::string> parse_table_name(aggregate_functions::min_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
         template<class T>
-        std::string parse_table_name(aggregate_functions::max_t<T> &f) {
+        std::set<std::string> parse_table_name(aggregate_functions::max_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
         template<class T>
-        std::string parse_table_name(aggregate_functions::sum_t<T> &f) {
+        std::set<std::string> parse_table_name(aggregate_functions::sum_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
         template<class T>
-        std::string parse_table_name(aggregate_functions::total_t<T> &f) {
+        std::set<std::string> parse_table_name(aggregate_functions::total_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
         template<class T>
-        std::string parse_table_name(aggregate_functions::group_concat_double_t<T> &f) {
+        std::set<std::string> parse_table_name(aggregate_functions::group_concat_double_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
         template<class T>
-        std::string parse_table_name(aggregate_functions::group_concat_single_t<T> &f) {
+        std::set<std::string> parse_table_name(aggregate_functions::group_concat_single_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
         template<class T>
-        std::string parse_table_name(aggregate_functions::count_t<T> &f) {
+        std::set<std::string> parse_table_name(aggregate_functions::count_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
         template<class T>
-        std::string parse_table_name(aggregate_functions::avg_t<T> &a) {
+        std::set<std::string> parse_table_name(aggregate_functions::avg_t<T> &a) {
             return this->parse_table_name(a.t);
         }
         
         template<class T>
-        std::string parse_table_name(core_functions::length_t<T> &len) {
+        std::set<std::string> parse_table_name(core_functions::length_t<T> &len) {
             return this->parse_table_name(len.t);
         }
         
+        template<class ...Args>
+        std::set<std::string> parse_table_name(core_functions::char_t_<Args...> &f) {
+            std::set<std::string> res;
+            //return this->parse_table_name(len.t);
+            typedef decltype(f.args) tuple_t;
+            tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.args, [&](auto &v){
+                auto tableNames = this->parse_table_name(v);
+                res.insert(tableNames.begin(), tableNames.end());
+            });
+            return res;
+        }
+        
         template<class T>
-        std::string parse_table_name(core_functions::upper_t<T> &a) {
+        std::set<std::string> parse_table_name(core_functions::upper_t<T> &a) {
             return this->parse_table_name(a.t);
         }
         
         template<class T>
-        std::string parse_table_name(core_functions::lower_t<T> &a) {
+        std::set<std::string> parse_table_name(core_functions::lower_t<T> &a) {
             return this->parse_table_name(a.t);
         }
         
         template<class T>
-        std::string parse_table_name(core_functions::abs_t<T> &a) {
+        std::set<std::string> parse_table_name(core_functions::abs_t<T> &a) {
             return this->parse_table_name(a.t);
         }
         
         template<class T>
-        std::string parse_table_name(internal::distinct_t<T> &f) {
+        std::set<std::string> parse_table_name(internal::distinct_t<T> &f) {
             return this->parse_table_name(f.t);
         }
         
         template<class ...Args>
-        std::vector<std::string> parse_table_names(Args .../*args*/) {
+        std::set<std::string> parse_table_names(Args .../*args*/) {
             return {};
         }
         
         template<class H, class ...Args>
-        std::vector<std::string> parse_table_names(H h, Args ...args) {
+        std::set<std::string> parse_table_names(H h, Args ...args) {
             auto res = this->parse_table_names(std::forward<Args>(args)...);
             auto tableName = this->parse_table_name(h);
-            if(tableName.length()){
+            /*if(tableName.length()){
                 if(std::find(res.begin(),
                              res.end(),
                              tableName) == res.end()) {
                     res.push_back(tableName);
                 }
-            }
+            }*/
+            res.insert(tableName.begin(),
+                       tableName.end());
             return res;
         }
         
         template<class ...Args>
-        std::vector<std::string> parse_table_names(internal::columns_t<Args...> &cols) {
-            std::vector<std::string> res;
+        std::set<std::string> parse_table_names(internal::columns_t<Args...> &cols) {
+            std::set<std::string> res;
             cols.for_each([&](auto &m){
                 auto tableName = this->parse_table_name(m);
-                if(tableName.length()){
+                /*if(tableName.length()){
                     if(std::find(res.begin(),
                                  res.end(),
                                  tableName) == res.end()) {
                         res.push_back(tableName);
                     }
-                }
+                }*/
+                res.insert(tableName.begin(),
+                           tableName.end());
             });
             return res;
         }
@@ -3783,9 +3850,10 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") ";
-                auto tableNames = this->parse_table_names(m);
-                if(tableNames.size()){
+                auto tableNamesSet = this->parse_table_names(m);
+                if(tableNamesSet.size()){
                     ss << "FROM " ;
+                    std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                     for(auto i = 0; i < int(tableNames.size()); ++i) {
                         ss << tableNames[i];
                         if(i < int(tableNames.size()) - 1) {
@@ -3835,9 +3903,10 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << " ";
-                auto tableNames = this->parse_table_names(m);
-                if(tableNames.size()){
+                auto tableNamesSet = this->parse_table_names(m);
+                if(tableNamesSet.size()){
                     ss << "FROM " ;
+                    std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                     for(auto i = 0; i < int(tableNames.size()); ++i) {
                         ss << tableNames[i];
                         if(i < int(tableNames.size()) - 1) {
@@ -3909,9 +3978,10 @@ namespace sqlite_orm {
                 }
             }
 //            ss << impl.table.name << " ";
-            auto tableNames = this->parse_table_names(cols);
-            if(tableNames.size()){
+            auto tableNamesSet = this->parse_table_names(cols);
+            if(tableNamesSet.size()){
                 ss << " FROM ";
+                std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                 for(auto i = 0; i < int(tableNames.size()); ++i) {
                     ss << tableNames[i];
                     if(i < int(tableNames.size()) - 1) {
@@ -3931,7 +4001,8 @@ namespace sqlite_orm {
                                        return 0;
                                    }, &res, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
             return res;
         }
@@ -4077,10 +4148,12 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     res = int(sqlite3_last_insert_rowid(db));
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
             return res;
         }
