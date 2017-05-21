@@ -3064,7 +3064,12 @@ namespace sqlite_orm {
             auto columnNames = impl.table.column_names();
             for(auto i = 0; i < columnNames.size(); ++i) {
 //                ss << impl.table.name << "." << columnNames[i];
-                ss << "\"" << columnNames[i] << "\"";
+                ss
+                << impl.table.name << "."
+                << "\""
+                << columnNames[i]
+                << "\""
+                ;
                 if(i < columnNames.size() - 1) {
                     ss << ", ";
                 }else{
