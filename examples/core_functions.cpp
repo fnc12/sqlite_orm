@@ -9,6 +9,7 @@
 #include "sqlite_orm.h"
 
 #include <iostream>
+#include <cassert>
 
 using std::cout;
 using std::endl;
@@ -122,6 +123,16 @@ int main(int argc, char **argv) {
         cout << abilities << endl;
     }
     cout << endl;
+    
+    storage.transaction([&]{
+        storage.remove_all<MarvelHero>();
+        
+        //  SELECT changes()
+        auto rowsRemoved = storage.select(changes()).front();
+        cout << "rowsRemoved = " << rowsRemoved << endl;
+        assert(rowsRemoved == storage.changes());
+        return false;
+    });
     
     //  SELECT LOWER(name) || '@marvel.com' FROM marvel
     /*auto emails = storage.select(conc(lower(&MarvelHero::name), "@marvel.com"));

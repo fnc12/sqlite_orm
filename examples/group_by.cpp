@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
     cout << endl << "Let us use ORDER BY clause along with GROUP BY clause as follows:" << endl << endl;
     salaryName = storage.select(columns(&Employee::name, sum(&Employee::salary)),
                                 group_by(&Employee::name),
-                                order_by(desc(&Employee::name)));
+                                order_by(&Employee::name).desc());
     for(auto &t : salaryName) {
         cout << std::get<0>(t) << '\t' << *std::get<1>(t) << endl;
     }

@@ -838,6 +838,17 @@ namespace sqlite_orm {
                 return "UPPER";
             }
         };
+        
+        struct changes_t {
+            
+            operator std::string() const {
+                return "CHANGES";
+            }
+        };
+    }
+    
+    inline core_functions::changes_t changes() {
+        return {};
     }
     
     template<class T>
@@ -1089,6 +1100,11 @@ namespace sqlite_orm {
     
     template<class T>
     struct column_result_t<core_functions::length_t<T>> {
+        typedef int type;
+    };
+    
+    template<>
+    struct column_result_t<core_functions::changes_t> {
         typedef int type;
     };
     
@@ -2618,6 +2634,12 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto expr = this->string_from_expression(f.t);
             ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        std::string string_from_expression(core_functions::changes_t &ch) {
+            std::stringstream ss;
+            ss << static_cast<std::string>(ch) << "() ";
             return ss.str();
         }
         
