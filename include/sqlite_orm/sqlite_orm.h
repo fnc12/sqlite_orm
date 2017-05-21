@@ -583,13 +583,26 @@ namespace sqlite_orm {
         template<class O>
         struct order_by_t {
             O o;
+            int ascDesc = 0;   //  1 - asc, -1 - desc
             
             operator std::string() const {
                 return "ORDER BY";
             }
+            
+            order_by_t<O> asc() {
+                auto res = *this;
+                res.ascDesc = 1;
+                return res;
+            }
+            
+            order_by_t<O> desc() {
+                auto res = *this;
+                res.ascDesc = -1;
+                return res;
+            }
         };
         
-        template<class O>
+        /*template<class O>
         struct asc_t {
             O o;
             
@@ -605,7 +618,7 @@ namespace sqlite_orm {
             operator std::string() const {
                 return "DESC";
             }
-        };
+        };*/
         
         template<class ...Args>
         struct group_by_t {
@@ -763,7 +776,7 @@ namespace sqlite_orm {
         return {o};
     }
     
-    template<class O>
+    /*template<class O>
     conditions::asc_t<O> asc(O o) {
         return {o};
     }
@@ -771,7 +784,7 @@ namespace sqlite_orm {
     template<class O>
     conditions::desc_t<O> desc(O o) {
         return {o};
-    }
+    }*/
     
     template<class ...Args>
     conditions::group_by_t<Args...> group_by(Args ...args) {
@@ -2640,20 +2653,20 @@ namespace sqlite_orm {
             return ss.str();
         }
         
-        template<class O>
+        /*template<class O>
         std::string string_from_expression(conditions::asc_t<O> &a) {
             std::stringstream ss;
             ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
             return ss.str();
-        }
+        }&/
         
         
-        template<class O>
+        /*template<class O>
         std::string string_from_expression(conditions::desc_t<O> &a) {
             std::stringstream ss;
             ss << this->string_from_expression(a.o) << " " << static_cast<std::string>(a) << " ";
             return ss.str();
-        }
+        }*/
         
         template<class T>
         std::string process_where(conditions::is_null_t<T> &c) {
@@ -2737,6 +2750,14 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto columnName = this->string_from_expression(orderBy.o);
             ss << columnName << " ";
+            switch(orderBy.ascDesc){
+                case 1:
+                    ss << "ASC ";
+                    break;
+                case -1:
+                    ss << "DESC ";
+                    break;
+            }
             return ss.str();
         }
         
