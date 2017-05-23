@@ -371,6 +371,13 @@ void testSelect() {
     assert(occurencesOnly[0] == 5);
     assert(occurencesOnly[1] == 15);
     
+    //  test update_all with the same storage
+    
+    storage.update_all(set(&Word::currentWord, "ototo"),
+                       where(is_equal(&Word::id, firstId)));
+    
+    assert(storage.get<Word>(firstId).currentWord == "ototo");
+    
 }
 
 int main() {
