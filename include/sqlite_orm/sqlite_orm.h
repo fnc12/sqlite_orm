@@ -277,58 +277,58 @@ namespace sqlite_orm {
             L l;
             R r;
         };
+        
+        template<class O, class T, class ...Op>
+        struct column_t {
+            typedef O object_type;
+            typedef T field_type;
+            typedef std::tuple<Op...> options_type;
+            typedef field_type object_type::*member_pointer_t;
+            
+            const std::string name;
+            field_type object_type::*member_pointer;
+            options_type options;
+            
+            bool not_null() const {
+                return !type_is_nullable<field_type>::value;
+            }
+            
+            template<class Opt>
+            constexpr bool has() const {
+                return tuple_helper::tuple_contains_type<Opt, options_type>::value;
+            }
+            
+            template<class O1, class O2, class ...Opts>
+            constexpr bool has_every() const  {
+                if(has<O1>() && has<O2>()) {
+                    return true;
+                }else{
+                    return has_every<Opts...>();
+                }
+            }
+            
+            template<class O1>
+            constexpr bool has_every() const {
+                return has<O1>();
+            }
+            
+            std::shared_ptr<std::string> default_value() {
+                std::shared_ptr<std::string> res;
+                tuple_helper::iterator<std::tuple_size<options_type>::value - 1, Op...>()(options, [&](auto &v){
+                    auto dft = internal::default_value_extractor()(v);
+                    if(dft){
+                        res = dft;
+                    }
+                });
+                return res;
+            }
+        };
     }
     
     template<class L, class R>
     internal::conc_t<L, R> conc(L l, R r) {
         return {l, r};
     }
-    
-    template<class O, class T, class ...Op>
-    struct column_t {
-        typedef O object_type;
-        typedef T field_type;
-        typedef std::tuple<Op...> options_type;
-        typedef field_type object_type::*member_pointer_t;
-        
-        const std::string name;
-        field_type object_type::*member_pointer;
-        options_type options;
-        
-        bool not_null() const {
-            return !type_is_nullable<field_type>::value;
-        }
-        
-        template<class Opt>
-        constexpr bool has() const {
-            return tuple_helper::tuple_contains_type<Opt, options_type>::value;
-        }
-        
-        template<class O1, class O2, class ...Opts>
-        constexpr bool has_every() const  {
-            if(has<O1>() && has<O2>()) {
-                return true;
-            }else{
-                return has_every<Opts...>();
-            }
-        }
-        
-        template<class O1>
-        constexpr bool has_every() const {
-            return has<O1>();
-        }
-        
-        std::shared_ptr<std::string> default_value() {
-            std::shared_ptr<std::string> res;
-            tuple_helper::iterator<std::tuple_size<options_type>::value - 1, Op...>()(options, [&](auto &v){
-                auto dft = internal::default_value_extractor()(v);
-                if(dft){
-                    res = dft;
-                }
-            });
-            return res;
-        }
-    };
     
     /**
      *  Used to print members mapped to objects.
@@ -380,7 +380,7 @@ namespace sqlite_orm {
      *  Column builder function. You should use it to create columns and not constructor.
      */
     template<class O, class T, class ...Op>
-    column_t<O, T, Op...> make_column(const std::string &name, T O::*m, Op ...options){
+    internal::column_t<O, T, Op...> make_column(const std::string &name, T O::*m, Op ...options){
         return {name, m, std::make_tuple(options...)};
     }
     
@@ -407,6 +407,8 @@ namespace sqlite_orm {
         struct negated_condition_t : public condition_t {
             C c;
             
+            negated_condition_t(){}
+            
             negated_condition_t(C c_):c(c_){}
             
             operator std::string () const {
@@ -419,6 +421,8 @@ namespace sqlite_orm {
             L l;
             R r;
             
+            and_condition_t(){}
+            
             and_condition_t(L l_, R r_):l(l_),r(r_){}
             
             operator std::string () const {
@@ -430,6 +434,8 @@ namespace sqlite_orm {
         struct or_condition_t : public condition_t {
             L l;
             R r;
+            
+            or_condition_t(){}
             
             or_condition_t(L l_, R r_):l(l_),r(r_){}
             
