@@ -443,6 +443,8 @@ namespace sqlite_orm {
             L l;
             R r;
             
+            binary_condition(){}
+            
             binary_condition(L l_, R r_):l(l_),r(r_){}
         };
         
@@ -602,24 +604,6 @@ namespace sqlite_orm {
             }
         };
         
-        /*template<class O>
-        struct asc_t {
-            O o;
-            
-            operator std::string() const {
-                return "ASC";
-            }
-        };
-        
-        template<class O>
-        struct desc_t {
-            O o;
-            
-            operator std::string() const {
-                return "DESC";
-            }
-        };*/
-        
         template<class ...Args>
         struct group_by_t {
             std::tuple<Args...> args;
@@ -650,6 +634,67 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T>
+        struct cross_join_t {
+            typedef T type;
+            
+            operator std::string() const {
+                return "CROSS JOIN";
+            }
+        };
+        
+    }
+    
+    namespace internal {
+        
+        template<class ...Args>
+        struct cross_join_iterator {
+            
+            template<class L>
+            void operator()(L) {
+                //..
+            }
+        };
+        
+        template<>
+        struct cross_join_iterator<> {
+            
+            template<class L>
+            void operator()(L) {
+                //..
+            }
+        };
+        
+        template<class H, class ...Tail>
+        struct cross_join_iterator<H, Tail...> : public cross_join_iterator<Tail...>{
+            H h;
+            
+            typedef cross_join_iterator<Tail...> super;
+            
+            template<class L>
+            void operator()(L l) {
+                this->super::operator()(l);
+            }
+            
+        };
+        
+        template<class T, class ...Tail>
+        struct cross_join_iterator<conditions::cross_join_t<T>, Tail...> : public cross_join_iterator<Tail...>{
+            conditions::cross_join_t<T> h;
+            
+            typedef cross_join_iterator<Tail...> super;
+            
+            template<class L>
+            void operator()(L l) {
+                l(h);
+                this->super::operator()(l);
+            }
+        };
+    }
+    
+    template<class T>
+    conditions::cross_join_t<T> cross_join() {
+        return {};
     }
     
     inline conditions::offset_t offset(int off) {
@@ -775,16 +820,6 @@ namespace sqlite_orm {
     conditions::order_by_t<O> order_by(O o) {
         return {o};
     }
-    
-    /*template<class O>
-    conditions::asc_t<O> asc(O o) {
-        return {o};
-    }
-    
-    template<class O>
-    conditions::desc_t<O> desc(O o) {
-        return {o};
-    }*/
     
     template<class ...Args>
     conditions::group_by_t<Args...> group_by(Args ...args) {
@@ -1760,7 +1795,8 @@ namespace sqlite_orm {
         database_connection(const std::string &filename) {
             auto rc = sqlite3_open(filename.c_str(), &this->db);
             if(rc != SQLITE_OK){
-                throw std::runtime_error(sqlite3_errmsg(this->db));
+                auto msg = sqlite3_errmsg(this->db);
+                throw std::runtime_error(msg);
             }
         }
         
@@ -2527,7 +2563,7 @@ namespace sqlite_orm {
         }
         
         template<class T>
-        std::string string_from_expression(T t, bool noTableName = false) {
+        std::string string_from_expression(T t, bool /*noTableName*/ = false) {
             auto isNullable = type_is_nullable<T>::value;
             if(isNullable and !type_is_nullable<T>()(t)){
                 return "NULL";
@@ -2823,6 +2859,12 @@ namespace sqlite_orm {
                 ss << limt.lim;
             }
             ss << " ";
+        }
+        
+        template<class O>
+        void process_single_condition(std::stringstream &ss, conditions::cross_join_t<O> c) {
+            ss << static_cast<std::string>(c) << " ";
+            ss << this->impl.template find_table_name<O>() << " ";
         }
         
         template<class C>
@@ -3150,7 +3192,10 @@ namespace sqlite_orm {
         
         template<class T>
         std::set<std::string> parse_table_name(aggregate_functions::group_concat_double_t<T> &f) {
-            return this->parse_table_name(f.t);
+            auto res = this->parse_table_name(f.t);
+            auto secondSet = this->parse_table_name(f.y);
+            res.insert(secondSet.begin(), secondSet.end());
+            return res;
         }
         
         template<class T>
@@ -3944,7 +3989,6 @@ namespace sqlite_orm {
             std::vector<std::string> columnNames;
             columnNames.reserve(cols.count());
             cols.for_each([&](auto &m) {
-//                auto columnName = impl.table.find_column_name(m);
                 auto columnName = this->string_from_expression(m);
                 if(columnName.length()){
                     columnNames.push_back(columnName);
@@ -3960,8 +4004,12 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-//            ss << impl.table.name << " ";
             auto tableNamesSet = this->parse_table_names(cols);
+            internal::cross_join_iterator<Conds...>()([&](auto c){
+                typedef typename decltype(c)::type crossJoinType;
+                auto crossJoinedTableName = this->impl.template find_table_name<crossJoinType>();
+                tableNamesSet.erase(crossJoinedTableName);
+            });
             if(tableNamesSet.size()){
                 ss << " FROM ";
                 std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
@@ -4196,6 +4244,13 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
             return sqlite3_last_insert_rowid(db);
+        }
+        
+        /**
+         *  Returns libsqltie3 lib version, not sqlite_orm
+         */
+        std::string libversion() {
+            return sqlite3_libversion();
         }
         
         /**
