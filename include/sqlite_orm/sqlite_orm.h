@@ -379,7 +379,7 @@ namespace sqlite_orm {
     //  char is neigher signer char nor unsigned char so it has its own specialization
     template<>
     struct field_printer<char> {
-        std::string operator()(const signed char &t) const {
+        std::string operator()(const char &t) const {
             std::stringstream stream;
             stream << +t;
             return stream.str();
