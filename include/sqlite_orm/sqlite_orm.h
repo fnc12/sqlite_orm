@@ -20,8 +20,8 @@
 #include <initializer_list>
 #include <set>
 
-using std::cout;
-using std::endl;
+//using std::cout;
+//using std::endl;
 
 namespace sqlite_orm {
     
@@ -73,14 +73,6 @@ namespace sqlite_orm {
             }
         };
     }
-    
-    /*template<class T>
-    struct field_extractor;
-    
-    template<class F, class O>
-    struct field_extractor<F O::*> {
-        typedef F type;
-    };*/
     
     struct autoincrement {};
     
@@ -169,7 +161,7 @@ namespace sqlite_orm {
     
     template<class T>
     struct type_is_nullable : public std::false_type {
-        bool operator()(const T &/*t*/) const {
+        bool operator()(const T &) const {
             return true;
         }
     };
@@ -215,34 +207,42 @@ namespace sqlite_orm {
         }
     };
 
-	//Note unsigned char used for storing integer values, not char values.
+	//Note unsigned/signed char and simple char used for storing integer values, not char values.
     template<>
     struct type_printer<unsigned char> : public integer_printer {};
+    
+    template<>
+    struct type_printer<signed char> : public integer_printer {};
+
+    template<>
+    struct type_printer<char> : public integer_printer {};
 
     template<>
     struct type_printer<unsigned short int> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned int> : public integer_printer {};
-
-	//Note signed char used for storing integer values, not char values.
+    struct type_printer<short> : public integer_printer {};
+    
     template<>
-    struct type_printer<signed char> : public integer_printer {};
+    struct type_printer<unsigned int> : public integer_printer {};
     
     template<>
     struct type_printer<int> : public integer_printer {};
     
     template<>
+    struct type_printer<unsigned long> : public integer_printer {};
+    
+    template<>
     struct type_printer<long> : public integer_printer {};
+    
+    template<>
+    struct type_printer<unsigned long long> : public integer_printer {};
     
     template<>
     struct type_printer<long long> : public integer_printer {};
     
     template<>
     struct type_printer<bool> : public integer_printer {};
-    
-    template<>
-    struct type_printer<short> : public integer_printer {};
     
     template<>
     struct type_printer<std::string> : public text_printer {};
@@ -264,7 +264,7 @@ namespace sqlite_orm {
         struct default_value_extractor {
             
             template<class A>
-            std::shared_ptr<std::string> operator() (const A &/*a*/) {
+            std::shared_ptr<std::string> operator() (const A &) {
                 return {};
             }
             
@@ -369,6 +369,16 @@ namespace sqlite_orm {
     //upgrade to integer is required when using signed char(int8_t)
     template<>
     struct field_printer<signed char> {
+        std::string operator()(const signed char &t) const {
+            std::stringstream stream;
+            stream << +t;
+            return stream.str();
+        }
+    };
+    
+    //  char is neigher signer char nor unsigned char so it has its own specialization
+    template<>
+    struct field_printer<char> {
         std::string operator()(const signed char &t) const {
             std::stringstream stream;
             stream << +t;
@@ -1998,8 +2008,8 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
-        void sync_schema(sqlite3 *, bool) {
-            return;
+        std::vector<std::string> sync_schema(sqlite3 *, bool) {
+            return {};
         }
         
         void begin_transaction(sqlite3 *db) {
@@ -2131,8 +2141,6 @@ namespace sqlite_orm {
         
         template<class T, class HH = typename H::object_type>
         constexpr bool type_is_mapped(typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
-//            return Super::template type_is_mapped<T>();
-//            return true;
             return std::integral_constant<bool, true>::value;
         }
         
@@ -2212,26 +2220,6 @@ namespace sqlite_orm {
             return Super::column_name(m);
         }
         
-        /*template<class O, class HH = typename H::object_type>
-        int insert(const O &o, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            return Super::template insert(o, db);
-        }
-        
-        template<class O, class HH = typename H::object_type>
-        int insert(const O &o, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
-            
-        }*/
-        
-        /*template<class O, class HH = typename H::object_type>
-        void update(const O &o, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            Super::template update(o, db, nullptr);
-        }
-        
-        template<class O, class HH = typename H::object_type>
-        void update(const O &o, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
-            
-        }*/
-        
         template<class O, class HH = typename H::object_type>
         std::string dump(const O &o, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
             return Super::dump(o, db, nullptr);
@@ -2305,12 +2293,9 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '" << "table" << "' AND name = '" << tableName << "'";
             auto query = ss.str();
-//            data_t<bool, storage_impl*> data{this, &res};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
-//                                       auto &d = *(data_t<bool, storage_impl*>*)data;
-//                                       auto &res = *d.res;
                                        auto &res = *(bool*)data;
                                        if(argc){
                                            res = !!std::atoi(argv[0]);
@@ -2318,7 +2303,8 @@ namespace sqlite_orm {
                                        return 0;
                                    }, &res, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
             return res;
         }
@@ -2344,7 +2330,8 @@ namespace sqlite_orm {
                                        return 0;
                                    }, &res, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
             return res;
         }
@@ -2370,10 +2357,12 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     return;
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
         
@@ -2385,9 +2374,7 @@ namespace sqlite_orm {
             std::stringstream ss;
             std::vector<std::string> columnNames;
             this->table.for_each_column([&] (auto c) {
-                //                if(!c.template has<primary_key>()) {
                 columnNames.emplace_back(c.name);
-                //                }
             });
             auto columnNamesCount = int(columnNames.size());
             ss << "INSERT INTO " << name << " (";
@@ -2417,14 +2404,17 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     return;
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else{
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
         
-        void sync_schema(sqlite3 *db, bool preserve) {
+        std::vector<std::string> sync_schema(sqlite3 *db, bool preserve) {
+            std::string resString;
             
             //  first let's see if table with such name exists..
             auto gottaCreateTable = !this->table_exists(this->table.name, db);
@@ -2468,10 +2458,14 @@ namespace sqlite_orm {
                             --storageColumnInfoIndex;
                         }else{
                             if(!storageColumnInfoType){
-                                cout<<"unknown column type "<<storageColumnInfo.type<<endl;
+                                std::stringstream ss;
+                                ss << "unknown column type " << storageColumnInfo.type;
+                                resString = ss.str();
                             }
                             if(!dbColumnInfoType){
-                                cout<<"unknown column type "<<dbColumnInfo.type<<endl;
+                                std::stringstream ss;
+                                ss << "unknown column type " << dbColumnInfo.type;
+                                resString = ss.str();
                             }
                             gottaCreateTable = true;
                             break;
@@ -2516,7 +2510,9 @@ namespace sqlite_orm {
                 if(gottaCreateTable){
                     this->drop_table(this->table.name, db);
                     this->create_table(db, this->table.name);
-                    cout<<"table "<<this->table.name<<" dropped and recreated"<<endl;
+                    std::stringstream ss;
+                    ss << "table " << this->table.name << " dropped and recreated";
+                    resString = ss.str();
                 }else{
                     if(columnsToAdd.size()){
                         for(auto columnPointer : columnsToAdd) {
@@ -2528,22 +2524,32 @@ namespace sqlite_orm {
                         if(!gottaCreateTable){
                             for(auto columnPointer : columnsToAdd) {
                                 this->add_column(*columnPointer, db);
-                                cout<<"column "<<columnPointer->name<<" added to table "<<this->table.name<<endl;
+                                std::stringstream ss;
+                                ss << "column " << columnPointer->name << " added to table " << this->table.name;
+                                resString = ss.str();
                             }
                         }else{
                             this->drop_table(this->table.name, db);
                             this->create_table(db, this->table.name);
-                            cout<<"table "<<this->table.name<<" dropped and recreated"<<endl;
+                            std::stringstream ss;
+                            ss << "table " << this->table.name << " dropped and recreated";
+                            resString = ss.str();
                         }
                     }else{
-                        cout<<"table "<<this->table.name<<" is synced"<<endl;
+                        std::stringstream ss;
+                        ss << "table " << this->table.name << " is synced";
+                        resString = ss.str();
                     }
                 }
             }else{
                 this->create_table(db, this->table.name);
-                cout<<"table "<<this->table.name<<" created"<<endl;
+                std::stringstream ss;
+                ss << "table " << this->table.name << " created";
+                resString = ss.str();
             }
-            Super::sync_schema(db, preserve);
+            auto res = Super::sync_schema(db, preserve);
+            res.push_back(resString);
+            return res;
         }
         
     private:
@@ -3523,7 +3529,7 @@ namespace sqlite_orm {
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
                 auto query = ss.str();
-                cout << "query=" << query << endl;
+//                cout << "query=" << query << endl;
                 typedef std::tuple<decltype(&impl), decltype(res)*> data_tuple_t;
                 data_tuple_t dataTuple = std::make_tuple(&impl, &res);
                 auto rc = sqlite3_exec(db,
@@ -4417,7 +4423,7 @@ namespace sqlite_orm {
          *  @param preserve affects on function behaviour in case it is needed to remove a column. If it is `false` so table will be dropped 
          *  if there is column to remove, if `true` -  table is copies into another table, dropped and copied table is renamed with source table name.
          */
-        void sync_schema(bool preserve = false) {
+        std::vector<std::string> sync_schema(bool preserve = false) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
@@ -4426,7 +4432,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            this->impl.sync_schema(db, preserve);
+            return this->impl.sync_schema(db, preserve);
         }
         
         bool transaction(std::function<bool()> f) {
