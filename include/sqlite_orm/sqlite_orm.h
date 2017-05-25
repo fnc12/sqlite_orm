@@ -3161,7 +3161,7 @@ namespace sqlite_orm {
                     setColumnNames.emplace_back(c.name);
                 }
             });
-            for(auto i = 0; i < setColumnNames.size(); ++i) {
+            for(size_t i = 0; i < setColumnNames.size(); ++i) {
                 ss << setColumnNames[i] << " = ?";
                 if(i < setColumnNames.size() - 1) {
                     ss << ", ";
@@ -3171,7 +3171,7 @@ namespace sqlite_orm {
             }
             ss << "WHERE ";
             auto primaryKeyColumnNames = impl.table.template column_names_with<primary_key>();
-            for(auto i = 0; i < primaryKeyColumnNames.size(); ++i) {
+            for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 ss << primaryKeyColumnNames[i] << " = ?";
                 if(i < primaryKeyColumnNames.size() - 1) {
                     ss << " AND ";
@@ -3516,7 +3516,7 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "SELECT ";
             auto columnNames = impl.table.column_names();
-            for(auto i = 0; i < columnNames.size(); ++i) {
+            for(size_t i = 0; i < columnNames.size(); ++i) {
                 ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNames.size() - 1) {
                     ss << ", ";
