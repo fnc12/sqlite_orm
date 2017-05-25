@@ -214,6 +214,20 @@ namespace sqlite_orm {
             return res;
         }
     };
+
+	//Note unsigned char used for storing integer values, not char values.
+    template<>
+    struct type_printer<unsigned char> : public integer_printer {};
+
+    template<>
+    struct type_printer<unsigned short int> : public integer_printer {};
+
+    template<>
+    struct type_printer<unsigned int> : public integer_printer {};
+
+	//Note signed char used for storing integer values, not char values.
+    template<>
+    struct type_printer<signed char> : public integer_printer {};
     
     template<>
     struct type_printer<int> : public integer_printer {};
@@ -336,7 +350,29 @@ namespace sqlite_orm {
     template<class T>
     struct field_printer {
         std::string operator()(const T &t) const {
-            return std::to_string(t);
+            std::stringstream stream;
+            stream << t;
+            return stream.str();
+        }
+    };
+
+    //upgrade to integer is required when using unsigned char(uint8_t)
+    template<>
+    struct field_printer<unsigned char> {
+        std::string operator()(const unsigned char &t) const {
+            std::stringstream stream;
+            stream << +t;
+            return stream.str();
+        }
+    };
+
+    //upgrade to integer is required when using signed char(int8_t)
+    template<>
+    struct field_printer<signed char> {
+        std::string operator()(const signed char &t) const {
+            std::stringstream stream;
+            stream << +t;
+            return stream.str();
         }
     };
     
@@ -1564,7 +1600,51 @@ namespace sqlite_orm {
             return sqlite3_bind_int(stmt, index, value);
         }
     };
+
+    /**
+     *  Specialization for unsigned char.
+     */
+    template<>
+    struct statement_binder<unsigned char> {
+
+        int bind(sqlite3_stmt *stmt, int index, const unsigned char &value) {
+            return sqlite3_bind_int(stmt, index, value);
+        }
+    };
+
+    /**
+     *  Specialization for unsigned short int.
+     */
+    template<>
+    struct statement_binder<unsigned short int> {
+
+        int bind(sqlite3_stmt *stmt, int index, const unsigned short int &value) {
+            return sqlite3_bind_int(stmt, index, value);
+        }
+    };
     
+    /**
+     *  Specialization for unsigned int.
+     */
+    template<>
+    struct statement_binder<unsigned int> {
+
+        int bind(sqlite3_stmt *stmt, int index, const unsigned int &value) {
+            return sqlite3_bind_int(stmt, index, value);
+        }
+    };
+
+    /**
+     *  Specialization for signed char.
+     */
+    template<>
+    struct statement_binder<signed char> {
+
+        int bind(sqlite3_stmt *stmt, int index, const signed char &value) {
+            return sqlite3_bind_int(stmt, index, value);
+        }
+    };
+
     /**
      *  Specialization for long.
      */
@@ -1652,6 +1732,62 @@ namespace sqlite_orm {
         }
     };
     
+    /**
+     *  Specialization for unsigned char.
+     */
+    template<>
+    struct row_extrator<unsigned char> {
+        unsigned char extract(const char *row_value) {
+            return std::atoi(row_value);
+        }
+        
+        unsigned char extract(sqlite3_stmt *stmt, int columnIndex) {
+            return sqlite3_column_int(stmt, columnIndex);
+        }
+    };
+    
+    /**
+     *  Specialization for unsigned short int.
+     */
+    template<>
+    struct row_extrator<unsigned short int> {
+        unsigned short int extract(const char *row_value) {
+            return std::atoi(row_value);
+        }
+        
+        unsigned short int extract(sqlite3_stmt *stmt, int columnIndex) {
+            return sqlite3_column_int(stmt, columnIndex);
+        }
+    };
+    
+    /**
+     *  Specialization for unsigned int.
+     */
+    template<>
+    struct row_extrator<unsigned int> {
+        unsigned int extract(const char *row_value) {
+            return std::atoi(row_value);
+        }
+        
+        unsigned int extract(sqlite3_stmt *stmt, int columnIndex) {
+            return sqlite3_column_int(stmt, columnIndex);
+        }
+    };
+    
+    /**
+     *  Specialization for signed char.
+     */
+    template<>
+    struct row_extrator<signed char> {
+        signed char extract(const char *row_value) {
+            return std::atoi(row_value);
+        }
+        
+        signed char extract(sqlite3_stmt *stmt, int columnIndex) {
+            return sqlite3_column_int(stmt, columnIndex);
+        }
+    };
+
     /**
      *  Specialization for bool.
      */
@@ -2356,7 +2492,9 @@ namespace sqlite_orm {
                             if(this->table_exists(backupTableName, db)){
                                 int suffix = 1;
                                 do{
-                                    auto anotherBackupTableName = backupTableName + std::to_string(suffix);
+                                    std::stringstream stream;
+                                    stream << suffix;
+                                    auto anotherBackupTableName = backupTableName + stream.str();
                                     if(!this->table_exists(anotherBackupTableName, db)){
                                         backupTableName = anotherBackupTableName;
                                         break;
@@ -2509,11 +2647,13 @@ namespace sqlite_orm {
                     this->operator++();
                 }
                 
-                const bool operator==(const iterator_t &other) const {
+				//removed const return type to remove complier warning
+                bool operator==(const iterator_t &other) const {
                     return this->stmt == other.stmt;
                 }
                 
-                const bool operator!=(const iterator_t &other) const {
+				//removed const return type to remove complier warning
+                bool operator!=(const iterator_t &other) const {
                     return !(*this == other);
                 }
             };
@@ -3383,6 +3523,7 @@ namespace sqlite_orm {
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
                 auto query = ss.str();
+                cout << "query=" << query << endl;
                 typedef std::tuple<decltype(&impl), decltype(res)*> data_tuple_t;
                 data_tuple_t dataTuple = std::make_tuple(&impl, &res);
                 auto rc = sqlite3_exec(db,
