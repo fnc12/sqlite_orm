@@ -15,6 +15,8 @@
 #include <string>
 
 using namespace sqlite_orm;
+using std::cout;
+using std::endl;
 
 void testTypeParsing() {
     
