@@ -8,6 +8,11 @@
 
 #include "sqlite_orm.h"
 
+#include <iostream>
+
+using std::cout;
+using std::endl;
+
 struct MarvelHero {
     int id;
     std::string name;
