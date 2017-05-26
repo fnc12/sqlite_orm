@@ -13,8 +13,12 @@
 #include <cassert>
 #include <vector>
 #include <string>
+#include <iostream>
 
 using namespace sqlite_orm;
+
+using std::cout;
+using std::endl;
 
 void testTypeParsing() {
     

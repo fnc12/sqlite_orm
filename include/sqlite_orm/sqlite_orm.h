@@ -2261,7 +2261,7 @@ namespace sqlite_orm {
                     primaryKeyColumnNames.emplace_back(c.name);
                 }
             });
-            for(auto i = 0; i < primaryKeyColumnNames.size(); ++i) {
+            for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 ss << primaryKeyColumnNames[i] << " =  ?";
                 if(i < primaryKeyColumnNames.size() - 1) {
                     ss << " AND ";
@@ -2376,9 +2376,9 @@ namespace sqlite_orm {
             this->table.for_each_column([&] (auto c) {
                 columnNames.emplace_back(c.name);
             });
-            auto columnNamesCount = int(columnNames.size());
+            auto columnNamesCount = columnNames.size();
             ss << "INSERT INTO " << name << " (";
-            for(auto i = 0; i < columnNamesCount; ++i) {
+            for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << columnNames[i];
                 if(i < columnNamesCount - 1) {
                     ss << ", ";
@@ -2388,7 +2388,7 @@ namespace sqlite_orm {
             }
             ss << ") ";
             ss << "SELECT ";
-            for(auto i = 0; i < columnNamesCount; ++i) {
+            for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << columnNames[i];
                 if(i < columnNamesCount - 1) {
                     ss << ", ";
@@ -2430,7 +2430,7 @@ namespace sqlite_orm {
                 std::vector<table_info*> columnsToAdd;
                 
 //                auto storageTableInfoCount = int(storageTableInfo.size());
-                for(auto storageColumnInfoIndex = 0; storageColumnInfoIndex < int(storageTableInfo.size()); ++storageColumnInfoIndex) {
+                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
                     
                     auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
                     auto &columnName = storageColumnInfo.name;
@@ -2957,7 +2957,7 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto leftString = this->string_from_expression(inCondition.l);
             ss << leftString << " " << static_cast<std::string>(inCondition) << " (";
-            for(auto index = 0; index < inCondition.values.size(); ++index) {
+            for(size_t index = 0; index < inCondition.values.size(); ++index) {
                 auto &value = inCondition.values[index];
                 ss << " " << this->string_from_expression(value);
                 if(index < inCondition.values.size() - 1) {
@@ -3042,7 +3042,7 @@ namespace sqlite_orm {
                 expressions.push_back(expression);
             });
             ss << static_cast<std::string>(groupBy) << " ";
-            for(auto i = 0; i < expressions.size(); ++i) {
+            for(size_t i = 0; i < expressions.size(); ++i) {
                 ss << expressions[i];
                 if(i < expressions.size() - 1) {
                     ss << ", ";
@@ -3161,7 +3161,7 @@ namespace sqlite_orm {
                     setColumnNames.emplace_back(c.name);
                 }
             });
-            for(auto i = 0; i < setColumnNames.size(); ++i) {
+            for(size_t i = 0; i < setColumnNames.size(); ++i) {
                 ss << setColumnNames[i] << " = ?";
                 if(i < setColumnNames.size() - 1) {
                     ss << ", ";
@@ -3171,7 +3171,7 @@ namespace sqlite_orm {
             }
             ss << "WHERE ";
             auto primaryKeyColumnNames = impl.table.template column_names_with<primary_key>();
-            for(auto i = 0; i < primaryKeyColumnNames.size(); ++i) {
+            for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 ss << primaryKeyColumnNames[i] << " = ?";
                 if(i < primaryKeyColumnNames.size() - 1) {
                     ss << " AND ";
@@ -3243,8 +3243,8 @@ namespace sqlite_orm {
                         sss << this->string_from_expression(lhs, true) << " = " << this->string_from_expression(rhs) << " ";
                         setPairs.push_back(sss.str());
                     });
-                    auto setPairsCount = int(setPairs.size());
-                    for(auto i = 0; i < setPairsCount; ++i) {
+                    auto setPairsCount = setPairs.size();
+                    for(size_t i = 0; i < setPairsCount; ++i) {
                         ss << setPairs[i] << " ";
                         if(i < setPairsCount - 1) {
                             ss << ", ";
@@ -3287,8 +3287,7 @@ namespace sqlite_orm {
             ss << "SELECT ";
             auto &impl = this->get_impl<O>();
             auto columnNames = impl.table.column_names();
-            for(auto i = 0; i < columnNames.size(); ++i) {
-//                ss << impl.table.name << "." << columnNames[i];
+            for(size_t i = 0; i < columnNames.size(); ++i) {
                 ss
                 << impl.table.name << "."
                 << "\""
@@ -3516,7 +3515,7 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "SELECT ";
             auto columnNames = impl.table.column_names();
-            for(auto i = 0; i < columnNames.size(); ++i) {
+            for(size_t i = 0; i < columnNames.size(); ++i) {
                 ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNames.size() - 1) {
                     ss << ", ";
@@ -3585,7 +3584,7 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "SELECT ";
             auto columnNames = impl.table.column_names();
-            for(auto i = 0; i < columnNames.size(); ++i) {
+            for(size_t i = 0; i < columnNames.size(); ++i) {
                 ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNames.size() - 1) {
                     ss << ", ";
@@ -4035,7 +4034,7 @@ namespace sqlite_orm {
                 if(tableNamesSet.size()){
                     ss << "FROM " ;
                     std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
-                    for(auto i = 0; i < int(tableNames.size()); ++i) {
+                    for(size_t i = 0; i < tableNames.size(); ++i) {
                         ss << tableNames[i];
                         if(i < int(tableNames.size()) - 1) {
                             ss << ",";
@@ -4088,7 +4087,7 @@ namespace sqlite_orm {
                 if(tableNamesSet.size()){
                     ss << "FROM " ;
                     std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
-                    for(auto i = 0; i < int(tableNames.size()); ++i) {
+                    for(size_t i = 0; i < tableNames.size(); ++i) {
                         ss << tableNames[i];
                         if(i < int(tableNames.size()) - 1) {
                             ss << ",";
@@ -4149,7 +4148,7 @@ namespace sqlite_orm {
                     throw std::runtime_error("column not found");
                 }
             });
-            for(auto i = 0; i < columnNames.size(); ++i) {
+            for(size_t i = 0; i < columnNames.size(); ++i) {
                 ss << columnNames[i];
                 if(i < columnNames.size() - 1) {
                     ss << ", ";
@@ -4166,7 +4165,7 @@ namespace sqlite_orm {
             if(tableNamesSet.size()){
                 ss << " FROM ";
                 std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
-                for(auto i = 0; i < int(tableNames.size()); ++i) {
+                for(size_t i = 0; i < tableNames.size(); ++i) {
                     ss << tableNames[i];
                     if(i < int(tableNames.size()) - 1) {
                         ss << ",";
@@ -4232,8 +4231,8 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "REPLACE INTO " << impl.table.name << " (";
             auto columnNames = impl.table.column_names();
-            auto columnNamesCount = int(columnNames.size());
-            for(auto i = 0; i < columnNamesCount; ++i) {
+            auto columnNamesCount = columnNames.size();
+            for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNamesCount - 1) {
                     ss << ", ";
@@ -4242,7 +4241,7 @@ namespace sqlite_orm {
                 }
             }
             ss << "VALUES(";
-            for(auto i = 0; i < columnNamesCount; ++i) {
+            for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << "?";
                 if(i < columnNamesCount - 1) {
                     ss << ", ";
@@ -4300,8 +4299,8 @@ namespace sqlite_orm {
                 }
             });
             
-            auto columnNamesCount = int(columnNames.size());
-            for(auto i = 0; i < columnNamesCount; ++i) {
+            auto columnNamesCount = columnNames.size();
+            for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << "\"" << columnNames[i] << "\"";
                 if(i < columnNamesCount - 1) {
                     ss << ", ";
@@ -4310,7 +4309,7 @@ namespace sqlite_orm {
                 }
             }
             ss << "VALUES(";
-            for(auto i = 0; i < columnNamesCount; ++i) {
+            for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << "?";
                 if(i < columnNamesCount - 1) {
                     ss << ", ";
