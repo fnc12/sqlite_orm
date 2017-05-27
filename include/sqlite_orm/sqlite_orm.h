@@ -695,12 +695,33 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T, class O>
+        struct left_join_t {
+            typedef T type;
+            typedef O on_type;
+            
+            on_type on;
+            
+            operator std::string() const {
+                return "LEFT JOIN";
+            }
+        };
+        
+        template<class T>
+        struct on_t {
+            T t;
+            
+            operator std::string() const {
+                return "ON";
+            }
+        };
+        
     }
     
     namespace internal {
         
         template<class ...Args>
-        struct cross_join_iterator {
+        struct join_iterator {
             
             template<class L>
             void operator()(L) {
@@ -709,7 +730,7 @@ namespace sqlite_orm {
         };
         
         template<>
-        struct cross_join_iterator<> {
+        struct join_iterator<> {
             
             template<class L>
             void operator()(L) {
@@ -718,10 +739,10 @@ namespace sqlite_orm {
         };
         
         template<class H, class ...Tail>
-        struct cross_join_iterator<H, Tail...> : public cross_join_iterator<Tail...>{
+        struct join_iterator<H, Tail...> : public join_iterator<Tail...>{
             H h;
             
-            typedef cross_join_iterator<Tail...> super;
+            typedef join_iterator<Tail...> super;
             
             template<class L>
             void operator()(L l) {
@@ -731,10 +752,23 @@ namespace sqlite_orm {
         };
         
         template<class T, class ...Tail>
-        struct cross_join_iterator<conditions::cross_join_t<T>, Tail...> : public cross_join_iterator<Tail...>{
+        struct join_iterator<conditions::cross_join_t<T>, Tail...> : public join_iterator<Tail...>{
             conditions::cross_join_t<T> h;
             
-            typedef cross_join_iterator<Tail...> super;
+            typedef join_iterator<Tail...> super;
+            
+            template<class L>
+            void operator()(L l) {
+                l(h);
+                this->super::operator()(l);
+            }
+        };
+        
+        template<class T, class O, class ...Tail>
+        struct join_iterator<conditions::left_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+            conditions::left_join_t<T, O> h;
+            
+            typedef join_iterator<Tail...> super;
             
             template<class L>
             void operator()(L l) {
@@ -745,8 +779,18 @@ namespace sqlite_orm {
     }
     
     template<class T>
+    conditions::on_t<T> on(T t) {
+        return {t};
+    }
+    
+    template<class T>
     conditions::cross_join_t<T> cross_join() {
         return {};
+    }
+    
+    template<class T, class O>
+    conditions::left_join_t<T, O> left_join(O o) {
+        return {o};
     }
     
     inline conditions::offset_t offset(int off) {
@@ -1173,6 +1217,99 @@ namespace sqlite_orm {
                 Super::for_each(f);
             }
         };
+        
+        template<class T>
+        struct column_result_t;
+        
+        template<class O, class F>
+        struct column_result_t<F O::*> {
+            typedef F type;
+        };
+        
+        template<class T>
+        struct column_result_t<core_functions::length_t<T>> {
+            typedef int type;
+        };
+        
+        /*template<class ...Args>
+         struct column_result_t<core_functions::char_t_<Args...>> {
+         typedef std::string type;
+         };*/
+        
+        template<>
+        struct column_result_t<core_functions::changes_t> {
+            typedef int type;
+        };
+        
+        template<class T>
+        struct column_result_t<core_functions::abs_t<T>> {
+            typedef std::shared_ptr<double> type;
+        };
+        
+        template<class T>
+        struct column_result_t<core_functions::lower_t<T>> {
+            typedef std::string type;
+        };
+        
+        template<class T>
+        struct column_result_t<core_functions::upper_t<T>> {
+            typedef std::string type;
+        };
+        
+        template<class T>
+        struct column_result_t<aggregate_functions::avg_t<T>> {
+            typedef double type;
+        };
+        
+        template<class T>
+        struct column_result_t<aggregate_functions::count_t<T>> {
+            typedef int type;
+        };
+        
+        template<>
+        struct column_result_t<aggregate_functions::count_asterisk_t> {
+            typedef int type;
+        };
+        
+        template<class T>
+        struct column_result_t<aggregate_functions::sum_t<T>> {
+            typedef std::shared_ptr<double> type;
+        };
+        
+        template<class T>
+        struct column_result_t<aggregate_functions::total_t<T>> {
+            typedef double type;
+        };
+        
+        template<class T>
+        struct column_result_t<aggregate_functions::group_concat_single_t<T>> {
+            typedef std::string type;
+        };
+        
+        template<class T>
+        struct column_result_t<aggregate_functions::group_concat_double_t<T>> {
+            typedef std::string type;
+        };
+        
+        template<class T>
+        struct column_result_t<aggregate_functions::max_t<T>> {
+            typedef std::shared_ptr<typename column_result_t<T>::type> type;
+        };
+        
+        template<class T>
+        struct column_result_t<aggregate_functions::min_t<T>> {
+            typedef std::shared_ptr<typename column_result_t<T>::type> type;
+        };
+        
+        template<class T>
+        struct column_result_t<internal::distinct_t<T>> {
+            typedef typename column_result_t<T>::type type;
+        };
+        
+        template<class L, class R>
+        struct column_result_t<internal::conc_t<L, R>> {
+            typedef std::string type;
+        };
     }
     
     template<class T>
@@ -1190,99 +1327,6 @@ namespace sqlite_orm {
     internal::set_t<Args...> set(Args ...args) {
         return {args...};
     }
-    
-    template<class T>
-    struct column_result_t;
-    
-    template<class O, class F>
-    struct column_result_t<F O::*> {
-        typedef F type;
-    };
-    
-    template<class T>
-    struct column_result_t<core_functions::length_t<T>> {
-        typedef int type;
-    };
-    
-    /*template<class ...Args>
-    struct column_result_t<core_functions::char_t_<Args...>> {
-        typedef std::string type;
-    };*/
-    
-    template<>
-    struct column_result_t<core_functions::changes_t> {
-        typedef int type;
-    };
-    
-    template<class T>
-    struct column_result_t<core_functions::abs_t<T>> {
-        typedef std::shared_ptr<double> type;
-    };
-    
-    template<class T>
-    struct column_result_t<core_functions::lower_t<T>> {
-        typedef std::string type;
-    };
-    
-    template<class T>
-    struct column_result_t<core_functions::upper_t<T>> {
-        typedef std::string type;
-    };
-    
-    template<class T>
-    struct column_result_t<aggregate_functions::avg_t<T>> {
-        typedef double type;
-    };
-    
-    template<class T>
-    struct column_result_t<aggregate_functions::count_t<T>> {
-        typedef int type;
-    };
-    
-    template<>
-    struct column_result_t<aggregate_functions::count_asterisk_t> {
-        typedef int type;
-    };
-    
-    template<class T>
-    struct column_result_t<aggregate_functions::sum_t<T>> {
-        typedef std::shared_ptr<double> type;
-    };
-    
-    template<class T>
-    struct column_result_t<aggregate_functions::total_t<T>> {
-        typedef double type;
-    };
-    
-    template<class T>
-    struct column_result_t<aggregate_functions::group_concat_single_t<T>> {
-        typedef std::string type;
-    };
-    
-    template<class T>
-    struct column_result_t<aggregate_functions::group_concat_double_t<T>> {
-        typedef std::string type;
-    };
-    
-    template<class T>
-    struct column_result_t<aggregate_functions::max_t<T>> {
-        typedef std::shared_ptr<typename column_result_t<T>::type> type;
-    };
-    
-    template<class T>
-    struct column_result_t<aggregate_functions::min_t<T>> {
-        typedef std::shared_ptr<typename column_result_t<T>::type> type;
-    };
-    
-    template<class T>
-    struct column_result_t<internal::distinct_t<T>> {
-        typedef typename column_result_t<T>::type type;
-    };
-    
-    template<class L, class R>
-    struct column_result_t<internal::conc_t<L, R>> {
-        typedef std::string type;
-    };
     
     template<class ...Args>
     internal::columns_t<Args...> columns(Args ...args) {
@@ -3019,6 +3063,13 @@ namespace sqlite_orm {
             ss << this->impl.template find_table_name<O>() << " ";
         }
         
+        template<class T, class O>
+        void process_single_condition(std::stringstream &ss, conditions::left_join_t<T, O> l) {
+            ss << static_cast<std::string>(l) << " ";
+            ss << this->impl.template find_table_name<T>() << " ";
+            ss << static_cast<std::string>(l.on) << " " << this->process_where(l.on.t) << " ";
+        }
+        
         template<class C>
         void process_single_condition(std::stringstream &ss, conditions::where_t<C> w) {
             ss << static_cast<std::string>(w) << " ";
@@ -4067,7 +4118,7 @@ namespace sqlite_orm {
         /**
          *  Select a single column into std::vector<T>.
          */
-        template<class T, class ...Args, class R = typename column_result_t<T>::type>
+        template<class T, class ...Args, class R = typename internal::column_result_t<T>::type>
         std::vector<R> select(T m, Args ...args) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
@@ -4120,7 +4171,7 @@ namespace sqlite_orm {
          *  Select several columns into std::vector<std::tuple<...>>.
          */
         template<class ...Args,
-        class R = std::tuple<typename column_result_t<Args>::type...>,
+        class R = std::tuple<typename internal::column_result_t<Args>::type...>,
         class ...Conds
         >
         std::vector<R> select(internal::columns_t<Args...> cols, Conds ...conds) {
@@ -4157,7 +4208,7 @@ namespace sqlite_orm {
                 }
             }
             auto tableNamesSet = this->parse_table_names(cols);
-            internal::cross_join_iterator<Conds...>()([&](auto c){
+            internal::join_iterator<Conds...>()([&](auto c){
                 typedef typename decltype(c)::type crossJoinType;
                 auto crossJoinedTableName = this->impl.template find_table_name<crossJoinType>();
                 tableNamesSet.erase(crossJoinedTableName);
