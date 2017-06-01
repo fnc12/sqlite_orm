@@ -14,7 +14,7 @@ SQLite ORM light header only library for modern C++
 * **Pure select query support**
 * **STL compatible**
 * **Custom types binding support**
-* **CROSS/LEFT JOIN support**
+* **CROSS/LEFT/INNER JOIN support**
 * **Transactions support**
 * **Migrations functionality**
 * **Powerful conditions**
