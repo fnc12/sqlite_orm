@@ -716,6 +716,18 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T, class O>
+        struct inner_join_t {
+            typedef T type;
+            typedef O on_type;
+            
+            on_type on;
+            
+            operator std::string() const {
+                return "INNER JOIN";
+            }
+        };
+        
     }
     
     namespace internal {
@@ -776,6 +788,19 @@ namespace sqlite_orm {
                 this->super::operator()(l);
             }
         };
+        
+        template<class T, class O, class ...Tail>
+        struct join_iterator<conditions::inner_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+            conditions::inner_join_t<T, O> h;
+            
+            typedef join_iterator<Tail...> super;
+            
+            template<class L>
+            void operator()(L l) {
+                l(h);
+                this->super::operator()(l);
+            }
+        };
     }
     
     template<class T>
@@ -790,6 +815,11 @@ namespace sqlite_orm {
     
     template<class T, class O>
     conditions::left_join_t<T, O> left_join(O o) {
+        return {o};
+    }
+    
+    template<class T, class O>
+    conditions::inner_join_t<T, O> inner_join(O o) {
         return {o};
     }
     
@@ -3061,6 +3091,13 @@ namespace sqlite_orm {
         void process_single_condition(std::stringstream &ss, conditions::cross_join_t<O> c) {
             ss << static_cast<std::string>(c) << " ";
             ss << this->impl.template find_table_name<O>() << " ";
+        }
+        
+        template<class T, class O>
+        void process_single_condition(std::stringstream &ss, conditions::inner_join_t<T, O> l) {
+            ss << static_cast<std::string>(l) << " ";
+            ss << this->impl.template find_table_name<T>() << " ";
+            ss << static_cast<std::string>(l.on) << " " << this->process_where(l.on.t) << " ";
         }
         
         template<class T, class O>
