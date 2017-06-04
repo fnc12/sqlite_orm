@@ -1221,7 +1221,7 @@ namespace sqlite_orm {
         struct columns_t<T, Args...> : public columns_t<Args...> {
             T m;
             
-            columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
+            columns_t(decltype(m) m_, Args ...args): Super(args...), m(m_) {}
             
             template<class L>
             void for_each(L l) {
@@ -4275,7 +4275,7 @@ namespace sqlite_orm {
                 std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                 for(size_t i = 0; i < tableNames.size(); ++i) {
                     ss << tableNames[i];
-                    if(i < int(tableNames.size()) - 1) {
+                    if(int(i) < int(tableNames.size()) - 1) {
                         ss << ",";
                     }
                     ss << " ";

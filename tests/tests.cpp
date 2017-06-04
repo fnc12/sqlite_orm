@@ -16,6 +16,8 @@
 #include <iostream>
 
 using namespace sqlite_orm;
+using std::cout;
+using std::endl;
 
 using std::cout;
 using std::endl;
