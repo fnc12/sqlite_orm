@@ -6,8 +6,6 @@
 #include <tuple>
 #include <type_traits>
 #include <sqlite3.h>
-#include <functional>
-#include <iostream>
 #include <stdexcept>
 #include <vector>
 #include <sstream>
@@ -20,8 +18,6 @@
 #include <initializer_list>
 #include <set>
 
-//using std::cout;
-//using std::endl;
 
 namespace sqlite_orm {
     
@@ -1221,7 +1217,7 @@ namespace sqlite_orm {
         struct columns_t<T, Args...> : public columns_t<Args...> {
             T m;
             
-            columns_t(decltype(m) m_, Args ...args):m(m_), Super(args...){}
+            columns_t(decltype(m) m_, Args ...args): Super(args...), m(m_) {}
             
             template<class L>
             void for_each(L l) {
@@ -3636,7 +3632,6 @@ namespace sqlite_orm {
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
                 auto query = ss.str();
-//                cout << "query=" << query << endl;
                 typedef std::tuple<decltype(&impl), decltype(res)*> data_tuple_t;
                 data_tuple_t dataTuple = std::make_tuple(&impl, &res);
                 auto rc = sqlite3_exec(db,
@@ -4275,7 +4270,7 @@ namespace sqlite_orm {
                 std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                 for(size_t i = 0; i < tableNames.size(); ++i) {
                     ss << tableNames[i];
-                    if(i < int(tableNames.size()) - 1) {
+                    if(int(i) < int(tableNames.size()) - 1) {
                         ss << ",";
                     }
                     ss << " ";
