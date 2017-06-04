@@ -7,16 +7,17 @@
 #include <type_traits>
 #include <sqlite3.h>
 #include <stdexcept>
-#include <vector>
-#include <sstream>
-#include <algorithm>
-#include <memory>
+#include <vector>   //  std::vector
+#include <sstream>  //  std::stringstream
+#include <algorithm>    //  std::find
+#include <memory>   //  std::shared_ptr, std::unique_ptr
 #include <typeinfo>
 #include <regex>
 #include <map>
 #include <cctype>
 #include <initializer_list>
-#include <set>
+#include <set>  //  std::set
+#include <functional>   //  std::function
 
 
 namespace sqlite_orm {
