@@ -231,5 +231,77 @@ int main(int argc, char **argv) {
     }
     cout << endl;
     
+    {
+        /**
+         *  JOIN has many usages so this is another example from here http://www.w3resource.com/sqlite/sqlite-left-join.php
+         */
+        
+        struct Doctor {
+            int id;
+            std::string name;
+            std::string degree;
+        };
+        
+        struct Visit {
+            int doctorId;
+            std::string patientName;
+            std::string vdate;
+        };
+        
+        auto storage2 = make_storage("doctors.sqlite",
+                                     make_table("doctors",
+                                                make_column("doctor_id",
+                                                            &Doctor::id,
+                                                            primary_key()),
+                                                make_column("doctor_name",
+                                                            &Doctor::name),
+                                                make_column("degree",
+                                                            &Doctor::degree)),
+                                     make_table("visits",
+                                                make_column("doctor_id",
+                                                            &Visit::doctorId),
+                                                make_column("patient_name",
+                                                            &Visit::patientName),
+                                                make_column("vdate",
+                                                            &Visit::vdate)));
+        storage2.sync_schema();
+        
+        storage2.replace(Doctor{ 210, "Dr. John Linga", "MD", });
+        storage2.replace(Doctor{ 211, "Dr. Peter Hall", "MBBS" });
+        storage2.replace(Doctor{ 212, "Dr. Ke Gee", "MD" });
+        storage2.replace(Doctor{ 213, "Dr. Pat Fay", "MD" });
+        
+        storage2.replace(Visit{ 210, "Julia Nayer", "2013-10-15" });
+        storage2.replace(Visit{ 214, "TJ Olson", "2013-10-14" });
+        storage2.replace(Visit{ 215, "John Seo", "2013-10-15" });
+        storage2.replace(Visit{ 212, "James Marlow", "2013-10-16" });
+        storage2.replace(Visit{ 212, "Jason Mallin", "2013-10-12" });
+        
+        
+        //  SELECT a.doctor_id,a.doctor_name,
+        //      c.patient_name,c.vdate
+        //  FROM doctors a
+        //  LEFT JOIN visits c
+        //  ON a.doctor_id=c.doctor_id;
+        auto rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
+                                    left_join<Visit>(on(is_equal(&Doctor::id, &Visit::doctorId))));
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        }
+        cout << endl;
+        
+        //  SELECT doctor_id,doctor_name,
+        //      patient_name,vdate
+        //  FROM doctors
+        //  LEFT JOIN visits
+        //  USING(doctor_id);
+        rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
+                               left_join<Visit>(using_(&Visit::doctorId)));
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        }
+        cout << endl;
+    }
+    
     return 0;
 }
