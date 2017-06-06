@@ -4748,6 +4748,18 @@ namespace sqlite_orm {
             }
         }
         
+        bool table_exists(const std::string &tableName) {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return this->impl.table_exists(tableName, db);
+        }
+        
     protected:
         std::string filename;
         impl_type impl;
