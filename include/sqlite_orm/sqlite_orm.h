@@ -173,6 +173,13 @@ namespace sqlite_orm {
         return {};
     }
     
+    /**
+     *  This is class that tells `sqlite_orm` that type is nullable. Nullable types
+     *  are mapped to sqlite database as `NULL` and not-nullable are mapped as `NOT NULL`.
+     *  Default nullability status for all types is `NOT NULL`. So if you want to map
+     *  custom type as `NULL` (for example: boost::optional) you have to create a specialiation
+     *  of type_is_nullable for your type and derive from `std::true_type`.
+     */
     template<class T>
     struct type_is_nullable : public std::false_type {
         bool operator()(const T &) const {
@@ -180,6 +187,9 @@ namespace sqlite_orm {
         }
     };
     
+    /**
+     *  This is a specialization for std::shared_ptr. std::shared_ptr is nullable in sqlite_orm.
+     */
     template<class T>
     struct type_is_nullable<std::shared_ptr<T>> : public std::true_type {
         bool operator()(const std::shared_ptr<T> &t) const {
@@ -187,6 +197,9 @@ namespace sqlite_orm {
         }
     };
     
+    /**
+     *  This is a specialization for std::unique_ptr. std::unique_ptr is nullable too.
+     */
     template<class T>
     struct type_is_nullable<std::unique_ptr<T>> : public std::true_type {
         bool operator()(const std::unique_ptr<T> &t) const {
@@ -217,6 +230,13 @@ namespace sqlite_orm {
     struct real_printer {
         inline const std::string& print() {
             static const std::string res = "REAL";
+            return res;
+        }
+    };
+    
+    struct blob_printer {
+        inline const std::string& print() {
+            static const std::string res = "BLOB";
             return res;
         }
     };
@@ -275,6 +295,10 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        /**
+         *  This class is used in tuple interation to know whether tuple constains `default_value_t`
+         *  constraint class and what it's value if it is
+         */
         struct default_value_extractor {
             
             template<class A>
@@ -306,16 +330,33 @@ namespace sqlite_orm {
             R r;
         };
         
+        /**
+         *  This class stores single column info. column_t is a pair of [column_name:member_pointer] mapped to a storage
+         *  O is a mapped class, e.g. User
+         *  T is a mapped class'es field type, e.g. &User::name
+         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t
+         */
         template<class O, class T, class ...Op>
         struct column_t {
             typedef O object_type;
             typedef T field_type;
-            typedef std::tuple<Op...> options_type;
+            typedef std::tuple<Op...> constraints_type;
             typedef field_type object_type::*member_pointer_t;
             
+            /**
+             *  Column name. Specified during construction in `make_column`.
+             */
             const std::string name;
+            
+            /**
+             *  Member pointer used to read/write member
+             */
             field_type object_type::*member_pointer;
-            options_type options;
+            
+            /**
+             *  Constraints tuple
+             */
+            constraints_type constraints;
             
             bool not_null() const {
                 return !type_is_nullable<field_type>::value;
@@ -323,7 +364,7 @@ namespace sqlite_orm {
             
             template<class Opt>
             constexpr bool has() const {
-                return tuple_helper::tuple_contains_type<Opt, options_type>::value;
+                return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
             }
             
             template<class O1, class O2, class ...Opts>
@@ -342,7 +383,7 @@ namespace sqlite_orm {
             
             std::shared_ptr<std::string> default_value() {
                 std::shared_ptr<std::string> res;
-                tuple_helper::iterator<std::tuple_size<options_type>::value - 1, Op...>()(options, [&](auto &v){
+                tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(constraints, [&](auto &v){
                     auto dft = internal::default_value_extractor()(v);
                     if(dft){
                         res = dft;
@@ -359,7 +400,7 @@ namespace sqlite_orm {
     }
     
     /**
-     *  Used to print members mapped to objects.
+     *  Is used to print members mapped to objects in storage_t::dump member function.
      */
     template<class T>
     struct field_printer {
@@ -440,8 +481,8 @@ namespace sqlite_orm {
      *  Column builder function. You should use it to create columns and not constructor.
      */
     template<class O, class T, class ...Op>
-    internal::column_t<O, T, Op...> make_column(const std::string &name, T O::*m, Op ...options){
-        return {name, m, std::make_tuple(options...)};
+    internal::column_t<O, T, Op...> make_column(const std::string &name, T O::*m, Op ...constraints){
+        return {name, m, std::make_tuple(constraints...)};
     }
     
     namespace conditions {
@@ -1520,7 +1561,7 @@ namespace sqlite_orm {
          */
         template<class Op, class L>
         void for_each_column_exept(L l) {
-            using has_opt = tuple_helper::tuple_contains_type<Op, typename column_type::options_type>;
+            using has_opt = tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>;
             apply_to_col_if(l, std::integral_constant<bool, !has_opt::value>{});
             Super::template for_each_column_exept<Op, L>(l);
         }
@@ -1530,7 +1571,7 @@ namespace sqlite_orm {
          */
         template<class Op, class L>
         void for_each_column_with(L l) {
-            apply_to_col_if(l, tuple_helper::tuple_contains_type<Op, typename column_type::options_type>{});
+            apply_to_col_if(l, tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>{});
             Super::template for_each_column_with<Op, L>(l);
         }
 
@@ -1542,7 +1583,7 @@ namespace sqlite_orm {
         }
         
         template<class L>
-        void apply_to_col_if(L& /*l*/, std::false_type) {}
+        void apply_to_col_if(L&, std::false_type) {}
         
     private:
         typedef table_impl<T...> Super;
@@ -1608,7 +1649,7 @@ namespace sqlite_orm {
         }
         
         /**
-         *  @return vector of column names that have options provided as template arguments (not_null, autoincrement).
+         *  @return vector of column names that have constraints provided as template arguments (not_null, autoincrement).
          */
         template<class ...Op>
         std::vector<std::string> column_names_with() {
@@ -1635,7 +1676,7 @@ namespace sqlite_orm {
         }
         
         /**
-         *  Iterates all columns exept ones that have specified options and fires passed lambda. 
+         *  Iterates all columns exept ones that have specified constraints and fires passed lambda.
          *  Lambda must have one and only templated argument Otherwise code will not compile.
          *  L is lambda type. Do not specify it explicitly.
          *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
@@ -1646,7 +1687,7 @@ namespace sqlite_orm {
         }
         
         /**
-         *  Iterates all columns that have specified options and fires passed lambda.
+         *  Iterates all columns that have specified constraints and fires passed lambda.
          *  Lambda must have one and only templated argument Otherwise code will not compile.
          *  L is lambda type. Do not specify it explicitly.
          *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
@@ -2709,7 +2750,6 @@ namespace sqlite_orm {
             
             storage_t &storage;
             std::shared_ptr<database_connection> connection;
-//            std::tuple<Args...> options;
             
             const std::string query;
             
@@ -4660,6 +4700,52 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
             return impl.current_timestamp(db);
+        }
+        
+        int user_version() {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            std::string query = "PRAGMA user_version";
+            int res = -1;
+            auto rc = sqlite3_exec(db,
+                                   query.c_str(),
+                                   [](void *data, int argc, char **argv,char **) -> int {
+                                       auto &res = *(int*)data;
+                                       if(argc){
+                                           res = row_extrator<int>().extract(argv[0]);
+                                       }
+                                       return 0;
+                                   }, &res, nullptr);
+            if(rc != SQLITE_OK) {
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
+            return res;
+        }
+        
+        void user_version(int value) {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            std::stringstream ss;
+            ss << "PRAGMA user_version = " << value;
+            auto query = ss.str();
+            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+            if(rc != SQLITE_OK) {
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
         }
         
     protected:

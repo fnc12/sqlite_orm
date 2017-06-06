@@ -296,7 +296,7 @@ int main(int argc, char **argv) {
         //  LEFT JOIN visits
         //  USING(doctor_id);
         rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
-                               left_join<Visit>(using_(&Visit::doctorId)));
+                               left_join<Visit>(using_(&Visit::doctorId))); //  or using_(&Doctor::id)
         for(auto &row : rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
         }
