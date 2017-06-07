@@ -18,7 +18,7 @@
 #include <initializer_list>
 #include <set>  //  std::set
 #include <functional>   //  std::function
-
+#include <ostream>  //  std::ostream
 
 namespace sqlite_orm {
     
@@ -2141,6 +2141,22 @@ namespace sqlite_orm {
         sqlite3 *db = nullptr;
     };
     
+    enum class sync_schema_result {
+        dropped_and_created,
+        created,
+        columns_changed,    //  data isn't altered
+        synced, //  everything is ok
+    };
+    
+    inline std::ostream& operator<<(std::ostream &os, sync_schema_result value) {
+        switch(value){
+            case sync_schema_result::columns_changed: return os << "columns_changed";
+            case sync_schema_result::created: return os << "created";
+            case sync_schema_result::dropped_and_created: return os << "dropped_and_created";
+            case sync_schema_result::synced: return os << "synced";
+        }
+    }
+    
     template<class ...Ts>
     struct storage_impl {
         
@@ -2185,7 +2201,7 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
-        std::vector<std::string> sync_schema(sqlite3 *, bool) {
+        std::map<std::string, sync_schema_result> sync_schema(sqlite3 *, bool) {
             return {};
         }
         
@@ -2593,8 +2609,9 @@ namespace sqlite_orm {
             }
         }
         
-        std::vector<std::string> sync_schema(sqlite3 *db, bool preserve) {
-            std::string resString;
+        std::map<std::string, sync_schema_result> sync_schema(sqlite3 *db, bool preserve) {
+//            std::string resString;
+            auto res = sync_schema_result::synced;
             
             //  first let's see if table with such name exists..
             auto gottaCreateTable = !this->table_exists(this->table.name, db);
@@ -2637,7 +2654,7 @@ namespace sqlite_orm {
                             storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
                             --storageColumnInfoIndex;
                         }else{
-                            if(!storageColumnInfoType){
+                            /*if(!storageColumnInfoType){
                                 std::stringstream ss;
                                 ss << "unknown column type " << storageColumnInfo.type;
                                 resString = ss.str();
@@ -2646,7 +2663,7 @@ namespace sqlite_orm {
                                 std::stringstream ss;
                                 ss << "unknown column type " << dbColumnInfo.type;
                                 resString = ss.str();
-                            }
+                            }*/
                             gottaCreateTable = true;
                             break;
                         }
@@ -2690,9 +2707,10 @@ namespace sqlite_orm {
                 if(gottaCreateTable){
                     this->drop_table(this->table.name, db);
                     this->create_table(db, this->table.name);
-                    std::stringstream ss;
+                    /*std::stringstream ss;
                     ss << "table " << this->table.name << " dropped and recreated";
-                    resString = ss.str();
+                    resString = ss.str();*/
+                    res = decltype(res)::dropped_and_created;
                 }else{
                     if(columnsToAdd.size()){
                         for(auto columnPointer : columnsToAdd) {
@@ -2704,32 +2722,37 @@ namespace sqlite_orm {
                         if(!gottaCreateTable){
                             for(auto columnPointer : columnsToAdd) {
                                 this->add_column(*columnPointer, db);
-                                std::stringstream ss;
+                                /*std::stringstream ss;
                                 ss << "column " << columnPointer->name << " added to table " << this->table.name;
-                                resString = ss.str();
+                                resString = ss.str();*/
+                                res = decltype(res)::columns_changed;
                             }
                         }else{
                             this->drop_table(this->table.name, db);
                             this->create_table(db, this->table.name);
-                            std::stringstream ss;
+                            /*std::stringstream ss;
                             ss << "table " << this->table.name << " dropped and recreated";
-                            resString = ss.str();
+                            resString = ss.str();*/
+                            res = decltype(res)::dropped_and_created;
                         }
                     }else{
-                        std::stringstream ss;
+                        /*std::stringstream ss;
                         ss << "table " << this->table.name << " is synced";
-                        resString = ss.str();
+                        resString = ss.str();*/
+                        res = decltype(res)::synced;
                     }
                 }
             }else{
                 this->create_table(db, this->table.name);
-                std::stringstream ss;
+                /*std::stringstream ss;
                 ss << "table " << this->table.name << " created";
-                resString = ss.str();
+                resString = ss.str();*/
+                res = decltype(res)::created;
             }
-            auto res = Super::sync_schema(db, preserve);
-            res.push_back(resString);
-            return res;
+            auto r = Super::sync_schema(db, preserve);
+//            res.push_back(resString);
+            r.insert({this->table.name, res});
+            return r;
         }
         
     private:
@@ -4632,7 +4655,7 @@ namespace sqlite_orm {
          *  @param preserve affects on function behaviour in case it is needed to remove a column. If it is `false` so table will be dropped 
          *  if there is column to remove, if `true` -  table is copies into another table, dropped and copied table is renamed with source table name.
          */
-        std::vector<std::string> sync_schema(bool preserve = false) {
+        std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
