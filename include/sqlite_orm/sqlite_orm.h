@@ -293,6 +293,9 @@ namespace sqlite_orm {
     template<class T>
     struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
     
+    template<>
+    struct type_printer<std::vector<char>> : public blob_printer {};
+    
     namespace internal {
         
         /**
@@ -445,6 +448,19 @@ namespace sqlite_orm {
     struct field_printer<std::string> {
         std::string operator()(const std::string &t) const {
             return t;
+        }
+    };
+    
+    template<>
+    struct field_printer<std::vector<char>> {
+        std::string operator()(const std::vector<char> &t) const {
+//            return t;
+            std::stringstream ss;
+            ss << std::hex;
+            for(auto c : t) {
+                ss << c;
+            }
+            return ss.str();
         }
     };
     
@@ -1840,12 +1856,14 @@ namespace sqlite_orm {
         }
     };
     
+    /**
+     *  Specialization for double.
+     */
     template<>
     struct statement_binder<double> {
         
         int bind(sqlite3_stmt *stmt, int index, const double &value) {
             return sqlite3_bind_double(stmt, index, value);
-//            return sqlite3_bind_int(stmt, index++, value);
         }
     };
     
@@ -1883,6 +1901,32 @@ namespace sqlite_orm {
             }else{
                 return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
             }
+        }
+    };
+    
+    /**
+     *  Specialization for optional type (std::unique_ptr).
+     */
+    template<class T>
+    struct statement_binder<std::unique_ptr<T>>{
+        
+        int bind(sqlite3_stmt *stmt, int index, const std::shared_ptr<T> &value) {
+            if(value){
+                return statement_binder<T>().bind(stmt, index, *value);
+            }else{
+                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+            }
+        }
+    };
+    
+    /**
+     *  Specialization for optional type (std::vector<char>).
+     */
+    template<>
+    struct statement_binder<std::vector<char>>{
+        
+        int bind(sqlite3_stmt *stmt, int index, const std::vector<char> &value) {
+            return sqlite3_bind_blob(stmt, index, (const void *)&value.front(), int(value.size()), SQLITE_TRANSIENT);
         }
     };
     
@@ -2028,6 +2072,43 @@ namespace sqlite_orm {
         
         std::string extract(sqlite3_stmt *stmt, int columnIndex) {
             return (const char*)sqlite3_column_text(stmt, columnIndex);
+        }
+    };
+    
+    /**
+     *  Specialization for std::vector<char>.
+     */
+    template<>
+    struct row_extrator<std::vector<char>> {
+        std::vector<char> extract(const char *row_value) {
+            if(row_value){
+                auto len = ::strlen(row_value);
+                return this->go(row_value, static_cast<int>(len));
+            }else{
+                return {};
+            }
+        }
+        
+        std::vector<char> extract(sqlite3_stmt *stmt, int columnIndex) {
+//            return (const char*)sqlite3_column_text(stmt, columnIndex);
+            auto bytes = static_cast<const char *>(sqlite3_column_blob(stmt, columnIndex));
+            auto len = sqlite3_column_bytes(stmt, columnIndex);
+            return this->go(bytes, len);
+        }
+        
+    protected:
+        
+        std::vector<char> go(const char *bytes, int len) {
+            if(len){
+                std::vector<char> res;
+                res.reserve(len);
+                std::copy(bytes,
+                          bytes + len,
+                          std::back_inserter(res));
+                return res;
+            }else{
+                return {};
+            }
         }
     };
     
