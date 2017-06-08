@@ -2756,32 +2756,8 @@ namespace sqlite_orm {
                     if(dbTableInfo.size() > 0){
                         if(!preserve){
                             gottaCreateTable = true;
-                        }else{
-                            
-                            //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
-                            //  a name already exists we append suffix 1, then 2, etc until we find a free name..
-                            auto backupTableName = this->table.name + "_backup";
-                            if(this->table_exists(backupTableName, db)){
-                                int suffix = 1;
-                                do{
-                                    std::stringstream stream;
-                                    stream << suffix;
-                                    auto anotherBackupTableName = backupTableName + stream.str();
-                                    if(!this->table_exists(anotherBackupTableName, db)){
-                                        backupTableName = anotherBackupTableName;
-                                        break;
-                                    }
-                                    ++suffix;
-                                }while(true);
-                            }
-                            
-                            this->create_table(db, backupTableName);
-                            
-                            this->copy_table(db, backupTableName);
-                            
-                            this->drop_table(this->table.name, db);
-                            
-                            this->rename_table(db, backupTableName, this->table.name);
+                        }else{                           
+                            backup_table(db);
                         }
                     }
                 }
@@ -2835,7 +2811,34 @@ namespace sqlite_orm {
             r.insert({this->table.name, res});
             return r;
         }
-        
+
+        void backup_table(sqlite3 *db)
+        {
+            //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
+            //  a name already exists we append suffix 1, then 2, etc until we find a free name..
+            auto backupTableName = this->table.name + "_backup";
+            if(this->table_exists(backupTableName, db)){
+                int suffix = 1;
+                do{
+                    std::stringstream stream;
+                    stream << suffix;
+                    auto anotherBackupTableName = backupTableName + stream.str();
+                    if(!this->table_exists(anotherBackupTableName, db)){
+                        backupTableName = anotherBackupTableName;
+                        break;
+                    }
+                    ++suffix;
+                }while(true);
+            }
+            
+            this->create_table(db, backupTableName);
+            
+            this->copy_table(db, backupTableName);
+            
+            this->drop_table(this->table.name, db);
+            
+            this->rename_table(db, backupTableName, this->table.name);
+        }       
     private:
         typedef storage_impl<Ts...> Super;
         typedef storage_impl<H, Ts...> Self;
@@ -4351,7 +4354,7 @@ namespace sqlite_orm {
                     std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                     for(size_t i = 0; i < tableNames.size(); ++i) {
                         ss << tableNames[i];
-                        if(i < int(tableNames.size()) - 1) {
+                        if(i < tableNames.size() - 1) {
                             ss << ",";
                         }
                         ss << " ";
@@ -4404,7 +4407,7 @@ namespace sqlite_orm {
                     std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                     for(size_t i = 0; i < tableNames.size(); ++i) {
                         ss << tableNames[i];
-                        if(i < int(tableNames.size()) - 1) {
+                        if(i < tableNames.size() - 1) {
                             ss << ",";
                         }
                         ss << " ";
@@ -4863,6 +4866,7 @@ namespace sqlite_orm {
             }
             return this->impl.table_exists(tableName, db);
         }
+
         
     protected:
         std::string filename;
