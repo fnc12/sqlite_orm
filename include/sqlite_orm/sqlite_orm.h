@@ -2741,42 +2741,6 @@ namespace sqlite_orm {
                 if(are_table_and_storage_columns_data_types_not_eq(columnsToAdd, 
                 storageTableInfo, dbTableInfo)) gottaCreateTable = true;
 
-//                auto storageTableInfoCount = int(storageTableInfo.size());
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
-                    
-                    auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto &columnName = storageColumnInfo.name;
-                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
-                                                       dbTableInfo.end(),
-                                                       [&](auto &ti){
-                                                           return ti.name == columnName;
-                                                       });
-                    if(dbColumnInfoIt != dbTableInfo.end()){
-                        auto &dbColumnInfo = *dbColumnInfoIt;
-                        auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
-                        auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
-                        if(dbColumnInfoType && storageColumnInfoType) {
-                            auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
-                            *dbColumnInfoType == *storageColumnInfoType &&
-                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                            bool(dbColumnInfo.dflt_value.length()) == bool(storageColumnInfo.dflt_value.length()) &&
-                            dbColumnInfo.pk == storageColumnInfo.pk;
-                            if(!columnsAreEqual){
-                                gottaCreateTable = true;
-                                break;
-                            }
-                            dbTableInfo.erase(dbColumnInfoIt);
-                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
-                            --storageColumnInfoIndex;
-                        }else{
-                            gottaCreateTable = true;
-                            break;
-                        }
-                    }else{
-                        columnsToAdd.push_back(&storageColumnInfo);
-                    }
-                }
-
                 if(!gottaCreateTable){  //  if all storage columns are equal to actual db columns but there are excess columns at the db..
                     if(dbTableInfo.size() > 0){
                         if(!preserve){
