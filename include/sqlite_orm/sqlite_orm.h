@@ -2253,22 +2253,14 @@ namespace sqlite_orm {
         sqlite3 *db = nullptr;
     };
     
-    enum class sync_schema_result {
-        dropped_and_created,
-        created,
-        columns_changed,    //  data isn't altered
-        synced, //  everything is ok
-    };
     
-    inline std::ostream& operator<<(std::ostream &os, sync_schema_result value) {
-        switch(value){
-            case sync_schema_result::columns_changed: return os << "columns_changed";
-            case sync_schema_result::created: return os << "created";
-            case sync_schema_result::dropped_and_created: return os << "dropped_and_created";
-            case sync_schema_result::synced: return os << "synced";
-        }
-    }
-    
+enum class sync_schema_result {
+    new_tbl_created,  /*created new table, table with same tablename did not exist.*/
+    already_in_sync,  /*table schema is same as storage, nothing to be done*/
+    new_columns_added, /*lacking columns in table(than storage) added without dropping table*/
+    dropped_and_recreated /*old table is dropped and new recreated. Reasons 1. delete excess columns in table than storage if preseve=false 2. Lacking columns in table cannot be added due to some reason, 3. data_type mismatch between table and storage.*/
+};
+
     template<class ...Ts>
     struct storage_impl {
         
@@ -2723,7 +2715,7 @@ namespace sqlite_orm {
         
         std::map<std::string, sync_schema_result> sync_schema(sqlite3 *db, bool preserve) {
 //            std::string resString;
-            auto res = sync_schema_result::synced;
+            auto res = sync_schema_result::already_in_sync;
             
             //  first let's see if table with such name exists..
             auto gottaCreateTable = !this->table_exists(this->table.name, db);
@@ -2743,6 +2735,7 @@ namespace sqlite_orm {
 
                 if(!gottaCreateTable){  //  if all storage columns are equal to actual db columns but there are excess columns at the db..
                     if(dbTableInfo.size() > 0){
+                        //extra table columns than storage columns
                         if(!preserve){
                             gottaCreateTable = true;
                         }else{                           
@@ -2753,9 +2746,10 @@ namespace sqlite_orm {
                 if(gottaCreateTable){
                     this->drop_table(this->table.name, db);
                     this->create_table(db, this->table.name);
-                    res = decltype(res)::dropped_and_created;
+                    res = decltype(res)::dropped_and_recreated;
                 }else{
                     if(columnsToAdd.size()){
+                        //extra storage columns than table columns
                         for(auto columnPointer : columnsToAdd) {
                             if(columnPointer->notnull && columnPointer->dflt_value.empty()){
                                 gottaCreateTable = true;
@@ -2766,19 +2760,19 @@ namespace sqlite_orm {
                             for(auto columnPointer : columnsToAdd) {
                                 this->add_column(*columnPointer, db);
                             }
-                            res = decltype(res)::columns_changed;
+                            res = decltype(res)::new_columns_added;
                         }else{
                             this->drop_table(this->table.name, db);
                             this->create_table(db, this->table.name);
-                            res = decltype(res)::dropped_and_created;
+                            res = decltype(res)::dropped_and_recreated;
                         }
                     }else{
-                        res = decltype(res)::synced;
+                        res = decltype(res)::already_in_sync;
                     }
                 }
             }else{
                 this->create_table(db, this->table.name);
-                res = decltype(res)::created;
+                res = decltype(res)::new_tbl_created;
             }
             auto r = Super::sync_schema(db, preserve);
             r.insert({this->table.name, res});
@@ -2791,9 +2785,6 @@ namespace sqlite_orm {
         {
             bool NotEqual = false;
 
-           
-            
-//                auto storageTableInfoCount = int(storageTableInfo.size());
             for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
                 
                 auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
@@ -2821,16 +2812,6 @@ namespace sqlite_orm {
                         storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
                         --storageColumnInfoIndex;
                     }else{
-                        /*if(!storageColumnInfoType){
-                            std::stringstream ss;
-                            ss << "unknown column type " << storageColumnInfo.type;
-                            resString = ss.str();
-                        }
-                        if(!dbColumnInfoType){
-                            std::stringstream ss;
-                            ss << "unknown column type " << dbColumnInfo.type;
-                            resString = ss.str();
-                        }*/
                         NotEqual = true;
                         break;
                     }
