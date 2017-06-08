@@ -290,6 +290,18 @@ int main(int argc, char **argv) {
         }
         cout << endl;
         
+        //  SELECT a.doctor_id,a.doctor_name,
+        //      c.patient_name,c.vdate
+        //  FROM doctors a
+        //  JOIN visits c
+        //  ON a.doctor_id=c.doctor_id;
+        rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
+                               join<Visit>(on(is_equal(&Doctor::id, &Visit::doctorId))));
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        }
+        cout << endl;
+        
         //  SELECT doctor_id,doctor_name,
         //      patient_name,vdate
         //  FROM doctors

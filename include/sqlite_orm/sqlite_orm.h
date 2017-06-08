@@ -779,6 +779,19 @@ namespace sqlite_orm {
         };
         
         template<class T, class O>
+        struct join_t {
+            
+            typedef T type;
+            typedef O on_type;
+            
+            on_type constraint;
+            
+            operator std::string() const {
+                return "JOIN";
+            }
+        };
+        
+        template<class T, class O>
         struct left_outer_join_t {
             typedef T type;
             typedef O on_type;
@@ -882,6 +895,19 @@ namespace sqlite_orm {
         };
         
         template<class T, class O, class ...Tail>
+        struct join_iterator<conditions::join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+            conditions::join_t<T, O> h;
+            
+            typedef join_iterator<Tail...> super;
+            
+            template<class L>
+            void operator()(L l) {
+                l(h);
+                this->super::operator()(l);
+            }
+        };
+        
+        template<class T, class O, class ...Tail>
         struct join_iterator<conditions::left_outer_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             conditions::left_outer_join_t<T, O> h;
             
@@ -925,6 +951,11 @@ namespace sqlite_orm {
     
     template<class T, class O>
     conditions::left_join_t<T, O> left_join(O o) {
+        return {o};
+    }
+    
+    template<class T, class O>
+    conditions::join_t<T, O> join(O o) {
         return {o};
     }
     
@@ -2735,16 +2766,6 @@ namespace sqlite_orm {
                             storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
                             --storageColumnInfoIndex;
                         }else{
-                            /*if(!storageColumnInfoType){
-                                std::stringstream ss;
-                                ss << "unknown column type " << storageColumnInfo.type;
-                                resString = ss.str();
-                            }
-                            if(!dbColumnInfoType){
-                                std::stringstream ss;
-                                ss << "unknown column type " << dbColumnInfo.type;
-                                resString = ss.str();
-                            }*/
                             gottaCreateTable = true;
                             break;
                         }
@@ -2764,9 +2785,6 @@ namespace sqlite_orm {
                 if(gottaCreateTable){
                     this->drop_table(this->table.name, db);
                     this->create_table(db, this->table.name);
-                    /*std::stringstream ss;
-                    ss << "table " << this->table.name << " dropped and recreated";
-                    resString = ss.str();*/
                     res = decltype(res)::dropped_and_created;
                 }else{
                     if(columnsToAdd.size()){
@@ -2779,35 +2797,22 @@ namespace sqlite_orm {
                         if(!gottaCreateTable){
                             for(auto columnPointer : columnsToAdd) {
                                 this->add_column(*columnPointer, db);
-                                /*std::stringstream ss;
-                                ss << "column " << columnPointer->name << " added to table " << this->table.name;
-                                resString = ss.str();*/
-                                res = decltype(res)::columns_changed;
                             }
+                            res = decltype(res)::columns_changed;
                         }else{
                             this->drop_table(this->table.name, db);
                             this->create_table(db, this->table.name);
-                            /*std::stringstream ss;
-                            ss << "table " << this->table.name << " dropped and recreated";
-                            resString = ss.str();*/
                             res = decltype(res)::dropped_and_created;
                         }
                     }else{
-                        /*std::stringstream ss;
-                        ss << "table " << this->table.name << " is synced";
-                        resString = ss.str();*/
                         res = decltype(res)::synced;
                     }
                 }
             }else{
                 this->create_table(db, this->table.name);
-                /*std::stringstream ss;
-                ss << "table " << this->table.name << " created";
-                resString = ss.str();*/
                 res = decltype(res)::created;
             }
             auto r = Super::sync_schema(db, preserve);
-//            res.push_back(resString);
             r.insert({this->table.name, res});
             return r;
         }
@@ -3326,7 +3331,6 @@ namespace sqlite_orm {
         void process_single_condition(std::stringstream &ss, conditions::left_outer_join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
             ss << this->impl.template find_table_name<T>() << " ";
-//            ss << static_cast<std::string>(l.on) << " " << this->process_where(l.on.t) << " ";
             this->process_join_constraint(ss, l.constraint);
         }
         
@@ -3334,7 +3338,13 @@ namespace sqlite_orm {
         void process_single_condition(std::stringstream &ss, conditions::left_join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
             ss << this->impl.template find_table_name<T>() << " ";
-//            ss << static_cast<std::string>(l.on) << " (" << this->process_where(l.on.t) << " ) ";
+            this->process_join_constraint(ss, l.constraint);
+        }
+        
+        template<class T, class O>
+        void process_single_condition(std::stringstream &ss, conditions::join_t<T, O> l) {
+            ss << static_cast<std::string>(l) << " ";
+            ss << this->impl.template find_table_name<T>() << " ";
             this->process_join_constraint(ss, l.constraint);
         }
         
