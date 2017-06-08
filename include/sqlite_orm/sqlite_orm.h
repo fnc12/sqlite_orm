@@ -2618,7 +2618,9 @@ namespace sqlite_orm {
             if(!gottaCreateTable){
                 //  this vector will contain pointers to columns that gotta be added..
                 std::vector<table_info*> columnsToAdd;
-                if(!areTableAndStorageColumnsDataTypesEq(db, columnsToAdd)) gottaCreateTable = true;
+                //  get table info provided in `make_table` call..
+                auto storageTableInfo = this->table.get_table_info();
+                if(!areTableAndStorageColumnsDataTypesEq(db, columnsToAdd, storageTableInfo)) gottaCreateTable = true;
                 
                 if(!gottaCreateTable){  //  if all storage columns are equal to actual db columns but there are excess columns at the db..
                     auto dbTableInfo = get_table_info(this->table.name, db);
@@ -2709,15 +2711,16 @@ namespace sqlite_orm {
             this->rename_table(db, backupTableName, this->table.name);            
         }
         
-        bool areTableAndStorageColumnsDataTypesEq(sqlite3 *db, std::vector<table_info*>& columnsToAdd)
+        bool areTableAndStorageColumnsDataTypesEq(sqlite3 *db, 
+        std::vector<table_info*>& columnsToAdd, std::vector<table_info>& storageTableInfo)
         {
             bool NotEqual = false;
             
             //  now get current table info from db using `PRAGMA table_info` query..
             auto dbTableInfo = get_table_info(this->table.name, db);
             
-            //  get table info provided in `make_table` call..
-            auto storageTableInfo = this->table.get_table_info();
+             //get table info provided in `make_table` call..
+            // auto storageTableInfo = this->table.get_table_info();
             
     //                auto storageTableInfoCount = int(storageTableInfo.size());
             for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
