@@ -2729,15 +2729,18 @@ namespace sqlite_orm {
             auto gottaCreateTable = !this->table_exists(this->table.name, db);
             if(!gottaCreateTable){
                 
-                //  now get current table info from db using `PRAGMA table_info` query..
-                auto dbTableInfo = get_table_info(this->table.name, db);
-                
                 //  get table info provided in `make_table` call..
                 auto storageTableInfo = this->table.get_table_info();
+                
+                //  now get current table info from db using `PRAGMA table_info` query..
+                auto dbTableInfo = get_table_info(this->table.name, db);
                 
                 //  this vector will contain pointers to columns that gotta be added..
                 std::vector<table_info*> columnsToAdd;
                 
+                if(are_table_and_storage_columns_data_types_not_eq(columnsToAdd, 
+                storageTableInfo, dbTableInfo)) gottaCreateTable = true;
+
 //                auto storageTableInfoCount = int(storageTableInfo.size());
                 for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
                     
@@ -2773,6 +2776,7 @@ namespace sqlite_orm {
                         columnsToAdd.push_back(&storageColumnInfo);
                     }
                 }
+
                 if(!gottaCreateTable){  //  if all storage columns are equal to actual db columns but there are excess columns at the db..
                     if(dbTableInfo.size() > 0){
                         if(!preserve){
@@ -2820,6 +2824,63 @@ namespace sqlite_orm {
             return r;
         }
 
+        bool are_table_and_storage_columns_data_types_not_eq(std::vector<table_info*>& columnsToAdd, 
+                std::vector<table_info>& storageTableInfo,
+                std::vector<table_info>& dbTableInfo)
+        {
+            bool NotEqual = false;
+
+           
+            
+//                auto storageTableInfoCount = int(storageTableInfo.size());
+            for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
+                
+                auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                auto &columnName = storageColumnInfo.name;
+                auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
+                                                   dbTableInfo.end(),
+                                                   [&](auto &ti){
+                                                       return ti.name == columnName;
+                                                   });
+                if(dbColumnInfoIt != dbTableInfo.end()){
+                    auto &dbColumnInfo = *dbColumnInfoIt;
+                    auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
+                    auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
+                    if(dbColumnInfoType && storageColumnInfoType) {
+                        auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
+                        *dbColumnInfoType == *storageColumnInfoType &&
+                        dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                        bool(dbColumnInfo.dflt_value.length()) == bool(storageColumnInfo.dflt_value.length()) &&
+                        dbColumnInfo.pk == storageColumnInfo.pk;
+                        if(!columnsAreEqual){
+                            NotEqual = true;
+                            break;
+                        }
+                        dbTableInfo.erase(dbColumnInfoIt);
+                        storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                        --storageColumnInfoIndex;
+                    }else{
+                        /*if(!storageColumnInfoType){
+                            std::stringstream ss;
+                            ss << "unknown column type " << storageColumnInfo.type;
+                            resString = ss.str();
+                        }
+                        if(!dbColumnInfoType){
+                            std::stringstream ss;
+                            ss << "unknown column type " << dbColumnInfo.type;
+                            resString = ss.str();
+                        }*/
+                        NotEqual = true;
+                        break;
+                    }
+                }else{
+                    columnsToAdd.push_back(&storageColumnInfo);
+                }
+            }
+            return NotEqual;
+        }            
+        
+        
         void backup_table(sqlite3 *db)
         {
             //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
