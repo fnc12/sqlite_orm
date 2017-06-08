@@ -2779,6 +2779,7 @@ namespace sqlite_orm {
                             gottaCreateTable = true;
                         }else{                           
                             backup_table(db);
+                            res = decltype(res)::columns_changed;
                         }
                     }
                 }
@@ -2805,7 +2806,9 @@ namespace sqlite_orm {
                             res = decltype(res)::dropped_and_created;
                         }
                     }else{
-                        res = decltype(res)::synced;
+                        if(res != decltype(res)::columns_changed){
+                            res = decltype(res)::synced;
+                        }
                     }
                 }
             }else{
