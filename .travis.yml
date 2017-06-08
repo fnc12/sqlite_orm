@@ -47,5 +47,7 @@ script:
   - ./a.out
   - clang++ -std=c++1y examples/cross_join.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
   - ./a.out
+  - clang++ -std=c++1y examples/blob.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - ./a.out
   - clang++ -std=c++1y tests/tests.cpp -I include/sqlite_orm/ -lsqlite3 -o tests.out
   - ./tests.out
