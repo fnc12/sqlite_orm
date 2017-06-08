@@ -2855,8 +2855,6 @@ namespace sqlite_orm {
                         this->create_table(db, this->table.name);
                         res = decltype(res)::dropped_and_recreated;                            
                     }
-                    else assert(0);
-
                 }
             }
             auto r = Super::sync_schema(db, preserve);
