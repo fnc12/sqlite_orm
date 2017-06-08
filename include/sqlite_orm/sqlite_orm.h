@@ -2253,22 +2253,28 @@ namespace sqlite_orm {
         sqlite3 *db = nullptr;
     };
     
-    enum class sync_schema_result {
-        dropped_and_created,
-        created,
-        columns_changed,    //  data isn't altered
-        synced, //  everything is ok
-    };
     
+    enum class sync_schema_result {
+        new_table_created,  /*created new table, table with same tablename did not exist.*/
+        already_in_sync,  /*table schema is same as storage, nothing to be done*/
+        old_columns_removed, /*removed excess columns in table(than storage) without dropping table*/
+        new_columns_added, /*lacking columns in table(than storage) added without dropping table*/
+        new_columns_added_and_old_columns_removed, /*both old_columns_removed and new_columns_added*/
+        dropped_and_recreated /*old table is dropped and new recreated. Reasons 1. delete excess columns in table than storage if preseve=false 2. Lacking columns in table cannot be added due to NULL and default constraint, 3. Reasons 1 and 2 both together. 4. data_type mismatch between table and storage. */
+    };
+
+
     inline std::ostream& operator<<(std::ostream &os, sync_schema_result value) {
         switch(value){
-            case sync_schema_result::columns_changed: return os << "columns_changed";
-            case sync_schema_result::created: return os << "created";
-            case sync_schema_result::dropped_and_created: return os << "dropped_and_created";
-            case sync_schema_result::synced: return os << "synced";
+            case sync_schema_result::new_table_created: return os << "new table created";
+            case sync_schema_result::already_in_sync: return os << "table and storage is already in sync.";
+            case sync_schema_result::old_columns_removed: return os << "old excess columns removed";
+            case sync_schema_result::new_columns_added: return os << "new columns added";
+            case sync_schema_result::new_columns_added_and_old_columns_removed: return os << "old excess columns removed and new columns added";
+            case sync_schema_result::dropped_and_recreated: return os << "old table dropped and recreated";
         }
     }
-    
+
     template<class ...Ts>
     struct storage_impl {
         
@@ -2721,9 +2727,18 @@ namespace sqlite_orm {
             }
         }
         
-        std::map<std::string, sync_schema_result> sync_schema(sqlite3 *db, bool preserve) {
-//            std::string resString;
-            auto res = sync_schema_result::synced;
+        enum class sync_schema_status {
+            create_new_table,  /*create new table, table with same tablename did not exist.*/
+            already_in_sync,  /*table schema is same as storage, nothing to be done*/
+            remove_old_columns, /*remove excess columns in table(than storage) without dropping table*/
+            add_new_columns, /*add lacking columns in table(than storage) without dropping table*/
+            add_new_columns_and_remove_old_columns, /*both remove_old_columns and add_new_columns*/
+            drop_and_recreate /*drop old table and recreate new table. Reasons 1. delete excess columns in table than storage if preseve=false 2. Lacking columns in table cannot be added due to NULL and default constraint, 3. Reasons 1 and 2 both together. 4. data_type mismatch between table and storage. */
+        };
+
+        sync_schema_status schema_status(sqlite3 *db, bool preserve) {
+            
+            auto res = sync_schema_status::already_in_sync;
             
             //  first let's see if table with such name exists..
             auto gottaCreateTable = !this->table_exists(this->table.name, db);
@@ -2738,61 +2753,24 @@ namespace sqlite_orm {
                 //  this vector will contain pointers to columns that gotta be added..
                 std::vector<table_info*> columnsToAdd;
                 
-                if(are_table_and_storage_columns_data_types_not_eq(columnsToAdd, 
+                if(get_remove_add_columns(columnsToAdd, 
                 storageTableInfo, dbTableInfo)) gottaCreateTable = true;
-
-//                auto storageTableInfoCount = int(storageTableInfo.size());
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
-                    
-                    auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto &columnName = storageColumnInfo.name;
-                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
-                                                       dbTableInfo.end(),
-                                                       [&](auto &ti){
-                                                           return ti.name == columnName;
-                                                       });
-                    if(dbColumnInfoIt != dbTableInfo.end()){
-                        auto &dbColumnInfo = *dbColumnInfoIt;
-                        auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
-                        auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
-                        if(dbColumnInfoType && storageColumnInfoType) {
-                            auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
-                            *dbColumnInfoType == *storageColumnInfoType &&
-                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                            bool(dbColumnInfo.dflt_value.length()) == bool(storageColumnInfo.dflt_value.length()) &&
-                            dbColumnInfo.pk == storageColumnInfo.pk;
-                            if(!columnsAreEqual){
-                                gottaCreateTable = true;
-                                break;
-                            }
-                            dbTableInfo.erase(dbColumnInfoIt);
-                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
-                            --storageColumnInfoIndex;
-                        }else{
-                            gottaCreateTable = true;
-                            break;
-                        }
-                    }else{
-                        columnsToAdd.push_back(&storageColumnInfo);
-                    }
-                }
 
                 if(!gottaCreateTable){  //  if all storage columns are equal to actual db columns but there are excess columns at the db..
                     if(dbTableInfo.size() > 0){
+                        //extra table columns than storage columns
                         if(!preserve){
                             gottaCreateTable = true;
                         }else{                           
-                            backup_table(db);
-                            res = decltype(res)::columns_changed;
+                            res = decltype(res)::remove_old_columns;
                         }
                     }
                 }
                 if(gottaCreateTable){
-                    this->drop_table(this->table.name, db);
-                    this->create_table(db, this->table.name);
-                    res = decltype(res)::dropped_and_created;
+                    res = decltype(res)::drop_and_recreate;
                 }else{
                     if(columnsToAdd.size()){
+                        //extra storage columns than table columns
                         for(auto columnPointer : columnsToAdd) {
                             if(columnPointer->notnull && columnPointer->dflt_value.empty()){
                                 gottaCreateTable = true;
@@ -2800,39 +2778,97 @@ namespace sqlite_orm {
                             }
                         }
                         if(!gottaCreateTable){
-                            for(auto columnPointer : columnsToAdd) {
-                                this->add_column(*columnPointer, db);
-                            }
-                            res = decltype(res)::columns_changed;
+
+                            if(res == decltype(res)::remove_old_columns) res = decltype(res)::add_new_columns_and_remove_old_columns;
+                            else res = decltype(res)::add_new_columns;
                         }else{
-                            this->drop_table(this->table.name, db);
-                            this->create_table(db, this->table.name);
-                            res = decltype(res)::dropped_and_created;
+
+                            res = decltype(res)::drop_and_recreate;
                         }
                     }else{
-                        if(res != decltype(res)::columns_changed){
-                            res = decltype(res)::synced;
-                        }
+                        if(res != decltype(res)::remove_old_columns)  res = decltype(res)::already_in_sync;
                     }
                 }
             }else{
-                this->create_table(db, this->table.name);
-                res = decltype(res)::created;
+                res = decltype(res)::create_new_table;
+            }
+            return res;
+        }
+        
+        std::map<std::string, sync_schema_result> sync_schema(sqlite3 *db, bool preserve) {
+            auto res = sync_schema_result::already_in_sync;
+
+            auto schema_stat = schema_status(db, preserve);
+            if(schema_stat != sync_schema_status::already_in_sync)
+            {
+                if(schema_stat == sync_schema_status::create_new_table)
+                {
+                    this->create_table(db, this->table.name);
+                    res = decltype(res)::new_table_created;                        
+                }
+                else
+                {
+                    if(schema_stat == sync_schema_status::remove_old_columns ||
+                        schema_stat == sync_schema_status::add_new_columns ||
+                        schema_stat == sync_schema_status::add_new_columns_and_remove_old_columns)
+                    {
+                        //  get table info provided in `make_table` call..
+                        auto storageTableInfo = this->table.get_table_info();
+                        
+                        //  now get current table info from db using `PRAGMA table_info` query..
+                        auto dbTableInfo = get_table_info(this->table.name, db);
+                        
+                        //  this vector will contain pointers to columns that gotta be added..
+                        std::vector<table_info*> columnsToAdd;
+                        
+                        get_remove_add_columns(columnsToAdd, 
+                        storageTableInfo, dbTableInfo);
+                        
+                        
+                        if(schema_stat == sync_schema_status::remove_old_columns){
+                            //extra table columns than storage columns
+                            backup_table(db);
+                            res = decltype(res)::old_columns_removed;
+                        }
+                        
+                        if(schema_stat == sync_schema_status::add_new_columns)
+                        {
+                            for(auto columnPointer : columnsToAdd) {
+                                this->add_column(*columnPointer, db);
+                            }
+                            res = decltype(res)::new_columns_added;
+                        }
+                        
+                        if(schema_stat == sync_schema_status::add_new_columns_and_remove_old_columns)
+                        {
+                            //remove extra columns
+                            backup_table(db);
+                            for(auto columnPointer : columnsToAdd) {
+                                this->add_column(*columnPointer, db);
+                            }
+                            res = decltype(res)::new_columns_added_and_old_columns_removed; 
+                        }
+                    }
+                    else if(schema_stat == sync_schema_status::drop_and_recreate)
+                    {
+                        this->drop_table(this->table.name, db);
+                        this->create_table(db, this->table.name);
+                        res = decltype(res)::dropped_and_recreated;                            
+                    }
+                }
             }
             auto r = Super::sync_schema(db, preserve);
             r.insert({this->table.name, res});
             return r;
         }
+        
 
-        bool are_table_and_storage_columns_data_types_not_eq(std::vector<table_info*>& columnsToAdd, 
+        bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd, 
                 std::vector<table_info>& storageTableInfo,
                 std::vector<table_info>& dbTableInfo)
         {
             bool NotEqual = false;
 
-           
-            
-//                auto storageTableInfoCount = int(storageTableInfo.size());
             for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
                 
                 auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
@@ -2860,16 +2896,6 @@ namespace sqlite_orm {
                         storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
                         --storageColumnInfoIndex;
                     }else{
-                        /*if(!storageColumnInfoType){
-                            std::stringstream ss;
-                            ss << "unknown column type " << storageColumnInfo.type;
-                            resString = ss.str();
-                        }
-                        if(!dbColumnInfoType){
-                            std::stringstream ss;
-                            ss << "unknown column type " << dbColumnInfo.type;
-                            resString = ss.str();
-                        }*/
                         NotEqual = true;
                         break;
                     }

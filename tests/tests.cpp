@@ -167,7 +167,7 @@ void testSyncSchema() {
     //  now call `sync_schema` with argument `preserve` as `true`. It will retain data in case `sqlite_orm` needs to remove a column..
     auto syncSchemaRes = newStorage.sync_schema(true);
     assert(syncSchemaRes.size() == 1);
-    assert(syncSchemaRes.begin()->second == sync_schema_result::columns_changed);
+    assert(syncSchemaRes.begin()->second == sync_schema_result::old_columns_removed);
     
     //  get all users after syncing schema..
     auto usersFromDb = newStorage.get_all<UserAfter>(order_by(&UserAfter::id));
