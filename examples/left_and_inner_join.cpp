@@ -234,6 +234,7 @@ int main(int argc, char **argv) {
     {
         /**
          *  JOIN has many usages so this is another example from here http://www.w3resource.com/sqlite/sqlite-left-join.php
+         *  and here http://www.w3resource.com/sqlite/sqlite-natural-join.php
          */
         
         struct Doctor {
@@ -246,6 +247,18 @@ int main(int argc, char **argv) {
             int doctorId;
             std::string patientName;
             std::string vdate;
+        };
+        
+        struct A {
+            int id;
+            std::string des1;
+            std::string des2;
+        };
+        
+        struct B {
+            int id;
+            std::string des3;
+            std::string des4;
         };
         
         auto storage2 = make_storage("doctors.sqlite",
@@ -263,7 +276,23 @@ int main(int argc, char **argv) {
                                                 make_column("patient_name",
                                                             &Visit::patientName),
                                                 make_column("vdate",
-                                                            &Visit::vdate)));
+                                                            &Visit::vdate)),
+                                     make_table("table_a",
+                                                make_column("id",
+                                                            &A::id,
+                                                            primary_key()),
+                                                make_column("des1",
+                                                            &A::des1),
+                                                make_column("des2",
+                                                            &A::des2)),
+                                     make_table("table_b",
+                                                make_column("id",
+                                                            &B::id,
+                                                            primary_key()),
+                                                make_column("des3",
+                                                            &B::des3),
+                                                make_column("des4",
+                                                            &B::des4)));
         storage2.sync_schema();
         
         storage2.replace(Doctor{ 210, "Dr. John Linga", "MD", });
@@ -276,6 +305,14 @@ int main(int argc, char **argv) {
         storage2.replace(Visit{ 215, "John Seo", "2013-10-15" });
         storage2.replace(Visit{ 212, "James Marlow", "2013-10-16" });
         storage2.replace(Visit{ 212, "Jason Mallin", "2013-10-12" });
+        
+        storage2.replace(A{ 100, "desc11", "desc12" });
+        storage2.replace(A{ 101, "desc21", "desc22" });
+        storage2.replace(A{ 102, "desc31", "desc32" });
+        
+        storage2.replace(B{ 101, "desc41", "desc42" });
+        storage2.replace(B{ 103, "desc51", "desc52" });
+        storage2.replace(B{ 105, "desc61", "desc62" });
         
         
         //  SELECT a.doctor_id,a.doctor_name,
@@ -313,6 +350,8 @@ int main(int argc, char **argv) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
         }
         cout << endl;
+        
+        
     }
     
     return 0;
