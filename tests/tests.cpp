@@ -131,7 +131,10 @@ void testSyncSchema() {
                                                        &UserBefore::surname)));
     
     //  sync in case if it is first launch..
-    storage.sync_schema();
+    auto syncSchemaSimulationRes = storage.sync_schema_simulate();
+    auto syncSchemaRes = storage.sync_schema();
+    
+    assert(syncSchemaRes == syncSchemaSimulationRes);
     
     //  remove old users in case the test was launched before..
     storage.remove_all<UserBefore>();
@@ -164,10 +167,13 @@ void testSyncSchema() {
                                               make_column("name",
                                                           &UserAfter::name)));
     
+    syncSchemaSimulationRes = newStorage.sync_schema_simulate(true);
+    
     //  now call `sync_schema` with argument `preserve` as `true`. It will retain data in case `sqlite_orm` needs to remove a column..
-    auto syncSchemaRes = newStorage.sync_schema(true);
+    syncSchemaRes = newStorage.sync_schema(true);
     assert(syncSchemaRes.size() == 1);
     assert(syncSchemaRes.begin()->second == sync_schema_result::old_columns_removed);
+    assert(syncSchemaSimulationRes == syncSchemaRes);
     
     //  get all users after syncing schema..
     auto usersFromDb = newStorage.get_all<UserAfter>(order_by(&UserAfter::id));
@@ -183,7 +189,9 @@ void testSyncSchema() {
     
     auto usersCountBefore = newStorage.count<UserAfter>();
     
-    newStorage.sync_schema();
+    syncSchemaSimulationRes = newStorage.sync_schema_simulate();
+    syncSchemaRes = newStorage.sync_schema();
+    assert(syncSchemaRes == syncSchemaSimulationRes);
     
     auto usersCountAfter = newStorage.count<UserAfter>();
     assert(usersCountBefore == usersCountAfter);

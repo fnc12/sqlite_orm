@@ -2261,6 +2261,9 @@ namespace sqlite_orm {
         }
     }
 
+    /**
+     *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
+     */
     template<class ...Ts>
     struct storage_impl {
         
@@ -2268,16 +2271,6 @@ namespace sqlite_orm {
         constexpr bool type_is_mapped() const {
             return std::integral_constant<bool, false>::value;
         }
-        
-        /*template<class O, class I>
-        O get(I, sqlite3 *, std::nullptr_t) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get");
-        }*/
-        
-        /*template<class O, class I>
-        std::shared_ptr<O> get_no_throw(I, sqlite3 *, std::nullptr_t) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in get_no_throw");
-        }*/
         
         template<class O, class I>
         void remove(I, sqlite3 *, std::nullptr_t) {
@@ -2290,6 +2283,10 @@ namespace sqlite_orm {
         }
         
         std::map<std::string, sync_schema_result> sync_schema(sqlite3 *, bool) {
+            return {};
+        }
+        
+        std::map<std::string, sync_schema_result> sync_schema_simulate(sqlite3 *, bool) {
             return {};
         }
         
@@ -2395,7 +2392,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
-                                   [](void *data, int argc, char **argv, char **)->int{
+                                   [](void *data, int argc, char **argv, char **) -> int {
                                        auto &res = *(std::string*)data;
                                        if(argc){
                                            if(argv[0]){
@@ -2758,6 +2755,12 @@ namespace sqlite_orm {
             }else{
                 res = decltype(res)::new_table_created;
             }
+            return res;
+        }
+        
+        std::map<std::string, sync_schema_result> sync_schema_simulate(sqlite3 *db, bool preserve) {
+            auto res = Super::sync_schema_simulate(db, preserve);
+            res.insert({this->table.name, this->schema_status(db, preserve)});
             return res;
         }
         
@@ -4878,6 +4881,23 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
             return this->impl.sync_schema(db, preserve);
+        }
+        
+        /**
+         *  This function returns the same map that `sync_schema` returns but it
+         *  doesn't perform `sync_schema` actually - just simulates it in case you want to know
+         *  what will happen if you sync your schema.
+         */
+        std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return this->impl.sync_schema_simulate(db, preserve);
         }
         
         bool transaction(std::function<bool()> f) {
