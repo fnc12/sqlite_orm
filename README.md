@@ -16,7 +16,7 @@ SQLite ORM light header only library for modern C++
 * **Pure select query support**
 * **STL compatible**
 * **Custom types binding support**
-* **CROSS/LEFT/INNER JOIN support**
+* **JOIN support**
 * **Transactions support**
 * **Migrations functionality**
 * **Powerful conditions**
@@ -253,7 +253,6 @@ if(auto sumId = storage.sum(&User::id)){    //  sumId is std::shared_ptr<int>
 //  SELECT TOTAL(id) FROM users
 auto totalId = storage.total(&User::id);
 cout << "totalId = " << totalId << endl;    //  totalId is double (always)
-
 ```
 
 # Where conditions
@@ -537,6 +536,60 @@ for(auto &user : limit5offset10) {
 ```
 
 Please beware that queries `LIMIT 5, 10` and `LIMIT 5 OFFSET 10` mean different. `LIMIT 5, 10` means `LIMIT 10 OFFSET 5`.
+
+# JOIN support
+
+You can perform simple `JOIN`, `CROSS JOIN`, `INNER JOIN`, `LEFT JOIN` or `LEFT OUTER JOIN` in your query. Instead of joined table specify mapped type. Example for doctors and visits:
+
+```c++
+//  SELECT a.doctor_id, a.doctor_name,
+//      c.patient_name, c.vdate
+//  FROM doctors a
+//  LEFT JOIN visits c
+//  ON a.doctor_id=c.doctor_id;
+auto rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
+                            left_join<Visit>(on(is_equal(&Doctor::id, &Visit::doctorId))));
+for(auto &row : rows) {
+    cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+}
+cout << endl;
+```
+
+Simple `JOIN`:
+
+```c++
+//  SELECT a.doctor_id,a.doctor_name,
+//      c.patient_name,c.vdate
+//  FROM doctors a
+//  JOIN visits c
+//  ON a.doctor_id=c.doctor_id;
+rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
+                       join<Visit>(on(is_equal(&Doctor::id, &Visit::doctorId))));
+for(auto &row : rows) {
+    cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+}
+cout << endl;
+```
+
+Two `INNER JOIN`s in one query:
+
+```c++
+//  SELECT
+//      trackid,
+//      tracks.name AS Track,
+//      albums.title AS Album,
+//      artists.name AS Artist
+//  FROM
+//      tracks
+//  INNER JOIN albums ON albums.albumid = tracks.albumid
+//  INNER JOIN artists ON artists.artistid = albums.artistid;
+auto innerJoinRows2 = storage.select(columns(&Track::trackId, &Track::name, &Album::title, &Artist::name),
+                                     inner_join<Album>(on(eq(&Album::albumId, &Track::albumId))),
+                                     inner_join<Artist>(on(eq(&Artist::artistId, &Album::artistId))));
+//  innerJoinRows2 is std::vector<std::tuple<decltype(&Track::trackId), decltype(&Track::name), decltype(&Album::title), decltype(&Artist::name)>>
+```
+
+More join examples can be found in [examples folder](https://github.com/fnc12/sqlite_orm/blob/master/examples/left_and_inner_join.cpp).
 
 # Migrations functionality
 
