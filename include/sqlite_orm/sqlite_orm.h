@@ -3195,7 +3195,7 @@ namespace sqlite_orm {
         std::string string_from_expression(F O::*m, bool noTableName = false) {
             std::stringstream ss;
             if(!noTableName){
-                ss << this->impl.template find_table_name<O>() << ".";
+                ss << " '" << this->impl.template find_table_name<O>() << "'.";
             }
             ss << "\"" << this->impl.column_name(m) << "\"";
             return ss.str();
@@ -3472,41 +3472,41 @@ namespace sqlite_orm {
         template<class O>
         void process_single_condition(std::stringstream &ss, conditions::cross_join_t<O> c) {
             ss << static_cast<std::string>(c) << " ";
-            ss << this->impl.template find_table_name<O>() << " ";
+            ss << " '" << this->impl.template find_table_name<O>() << "' ";
         }
         
         template<class T, class O>
         void process_single_condition(std::stringstream &ss, conditions::inner_join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
             this->process_join_constraint(ss, l.constraint);
         }
         
         template<class T, class O>
         void process_single_condition(std::stringstream &ss, conditions::left_outer_join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
             this->process_join_constraint(ss, l.constraint);
         }
         
         template<class T, class O>
         void process_single_condition(std::stringstream &ss, conditions::left_join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
             this->process_join_constraint(ss, l.constraint);
         }
         
         template<class T, class O>
         void process_single_condition(std::stringstream &ss, conditions::join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
             this->process_join_constraint(ss, l.constraint);
         }
         
         /*template<class T>
         void process_single_condition(std::stringstream &ss, conditions::natural_join_t<T> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
 //            this->process_join_constraint(ss, l.constraint);
         }*/
         
