@@ -442,6 +442,7 @@ void testInsert() {
     storage.sync_schema();
     storage.remove_all<Object>();
     
+    cout << "inserting in a loop" << endl;
     for(auto i = 0; i < 100; ++i) {
         storage.insert(Object{
             0,
@@ -465,6 +466,7 @@ void testInsert() {
         },
     };
     
+    cout << "inserting range" << endl;
     auto countBefore = storage.count<Object>();
     storage.insert_range(initList.begin(),
                          initList.end());
