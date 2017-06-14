@@ -2349,7 +2349,7 @@ namespace sqlite_orm {
         
         void drop_table(const std::string &tableName, sqlite3 *db) {
             std::stringstream ss;
-            ss << "DROP TABLE " << tableName;
+            ss << "DROP TABLE '" << tableName + "'";
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -2429,7 +2429,7 @@ namespace sqlite_orm {
         
         void create_table(sqlite3 *db, const std::string &tableName) {
             std::stringstream ss;
-            ss << "CREATE TABLE " << tableName << " ( ";
+            ss << "CREATE TABLE '" << tableName << "' ( ";
             auto columnsCount = this->table.columns_count();
             auto index = 0;
             this->table.for_each_column([columnsCount, &index, &ss] (auto c) {
@@ -2592,7 +2592,7 @@ namespace sqlite_orm {
         
         std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
             std::vector<table_info> res;
-            auto query = "PRAGMA table_info(" + tableName + ")";
+            auto query = "PRAGMA table_info('" + tableName + "')";
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **) -> int {
@@ -3195,7 +3195,7 @@ namespace sqlite_orm {
         std::string string_from_expression(F O::*m, bool noTableName = false) {
             std::stringstream ss;
             if(!noTableName){
-                ss << this->impl.template find_table_name<O>() << ".";
+                ss << " '" << this->impl.template find_table_name<O>() << "'.";
             }
             ss << "\"" << this->impl.column_name(m) << "\"";
             return ss.str();
@@ -3472,41 +3472,41 @@ namespace sqlite_orm {
         template<class O>
         void process_single_condition(std::stringstream &ss, conditions::cross_join_t<O> c) {
             ss << static_cast<std::string>(c) << " ";
-            ss << this->impl.template find_table_name<O>() << " ";
+            ss << " '" << this->impl.template find_table_name<O>() << "' ";
         }
         
         template<class T, class O>
         void process_single_condition(std::stringstream &ss, conditions::inner_join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
             this->process_join_constraint(ss, l.constraint);
         }
         
         template<class T, class O>
         void process_single_condition(std::stringstream &ss, conditions::left_outer_join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
             this->process_join_constraint(ss, l.constraint);
         }
         
         template<class T, class O>
         void process_single_condition(std::stringstream &ss, conditions::left_join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
             this->process_join_constraint(ss, l.constraint);
         }
         
         template<class T, class O>
         void process_single_condition(std::stringstream &ss, conditions::join_t<T, O> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
             this->process_join_constraint(ss, l.constraint);
         }
         
         /*template<class T>
         void process_single_condition(std::stringstream &ss, conditions::natural_join_t<T> l) {
             ss << static_cast<std::string>(l) << " ";
-            ss << this->impl.template find_table_name<T>() << " ";
+            ss << " '" << this->impl.template find_table_name<T>() << "' ";
 //            this->process_join_constraint(ss, l.constraint);
         }*/
         
@@ -3589,7 +3589,7 @@ namespace sqlite_orm {
 //            impl.template remove_all<O>(db, nullptr, args...);
             auto &impl = this->get_impl<O>();
             std::stringstream ss;
-            ss << "DELETE FROM " << impl.table.name << " ";
+            ss << "DELETE FROM '" << impl.table.name << "' ";
             this->process_conditions(ss, args...);
             auto query = ss.str();
             sqlite3_stmt *stmt;
@@ -3646,7 +3646,7 @@ namespace sqlite_orm {
 //            this->impl.update(o, db);
             auto &impl = this->get_impl<O>();
             std::stringstream ss;
-            ss << "UPDATE " << impl.table.name << " SET ";
+            ss << "UPDATE '" << impl.table.name << "' SET ";
             std::vector<std::string> setColumnNames;
             impl.table.for_each_column( [&] (auto c) {
                 if(!c.template has<constraints::primary_key_t>()) {
@@ -3721,7 +3721,7 @@ namespace sqlite_orm {
             });
             if(tableNamesSet.size()){
                 if(tableNamesSet.size() == 1){
-                    ss << *tableNamesSet.begin() << " ";
+                    ss << " '" << *tableNamesSet.begin() << "' ";
                     ss << static_cast<std::string>(set) << " ";
                     std::vector<std::string> setPairs;
                     set.for_each([this, &setPairs](auto &lhs, auto &rhs){
@@ -3992,7 +3992,7 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-            ss << "FROM " << impl.table.name << " WHERE ";
+            ss << "FROM '" << impl.table.name << "' WHERE ";
             auto primaryKeyColumnName = impl.table.primary_key_column_name();
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
@@ -4060,7 +4060,7 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-            ss << "FROM " << impl.table.name << " WHERE ";
+            ss << "FROM '" << impl.table.name << "' WHERE ";
             auto primaryKeyColumnName = impl.table.primary_key_column_name();
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
@@ -4115,7 +4115,7 @@ namespace sqlite_orm {
             auto &impl = this->get_impl<O>();
             int res = 0;
             std::stringstream ss;
-            ss << "SELECT " << static_cast<std::string>(sqlite_orm::count()) << "(*) FROM " << impl.table.name << " ";
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::count()) << "(*) FROM '" << impl.table.name << "' ";
             this->process_conditions(ss, args...);
             auto query = ss.str();
             auto rc = sqlite3_exec(db,
@@ -4156,7 +4156,7 @@ namespace sqlite_orm {
             ss << "SELECT " << static_cast<std::string>(sqlite_orm::count(0)) << "(";
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << ") FROM "<< impl.table.name << " ";
+                ss << columnName << ") FROM '"<< impl.table.name << "' ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
@@ -4201,7 +4201,7 @@ namespace sqlite_orm {
             ss << "SELECT " << static_cast<std::string>(sqlite_orm::avg(0)) << "(";
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << ") FROM "<< impl.table.name << " ";
+                ss << columnName << ") FROM '"<< impl.table.name << "' ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
@@ -4246,7 +4246,7 @@ namespace sqlite_orm {
             ss << "SELECT " << static_cast<std::string>(sqlite_orm::group_concat(0)) << "(";
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << ") FROM "<< impl.table.name << " ";
+                ss << columnName << ") FROM '"<< impl.table.name << "' ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
@@ -4291,7 +4291,7 @@ namespace sqlite_orm {
             ss << "SELECT " << static_cast<std::string>(sqlite_orm::group_concat(0)) << "(";
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << ",\"" << y << "\") FROM "<< impl.table.name << " ";
+                ss << columnName << ",\"" << y << "\") FROM '"<< impl.table.name << "' ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
@@ -4341,7 +4341,7 @@ namespace sqlite_orm {
             ss << "SELECT " << static_cast<std::string>(sqlite_orm::max(0)) << "(";
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << ") FROM " << impl.table.name << " ";
+                ss << columnName << ") FROM '" << impl.table.name << "' ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
@@ -4388,7 +4388,7 @@ namespace sqlite_orm {
             ss << "SELECT " << static_cast<std::string>(sqlite_orm::min(0)) << "(";
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << ") FROM " << impl.table.name << " ";
+                ss << columnName << ") FROM '" << impl.table.name << "' ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
@@ -4435,7 +4435,7 @@ namespace sqlite_orm {
             ss << "SELECT " << static_cast<std::string>(sqlite_orm::sum(0)) << "(";
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
-                ss << columnName << ") FROM "<< impl.table.name << " ";
+                ss << columnName << ") FROM '"<< impl.table.name << "' ";
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
@@ -4485,7 +4485,7 @@ namespace sqlite_orm {
                     ss << "FROM " ;
                     std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                     for(size_t i = 0; i < tableNames.size(); ++i) {
-                        ss << tableNames[i];
+                        ss << " '" << tableNames[i] << "' ";
                         if(i < tableNames.size() - 1) {
                             ss << ",";
                         }
@@ -4537,7 +4537,7 @@ namespace sqlite_orm {
                     ss << "FROM " ;
                     std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                     for(size_t i = 0; i < tableNames.size(); ++i) {
-                        ss << tableNames[i];
+                        ss << " '" << tableNames[i] << "' ";
                         if(i < tableNames.size() - 1) {
                             ss << ",";
                         }
@@ -4614,7 +4614,7 @@ namespace sqlite_orm {
                 ss << " FROM ";
                 std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
                 for(size_t i = 0; i < tableNames.size(); ++i) {
-                    ss << tableNames[i];
+                    ss << " '" << tableNames[i] << "' ";
                     if(int(i) < int(tableNames.size()) - 1) {
                         ss << ",";
                     }
@@ -4677,7 +4677,7 @@ namespace sqlite_orm {
             }
             auto &impl = get_impl<O>();
             std::stringstream ss;
-            ss << "REPLACE INTO " << impl.table.name << " (";
+            ss << "REPLACE INTO '" << impl.table.name << "' (";
             auto columnNames = impl.table.column_names();
             auto columnNamesCount = columnNames.size();
             for(size_t i = 0; i < columnNamesCount; ++i) {
@@ -4738,7 +4738,7 @@ namespace sqlite_orm {
             auto &impl = get_impl<O>();
             int res = 0;
             std::stringstream ss;
-            ss << "INSERT INTO " << impl.table.name << " (";
+            ss << "INSERT INTO '" << impl.table.name << "' (";
             std::vector<std::string> columnNames;
             impl.table.for_each_column([&] (auto c) {
                 if(!c.template has<constraints::primary_key_t>()) {
