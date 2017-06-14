@@ -93,8 +93,17 @@ int main(int argc, char **argv) {
         "South-Hall",
         45000.00,
     });
-    storage.insert_range(otherEmployees.begin(),
-                         otherEmployees.end());
+    //  transaction is optional. It is used here to optimize sqlite usage - every insert opens
+    //  and closes database. So triple insert will open and close the db three times.
+    //  Transaction openes and closes the db only once.
+    storage.transaction([&]{
+        for(auto &employee : otherEmployees) {
+            storage.insert(employee);
+        }
+        return true;
+    });
+    /*storage.insert_range(otherEmployees.begin(),
+                         otherEmployees.end());*/
     
     Employee james{
         -1,
