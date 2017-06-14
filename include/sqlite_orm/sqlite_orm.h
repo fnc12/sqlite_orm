@@ -5196,7 +5196,7 @@ namespace sqlite_orm {
                         tableNames.push_back(argv[i]);
                     }                
                 }
-                return tableNames;
+                return 0;
             },
             &tableNames,
             nullptr);
@@ -5205,6 +5205,7 @@ namespace sqlite_orm {
                 auto msg = sqlite3_errmsg(db);
                 throw std::runtime_error(msg);
             }
+            return tableNames;
         }        
         
         
