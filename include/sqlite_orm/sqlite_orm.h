@@ -5168,6 +5168,46 @@ namespace sqlite_orm {
             return this->impl.table_exists(tableName, db);
         }
 
+        /**
+         *  Returns existing permanent table names in database. Doesn't check storage itself - works only with actual database.
+         *  @retturn Returns list of tables in database.
+         */
+        std::vector<std::string> table_names() {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+
+            std::vector<std::string> tableNames;
+            std::string sql = std::string("SELECT name FROM sqlite_master WHERE type='table'");
+            typedef std::vector<std::string> Data;
+            int res = sqlite3_exec(db, sql.c_str(),
+                                   [](void *data, int argc, char **argv, char **columnName) -> int
+            {
+                (void)columnName;
+                Data& tableNames = *(Data*)data;
+                for(int i = 0; i < argc; i++)
+                {
+                    if(argv[i]){
+                        tableNames.push_back(argv[i]);
+                    }                
+                }
+                return 0;
+            },
+            &tableNames,
+            nullptr);
+
+            if(res != SQLITE_OK) {
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
+            return tableNames;
+        }        
+        
         
     protected:
         std::string filename;
