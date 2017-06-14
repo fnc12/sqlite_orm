@@ -2291,6 +2291,27 @@ namespace sqlite_orm {
             return {};
         }
         
+        bool table_exists(const std::string &tableName, sqlite3 *db) {
+            bool res = false;
+            std::stringstream ss;
+            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '" << "table" << "' AND name = '" << tableName << "'";
+            auto query = ss.str();
+            auto rc = sqlite3_exec(db,
+                                   query.c_str(),
+                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
+                                       auto &res = *(bool*)data;
+                                       if(argc){
+                                           res = !!std::atoi(argv[0]);
+                                       }
+                                       return 0;
+                                   }, &res, nullptr);
+            if(rc != SQLITE_OK) {
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
+            return res;
+        }
+        
         void begin_transaction(sqlite3 *db) {
             std::stringstream ss;
             ss << "BEGIN TRANSACTION";
@@ -2525,37 +2546,6 @@ namespace sqlite_orm {
                 ++index;
             });
             return ss.str();
-        }
-        
-        /*template<class O, class I, class HH = typename H::object_type>
-        void remove(I id, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-            Super::template remove<O>(id, db, nullptr);
-        }
-        
-        template<class O, class I, class HH = typename H::object_type>
-        void remove(I id, sqlite3 *db, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
-            
-        }*/
-        
-        bool table_exists(const std::string &tableName, sqlite3 *db) {
-            bool res = false;
-            std::stringstream ss;
-            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '" << "table" << "' AND name = '" << tableName << "'";
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db,
-                                   query.c_str(),
-                                   [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
-                                       auto &res = *(bool*)data;
-                                       if(argc){
-                                           res = !!std::atoi(argv[0]);
-                                       }
-                                       return 0;
-                                   }, &res, nullptr);
-            if(rc != SQLITE_OK) {
-                auto msg = sqlite3_errmsg(db);
-                throw std::runtime_error(msg);
-            }
-            return res;
         }
         
         std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {

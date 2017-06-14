@@ -525,6 +525,12 @@ void testReplace() {
     assert(storage.count<Object>() == 4);
 }
 
+void testEmptyStorage() {
+    
+    auto storage = make_storage("empty.sqlite");
+    storage.table_exists("table");
+}
+
 int main() {
     
     testTypeParsing();
@@ -538,4 +544,6 @@ int main() {
     testSelect();
     
     testRemove();
+    
+    testEmptyStorage();
 }
