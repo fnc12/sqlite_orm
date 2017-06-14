@@ -4723,7 +4723,7 @@ namespace sqlite_orm {
         }
         
         template<class It>
-        void insert_range(It from, It to) {
+        void replace_range(It from, It to) {
             typedef typename std::iterator_traits<It>::value_type O;
             this->assert_mapped_type<O>();
             
@@ -4736,16 +4736,9 @@ namespace sqlite_orm {
                 db = this->currentTransaction->get_db();
             }
             auto &impl = get_impl<O>();
-            
             std::stringstream ss;
-            ss << "INSERT INTO '" << impl.table.name << "' (";
-            std::vector<std::string> columnNames;
-            impl.table.for_each_column([&] (auto c) {
-                if(!c.template has<constraints::primary_key_t>()) {
-                    columnNames.emplace_back(c.name);
-                }
-            });
-            
+            ss << "REPLACE INTO '" << impl.table.name << "' (";
+            auto columnNames = impl.table.column_names();
             auto columnNamesCount = columnNames.size();
             for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << "\"" << columnNames[i] << "\"";
@@ -4785,10 +4778,8 @@ namespace sqlite_orm {
                 for(auto it = from; it != to; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt] (auto c) {
-                        if(!c.template has<constraints::primary_key_t>()){
-                            auto &value = o.*c.member_pointer;
-                            statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
-                        }
+                        auto &value = o.*c.member_pointer;
+                        statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
                     });
                 }
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
@@ -4871,6 +4862,87 @@ namespace sqlite_orm {
                 throw std::runtime_error(msg);
             }
             return res;
+        }
+        
+        template<class It>
+        void insert_range(It from, It to) {
+            typedef typename std::iterator_traits<It>::value_type O;
+            this->assert_mapped_type<O>();
+            
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            auto &impl = get_impl<O>();
+            
+            std::stringstream ss;
+            ss << "INSERT INTO '" << impl.table.name << "' (";
+            std::vector<std::string> columnNames;
+            impl.table.for_each_column([&] (auto c) {
+                if(!c.template has<constraints::primary_key_t>()) {
+                    columnNames.emplace_back(c.name);
+                }
+            });
+            
+            auto columnNamesCount = columnNames.size();
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << "\"" << columnNames[i] << "\"";
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }else{
+                    ss << ") ";
+                }
+            }
+            ss << "VALUES ";
+            auto valuesString = [columnNamesCount]{
+                std::stringstream ss;
+                ss << "(";
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss << "?";
+                    if(i < columnNamesCount - 1) {
+                        ss << ", ";
+                    }else{
+                        ss << ")";
+                    }
+                }
+                return ss.str();
+            }();
+            auto valuesCount = static_cast<int>(std::distance(from, to));
+            for(auto i = 0; i < valuesCount; ++i) {
+                ss << valuesString;
+                if(i < valuesCount - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            auto query = ss.str();
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer{stmt};
+                auto index = 1;
+                for(auto it = from; it != to; ++it) {
+                    auto &o = *it;
+                    impl.table.for_each_column([&o, &index, &stmt] (auto c) {
+                        if(!c.template has<constraints::primary_key_t>()){
+                            auto &value = o.*c.member_pointer;
+                            statement_binder<typename decltype(c)::field_type>().bind(stmt, index++, value);
+                        }
+                    });
+                }
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    //..
+                }else{
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
+                }
+            }else {
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
         }
         
         /**

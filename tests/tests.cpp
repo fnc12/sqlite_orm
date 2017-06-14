@@ -418,11 +418,122 @@ void testRemove() {
     
 }
 
+void testInsert() {
+    
+    struct Object {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("test_insert.sqlite",
+                                make_table("objects",
+                                           make_column("id",
+                                                       &Object::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &Object::name)));
+    
+    storage.sync_schema();
+    storage.remove_all<Object>();
+    
+    for(auto i = 0; i < 100; ++i) {
+        storage.insert(Object{
+            0,
+            "Skillet",
+        });
+        assert(storage.count<Object>() == i + 1);
+    }
+    
+    auto initList = {
+        Object{
+            0,
+            "Insane",
+        },
+        Object{
+            0,
+            "Super",
+        },
+        Object{
+            0,
+            "Sun",
+        },
+    };
+    
+    auto countBefore = storage.count<Object>();
+    storage.insert_range(initList.begin(),
+                         initList.end());
+    assert(storage.count<Object>() == countBefore + initList.size());
+    
+    
+}
+
+void testReplace() {
+    
+    struct Object {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("test_replace.sqlite",
+                                make_table("objects",
+                                           make_column("id",
+                                                       &Object::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &Object::name)));
+    
+    storage.sync_schema();
+    storage.remove_all<Object>();
+    
+    storage.replace(Object{
+        100,
+        "Baby",
+    });
+    assert(storage.count<Object>() == 1);
+    auto baby = storage.get<Object>(100);
+    assert(baby.id == 100);
+    assert(baby.name == "Baby");
+    
+    storage.replace(Object{
+        200,
+        "Time",
+    });
+    assert(storage.count<Object>() == 2);
+    auto time = storage.get<Object>(200);
+    assert(time.id == 200);
+    assert(time.name == "Time");
+    storage.replace(Object{
+        100,
+        "Ototo",
+    });
+    assert(storage.count<Object>() == 2);
+    auto ototo = storage.get<Object>(100);
+    assert(ototo.id == 100);
+    assert(ototo.name == "Ototo");
+    
+    auto initList = {
+        Object{
+            300,
+            "Iggy",
+        },
+        Object{
+            400,
+            "Azalea",
+        },
+    };
+    storage.replace_range(initList.begin(), initList.end());
+    assert(storage.count<Object>() == 4);
+}
+
 int main() {
     
     testTypeParsing();
     
     testSyncSchema();
+    
+    testInsert();
+    
+    testReplace();
     
     testSelect();
     
