@@ -5191,7 +5191,7 @@ namespace sqlite_orm {
                 {
                     (void)columnName;
                     Data& tableNames = *(Data*)data;
-                    for(uint16_t i = 0; i < argc; i++)
+                    for(int i = 0; i < argc; i++)
                     {
                         if(argv[i]){
                             tableNames.push_back(argv[i]);
