@@ -4905,9 +4905,9 @@ namespace sqlite_orm {
             auto db = this->currentTransaction->get_db();
             auto shouldCommit = f();
             if(shouldCommit){
-                impl.commit(db);
+                this->impl.commit(db);
             }else{
-                impl.rollback(db);
+                this->impl.rollback(db);
             }
             if(!inMemory){
                 this->currentTransaction = nullptr;
@@ -4929,7 +4929,7 @@ namespace sqlite_orm {
                 if(!this->currentTransaction) throw std::runtime_error("cannot commit - no transaction is active");
             }
             auto db = this->currentTransaction->get_db();
-            impl.commit(db);
+            this->impl.commit(db);
             if(!inMemory){
                 this->currentTransaction = nullptr;
             }
@@ -4940,7 +4940,7 @@ namespace sqlite_orm {
                 if(!this->currentTransaction) throw std::runtime_error("cannot rollback - no transaction is active");
             }
             auto db = this->currentTransaction->get_db();
-            impl.rollback(db);
+            this->impl.rollback(db);
             if(!inMemory){
                 this->currentTransaction = nullptr;
             }
