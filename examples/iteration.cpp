@@ -51,19 +51,19 @@ int main(int argc, char **argv) {
     //  iterate through heros - iteration takes less memory than `get_all` because
     //  iteration fetches row by row once it is needed. If you break at any iteration
     //  statement will be cleared without fetching remaining rows.
-    for(auto &hero : storage.view<MarvelHero>()) {
+    for(auto &hero : storage.iterate<MarvelHero>()) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     
     cout << "====" << endl;
     
     //  one can iterate with custom WHERE conditions..
-    for(auto &hero : storage.view<MarvelHero>(where(is_equal(&MarvelHero::name, "Thor")))) {
+    for(auto &hero : storage.iterate<MarvelHero>(where(is_equal(&MarvelHero::name, "Thor")))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     
     cout << "Heros with LENGTH(name) < 6 :" << endl;
-    for(auto &hero : storage.view<MarvelHero>(where(lesser_than(length(&MarvelHero::name), 6)))) {
+    for(auto &hero : storage.iterate<MarvelHero>(where(lesser_than(length(&MarvelHero::name), 6)))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     

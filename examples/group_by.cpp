@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
     
     cout << endl << "Now, our table has the following records with duplicate names:" << endl << endl;
     
-    for(auto &employee : storage.view<Employee>()) {
+    for(auto &employee : storage.iterate<Employee>()) {
         cout << storage.dump(employee) << endl;
     }
     

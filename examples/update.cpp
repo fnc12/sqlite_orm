@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     stor->replace(Employee{ 7, "James", 24, "Houston", 10000.0 });
     
     //  show 'COMPANY' table contents
-    for(auto &employee : stor->view<Employee>()) {
+    for(auto &employee : stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;
@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
     stor->update(employee6);    //  actually this call updates all non-primary-key columns' values to passed object's fields
     
     //  show 'COMPANY' table contents again
-    for(auto &employee : stor->view<Employee>()) {
+    for(auto &employee : stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;
@@ -78,7 +78,7 @@ int main(int argc, char **argv) {
                      where(lesser_than(&Employee::age, 30)));
     
     //  show 'COMPANY' table contents one more time
-    for(auto &employee : stor->view<Employee>()) {
+    for(auto &employee : stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;
