@@ -21,6 +21,7 @@ using std::cout;
 using std::endl;
 
 void testTypeParsing() {
+    cout << __func__ << endl;
     
     //  int
     assert(*to_sqlite_type("INT") == sqlite_type::INTEGER);
@@ -101,6 +102,7 @@ void testTypeParsing() {
  *  Next we call `sync_schema(true)` and assert that all users are saved. This test tests whether REMOVE COLUMN imitation works well.
  */
 void testSyncSchema() {
+    cout << __func__ << endl;
     
     //  this is an old version of user..
     struct UserBefore {
@@ -215,6 +217,8 @@ void testSyncSchema() {
 }
 
 void testSelect() {
+    cout << __func__ << endl;
+    
     sqlite3 *db;
     auto dbFileName = "test.db";
     auto rc = sqlite3_open(dbFileName, &db);
@@ -395,6 +399,7 @@ void testSelect() {
 }
 
 void testRemove() {
+    cout << __func__ << endl;
     
     struct Object {
         int id;
@@ -419,6 +424,7 @@ void testRemove() {
 }
 
 void testInsert() {
+    cout << __func__ << endl;
     
     struct Object {
         int id;
@@ -468,6 +474,7 @@ void testInsert() {
 }
 
 void testReplace() {
+    cout << __func__ << endl;
     
     struct Object {
         int id;
@@ -526,6 +533,7 @@ void testReplace() {
 }
 
 void testEmptyStorage() {
+    cout << __func__ << endl;
     
     auto storage = make_storage("empty.sqlite");
     storage.table_exists("table");
