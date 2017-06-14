@@ -19,6 +19,8 @@ install:
   - sudo apt-get install g++-4.9
 
 script:
+  - clang++ -std=c++1y tests/tests.cpp -I include/sqlite_orm/ -lsqlite3 -o tests.out
+  - ./tests.out
   - clang++ -std=c++1y examples/core_functions.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
   - ./a.out
   - clang++ -std=c++1y examples/distinct.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
@@ -49,5 +51,4 @@ script:
   - ./a.out
   - clang++ -std=c++1y examples/blob.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
   - ./a.out
-  - clang++ -std=c++1y tests/tests.cpp -I include/sqlite_orm/ -lsqlite3 -o tests.out
-  - ./tests.out
+

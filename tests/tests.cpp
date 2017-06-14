@@ -533,6 +533,8 @@ void testEmptyStorage() {
 
 int main() {
     
+    cout << "version = " << make_storage("").libversion() << endl;
+    
     testTypeParsing();
     
     testSyncSchema();
