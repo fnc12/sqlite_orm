@@ -134,17 +134,21 @@ int main(int argc, char **argv) {
         return false;
     });
     
-    /*//  SELECT CHAR(67,72,65,82)
-    auto charString = storage.select(char_(67,72,65,82)).front();
-    cout << "SELECT CHAR(67,72,65,82) = *" << charString << "*" << endl;*/
+#if SQLITE_VERSION_NUMBER >= 3007016
     
-    //  SELECT LOWER(name) || '@marvel.com' FROM marvel
-    /*auto emails = storage.select(conc(lower(&MarvelHero::name), "@marvel.com"));
+    //  SELECT CHAR(67,72,65,82)
+    auto charString = storage.select(char_(67,72,65,82)).front();
+    cout << "SELECT CHAR(67,72,65,82) = *" << charString << "*" << endl;
+    
+    /*//  SELECT LOWER(name) || '@marvel.com' FROM marvel
+    auto emails = storage.select(conc(lower(&MarvelHero::name), "@marvel.com"));
     cout << "emails.size = " << emails.size() << endl;
     for(auto &email : emails) {
         cout << email << endl;
     }
     cout << endl;*/
+    
+#endif
     
     return 0;
 }
