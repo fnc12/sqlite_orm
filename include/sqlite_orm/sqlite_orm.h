@@ -5151,6 +5151,23 @@ namespace sqlite_orm {
             }
         }
         
+        /*!
+        * Releases freeable memory of database. It is function can/should be called periodically by application,
+        * if application has less memory usage constraint.
+        */
+        int sqlite3_db_release_memory() {
+            std::shared_ptr<database_connection> connection;
+            sqlite3 *db;
+            if(!this->currentTransaction){
+                connection = std::make_shared<database_connection>(this->filename);
+                db = connection->get_db();
+            }else{
+                db = this->currentTransaction->get_db();
+            }
+            return ::sqlite3_db_release_memory(db);
+        }
+        
+        
         /**
          *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
          *  Note: table can be not mapped to a storage
