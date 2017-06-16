@@ -401,25 +401,25 @@ void testSelect() {
 void testRemove() {
     cout << __func__ << endl;
     
-    struct Object {
-        int id;
-        std::string name;
-    };
-    
-    auto storage = make_storage("test_remove.sqlite",
-                                make_table("objects",
-                                           make_column("id",
-                                                       &Object::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &Object::name)));
-    storage.sync_schema();
-    storage.remove_all<Object>();
-    
-    auto id1 = storage.insert(Object{ 0, "Skillet"});
-    assert(storage.count<Object>() == 1);
-    storage.remove<Object>(id1);
-    assert(storage.count<Object>() == 0);
+struct Object {
+    int id;
+    std::string name;
+};
+
+auto storage = make_storage("test_remove.sqlite",
+                            make_table("objects",
+                                       make_column("id",
+                                                   &Object::id,
+                                                   primary_key()),
+                                       make_column("name",
+                                                   &Object::name)));
+storage.sync_schema();
+storage.remove_all<Object>();
+
+auto id1 = storage.insert(Object{ 0, "Skillet"});
+assert(storage.count<Object>() == 1);
+storage.remove<Object>(id1);
+assert(storage.count<Object>() == 0);
     
 }
 

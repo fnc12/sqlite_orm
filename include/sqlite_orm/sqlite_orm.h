@@ -2273,11 +2273,6 @@ namespace sqlite_orm {
             return std::integral_constant<bool, false>::value;
         }
         
-        /*template<class O, class I>
-        void remove(I, sqlite3 *, std::nullptr_t) {
-            throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in remove");
-        }*/
-        
         template<class O>
         std::string dump(const O &, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
