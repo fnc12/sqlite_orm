@@ -175,7 +175,7 @@ Container must be STL compatible (must have `push_back(T&&)` function in this ca
 `get_all` can be too heavy for memory so you can iterate row by row (i.e. object by object):
 
 ```c++
-for(auto &user : storage.view<User>()) {
+for(auto &user : storage.iterate<User>()) {
     cout << storage.dump(user) << endl;
 }
 ```
