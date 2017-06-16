@@ -21,38 +21,40 @@ install:
 script:
   - wget https://sqlite.org/2017/sqlite-amalgamation-3190300.zip 
   - unzip sqlite-amalgamation-3190300.zip
+  - mkdir sqlite_amalgamation
+  - cp -r sqlite-amalgamation-3190300/* sqlite_amalgamation
   - rm sqlite-amalgamation-3190300.zip
   - clang -c sqlite-amalgamation-3190300/sqlite3.c -o sqlite.static
-  - clang++ -std=c++1y tests/tests.cpp -I include/sqlite_orm/ -lsqlite3 -o tests.out
+  - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o tests.out
   - ./tests.out
-  - clang++ -std=c++1y examples/core_functions.cpp sqlite.static -I include/sqlite_orm/ -I sqlite-amalgamation-3190300/ -ldl -lpthread -o a.out
+  - clang++ -std=c++1y examples/core_functions.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/distinct.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/distinct.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/enum_binding.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/enum_binding.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/group_by.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/group_by.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/in_memory.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/in_memory.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/iteration.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/iteration.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/key_value.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/key_value.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/nullable_enum_binding.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/nullable_enum_binding.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/select.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/select.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/subentities.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/subentities.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/insert.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/insert.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/update.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/update.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/multi_table_select.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/multi_table_select.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/cross_join.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/cross_join.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
-  - clang++ -std=c++1y examples/blob.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/blob.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
 
