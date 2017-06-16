@@ -5151,10 +5151,12 @@ namespace sqlite_orm {
             }
         }
         
+#indef SQLITE_VERSION_NUMBER > 3007010
         /**
         * \fn db_release_memory
         * \brief Releases freeable memory of database. It is function can/should be called periodically by application,
         * if application has less memory usage constraint.
+        * \note sqlite3_db_release_memory added in 3.7.10 https://sqlite.org/changes.html
         */
         int db_release_memory() {
             std::shared_ptr<database_connection> connection;
@@ -5167,7 +5169,7 @@ namespace sqlite_orm {
             }
             return sqlite3_db_release_memory(db);
         }
-        
+#endif         
         
         /**
          *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
