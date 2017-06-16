@@ -19,9 +19,13 @@ install:
   - sudo apt-get install g++-4.9
 
 script:
+  - wget https://sqlite.org/2017/sqlite-amalgamation-3190300.zip 
+  - unzip sqlite-amalgamation-3190300.zip
+  - rm sqlite-amalgamation-3190300.zip
+  - clang -c sqlite-amalgamation-3190300/sqlite3.c -o sqlite.static
   - clang++ -std=c++1y tests/tests.cpp -I include/sqlite_orm/ -lsqlite3 -o tests.out
   - ./tests.out
-  - clang++ -std=c++1y examples/core_functions.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
+  - clang++ -std=c++1y examples/core_functions.cpp sqlite.static -I include/sqlite_orm/ -I sqlite-amalgamation-3190300/ -ldl -lpthread -o a.out
   - ./a.out
   - clang++ -std=c++1y examples/distinct.cpp -I include/sqlite_orm/ -lsqlite3 -o a.out
   - ./a.out
