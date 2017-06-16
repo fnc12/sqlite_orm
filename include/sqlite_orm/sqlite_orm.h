@@ -5146,7 +5146,7 @@ namespace sqlite_orm {
             }
         }
         
-#indef SQLITE_VERSION_NUMBER > 3007010
+#if SQLITE_VERSION_NUMBER >= 3007010
         /**
         * \fn db_release_memory
         * \brief Releases freeable memory of database. It is function can/should be called periodically by application,
