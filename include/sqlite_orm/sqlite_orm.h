@@ -5152,11 +5152,11 @@ namespace sqlite_orm {
         }
         
         /**
-        * \fn release_memory
+        * \fn db_release_memory
         * \brief Releases freeable memory of database. It is function can/should be called periodically by application,
         * if application has less memory usage constraint.
         */
-        int release_memory() {
+        int db_release_memory() {
             std::shared_ptr<database_connection> connection;
             sqlite3 *db;
             if(!this->currentTransaction){
