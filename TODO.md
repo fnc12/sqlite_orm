@@ -12,3 +12,4 @@
 * select rowid
 * `INDEX`
 * `ATTACH`
+* operators +, -, *, /
