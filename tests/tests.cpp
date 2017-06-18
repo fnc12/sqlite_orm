@@ -401,25 +401,25 @@ void testSelect() {
 void testRemove() {
     cout << __func__ << endl;
     
-struct Object {
-    int id;
-    std::string name;
-};
-
-auto storage = make_storage("test_remove.sqlite",
-                            make_table("objects",
-                                       make_column("id",
-                                                   &Object::id,
-                                                   primary_key()),
-                                       make_column("name",
-                                                   &Object::name)));
-storage.sync_schema();
-storage.remove_all<Object>();
-
-auto id1 = storage.insert(Object{ 0, "Skillet"});
-assert(storage.count<Object>() == 1);
-storage.remove<Object>(id1);
-assert(storage.count<Object>() == 0);
+    struct Object {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("test_remove.sqlite",
+                                make_table("objects",
+                                           make_column("id",
+                                                       &Object::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &Object::name)));
+    storage.sync_schema();
+    storage.remove_all<Object>();
+    
+    auto id1 = storage.insert(Object{ 0, "Skillet"});
+    assert(storage.count<Object>() == 1);
+    storage.remove<Object>(id1);
+    assert(storage.count<Object>() == 0);
     
 }
 
@@ -451,8 +451,7 @@ void testInsert() {
         assert(storage.count<Object>() == i + 1);
     }
     
-    //  TODO: insert_range available from sqlite 3.7.11+ . Gotta increase travis sqlite version to test it
-    /*auto initList = {
+    auto initList = {
         Object{
             0,
             "Insane",
@@ -471,7 +470,7 @@ void testInsert() {
     auto countBefore = storage.count<Object>();
     storage.insert_range(initList.begin(),
                          initList.end());
-    assert(storage.count<Object>() == countBefore + initList.size());*/
+    assert(storage.count<Object>() == countBefore + initList.size());
     
     
 }
@@ -521,8 +520,7 @@ void testReplace() {
     assert(ototo.id == 100);
     assert(ototo.name == "Ototo");
     
-    //  TODO: replace_range available from sqlite 3.7.11+ . Gotta increase travis sqlite version to test it
-    /*auto initList = {
+    auto initList = {
         Object{
             300,
             "Iggy",
@@ -533,7 +531,7 @@ void testReplace() {
         },
     };
     storage.replace_range(initList.begin(), initList.end());
-    assert(storage.count<Object>() == 4);*/
+    assert(storage.count<Object>() == 4);
 }
 
 void testEmptyStorage() {
