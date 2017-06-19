@@ -541,6 +541,100 @@ void testEmptyStorage() {
     storage.table_exists("table");
 }
 
+void testTransactionGuard() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("test_transaction_guard.sqlite",
+                                make_table("objects",
+                                           make_column("id",
+                                                       &Object::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &Object::name)));
+    
+    storage.sync_schema();
+    storage.remove_all<Object>();
+    
+    storage.insert(Object{0, "Jack"});
+    
+    //  insert, call make a storage to cakk an exception and check that rollback was fired
+    auto countBefore = storage.count<Object>();
+    try{
+        auto guard = storage.transaction_guard();
+        
+        storage.insert(Object{0, "John"});
+        
+        storage.get<Object>(-1);
+        
+        assert(false);
+    }catch(...){
+        auto countNow = storage.count<Object>();
+        
+        assert(countBefore == countNow);
+    }
+    
+    //  check that one can call other transaction functions without exceptions
+    storage.transaction([&]{return false;});
+    
+    //  commit explicitly and check that after exception data was saved
+    countBefore = storage.count<Object>();
+    try{
+        auto guard = storage.transaction_guard();
+        storage.insert(Object{0, "John"});
+        guard.commit();
+        storage.get<Object>(-1);
+        assert(false);
+    }catch(...){
+        auto countNow = storage.count<Object>();
+        
+        assert(countNow == countBefore + 1);
+    }
+    
+    //  rollback explicitly
+    countBefore = storage.count<Object>();
+    try{
+        auto guard = storage.transaction_guard();
+        storage.insert(Object{0, "Michael"});
+        guard.rollback();
+        storage.get<Object>(-1);
+        assert(false);
+    }catch(...){
+        auto countNow = storage.count<Object>();
+        assert(countNow == countBefore);
+    }
+    
+    //  commit on exception
+    countBefore = storage.count<Object>();
+    try{
+        auto guard = storage.transaction_guard();
+        guard.commit_on_destroy = true;
+        storage.insert(Object{0, "Michael"});
+        storage.get<Object>(-1);
+        assert(false);
+    }catch(...){
+        auto countNow = storage.count<Object>();
+        assert(countNow == countBefore + 1);
+    }
+    
+    //  work witout exception
+    countBefore = storage.count<Object>();
+    try{
+        auto guard = storage.transaction_guard();
+        guard.commit_on_destroy = true;
+        storage.insert(Object{0, "Lincoln"});
+        
+    }catch(...){
+        assert(0);
+    }
+    auto countNow = storage.count<Object>();
+    assert(countNow == countBefore + 1);
+}
+
 int main() {
     
     cout << "version = " << make_storage("").libversion() << endl;
@@ -558,4 +652,6 @@ int main() {
     testRemove();
     
     testEmptyStorage();
+    
+    testTransactionGuard();
 }
