@@ -4916,6 +4916,9 @@ namespace sqlite_orm {
         void replace_range(It from, It to) {
             typedef typename std::iterator_traits<It>::value_type O;
             this->assert_mapped_type<O>();
+            if(from == to) {
+                return;
+            }
             
             std::shared_ptr<internal::database_connection> connection;
             sqlite3 *db;
@@ -5070,6 +5073,9 @@ namespace sqlite_orm {
         void insert_range(It from, It to) {
             typedef typename std::iterator_traits<It>::value_type O;
             this->assert_mapped_type<O>();
+            if(from == to) {
+                return;
+            }
             
             std::shared_ptr<internal::database_connection> connection;
             sqlite3 *db;

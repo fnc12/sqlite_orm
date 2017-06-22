@@ -473,6 +473,10 @@ void testInsert() {
     assert(storage.count<Object>() == countBefore + initList.size());
     
     
+    //  test empty container
+    std::vector<Object> emptyVector;
+    storage.insert_range(emptyVector.begin(),
+                          emptyVector.end());
 }
 
 void testReplace() {
@@ -532,6 +536,11 @@ void testReplace() {
     };
     storage.replace_range(initList.begin(), initList.end());
     assert(storage.count<Object>() == 4);
+    
+    //  test empty container
+    std::vector<Object> emptyVector;
+    storage.replace_range(emptyVector.begin(),
+                          emptyVector.end());
 }
 
 void testEmptyStorage() {
