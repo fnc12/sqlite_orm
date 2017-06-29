@@ -2118,7 +2118,7 @@ namespace sqlite_orm {
         }
         
         long extract(sqlite3_stmt *stmt, int columnIndex) {
-            return sqlite3_column_int64(stmt, columnIndex);
+            return static_cast<long>(sqlite3_column_int64(stmt, columnIndex));
         }
     };
     
