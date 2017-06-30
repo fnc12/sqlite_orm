@@ -57,4 +57,8 @@ script:
   - ./a.out
   - clang++ -std=c++1y examples/blob.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
+  - clang++ -std=c++1y examples/private_class_members.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/foreign_key.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
 

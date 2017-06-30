@@ -113,12 +113,6 @@ namespace sqlite_orm {
                 return {this->m, r};
             }
         };
-        
-        /*template<class T>
-        struct is_foreign_key : public std::false_type {};
-        
-        template<class O, class F>
-        struct is_foreign_key<foreign_key_t<O, F>> : public std::true_type {};*/
 #endif
         
     }
@@ -1560,6 +1554,26 @@ namespace sqlite_orm {
             sqlite3 *db = nullptr;
         };
         
+        /**
+         *  Trait class used to define table mapped type by setter/getter/member
+         */
+        template<class T>
+        struct table_type;
+        
+        template<class O, class F>
+        struct table_type<F O::*> {
+            typedef O type;
+        };
+        
+        template<class O, class F>
+        struct table_type<const F& (O::*)() const> {
+            typedef O type;
+        };
+        
+        template<class O, class F>
+        struct table_type<void (O::*)(F)> {
+            typedef O type;
+        };
     }
     
     template<class T>
@@ -1644,11 +1658,15 @@ namespace sqlite_orm {
          *  column_names implementation. Notice that result will be reversed.
          *  It is reversed back in `table` class.
          */
-        std::vector<std::string> column_names() {
+        /*std::vector<std::string> column_names(typename std::enable_if<internal::is_column<H>::value>::type * = nullptr) {
             auto res = Super::column_names();
             res.emplace_back(col.name);
             return res;
         }
+        
+        std::vector<std::string> column_names(typename std::enable_if<!internal::is_column<H>::value>::type * = nullptr) {
+            return {};
+        }*/
         
         /**
          *  column_names_with implementation. Notice that result will be reversed.
@@ -1670,7 +1688,6 @@ namespace sqlite_orm {
          */
         template<class L>
         void for_each_column(L l){
-//            l(this->col);
             this->apply_to_col_if(l, internal::is_column<column_type>{});
             Super::for_each_column(l);
         }
@@ -1747,9 +1764,14 @@ namespace sqlite_orm {
          *  @return vector of column names of table.
          */
         std::vector<std::string> column_names() {
-            auto res = this->impl.column_names();
+            /*auto res = this->impl.column_names();
             std::reverse(res.begin(),
                          res.end());
+            return res;*/
+            std::vector<std::string> res;
+            this->impl.for_each_column([&res](auto &c){
+                res.push_back(c.name);
+            });
             return res;
         }
         
@@ -1998,7 +2020,6 @@ namespace sqlite_orm {
     struct statement_binder<long> {
         
         int bind(sqlite3_stmt *stmt, int index, const long &value) {
-//            return sqlite3_bind_int(stmt, index++, value);
             return sqlite3_bind_int64(stmt, index, static_cast<sqlite3_int64>(value));
         }
     };
@@ -2415,14 +2436,6 @@ namespace sqlite_orm {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
         }
         
-        /*std::map<std::string, sync_schema_result> sync_schema(sqlite3 *, bool) {
-            return {};
-        }*/
-        
-        std::map<std::string, sync_schema_result> sync_schema_simulate(sqlite3 *, bool) {
-            return {};
-        }
-        
         bool table_exists(const std::string &tableName, sqlite3 *db) {
             bool res = false;
             std::stringstream ss;
@@ -2644,7 +2657,12 @@ namespace sqlite_orm {
         template<class C, class R>
         std::string serialize_column_schema(constraints::foreign_key_t<C, R> fk) {
             std::stringstream ss;
-            ss << "FOREIGN KEY(" << this->column_name(fk.m) << ") REFERENCES artist(artistid)";
+            typedef typename internal::table_type<decltype(fk.r)>::type ref_type;
+            auto refTableName = this->find_table_name<ref_type>();
+            auto refColumnName = this->column_name(fk.r);
+            ss << "FOREIGN KEY(" << this->column_name(fk.m) << ") REFERENCES ";
+//            ss << "artist(artistid)";
+            ss << refTableName << "(" << refColumnName << ") ";
             return ss.str();
         }
         
@@ -2904,16 +2922,20 @@ namespace sqlite_orm {
         }*/
         
 
-        bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
+        static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
                                     std::vector<table_info>& storageTableInfo,
                                     std::vector<table_info>& dbTableInfo)
         {
             bool notEqual = false;
 
+            //  iterate through storage columns
             for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
                 
+                //  get storage's column info
                 auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
                 auto &columnName = storageColumnInfo.name;
+                
+                //  search for a column in db eith the same name
                 auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
                                                    dbTableInfo.end(),
                                                    [&](auto &ti){
@@ -2937,6 +2959,8 @@ namespace sqlite_orm {
                         storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
                         --storageColumnInfoIndex;
                     }else{
+                        
+                        //  undefined type/types
                         notEqual = true;
                         break;
                     }
@@ -3290,7 +3314,8 @@ namespace sqlite_orm {
         impl(impl_),
         inMemory(filename_.empty() or filename_ == ":memory:"){
             if(inMemory){
-                currentTransaction = std::make_shared<internal::database_connection>(this->filename);
+                this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
+                this->on_open_internal(this->currentTransaction->get_db());
             }
         }
         
@@ -3725,6 +3750,17 @@ namespace sqlite_orm {
             this->process_conditions(ss, args...);
         }
         
+        void on_open_internal(sqlite3 *db) {
+            auto rc = sqlite3_exec(db, "PRAGMA foreign_keys = ON", nullptr, nullptr, nullptr);
+            if(rc != SQLITE_OK) {
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
+            if(!this->foreign_keys(db)){
+                throw 1;
+            }
+        }
+        
     public:
         
         template<class T, class ...Args>
@@ -3732,12 +3768,10 @@ namespace sqlite_orm {
             this->assert_mapped_type<T>();
             
             std::shared_ptr<internal::database_connection> connection;
-//            sqlite3 *db;
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
-//                db = connection->get_db();
+                this->on_open_internal(connection->get_db());
             }else{
-//                db = this->currentTransaction->get_db();
                 connection = this->currentTransaction;
             }
             return {*this, connection, args...};
@@ -3752,6 +3786,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -3766,7 +3801,8 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     return;
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else {
                 throw std::runtime_error(sqlite3_errmsg(db));
@@ -3787,6 +3823,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -3845,6 +3882,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -3927,6 +3965,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4147,6 +4186,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4203,6 +4243,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4276,6 +4317,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4345,6 +4387,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4384,6 +4427,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4429,6 +4473,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4474,6 +4519,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4519,6 +4565,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4569,6 +4616,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4616,6 +4664,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4663,6 +4712,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4708,6 +4758,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4760,6 +4811,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4814,6 +4866,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4888,6 +4941,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4909,6 +4963,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -4974,6 +5029,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5056,6 +5112,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5131,6 +5188,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5217,6 +5275,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5232,6 +5291,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5247,6 +5307,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5259,6 +5320,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5297,6 +5359,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5375,6 +5438,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5405,6 +5469,7 @@ namespace sqlite_orm {
             if(!inMemory){
                 if(this->currentTransaction) throw std::runtime_error("cannot start a transaction within a transaction");
                 this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
+                this->on_open_internal(this->currentTransaction->get_db());
             }
             auto db = this->currentTransaction->get_db();
             impl.begin_transaction(db);
@@ -5438,11 +5503,35 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
             return impl.current_timestamp(db);
         }
+        
+    protected:
+        
+        bool foreign_keys(sqlite3 *db) {
+            std::string query = "PRAGMA foreign_keys";
+            auto res = false;
+            auto rc = sqlite3_exec(db,
+                                   query.c_str(),
+                                   [](void *data, int argc, char **argv,char **) -> int {
+                                       auto &res = *(bool*)data;
+                                       if(argc){
+                                           res = row_extrator<bool>().extract(argv[0]);
+                                       }
+                                       return 0;
+                                   }, &res, nullptr);
+            if(rc != SQLITE_OK) {
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
+            return res;
+        }
+        
+    public:
         
         int user_version() {
             std::shared_ptr<internal::database_connection> connection;
@@ -5450,6 +5539,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5477,6 +5567,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5503,6 +5594,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5521,6 +5613,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
@@ -5537,6 +5630,7 @@ namespace sqlite_orm {
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
                 db = connection->get_db();
+                this->on_open_internal(db);
             }else{
                 db = this->currentTransaction->get_db();
             }
