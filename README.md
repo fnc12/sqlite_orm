@@ -328,7 +328,8 @@ cout << "cuteConditions count = " << cuteConditions.size() << endl; //  cuteCond
 Also we can implement `get` by id with `get_all` and `where` like this:
 
 ```c++
-auto idEquals2 = storage.get_all<User>(where(is_equal(2, &User::id)));  //  maps to 'select * from users where ( 2 = id )'
+//  SELECT * FROM users WHERE ( 2 = id )
+auto idEquals2 = storage.get_all<User>(where(is_equal(2, &User::id)));
 cout << "idEquals2 count = " << idEquals2.size() << endl;
 if(idEquals2.size()){
     cout << storage.dump(idEquals2.front()) << endl;
@@ -340,13 +341,15 @@ if(idEquals2.size()){
 Lets try the `IN` operator:
 
 ```c++
-auto evenLesserTen10 = storage.get_all<User>(where(in(&User::id, {2, 4, 6, 8, 10})));   //  maps to select * from users where id in (2, 4, 6, 8, 10)
+//  SELECT * FROM users WHERE id IN (2, 4, 6, 8, 10)
+auto evenLesserTen10 = storage.get_all<User>(where(in(&User::id, {2, 4, 6, 8, 10})));
 cout << "evenLesserTen10 count = " << evenLesserTen10.size() << endl;
 for(auto &user : evenLesserTen10) {
     cout << storage.dump(user) << endl;
 }
 
-auto doesAndWhites = storage.get_all<User>(where(in(&User::lastName, {"Doe", "White"})));   //  maps to select * from users where last_name in ("Doe", "White")
+//  SELECT * FROM users WHERE last_name IN ("Doe", "White")
+auto doesAndWhites = storage.get_all<User>(where(in(&User::lastName, {"Doe", "White"})));
 cout << "doesAndWhites count = " << doesAndWhites.size() << endl;
 for(auto &user : doesAndWhites) {
     cout << storage.dump(user) << endl;
@@ -621,9 +624,10 @@ The best practice is to call this function right after storage creation.
 
 # Transactions
 
-There are two ways to begin and commit/rollback transactions:
+There are three ways to begin and commit/rollback transactions:
 * explicitly call `begin_transaction();`, `rollback();` or `commit();` functions
 * use `transaction` function which begins transaction implicitly and takes a lambda argument which returns true for commit and false for rollback. All storage calls performed in lambda can be commited or rollbacked by returning `true` or `false`.
+* use `transaction_guard` function which returns a guard object which works just like `lock_guard` for `std::mutex`.
 
 Example for explicit call:
 
@@ -686,6 +690,18 @@ if(commited){
     cout << "Commited successfully, go on." << endl;
 }else{
     cerr << "Commit failed, process an error" << endl;
+}
+```
+
+Example for `transaction_guard` function:
+
+```c++
+try{
+  auto guard = storage.transaction_guard(); //  calls BEGIN TRANSACTION and returns guard object
+  user.name = "Paul";
+  auto notExisting = storage.get<User>(-1); //  exception is thrown here, guard calls ROLLBACK in its destructor
+}catch(...){
+  cerr << "exception" << endl;
 }
 ```
 
