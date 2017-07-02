@@ -13,3 +13,4 @@
 * `INDEX`
 * `ATTACH`
 * operators +, -, *, /
+* blob incremental I/O https://sqlite.org/c3ref/blob_open.html
