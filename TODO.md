@@ -1,4 +1,7 @@
 # To do list
+
+`sqlite_orm` is a wonderful library but there are still features that are not implemented. Here you can find a list of them:
+
 * composite key
 * `FOREIGN KEY`
 * `NATURAL JOIN`
