@@ -644,6 +644,47 @@ void testTransactionGuard() {
     assert(countNow == countBefore + 1);
 }
 
+/**
+ *  Created by fixing https://github.com/fnc12/sqlite_orm/issues/42
+ */
+void testEscapeChars() {
+    cout << __func__ << endl;
+    
+    struct Employee {
+        int id;
+        std::string name;
+        int age;
+        std::string address;
+        double salary;
+    };
+    auto storage =  make_storage("test_escape_chars.sqlite",
+                                 make_table("COMPANY",
+                                            make_column("ID",
+                                                        &Employee::id,
+                                                        primary_key()),
+                                            make_column("NAME",
+                                                        &Employee::name),
+                                            make_column("AGE",
+                                                        &Employee::age),
+                                            make_column("ADDRESS",
+                                                        &Employee::address),
+                                            make_column("SALARY",
+                                                        &Employee::salary)));
+    storage.sync_schema();
+    storage.remove_all<Employee>();
+    
+    storage.insert(Employee{
+        0,
+        "Paul'l",
+        20,
+        "Sacramento 20",
+        40000,
+    });
+    
+    auto paulL = storage.get_all<Employee>(where(is_equal(&Employee::name, "Paul'l")));
+    
+}
+
 int main() {
     
     cout << "version = " << make_storage("").libversion() << endl;
@@ -663,4 +704,6 @@ int main() {
     testEmptyStorage();
     
     testTransactionGuard();
+    
+    testEscapeChars();
 }

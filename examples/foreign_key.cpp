@@ -28,6 +28,12 @@ int main(int argc, char **argv) {
     
     using namespace sqlite_orm;
     auto storage = make_storage("foreign_key.sqlite",
+                                make_table("artist",
+                                           make_column("artistid",
+                                                       &Artist::artistId,
+                                                       primary_key()),
+                                           make_column("artistname",
+                                                       &Artist::artistName)),
                                 make_table("track",
                                            make_column("trackid",
                                                        &Track::trackId,
@@ -36,13 +42,7 @@ int main(int argc, char **argv) {
                                                        &Track::trackName),
                                            make_column("trackartist",
                                                        &Track::trackArtist),
-                                           foreign_key(&Track::trackArtist).references(&Artist::artistId)),
-                                make_table("artist",
-                                           make_column("artistid",
-                                                       &Artist::artistId,
-                                                       primary_key()),
-                                           make_column("artistname",
-                                                       &Artist::artistName)));
+                                           foreign_key(&Track::trackArtist).references(&Artist::artistId)));
     /*auto syncSchemaRes =*/ storage.sync_schema();
     /*for(auto &p : syncSchemaRes) {
         cout << p.first << " " << p.second << endl;
