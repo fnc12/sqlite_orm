@@ -32,7 +32,7 @@ SQLite ORM light header only library for modern C++
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
 * **C++ standart code style**
-* **No undefined behaviour** - if something goes wrong lib throws an exeption
+* **No undefined behaviour** - if something goes wrong lib throws an exсeption
 * **In memory database support** - provide `:memory:` or empty filename
 
 `sqlite_orm` library allows to create easy data model mappings to your database schema. It is built to manage (CRUD) objects with a single column with primary key and without it. It also allows you to specify table names and column names explicitly no matter how your classes actually named. Take a look at example:
@@ -701,6 +701,7 @@ try{
   auto guard = storage.transaction_guard(); //  calls BEGIN TRANSACTION and returns guard object
   user.name = "Paul";
   auto notExisting = storage.get<User>(-1); //  exception is thrown here, guard calls ROLLBACK in its destructor
+  guard.commit();
 }catch(...){
   cerr << "exception" << endl;
 }
