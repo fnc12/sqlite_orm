@@ -150,5 +150,19 @@ int main(int argc, char **argv) {
     
 #endif
     
+    //  TRIM examples are taken from here https://www.techonthenet.com/sqlite/functions/trim.php
+    
+    //  SELECT TRIM('   TechOnTheNet.com   ')
+    cout << "trim '   TechOnTheNet.com   ' = '" << storage.select(trim("   TechOnTheNet.com   ")).front() << "'" << endl;
+    
+    //  SELECT TRIM('000123000', '0')
+    cout << "TRIM('000123000', '0') = " << storage.select(trim("000123000", "0")).front() << endl;
+    
+    //  SELECT TRIM('zTOTNxyxzyyy', 'xyz')
+    cout << "SELECT TRIM('zTOTNxyxzyyy', 'xyz') = " << storage.select(trim("zTOTNxyxzyyy", "xyz")).front() << endl;
+    
+    //  SELECT TRIM('42totn6372', '0123456789')
+    cout << "TRIM('42totn6372', '0123456789') = " << storage.select(trim("42totn6372", "0123456789")).front() << endl;
+    
     return 0;
 }

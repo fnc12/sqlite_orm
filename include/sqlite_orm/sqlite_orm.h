@@ -1309,8 +1309,36 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
+         */
+        template<class X>
+        struct trim_single_t {
+            X x;
+            
+            operator std::string() const {
+                return "TRIM";
+            }
+        };
+        
+        /**
+         *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
+         */
+        template<class X, class Y>
+        struct trim_double_t {
+            X x;
+            Y y;
+            
+            operator std::string() const {
+                return static_cast<std::string>(trim_single_t<X>{});
+            }
+        };
+        
 #if SQLITE_VERSION_NUMBER >= 3007016
         
+        /**
+         *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
+         */
         template<class ...Args>
         struct char_t_ {
             std::tuple<Args...> args;
@@ -1331,6 +1359,16 @@ namespace sqlite_orm {
     }
     
 #endif
+    
+    template<class X>
+    core_functions::trim_single_t<X> trim(X x) {
+        return {x};
+    }
+    
+    template<class X, class Y>
+    core_functions::trim_double_t<X, Y> trim(X x, Y y) {
+        return {x, y};
+    }
     
     inline core_functions::changes_t changes() {
         return {};
@@ -3010,6 +3048,16 @@ namespace sqlite_orm {
             typedef std::string type;
         };
         
+        template<class X, class ...Ts>
+        struct column_result_t<core_functions::trim_single_t<X>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class X, class Y, class ...Ts>
+        struct column_result_t<core_functions::trim_double_t<X, Y>, Ts...> {
+            typedef std::string type;
+        };
+        
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::avg_t<T>, Ts...> {
             typedef double type;
@@ -3538,6 +3586,23 @@ namespace sqlite_orm {
         std::string string_from_expression(internal::distinct_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
             std::stringstream ss;
             auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class X, class Y>
+        std::string string_from_expression(core_functions::trim_double_t<X, Y> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.x);
+            auto expr2 = this->string_from_expression(f.y);
+            ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ") ";
+            return ss.str();
+        }
+        
+        template<class X>
+        std::string string_from_expression(core_functions::trim_single_t<X> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.x);
             ss << static_cast<std::string>(f) << "(" << expr << ") ";
             return ss.str();
         }
@@ -4183,6 +4248,19 @@ namespace sqlite_orm {
         template<class T>
         std::set<std::string> parse_table_name(core_functions::length_t<T> &len) {
             return this->parse_table_name(len.t);
+        }
+        
+        template<class X>
+        std::set<std::string> parse_table_name(core_functions::trim_single_t<X> &f) {
+            return this->parse_table_name(f.x);
+        }
+        
+        template<class X, class Y>
+        std::set<std::string> parse_table_name(core_functions::trim_double_t<X, Y> &f) {
+            auto res = this->parse_table_name(f.x);
+            auto res2 = this->parse_table_name(f.y);
+            res.insert(res2.begin(), res2.end());
+            return res;
         }
         
 #if SQLITE_VERSION_NUMBER >= 3007016
