@@ -484,6 +484,12 @@ namespace sqlite_orm {
         template<class O, class T, class ...Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
         
+        template<class T>
+        struct is_foreign_key : std::false_type{};
+        
+        template<class C, class R>
+        struct is_foreign_key<constraints::foreign_key_t<C, R>> : std::true_type{};
+        
     }
     
     template<class L, class R>
@@ -2451,6 +2457,10 @@ namespace sqlite_orm {
             return std::integral_constant<bool, false>::value;
         }
         
+        int foreign_keys_count() {
+            return 0;
+        }
+        
         template<class O>
         std::string dump(const O &, sqlite3 *, std::nullptr_t) {
             throw std::runtime_error("type " + std::string(typeid(O).name()) + " is not mapped to storage in max");
@@ -2609,6 +2619,21 @@ namespace sqlite_orm {
             Super::for_each(l);
             l(this);
         }
+        
+#if SQLITE_VERSION_NUMBER >= 3006019
+        
+        //  returns foreign keys count in table definition
+        int foreign_keys_count(){
+            auto res = 0;
+            this->table.for_each_column_with_constraints([&res](auto c){
+                if(internal::is_foreign_key<decltype(c)>::value) {
+                    ++res;
+                }
+            });
+            return res;
+        }
+        
+#endif
         
         template<class T, class HH = typename H::object_type>
         constexpr bool type_is_mapped(typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
@@ -2867,17 +2892,6 @@ namespace sqlite_orm {
             }
             return res;
         }
-        
-        /*std::map<std::string, sync_schema_result> sync_schema_simulate(sqlite3 *db, bool preserve) {
-            auto res = Super::sync_schema_simulate(db, preserve);
-            res.insert({this->table.name, this->schema_status(db, preserve)});
-            return res;
-        }*/
-        
-        /*std::map<std::string, sync_schema_result> sync_schema(sqlite3 *db, bool preserve) {
-            
-        }*/
-        
 
         static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
                                     std::vector<table_info>& storageTableInfo,
@@ -3803,16 +3817,24 @@ namespace sqlite_orm {
         void on_open_internal(sqlite3 *db) {
             
 #if SQLITE_VERSION_NUMBER >= 3006019
-            this->foreign_keys(db, true);
-            /*auto rc = sqlite3_exec(db, "PRAGMA foreign_keys = ON", nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                auto msg = sqlite3_errmsg(db);
-                throw std::runtime_error(msg);
-            }*/
-            
+            if(this->foreign_keys_count()){
+                this->foreign_keys(db, true);
+            }
 #endif
             
         }
+        
+#if SQLITE_VERSION_NUMBER >= 3006019
+        
+        //  returns foreign keys count in storage definition
+        int foreign_keys_count() {
+            auto res = 0;
+            this->impl.for_each([&res](auto impl){
+                res += impl->foreign_keys_count();
+            });
+            return res;
+        }
+#endif
         
     public:
         
@@ -5403,6 +5425,8 @@ namespace sqlite_orm {
          *  The best practice is to call this function right after storage creation.
          *  @param preserve affects on function behaviour in case it is needed to remove a column. If it is `false` so table will be dropped 
          *  if there is column to remove, if `true` -  table is copies into another table, dropped and copied table is renamed with source table name.
+         *  Warning: sync_schema doesn't check foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info
+         *  please submit an issue https://github.com/fnc12/sqlite_orm/issues
          *  @return std::map with std::string key equal table name and `sync_schema_result` as value. `sync_schema_result` is a enum value that stores 
          *  table state after syncing a schema. `sync_schema_result` can be printed out on std::ostream with `operator<<`.
          */
