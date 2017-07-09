@@ -701,6 +701,7 @@ try{
   auto guard = storage.transaction_guard(); //  calls BEGIN TRANSACTION and returns guard object
   user.name = "Paul";
   auto notExisting = storage.get<User>(-1); //  exception is thrown here, guard calls ROLLBACK in its destructor
+  guard.commit();
 }catch(...){
   cerr << "exception" << endl;
 }
