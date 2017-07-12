@@ -72,19 +72,163 @@ namespace sqlite_orm {
         };
     }
     
+    /**
+     *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
+     */
+    template<class T>
+    struct type_printer;
+    
+    struct integer_printer {
+        inline const std::string& print() {
+            static const std::string res = "INTEGER";
+            return res;
+        }
+    };
+    
+    struct text_printer {
+        inline const std::string& print() {
+            static const std::string res = "TEXT";
+            return res;
+        }
+    };
+    
+    struct real_printer {
+        inline const std::string& print() {
+            static const std::string res = "REAL";
+            return res;
+        }
+    };
+    
+    struct blob_printer {
+        inline const std::string& print() {
+            static const std::string res = "BLOB";
+            return res;
+        }
+    };
+    
+    //Note unsigned/signed char and simple char used for storing integer values, not char values.
+    template<>
+    struct type_printer<unsigned char> : public integer_printer {};
+    
+    template<>
+    struct type_printer<signed char> : public integer_printer {};
+    
+    template<>
+    struct type_printer<char> : public integer_printer {};
+    
+    template<>
+    struct type_printer<unsigned short int> : public integer_printer {};
+    
+    template<>
+    struct type_printer<short> : public integer_printer {};
+    
+    template<>
+    struct type_printer<unsigned int> : public integer_printer {};
+    
+    template<>
+    struct type_printer<int> : public integer_printer {};
+    
+    template<>
+    struct type_printer<unsigned long> : public integer_printer {};
+    
+    template<>
+    struct type_printer<long> : public integer_printer {};
+    
+    template<>
+    struct type_printer<unsigned long long> : public integer_printer {};
+    
+    template<>
+    struct type_printer<long long> : public integer_printer {};
+    
+    template<>
+    struct type_printer<bool> : public integer_printer {};
+    
+    template<>
+    struct type_printer<std::string> : public text_printer {};
+    
+    template<>
+    struct type_printer<const char*> : public text_printer {};
+    
+    template<>
+    struct type_printer<double> : public real_printer {};
+    
+    template<class T>
+    struct type_printer<std::shared_ptr<T>> : public type_printer<T> {};
+    
+    template<class T>
+    struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
+    
+    template<>
+    struct type_printer<std::vector<char>> : public blob_printer {};
+    
     namespace constraints {
         
-        struct autoincrement_t {};
+        struct autoincrement_t {
+            
+            operator std::string() const {
+                return "AUTOINCREMENT";
+            }
+        };
         
-        struct primary_key_t {};
+        struct primary_key_t {
+            int asc_option = 0;    //  0 - none, 1 - asc, -1 - desc
+            
+            operator std::string() const {
+                std::string res = "PRIMARY KEY";
+                switch(this->asc_option){
+                    case 1:
+                        res += " ASC";
+                        break;
+                    case -1:
+                        res += " DESC";
+                        break;
+                }
+                return res;
+            }
+            
+            primary_key_t asc() const {
+                auto res = *this;
+                res.asc_option = 1;
+                return res;
+            }
+            
+            primary_key_t desc() const {
+                auto res = *this;
+                res.asc_option = -1;
+                return res;
+            }
+        };
         
-        struct unique_t {};
+        struct unique_t {
+            
+            operator std::string() const {
+                return "UNIQUE";
+            }
+        };
         
         template<class T>
         struct default_t {
             typedef T value_type;
             
             value_type value;
+            
+            operator std::string() const {
+                /*auto dft = internal::default_value_extractor()(v);
+                if(dft){
+                    res = dft;
+                }*/
+                std::stringstream ss;
+                ss << "DEFAULT ";
+                auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
+                if(needQuotes){
+                    ss << "'";
+                }
+                ss << this->value;
+                if(needQuotes){
+                    ss << "'";
+                }
+                return ss.str();
+            }
         };
         
 #if SQLITE_VERSION_NUMBER >= 3006019
@@ -101,7 +245,7 @@ namespace sqlite_orm {
         };
         
         /**
-         *  C can be a class member pointer, a getter func tion member pointer or setter
+         *  C can be a class member pointer, a getter function member pointer or setter
          *  func member pointer
          */
         template<class C>
@@ -264,95 +408,6 @@ namespace sqlite_orm {
         }
     };
     
-    /**
-     *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
-     */
-    template<class T>
-    struct type_printer;
-    
-    struct integer_printer {
-        inline const std::string& print() {
-            static const std::string res = "INTEGER";
-            return res;
-        }
-    };
-    
-    struct text_printer {
-        inline const std::string& print() {
-            static const std::string res = "TEXT";
-            return res;
-        }
-    };
-    
-    struct real_printer {
-        inline const std::string& print() {
-            static const std::string res = "REAL";
-            return res;
-        }
-    };
-    
-    struct blob_printer {
-        inline const std::string& print() {
-            static const std::string res = "BLOB";
-            return res;
-        }
-    };
-
-	//Note unsigned/signed char and simple char used for storing integer values, not char values.
-    template<>
-    struct type_printer<unsigned char> : public integer_printer {};
-    
-    template<>
-    struct type_printer<signed char> : public integer_printer {};
-
-    template<>
-    struct type_printer<char> : public integer_printer {};
-
-    template<>
-    struct type_printer<unsigned short int> : public integer_printer {};
-
-    template<>
-    struct type_printer<short> : public integer_printer {};
-    
-    template<>
-    struct type_printer<unsigned int> : public integer_printer {};
-    
-    template<>
-    struct type_printer<int> : public integer_printer {};
-    
-    template<>
-    struct type_printer<unsigned long> : public integer_printer {};
-    
-    template<>
-    struct type_printer<long> : public integer_printer {};
-    
-    template<>
-    struct type_printer<unsigned long long> : public integer_printer {};
-    
-    template<>
-    struct type_printer<long long> : public integer_printer {};
-    
-    template<>
-    struct type_printer<bool> : public integer_printer {};
-    
-    template<>
-    struct type_printer<std::string> : public text_printer {};
-    
-    template<>
-    struct type_printer<const char*> : public text_printer {};
-    
-    template<>
-    struct type_printer<double> : public real_printer {};
-    
-    template<class T>
-    struct type_printer<std::shared_ptr<T>> : public type_printer<T> {};
-    
-    template<class T>
-    struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
-    
-    template<>
-    struct type_printer<std::vector<char>> : public blob_printer {};
-    
     namespace internal {
         
         /**
@@ -394,7 +449,7 @@ namespace sqlite_orm {
          *  This class stores single column info. column_t is a pair of [column_name:member_pointer] mapped to a storage
          *  O is a mapped class, e.g. User
          *  T is a mapped class'es field type, e.g. &User::name
-         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t
+         *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
          */
         template<class O, class T, class ...Op>
         struct column_t {
@@ -3318,19 +3373,23 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "'" << c.name << "' ";
             typedef typename decltype(c)::field_type field_type;
+            typedef typename decltype(c)::constraints_type constraints_type;
             ss << type_printer<field_type>().print() << " ";
-            if(c.template has<constraints::primary_key_t>()) {
+            tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(c.constraints, [&](auto &v){
+                ss << static_cast<std::string>(v) << ' ';
+            });
+            /*if(c.template has<constraints::primary_key_t>()) {
                 ss << "PRIMARY KEY ";
-            }
-            if(c.template has<constraints::autoincrement_t>()) {
+            }*/
+            /*if(c.template has<constraints::autoincrement_t>()) {
                 ss << "AUTOINCREMENT ";
-            }
-            if(c.template has<constraints::unique_t>()) {
+            }*/
+            /*if(c.template has<constraints::unique_t>()) {
                 ss << "UNIQUE ";
-            }
-            if(auto defaultValue = c.default_value()){
+            }*/
+            /*if(auto defaultValue = c.default_value()){
                 ss << "DEFAULT " << *defaultValue << " ";
-            }
+            }*/
             if(c.not_null()){
                 ss << "NOT NULL ";
             }
