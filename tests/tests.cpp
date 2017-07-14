@@ -431,18 +431,29 @@ void testInsert() {
         std::string name;
     };
     
+    struct ObjectWithoutRowid {
+        int id;
+        std::string name;
+    };
+    
     auto storage = make_storage("test_insert.sqlite",
                                 make_table("objects",
                                            make_column("id",
                                                        &Object::id,
                                                        primary_key()),
                                            make_column("name",
-                                                       &Object::name)));
+                                                       &Object::name)),
+                                make_table("objects_without_rowid",
+                                           make_column("id",
+                                                       &ObjectWithoutRowid::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &ObjectWithoutRowid::name)).without_rowid());
     
     storage.sync_schema();
     storage.remove_all<Object>();
+    storage.remove_all<ObjectWithoutRowid>();
     
-//    cout << "inserting in a loop" << endl;
     for(auto i = 0; i < 100; ++i) {
         storage.insert(Object{
             0,
@@ -476,7 +487,13 @@ void testInsert() {
     //  test empty container
     std::vector<Object> emptyVector;
     storage.insert_range(emptyVector.begin(),
-                          emptyVector.end());
+                         emptyVector.end());
+    
+    //  test insert without rowid
+    storage.insert(ObjectWithoutRowid{ 10, "Life" });
+    assert(storage.get<ObjectWithoutRowid>(10).name == "Life");
+    storage.insert(ObjectWithoutRowid{ 20, "Death" });
+    assert(storage.get<ObjectWithoutRowid>(20).name == "Death");
 }
 
 void testReplace() {

@@ -1879,6 +1879,14 @@ namespace sqlite_orm {
          */
         impl_type impl;
         
+        bool _without_rowid = false;
+        
+        table_t<Cs...> without_rowid() const {
+            auto res = *this;
+            res._without_rowid = true;
+            return res;
+        }
+        
         /**
          *  @return vector of column names of table.
          */
@@ -3378,18 +3386,6 @@ namespace sqlite_orm {
             tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(c.constraints, [&](auto &v){
                 ss << static_cast<std::string>(v) << ' ';
             });
-            /*if(c.template has<constraints::primary_key_t>()) {
-                ss << "PRIMARY KEY ";
-            }*/
-            /*if(c.template has<constraints::autoincrement_t>()) {
-                ss << "AUTOINCREMENT ";
-            }*/
-            /*if(c.template has<constraints::unique_t>()) {
-                ss << "UNIQUE ";
-            }*/
-            /*if(auto defaultValue = c.default_value()){
-                ss << "DEFAULT " << *defaultValue << " ";
-            }*/
             if(c.not_null()){
                 ss << "NOT NULL ";
             }
@@ -3424,6 +3420,9 @@ namespace sqlite_orm {
                 index++;
             });
             ss << ") ";
+            if(impl->table._without_rowid) {
+                ss << "WITHOUT ROWID ";
+            }
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -5333,8 +5332,8 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "INSERT INTO '" << impl.table.name << "' (";
             std::vector<std::string> columnNames;
-            impl.table.for_each_column([&] (auto c) {
-                if(!c.template has<constraints::primary_key_t>()) {
+            impl.table.for_each_column([&impl, &columnNames] (auto c) {
+                if(impl.table._without_rowid or !c.template has<constraints::primary_key_t>()) {
                     columnNames.emplace_back(c.name);
                 }
             });
@@ -5362,8 +5361,8 @@ namespace sqlite_orm {
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
-                impl.table.for_each_column([&o, &index, &stmt] (auto c) {
-                    if(!c.template has<constraints::primary_key_t>()){
+                impl.table.for_each_column([&o, &index, &stmt, &impl] (auto c) {
+                    if(impl.table._without_rowid or !c.template has<constraints::primary_key_t>()){
                         typedef typename decltype(c)::field_type field_type;
                         const field_type *value = nullptr;
                         if(c.member_pointer){
