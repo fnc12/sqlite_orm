@@ -4563,18 +4563,21 @@ namespace sqlite_orm {
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
                 auto query = ss.str();
-                typedef std::tuple<decltype(&impl), decltype(&res)> Data;
+                typedef decltype(&impl) Impl_ptr;
+                typedef decltype(&res) Res_ptr;
+                typedef decltype(res) Res_t;
+                typedef std::tuple<Impl_ptr, Res_ptr> Data;
                 Data aTuple = std::make_tuple(&impl, &res);
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **)->int{
-                                           auto &aTuple = *(Data*)data;
-                                           auto &res = *std::get<1>(aTuple);
-                                           auto t = std::get<0>(aTuple);
+                                           Data &aTuple = *(Data*)data;
+                                           Res_t &res = *std::get<1>(aTuple);
+                                           Impl_ptr t = std::get<0>(aTuple);
                                            if(argc){
                                                res = std::make_shared<O>();
                                                auto index = 0;
-                                               t->table.for_each_column([&] (auto c) {
+                                               t->table.for_each_column([&index, argv, &res] (auto c) {
                                                    typedef typename decltype(c)::field_type field_type;
                                                    auto &o = *res;
 //                                                   auto member_pointer = c.member_pointer;
