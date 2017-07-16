@@ -4417,15 +4417,15 @@ namespace sqlite_orm {
             C res;
             std::string query;
             auto &impl = this->generate_select_asterisk<O>(&query, args...);
-            
-            typedef std::tuple<C*, decltype(&impl)> date_tuple_t;
-            date_tuple_t data{&res, &impl};
+            typedef decltype(&impl) Impl_ptr;
+            typedef std::tuple<C*, Impl_ptr> data_tuple_t;
+            data_tuple_t data{&res, &impl};
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **) -> int {
-                                       auto &d = *(date_tuple_t*)data;
-                                       auto &res = *std::get<0>(d);
-                                       auto t = std::get<1>(d);
+                                       data_tuple_t &d = *(data_tuple_t*)data;
+                                       C &res = *std::get<0>(d);
+                                       Impl_ptr t = std::get<1>(d);
                                        if(argc){
                                            O o;
                                            auto index = 0;
