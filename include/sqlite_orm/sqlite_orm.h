@@ -669,6 +669,17 @@ namespace sqlite_orm {
             bool offset_is_implicit = false;
             int off = 0;
             
+            limit_t(decltype(lim) lim_):lim(lim_){}
+            
+            limit_t(decltype(lim) lim_,
+                    decltype(has_offset) has_offset_,
+                    decltype(offset_is_implicit) offset_is_implicit_,
+                    decltype(off) off_):
+            lim(lim_),
+            has_offset(has_offset_),
+            offset_is_implicit(offset_is_implicit_),
+            off(off_){}
+            
             operator std::string () const {
                 return "LIMIT";
             }
