@@ -2062,6 +2062,8 @@ namespace sqlite_orm {
     struct statement_finalizer {
         sqlite3_stmt *stmt = nullptr;
         
+        statement_finalizer(decltype(stmt) stmt_):stmt(stmt_){}
+        
         inline ~statement_finalizer() {
             sqlite3_finalize(this->stmt);
         }
