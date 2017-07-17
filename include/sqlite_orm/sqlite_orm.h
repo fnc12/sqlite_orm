@@ -468,39 +468,38 @@ namespace sqlite_orm {
             /**
              *  Member pointer used to read/write member
              */
-            member_pointer_t member_pointer = nullptr;
+            member_pointer_t member_pointer/* = nullptr*/;
             
             /**
              *  Getter member function pointer to get a value. If member_pointer is null than 
              *  `getter` and `setter` must be not null
              */
-            getter_type getter = nullptr;
+            getter_type getter/* = nullptr*/;
             
             /**
              *  Setter member function.
              */
-            setter_type setter = nullptr;
+            setter_type setter/* = nullptr*/;
             
             /**
              *  Constraints tuple
              */
             constraints_type constraints;
             
+            /*column_t(decltype(name) name_,
+                     decltype(member_pointer) member_pointer_,
+                     decltype(getter) getter_,
+                     decltype(setter) setter_,
+                     decltype(constraints) constraints_):
+            name(name_),
+            member_pointer(member_pointer_),
+            getter(getter_),
+            setter(setter_),
+            constraints(std::move(constraints_)){}*/
+            
             bool not_null() const {
                 return !type_is_nullable<field_type>::value;
             }
-            
-/*#if SQLITE_VERSION_NUMBER >= 3006019
-            bool is_foreign_key() {
-                auto res = false;
-                tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(constraints, [&res](auto v){
-                    if(constraints::is_foreign_key<decltype(v)>::value){
-                        res = true;
-                    }
-                });
-                return res;
-            }
-#endif*/
             
             template<class Opt>
             constexpr bool has() const {
@@ -880,6 +879,10 @@ namespace sqlite_orm {
         struct order_by_t {
             O o;
             int ascDesc = 0;   //  1: asc, -1: desc
+            
+            order_by_t():o(nullptr){}
+            
+            order_by_t(O o_):o(o_){}
             
             operator std::string() const {
                 return "ORDER BY";
