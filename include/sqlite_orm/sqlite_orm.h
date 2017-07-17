@@ -4584,37 +4584,54 @@ namespace sqlite_orm {
             if(primaryKeyColumnName.size()){
                 ss << primaryKeyColumnName << " = " << string_from_expression(id);
                 auto query = ss.str();
-                typedef decltype(&impl) Impl_ptr;
+                std::vector<std::string> memberStrings;
+                memberStrings.reserve(columnNames.size());
+                /*typedef decltype(&impl) Impl_ptr;
                 typedef decltype(&res) Res_ptr;
                 typedef decltype(res) Res_t;
                 typedef std::tuple<Impl_ptr, Res_ptr> Data;
-                Data aTuple = std::make_tuple(&impl, &res);
+                Data aTuple = std::make_tuple(&impl, &res);*/
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **)->int{
-                                           Data &aTuple = *(Data*)data;
+                                           /*Data &aTuple = *(Data*)data;
                                            Res_t &res = *std::get<1>(aTuple);
-                                           Impl_ptr t = std::get<0>(aTuple);
+                                           Impl_ptr t = std::get<0>(aTuple);*/
+                                           auto &memberStrings = *(std::vector<std::string>*)data;
                                            if(argc){
-                                               res = std::make_shared<O>();
-                                               auto index = 0;
-                                               t->table.for_each_column([&index, argv, &res] (auto c) {
-                                                   typedef typename decltype(c)::field_type field_type;
-                                                   auto &o = *res;
-//                                                   auto member_pointer = c.member_pointer;
-                                                   auto value = row_extrator<field_type>().extract(argv[index++]);
-                                                   if(c.member_pointer){
-                                                       o.*c.member_pointer = value;
+                                               for(auto i = 0; i < argc; ++i) {
+                                                   auto str = argv[i];
+                                                   if(str){
+                                                       memberStrings.push_back(argv[i]);
                                                    }else{
-                                                       ((o).*(c.setter))(std::move(value));
+                                                       memberStrings.push_back({});
                                                    }
-                                               });
+                                               }
                                            }
                                            return 0;
-                                       }, &aTuple, nullptr);
+                                       }, &memberStrings, nullptr);
                 if(rc != SQLITE_OK) {
                     auto msg = sqlite3_errmsg(db);
                     throw std::runtime_error(msg);
+                }else{
+                    if(memberStrings.size()){
+                        res = std::make_shared<O>();
+                        auto index = 0;
+                        impl.table.for_each_column([&index, &res, &memberStrings] (auto c) {
+                            typedef typename decltype(c)::field_type field_type;
+                            auto &o = *res;
+                            auto value = row_extrator<field_type>().extract(memberStrings[index++].c_str());
+                            if(c.member_pointer){
+                                o.*c.member_pointer = value;
+                            }else{
+                                ((o).*(c.setter))(std::move(value));
+                            }
+                        });
+                        return res;
+                    }else{
+//                        throw not_found_exception{};
+                        return res;
+                    }
                 }
                 return res;
             }else{
