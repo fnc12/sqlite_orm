@@ -9,6 +9,7 @@
 #include "sqlite_orm.h"
 
 #include <iostream>
+#include <algorithm>
 
 using std::cout;
 using std::endl;
@@ -66,6 +67,16 @@ int main(int argc, char **argv) {
     for(auto &hero : storage.iterate<MarvelHero>(where(lesser_than(length(&MarvelHero::name), 6)))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
+    
+    std::vector<MarvelHero> heroesByAlgorithm;
+    heroesByAlgorithm.reserve(storage.count<MarvelHero>());
+    {
+        auto view = storage.iterate<MarvelHero>();
+        std::copy(view.begin(),
+                  view.end(),
+                  std::back_inserter(heroesByAlgorithm));
+    }
+    cout << "heroesByAlgorithm.size = " << heroesByAlgorithm.size() << endl;
     
 //    auto nameLengths = storage.select(&MarvelHero::name);
     
