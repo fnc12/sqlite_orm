@@ -1893,6 +1893,8 @@ namespace sqlite_orm {
          */
         impl_type impl;
         
+        table_t(decltype(name) name_, decltype(impl) impl_):name(std::move(name_)), impl(std::move(impl_)){}
+        
         bool _without_rowid = false;
         
         table_t<Cs...> without_rowid() const {
