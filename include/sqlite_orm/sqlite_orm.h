@@ -3496,7 +3496,7 @@ namespace sqlite_orm {
         }
         
         std::string escape(std::string text) {
-            for(auto i = 0; i < text.length(); ++i) {
+            for(size_t i = 0; i < text.length(); ++i) {
                 if(text[i] == '\''){
                     text.insert(text.begin() + i, '\'');
                     i += 2;
