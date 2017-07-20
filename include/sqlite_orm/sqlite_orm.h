@@ -3223,7 +3223,8 @@ namespace sqlite_orm {
             struct iterator_t {
                 
             protected:
-                sqlite3_stmt *stmt = nullptr;
+//                sqlite3_stmt *stmt = nullptr;
+                std::shared_ptr<sqlite3_stmt *> stmt;
                 view_t<T, Args...> &view;
                 std::shared_ptr<T> temp;
                 
@@ -3233,7 +3234,7 @@ namespace sqlite_orm {
                     auto &impl = storage.template get_impl<T>();
                     auto index = 0;
                     impl.table.for_each_column([&index, &temp, this] (auto c) {
-                        auto value = row_extrator<typename decltype(c)::field_type>().extract(this->stmt, index++);
+                        auto value = row_extrator<typename decltype(c)::field_type>().extract(*this->stmt, index++);
                         if(c.member_pointer){
                             auto member_pointer = c.member_pointer;
                             (*temp).*member_pointer = value;
@@ -3244,12 +3245,14 @@ namespace sqlite_orm {
                 }
                 
             public:
-                iterator_t(decltype(stmt) stmt_, view_t<T, Args...> &view_):stmt(stmt_),view(view_){
+                iterator_t(sqlite3_stmt * stmt_, view_t<T, Args...> &view_):stmt(std::make_shared<sqlite3_stmt *>(stmt_)),view(view_){
                     this->operator++();
                 }
                 
                 ~iterator_t() {
-                    statement_finalizer f{this->stmt};
+                    if(this->stmt){
+                        statement_finalizer f{*this->stmt};
+                    }
                 }
                 
                 T& operator*() {
@@ -3269,15 +3272,15 @@ namespace sqlite_orm {
                 }
                 
                 void operator++() {
-                    if(this->stmt){
-                        auto ret = sqlite3_step(this->stmt);
+                    if(this->stmt and *this->stmt){
+                        auto ret = sqlite3_step(*this->stmt);
                         switch(ret){
                             case SQLITE_ROW:
                                 this->temp = nullptr;
                                 break;
                             case SQLITE_DONE:{
-                                statement_finalizer f{this->stmt};
-                                this->stmt = nullptr;
+                                statement_finalizer f{*this->stmt};
+                                *this->stmt = nullptr;
                             }break;
                             default:{
                                 auto db = this->view.connection->get_db();
@@ -3294,7 +3297,15 @@ namespace sqlite_orm {
                 
 				//removed const return type to remove complier warning
                 bool operator==(const iterator_t &other) const {
-                    return this->stmt == other.stmt;
+                    if(this->stmt and other.stmt){
+                        return *this->stmt == *other.stmt;
+                    }else{
+                        if(!this->stmt and !other.stmt){
+                            return true;
+                        }else{
+                            return false;
+                        }
+                    }
                 }
                 
 				//removed const return type to remove complier warning
