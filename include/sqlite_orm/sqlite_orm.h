@@ -2382,6 +2382,20 @@ namespace sqlite_orm {
     };
     
     /**
+     *  Specialization for long long.
+     */
+    template<>
+    struct row_extrator<long long> {
+        long long extract(const char *row_value) {
+            return std::atoll(row_value);
+        }
+        
+        long long extract(sqlite3_stmt *stmt, int columnIndex) {
+            return static_cast<long long>(sqlite3_column_int64(stmt, columnIndex));
+        }
+    };
+    
+    /**
      *  Specialization for std::string.
      */
     template<>
