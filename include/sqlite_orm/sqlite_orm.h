@@ -2170,6 +2170,17 @@ namespace sqlite_orm {
     };
     
     /**
+     *  Specialization for long long.
+     */
+    template<>
+    struct statement_binder<long long> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const long long &value) {
+            return sqlite3_bind_int64(stmt, index, static_cast<sqlite3_int64>(value));
+        }
+    };
+    
+    /**
      *  Specialization for double.
      */
     template<>
