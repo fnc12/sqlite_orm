@@ -3221,7 +3221,7 @@ namespace sqlite_orm {
             }()){}
             
             struct iterator_t {
-                
+//                typedef T value_type;
             protected:
 //                sqlite3_stmt *stmt = nullptr;
                 std::shared_ptr<sqlite3_stmt *> stmt;
