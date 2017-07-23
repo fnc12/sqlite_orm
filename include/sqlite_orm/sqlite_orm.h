@@ -1417,7 +1417,18 @@ namespace sqlite_orm {
             }
         };
         
+        struct random_t {
+            
+            operator std::string() const {
+                return "RANDOM";
+            }
+        };
+        
 #endif
+    }
+    
+    inline core_functions::random_t random() {
+        return {};
     }
     
 #if SQLITE_VERSION_NUMBER >= 3007016
@@ -3135,6 +3146,11 @@ namespace sqlite_orm {
 #endif
         
         template<class ...Ts>
+        struct column_result_t<core_functions::random_t, Ts...> {
+            typedef int type;
+        };
+        
+        template<class ...Ts>
         struct column_result_t<core_functions::changes_t, Ts...> {
             typedef int type;
         };
@@ -3730,6 +3746,12 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto expr = this->string_from_expression(len.t);
             ss << static_cast<std::string>(len) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        std::string string_from_expression(core_functions::random_t &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::stringstream ss;
+            ss << static_cast<std::string>(f) << "() ";
             return ss.str();
         }
         
@@ -4389,6 +4411,10 @@ namespace sqlite_orm {
         }
         
 #endif
+        
+        std::set<std::string> parse_table_name(core_functions::random_t &f) {
+            return {};
+        }
         
         template<class T>
         std::set<std::string> parse_table_name(core_functions::upper_t<T> &a) {

@@ -164,5 +164,16 @@ int main(int argc, char **argv) {
     //  SELECT TRIM('42totn6372', '0123456789')
     cout << "TRIM('42totn6372', '0123456789') = " << storage.select(trim("42totn6372", "0123456789")).front() << endl;
     
+    //  SELECT RANDOM()
+    for(auto i = 0; i < 10; ++i) {
+        cout << "RANDOM() = " << storage.select(sqlite_orm::random()).front() << endl;
+    }
+    
+    //  SELECT * FROM marvel ORDER BY RANDOM()
+    for(auto &hero : storage.iterate<MarvelHero>(order_by(sqlite_orm::random()))) {
+        cout << "hero = " << storage.dump(hero) << endl;
+    }
+    
+    
     return 0;
 }
