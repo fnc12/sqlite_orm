@@ -2286,7 +2286,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<int> {
         int extract(const char *row_value) {
-            return std::atoi(row_value);
+            return atoi(row_value);
         }
         
         int extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2300,7 +2300,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<unsigned char> {
         unsigned char extract(const char *row_value) {
-            return std::atoi(row_value);
+            return atoi(row_value);
         }
         
         unsigned char extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2314,7 +2314,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<unsigned short int> {
         unsigned short int extract(const char *row_value) {
-            return std::atoi(row_value);
+            return atoi(row_value);
         }
         
         unsigned short int extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2328,7 +2328,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<unsigned int> {
         unsigned int extract(const char *row_value) {
-            return std::atoi(row_value);
+            return atoi(row_value);
         }
         
         unsigned int extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2342,7 +2342,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<signed char> {
         signed char extract(const char *row_value) {
-            return std::atoi(row_value);
+            return atoi(row_value);
         }
         
         signed char extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2356,7 +2356,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<bool> {
         bool extract(const char *row_value) {
-            return std::atoi(row_value);
+            return atoi(row_value);
         }
         
         bool extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2370,7 +2370,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<short> {
         short extract(const char *row_value) {
-            return std::atoi(row_value);
+            return atoi(row_value);
         }
         
         short extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2384,7 +2384,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<long> {
         long extract(const char *row_value) {
-            return std::atol(row_value);
+            return atol(row_value);
         }
         
         long extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2398,7 +2398,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<long long> {
         long long extract(const char *row_value) {
-            return std::atoll(row_value);
+            return atoll(row_value);
         }
         
         long long extract(sqlite3_stmt *stmt, int columnIndex) {
@@ -2467,7 +2467,7 @@ namespace sqlite_orm {
     template<>
     struct row_extrator<double> {
         double extract(const char *row_value) {
-            return std::atof(row_value);
+            return atof(row_value);
         }
         
         double extract(sqlite3_stmt *stmt, int columnIndex) {
