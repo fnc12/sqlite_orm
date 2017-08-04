@@ -31,8 +31,8 @@ SQLite ORM light header only library for modern C++
 * **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
-* **C++ standart code style**
-* **No undefined behaviour** - if something goes wrong lib throws an exсeption
+* **C++ standard code style**
+* **No undefined behaviour** - if something goes wrong lib throws an exception
 * **In memory database support** - provide `:memory:` or empty filename
 
 `sqlite_orm` library allows to create easy data model mappings to your database schema. It is built to manage (CRUD) objects with a single column with primary key and without it. It also allows you to specify table names and column names explicitly no matter how your classes actually named. Take a look at example:
@@ -92,7 +92,7 @@ auto storage = make_storage("db.sqlite",
                                                    default_value("name_placeholder"))));
 ```
 
-Too easy isn't it? You do not have to specify mapped type expllicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like ~~`not_null`~~ (deduced from type), `primary_key`, `autoincrement`, `default_value` or `unique`(order isn't important).
+Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like ~~`not_null`~~ (deduced from type), `primary_key`, `autoincrement`, `default_value` or `unique`(order isn't important).
 
 If your datamodel classes have private or protected members to map to sqlite then you can make a storage with setter and getter functions. More info in the [example](https://github.com/fnc12/sqlite_orm/blob/master/examples/private_class_members.cpp).
 
@@ -100,7 +100,7 @@ More details about making storage can be found in [tutorial](https://github.com/
 
 # CRUD
 
-Let's create and insert new `User` into database. First we need to create a `User` object with any id and call `insert` function. It will return id of just created user or throw exeption if something goes wrong.
+Let's create and insert new `User` into database. First we need to create a `User` object with any id and call `insert` function. It will return id of just created user or throw exception if something goes wrong.
 
 ```c++
 User user{-1, "Jonh", "Doe", 664416000, std::make_shared<std::string>("url_to_heaven"), 3 };
@@ -128,7 +128,7 @@ try{
 }
 ```
 
-Probably you may not like throwing exeptions. Me too. Exeption `not_found_exception` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
+Probably you may not like throwing exceptions. Me too. Exception `not_found_exception` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
 
 ```c++
 if(auto user = storage.get_no_throw<User>(insertedId)){
@@ -156,7 +156,7 @@ storage.update_all(set(&User::lastName, "Hardey",
                    where(eq(&User::firstName, "Tom")));
 ```
 
-And delete. To delete you have to pass id only, not whole object. Also we need to explicitly tell which class of object we want to delete. Function name is `remove` not `delete` cause `delete` is a reseved word in C++.
+And delete. To delete you have to pass id only, not whole object. Also we need to explicitly tell which class of object we want to delete. Function name is `remove` not `delete` cause `delete` is a reserved word in C++.
 
 ```c++
 storage.remove<User>(insertedId)
