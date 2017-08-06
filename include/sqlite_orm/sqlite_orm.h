@@ -2968,7 +2968,7 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-            ss << " FROM " << this->table.name << " ";
+            ss << " FROM '" << this->table.name << "' ";
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -4105,7 +4105,7 @@ namespace sqlite_orm {
 //            this->impl.template remove<O>(id, db);
             auto &impl = this->get_impl<O>();
             std::stringstream ss;
-            ss << "DELETE FROM " << impl.table.name << " ";
+            ss << "DELETE FROM '" << impl.table.name << "' ";
             ss << "WHERE ";
             std::vector<std::string> primaryKeyColumnNames;
             impl.table.for_each_column([&] (auto c) {
@@ -4308,7 +4308,7 @@ namespace sqlite_orm {
             auto columnNames = impl.table.column_names();
             for(size_t i = 0; i < columnNames.size(); ++i) {
                 ss
-                << impl.table.name << "."
+                << "'" << impl.table.name << "'."
                 << "\""
                 << columnNames[i]
                 << "\""
