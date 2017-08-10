@@ -3427,6 +3427,8 @@ namespace sqlite_orm {
             bool gotta_fire = true;
         };
         
+        std::function<void(sqlite3*)> on_open;
+        
         transaction_guard_t transaction_guard() {
             this->begin_transaction();
             return {*this};
@@ -4021,6 +4023,9 @@ namespace sqlite_orm {
                 this->foreign_keys(db, true);
             }
 #endif
+            if(this->on_open){
+                this->on_open(db);
+            }
             
         }
         
