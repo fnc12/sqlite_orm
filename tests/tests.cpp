@@ -20,6 +20,62 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testForeignKey() {
+    cout << __func__ << endl;
+    
+    struct Location {
+        int id;
+        std::string place;
+        std::string country;
+        std::string city;
+        int distance;
+        
+    };
+    
+    struct Visit {
+        int id;
+        std::shared_ptr<int> location;
+        std::shared_ptr<int> user;
+        int visited_at;
+        uint8_t mark;
+    };
+    
+    //  this case didn't compile on linux until `typedef constraints_type` was added to `foreign_key_t`
+    auto storage = make_storage(":memory:",
+                                make_table(
+                                           "location",
+                                           make_column("id", &Location::id, primary_key()),
+                                           make_column("place", &Location::place),
+                                           make_column("country", &Location::country),
+                                           make_column("city", &Location::city),
+                                           make_column("distance", &Location::distance)
+                                           ),
+                                make_table(
+                                           "visit",
+                                           make_column("id", &Visit::id, primary_key()),
+                                           make_column("location", &Visit::location),
+                                           make_column("user", &Visit::user),
+                                           make_column("visited_at", &Visit::visited_at),
+                                           make_column("mark", &Visit::mark),
+                                           foreign_key(&Visit::location).references(&Location::id)
+                                           )
+                                );
+    storage.sync_schema();
+    
+    int fromDate = int(time(nullptr));
+    int toDate = int(time(nullptr));
+    int toDistance = 100;
+    auto id = 10;
+    storage.select(columns(&Visit::mark, &Visit::visited_at, &Location::place),
+                   inner_join<Location>(on(is_equal(&Visit::location, &Location::id))),
+                   where(is_equal(&Visit::user, id) and
+                         greater_than(&Visit::visited_at, fromDate) and
+                         lesser_than(&Visit::visited_at, toDate) and
+                         lesser_than(&Location::distance, toDistance)
+                         ),
+                   order_by(&Visit::visited_at));
+}
+
 void testTypeParsing() {
     cout << __func__ << endl;
     
@@ -723,4 +779,6 @@ int main() {
     testTransactionGuard();
     
     testEscapeChars();
+    
+    testForeignKey();
 }

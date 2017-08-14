@@ -239,6 +239,7 @@ namespace sqlite_orm {
             R r = nullptr;
             
             typedef void field_type;    //  for column interation. Better be deleted
+            typedef std::tuple<> constraints_type;
             
             template<class L>
             void for_each_column(L) {}
@@ -2598,6 +2599,18 @@ namespace sqlite_orm {
             case sync_schema_result::dropped_and_recreated: return os << "old table dropped and recreated";
         }
     }
+    
+    namespace internal {
+        
+        template<class ...Cols>
+        struct index_t {
+            typedef std::tuple<Cols...> columns_type;
+            
+            columns_type columns;
+            
+            bool unique;
+        };
+    }
 
     /**
      *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
@@ -3263,9 +3276,7 @@ namespace sqlite_orm {
             }()){}
             
             struct iterator_t {
-//                typedef T value_type;
             protected:
-//                sqlite3_stmt *stmt = nullptr;
                 std::shared_ptr<sqlite3_stmt *> stmt;
                 view_t<T, Args...> &view;
                 std::shared_ptr<T> temp;
