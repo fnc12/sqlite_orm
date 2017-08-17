@@ -213,10 +213,6 @@ namespace sqlite_orm {
             value_type value;
             
             operator std::string() const {
-                /*auto dft = internal::default_value_extractor()(v);
-                if(dft){
-                    res = dft;
-                }*/
                 std::stringstream ss;
                 ss << "DEFAULT ";
                 auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
@@ -238,7 +234,7 @@ namespace sqlite_orm {
             C m = nullptr;
             R r = nullptr;
             
-            typedef void field_type;    //  for column interation. Better be deleted
+            typedef void field_type;    //  for column iteration. Better be deleted
             typedef std::tuple<> constraints_type;
             
             template<class L>
@@ -486,17 +482,6 @@ namespace sqlite_orm {
              *  Constraints tuple
              */
             constraints_type constraints;
-            
-            /*column_t(decltype(name) name_,
-                     decltype(member_pointer) member_pointer_,
-                     decltype(getter) getter_,
-                     decltype(setter) setter_,
-                     decltype(constraints) constraints_):
-            name(name_),
-            member_pointer(member_pointer_),
-            getter(getter_),
-            setter(setter_),
-            constraints(std::move(constraints_)){}*/
             
             bool not_null() const {
                 return !type_is_nullable<field_type>::value;
@@ -1905,10 +1890,6 @@ namespace sqlite_orm {
          *  @return vector of column names of table.
          */
         std::vector<std::string> column_names() {
-            /*auto res = this->impl.column_names();
-            std::reverse(res.begin(),
-                         res.end());
-            return res;*/
             std::vector<std::string> res;
             this->impl.for_each_column([&res](auto &c){
                 res.push_back(c.name);
@@ -1919,11 +1900,6 @@ namespace sqlite_orm {
         std::vector<std::string> primary_key_column_names() {
             std::vector<std::string> res;
             this->impl.template for_each_column_with<constraints::primary_key_t>([&res](auto &c){
-//                if(res.empty()){
-//                    res = c.name;
-//                }else{
-//                    throw std::runtime_error("table " + this->name + " has > 1 primary key columns");
-//                }
                 res.push_back(c.name);
             });
             return res;
@@ -3499,10 +3475,12 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
-                    throw std::runtime_error(sqlite3_errmsg(db));
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
                 }
             }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
         
