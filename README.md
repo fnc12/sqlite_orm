@@ -28,6 +28,7 @@ SQLite ORM light header only library for modern C++
 * **Powerful conditions**
 * **ORDER BY and LIMIT, OFFSET support**
 * **GROUP BY / DISTINCT support**
+* **INDEX support**
 * **Follows single responsibility principle** - no need write code inside your data model classes
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
