@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     
-    std::vector<MarvelHero> heroesByAlgorithm;
+    /*std::vector<MarvelHero> heroesByAlgorithm;
     heroesByAlgorithm.reserve(storage.count<MarvelHero>());
     {
         auto view = storage.iterate<MarvelHero>();
@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
                   view.end(),
                   std::back_inserter(heroesByAlgorithm));
     }
-    cout << "heroesByAlgorithm.size = " << heroesByAlgorithm.size() << endl;
+    cout << "heroesByAlgorithm.size = " << heroesByAlgorithm.size() << endl;*/
     
 //    auto nameLengths = storage.select(&MarvelHero::name);
     
