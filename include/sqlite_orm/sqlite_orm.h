@@ -170,8 +170,13 @@ namespace sqlite_orm {
             }
         };
         
+        template<class ...Cs>
         struct primary_key_t {
+            std::tuple<Cs...> columns;
             int asc_option = 0;    //  0 - none, 1 - asc, -1 - desc
+            
+            typedef void field_type;    //  for column iteration. Better be deleted
+            typedef std::tuple<> constraints_type;
             
             operator std::string() const {
                 std::string res = "PRIMARY KEY";
@@ -186,13 +191,13 @@ namespace sqlite_orm {
                 return res;
             }
             
-            primary_key_t asc() const {
+            primary_key_t<Cs...> asc() const {
                 auto res = *this;
                 res.asc_option = 1;
                 return res;
             }
             
-            primary_key_t desc() const {
+            primary_key_t<Cs...> desc() const {
                 auto res = *this;
                 res.asc_option = -1;
                 return res;
@@ -293,8 +298,9 @@ namespace sqlite_orm {
         return {};
     }
     
-    inline constraints::primary_key_t primary_key() {
-        return {};
+    template<class ...Cs>
+    inline constraints::primary_key_t<Cs...> primary_key(Cs ...cs) {
+        return {std::make_tuple(cs...)};
     }
     
     template<class T>
@@ -529,6 +535,12 @@ namespace sqlite_orm {
         
         template<class C, class R>
         struct is_foreign_key<constraints::foreign_key_t<C, R>> : std::true_type{};
+        
+        template<class T>
+        struct is_primary_key : public std::false_type {};
+        
+        template<class ...Cs>
+        struct is_primary_key<constraints::primary_key_t<Cs...>> : public std::true_type {};
         
     }
     
@@ -1765,6 +1777,9 @@ namespace sqlite_orm {
         template<class Op, class L>
         void for_each_column_with(L) {}
         
+        template<class L>
+        void for_each_primary_key(L l) {}
+        
         int columns_count() const {
             return 0;
         }
@@ -1831,7 +1846,7 @@ namespace sqlite_orm {
         template<class Op, class L>
         void for_each_column_exept(L l) {
             using has_opt = tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>;
-            apply_to_col_if(l, std::integral_constant<bool, !has_opt::value>{});
+            this->apply_to_col_if(l, std::integral_constant<bool, !has_opt::value>{});
             Super::template for_each_column_exept<Op, L>(l);
         }
 
@@ -1840,8 +1855,17 @@ namespace sqlite_orm {
          */
         template<class Op, class L>
         void for_each_column_with(L l) {
-            apply_to_col_if(l, tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>{});
+            this->apply_to_col_if(l, tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>{});
             Super::template for_each_column_with<Op, L>(l);
+        }
+        
+        /**
+         *  Calls l(this->col) if H is primary_key_t
+         */
+        template<class L>
+        void for_each_primary_key(L l) {
+            this->apply_to_col_if(l, internal::is_primary_key<H>{});
+            Super::for_each_primary_key(l);
         }
 
     protected:
@@ -1899,8 +1923,24 @@ namespace sqlite_orm {
         
         std::vector<std::string> primary_key_column_names() {
             std::vector<std::string> res;
-            this->impl.template for_each_column_with<constraints::primary_key_t>([&res](auto &c){
+            this->impl.template for_each_column_with<constraints::primary_key_t<>>([&res](auto &c){
                 res.push_back(c.name);
+            });
+            if(!res.size()){
+                this->impl.for_each_primary_key([this, &res](auto c){
+                    res = this->composite_key_columns_names(c);
+                });
+            }
+            return res;
+        }
+        
+        template<class ...Args>
+        std::vector<std::string> composite_key_columns_names(constraints::primary_key_t<Args...> pk) {
+            std::vector<std::string> res;
+            typedef decltype(pk.columns) pk_columns_tuple;
+            res.reserve(std::tuple_size<pk_columns_tuple>::value);
+            tuple_helper::iterator<std::tuple_size<pk_columns_tuple>::value - 1, Args...>()(pk.columns, [this, &res](auto &v){
+                res.push_back(this->find_column_name(v));
             });
             return res;
         }
@@ -2021,7 +2061,7 @@ namespace sqlite_orm {
                     type_printer<typename decltype(col)::field_type>().print(),
                     col.not_null(),
                     dft,
-                    col.template has<constraints::primary_key_t>(),
+                    col.template has<constraints::primary_key_t<>>(),
                 };
                 res.emplace_back(i);
             });
@@ -2174,6 +2214,17 @@ namespace sqlite_orm {
         
         int bind(sqlite3_stmt *stmt, int index, const std::string &value) {
             return sqlite3_bind_text(stmt, index, value.c_str(), -1, SQLITE_TRANSIENT);
+        }
+    };
+    
+    /**
+     *  Specialization for C-string
+     */
+    template<>
+    struct statement_binder<const char*> {
+        
+        int bind(sqlite3_stmt *stmt, int index, const char *value) {
+            return sqlite3_bind_text(stmt, index, value, -1, SQLITE_TRANSIENT);
         }
     };
     
@@ -3437,6 +3488,25 @@ namespace sqlite_orm {
             return ss.str();
         }
         
+        template<class ...Cs>
+        std::string serialize_column_schema(constraints::primary_key_t<Cs...> fk) {
+            std::stringstream ss;
+            ss << static_cast<std::string>(fk) << " (";
+            std::vector<std::string> columnNames;
+            columnNames.reserve(std::tuple_size<decltype(fk.columns)>::value);
+            tuple_helper::iterator<std::tuple_size<decltype(fk.columns)>::value - 1, Cs...>()(fk.columns, [&](auto &c){
+                columnNames.push_back(this->impl.column_name(c));
+            });
+            for(size_t i = 0; i < columnNames.size(); ++i) {
+                ss << columnNames[i];
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << ") ";
+            return ss.str();
+        }
+        
 #if SQLITE_VERSION_NUMBER >= 3006019
         
         template<class C, class R>
@@ -4143,8 +4213,8 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "UPDATE '" << impl.table.name << "' SET ";
             std::vector<std::string> setColumnNames;
-            impl.table.for_each_column( [&] (auto c) {
-                if(!c.template has<constraints::primary_key_t>()) {
+            impl.table.for_each_column([&](auto c) {
+                if(!c.template has<constraints::primary_key_t<>>()) {
                     setColumnNames.emplace_back(c.name);
                 }
             });
@@ -4157,7 +4227,7 @@ namespace sqlite_orm {
                 }
             }
             ss << "WHERE ";
-            auto primaryKeyColumnNames = impl.table.template column_names_with<constraints::primary_key_t>();
+            auto primaryKeyColumnNames = impl.table.template column_names_with<constraints::primary_key_t<>>();
             for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 ss << primaryKeyColumnNames[i] << " = ?";
                 if(i < primaryKeyColumnNames.size() - 1) {
@@ -4173,7 +4243,7 @@ namespace sqlite_orm {
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
                 impl.table.for_each_column([&o, stmt, &index] (auto c) {
-                    if(!c.template has<constraints::primary_key_t>()) {
+                    if(!c.template has<constraints::primary_key_t<>>()) {
                         typedef typename decltype(c)::field_type field_type;
                         const field_type *value = nullptr;
                         if(c.member_pointer){
@@ -4185,7 +4255,7 @@ namespace sqlite_orm {
                     }
                 });
                 impl.table.for_each_column([&o, stmt, &index] (auto c) {
-                    if(c.template has<constraints::primary_key_t>()) {
+                    if(c.template has<constraints::primary_key_t<>>()) {
                         typedef typename decltype(c)::field_type field_type;
                         const field_type *value = nullptr;
                         if(c.member_pointer){
@@ -4530,9 +4600,9 @@ namespace sqlite_orm {
             auto primaryKeyColumnNames = impl.table.primary_key_column_names();
             if(primaryKeyColumnNames.size()){
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << primaryKeyColumnNames[i] << " = ?";
+                    ss << primaryKeyColumnNames[i] << " = ? ";
                     if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << ',';
+                        ss << "AND ";
                     }
                     ss << ' ';
                 }
@@ -5413,7 +5483,7 @@ namespace sqlite_orm {
             ss << "INSERT INTO '" << impl.table.name << "' (";
             std::vector<std::string> columnNames;
             impl.table.for_each_column([&impl, &columnNames] (auto c) {
-                if(impl.table._without_rowid or !c.template has<constraints::primary_key_t>()) {
+                if(impl.table._without_rowid or !c.template has<constraints::primary_key_t<>>()) {
                     columnNames.emplace_back(c.name);
                 }
             });
@@ -5442,7 +5512,7 @@ namespace sqlite_orm {
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
                 impl.table.for_each_column([&o, &index, &stmt, &impl] (auto c) {
-                    if(impl.table._without_rowid or !c.template has<constraints::primary_key_t>()){
+                    if(impl.table._without_rowid or !c.template has<constraints::primary_key_t<>>()){
                         typedef typename decltype(c)::field_type field_type;
                         const field_type *value = nullptr;
                         if(c.member_pointer){
@@ -5489,7 +5559,7 @@ namespace sqlite_orm {
             ss << "INSERT INTO '" << impl.table.name << "' (";
             std::vector<std::string> columnNames;
             impl.table.for_each_column([&] (auto c) {
-                if(!c.template has<constraints::primary_key_t>()) {
+                if(!c.template has<constraints::primary_key_t<>>()) {
                     columnNames.emplace_back(c.name);
                 }
             });
@@ -5533,7 +5603,7 @@ namespace sqlite_orm {
                 for(auto it = from; it != to; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt] (auto c) {
-                        if(!c.template has<constraints::primary_key_t>()){
+                        if(!c.template has<constraints::primary_key_t<>>()){
                             typedef typename decltype(c)::field_type field_type;
                             const field_type *value = nullptr;
                             if(c.member_pointer){
