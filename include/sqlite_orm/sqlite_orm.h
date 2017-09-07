@@ -4157,7 +4157,7 @@ namespace sqlite_orm {
             ss << "WHERE ";
             std::vector<std::string> primaryKeyColumnNames;
             impl.table.for_each_column([&] (auto c) {
-                if(c.template has<constraints::primary_key_t>()) {
+                if(c.template has<constraints::primary_key_t<>>()) {
                     primaryKeyColumnNames.emplace_back(c.name);
                 }
             });
@@ -4174,7 +4174,7 @@ namespace sqlite_orm {
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
-                impl.table.template for_each_column_with<constraints::primary_key_t>([&] (auto c) {
+                impl.table.template for_each_column_with<constraints::primary_key_t<>>([&] (auto c) {
                     typedef typename decltype(c)::field_type field_type;
                     statement_binder<field_type>().bind(stmt, index++, id);
                 });
