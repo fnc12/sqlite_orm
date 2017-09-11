@@ -1778,7 +1778,7 @@ namespace sqlite_orm {
         void for_each_column_with(L) {}
         
         template<class L>
-        void for_each_primary_key(L l) {}
+        void for_each_primary_key(L) {}
         
         int columns_count() const {
             return 0;
