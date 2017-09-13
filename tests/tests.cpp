@@ -732,7 +732,7 @@ void testEscapeChars() {
     };
     auto storage =  make_storage("test_escape_chars.sqlite",
                                  make_table("COMPANY",
-                                            make_column("ID",
+                                            make_column("INDEX",
                                                         &Employee::id,
                                                         primary_key()),
                                             make_column("NAME",
@@ -756,6 +756,19 @@ void testEscapeChars() {
     
     auto paulL = storage.get_all<Employee>(where(is_equal(&Employee::name, "Paul'l")));
     
+    storage.replace(Employee{
+        10,
+        "Selena",
+        24,
+        "Florida",
+        500000,
+    });
+    
+    auto selena = storage.get<Employee>(10);
+    auto selenaMaybe = storage.get_no_throw<Employee>(10);
+    selena.name = "Gomez";
+    storage.update(selena);
+    storage.remove<Employee>(10);
 }
 
 int main() {

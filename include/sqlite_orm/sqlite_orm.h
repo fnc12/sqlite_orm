@@ -4162,7 +4162,7 @@ namespace sqlite_orm {
                 }
             });
             for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                ss << primaryKeyColumnNames[i] << " =  ?";
+                ss << "\"" << primaryKeyColumnNames[i] << "\"" << " =  ?";
                 if(i < primaryKeyColumnNames.size() - 1) {
                     ss << " AND ";
                 }else{
@@ -4219,7 +4219,7 @@ namespace sqlite_orm {
                 }
             });
             for(size_t i = 0; i < setColumnNames.size(); ++i) {
-                ss << setColumnNames[i] << " = ?";
+                ss << "\"" << setColumnNames[i] << "\"" << " = ?";
                 if(i < setColumnNames.size() - 1) {
                     ss << ", ";
                 }else{
@@ -4229,7 +4229,7 @@ namespace sqlite_orm {
             ss << "WHERE ";
             auto primaryKeyColumnNames = impl.table.template column_names_with<constraints::primary_key_t<>>();
             for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                ss << primaryKeyColumnNames[i] << " = ?";
+                ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ?";
                 if(i < primaryKeyColumnNames.size() - 1) {
                     ss << " AND ";
                 }else{
@@ -4600,7 +4600,8 @@ namespace sqlite_orm {
             auto primaryKeyColumnNames = impl.table.primary_key_column_names();
             if(primaryKeyColumnNames.size()){
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << primaryKeyColumnNames[i] << " = ? ";
+                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ? ";
+//                    ss << primaryKeyColumnNames[i] << " = ? ";
                     if(i < primaryKeyColumnNames.size() - 1) {
                         ss << "AND ";
                     }
@@ -4686,7 +4687,7 @@ namespace sqlite_orm {
             ss << "FROM '" << impl.table.name << "' WHERE ";
             auto primaryKeyColumnNames = impl.table.primary_key_column_names();
             if(primaryKeyColumnNames.size() and primaryKeyColumnNames.front().length()){
-                ss << primaryKeyColumnNames.front() << " = " << string_from_expression(id);
+                ss << "\"" << primaryKeyColumnNames.front() << "\"" << " = " << string_from_expression(id);
                 auto query = ss.str();
                 std::vector<std::string> memberStrings;
                 memberStrings.reserve(columnNames.size());
