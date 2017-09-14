@@ -4705,8 +4705,10 @@ namespace sqlite_orm {
                     }
                     ss << ' ';
                 }
+//                auto idsTuple = std::make_tuple(ids...);
+//                typedef decltype(idsTuple) IdsTuple;
                 auto query = ss.str();
-                std::vector<std::string> memberStrings;
+                /*std::vector<std::string> memberStrings;
                 memberStrings.reserve(columnNames.size());
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
@@ -4747,7 +4749,48 @@ namespace sqlite_orm {
                         return res;
                     }
                 }
-                return res;
+                return res;*/
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    auto index = 1;
+                    auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
+                    constexpr const auto idsCount = std::tuple_size<decltype(idsTuple)>::value;
+                    tuple_helper::iterator<idsCount - 1, Ids...>()(idsTuple, [stmt, &index](auto &v){
+                        typedef typename std::remove_reference<decltype(v)>::type field_type;
+                        statement_binder<field_type>().bind(stmt, index++, v);
+                    });
+                    auto stepRes = sqlite3_step(stmt);
+                    switch(stepRes){
+                        case SQLITE_ROW:{
+                            O res;
+                            index = 0;
+                            impl.table.for_each_column([&index, &res, stmt] (auto c) {
+                                typedef typename decltype(c)::field_type field_type;
+                                //                            auto &o = *res;
+                                //                            auto value = row_extrator<field_type>().extract(memberStrings[index++].c_str());
+                                auto value = row_extrator<field_type>().extract(stmt, index++);
+                                if(c.member_pointer){
+                                    res.*c.member_pointer = value;
+                                }else{
+                                    ((res).*(c.setter))(std::move(value));
+                                }
+                            });
+                            return std::make_shared<O>(std::move(res));
+                        }break;
+                        case SQLITE_DONE:{
+//                            throw not_found_exception{};
+                            return {};
+                        }break;
+                        default:{
+                            auto msg = sqlite3_errmsg(db);
+                            throw std::runtime_error(msg);
+                        }
+                    }
+                }else{
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
+                }
             }else{
                 throw std::runtime_error("table " + impl.table.name + " has no primary key column");
             }
