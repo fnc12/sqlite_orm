@@ -2885,9 +2885,10 @@ namespace sqlite_orm {
         std::string dump(const O &o, sqlite3 *, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
             std::stringstream ss;
             ss << "{ ";
-            auto columnsCount = this->table.columns_count();
-            auto index = 0;
-            this->table.for_each_column([&] (auto c) {
+//            auto columnsCount = this->table.columns_count();
+//            auto index = 0;
+            std::vector<std::pair<std::string, std::string>> pairs;
+            this->table.for_each_column([&pairs, &o] (auto c) {
                 typedef typename decltype(c)::field_type field_type;
                 const field_type *value = nullptr;
                 if(c.member_pointer){
@@ -2895,14 +2896,25 @@ namespace sqlite_orm {
                 }else{
                     value = &((o).*(c.getter))();
                 }
-                ss << c.name << " : '" << field_printer<field_type>()(*value) << "'";
+                
+                pairs.push_back(std::make_pair(c.name, field_printer<field_type>()(*value)));
+                /*ss << c.name << " : '" << field_printer<field_type>()(*value) << "'";
                 if(index < columnsCount - 1) {
                     ss << ", ";
                 }else{
                     ss << " }";
                 }
-                ++index;
+                ++index;*/
             });
+            for(size_t i = 0; i < pairs.size(); ++i) {
+                auto &p = pairs[i];
+                ss << p.first << " : '" << p.second << "'";
+                if(i < pairs.size() - 1) {
+                    ss << ", ";
+                }else{
+                    ss << " }";
+                }
+            }
             return ss.str();
         }
         
@@ -4601,13 +4613,11 @@ namespace sqlite_orm {
             if(primaryKeyColumnNames.size()){
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                     ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ? ";
-//                    ss << primaryKeyColumnNames[i] << " = ? ";
                     if(i < primaryKeyColumnNames.size() - 1) {
                         ss << "AND ";
                     }
                     ss << ' ';
                 }
-//                ss << primaryKeyColumnName << " = " << this->string_from_expression(id);
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -4658,8 +4668,8 @@ namespace sqlite_orm {
          *  The same as `get` function but doesn't throw an exeption if noting found but returns std::shared_ptr with null value.
          *  throws std::runtime_error iin case of db error.
          */
-        template<class O, class I>
-        std::shared_ptr<O> get_no_throw(I id) {
+        template<class O, class ...Ids>
+        std::shared_ptr<O> get_no_throw(Ids ...ids) {
             this->assert_mapped_type<O>();
             
             std::shared_ptr<internal::database_connection> connection;
@@ -4687,7 +4697,14 @@ namespace sqlite_orm {
             ss << "FROM '" << impl.table.name << "' WHERE ";
             auto primaryKeyColumnNames = impl.table.primary_key_column_names();
             if(primaryKeyColumnNames.size() and primaryKeyColumnNames.front().length()){
-                ss << "\"" << primaryKeyColumnNames.front() << "\"" << " = " << string_from_expression(id);
+//                ss << "\"" << primaryKeyColumnNames.front() << "\"" << " = " << string_from_expression(id);
+                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ? ";
+                    if(i < primaryKeyColumnNames.size() - 1) {
+                        ss << "AND ";
+                    }
+                    ss << ' ';
+                }
                 auto query = ss.str();
                 std::vector<std::string> memberStrings;
                 memberStrings.reserve(columnNames.size());
@@ -5307,7 +5324,7 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            return impl.dump(o, db);
+            return this->impl.dump(o, db);
         }
         
         /**
