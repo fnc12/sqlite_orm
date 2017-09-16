@@ -2288,10 +2288,10 @@ namespace sqlite_orm {
     template<class V>
     struct row_extrator {
         
-        //  used in sqlite3_exec (get_all and select)
+        //  used in sqlite3_exec (select)
         V extract(const char *row_value);
         
-        //  used in sqlite_column (iteration)
+        //  used in sqlite_column (iteration, get_all)
         V extract(sqlite3_stmt *stmt, int columnIndex);
     };
     
@@ -4542,10 +4542,43 @@ namespace sqlite_orm {
             C res;
             std::string query;
             auto &impl = this->generate_select_asterisk<O>(&query, args...);
-            typedef decltype(&impl) Impl_ptr;
-            typedef std::tuple<C*, Impl_ptr> data_tuple_t;
-            data_tuple_t data{&res, &impl};
-            auto rc = sqlite3_exec(db,
+//            typedef decltype(&impl) Impl_ptr;
+//            typedef std::tuple<C*, Impl_ptr> data_tuple_t;
+//            data_tuple_t data{&res, &impl};
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer{stmt};
+                int stepRes;
+                do{
+                    stepRes = sqlite3_step(stmt);
+                    switch(stepRes){
+                        case SQLITE_ROW:{
+                            O obj;
+                            auto index = 0;
+                            impl.table.for_each_column([&index, &obj, stmt] (auto c) {
+                                typedef typename decltype(c)::field_type field_type;
+                                auto value = row_extrator<field_type>().extract(stmt, index++);
+                                if(c.member_pointer){
+                                    obj.*c.member_pointer = value;
+                                }else{
+                                    ((obj).*(c.setter))(std::move(value));
+                                }
+                            });
+                            res.push_back(std::move(obj));
+                        }break;
+                        case SQLITE_DONE: break;
+                        default:{
+                            auto msg = sqlite3_errmsg(db);
+                            throw std::runtime_error(msg);
+                        }
+                    }
+                }while(stepRes != SQLITE_DONE);
+                return res;
+            }else{
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
+            /*auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv,char **) -> int {
                                        data_tuple_t &d = *(data_tuple_t*)data;
@@ -4570,8 +4603,7 @@ namespace sqlite_orm {
             if(rc != SQLITE_OK) {
                 auto msg = sqlite3_errmsg(db);
                 throw std::runtime_error(msg);
-            }
-            return res;
+            }*/
         }
         
         /**
@@ -4636,8 +4668,6 @@ namespace sqlite_orm {
                             index = 0;
                             impl.table.for_each_column([&index, &res, stmt] (auto c) {
                                 typedef typename decltype(c)::field_type field_type;
-                                //                            auto &o = *res;
-                                //                            auto value = row_extrator<field_type>().extract(memberStrings[index++].c_str());
                                 auto value = row_extrator<field_type>().extract(stmt, index++);
                                 if(c.member_pointer){
                                     res.*c.member_pointer = value;
