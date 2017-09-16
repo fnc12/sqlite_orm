@@ -771,6 +771,62 @@ void testEscapeChars() {
     storage.remove<Employee>(10);
 }
 
+//  appeared after #54
+void testBlob() {
+    cout << __func__ << endl;
+    
+    struct BlobData {
+        std::vector<char> data;
+    };
+    typedef char byte;
+    
+    auto generateData = [](int size) -> byte* {
+        auto data = (byte*)::malloc(size * sizeof(byte));
+        for (int i = 0; i < size; ++i) {
+            if ((i+1) % 10 == 0) {
+                data[i] = 0;
+            } else {
+                data[i] = (rand() % 100) + 1;
+            }
+        }
+        return data;
+    };
+    
+    auto storage = make_storage("blob.db",
+                                make_table("blob",
+                                           make_column("data", &BlobData::data)));
+    storage.sync_schema();
+    storage.remove_all<BlobData>();
+    
+    auto size = 100;
+    auto data = generateData(size);
+    
+    //  write data
+    BlobData d;
+    std::vector<char> v(data, data + size);
+    d.data = v;
+    cout << "Write Size: " << d.data.size() << endl;
+    storage.insert(d);
+    
+    //  read data
+    auto vd = storage.get_all<BlobData>();
+    assert(vd.size() == 1);
+    auto &blob = vd.front();
+    assert(blob.data.size() == size);
+    assert(std::equal(data,
+                      data + size,
+                      blob.data.begin()));
+    /*for (size_t i = 0; i < vd.size(); ++i) {
+        cout << "Read Size " << vd[i].data.size() << endl;
+        for (int j = 0; j < vd[i].data.size(); ++j){
+            printf ("%d ", vd[i].data[j]);
+        }
+        cout << endl;
+    }*/
+    
+    free(data);
+}
+
 int main() {
     
     cout << "version = " << make_storage("").libversion() << endl;
@@ -794,4 +850,6 @@ int main() {
     testEscapeChars();
     
     testForeignKey();
+    
+    testBlob();
 }
