@@ -1423,10 +1423,24 @@ namespace sqlite_orm {
         };
         
 #endif
+        template<class T, class ...Args>
+        struct date_t{
+            T timestring;
+            std::tuple<Args...> modifiers;
+            
+            operator std::string() const {
+                return "DATE";
+            }
+        };
     }
     
     inline core_functions::random_t random() {
         return {};
+    }
+    
+    template<class T, class ...Args>
+    core_functions::date_t<T, Args...> date(T timestring, Args ...modifiers) {
+        return {timestring, std::make_tuple(modifiers...)};
     }
     
 #if SQLITE_VERSION_NUMBER >= 3007016
@@ -3218,6 +3232,11 @@ namespace sqlite_orm {
             typedef std::string type;
         };
         
+        template<class T, class ...Args, class ...Ts>
+        struct column_result_t<core_functions::date_t<T, Args...>, Ts...> {
+            typedef std::string type;
+        };
+        
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::avg_t<T>, Ts...> {
             typedef double type;
@@ -3805,6 +3824,18 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto expr = this->string_from_expression(len.t);
             ss << static_cast<std::string>(len) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T, class ...Args>
+        std::string string_from_expression(core_functions::date_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::stringstream ss;
+            ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring);
+            typedef std::tuple<Args...> tuple_t;
+            tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&](auto &v){
+                ss << ", " << this->string_from_expression(v);
+            });
+            ss << ") ";
             return ss.str();
         }
         
@@ -4442,6 +4473,17 @@ namespace sqlite_orm {
             return this->parse_table_name(len.t);
         }
         
+        template<class T, class ...Args>
+        std::set<std::string> parse_table_name(core_functions::date_t<T, Args...> &f) {
+            auto res = this->parse_table_name(f.timestring);
+            typedef decltype(f.modifiers) tuple_t;
+            tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&](auto &v){
+                auto tableNames = this->parse_table_name(v);
+                res.insert(tableNames.begin(), tableNames.end());
+            });
+            return res;
+        }
+        
         template<class X>
         std::set<std::string> parse_table_name(core_functions::trim_single_t<X> &f) {
             return this->parse_table_name(f.x);
@@ -4578,32 +4620,6 @@ namespace sqlite_orm {
                 auto msg = sqlite3_errmsg(db);
                 throw std::runtime_error(msg);
             }
-            /*auto rc = sqlite3_exec(db,
-                                   query.c_str(),
-                                   [](void *data, int argc, char **argv,char **) -> int {
-                                       data_tuple_t &d = *(data_tuple_t*)data;
-                                       C &res = *std::get<0>(d);
-                                       Impl_ptr t = std::get<1>(d);
-                                       if(argc){
-                                           O o;
-                                           auto index = 0;
-                                           t->table.for_each_column([&index, &o, argv] (auto c) {
-                                               typedef typename decltype(c)::field_type field_type;
-                                               auto value = row_extrator<field_type>().extract(argv[index++]);
-                                               if(c.member_pointer){
-                                                   o.*c.member_pointer = value;
-                                               }else{
-                                                   ((o).*(c.setter))(std::move(value));
-                                               }
-                                           });
-                                           res.push_back(std::move(o));
-                                       }
-                                       return 0;
-                                   }, &data, nullptr);
-            if(rc != SQLITE_OK) {
-                auto msg = sqlite3_errmsg(db);
-                throw std::runtime_error(msg);
-            }*/
         }
         
         /**
@@ -6199,20 +6215,16 @@ namespace sqlite_orm {
             std::string sql = std::string("SELECT name FROM sqlite_master WHERE type='table'");
             typedef std::vector<std::string> Data;
             int res = sqlite3_exec(db, sql.c_str(),
-                                   [](void *data, int argc, char **argv, char **columnName) -> int
-            {
-                (void)columnName;
-                Data& tableNames = *(Data*)data;
-                for(int i = 0; i < argc; i++)
-                {
-                    if(argv[i]){
-                        tableNames.push_back(argv[i]);
-                    }                
-                }
-                return 0;
-            },
-            &tableNames,
-            nullptr);
+                                   [] (void *data, int argc, char **argv, char **/*columnName*/) -> int {
+//                                       (void)columnName;
+                                       Data& tableNames = *(Data*)data;
+                                       for(int i = 0; i < argc; i++) {
+                                           if(argv[i]){
+                                               tableNames.push_back(argv[i]);
+                                           }                
+                                       }
+                                       return 0;
+                                   }, &tableNames,nullptr);
 
             if(res != SQLITE_OK) {
                 auto msg = sqlite3_errmsg(db);
