@@ -1432,6 +1432,16 @@ namespace sqlite_orm {
                 return "DATE";
             }
         };
+        
+        template<class T, class ...Args>
+        struct datetime_t {
+            T timestring;
+            std::tuple<Args...> modifiers;
+            
+            operator std::string() const {
+                return "DATETIME";
+            }
+        };
     }
     
     inline core_functions::random_t random() {
@@ -1440,6 +1450,11 @@ namespace sqlite_orm {
     
     template<class T, class ...Args>
     core_functions::date_t<T, Args...> date(T timestring, Args ...modifiers) {
+        return {timestring, std::make_tuple(modifiers...)};
+    }
+    
+    template<class T, class ...Args>
+    core_functions::datetime_t<T, Args...> datetime(T timestring, Args ...modifiers) {
         return {timestring, std::make_tuple(modifiers...)};
     }
     
@@ -3237,6 +3252,11 @@ namespace sqlite_orm {
             typedef std::string type;
         };
         
+        template<class T, class ...Args, class ...Ts>
+        struct column_result_t<core_functions::datetime_t<T, Args...>, Ts...> {
+            typedef std::string type;
+        };
+        
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::avg_t<T>, Ts...> {
             typedef double type;
@@ -3824,6 +3844,18 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto expr = this->string_from_expression(len.t);
             ss << static_cast<std::string>(len) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T, class ...Args>
+        std::string string_from_expression(core_functions::datetime_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::stringstream ss;
+            ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring);
+            typedef std::tuple<Args...> tuple_t;
+            tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&](auto &v){
+                ss << ", " << this->string_from_expression(v);
+            });
+            ss << ") ";
             return ss.str();
         }
         
@@ -4475,6 +4507,17 @@ namespace sqlite_orm {
         
         template<class T, class ...Args>
         std::set<std::string> parse_table_name(core_functions::date_t<T, Args...> &f) {
+            auto res = this->parse_table_name(f.timestring);
+            typedef decltype(f.modifiers) tuple_t;
+            tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&](auto &v){
+                auto tableNames = this->parse_table_name(v);
+                res.insert(tableNames.begin(), tableNames.end());
+            });
+            return res;
+        }
+        
+        template<class T, class ...Args>
+        std::set<std::string> parse_table_name(core_functions::datetime_t<T, Args...> &f) {
             auto res = this->parse_table_name(f.timestring);
             typedef decltype(f.modifiers) tuple_t;
             tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&](auto &v){
@@ -5589,6 +5632,19 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "INSERT INTO '" << impl.table.name << "' (";
             std::vector<std::string> columnNames;
+            /*auto allColumnNames = impl.table.column_names();
+            auto primaryKeyColumnNames = impl.table.primary_key_column_names();
+            decltype(primaryKeyColumnNames) nonPrimaryKeyColumnNames;
+            for(auto &columnName : allColumnNames) {
+                auto it = std::find(primaryKeyColumnNames.begin(),
+                                    primaryKeyColumnNames.end(),
+                                    columnName);
+                auto columnIsPrimaryKey = it != primaryKeyColumnNames.end();
+                if(!columnIsPrimaryKey){
+                    nonPrimaryKeyColumnNames.push_back(columnName);
+                }
+            }*/
+            
             impl.table.for_each_column([&impl, &columnNames] (auto c) {
                 if(impl.table._without_rowid or !c.template has<constraints::primary_key_t<>>()) {
                     columnNames.emplace_back(c.name);

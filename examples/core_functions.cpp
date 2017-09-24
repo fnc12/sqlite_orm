@@ -174,13 +174,5 @@ int main(int argc, char **argv) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     
-    //  SELECT date('now');
-    auto now = storage.select(date("now")).front();
-    cout << "date('now') = " << now << endl;
-    
-    //  SELECT date('now','start of month','+1 month','-1 day')
-    auto nowWithOffset = storage.select(date("now", "start of month", "+1 month", "-1 day")).front();
-    cout << "SELECT date('now','start of month','+1 month','-1 day') = " << nowWithOffset << endl;
-    
     return 0;
 }
