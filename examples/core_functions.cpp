@@ -174,5 +174,31 @@ int main(int argc, char **argv) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     
+    //  https://www.techonthenet.com/sqlite/functions/ltrim.php
+    
+    //  SELECT ltrim('   TechOnTheNet.com');
+    cout << "ltrim('   TechOnTheNet.com') = *" << storage.select(ltrim("   TechOnTheNet.com")).front() << "*" << endl;
+    
+    //  SELECT ltrim('   TechOnTheNet.com   ');
+    cout << "ltrim('   TechOnTheNet.com   ') = *" << storage.select(ltrim("   TechOnTheNet.com   ")).front() << "*" << endl;
+    
+    //  SELECT ltrim('   TechOnTheNet.com    is great!');
+    cout << "ltrim('   TechOnTheNet.com    is great!') = *" << storage.select(ltrim("   TechOnTheNet.com    is great!")).front() << "*" << endl;
+    
+    //  SELECT ltrim('000123', '0');
+    cout << "ltrim('000123', '0') = " << storage.select(ltrim("000123", "0")).front() << endl;
+    
+    //  SELECT ltrim('123123totn', '123');
+    cout << "ltrim('123123totn', '123') = " << storage.select(ltrim("123123totn", "123")).front() << endl;
+    
+    //  SELECT ltrim('123123totn123', '123');
+    cout << "ltrim('123123totn123', '123') = " << storage.select(ltrim("123123totn123", "123")).front() << endl;
+    
+    //  SELECT ltrim('xyxzyyyTOTN', 'xyz');
+    cout << "ltrim('xyxzyyyTOTN', 'xyz') = " << storage.select(ltrim("xyxzyyyTOTN", "xyz")).front() << endl;
+    
+    //  SELECT ltrim('6372totn', '0123456789');
+    cout << "ltrim('6372totn', '0123456789') = " << storage.select(ltrim("6372totn", "0123456789")).front() << endl;
+    
     return 0;
 }
