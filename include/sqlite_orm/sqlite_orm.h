@@ -175,6 +175,8 @@ namespace sqlite_orm {
             std::tuple<Cs...> columns;
             int asc_option = 0;    //  0 - none, 1 - asc, -1 - desc
             
+            primary_key_t(decltype(columns) c):columns(std::move(c)){}
+            
             typedef void field_type;    //  for column iteration. Better be deleted
             typedef std::tuple<> constraints_type;
             
@@ -300,7 +302,8 @@ namespace sqlite_orm {
     
     template<class ...Cs>
     inline constraints::primary_key_t<Cs...> primary_key(Cs ...cs) {
-        return {std::make_tuple(cs...)};
+        typedef constraints::primary_key_t<Cs...> ret_type;
+        return ret_type(std::make_tuple(cs...));
     }
     
     template<class T>
