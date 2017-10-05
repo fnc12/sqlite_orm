@@ -241,6 +241,8 @@ namespace sqlite_orm {
             C m = nullptr;
             R r = nullptr;
             
+            foreign_key_t(C m_, R r_):m(m_),r(r_){}
+            
             typedef void field_type;    //  for column iteration. Better be deleted
             typedef std::tuple<> constraints_type;
             
@@ -256,19 +258,24 @@ namespace sqlite_orm {
         struct foreign_key_intermediate_t {
             C m = nullptr;
             
+            foreign_key_intermediate_t(C m_):m(m_){}
+            
             template<class O, class F>
             foreign_key_t<C, F O::*> references(F O::*r) {
-                return {this->m, r};
+                typedef foreign_key_t<C, F O::*> ret_type;
+                return ret_type(this->m, r);
             }
             
             template<class O, class F>
             foreign_key_t<C, const F& (O::*)() const> references(const F& (O::*getter)() const) {
-                return {this->m, getter};
+                typedef foreign_key_t<C, const F& (O::*)() const> ret_type;
+                return ret_type(this->m, getter);
             }
             
             template<class O, class F>
             foreign_key_t<C, void (O::*)(F)> references(void (O::*setter)(F)) {
-                return {this->m, setter};
+                typedef foreign_key_t<C, void (O::*)(F)> ret_type;
+                return ret_type(this->m, setter);
             }
         };
 #endif
@@ -283,7 +290,8 @@ namespace sqlite_orm {
     
     template<class O, class F>
     constraints::foreign_key_intermediate_t<const F& (O::*)() const> foreign_key(const F& (O::*getter)() const) {
-        return {getter};
+        typedef constraints::foreign_key_intermediate_t<const F& (O::*)() const> ret_type;
+        return ret_type(getter);
     }
     
     template<class O, class F>
