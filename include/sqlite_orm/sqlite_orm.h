@@ -438,14 +438,14 @@ namespace sqlite_orm {
             template<class T>
             std::shared_ptr<std::string> operator() (const constraints::default_t<T> &t) {
                 std::stringstream ss;
-                auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
+                /*auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
                 if(needQuotes){
                     ss << "'";
-                }
+                }*/
                 ss << t.value;
-                if(needQuotes){
+                /*if(needQuotes){
                     ss << "'";
-                }
+                }*/
                 return std::make_shared<std::string>(ss.str());
             }
         };

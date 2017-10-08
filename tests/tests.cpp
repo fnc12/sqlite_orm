@@ -827,6 +827,44 @@ void testBlob() {
     free(data);
 }
 
+//  appeared after #55
+void testDefaultValue() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int userId;
+        std::string name;
+        int age;
+        std::string email;
+    };
+    
+    auto storage1 = make_storage("test_db.sqlite",
+                                 make_table("User",
+                                            make_column("Id",
+                                                        &User::userId,
+                                                        primary_key()),
+                                            make_column("Name",
+                                                        &User::name),
+                                            make_column("Age",
+                                                        &User::age)));
+    storage1.sync_schema();
+    storage1.remove_all<User>();
+    
+    auto storage2 = make_storage("test_db.sqlite",
+                                 make_table("User",
+                                            make_column("Id",
+                                                        &User::userId,
+                                                        primary_key()),
+                                            make_column("Name",
+                                                        &User::name),
+                                            make_column("Age",
+                                                        &User::age),
+                                            make_column("Email",
+                                                        &User::email,
+                                                        default_value("example@email.com"))));
+    storage2.sync_schema();
+}
+
 int main() {
     
     cout << "version = " << make_storage("").libversion() << endl;
@@ -852,4 +890,6 @@ int main() {
     testForeignKey();
     
     testBlob();
+    
+    testDefaultValue();
 }
