@@ -14,7 +14,7 @@ SQLite ORM light header only library for modern C++
 
 * **No raw string queries**
 * **Intuitive syntax**
-* **Comfortable interface - one code line for one query**
+* **Comfortable interface - one code line per single query**
 * **Built with modern C++14 features (no macros)**
 * **CRUD support**
 * **Pure select query support**
@@ -22,6 +22,7 @@ SQLite ORM light header only library for modern C++
 * **Custom types binding support**
 * **BLOB support** - maps to `std::vector<char>` or one can bind your custom type
 * **FOREIGN KEY support**
+* **Composite key support**
 * **JOIN support**
 * **Transactions support**
 * **Migrations functionality**
