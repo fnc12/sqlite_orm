@@ -1996,15 +1996,21 @@ namespace sqlite_orm {
             return res;
         }
         
+        std::vector<std::string> composite_key_columns_names() {
+            std::vector<std::string> res;
+            this->impl.for_each_primary_key([this, &res](auto c){
+                res = this->composite_key_columns_names(c);
+            });
+            return res;
+        }
+        
         std::vector<std::string> primary_key_column_names() {
             std::vector<std::string> res;
             this->impl.template for_each_column_with<constraints::primary_key_t<>>([&res](auto &c){
                 res.push_back(c.name);
             });
             if(!res.size()){
-                this->impl.for_each_primary_key([this, &res](auto c){
-                    res = this->composite_key_columns_names(c);
-                });
+                res = this->composite_key_columns_names();
             }
             return res;
         }
@@ -5733,6 +5739,7 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << "INSERT INTO '" << impl.table.name << "' (";
             std::vector<std::string> columnNames;
+            auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
             /*auto allColumnNames = impl.table.column_names();
             auto primaryKeyColumnNames = impl.table.primary_key_column_names();
             decltype(primaryKeyColumnNames) nonPrimaryKeyColumnNames;
@@ -5746,9 +5753,14 @@ namespace sqlite_orm {
                 }
             }*/
             
-            impl.table.for_each_column([&impl, &columnNames] (auto c) {
+            impl.table.for_each_column([&impl, &columnNames, &compositeKeyColumnNames] (auto c) {
                 if(impl.table._without_rowid or !c.template has<constraints::primary_key_t<>>()) {
-                    columnNames.emplace_back(c.name);
+                    auto it = std::find(compositeKeyColumnNames.begin(),
+                                        compositeKeyColumnNames.end(),
+                                        c.name);
+                    if(it == compositeKeyColumnNames.end()){
+                        columnNames.emplace_back(c.name);
+                    }
                 }
             });
             
@@ -5775,16 +5787,21 @@ namespace sqlite_orm {
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
-                impl.table.for_each_column([&o, &index, &stmt, &impl] (auto c) {
+                impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames] (auto c) {
                     if(impl.table._without_rowid or !c.template has<constraints::primary_key_t<>>()){
-                        typedef typename decltype(c)::field_type field_type;
-                        const field_type *value = nullptr;
-                        if(c.member_pointer){
-                            value = &(o.*c.member_pointer);
-                        }else{
-                            value = &((o).*(c.getter))();
+                        auto it = std::find(compositeKeyColumnNames.begin(),
+                                            compositeKeyColumnNames.end(),
+                                            c.name);
+                        if(it == compositeKeyColumnNames.end()){
+                            typedef typename decltype(c)::field_type field_type;
+                            const field_type *value = nullptr;
+                            if(c.member_pointer){
+                                value = &(o.*c.member_pointer);
+                            }else{
+                                value = &((o).*(c.getter))();
+                            }
+                            statement_binder<field_type>().bind(stmt, index++, *value);
                         }
-                        statement_binder<field_type>().bind(stmt, index++, *value);
                     }
                 });
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
