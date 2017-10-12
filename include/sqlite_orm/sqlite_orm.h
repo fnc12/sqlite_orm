@@ -2140,6 +2140,21 @@ namespace sqlite_orm {
                 };
                 res.emplace_back(i);
             });
+            std::vector<std::string> compositeKeyColumnNames;
+            this->impl.for_each_primary_key([this, &compositeKeyColumnNames](auto c){
+                compositeKeyColumnNames = this->composite_key_columns_names(c);
+            });
+            for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
+                auto &columnName = compositeKeyColumnNames[i];
+                auto it = std::find_if(res.begin(),
+                                       res.end(),
+                                       [&columnName](const table_info &ti) {
+                                           return ti.name == columnName;
+                                       });
+                if(it != res.end()){
+                    it->pk = static_cast<int>(i + 1);
+                }
+            }
             return res;
         }
         

@@ -865,6 +865,48 @@ void testDefaultValue() {
     storage2.sync_schema();
 }
 
+//  after #18
+void testCompositeKey() {
+    cout << __func__ << endl;
+    
+    struct Record
+    {
+        int year;
+        int month;
+        int amount;
+    };
+    
+    auto recordsTableName = "records";
+    auto storage = make_storage("compisite_key.db",
+                                make_table(recordsTableName,
+                                           make_column("year", &Record::year),
+                                           make_column("month", &Record::month),
+                                           make_column("amount", &Record::amount),
+                                           primary_key(&Record::year, &Record::month)));
+    
+    storage.sync_schema();
+    assert(storage.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
+    
+    auto storage2 = make_storage("compisite_key2.db",
+                                 make_table(recordsTableName,
+                                            make_column("year", &Record::year),
+                                            make_column("month", &Record::month),
+                                            make_column("amount", &Record::amount),
+                                            primary_key(&Record::month, &Record::year)));
+    storage2.sync_schema();
+    assert(storage2.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
+    
+    auto storage3 = make_storage("compisite_key3.db",
+                                 make_table(recordsTableName,
+                                            make_column("year", &Record::year),
+                                            make_column("month", &Record::month),
+                                            make_column("amount", &Record::amount),
+                                            primary_key(&Record::amount, &Record::month, &Record::year)));
+    storage3.sync_schema();
+    assert(storage3.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
+    
+}
+
 int main() {
     
     cout << "version = " << make_storage("").libversion() << endl;
@@ -892,4 +934,6 @@ int main() {
     testBlob();
     
     testDefaultValue();
+    
+    testCompositeKey();
 }
