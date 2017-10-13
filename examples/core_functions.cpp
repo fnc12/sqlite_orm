@@ -200,5 +200,31 @@ int main(int argc, char **argv) {
     //  SELECT ltrim('6372totn', '0123456789');
     cout << "ltrim('6372totn', '0123456789') = " << storage.select(ltrim("6372totn", "0123456789")).front() << endl;
     
+    //  https://www.techonthenet.com/sqlite/functions/rtrim.php
+    
+    //  SELECT rtrim('TechOnTheNet.com   ');
+    cout << "rtrim('TechOnTheNet.com   ') = *" << storage.select(rtrim("TechOnTheNet.com   ")).front() << "*" << endl;
+    
+    //  SELECT rtrim('   TechOnTheNet.com   ');
+    cout << "rtrim('   TechOnTheNet.com   ') = *" << storage.select(rtrim("   TechOnTheNet.com   ")).front() << "*" << endl;
+    
+    //  SELECT rtrim('TechOnTheNet.com    is great!   ');
+    cout << "rtrim('TechOnTheNet.com    is great!   ') = *" << storage.select(rtrim("TechOnTheNet.com    is great!   ")).front() << "*" << endl;
+    
+    //  SELECT rtrim('123000', '0');
+    cout << "rtrim('123000', '0') = *" << storage.select(rtrim("123000", "0")).front() << "*" << endl;
+    
+    //  SELECT rtrim('totn123123', '123');
+    cout << "rtrim('totn123123', '123') = *" << storage.select(rtrim("totn123123", "123")).front() << "*" << endl;
+    
+    //  SELECT rtrim('123totn123123', '123');
+    cout << "rtrim('123totn123123', '123') = *" << storage.select(rtrim("123totn123123", "123")).front() << "*" << endl;
+    
+    //  SELECT rtrim('TOTNxyxzyyy', 'xyz');
+    cout << "rtrim('TOTNxyxzyyy', 'xyz') = *" << storage.select(rtrim("TOTNxyxzyyy", "xyz")).front() << "*" << endl;
+    
+    //  SELECT rtrim('totn6372', '0123456789');
+    cout << "rtrim('totn6372', '0123456789') = *" << storage.select(rtrim("totn6372", "0123456789")).front() << "*" << endl;
+    
     return 0;
 }

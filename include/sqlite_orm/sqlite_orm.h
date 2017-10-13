@@ -1413,7 +1413,7 @@ namespace sqlite_orm {
         };
         
         /**
-         *  TRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
+         *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X>
         struct ltrim_single_t {
@@ -1425,7 +1425,7 @@ namespace sqlite_orm {
         };
         
         /**
-         *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
+         *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X, class Y>
         struct ltrim_double_t {
@@ -1436,6 +1436,33 @@ namespace sqlite_orm {
                 return static_cast<std::string>(ltrim_single_t<X>{});
             }
         };
+        
+        /**
+         *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
+         */
+        template<class X>
+        struct rtrim_single_t {
+            X x;
+            
+            operator std::string() const {
+                return "RTRIM";
+            }
+        };
+        
+        /**
+         *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
+         */
+        template<class X, class Y>
+        struct rtrim_double_t {
+            X x;
+            Y y;
+            
+            operator std::string() const {
+                return static_cast<std::string>(rtrim_single_t<X>{});
+            }
+        };
+        
+        
         
 #if SQLITE_VERSION_NUMBER >= 3007016
         
@@ -1520,6 +1547,16 @@ namespace sqlite_orm {
     
     template<class X, class Y>
     core_functions::ltrim_double_t<X, Y> ltrim(X x, Y y) {
+        return {x, y};
+    }
+    
+    template<class X>
+    core_functions::rtrim_single_t<X> rtrim(X x) {
+        return {x};
+    }
+    
+    template<class X, class Y>
+    core_functions::rtrim_double_t<X, Y> rtrim(X x, Y y) {
         return {x, y};
     }
     
@@ -2723,6 +2760,27 @@ namespace sqlite_orm {
             template<class L>
             void for_each_column_with_constraints(L) {}
         };
+        
+        template<class T>
+        struct expression_t {
+            T t;
+        };
+    }
+    
+    /*template<class F, class O>
+    internal::expression_t<F O::*> megaFunc(F O::*m) {
+        return {m};
+    }
+    
+    template<class F, class O>
+    internal::expression_t<F O::*> operator-(F O::*m) {
+        return {m};
+    }*/
+    
+    template<class L, class R>
+    conditions::is_equal_t<L, R> operator==(internal::expression_t<L> lhs, R r) {
+        typedef conditions::is_equal_t<L, R> ret_type;
+        return ret_type{lhs.t, r};
     }
     
     template<class ...Cols>
@@ -3324,6 +3382,16 @@ namespace sqlite_orm {
             typedef std::string type;
         };
         
+        template<class X, class ...Ts>
+        struct column_result_t<core_functions::rtrim_single_t<X>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class X, class Y, class ...Ts>
+        struct column_result_t<core_functions::rtrim_double_t<X, Y>, Ts...> {
+            typedef std::string type;
+        };
+        
         template<class T, class ...Args, class ...Ts>
         struct column_result_t<core_functions::date_t<T, Args...>, Ts...> {
             typedef std::string type;
@@ -3889,6 +3957,23 @@ namespace sqlite_orm {
         std::string string_from_expression(internal::distinct_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
             std::stringstream ss;
             auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class X, class Y>
+        std::string string_from_expression(core_functions::rtrim_double_t<X, Y> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.x);
+            auto expr2 = this->string_from_expression(f.y);
+            ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ") ";
+            return ss.str();
+        }
+        
+        template<class X>
+        std::string string_from_expression(core_functions::rtrim_single_t<X> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.x);
             ss << static_cast<std::string>(f) << "(" << expr << ") ";
             return ss.str();
         }
@@ -4628,6 +4713,19 @@ namespace sqlite_orm {
         
         template<class X, class Y>
         std::set<std::string> parse_table_name(core_functions::trim_double_t<X, Y> &f) {
+            auto res = this->parse_table_name(f.x);
+            auto res2 = this->parse_table_name(f.y);
+            res.insert(res2.begin(), res2.end());
+            return res;
+        }
+        
+        template<class X>
+        std::set<std::string> parse_table_name(core_functions::rtrim_single_t<X> &f) {
+            return this->parse_table_name(f.x);
+        }
+        
+        template<class X, class Y>
+        std::set<std::string> parse_table_name(core_functions::rtrim_double_t<X, Y> &f) {
             auto res = this->parse_table_name(f.x);
             auto res2 = this->parse_table_name(f.y);
             res.insert(res2.begin(), res2.end());
