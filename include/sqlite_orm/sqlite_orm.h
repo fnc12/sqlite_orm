@@ -2767,21 +2767,33 @@ namespace sqlite_orm {
         };
     }
     
-    /*template<class F, class O>
-    internal::expression_t<F O::*> megaFunc(F O::*m) {
-        return {m};
+    /*template<class F, class O, class T>
+    conditions::is_equal_t<F O::*, T> operator==(F O::*m, const T &t) {
+        typedef conditions::is_equal_t<F O::*, T> ret_type;
+        return ret_type{m, t};
     }
     
     template<class F, class O>
-    internal::expression_t<F O::*> operator-(F O::*m) {
+    conditions::is_equal_t<F O::*, std::string> operator==(F O::*m, const char *t) {
+        typedef conditions::is_equal_t<F O::*, std::string> ret_type;
+        return ret_type{m, std::string(t)};
+    }*/
+    
+    /*template<class F, class O>
+    internal::expression_t<F O::*> megaFunc(F O::*m) {
         return {m};
     }*/
     
-    template<class L, class R>
+//    template<class T>
+    /*internal::expression_t<std::string> operator~(const char *s) {
+        return {std::string(s)};
+    }*/
+    
+    /*template<class L, class R>
     conditions::is_equal_t<L, R> operator==(internal::expression_t<L> lhs, R r) {
         typedef conditions::is_equal_t<L, R> ret_type;
         return ret_type{lhs.t, r};
-    }
+    }*/
     
     template<class ...Cols>
     internal::index_t<Cols...> make_index(const std::string &name, Cols ...cols) {
