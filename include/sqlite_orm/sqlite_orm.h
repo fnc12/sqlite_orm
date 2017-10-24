@@ -553,6 +553,74 @@ namespace sqlite_orm {
         template<class ...Cs>
         struct is_primary_key<constraints::primary_key_t<Cs...>> : public std::true_type {};
         
+        /*template<class R, class F, class T>
+        struct case_after_when_t;
+        
+        template<class R, class F, class ...Args>
+        struct case_unclosed_t {
+            typedef R result_type;
+            typedef std::tuple<Args...> args_type;
+            
+            F field;    //  case field
+            args_type args;
+            
+            case_unclosed_t(F f):field(std::move(f)){}
+            
+            template<class T>
+            case_after_when_t<R, F, T> when(T t) {
+                typedef case_after_when_t<R, F, T> ret_type;
+                return ret_type(t);
+            }
+        };
+        
+        template<class R, class F, class T>
+        struct case_after_when_t {
+            T when;
+            
+            case_after_when_t(T t):when(std::move(t)){}
+        };*/
+        
+        template<class T>
+        struct expression_t {
+            T t;
+        };
+        
+        /*template<class ...Args>
+        struct case_unclosed_t;
+        
+        template<class T>
+        struct case_unclosed_t<> : public expression_t<T>{
+            
+        };*/
+        
+        template<class F, class R, class ...Whens>
+        struct case_t {
+            F field;
+            typedef R result_type;
+            typedef std::tuple<Whens...> whens_t;
+            typedef case_t<F, R, Whens...> self_type;
+            
+            case_t(F f):field(std::move(f)){}
+            
+            self_type end() {
+                return *this;
+            }
+            
+            self_type end(const std::string &str) {
+                this->column_name = str;
+                return this->end();
+            }
+            
+        protected:
+            std::string column_name;
+        };
+        
+    }
+    
+    template<class R, class F>
+    internal::case_t<R, F> case_(F f) {
+        typedef typename internal::case_t<R, F> ret_type;
+        return ret_type(f);
     }
     
     template<class L, class R>
@@ -2587,7 +2655,6 @@ namespace sqlite_orm {
         }
         
         std::vector<char> extract(sqlite3_stmt *stmt, int columnIndex) {
-//            return (const char*)sqlite3_column_text(stmt, columnIndex);
             auto bytes = static_cast<const char *>(sqlite3_column_blob(stmt, columnIndex));
             auto len = sqlite3_column_bytes(stmt, columnIndex);
             return this->go(bytes, len);
@@ -2672,7 +2739,25 @@ namespace sqlite_orm {
             return res;
         }
         
+        std::tuple<Args...> extract(sqlite3_stmt *stmt, int columnIndex) {
+            std::tuple<Args...> res;
+            this->extract<std::tuple_size<decltype(res)>::value>(res, stmt);
+            return res;
+        }
+        
     protected:
+        
+        template<size_t I, typename std::enable_if<I != 0>::type * = nullptr>
+        void extract(std::tuple<Args...> &t, sqlite3_stmt *stmt) {
+            typedef typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type tuple_type;
+            std::get<I - 1>(t) = row_extrator<tuple_type>().extract(stmt, I - 1);
+            this->extract<I - 1>(t, stmt);
+        }
+        
+        template<size_t I, typename std::enable_if<I == 0>::type * = nullptr>
+        void extract(std::tuple<Args...> &, sqlite3_stmt *) {
+            //..
+        }
         
         template<size_t I, typename std::enable_if<I != 0>::type * = nullptr>
         void extract(std::tuple<Args...> &t, char **argv) {
@@ -2682,7 +2767,7 @@ namespace sqlite_orm {
         }
         
         template<size_t I, typename std::enable_if<I == 0>::type * = nullptr>
-        void extract(std::tuple<Args...> &/*t*/, char **/*argv*/) {
+        void extract(std::tuple<Args...> &, char **) {
             //..
         }
     };
@@ -2759,11 +2844,6 @@ namespace sqlite_orm {
             
             template<class L>
             void for_each_column_with_constraints(L) {}
-        };
-        
-        template<class T>
-        struct expression_t {
-            T t;
         };
     }
     
@@ -4844,9 +4924,6 @@ namespace sqlite_orm {
             C res;
             std::string query;
             auto &impl = this->generate_select_asterisk<O>(&query, args...);
-//            typedef decltype(&impl) Impl_ptr;
-//            typedef std::tuple<C*, Impl_ptr> data_tuple_t;
-//            data_tuple_t data{&res, &impl};
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                 statement_finalizer finalizer{stmt};
@@ -5543,7 +5620,6 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-            std::vector<R> res;
             std::stringstream ss;
             ss << "SELECT ";
             auto columnName = this->string_from_expression(m);
@@ -5563,7 +5639,30 @@ namespace sqlite_orm {
                 }
                 this->process_conditions(ss, args...);
                 auto query = ss.str();
-                auto rc = sqlite3_exec(db,
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    std::vector<R> res;
+                    int stepRes;
+                    do{
+                        stepRes = sqlite3_step(stmt);
+                        switch(stepRes){
+                            case SQLITE_ROW:{
+                                res.push_back(row_extrator<R>().extract(stmt, 0));
+                            }break;
+                            case SQLITE_DONE: break;
+                            default:{
+                                auto msg = sqlite3_errmsg(db);
+                                throw std::runtime_error(msg);
+                            }
+                        }
+                    }while(stepRes != SQLITE_DONE);
+                    return res;
+                }else{
+                    auto msg = sqlite3_errmsg(db);
+                    throw std::runtime_error(msg);
+                }
+                /*auto rc = sqlite3_exec(db,
                                        query.c_str(),
                                        [](void *data, int, char **argv,char **) -> int {
                                            auto &res = *(std::vector<R>*)data;
@@ -5574,11 +5673,10 @@ namespace sqlite_orm {
                 if(rc != SQLITE_OK) {
                     auto msg = sqlite3_errmsg(db);
                     throw std::runtime_error(msg);
-                }
+                }*/
             }else{
                 throw std::runtime_error("column not found");
             }
-            return res;
         }
         
         /**
@@ -5641,7 +5739,30 @@ namespace sqlite_orm {
             }
             this->process_conditions(ss, conds...);
             auto query = ss.str();
-            auto rc = sqlite3_exec(db,
+            sqlite3_stmt *stmt;
+            if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                statement_finalizer finalizer{stmt};
+                std::vector<R> res;
+                int stepRes;
+                do{
+                    stepRes = sqlite3_step(stmt);
+                    switch(stepRes){
+                        case SQLITE_ROW:{
+                            res.push_back(row_extrator<R>().extract(stmt, 0));
+                        }break;
+                        case SQLITE_DONE: break;
+                        default:{
+                            auto msg = sqlite3_errmsg(db);
+                            throw std::runtime_error(msg);
+                        }
+                    }
+                }while(stepRes != SQLITE_DONE);
+                return res;
+            }else{
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
+            }
+            /*auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int, char **argv,char **) -> int {
                                        auto &res = *(std::vector<R>*)data;
@@ -5652,7 +5773,7 @@ namespace sqlite_orm {
             if(rc != SQLITE_OK) {
                 auto msg = sqlite3_errmsg(db);
                 throw std::runtime_error(msg);
-            }
+            }*/
             return res;
         }
         
@@ -5850,19 +5971,6 @@ namespace sqlite_orm {
             ss << "INSERT INTO '" << impl.table.name << "' (";
             std::vector<std::string> columnNames;
             auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
-            /*auto allColumnNames = impl.table.column_names();
-            auto primaryKeyColumnNames = impl.table.primary_key_column_names();
-            decltype(primaryKeyColumnNames) nonPrimaryKeyColumnNames;
-            for(auto &columnName : allColumnNames) {
-                auto it = std::find(primaryKeyColumnNames.begin(),
-                                    primaryKeyColumnNames.end(),
-                                    columnName);
-                auto columnIsPrimaryKey = it != primaryKeyColumnNames.end();
-                if(!columnIsPrimaryKey){
-                    nonPrimaryKeyColumnNames.push_back(columnName);
-                }
-            }*/
-            
             impl.table.for_each_column([&impl, &columnNames, &compositeKeyColumnNames] (auto c) {
                 if(impl.table._without_rowid or !c.template has<constraints::primary_key_t<>>()) {
                     auto it = std::find(compositeKeyColumnNames.begin(),

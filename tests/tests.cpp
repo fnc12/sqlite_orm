@@ -808,21 +808,38 @@ void testBlob() {
 //    cout << "Write Size: " << d.data.size() << endl;
     storage.insert(d);
     
-    //  read data
-    auto vd = storage.get_all<BlobData>();
-    assert(vd.size() == 1);
-    auto &blob = vd.front();
-    assert(blob.data.size() == size);
-    assert(std::equal(data,
-                      data + size,
-                      blob.data.begin()));
-    /*for (size_t i = 0; i < vd.size(); ++i) {
-        cout << "Read Size " << vd[i].data.size() << endl;
-        for (int j = 0; j < vd[i].data.size(); ++j){
-            printf ("%d ", vd[i].data[j]);
-        }
-        cout << endl;
-    }*/
+    //  read data with get_all
+    {
+        auto vd = storage.get_all<BlobData>();
+        assert(vd.size() == 1);
+        auto &blob = vd.front();
+        assert(blob.data.size() == size);
+        assert(std::equal(data,
+                          data + size,
+                          blob.data.begin()));
+    }
+    
+    //  read data with select (single column)
+    {
+        auto blobData = storage.select(&BlobData::data);
+        assert(blobData.size() == 1);
+        auto &blob = blobData.front();
+        assert(blob.size() == size);
+        assert(std::equal(data,
+                          data + size,
+                          blob.begin()));
+    }
+    
+    //  read data with select (multi column)
+    {
+        auto blobData = storage.select(columns(&BlobData::data));
+        assert(blobData.size() == 1);
+        auto &blob = std::get<0>(blobData.front());
+        assert(blob.size() == size);
+        assert(std::equal(data,
+                          data + size,
+                          blob.begin()));
+    }
     
     free(data);
 }
