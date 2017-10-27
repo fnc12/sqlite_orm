@@ -269,7 +269,7 @@ cout << "totalId = " << totalId << endl;    //  totalId is double (always)
 
 You also can select objects with custom where conditions with `=`, `!=`, `>`, `>=`, `<`, `<=`, `IN`, `BETWEEN` and `LIKE`.
 
-For example: let's select users with id lesser then 10:
+For example: let's select users with id lesser than 10:
 
 ```c++
 //  SELECT * FROM users WHERE id < 10
