@@ -68,7 +68,7 @@ int main(int argc, char **argv) {
     }
     
     //  SELECT name FROM marvel WHERE LENGTH(name) > 5
-    auto namesWithLengthGreaterThan5 = storage.select(&MarvelHero::name, where(greater_than(length(&MarvelHero::name), 5)));    //  std::vector<std::string>
+    auto namesWithLengthGreaterThan5 = storage.select(&MarvelHero::name, where(length(&MarvelHero::name) > 5));    //  std::vector<std::string>
     cout << "namesWithLengthGreaterThan5.size = " << namesWithLengthGreaterThan5.size() << endl;
     for(auto &name : namesWithLengthGreaterThan5) {
         cout << "name = " << name << endl;
@@ -96,7 +96,7 @@ int main(int argc, char **argv) {
     cout << endl;
     
     //  SELECT name FROM marvel WHERE ABS(points) < 5
-    auto namesByAbs = storage.select(&MarvelHero::name, where(lesser_than(abs(&MarvelHero::points), 5)));
+    auto namesByAbs = storage.select(&MarvelHero::name, where(abs(&MarvelHero::points) < 5));
     cout << "namesByAbs.size = " << namesByAbs.size() << endl;
     for(auto &name : namesByAbs) {
         cout << name << endl;

@@ -583,15 +583,9 @@ namespace sqlite_orm {
         template<class T>
         struct expression_t {
             T t;
-        };
-        
-        /*template<class ...Args>
-        struct case_unclosed_t;
-        
-        template<class T>
-        struct case_unclosed_t<> : public expression_t<T>{
             
-        };*/
+            expression_t(T t_):t(t_){}
+        };
         
         template<class F, class R, class ...Whens>
         struct case_t {
@@ -615,6 +609,12 @@ namespace sqlite_orm {
             std::string column_name;
         };
         
+    }
+    
+    template<class T>
+    internal::expression_t<T> c(T t) {
+        typedef internal::expression_t<T> result_type;
+        return result_type(t);
     }
     
     template<class R, class F>
@@ -680,7 +680,6 @@ namespace sqlite_orm {
     template<>
     struct field_printer<std::vector<char>> {
         std::string operator()(const std::vector<char> &t) const {
-//            return t;
             std::stringstream ss;
             ss << std::hex;
             for(auto c : t) {
@@ -1104,6 +1103,38 @@ namespace sqlite_orm {
         
     }
     
+    //  cute operators for columns
+    
+    template<class T, class R>
+    conditions::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class T, class R>
+    conditions::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class T, class R>
+    conditions::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class T, class R>
+    conditions::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class T, class R>
+    conditions::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class T, class R>
+    conditions::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
     namespace internal {
         
         template<class ...Args>
@@ -1175,19 +1206,6 @@ namespace sqlite_orm {
                 this->super::operator()(l);
             }
         };
-        
-        /*template<class T, class ...Tail>
-        struct join_iterator<conditions::natural_join_t<T>, Tail...> : public join_iterator<Tail...> {
-            conditions::natural_join_t<T> h;
-            
-            typedef join_iterator<Tail...> super;
-            
-            template<class L>
-            void operator()(L l) {
-                l(h);
-                this->super::operator()(l);
-            }
-        };*/
         
         template<class T, class O, class ...Tail>
         struct join_iterator<conditions::left_outer_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
@@ -1397,12 +1415,17 @@ namespace sqlite_orm {
     
     namespace core_functions {
         
+        //  base class for operator overloading
+        struct core_function_t {};
+        
         /**
          *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
          */
         template<class T>
-        struct length_t {
+        struct length_t : public core_function_t {
             T t;
+            
+            length_t(T t_):t(t_){}
             
             operator std::string() const {
                 return "LENGTH";
@@ -1413,8 +1436,10 @@ namespace sqlite_orm {
          *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
          */
         template<class T>
-        struct abs_t {
+        struct abs_t : public core_function_t {
             T t;
+            
+            abs_t(T t_):t(t_){}
             
             operator std::string() const {
                 return "ABS";
@@ -1425,8 +1450,10 @@ namespace sqlite_orm {
          *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
          */
         template<class T>
-        struct lower_t {
+        struct lower_t : public core_function_t {
             T t;
+            
+            lower_t(T t_):t(t_){}
             
             operator std::string() const {
                 return "LOWER";
@@ -1437,8 +1464,10 @@ namespace sqlite_orm {
          *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
          */
         template<class T>
-        struct upper_t {
+        struct upper_t : public core_function_t {
             T t;
+            
+            upper_t(T t_):t(t_){}
             
             operator std::string() const {
                 return "UPPER";
@@ -1448,7 +1477,7 @@ namespace sqlite_orm {
         /**
          *  CHANGES() function https://sqlite.org/lang_corefunc.html#changes
          */
-        struct changes_t {
+        struct changes_t : public core_function_t {
             
             operator std::string() const {
                 return "CHANGES";
@@ -1459,8 +1488,10 @@ namespace sqlite_orm {
          *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
          */
         template<class X>
-        struct trim_single_t {
+        struct trim_single_t : public core_function_t {
             X x;
+            
+            trim_single_t(X x_):x(x_){}
             
             operator std::string() const {
                 return "TRIM";
@@ -1471,12 +1502,14 @@ namespace sqlite_orm {
          *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
          */
         template<class X, class Y>
-        struct trim_double_t {
+        struct trim_double_t : public core_function_t {
             X x;
             Y y;
             
+            trim_double_t(X x_, Y y_):x(x_), y(y_){}
+            
             operator std::string() const {
-                return static_cast<std::string>(trim_single_t<X>{});
+                return static_cast<std::string>(trim_single_t<X>(0));
             }
         };
         
@@ -1484,8 +1517,10 @@ namespace sqlite_orm {
          *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X>
-        struct ltrim_single_t {
+        struct ltrim_single_t : public core_function_t {
             X x;
+            
+            ltrim_single_t(X x_):x(x_){}
             
             operator std::string() const {
                 return "LTRIM";
@@ -1496,12 +1531,14 @@ namespace sqlite_orm {
          *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X, class Y>
-        struct ltrim_double_t {
+        struct ltrim_double_t : public core_function_t {
             X x;
             Y y;
             
+            ltrim_double_t(X x_, Y y_):x(x_), y(y_){}
+            
             operator std::string() const {
-                return static_cast<std::string>(ltrim_single_t<X>{});
+                return static_cast<std::string>(ltrim_single_t<X>(0));
             }
         };
         
@@ -1509,8 +1546,10 @@ namespace sqlite_orm {
          *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X>
-        struct rtrim_single_t {
+        struct rtrim_single_t : public core_function_t {
             X x;
+            
+            rtrim_single_t(X x_):x(x_){}
             
             operator std::string() const {
                 return "RTRIM";
@@ -1521,12 +1560,14 @@ namespace sqlite_orm {
          *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X, class Y>
-        struct rtrim_double_t {
+        struct rtrim_double_t : public core_function_t {
             X x;
             Y y;
             
+            rtrim_double_t(X x_, Y y_):x(x_), y(y_){}
+            
             operator std::string() const {
-                return static_cast<std::string>(rtrim_single_t<X>{});
+                return static_cast<std::string>(rtrim_single_t<X>(0));
             }
         };
         
@@ -1538,15 +1579,18 @@ namespace sqlite_orm {
          *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
          */
         template<class ...Args>
-        struct char_t_ {
-            std::tuple<Args...> args;
+        struct char_t_ : public core_function_t {
+            typedef std::tuple<Args...> args_type;
+            args_type args;
+            
+            char_t_(args_type args_):args(args_){}
             
             operator std::string() const {
                 return "CHAR";
             }
         };
         
-        struct random_t {
+        struct random_t : public core_function_t {
             
             operator std::string() const {
                 return "RANDOM";
@@ -1555,9 +1599,12 @@ namespace sqlite_orm {
         
 #endif
         template<class T, class ...Args>
-        struct date_t{
+        struct date_t : public core_function_t {
+            typedef std::tuple<Args...> modifiers_type;
             T timestring;
-            std::tuple<Args...> modifiers;
+            modifiers_type modifiers;
+            
+            date_t(T timestring_, modifiers_type modifiers_):timestring(timestring_),modifiers(modifiers_){}
             
             operator std::string() const {
                 return "DATE";
@@ -1565,9 +1612,13 @@ namespace sqlite_orm {
         };
         
         template<class T, class ...Args>
-        struct datetime_t {
+        struct datetime_t : public core_function_t {
+            typedef std::tuple<Args...> modifiers_type;
+            
             T timestring;
-            std::tuple<Args...> modifiers;
+            modifiers_type modifiers;
+            
+            datetime_t(T timestring_, modifiers_type modifiers_):timestring(timestring_), modifiers(modifiers_){}
             
             operator std::string() const {
                 return "DATETIME";
@@ -1575,57 +1626,108 @@ namespace sqlite_orm {
         };
     }
     
+    //  cute operators for core functions
+    
+    template<
+    class F,
+    class R,
+    typename = typename std::enable_if<std::is_base_of<core_functions::core_function_t, F>::value>::type>
+    conditions::lesser_than_t<F, R> operator<(F f, R r) {
+        return {f, r};
+    }
+    
+    template<
+    class F,
+    class R,
+    typename = typename std::enable_if<std::is_base_of<core_functions::core_function_t, F>::value>::type>
+    conditions::lesser_or_equal_t<F, R> operator<=(F f, R r) {
+        return {f, r};
+    }
+    
+    template<
+    class F,
+    class R,
+    typename = typename std::enable_if<std::is_base_of<core_functions::core_function_t, F>::value>::type>
+    conditions::greater_than_t<F, R> operator>(F f, R r) {
+        return {f, r};
+    }
+    
+    template<
+    class F,
+    class R,
+    typename = typename std::enable_if<std::is_base_of<core_functions::core_function_t, F>::value>::type>
+    conditions::greater_or_equal_t<F, R> operator>=(F f, R r) {
+        return {f, r};
+    }
+    
+    template<
+    class F,
+    class R,
+    typename = typename std::enable_if<std::is_base_of<core_functions::core_function_t, F>::value>::type>
+    conditions::is_equal_t<F, R> operator==(F f, R r) {
+        return {f, r};
+    }
+    
+    template<
+    class F,
+    class R,
+    typename = typename std::enable_if<std::is_base_of<core_functions::core_function_t, F>::value>::type>
+    conditions::is_not_equal_t<F, R> operator!=(F f, R r) {
+        return {f, r};
+    }
+    
     inline core_functions::random_t random() {
         return {};
     }
     
-    template<class T, class ...Args>
-    core_functions::date_t<T, Args...> date(T timestring, Args ...modifiers) {
-        return {timestring, std::make_tuple(modifiers...)};
+    template<class T, class ...Args, class Res = core_functions::date_t<T, Args...>>
+    Res date(T timestring, Args ...modifiers) {
+        return Res(timestring, std::make_tuple(modifiers...));
     }
     
-    template<class T, class ...Args>
-    core_functions::datetime_t<T, Args...> datetime(T timestring, Args ...modifiers) {
-        return {timestring, std::make_tuple(modifiers...)};
+    template<class T, class ...Args, class Res = core_functions::datetime_t<T, Args...>>
+    Res datetime(T timestring, Args ...modifiers) {
+        return Res(timestring, std::make_tuple(modifiers...));
     }
     
 #if SQLITE_VERSION_NUMBER >= 3007016
     
     template<class ...Args>
     core_functions::char_t_<Args...> char_(Args ...args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
+        typedef core_functions::char_t_<Args...> result_type;
+        return result_type(std::make_tuple(std::forward<Args>(args)...));
     }
     
 #endif
     
-    template<class X>
-    core_functions::trim_single_t<X> trim(X x) {
-        return {x};
+    template<class X, class Res = core_functions::trim_single_t<X>>
+    Res trim(X x) {
+        return Res(x);
     }
     
-    template<class X, class Y>
-    core_functions::trim_double_t<X, Y> trim(X x, Y y) {
-        return {x, y};
+    template<class X, class Y, class Res = core_functions::trim_double_t<X, Y>>
+    Res trim(X x, Y y) {
+        return Res(x, y);
     }
     
-    template<class X>
-    core_functions::ltrim_single_t<X> ltrim(X x) {
-        return {x};
+    template<class X, class Res = core_functions::ltrim_single_t<X>>
+    Res ltrim(X x) {
+        return Res(x);
     }
     
-    template<class X, class Y>
-    core_functions::ltrim_double_t<X, Y> ltrim(X x, Y y) {
-        return {x, y};
+    template<class X, class Y, class Res = core_functions::ltrim_double_t<X, Y>>
+    Res ltrim(X x, Y y) {
+        return Res(x, y);
     }
     
-    template<class X>
-    core_functions::rtrim_single_t<X> rtrim(X x) {
-        return {x};
+    template<class X, class Res = core_functions::rtrim_single_t<X>>
+    Res rtrim(X x) {
+        return Res(x);
     }
     
-    template<class X, class Y>
-    core_functions::rtrim_double_t<X, Y> rtrim(X x, Y y) {
-        return {x, y};
+    template<class X, class Y, class Res = core_functions::rtrim_double_t<X, Y>>
+    Res rtrim(X x, Y y) {
+        return Res(x, y);
     }
     
     inline core_functions::changes_t changes() {
@@ -1634,22 +1736,24 @@ namespace sqlite_orm {
     
     template<class T>
     core_functions::length_t<T> length(T t) {
-        return {t};
+        typedef core_functions::length_t<T> result_type;
+        return result_type(t);
     }
     
     template<class T>
     core_functions::abs_t<T> abs(T t) {
-        return {t};
+        typedef core_functions::abs_t<T> result_type;
+        return result_type(t);
     }
     
-    template<class T>
-    core_functions::lower_t<T> lower(T t) {
-        return {t};
+    template<class T, class Res = core_functions::lower_t<T>>
+    Res lower(T t) {
+        return Res(t);
     }
     
-    template<class T>
-    core_functions::upper_t<T> upper(T t) {
-        return {t};
+    template<class T, class Res = core_functions::upper_t<T>>
+    Res upper(T t) {
+        return Res(t);
     }
     
     namespace aggregate_functions {
@@ -2846,34 +2950,6 @@ namespace sqlite_orm {
             void for_each_column_with_constraints(L) {}
         };
     }
-    
-    /*template<class F, class O, class T>
-    conditions::is_equal_t<F O::*, T> operator==(F O::*m, const T &t) {
-        typedef conditions::is_equal_t<F O::*, T> ret_type;
-        return ret_type{m, t};
-    }
-    
-    template<class F, class O>
-    conditions::is_equal_t<F O::*, std::string> operator==(F O::*m, const char *t) {
-        typedef conditions::is_equal_t<F O::*, std::string> ret_type;
-        return ret_type{m, std::string(t)};
-    }*/
-    
-    /*template<class F, class O>
-    internal::expression_t<F O::*> megaFunc(F O::*m) {
-        return {m};
-    }*/
-    
-//    template<class T>
-    /*internal::expression_t<std::string> operator~(const char *s) {
-        return {std::string(s)};
-    }*/
-    
-    /*template<class L, class R>
-    conditions::is_equal_t<L, R> operator==(internal::expression_t<L> lhs, R r) {
-        typedef conditions::is_equal_t<L, R> ret_type;
-        return ret_type{lhs.t, r};
-    }*/
     
     template<class ...Cols>
     internal::index_t<Cols...> make_index(const std::string &name, Cols ...cols) {
