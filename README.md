@@ -155,7 +155,7 @@ Also there is a non-CRUD update version `update_all`:
 ```c++
 storage.update_all(set(&User::lastName, "Hardey",
                        &User::typeId, 2),
-                   where(eq(&User::firstName, "Tom")));
+                   where(c(&User::firstName) == "Tom"));
 ```
 
 And delete. To delete you have to pass id only, not whole object. Also we need to explicitly tell which class of object we want to delete. Function name is `remove` not `delete` cause `delete` is a reserved word in C++.
