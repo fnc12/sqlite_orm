@@ -1110,9 +1110,19 @@ namespace sqlite_orm {
         return {expr.t, r};
     }
     
+    template<class L, class T>
+    conditions::lesser_than_t<L, T> operator<(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
     template<class T, class R>
     conditions::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
         return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    conditions::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
     }
     
     template<class T, class R>
@@ -1120,9 +1130,19 @@ namespace sqlite_orm {
         return {expr.t, r};
     }
     
+    template<class L, class T>
+    conditions::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
     template<class T, class R>
     conditions::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
         return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    conditions::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
     }
     
     template<class T, class R>
@@ -1130,9 +1150,19 @@ namespace sqlite_orm {
         return {expr.t, r};
     }
     
+    template<class L, class T>
+    conditions::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
     template<class T, class R>
     conditions::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
         return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    conditions::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
     }
     
     namespace internal {
