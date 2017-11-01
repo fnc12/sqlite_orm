@@ -248,6 +248,11 @@ namespace sqlite_orm {
             
             template<class L>
             void for_each_column(L) {}
+            
+            template<class ...Opts>
+            constexpr bool has_every() const  {
+                return false;
+            }
         };
         
         /**
@@ -2770,7 +2775,12 @@ namespace sqlite_orm {
         }
         
         std::string extract(sqlite3_stmt *stmt, int columnIndex) {
-            return (const char*)sqlite3_column_text(stmt, columnIndex);
+            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
+            if(cStr){
+                return cStr;
+            }else{
+                return {};
+            }
         }
     };
     
@@ -4679,7 +4689,8 @@ namespace sqlite_orm {
                 }
             }
             ss << "WHERE ";
-            auto primaryKeyColumnNames = impl.table.template column_names_with<constraints::primary_key_t<>>();
+//            auto primaryKeyColumnNames = impl.table.template column_names_with<constraints::primary_key_t<>>();
+            auto primaryKeyColumnNames = impl.table.primary_key_column_names();
             for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ?";
                 if(i < primaryKeyColumnNames.size() - 1) {

@@ -76,6 +76,87 @@ void testForeignKey() {
                    order_by(&Visit::visited_at));
 }
 
+//  appeared after #57
+void testForeignKey2() {
+    cout << __func__ << endl;
+    
+//    namespace testnamespace {
+    
+        class test1 {
+        public:
+            // Constructors
+            test1() {};
+            
+            // Variables
+            int id;
+            std::string val1;
+            std::string val2;
+        };
+        
+        class test2 {
+        public:
+            // Constructors
+            test2() {};
+            
+            // Variables
+            int id;
+            int fk_id;
+            std::string val1;
+            std::string val2;
+        };
+//    }
+    
+    auto table1 = make_table("test_1",
+                             make_column("id",
+                                         &test1::id,
+                                         primary_key()),
+                             make_column("val1",
+                                         &test1::val1),
+                             make_column("val2",
+                                         &test1::val2));
+    
+    auto table2 = make_table("test_2",
+                             make_column("id",
+                                         &test2::id,
+                                         primary_key()),
+                             make_column("fk_id",
+                                         &test2::fk_id),
+                             make_column("val1",
+                                         &test2::val1),
+                             make_column("val2",
+                                         &test2::val2),
+                             foreign_key(&test2::fk_id).references(&test1::id));
+    
+    auto storage = make_storage(
+                                "test.sqlite",
+                                table1,
+                                table2
+                                );
+    
+    storage.sync_schema();
+    
+    
+    test1 t1;
+    t1.val1 = "test";
+    t1.val2 = "test";
+    storage.insert(t1);
+    
+    test1 t1_copy;
+    t1_copy.val1 = "test";
+    t1_copy.val2 = "test";
+    storage.insert(t1_copy);
+    
+    test2 t2;
+    t2.fk_id = 1;
+    t2.val1 = "test";
+    t2.val2 = "test";
+    storage.insert(t2);
+    
+    t2.fk_id = 2;
+    
+    storage.update(t2);
+}
+
 void testTypeParsing() {
     cout << __func__ << endl;
     
@@ -947,6 +1028,8 @@ int main() {
     testEscapeChars();
     
     testForeignKey();
+    
+    testForeignKey2();
     
     testBlob();
     

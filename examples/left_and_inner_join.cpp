@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
     //  ORDER BY
     //      albumid;
     auto rows = storage.select(columns(&Artist::artistId, &Album::albumId),
-                               left_join<Album>(on(is_equal(&Album::artistId, &Artist::artistId))),
+                               left_join<Album>(on(c(&Album::artistId) == &Artist::artistId)),
                                order_by(&Album::albumId));
     cout << "rows count = " << rows.size() << endl;
     for(auto &row : rows) {
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
     //  WHERE
     //      albumid IS NULL;
     rows = storage.select(columns(&Artist::artistId, &Album::albumId),
-                          left_join<Album>(on(is_equal(&Album::artistId, &Artist::artistId))),
+                          left_join<Album>(on(c(&Album::artistId) == &Artist::artistId)),
                           where(is_null(&Album::albumId)));
     cout << "rows count = " << rows.size() << endl;
     for(auto &row : rows) {
@@ -152,7 +152,7 @@ int main(int argc, char **argv) {
     //      tracks
     //  INNER JOIN albums ON albums.albumid = tracks.albumid;
     auto innerJoinRows0 = storage.select(columns(&Track::trackId, &Track::name, &Album::title),
-                                         inner_join<Album>(on(is_equal(&Track::albumId, &Album::albumId))));
+                                         inner_join<Album>(on(c(&Track::albumId) == &Album::albumId)));
     cout << "innerJoinRows0 count = " << innerJoinRows0.size() << endl;
     for(auto &row : innerJoinRows0) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t';
@@ -175,7 +175,7 @@ int main(int argc, char **argv) {
     //      tracks
     //  INNER JOIN albums ON albums.albumid = tracks.albumid;
     auto innerJoinRows1 = storage.select(columns(&Track::trackId, &Track::name, &Track::albumId, &Album::albumId, &Album::title),
-                                         inner_join<Album>(on(is_equal(&Album::albumId, &Track::trackId))));
+                                         inner_join<Album>(on(c(&Album::albumId) == &Track::trackId)));
     cout << "innerJoinRows1 count = " << innerJoinRows1.size() << endl;
     for(auto &row : innerJoinRows1) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t';
@@ -211,8 +211,8 @@ int main(int argc, char **argv) {
     //  INNER JOIN albums ON albums.albumid = tracks.albumid
     //  INNER JOIN artists ON artists.artistid = albums.artistid;
     auto innerJoinRows2 = storage.select(columns(&Track::trackId, &Track::name, &Album::title, &Artist::name),
-                                         inner_join<Album>(on(eq(&Album::albumId, &Track::albumId))),
-                                         inner_join<Artist>(on(eq(&Artist::artistId, &Album::artistId))));
+                                         inner_join<Album>(on(c(&Album::albumId) == &Track::albumId)),
+                                         inner_join<Artist>(on(c(&Artist::artistId) == &Album::artistId)));
     cout << "innerJoinRows2 count = " << innerJoinRows2.size() << endl;
     for(auto &row : innerJoinRows2) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t';
@@ -321,7 +321,7 @@ int main(int argc, char **argv) {
         //  LEFT JOIN visits c
         //  ON a.doctor_id=c.doctor_id;
         auto rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
-                                    left_join<Visit>(on(is_equal(&Doctor::id, &Visit::doctorId))));
+                                    left_join<Visit>(on(c(&Doctor::id) == &Visit::doctorId)));
         for(auto &row : rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
         }
@@ -333,7 +333,7 @@ int main(int argc, char **argv) {
         //  JOIN visits c
         //  ON a.doctor_id=c.doctor_id;
         rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
-                               join<Visit>(on(is_equal(&Doctor::id, &Visit::doctorId))));
+                               join<Visit>(on(c(&Doctor::id) == &Visit::doctorId)));
         for(auto &row : rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
         }
