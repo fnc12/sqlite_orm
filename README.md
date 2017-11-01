@@ -155,7 +155,7 @@ Also there is a non-CRUD update version `update_all`:
 ```c++
 storage.update_all(set(&User::lastName, "Hardey",
                        &User::typeId, 2),
-                   where(eq(&User::firstName, "Tom")));
+                   where(c(&User::firstName) == "Tom"));
 ```
 
 And delete. To delete you have to pass id only, not whole object. Also we need to explicitly tell which class of object we want to delete. Function name is `remove` not `delete` cause `delete` is a reserved word in C++.
@@ -273,7 +273,7 @@ For example: let's select users with id lesser than 10:
 
 ```c++
 //  SELECT * FROM users WHERE id < 10
-auto idLesserThan10 = storage.get_all<User>(where(lesser_than(&User::id, 10)));
+auto idLesserThan10 = storage.get_all<User>(where(c(&User::id) < 10));
 cout << "idLesserThan10 count = " << idLesserThan10.size() << endl;
 for(auto &user : idLesserThan10) {
     cout << storage.dump(user) << endl;
@@ -284,7 +284,7 @@ Or select all users who's first name is not equal "John":
 
 ```c++
 //  SELECT * FROM users WHERE first_name != 'John'
-auto notJohn = storage.get_all<User>(where(is_not_equal(&User::firstName, "John")));
+auto notJohn = storage.get_all<User>(where(c(&User::firstName) != "John"));
 cout << "notJohn count = " << notJohn.size() << endl;
 for(auto &user : notJohn) {
     cout << storage.dump(user) << endl;
@@ -294,13 +294,13 @@ for(auto &user : notJohn) {
 By the way one can implement not equal in a different way using C++ negation operator:
 
 ```c++
-auto notJohn2 = storage.get_all<User>(where(not is_equal(&User::firstName, "John")));
+auto notJohn2 = storage.get_all<User>(where(not (c(&User::firstName) == "John")));
 ```
 
 You can use `!` and `not` in this case cause they are equal. Also you can chain several conditions with `and` and `or` operators. Let's try to get users with query with conditions like `where id >= 5 and id <= 7 and not id = 6`:
 
 ```c++
-auto id5and7 = storage.get_all<User>(where(lesser_or_equal(&User::id, 7) and greater_or_equal(&User::id, 5) and not is_equal(&User::id, 6)));
+auto id5and7 = storage.get_all<User>(where(c(&User::id) <= 7 and c(&User::id) >= 5 and not (c(&User::id) == 6)));
 cout << "id5and7 count = " << id5and7.size() << endl;
 for(auto &user : id5and7) {
     cout << storage.dump(user) << endl;
@@ -310,21 +310,21 @@ for(auto &user : id5and7) {
 Or let's just export two users with id 10 or id 16 (of course if these users exist):
 
 ```c++
-auto id10or16 = storage.get_all<User>(where(is_equal(&User::id, 10) or is_equal(&User::id, 16)));
+auto id10or16 = storage.get_all<User>(where(c(&User::id) == 10 or c(&User::id) == 16));
 cout << "id10or16 count = " << id10or16.size() << endl;
 for(auto &user : id10or16) {
     cout << storage.dump(user) << endl;
 }
 ```
 
-In fact you can chain together any number of different conditions with any operator from `and`, `or` and `not`. All conditions are templated so there is no runtime overhead. And this makes `sqlite_orm` the most powerful **sqlite** C++ ORM library.
+In fact you can chain together any number of different conditions with any operator from `and`, `or` and `not`. All conditions are templated so there is no runtime overhead. And this makes `sqlite_orm` the most powerful **sqlite** C++ ORM library!
 
 Moreover you can use parentheses to set the priority of query conditions:
 
 ```c++
-auto cuteConditions = storage.get_all<User>(where((is_equal(&User::firstName, "John") or is_equal(&User::firstName, "Alex")) and is_equal(&User::id, 4)));  //  where (first_name = 'John' or first_name = 'Alex') and id = 4
+auto cuteConditions = storage.get_all<User>(where((c(&User::firstName) == "John" or c(&User::firstName) == "Alex") and c(&User::id) == 4));  //  where (first_name = 'John' or first_name = 'Alex') and id = 4
 cout << "cuteConditions count = " << cuteConditions.size() << endl; //  cuteConditions count = 1
-cuteConditions = storage.get_all<User>(where(is_equal(&User::firstName, "John") or (is_equal(&User::firstName, "Alex") and is_equal(&User::id, 4))));   //  where first_name = 'John' or (first_name = 'Alex' and id = 4)
+cuteConditions = storage.get_all<User>(where(c(&User::firstName) == "John" or (c(&User::firstName) == "Alex" and c(&User::id) == 4)));   //  where first_name = 'John' or (first_name = 'Alex' and id = 4)
 cout << "cuteConditions count = " << cuteConditions.size() << endl; //  cuteConditions count = 2
 ```
 
@@ -332,7 +332,7 @@ Also we can implement `get` by id with `get_all` and `where` like this:
 
 ```c++
 //  SELECT * FROM users WHERE ( 2 = id )
-auto idEquals2 = storage.get_all<User>(where(is_equal(2, &User::id)));
+auto idEquals2 = storage.get_all<User>(where(2 == c(&User::id)));
 cout << "idEquals2 count = " << idEquals2.size() << endl;
 if(idEquals2.size()){
     cout << storage.dump(idEquals2.front()) << endl;
@@ -381,7 +381,7 @@ for(auto &user : whereNameLike) {
 }
 ```
 
-Looks like magic but it works very simple. Functions
+Looks like magic but it works very simple. Cute function `c` (column) takes a class pointer and returns a special expression middle object that can be used with operators overloaded in `::sqlite_orm` namespace. Operator overloads act just like functions
 
 * is_equal
 * is_not_equal
@@ -392,7 +392,7 @@ Looks like magic but it works very simple. Functions
 * is_null
 * is_not_null
 
-simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or any other expression (core function or literal). Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "WHERE" keyword before condition text. Next resulted string appends to query string and is being processed further.
+that simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or any other expression (core function or literal). Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "WHERE" keyword before condition text. Next resulted string appends to query string and is being processed further.
 
 If you omit `where` function in `get_all` it will return all objects from a table:
 
@@ -403,12 +403,12 @@ auto allUsers = storage.get_all<User>();
 Also you can use `remove_all` function to perform `DELETE FROM ... WHERE` query with the same type of conditions.
 
 ```c++
-storage.remove_all<User>(where(lesser_than(&User::id, 100)));
+storage.remove_all<User>(where(c(&User::id) < 100));
 ```
 
 # Raw select
 
-If you need to extract only a single column (`select %column_name% from %table_name% where %conditions%`) you can use a non-CRUD `select` function:
+If you need to extract only a single column (`SELECT %column_name% FROM %table_name% WHERE %conditions%`) you can use a non-CRUD `select` function:
 
 ```c++
 
@@ -421,7 +421,7 @@ for(auto &id : allIds) {
 cout << endl;
 
 //  SELECT id FROM users WHERE last_name = 'Doe'
-auto doeIds = storage.select(&User::id, where(is_equal(&User::lastName, "Doe")));
+auto doeIds = storage.select(&User::id, where(c(&User::lastName) == "Doe"));
 cout << "doeIds count = " << doeIds.size() << endl; //  doeIds is std::vector<int>
 for(auto &doeId : doeIds) {
     cout << doeId << " ";
@@ -429,7 +429,7 @@ for(auto &doeId : doeIds) {
 cout << endl;
 
 //  SELECT last_name FROM users WHERE id < 300
-auto allLastNames = storage.select(&User::lastName, where(lesser_than(&User::id, 300)));    
+auto allLastNames = storage.select(&User::lastName, where(c(&User::id) < 300));    
 cout << "allLastNames count = " << allLastNames.size() << endl; //  allLastNames is std::vector<std::string>
 for(auto &lastName : allLastNames) {
     cout << lastName << " ";
@@ -458,7 +458,7 @@ Also you're able to select several column in a vector of tuples. Example:
 ```c++
 //  `SELECT first_name, last_name FROM users WHERE id > 250 ORDER BY id`
 auto partialSelect = storage.select(columns(&User::firstName, &User::lastName),
-                                    where(greater_than(&User::id, 250)),
+                                    where(c(&User::id) > 250),
                                     order_by(&User::id));
 cout << "partialSelect count = " << partialSelect.size() << endl;
 for(auto &t : partialSelect) {
@@ -481,14 +481,14 @@ for(auto &user : orderedUsers) {
 }
 
 //  `SELECT * FROM users WHERE id < 250 ORDER BY first_name`
-auto orderedUsers2 = storage.get_all<User>(where(lesser_than(&User::id, 250)), order_by(&User::firstName));
+auto orderedUsers2 = storage.get_all<User>(where(c(&User::id) < 250), order_by(&User::firstName));
 cout << "orderedUsers2 count = " << orderedUsers2.size() << endl;
 for(auto &user : orderedUsers2) {
     cout << storage.dump(user) << endl;
 }
 
 //  `SELECT * FROM users WHERE id > 100 ORDER BY first_name ASC`
-auto orderedUsers3 = storage.get_all<User>(where(greater_than(&User::id, 100)), order_by(&User::firstName).asc());
+auto orderedUsers3 = storage.get_all<User>(where(c(&User::id) > 100), order_by(&User::firstName).asc());
 cout << "orderedUsers3 count = " << orderedUsers3.size() << endl;
 for(auto &user : orderedUsers3) {
     cout << storage.dump(user) << endl;
@@ -521,7 +521,7 @@ All these versions available with the same interface:
 
 ```c++
 //  `SELECT * FROM users WHERE id > 250 ORDER BY id LIMIT 5`
-auto limited5 = storage.get_all<User>(where(greater_than(&User::id, 250)),
+auto limited5 = storage.get_all<User>(where(c(&User::id) > 250),
                                       order_by(&User::id),
                                       limit(5));
 cout << "limited5 count = " << limited5.size() << endl;
@@ -530,7 +530,7 @@ for(auto &user : limited5) {
 }
 
 //  `SELECT * FROM users WHERE id > 250 ORDER BY id LIMIT 5, 10`
-auto limited5comma10 = storage.get_all<User>(where(greater_than(&User::id, 250)),
+auto limited5comma10 = storage.get_all<User>(where(c(&User::id) > 250),
                                              order_by(&User::id),
                                              limit(5, 10));
 cout << "limited5comma10 count = " << limited5comma10.size() << endl;
@@ -539,7 +539,7 @@ for(auto &user : limited5comma10) {
 }
 
 //  `SELECT * FROM users WHERE id > 250 ORDER BY id LIMIT 5 OFFSET 10`
-auto limit5offset10 = storage.get_all<User>(where(greater_than(&User::id, 250)),
+auto limit5offset10 = storage.get_all<User>(where(c(&User::id) > 250),
                                             order_by(&User::id),
                                             limit(5, offset(10)));
 cout << "limit5offset10 count = " << limit5offset10.size() << endl;
@@ -561,7 +561,7 @@ You can perform simple `JOIN`, `CROSS JOIN`, `INNER JOIN`, `LEFT JOIN` or `LEFT 
 //  LEFT JOIN visits c
 //  ON a.doctor_id=c.doctor_id;
 auto rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
-                            left_join<Visit>(on(is_equal(&Doctor::id, &Visit::doctorId))));
+                            left_join<Visit>(on(c(&Doctor::id) == &Visit::doctorId)));  //  one `c` call is enough cause operator overloads are templated
 for(auto &row : rows) {
     cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
 }
@@ -577,7 +577,7 @@ Simple `JOIN`:
 //  JOIN visits c
 //  ON a.doctor_id=c.doctor_id;
 rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
-                       join<Visit>(on(is_equal(&Doctor::id, &Visit::doctorId))));
+                       join<Visit>(on(c(&Doctor::id) == &Visit::doctorId)));
 for(auto &row : rows) {
     cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
 }
@@ -597,8 +597,8 @@ Two `INNER JOIN`s in one query:
 //  INNER JOIN albums ON albums.albumid = tracks.albumid
 //  INNER JOIN artists ON artists.artistid = albums.artistid;
 auto innerJoinRows2 = storage.select(columns(&Track::trackId, &Track::name, &Album::title, &Artist::name),
-                                     inner_join<Album>(on(eq(&Album::albumId, &Track::albumId))),
-                                     inner_join<Artist>(on(eq(&Artist::artistId, &Album::artistId))));
+                                     inner_join<Album>(on(c(&Album::albumId) == &Track::albumId)),
+                                     inner_join<Artist>(on(c(&Artist::artistId) == &Album::artistId)));
 //  innerJoinRows2 is std::vector<std::tuple<decltype(&Track::trackId), decltype(&Track::name), decltype(&Album::title), decltype(&Artist::name)>>
 ```
 
@@ -667,7 +667,7 @@ Trancations are useful with `changes` sqlite function that returns number of row
 
 ```c++
 storage.transaction([&] () mutable {
-    storage.remove_all<User>(where(lesser_than(&User::id, 100)));
+    storage.remove_all<User>(where(c(&User::id) < 100));
     auto usersRemoved = storage.changes();
     cout << "usersRemoved = " << usersRemoved << endl;
     return true;
