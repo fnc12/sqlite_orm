@@ -4,7 +4,6 @@
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm)
-[![Github Issues](https://img.shields.io/github/issues/fnc12/sqlite_orm.svg)](http://github.com/fnc12/sqlite_orm/issues)
 [![Donate using PayPal](https://img.shields.io/badge/donate-PayPal-brightgreen.svg)](https://paypal.me/fnc12)
 
 # SQLite ORM
