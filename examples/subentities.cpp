@@ -53,14 +53,14 @@ auto storage = make_storage("subentities.sqlite",
 //  inserts or updates student and does the same with marks
 int addStudent(const Student &student) {
     auto studentId = student.id;
-    if(storage.count<Student>(where(is_equal(&Student::id, student.id)))){
+    if(storage.count<Student>(where(c(&Student::id) == student.id))){
         storage.update(student);
     }else{
         studentId = storage.insert(student);
     }
     //  insert all marks within a transaction
     storage.transaction([&]{
-        storage.remove_all<Mark>(where(is_equal(&Mark::student_id, studentId)));
+        storage.remove_all<Mark>(where(c(&Mark::student_id) == studentId));
         for(auto &mark : student.marks) {
             storage.insert(Mark{ mark, studentId });
         }
@@ -76,7 +76,7 @@ int addStudent(const Student &student) {
  */
 Student getStudent(int studentId) {
     auto res = storage.get<Student>(studentId);
-    res.marks = storage.select(&Mark::value, where(is_equal(&Mark::student_id, studentId)));
+    res.marks = storage.select(&Mark::value, where(c(&Mark::student_id) == studentId));
     return res; //  must be moved automatically by compiler
 }
 

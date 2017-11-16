@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
     //  FROM ReqEquip, ReqDetail
     //  WHERE ReqEquip.ReqNumber = ReqDetail.ReqNumber;
     auto rows = storage.select(columns(&ReqEquip::reqNumber, &ReqEquip::requestor, &ReqDetail::quantity, &ReqDetail::stockNumber),
-                               where(is_equal(&ReqEquip::reqNumber, &ReqDetail::reqNumber)));
+                               where(c(&ReqEquip::reqNumber) == &ReqDetail::reqNumber));
     for(auto &row : rows) {
         cout << std::get<0>(row) << '\t';
         cout << std::get<1>(row) << '\t';
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
     //  WHERE ReqEquip.ReqNumber = ReqDetail.ReqNumber AND ReqEquip.ReqNumber = 1000;
     
     rows = storage.select(columns(&ReqEquip::reqNumber, &ReqEquip::requestor, &ReqDetail::quantity, &ReqDetail::stockNumber),
-                          where(eq(&ReqEquip::reqNumber, &ReqDetail::reqNumber) and eq(&ReqEquip::reqNumber, 1000)));
+                          where(c(&ReqEquip::reqNumber) == &ReqDetail::reqNumber and c(&ReqEquip::reqNumber) == 1000));
     for(auto &row : rows) {
         cout << std::get<0>(row) << '\t';
         cout << std::get<1>(row) << '\t';

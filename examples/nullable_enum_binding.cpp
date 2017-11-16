@@ -143,7 +143,6 @@ int main(int argc, char **argv) {
     });
     
     cout << "All users :" << endl;
-//    for(auto &user : storage.get_all<User>()) {
     for(auto &user : storage.iterate<User>()) {
         cout << storage.dump(user) << endl;
     }

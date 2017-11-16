@@ -3025,7 +3025,7 @@ namespace sqlite_orm {
         }
         
         bool table_exists(const std::string &tableName, sqlite3 *db) {
-            bool res = false;
+            auto res = false;
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '" << "table" << "' AND name = '" << tableName << "'";
             auto query = ss.str();
@@ -3429,11 +3429,12 @@ namespace sqlite_orm {
                             }
                         }
                         if(!gottaCreateTable){
-
-                            if(res == decltype(res)::old_columns_removed) res = decltype(res)::new_columns_added_and_old_columns_removed;
-                            else res = decltype(res)::new_columns_added;
+                            if(res == decltype(res)::old_columns_removed) {
+                                res = decltype(res)::new_columns_added_and_old_columns_removed;
+                            }else{
+                                res = decltype(res)::new_columns_added;
+                            }
                         }else{
-
                             res = decltype(res)::dropped_and_recreated;
                         }
                     }else{
@@ -3449,8 +3450,8 @@ namespace sqlite_orm {
         }
 
         static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                    std::vector<table_info>& storageTableInfo,
-                                    std::vector<table_info>& dbTableInfo)
+                                           std::vector<table_info>& storageTableInfo,
+                                           std::vector<table_info>& dbTableInfo)
         {
             bool notEqual = false;
 
@@ -6463,17 +6464,17 @@ namespace sqlite_orm {
          *  It performs check storage schema with actual db schema and:
          *  * if there are excess tables exist in db they are ignored (not dropped)
          *  * every table from storage is compared with it's db analog and 
-         *      * if table doesn't exist it is created
+         *      * if table doesn't exist it is being created
          *      * if table exists its colums are being compared with table_info from db and
          *          * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated
-         *          * if there are columns in storage that are not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command
-         *          * if there is any column existing in both db and storage but differs by any of properties (type, pk, notnull, dflt_value) table will be dropped and recreated
+         *          * if there are columns in storage that do not exist in db they will be added using `ALTER TABLE ... ADD COLUMN ...' command
+         *          * if there is any column existing in both db and storage but differs by any of properties/constraints (type, pk, notnull, dflt_value) table will be dropped and recreated
          *  Be aware that `sync_schema` doesn't guarantee that data will not be dropped. It guarantees only that it will make db schema the same
          *  as you specified in `make_storage` function call. A good point is that if you have no db file at all it will be created and 
          *  all tables also will be created with exact tables and columns you specified in `make_storage`, `make_table` and `make_column` call.
          *  The best practice is to call this function right after storage creation.
          *  @param preserve affects on function behaviour in case it is needed to remove a column. If it is `false` so table will be dropped 
-         *  if there is column to remove, if `true` -  table is copies into another table, dropped and copied table is renamed with source table name.
+         *  if there is column to remove, if `true` -  table is being copied into another table, dropped and copied table is renamed with source table name.
          *  Warning: sync_schema doesn't check foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info
          *  please submit an issue https://github.com/fnc12/sqlite_orm/issues
          *  @return std::map with std::string key equal table name and `sync_schema_result` as value. `sync_schema_result` is a enum value that stores 
@@ -6489,7 +6490,6 @@ namespace sqlite_orm {
             }else{
                 db = this->currentTransaction->get_db();
             }
-//            return this->impl.sync_schema(db, preserve);
             std::map<std::string, sync_schema_result> result;
             this->impl.for_each([&result, db, preserve, this](auto impl){
                 auto res = this->sync_table(impl, db, preserve);

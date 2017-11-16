@@ -69,7 +69,7 @@ int main(int argc, char **argv) {
     storage.insert_range(moreContracts.begin(),
                          moreContracts.end());
     
-    auto lisas = storage.get_all<Contract>(where(is_equal(&Contract::email, "lisa.smith@sqlitetutorial.net")));
+    auto lisas = storage.get_all<Contract>(where(c(&Contract::email) == "lisa.smith@sqlitetutorial.net"));
     
     storage.drop_index("idx_contacts_name");
     storage.drop_index("idx_contacts_email");

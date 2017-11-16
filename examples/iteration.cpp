@@ -59,12 +59,12 @@ int main(int argc, char **argv) {
     cout << "====" << endl;
     
     //  one can iterate with custom WHERE conditions..
-    for(auto &hero : storage.iterate<MarvelHero>(where(is_equal(&MarvelHero::name, "Thor")))) {
+    for(auto &hero : storage.iterate<MarvelHero>(where(c(&MarvelHero::name) == "Thor"))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     
     cout << "Heros with LENGTH(name) < 6 :" << endl;
-    for(auto &hero : storage.iterate<MarvelHero>(where(lesser_than(length(&MarvelHero::name), 6)))) {
+    for(auto &hero : storage.iterate<MarvelHero>(where(length(&MarvelHero::name) < 6))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     

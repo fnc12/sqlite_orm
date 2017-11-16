@@ -127,11 +127,9 @@ void testForeignKey2() {
                                          &test2::val2),
                              foreign_key(&test2::fk_id).references(&test1::id));
     
-    auto storage = make_storage(
-                                "test.sqlite",
+    auto storage = make_storage("test.sqlite",
                                 table1,
-                                table2
-                                );
+                                table2);
     
     storage.sync_schema();
     

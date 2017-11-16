@@ -144,7 +144,7 @@ int main(int/* argc*/, char **/*argv*/) {
     storage.insert(SuperHero{ -1, "Batman", Gender::Male });
     
     //  get Batman by name
-    auto batman = storage.get_all<SuperHero>(where(is_equal(&SuperHero::name, "Batman"))).front();
+    auto batman = storage.get_all<SuperHero>(where(c(&SuperHero::name) == "Batman")).front();
     
     //  print Batman
     cout << "batman = " << storage.dump(batman) << endl;
@@ -165,14 +165,14 @@ int main(int/* argc*/, char **/*argv*/) {
     storage.insert(SuperHero{ -1, "Superman", Gender::Male});
     
     //  get all male superheros (2 expected)
-    auto males = storage.get_all<SuperHero>(where(is_equal(&SuperHero::gender, Gender::Male)));
+    auto males = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Male));
     cout << "males = " << males.size() << endl;
     for(auto &superHero : males) {
         cout << storage.dump(superHero) << endl;
     }
     
     //  get all female superheros (1 expected)
-    auto females = storage.get_all<SuperHero>(where(is_equal(&SuperHero::gender, Gender::Female)));
+    auto females = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Female));
     cout << "females = " << females.size() << endl;
     for(auto &superHero : females) {
         cout << storage.dump(superHero) << endl;
