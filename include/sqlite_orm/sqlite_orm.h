@@ -2884,6 +2884,7 @@ namespace sqlite_orm {
         }
         
         std::tuple<Args...> extract(sqlite3_stmt *stmt, int columnIndex) {
+            (void)columnIndex;
             std::tuple<Args...> res;
             this->extract<std::tuple_size<decltype(res)>::value>(res, stmt);
             return res;
