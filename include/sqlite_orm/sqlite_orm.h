@@ -5,7 +5,7 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
-#include <libtbag/3rd/sqlite3/sqlite3.h>
+#include <sqlite3.h>
 #include <stdexcept>
 #include <vector>   //  std::vector
 #include <sstream>  //  std::stringstream
