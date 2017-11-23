@@ -1016,9 +1016,11 @@ namespace sqlite_orm {
         };
         
         template<class A, class T>
-        struct like_t {
+        struct like_t: public binary_condition<A, T> {
             A a;
             T t;
+
+            using binary_condition<A, T>::binary_condition;
             
             operator std::string() const {
                 return "LIKE";
@@ -1460,6 +1462,13 @@ namespace sqlite_orm {
     conditions::like_t<A, T> like(A a, T t) {
         return {a, t};
     }
+
+    template<class T, class R>
+    conditions::like_t<T, R> like(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+
+
     
     namespace core_functions {
         
@@ -4396,12 +4405,6 @@ namespace sqlite_orm {
             return ss.str();
         }
         
-        template<class A, class T>
-        std::string process_where(conditions::like_t<A, T> &l) {
-            std::stringstream ss;
-            ss << this->string_from_expression(l.a) << " " << static_cast<std::string>(l) << " " << this->string_from_expression(l.t) << " ";
-            return ss.str();
-        }
         
         template<class A, class T>
         std::string process_where(conditions::between_t<A, T> &bw) {
