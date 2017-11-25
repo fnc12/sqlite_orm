@@ -1003,9 +1003,11 @@ namespace sqlite_orm {
         };
         
         template<class A, class T>
-        struct like_t {
+        struct like_t : public condition_t {
             A a;
             T t;
+            
+            like_t(A a_, T t_):a(a_), t(t_){}
             
             operator std::string() const {
                 return "LIKE";
