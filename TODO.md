@@ -16,4 +16,3 @@
 * operators +, -, *, /
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
 * reusing of prepared statements - useful for query optimisation
-* more comfortable conditions - `&User::id < 5` instead of `lesser_than(&User::id, 5)`. Probably: `~&User::id < 5` or any other unary operator overloading
