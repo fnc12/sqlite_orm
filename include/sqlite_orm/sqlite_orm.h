@@ -176,6 +176,9 @@ namespace sqlite_orm {
     
     namespace constraints {
         
+        /**
+         *  AUTOINCREMENT constraint class.
+         */
         struct autoincrement_t {
             
             operator std::string() const {
@@ -183,6 +186,10 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  PRIMARY KEY constraint class.
+         *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
+         */
         template<class ...Cs>
         struct primary_key_t {
             std::tuple<Cs...> columns;
@@ -219,6 +226,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  UNIQUE constraint class.
+         */
         struct unique_t {
             
             operator std::string() const {
@@ -226,6 +236,10 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  DEFAULT constraint class.
+         *  T is a value type.
+         */
         template<class T>
         struct default_t {
             typedef T value_type;
@@ -249,6 +263,12 @@ namespace sqlite_orm {
         
 #if SQLITE_VERSION_NUMBER >= 3006019
         
+        /**
+         *  FOREIGN KEY constraint class.
+         *  C is column which has foreign key
+         *  R is column which C references to
+         *  Available in SQLite 3.6.19 or higher
+         */
         template<class C, class R>
         struct foreign_key_t {
             C m = nullptr;
@@ -271,6 +291,7 @@ namespace sqlite_orm {
         /**
          *  C can be a class member pointer, a getter function member pointer or setter
          *  func member pointer
+         *  Available in SQLite 3.6.19 or higher
          */
         template<class C>
         struct foreign_key_intermediate_t {
@@ -301,23 +322,39 @@ namespace sqlite_orm {
     }
     
 #if SQLITE_VERSION_NUMBER >= 3006019
+    
+    /**
+     *  FOREIGN KEY constraint construction function that takes member pointer as argument
+     *  Available in SQLite 3.6.19 or higher
+     */
     template<class O, class F>
     constraints::foreign_key_intermediate_t<F O::*> foreign_key(F O::*m) {
         return {m};
     }
     
+    /**
+     *  FOREIGN KEY constraint construction function that takes getter function pointer as argument
+     *  Available in SQLite 3.6.19 or higher
+     */
     template<class O, class F>
     constraints::foreign_key_intermediate_t<const F& (O::*)() const> foreign_key(const F& (O::*getter)() const) {
         typedef constraints::foreign_key_intermediate_t<const F& (O::*)() const> ret_type;
         return ret_type(getter);
     }
     
+    /**
+     *  FOREIGN KEY constraint construction function that takes setter function pointer as argument
+     *  Available in SQLite 3.6.19 or higher
+     */
     template<class O, class F>
     constraints::foreign_key_intermediate_t<void (O::*)(F)> foreign_key(void (O::*setter)(F)) {
         return {setter};
     }
 #endif
     
+    /**
+     *  UNIQUE constraint builder function. 
+     */
     inline constraints::unique_t unique() {
         return {};
     }
@@ -782,6 +819,9 @@ namespace sqlite_orm {
             int off;
         };
         
+        /**
+         *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
+         */
         struct condition_t {};
         
         template<class C>
@@ -921,9 +961,11 @@ namespace sqlite_orm {
         };
         
         template<class L, class E>
-        struct in_t {
+        struct in_t : public condition_t {
             L l;    //  left expression..
             std::vector<E> values;       //  values..
+            
+            in_t(L l_, std::vector<E> values_):l(l_), values(values_){}
             
             negated_condition_t<in_t<L, E>> operator!() const {
                 return {*this};
@@ -1005,10 +1047,12 @@ namespace sqlite_orm {
         };
         
         template<class A, class T>
-        struct between_t {
+        struct between_t : public condition_t {
             A expr;
             T b1;
             T b2;
+            
+            between_t(A expr_, T b1_, T b2_):expr(expr_),b1(b1_),b2(b2_){}
             
             operator std::string() const {
                 return "BETWEEN";
