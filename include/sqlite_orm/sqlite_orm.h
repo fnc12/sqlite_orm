@@ -824,6 +824,36 @@ namespace sqlite_orm {
          */
         struct condition_t {};
         
+        enum class collate_argument {
+            binary,
+            nocase,
+            rtrim,
+        };
+        
+        template<class T>
+        struct collate_t : public condition_t {
+            T expr;
+            collate_argument argument;
+            
+            collate_t(T expr_, collate_argument argument_):expr(expr_),argument(argument_){}
+            
+            operator std::string () const {
+                std::string res = "COLLATE ";
+                switch(this->argument){
+                    case decltype(this->argument)::binary:
+                        res += "BINARY";
+                        break;
+                    case decltype(this->argument)::nocase:
+                        res += "NOCASE";
+                        break;
+                    case decltype(this->argument)::rtrim:
+                        res += "RTRIM";
+                        break;
+                }
+                return res;
+            }
+        };
+        
         template<class C>
         struct negated_condition_t : public condition_t {
             C c;
@@ -875,8 +905,13 @@ namespace sqlite_orm {
             binary_condition(L l_, R r_):l(l_),r(r_){}
         };
         
+        /**
+         *  = and == operators object.
+         */
         template<class L, class R>
         struct is_equal_t : public binary_condition<L, R> {
+            
+            typedef is_equal_t<L, R> Self;
             
             using binary_condition<L, R>::binary_condition;
             
@@ -888,10 +923,27 @@ namespace sqlite_orm {
                 return {*this};
             }
             
+            collate_t<Self> collate_binary() const {
+                return {*this, collate_argument::binary};
+            }
+            
+            collate_t<Self> collate_nocase() const {
+                return {*this, collate_argument::nocase};
+            }
+            
+            collate_t<Self> collate_rtrim() const {
+                return {*this, collate_argument::rtrim};
+            }
+            
         };
         
+        /**
+         *  != operator object.
+         */
         template<class L, class R>
         struct is_not_equal_t : public binary_condition<L, R> {
+            
+            typedef is_not_equal_t<L, R> Self;
             
             using binary_condition<L, R>::binary_condition;
             
@@ -902,10 +954,27 @@ namespace sqlite_orm {
             negated_condition_t<is_not_equal_t<L, R>> operator!() const {
                 return {*this};
             }
+            
+            collate_t<Self> collate_binary() const {
+                return {*this, collate_argument::binary};
+            }
+            
+            collate_t<Self> collate_nocase() const {
+                return {*this, collate_argument::nocase};
+            }
+            
+            collate_t<Self> collate_rtrim() const {
+                return {*this, collate_argument::rtrim};
+            }
         };
         
+        /**
+         *  > operator object.
+         */
         template<class L, class R>
         struct greater_than_t : public binary_condition<L, R> {
+            
+            typedef greater_than_t<L, R> Self;
             
             using binary_condition<L, R>::binary_condition;
             
@@ -916,10 +985,27 @@ namespace sqlite_orm {
             negated_condition_t<greater_than_t<L, R>> operator!() const {
                 return {*this};
             }
+            
+            collate_t<Self> collate_binary() const {
+                return {*this, collate_argument::binary};
+            }
+            
+            collate_t<Self> collate_nocase() const {
+                return {*this, collate_argument::nocase};
+            }
+            
+            collate_t<Self> collate_rtrim() const {
+                return {*this, collate_argument::rtrim};
+            }
         };
         
+        /**
+         *  >= operator object.
+         */
         template<class L, class R>
         struct greater_or_equal_t : public binary_condition<L, R> {
+            
+            typedef greater_or_equal_t<L, R> Self;
             
             using binary_condition<L, R>::binary_condition;
             
@@ -930,10 +1016,27 @@ namespace sqlite_orm {
             negated_condition_t<greater_or_equal_t<L, R>> operator!() const {
                 return {*this};
             }
+            
+            collate_t<Self> collate_binary() const {
+                return {*this, collate_argument::binary};
+            }
+            
+            collate_t<Self> collate_nocase() const {
+                return {*this, collate_argument::nocase};
+            }
+            
+            collate_t<Self> collate_rtrim() const {
+                return {*this, collate_argument::rtrim};
+            }
         };
         
+        /**
+         *  < operator object.
+         */
         template<class L, class R>
         struct lesser_than_t : public binary_condition<L, R> {
+            
+            typedef lesser_than_t<L, R> Self;
             
             using binary_condition<L, R>::binary_condition;
             
@@ -944,10 +1047,27 @@ namespace sqlite_orm {
             negated_condition_t<lesser_than_t<L, R>> operator!() const {
                 return {*this};
             }
+            
+            collate_t<Self> collate_binary() const {
+                return {*this, collate_argument::binary};
+            }
+            
+            collate_t<Self> collate_nocase() const {
+                return {*this, collate_argument::nocase};
+            }
+            
+            collate_t<Self> collate_rtrim() const {
+                return {*this, collate_argument::rtrim};
+            }
         };
         
+        /**
+         *  <= operator object.
+         */
         template<class L, class R>
         struct lesser_or_equal_t : public binary_condition<L, R> {
+            
+            typedef lesser_or_equal_t<L, R> Self;
             
             using binary_condition<L, R>::binary_condition;
             
@@ -957,6 +1077,18 @@ namespace sqlite_orm {
             
             negated_condition_t<lesser_or_equal_t<L, R>> operator!() const {
                 return {*this};
+            }
+            
+            collate_t<Self> collate_binary() const {
+                return {*this, collate_argument::binary};
+            }
+            
+            collate_t<Self> collate_nocase() const {
+                return {*this, collate_argument::nocase};
+            }
+            
+            collate_t<Self> collate_rtrim() const {
+                return {*this, collate_argument::rtrim};
             }
         };
         
@@ -4425,6 +4557,12 @@ namespace sqlite_orm {
             std::stringstream ss;
             ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
             return ss.str();
+        }
+        
+        template<class T>
+        std::string process_where(conditions::collate_t<T> &col) {
+            auto res = this->process_where(col.expr);
+            return res + " " + static_cast<std::string>(col);
         }
         
         template<class L, class E>
