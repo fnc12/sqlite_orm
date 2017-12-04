@@ -17,7 +17,7 @@ using std::endl;
 
 /**
  *  Gender is gonna me stored as a nullable TEXT.
- *  None is gonna be NULL, 
+ *  None is gonna be NULL,
  *  Male - 'male' string,
  *  Female - 'female' string
  */
@@ -51,13 +51,13 @@ struct User {
 };
 
 namespace sqlite_orm {
-    
+
     template<>
     struct type_printer<Gender> : public text_printer {};
-    
+
     template<>
     struct statement_binder<Gender> {
-        
+
         int bind(sqlite3_stmt *stmt, int index, const Gender &value) {
             if(auto str = GenderToString(value)){
                 return statement_binder<std::string>().bind(stmt, index, *str);
@@ -66,7 +66,7 @@ namespace sqlite_orm {
             }
         }
     };
-    
+
     template<>
     struct field_printer<Gender> {
         std::string operator()(const Gender &t) const {
@@ -77,9 +77,9 @@ namespace sqlite_orm {
             }
         }
     };
-    
+
     template<>
-    struct row_extrator<Gender> {
+    struct row_extractor<Gender> {
         Gender extract(const char *row_value) {
             if(row_value){
                 if(auto gender = GenderFromString(row_value)){
@@ -91,20 +91,20 @@ namespace sqlite_orm {
                 return Gender::None;
             }
         }
-        
+
         Gender extract(sqlite3_stmt *stmt, int columnIndex) {
             auto str = sqlite3_column_text(stmt, columnIndex);
             return this->extract((const char*)str);
         }
     };
-    
+
     /**
      *  This is where sqlite_orm lib understand that your type is nullable - by
      *  specializating type_is_nullable<T> and deriving from std::true_type.
      */
     template<>
     struct type_is_nullable<Gender> : public std::true_type {
-        
+
         //  this function must return whether value null or not (false is null). Don't forget to implement it
         bool operator()(const Gender &g) const {
             return g != Gender::None;
@@ -125,7 +125,7 @@ int main(int argc, char **argv) {
                                                        &User::gender)));
     storage.sync_schema();
     storage.remove_all<User>();
-    
+
     storage.insert(User{
         -1,
         "Creeper",
@@ -141,23 +141,23 @@ int main(int argc, char **argv) {
         "Enderman",
         Gender::None,
     });
-    
+
     cout << "All users :" << endl;
     for(auto &user : storage.iterate<User>()) {
         cout << storage.dump(user) << endl;
     }
-    
+
     auto allWithNoneGender = storage.get_all<User>(where(is_null(&User::gender)));
     cout << "allWithNoneGender = " << allWithNoneGender.size() << endl;
     for(auto &user : allWithNoneGender) {
         cout << storage.dump(user) << endl;
     }
-    
+
     auto allWithGender = storage.get_all<User>(where(is_not_null(&User::gender)));
     cout << "allWithGender = " << allWithGender.size() << endl;
     for(auto &user : allWithGender) {
         cout << storage.dump(user) << endl;
     }
-    
+
     return 0;
 }

@@ -64,7 +64,7 @@ std::shared_ptr<Gender> GenderFromString(const std::string &s) {
  *  specializations in sqlite_orm namespace.
  */
 namespace sqlite_orm {
-    
+
     /**
      *  First of all is a type_printer template class.
      *  It is responsible of sqlite type string representation.
@@ -75,7 +75,7 @@ namespace sqlite_orm {
      */
     template<>
     struct type_printer<Gender> : public text_printer {};
-    
+
     /**
      *  This is a binder class. It is used to bind c++ values to sqlite queries.
      *  Here we have to create gender string representation and bind it as string.
@@ -85,13 +85,13 @@ namespace sqlite_orm {
      */
     template<>
     struct statement_binder<Gender> {
-        
+
         int bind(sqlite3_stmt *stmt, int index, const Gender &value) {
             return statement_binder<std::string>().bind(stmt, index, GenderToString(value));
             //  or return sqlite3_bind_text(stmt, index++, GenderToString(value).c_str(), -1, SQLITE_TRANSIENT);
         }
     };
-    
+
     /**
      *  field_printer is used in `dump` and `where` functions. Here we have to create
      *  a string from mapped object.
@@ -102,15 +102,15 @@ namespace sqlite_orm {
             return GenderToString(t);
         }
     };
-    
+
     /**
      *  This is a reverse operation: here we have to specify a way to transform string received from
      *  database to our Gender object. Here we call `GenderFromString` and throw `std::runtime_error` if it returns
-     *  nullptr. Every `row_extrator` specialization must have `extract(const char*)` function which returns
+     *  nullptr. Every `row_extractor` specialization must have `extract(const char*)` function which returns
      *  mapped type.
      */
     template<>
-    struct row_extrator<Gender> {
+    struct row_extractor<Gender> {
         Gender extract(const char *row_value) {
             if(auto gender = GenderFromString(row_value)){
                 return *gender;
@@ -118,7 +118,7 @@ namespace sqlite_orm {
                 throw std::runtime_error("incorrect gender string (" + std::string(row_value) + ")");
             }
         }
-        
+
         Gender extract(sqlite3_stmt *stmt, int columnIndex) {
             auto str = sqlite3_column_text(stmt, columnIndex);
             return this->extract((const char*)str);
@@ -139,44 +139,44 @@ int main(int/* argc*/, char **/*argv*/) {
                                                        &SuperHero::gender)));
     storage.sync_schema();
     storage.remove_all<SuperHero>();
-    
+
     //  insert Batman (male)
     storage.insert(SuperHero{ -1, "Batman", Gender::Male });
-    
+
     //  get Batman by name
     auto batman = storage.get_all<SuperHero>(where(c(&SuperHero::name) == "Batman")).front();
-    
+
     //  print Batman
     cout << "batman = " << storage.dump(batman) << endl;
-    
+
     //  insert Wonder woman
     storage.insert(SuperHero{ -1, "Wonder woman", Gender::Female });
-    
+
     //  get all superheros
     auto allSuperHeros = storage.get_all<SuperHero>();
-    
+
     //  print all superheros
     cout << "allSuperHeros = " << allSuperHeros.size() << endl;
     for(auto &superHero : allSuperHeros) {
         cout << storage.dump(superHero) << endl;
     }
-    
+
     //  insert a second male (Superman)
     storage.insert(SuperHero{ -1, "Superman", Gender::Male});
-    
+
     //  get all male superheros (2 expected)
     auto males = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Male));
     cout << "males = " << males.size() << endl;
     for(auto &superHero : males) {
         cout << storage.dump(superHero) << endl;
     }
-    
+
     //  get all female superheros (1 expected)
     auto females = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Female));
     cout << "females = " << females.size() << endl;
     for(auto &superHero : females) {
         cout << storage.dump(superHero) << endl;
     }
-    
+
     return 0;
 }

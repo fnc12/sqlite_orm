@@ -2652,7 +2652,9 @@ namespace sqlite_orm {
      */
     template<class V, typename Enable = void>
     struct statement_binder
-    {};
+    {
+        int bind(sqlite3_stmt *stmt, int index, const V &value);
+    };
 
     /**
      *  Specialization for arithmetic types.
@@ -2793,7 +2795,13 @@ namespace sqlite_orm {
      */
     template<class V, typename Enable = void>
     struct row_extractor
-    {};
+    {
+        //  used in sqlite3_exec (select)
+        V extract(const char *row_value);
+
+        //  used in sqlite_column (iteration, get_all)
+        V extract(sqlite3_stmt *stmt, int columnIndex);
+    };
 
     /**
      *  Specialization for arithmetic types.
