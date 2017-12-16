@@ -18,3 +18,4 @@
 * reusing of prepared statements - useful for query optimisation
 * subselect
 * backup API https://www.sqlite.org/backup.html
+* busy handler https://sqlite.org/c3ref/busy_handler.html
