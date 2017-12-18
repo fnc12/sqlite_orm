@@ -1003,6 +1003,42 @@ void testCompositeKey() {
     
 }
 
+void testOpenForever() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("open_forever.sqlite",
+                                make_table("users",
+                                           make_column("id",
+                                                       &User::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &User::name)));
+    storage.sync_schema();
+    
+    storage.remove_all<User>();
+    
+    storage.open_forever();
+    
+    storage.insert(User{ 1, "Demi" });
+    storage.insert(User{ 2, "Luis" });
+    storage.insert(User{ 3, "Shakira" });
+    
+    storage.open_forever();
+    
+    assert(storage.count<User>() == 3);
+    
+    storage.begin_transaction();
+    storage.insert(User{ 4, "Calvin" });
+    storage.commit();
+    
+    assert(storage.count<User>() == 4);
+}
+
 int main() {
     
     cout << "version = " << make_storage("").libversion() << endl;
@@ -1034,4 +1070,6 @@ int main() {
     testDefaultValue();
     
     testCompositeKey();
+    
+    testOpenForever();
 }

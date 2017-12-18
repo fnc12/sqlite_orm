@@ -4716,7 +4716,8 @@ namespace sqlite_orm {
                     throw std::runtime_error(msg);
                 }
             }else {
-                throw std::runtime_error(sqlite3_errmsg(db));
+                auto msg = sqlite3_errmsg(db);
+                throw std::runtime_error(msg);
             }
         }
 
@@ -4814,7 +4815,6 @@ namespace sqlite_orm {
                 }
             }
             ss << "WHERE ";
-//            auto primaryKeyColumnNames = impl.table.template column_names_with<constraints::primary_key_t<>>();
             auto primaryKeyColumnNames = impl.table.primary_key_column_names();
             for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                 ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ?";
@@ -4824,7 +4824,6 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -5330,51 +5329,7 @@ namespace sqlite_orm {
                     }
                     ss << ' ';
                 }
-//                auto idsTuple = std::make_tuple(ids...);
-//                typedef decltype(idsTuple) IdsTuple;
                 auto query = ss.str();
-                /*std::vector<std::string> memberStrings;
-                memberStrings.reserve(columnNames.size());
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **)->int{
-                                           auto &memberStrings = *(std::vector<std::string>*)data;
-                                           if(argc){
-                                               for(auto i = 0; i < argc; ++i) {
-                                                   auto str = argv[i];
-                                                   if(str){
-                                                       memberStrings.push_back(argv[i]);
-                                                   }else{
-                                                       memberStrings.push_back({});
-                                                   }
-                                               }
-                                           }
-                                           return 0;
-                                       }, &memberStrings, nullptr);
-                if(rc != SQLITE_OK) {
-                    auto msg = sqlite3_errmsg(db);
-                    throw std::runtime_error(msg);
-                }else{
-                    if(memberStrings.size()){
-                        res = std::make_shared<O>();
-                        auto index = 0;
-                        impl.table.for_each_column([&index, &res, &memberStrings] (auto c) {
-                            typedef typename decltype(c)::field_type field_type;
-                            auto &o = *res;
-                            auto value = row_extractor<field_type>().extract(memberStrings[index++].c_str());
-                            if(c.member_pointer){
-                                o.*c.member_pointer = value;
-                            }else{
-                                ((o).*(c.setter))(std::move(value));
-                            }
-                        });
-                        return res;
-                    }else{
-//                        throw not_found_exception{};
-                        return res;
-                    }
-                }
-                return res;*/
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
@@ -5392,8 +5347,6 @@ namespace sqlite_orm {
                             index = 0;
                             impl.table.for_each_column([&index, &res, stmt] (auto c) {
                                 typedef typename decltype(c)::field_type field_type;
-                                //                            auto &o = *res;
-                                //                            auto value = row_extractor<field_type>().extract(memberStrings[index++].c_str());
                                 auto value = row_extractor<field_type>().extract(stmt, index++);
                                 if(c.member_pointer){
                                     res.*c.member_pointer = value;
@@ -5404,7 +5357,6 @@ namespace sqlite_orm {
                             return std::make_shared<O>(std::move(res));
                         }break;
                         case SQLITE_DONE:{
-//                            throw not_found_exception{};
                             return {};
                         }break;
                         default:{
@@ -5904,18 +5856,6 @@ namespace sqlite_orm {
                     auto msg = sqlite3_errmsg(db);
                     throw std::runtime_error(msg);
                 }
-                /*auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int, char **argv,char **) -> int {
-                                           auto &res = *(std::vector<R>*)data;
-                                           auto value = row_extractor<R>().extract(argv[0]);
-                                           res.push_back(value);
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    auto msg = sqlite3_errmsg(db);
-                    throw std::runtime_error(msg);
-                }*/
             }else{
                 throw std::runtime_error("column not found");
             }
@@ -6004,18 +5944,6 @@ namespace sqlite_orm {
                 auto msg = sqlite3_errmsg(db);
                 throw std::runtime_error(msg);
             }
-            /*auto rc = sqlite3_exec(db,
-                                   query.c_str(),
-                                   [](void *data, int, char **argv,char **) -> int {
-                                       auto &res = *(std::vector<R>*)data;
-                                       auto value = row_extractor<R>().extract(argv);
-                                       res.push_back(value);
-                                       return 0;
-                                   }, &res, nullptr);
-            if(rc != SQLITE_OK) {
-                auto msg = sqlite3_errmsg(db);
-                throw std::runtime_error(msg);
-            }*/
             return res;
         }
 
@@ -6653,40 +6581,42 @@ namespace sqlite_orm {
             }else{
                 this->impl.rollback(db);
             }
-            if(!inMemory){
+            if(!this->inMemory && !this->isOpenedForever){
                 this->currentTransaction = nullptr;
             }
             return shouldCommit;
         }
 
         void begin_transaction() {
-            if(!inMemory){
-                if(this->currentTransaction) throw std::runtime_error("cannot start a transaction within a transaction");
-                this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
-                this->on_open_internal(this->currentTransaction->get_db());
+            if(!this->inMemory){
+                if(!this->isOpenedForever){
+                    if(this->currentTransaction) throw std::runtime_error("cannot start a transaction within a transaction");
+                    this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
+                    this->on_open_internal(this->currentTransaction->get_db());
+                }
             }
             auto db = this->currentTransaction->get_db();
             impl.begin_transaction(db);
         }
 
         void commit() {
-            if(!inMemory){
+            if(!this->inMemory){
                 if(!this->currentTransaction) throw std::runtime_error("cannot commit - no transaction is active");
             }
             auto db = this->currentTransaction->get_db();
             this->impl.commit(db);
-            if(!inMemory){
+            if(!this->inMemory && !this->isOpenedForever){
                 this->currentTransaction = nullptr;
             }
         }
 
         void rollback() {
-            if(!inMemory){
+            if(!this->inMemory){
                 if(!this->currentTransaction) throw std::runtime_error("cannot rollback - no transaction is active");
             }
             auto db = this->currentTransaction->get_db();
             this->impl.rollback(db);
-            if(!inMemory){
+            if(!this->inMemory && !this->isOpenedForever){
                 this->currentTransaction = nullptr;
             }
         }
@@ -6865,6 +6795,14 @@ namespace sqlite_orm {
             }
             return tableNames;
         }
+        
+        void open_forever() {
+            this->isOpenedForever = true;
+            if(!this->currentTransaction){
+                this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
+                this->on_open_internal(this->currentTransaction->get_db());
+            }
+        }
 
 
     protected:
@@ -6872,6 +6810,7 @@ namespace sqlite_orm {
         impl_type impl;
         std::shared_ptr<internal::database_connection> currentTransaction;
         const bool inMemory;
+        bool isOpenedForever = false;
     };
 
     template<class ...Ts>
