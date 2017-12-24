@@ -1050,6 +1050,21 @@ void testCurrentTimestamp() {
     storage.commit();
 }
 
+void testUserVersion() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage("");
+    auto version = storage.user_version();
+    
+    storage.user_version(version + 1);
+    assert(storage.user_version() == version + 1);
+    
+    storage.begin_transaction();
+    storage.user_version(version + 2);
+    assert(storage.user_version() == version + 2);
+    storage.commit();
+}
+
 int main() {
     
     cout << "version = " << make_storage("").libversion() << endl;
@@ -1085,4 +1100,6 @@ int main() {
     testOpenForever();
     
     testCurrentTimestamp();
+    
+    testUserVersion();
 }
