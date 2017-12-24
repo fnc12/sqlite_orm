@@ -1039,6 +1039,17 @@ void testOpenForever() {
     assert(storage.count<User>() == 4);
 }
 
+void testCurrentTimestamp() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage("");
+    assert(storage.current_timestamp().size());
+    
+    storage.begin_transaction();
+    assert(storage.current_timestamp().size());
+    storage.commit();
+}
+
 int main() {
     
     cout << "version = " << make_storage("").libversion() << endl;
@@ -1072,4 +1083,6 @@ int main() {
     testCompositeKey();
     
     testOpenForever();
+    
+    testCurrentTimestamp();
 }

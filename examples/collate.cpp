@@ -21,6 +21,11 @@ struct User {
     time_t createdAt;
 };
 
+struct Foo {
+    std::string text;
+    int baz;
+};
+
 int main(int argc, char** argv) {
     
     using namespace sqlite_orm;
@@ -32,9 +37,16 @@ int main(int argc, char** argv) {
                                            make_column("name",
                                                        &User::name),
                                            make_column("created_at",
-                                                       &User::createdAt)));
+                                                       &User::createdAt)),
+                                make_table("foo",
+                                           make_column("text",
+                                                       &Foo::text,
+                                                       collate_nocase()),
+                                           make_column("baz",
+                                                       &Foo::baz)));
     storage.sync_schema();
     storage.remove_all<User>();
+    storage.remove_all<Foo>();
     
     storage.insert(User{
         0,
@@ -62,6 +74,17 @@ int main(int argc, char** argv) {
     
     //  SELECT COUNT(*) FROM users
     cout << "total users count = " << storage.count<User>() << endl;
+    
+    storage.insert(Foo{
+        "Touch",
+        10,
+    });
+    storage.insert(Foo{
+        "touch",
+        20,
+    });
+    
+    cout << "foo count = " << storage.count<Foo>(where(c(&Foo::text) == "touch")) << endl;
     
     return 0;
 }

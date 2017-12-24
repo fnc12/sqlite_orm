@@ -173,6 +173,15 @@ namespace sqlite_orm {
 
     template<>
     struct type_printer<std::vector<char>> : public blob_printer {};
+    
+    namespace internal {
+        
+        enum class collate_argument {
+            binary,
+            nocase,
+            rtrim,
+        };
+    }
 
     namespace constraints {
 
@@ -319,6 +328,27 @@ namespace sqlite_orm {
         };
 #endif
 
+        struct collate_t {
+            internal::collate_argument argument;
+            
+            collate_t(internal::collate_argument argument_):argument(argument_){}
+            
+            operator std::string() const {
+                std::string res = "COLLATE ";
+                switch(this->argument){
+                    case decltype(this->argument)::binary:
+                        res += "BINARY";
+                        break;
+                    case decltype(this->argument)::nocase:
+                        res += "NOCASE";
+                        break;
+                    case decltype(this->argument)::rtrim:
+                        res += "RTRIM";
+                        break;
+                }
+                return res;
+            }
+        };
     }
 
 #if SQLITE_VERSION_NUMBER >= 3006019
@@ -372,6 +402,18 @@ namespace sqlite_orm {
     template<class T>
     constraints::default_t<T> default_value(T t) {
         return {t};
+    }
+    
+    inline constraints::collate_t collate_nocase() {
+        return {internal::collate_argument::nocase};
+    }
+    
+    inline constraints::collate_t collate_binary() {
+        return {internal::collate_argument::binary};
+    }
+    
+    inline constraints::collate_t collate_rtrim() {
+        return {internal::collate_argument::rtrim};
     }
 
     enum class sqlite_type {
@@ -493,14 +535,7 @@ namespace sqlite_orm {
             template<class T>
             std::shared_ptr<std::string> operator() (const constraints::default_t<T> &t) {
                 std::stringstream ss;
-                /*auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
-                if(needQuotes){
-                    ss << "'";
-                }*/
                 ss << t.value;
-                /*if(needQuotes){
-                    ss << "'";
-                }*/
                 return std::make_shared<std::string>(ss.str());
             }
         };
@@ -824,33 +859,15 @@ namespace sqlite_orm {
          */
         struct condition_t {};
 
-        enum class collate_argument {
-            binary,
-            nocase,
-            rtrim,
-        };
-
         template<class T>
         struct collate_t : public condition_t {
             T expr;
-            collate_argument argument;
+            internal::collate_argument argument;
 
-            collate_t(T expr_, collate_argument argument_):expr(expr_),argument(argument_){}
+            collate_t(T expr_, internal::collate_argument argument_):expr(expr_),argument(argument_){}
 
             operator std::string () const {
-                std::string res = "COLLATE ";
-                switch(this->argument){
-                    case decltype(this->argument)::binary:
-                        res += "BINARY";
-                        break;
-                    case decltype(this->argument)::nocase:
-                        res += "NOCASE";
-                        break;
-                    case decltype(this->argument)::rtrim:
-                        res += "RTRIM";
-                        break;
-                }
-                return res;
+                return constraints::collate_t{this->argument};
             }
         };
 
@@ -924,15 +941,15 @@ namespace sqlite_orm {
             }
 
             collate_t<Self> collate_binary() const {
-                return {*this, collate_argument::binary};
+                return {*this, internal::collate_argument::binary};
             }
 
             collate_t<Self> collate_nocase() const {
-                return {*this, collate_argument::nocase};
+                return {*this, internal::collate_argument::nocase};
             }
 
             collate_t<Self> collate_rtrim() const {
-                return {*this, collate_argument::rtrim};
+                return {*this, internal::collate_argument::rtrim};
             }
 
         };
@@ -956,15 +973,15 @@ namespace sqlite_orm {
             }
 
             collate_t<Self> collate_binary() const {
-                return {*this, collate_argument::binary};
+                return {*this, internal::collate_argument::binary};
             }
 
             collate_t<Self> collate_nocase() const {
-                return {*this, collate_argument::nocase};
+                return {*this, internal::collate_argument::nocase};
             }
 
             collate_t<Self> collate_rtrim() const {
-                return {*this, collate_argument::rtrim};
+                return {*this, internal::collate_argument::rtrim};
             }
         };
 
@@ -987,15 +1004,15 @@ namespace sqlite_orm {
             }
 
             collate_t<Self> collate_binary() const {
-                return {*this, collate_argument::binary};
+                return {*this, internal::collate_argument::binary};
             }
 
             collate_t<Self> collate_nocase() const {
-                return {*this, collate_argument::nocase};
+                return {*this, internal::collate_argument::nocase};
             }
 
             collate_t<Self> collate_rtrim() const {
-                return {*this, collate_argument::rtrim};
+                return {*this, internal::collate_argument::rtrim};
             }
         };
 
@@ -1018,15 +1035,15 @@ namespace sqlite_orm {
             }
 
             collate_t<Self> collate_binary() const {
-                return {*this, collate_argument::binary};
+                return {*this, internal::collate_argument::binary};
             }
 
             collate_t<Self> collate_nocase() const {
-                return {*this, collate_argument::nocase};
+                return {*this, internal::collate_argument::nocase};
             }
 
             collate_t<Self> collate_rtrim() const {
-                return {*this, collate_argument::rtrim};
+                return {*this, internal::collate_argument::rtrim};
             }
         };
 
@@ -1049,15 +1066,15 @@ namespace sqlite_orm {
             }
 
             collate_t<Self> collate_binary() const {
-                return {*this, collate_argument::binary};
+                return {*this, internal::collate_argument::binary};
             }
 
             collate_t<Self> collate_nocase() const {
-                return {*this, collate_argument::nocase};
+                return {*this, internal::collate_argument::nocase};
             }
 
             collate_t<Self> collate_rtrim() const {
-                return {*this, collate_argument::rtrim};
+                return {*this, internal::collate_argument::rtrim};
             }
         };
 
@@ -1080,15 +1097,15 @@ namespace sqlite_orm {
             }
 
             collate_t<Self> collate_binary() const {
-                return {*this, collate_argument::binary};
+                return {*this, internal::collate_argument::binary};
             }
 
             collate_t<Self> collate_nocase() const {
-                return {*this, collate_argument::nocase};
+                return {*this, internal::collate_argument::nocase};
             }
 
             collate_t<Self> collate_rtrim() const {
-                return {*this, collate_argument::rtrim};
+                return {*this, internal::collate_argument::rtrim};
             }
         };
 
@@ -6596,7 +6613,7 @@ namespace sqlite_orm {
                 }
             }
             auto db = this->currentTransaction->get_db();
-            impl.begin_transaction(db);
+            this->impl.begin_transaction(db);
         }
 
         void commit() {
@@ -6622,16 +6639,14 @@ namespace sqlite_orm {
         }
 
         std::string current_timestamp() {
-            std::shared_ptr<internal::database_connection> connection;
-            sqlite3 *db;
+            decltype(this->currentTransaction) connection;
             if(!this->currentTransaction){
                 connection = std::make_shared<internal::database_connection>(this->filename);
-                db = connection->get_db();
-                this->on_open_internal(db);
+                this->on_open_internal(connection->get_db());
             }else{
-                db = this->currentTransaction->get_db();
+                connection = this->currentTransaction;
             }
-            return impl.current_timestamp(db);
+            return this->impl.current_timestamp(connection->get_db());
         }
 
     protected:
@@ -6779,7 +6794,6 @@ namespace sqlite_orm {
             typedef std::vector<std::string> Data;
             int res = sqlite3_exec(db, sql.c_str(),
                                    [] (void *data, int argc, char **argv, char **/*columnName*/) -> int {
-//                                       (void)columnName;
                                        Data& tableNames = *(Data*)data;
                                        for(int i = 0; i < argc; i++) {
                                            if(argv[i]){
