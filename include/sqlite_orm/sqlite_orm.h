@@ -1642,8 +1642,8 @@ namespace sqlite_orm {
     }
 
     template<class ...Args>
-    conditions::group_by_t<Args...> group_by(Args ...args) {
-        return {std::make_tuple(args...)};
+    conditions::group_by_t<Args...> group_by(Args&& ...args) {
+        return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     template<class A, class T>
@@ -1936,7 +1936,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3007016
 
     template<class ...Args>
-    core_functions::char_t_<Args...> char_(Args ...args) {
+    core_functions::char_t_<Args...> char_(Args&& ...args) {
         typedef core_functions::char_t_<Args...> result_type;
         return result_type(std::make_tuple(std::forward<Args>(args)...));
     }
@@ -2157,7 +2157,7 @@ namespace sqlite_orm {
         struct columns_t<T, Args...> : public columns_t<Args...> {
             T m;
 
-            columns_t(decltype(m) m_, Args ...args): Super(args...), m(m_) {}
+            columns_t(decltype(m) m_, Args&& ...args): Super(std::forward<Args>(args)...), m(m_) {}
 
             template<class L>
             void for_each(L l) {
@@ -2192,7 +2192,7 @@ namespace sqlite_orm {
 
             typedef set_t<Args...> Super;
 
-            set_t(L l_, R r_, Args ...args) : Super(std::forward<Args>(args)...), l(std::move(l_)), r(std::move(r_)) {}
+            set_t(L l_, R r_, Args&& ...args) : Super(std::forward<Args>(args)...), l(std::move(l_)), r(std::move(r_)) {}
 
             template<class F>
             void for_each(F f) {
@@ -2257,13 +2257,13 @@ namespace sqlite_orm {
     }
 
     template<class ...Args>
-    internal::set_t<Args...> set(Args ...args) {
-        return {args...};
+    internal::set_t<Args...> set(Args&& ...args) {
+        return {std::forward<Args>(args)...};
     }
 
     template<class ...Args>
-    internal::columns_t<Args...> columns(Args ...args) {
-        return {args...};
+    internal::columns_t<Args...> columns(Args&& ...args) {
+        return {std::forward<Args>(args)...};
     }
 
     struct table_info {
@@ -2623,8 +2623,8 @@ namespace sqlite_orm {
      *  cause table class is templated and its constructing too (just like std::make_shared or std::make_pair).
      */
     template<class ...Cs>
-    table_t<Cs...> make_table(const std::string &name, Cs ...args) {
-        return {name, table_impl<Cs...>(args...)};
+    table_t<Cs...> make_table(const std::string &name, Cs&& ...args) {
+        return {name, table_impl<Cs...>(std::forward<Cs>(args)...)};
     }
 
     struct statement_finalizer {
@@ -3816,7 +3816,7 @@ namespace sqlite_orm {
 
             const std::string query;
 
-            view_t(storage_t &stor, decltype(connection) conn, Args ...args):
+            view_t(storage_t &stor, decltype(connection) conn, Args&& ...args):
             storage(stor),
             connection(conn),
             query([&]{
@@ -4672,7 +4672,7 @@ namespace sqlite_orm {
         }
 
         template<class C, class ...Args>
-        void process_conditions(std::stringstream &ss, C c, Args ...args) {
+        void process_conditions(std::stringstream &ss, C c, Args&& ...args) {
             this->process_single_condition(ss, c);
             this->process_conditions(ss, args...);
         }
@@ -4705,22 +4705,22 @@ namespace sqlite_orm {
     public:
 
         template<class T, class ...Args>
-        view_t<T, Args...> iterate(Args ...args) {
+        view_t<T, Args...> iterate(Args&& ...args) {
             this->assert_mapped_type<T>();
 
             auto connection = this->get_or_create_connection();
-            return {*this, connection, args...};
+            return {*this, connection, std::forward<Args>(args)...};
         }
 
         template<class O, class ...Args>
-        void remove_all(Args ...args) {
+        void remove_all(Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
             auto &impl = this->get_impl<O>();
             std::stringstream ss;
             ss << "DELETE FROM '" << impl.table.name << "' ";
-            this->process_conditions(ss, args...);
+            this->process_conditions(ss, std::forward<Args>(args)...);
             auto query = ss.str();
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
@@ -4925,7 +4925,7 @@ namespace sqlite_orm {
          *  @return impl for O
          */
         template<class O, class ...Args>
-        auto& generate_select_asterisk(std::string *query, Args ...args) {
+        auto& generate_select_asterisk(std::string *query, Args&& ...args) {
             std::stringstream ss;
             ss << "SELECT ";
             auto &impl = this->get_impl<O>();
@@ -4944,7 +4944,7 @@ namespace sqlite_orm {
                 }
             }
             ss << "FROM '" << impl.table.name << "' ";
-            this->process_conditions(ss, args...);
+            this->process_conditions(ss, std::forward<Args>(args)...);
             if(query){
                 *query = ss.str();
             }
@@ -5115,7 +5115,7 @@ namespace sqlite_orm {
         }
 
         template<class H, class ...Args>
-        std::set<std::string> parse_table_names(H h, Args ...args) {
+        std::set<std::string> parse_table_names(H h, Args&& ...args) {
             auto res = this->parse_table_names(std::forward<Args>(args)...);
             auto tableName = this->parse_table_name(h);
             res.insert(tableName.begin(),
@@ -5142,13 +5142,13 @@ namespace sqlite_orm {
          *  @return All objects of type O stored in database at the moment.
          */
         template<class O, class C = std::vector<O>, class ...Args>
-        C get_all(Args ...args) {
+        C get_all(Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
             C res;
             std::string query;
-            auto &impl = this->generate_select_asterisk<O>(&query, args...);
+            auto &impl = this->generate_select_asterisk<O>(&query, std::forward<Args>(args)...);
             sqlite3_stmt *stmt;
             if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                 statement_finalizer finalizer{stmt};
@@ -5345,7 +5345,7 @@ namespace sqlite_orm {
          *  @return Number of O object in table.
          */
         template<class O, class ...Args>
-        int count(Args ...args) {
+        int count(Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5376,7 +5376,7 @@ namespace sqlite_orm {
          *  @param m member pointer to class mapped to the storage.
          */
         template<class F, class O, class ...Args>
-        int count(F O::*m, Args ...args) {
+        int count(F O::*m, Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5387,7 +5387,7 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM '"<< impl.table.name << "' ";
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
@@ -5414,7 +5414,7 @@ namespace sqlite_orm {
          *  @return average value from db.
          */
         template<class F, class O, class ...Args>
-        double avg(F O::*m, Args ...args) {
+        double avg(F O::*m, Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5425,7 +5425,7 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM '"<< impl.table.name << "' ";
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
@@ -5452,7 +5452,7 @@ namespace sqlite_orm {
          *  @return group_concat query result.
          */
         template<class F, class O, class ...Args>
-        std::string group_concat(F O::*m, Args ...args) {
+        std::string group_concat(F O::*m, Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5463,7 +5463,7 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM '"<< impl.table.name << "' ";
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
@@ -5490,7 +5490,7 @@ namespace sqlite_orm {
          *  @return group_concat query result.
          */
         template<class F, class O, class ...Args>
-        std::string group_concat(F O::*m, const std::string &y, Args ...args) {
+        std::string group_concat(F O::*m, const std::string &y, Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5501,7 +5501,7 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ",\"" << y << "\") FROM '"<< impl.table.name << "' ";
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
@@ -5523,8 +5523,8 @@ namespace sqlite_orm {
         }
 
         template<class F, class O, class ...Args>
-        std::string group_concat(F O::*m, const char *y, Args ...args) {
-            return this->group_concat(m, std::string(y), args...);
+        std::string group_concat(F O::*m, const char *y, Args&& ...args) {
+            return this->group_concat(m, std::string(y), std::forward<Args>(args)...);
         }
 
         /**
@@ -5533,7 +5533,7 @@ namespace sqlite_orm {
          *  @return std::shared_ptr with max value or null if sqlite engine returned null.
          */
         template<class F, class O, class ...Args>
-        std::shared_ptr<F> max(F O::*m, Args ...args) {
+        std::shared_ptr<F> max(F O::*m, Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5544,7 +5544,7 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM '" << impl.table.name << "' ";
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
@@ -5573,7 +5573,7 @@ namespace sqlite_orm {
          *  @return std::shared_ptr with min value or null if sqlite engine returned null.
          */
         template<class F, class O, class ...Args>
-        std::shared_ptr<F> min(F O::*m, Args ...args) {
+        std::shared_ptr<F> min(F O::*m, Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5584,7 +5584,7 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM '" << impl.table.name << "' ";
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
@@ -5613,7 +5613,7 @@ namespace sqlite_orm {
          *  @return std::shared_ptr with sum value or null if sqlite engine returned null.
          */
         template<class F, class O, class ...Args>
-        std::shared_ptr<F> sum(F O::*m, Args ...args) {
+        std::shared_ptr<F> sum(F O::*m, Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5624,7 +5624,7 @@ namespace sqlite_orm {
             auto columnName = this->string_from_expression(m);
             if(columnName.length()){
                 ss << columnName << ") FROM '"<< impl.table.name << "' ";
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
@@ -5651,7 +5651,7 @@ namespace sqlite_orm {
          *  @return total value (the same as SUM but not nullable. More details here https://www.sqlite.org/lang_aggfunc.html)
          */
         template<class F, class O, class ...Args>
-        double total(F O::*m, Args ...args) {
+        double total(F O::*m, Args&& ...args) {
             this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
@@ -5673,7 +5673,7 @@ namespace sqlite_orm {
                         ss << " ";
                     }
                 }
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
@@ -5698,7 +5698,7 @@ namespace sqlite_orm {
          *  Select a single column into std::vector<T>.
          */
         template<class T, class ...Args, class R = typename internal::column_result_t<T, Ts...>::type>
-        std::vector<R> select(T m, Args ...args) {
+        std::vector<R> select(T m, Args&& ...args) {
             auto connection = this->get_or_create_connection();
             std::stringstream ss;
             ss << "SELECT ";
@@ -5717,7 +5717,7 @@ namespace sqlite_orm {
                         ss << " ";
                     }
                 }
-                this->process_conditions(ss, args...);
+                this->process_conditions(ss, std::forward<Args>(args)...);
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
