@@ -2801,7 +2801,9 @@ namespace sqlite_orm {
     >
     {
         int bind(sqlite3_stmt *stmt, int index, const V &value) {
-            return sqlite3_bind_blob(stmt, index, (const void *)&value.front(), int(value.size()), SQLITE_TRANSIENT);
+            if (!value.empty())
+               return sqlite3_bind_blob(stmt, index, (const void *)&value.front(), int(value.size()), SQLITE_TRANSIENT);
+           return sqlite3_bind_blob(stmt, index, nullptr, 0, SQLITE_TRANSIENT);
         }
     };
 
