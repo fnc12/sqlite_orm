@@ -884,7 +884,6 @@ void testBlob() {
     BlobData d;
     std::vector<char> v(data, data + size);
     d.data = v;
-//    cout << "Write Size: " << d.data.size() << endl;
     storage.insert(d);
     
     //  read data with get_all
@@ -919,6 +918,8 @@ void testBlob() {
                           data + size,
                           blob.begin()));
     }
+    
+    storage.insert(BlobData{});
     
     free(data);
 }
