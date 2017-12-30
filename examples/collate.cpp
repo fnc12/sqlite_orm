@@ -86,5 +86,11 @@ int main(int argc, char** argv) {
     
     cout << "foo count = " << storage.count<Foo>(where(c(&Foo::text) == "touch")) << endl;
     
+    //  SELECT id
+    //  FROM users
+    //  ORDER BY name COLLATE RTRIM ASC
+    auto rows = storage.select(&User::id, order_by(&User::name).collate_rtrim().asc());
+    cout << "rows count = " << rows.size() << endl;
+    
     return 0;
 }

@@ -1162,8 +1162,11 @@ namespace sqlite_orm {
 
         template<class O>
         struct order_by_t {
+            using self_type = order_by_t<O>;
+            
             O o;
-            int ascDesc = 0;   //  1: asc, -1: desc
+            int asc_desc = 0;   //  1: asc, -1: desc
+            std::shared_ptr<internal::collate_argument> _collate_argument;
 
             order_by_t():o(nullptr){}
 
@@ -1175,13 +1178,33 @@ namespace sqlite_orm {
 
             order_by_t<O> asc() {
                 auto res = *this;
-                res.ascDesc = 1;
+                res.asc_desc = 1;
                 return res;
             }
 
             order_by_t<O> desc() {
                 auto res = *this;
-                res.ascDesc = -1;
+                res.asc_desc = -1;
+                return res;
+            }
+            
+            self_type collate_binary() const {
+                auto res = *this;
+                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::binary);
+                return res;
+            }
+            
+            self_type collate_nocase() const {
+//                return {*this, internal::collate_argument::nocase};
+                auto res = *this;
+                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::nocase);
+                return res;
+            }
+            
+            self_type collate_rtrim() const {
+//                return {*this, internal::collate_argument::rtrim};
+                auto res = *this;
+                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::rtrim);
                 return res;
             }
         };
@@ -4559,7 +4582,11 @@ namespace sqlite_orm {
             std::stringstream ss;
             auto columnName = this->string_from_expression(orderBy.o);
             ss << columnName << " ";
-            switch(orderBy.ascDesc){
+            if(orderBy._collate_argument){
+                constraints::collate_t col(*orderBy._collate_argument);
+                ss << static_cast<std::string>(col) << " ";
+            }
+            switch(orderBy.asc_desc){
                 case 1:
                     ss << "ASC ";
                     break;
@@ -4677,8 +4704,8 @@ namespace sqlite_orm {
 
         template<class C, class ...Args>
         void process_conditions(std::stringstream &ss, C c, Args&& ...args) {
-            this->process_single_condition(ss, c);
-            this->process_conditions(ss, args...);
+            this->process_single_condition(ss, std::move(c));
+            this->process_conditions(ss, std::forward<Args>(args)...);
         }
 
         void on_open_internal(sqlite3 *db) {
