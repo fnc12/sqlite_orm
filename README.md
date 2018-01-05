@@ -8,9 +8,9 @@
 
 # Comparison with other C++ libs
 
-|   |sqlite_orm|[SQLiteCpp](https://github.com/SRombauts/SQLiteCpp)|[hiberlite](https://github.com/paulftw/hiberlite)|[ODB](https://www.codesynthesis.com/products/odb/)
-|---|:---:|:---:|:---:|
-|Schema sync|yes|no|yes||
+|   |sqlite_orm|[SQLiteCpp](https://github.com/SRombauts/SQLiteCpp)|[hiberlite](https://github.com/paulftw/hiberlite)|[ODB](https://www.codesynthesis.com/products/odb/)|
+|---|:---:|:---:|:---:|:---:|
+|Schema sync|yes|no|yes|no|
 |Single responsibility principle|yes|yes|no|no|
 |STL compatible|yes|no|no|no|
 |No raw string queries|yes|no|yes|yes|
