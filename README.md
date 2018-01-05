@@ -16,6 +16,7 @@
 |No raw string queries|yes|no|yes|yes|
 |Transactions|yes|yes|no|yes|
 |Custom types binding|yes|no|yes|yes|
+|Doesn't use macros and/or external codegen scripts|yes|yes|no|no|
 
 # SQLite ORM
 SQLite ORM light header only library for modern C++
