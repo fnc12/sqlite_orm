@@ -85,15 +85,13 @@ namespace sqlite_orm {
         };
 
         template <class F, typename T, std::size_t... I>
-        void tuple_for_each_impl(F&& f, const T& t, std::index_sequence<I...>)
-        {
+        void tuple_for_each_impl(F&& f, const T& t, std::index_sequence<I...>){
             int _[] = { (f(std::get<I>(t)), int{}) ... };
             (void)_;
         }
 
         template <typename F, typename ...Args>
-        void tuple_for_each(const std::tuple<Args...>& t, F&& f)
-        {
+        void tuple_for_each(const std::tuple<Args...>& t, F&& f){
             tuple_for_each_impl(std::forward<F>(f), t, std::index_sequence_for<Args...>{});
         }
     }
