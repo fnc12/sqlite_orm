@@ -83,6 +83,17 @@ namespace sqlite_orm {
                 //..
             }
         };
+
+        template <class F, typename T, std::size_t... I>
+        void tuple_for_each_impl(F&& f, const T& t, std::index_sequence<I...>){
+            int _[] = { (f(std::get<I>(t)), int{}) ... };
+            (void)_;
+        }
+
+        template <typename F, typename ...Args>
+        void tuple_for_each(const std::tuple<Args...>& t, F&& f){
+            tuple_for_each_impl(std::forward<F>(f), t, std::index_sequence_for<Args...>{});
+        }
     }
 
     /**
@@ -173,9 +184,9 @@ namespace sqlite_orm {
 
     template<>
     struct type_printer<std::vector<char>> : public blob_printer {};
-    
+
     namespace internal {
-        
+
         enum class collate_argument {
             binary,
             nocase,
@@ -330,9 +341,9 @@ namespace sqlite_orm {
 
         struct collate_t {
             internal::collate_argument argument;
-            
+
             collate_t(internal::collate_argument argument_):argument(argument_){}
-            
+
             operator std::string() const {
                 std::string res = "COLLATE ";
                 switch(this->argument){
@@ -403,15 +414,15 @@ namespace sqlite_orm {
     constraints::default_t<T> default_value(T t) {
         return {t};
     }
-    
+
     inline constraints::collate_t collate_nocase() {
         return {internal::collate_argument::nocase};
     }
-    
+
     inline constraints::collate_t collate_binary() {
         return {internal::collate_argument::binary};
     }
-    
+
     inline constraints::collate_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
     }
@@ -1163,7 +1174,7 @@ namespace sqlite_orm {
         template<class O>
         struct order_by_t {
             using self_type = order_by_t<O>;
-            
+
             O o;
             int asc_desc = 0;   //  1: asc, -1: desc
             std::shared_ptr<internal::collate_argument> _collate_argument;
@@ -1187,20 +1198,20 @@ namespace sqlite_orm {
                 res.asc_desc = -1;
                 return res;
             }
-            
+
             self_type collate_binary() const {
                 auto res = *this;
                 res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::binary);
                 return res;
             }
-            
+
             self_type collate_nocase() const {
 //                return {*this, internal::collate_argument::nocase};
                 auto res = *this;
                 res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::nocase);
                 return res;
             }
-            
+
             self_type collate_rtrim() const {
 //                return {*this, internal::collate_argument::rtrim};
                 auto res = *this;
@@ -4034,7 +4045,7 @@ namespace sqlite_orm {
         }
 
     protected:
-        
+
         /**
          *  Check whether connection exists and returns it if yes or creates a new one
          *  and returns it.
@@ -4448,9 +4459,9 @@ namespace sqlite_orm {
             typedef decltype(f.args) tuple_t;
             std::vector<std::string> args;
             args.reserve(std::tuple_size<tuple_t>::value);
-            tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.args, [&](auto &v){
+            tuple_helper::tuple_for_each(f.args, [&](auto &v){
                 auto expression = this->string_from_expression(v);
-                args.insert(args.begin(), expression);
+                args.emplace_back(std::move(expression));
             });
             ss << static_cast<std::string>(f) << "(";
             auto lim = int(args.size());
@@ -6560,7 +6571,7 @@ namespace sqlite_orm {
             }
             return tableNames;
         }
-        
+
         void open_forever() {
             this->isOpenedForever = true;
             if(!this->currentTransaction){
