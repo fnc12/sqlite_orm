@@ -67,4 +67,6 @@ script:
   - ./a.out
   - clang++ -std=c++1y examples/composite_key.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
+  - clang++ -std=c++1y examples/unique.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
 
