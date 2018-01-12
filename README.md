@@ -192,7 +192,7 @@ for(auto &user : storage.iterate<User>()) {
 
 `iterate` member function returns adapter object that has `begin` and `end` member functions returning iterators that fetch object on dereference operator call.
 
-CRUD functions `get`, `get_no_throw`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::runtime_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `key_value.cpp` example in `examples` folder.
+CRUD functions `get`, `get_no_throw`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::runtime_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `date_time.cpp` example in `examples` folder.
 
 # Aggregate Functions
 
