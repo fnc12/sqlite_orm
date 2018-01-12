@@ -2725,21 +2725,21 @@ namespace sqlite_orm {
 
         int bind(
             sqlite3_stmt *stmt, int index, const V &value,
-            const int_or_smaller_tag& trait
+            const int_or_smaller_tag&
         ) {
             return sqlite3_bind_int(stmt, index, static_cast<int>(value));
         }
 
         int bind(
             sqlite3_stmt *stmt, int index, const V &value,
-            const bigint_tag& trait
+            const bigint_tag&
         ) {
             return sqlite3_bind_int64(stmt, index, static_cast<sqlite3_int64>(value));
         }
 
         int bind(
             sqlite3_stmt *stmt, int index, const V &value,
-            const real_tag& trait
+            const real_tag&
         ) {
             return sqlite3_bind_double(stmt, index, static_cast<double>(value));
         }
