@@ -213,7 +213,12 @@ namespace sqlite_orm {
         template<class ...Cs>
         struct primary_key_t {
             std::tuple<Cs...> columns;
-            int asc_option = 0;    //  0 - none, 1 - asc, -1 - desc
+            enum class order_by {
+                unspecified,
+                ascending,
+                descending,
+            };
+            order_by asc_option = order_by::unspecified;
 
             primary_key_t(decltype(columns) c):columns(std::move(c)){}
 
@@ -223,11 +228,13 @@ namespace sqlite_orm {
             operator std::string() const {
                 std::string res = "PRIMARY KEY";
                 switch(this->asc_option){
-                    case 1:
+                    case order_by::ascending:
                         res += " ASC";
                         break;
-                    case -1:
+                    case order_by::descending:
                         res += " DESC";
+                        break;
+                    default:
                         break;
                 }
                 return res;
@@ -235,13 +242,13 @@ namespace sqlite_orm {
 
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
-                res.asc_option = 1;
+                res.asc_option = order_by::ascending;
                 return res;
             }
 
             primary_key_t<Cs...> desc() const {
                 auto res = *this;
-                res.asc_option = -1;
+                res.asc_option = order_by::descending;
                 return res;
             }
         };
