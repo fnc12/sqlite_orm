@@ -1055,15 +1055,116 @@ void testUserVersion() {
     cout << __func__ << endl;
     
     auto storage = make_storage("");
-    auto version = storage.user_version();
+    auto version = storage.pragma.user_version();
     
-    storage.user_version(version + 1);
-    assert(storage.user_version() == version + 1);
+    storage.pragma.user_version(version + 1);
+    assert(storage.pragma.user_version() == version + 1);
     
     storage.begin_transaction();
-    storage.user_version(version + 2);
-    assert(storage.user_version() == version + 2);
+    storage.pragma.user_version(version + 2);
+    assert(storage.pragma.user_version() == version + 2);
     storage.commit();
+}
+
+void testAggregateFunctions() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+        std::string name;
+        int age;
+        
+        void setId(int newValue) {
+            this->id = newValue;
+        }
+        
+        const int& getId() const {
+            return this->id;
+        }
+        
+        void setName(std::string newValue) {
+            this->name = newValue;
+        }
+        
+        const std::string& getName() const {
+            return this->name;
+        }
+        
+        void setAge(int newValue) {
+            this->age = newValue;
+        }
+        
+        const int& getAge() const {
+            return this->age;
+        }
+    };
+    
+    auto storage = make_storage("test_aggregate.sqlite",
+                                make_table("users",
+                                           make_column("id",
+                                                       &User::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &User::name),
+                                           make_column("age",
+                                                       &User::age)));
+    auto storage2 = make_storage("test_aggregate.sqlite",
+                                 make_table("users",
+                                            make_column("id",
+                                                        &User::getId,
+                                                        &User::setId,
+                                                        primary_key()),
+                                            make_column("name",
+                                                        &User::getName,
+                                                        &User::setName),
+                                            make_column("age",
+                                                        &User::getAge,
+                                                        &User::setAge)));
+    storage.sync_schema();
+    storage.remove_all<User>();
+    
+    storage.replace(User{
+        1,
+        "Bebe Rexha",
+        28,
+    });
+    storage.replace(User{
+        2,
+        "Rihanna",
+        29,
+    });
+    storage.replace(User{
+        3,
+        "Cheryl Cole",
+        34,
+    });
+    
+    auto avgId = storage.avg(&User::id);
+    assert(avgId == 2);
+    
+    auto avgId2 = storage2.avg(&User::getId);
+    assert(avgId2 == avgId);
+    
+    auto avgId3 = storage2.avg(&User::setId);
+    assert(avgId3 == avgId2);
+    
+    auto avgRaw = storage.select(avg(&User::id)).front();
+    assert(avgRaw == avgId);
+    
+    auto distinctAvg = storage.select(distinct(avg(&User::id))).front();
+    assert(distinctAvg == avgId);
+    
+    auto allAvg = storage.select(all(avg(&User::id))).front();
+    assert(allAvg == avgId);
+    
+    auto avgRaw2 = storage2.select(avg(&User::getId)).front();
+    assert(avgRaw2 == avgId);
+    
+    auto distinctAvg2 = storage2.select(distinct(avg(&User::setId))).front();
+    assert(distinctAvg2 == avgId);
+    
+    auto allAvg2 = storage2.select(all(avg(&User::getId))).front();
+    assert(allAvg2 == avgId);
 }
 
 int main() {
@@ -1103,4 +1204,6 @@ int main() {
     testCurrentTimestamp();
     
     testUserVersion();
+    
+    testAggregateFunctions();
 }

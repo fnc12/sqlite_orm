@@ -2179,6 +2179,15 @@ namespace sqlite_orm {
                 return "DISTINCT";
             }
         };
+        
+        template<class T>
+        struct all_t {
+            T t;
+            
+            operator std::string() const {
+                return "ALL";
+            }
+        };
 
         template<class ...Args>
         struct columns_t {
@@ -2288,6 +2297,11 @@ namespace sqlite_orm {
 
     template<class T>
     internal::distinct_t<T> distinct(T t) {
+        return {t};
+    }
+    
+    template<class T>
+    internal::all_t<T> all(T t) {
         return {t};
     }
 
@@ -3838,6 +3852,11 @@ namespace sqlite_orm {
         struct column_result_t<internal::distinct_t<T>, Ts...> {
             typedef typename column_result_t<T>::type type;
         };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::all_t<T>, Ts...> {
+            typedef typename column_result_t<T>::type type;
+        };
 
         template<class L, class R, class ...Ts>
         struct column_result_t<internal::conc_t<L, R>, Ts...> {
@@ -3850,11 +3869,12 @@ namespace sqlite_orm {
      */
     template<class ...Ts>
     struct storage_t {
-        typedef storage_impl<Ts...> impl_type;
+        using storage_type = storage_t<Ts...>;
+        using impl_type = storage_impl<Ts...>;
 
         template<class T, class ...Args>
         struct view_t {
-            typedef T mapped_type;
+            using mapped_type = T;
 
             storage_t &storage;
             std::shared_ptr<internal::database_connection> connection;
@@ -4037,14 +4057,53 @@ namespace sqlite_orm {
             this->begin_transaction();
             return {*this};
         }
-
+        
+        struct pragma_t {
+            storage_type &storage;
+            
+            pragma_t(storage_type &storage_):storage(storage_){}
+            
+            int user_version() {
+                auto connection = storage.get_or_create_connection();
+                std::string query = "PRAGMA user_version";
+                int res = -1;
+                auto rc = sqlite3_exec(connection->get_db(),
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **) -> int {
+                                           auto &res = *(int*)data;
+                                           if(argc){
+                                               res = row_extractor<int>().extract(argv[0]);
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    auto msg = sqlite3_errmsg(connection->get_db());
+                    throw std::runtime_error(msg);
+                }
+                return res;
+            }
+            
+            void user_version(int value) {
+                auto connection = storage.get_or_create_connection();
+                std::stringstream ss;
+                ss << "PRAGMA user_version = " << value;
+                auto query = ss.str();
+                auto rc = sqlite3_exec(connection->get_db(), query.c_str(), nullptr, nullptr, nullptr);
+                if(rc != SQLITE_OK) {
+                    auto msg = sqlite3_errmsg(connection->get_db());
+                    throw std::runtime_error(msg);
+                }
+            }
+        };
+        
         /**
          *  @param filename_ database filename.
          */
         storage_t(const std::string &filename_, impl_type impl_):
         filename(filename_),
         impl(impl_),
-        inMemory(filename_.empty() || filename_ == ":memory:"){
+        inMemory(filename_.empty() || filename_ == ":memory:"),
+        pragma(*this){
             if(inMemory){
                 this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
                 this->on_open_internal(this->currentTransaction->get_db());
@@ -4357,6 +4416,14 @@ namespace sqlite_orm {
 
         template<class T>
         std::string string_from_expression(internal::distinct_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::stringstream ss;
+            auto expr = this->string_from_expression(f.t);
+            ss << static_cast<std::string>(f) << "(" << expr << ") ";
+            return ss.str();
+        }
+        
+        template<class T>
+        std::string string_from_expression(internal::all_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
             std::stringstream ss;
             auto expr = this->string_from_expression(f.t);
             ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -5157,6 +5224,11 @@ namespace sqlite_orm {
         std::set<std::string> parse_table_name(internal::distinct_t<T> &f) {
             return this->parse_table_name(f.t);
         }
+        
+        template<class T>
+        std::set<std::string> parse_table_name(internal::all_t<T> &f) {
+            return this->parse_table_name(f.t);
+        }
 
         template<class ...Args>
         std::set<std::string> parse_table_names(Args...) {
@@ -5180,6 +5252,43 @@ namespace sqlite_orm {
                 res.insert(tableName.begin(),
                            tableName.end());
             });
+            return res;
+        }
+        
+        template<class F, class O, class ...Args>
+        std::string group_concat_internal(F O::*m, std::shared_ptr<const std::string> y, Args&& ...args) {
+            this->assert_mapped_type<O>();
+            
+            auto connection = this->get_or_create_connection();
+            auto &impl = this->get_impl<O>();
+            std::string res;
+            std::stringstream ss;
+            ss << "SELECT " << static_cast<std::string>(sqlite_orm::group_concat(0)) << "(";
+            auto columnName = this->string_from_expression(m);
+            if(columnName.length()){
+                ss << columnName;
+                if(y){
+                    ss << ",\"" << *y << "\"";
+                }
+                ss << ") FROM '"<< impl.table.name << "' ";
+                this->process_conditions(ss, std::forward<Args>(args)...);
+                auto query = ss.str();
+                auto rc = sqlite3_exec(connection->get_db(),
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **) -> int {
+                                           auto &res = *(std::string*)data;
+                                           if(argc){
+                                               res = row_extractor<std::string>().extract(argv[0]);
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    auto msg = sqlite3_errmsg(connection->get_db());
+                    throw std::runtime_error(msg);
+                }
+            }else{
+                throw std::runtime_error("column not found");
+            }
             return res;
         }
 
@@ -5494,15 +5603,24 @@ namespace sqlite_orm {
             }
             return res;
         }
+        
+        template<class F, class O>
+        std::string group_concat(F O::*m) {
+            return this->group_concat_internal(m, {});
+        }
 
         /**
          *  GROUP_CONCAT(X) query.  https://www.sqlite.org/lang_aggfunc.html#groupconcat
          *  @param m is a class member pointer (the same you passed into make_column).
          *  @return group_concat query result.
          */
-        template<class F, class O, class ...Args>
+        template<class F, class O, class ...Args,
+        class Tuple = std::tuple<Args...>,
+        typename sfinae = typename std::enable_if<std::tuple_size<std::tuple<Args...>>::value >= 1>::type
+        >
         std::string group_concat(F O::*m, Args&& ...args) {
-            this->assert_mapped_type<O>();
+            return this->group_concat_internal(m, {}, std::forward<Args>(args)...);
+            /*this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
             auto &impl = this->get_impl<O>();
@@ -5530,7 +5648,7 @@ namespace sqlite_orm {
             }else{
                 throw std::runtime_error("column not found");
             }
-            return res;
+            return res;*/
         }
 
         /**
@@ -5540,7 +5658,8 @@ namespace sqlite_orm {
          */
         template<class F, class O, class ...Args>
         std::string group_concat(F O::*m, const std::string &y, Args&& ...args) {
-            this->assert_mapped_type<O>();
+            return this->group_concat_internal(m, std::make_shared<std::string>(y), std::forward<Args>(args)...);
+            /*this->assert_mapped_type<O>();
 
             auto connection = this->get_or_create_connection();
             auto &impl = this->get_impl<O>();
@@ -5568,12 +5687,13 @@ namespace sqlite_orm {
             }else{
                 throw std::runtime_error("column not found");
             }
-            return res;
+            return res;*/
         }
 
         template<class F, class O, class ...Args>
         std::string group_concat(F O::*m, const char *y, Args&& ...args) {
-            return this->group_concat(m, std::string(y), std::forward<Args>(args)...);
+//            return this->group_concat(m, yy, std::forward<Args>(args)...);
+            return this->group_concat_internal(m, std::make_shared<std::string>(y), std::forward<Args>(args)...);
         }
 
         /**
@@ -6497,38 +6617,6 @@ namespace sqlite_orm {
 
     public:
 
-        int user_version() {
-            auto connection = this->get_or_create_connection();
-            std::string query = "PRAGMA user_version";
-            int res = -1;
-            auto rc = sqlite3_exec(connection->get_db(),
-                                   query.c_str(),
-                                   [](void *data, int argc, char **argv,char **) -> int {
-                                       auto &res = *(int*)data;
-                                       if(argc){
-                                           res = row_extractor<int>().extract(argv[0]);
-                                       }
-                                       return 0;
-                                   }, &res, nullptr);
-            if(rc != SQLITE_OK) {
-                auto msg = sqlite3_errmsg(connection->get_db());
-                throw std::runtime_error(msg);
-            }
-            return res;
-        }
-
-        void user_version(int value) {
-            auto connection = this->get_or_create_connection();
-            std::stringstream ss;
-            ss << "PRAGMA user_version = " << value;
-            auto query = ss.str();
-            auto rc = sqlite3_exec(connection->get_db(), query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                auto msg = sqlite3_errmsg(connection->get_db());
-                throw std::runtime_error(msg);
-            }
-        }
-
 #if SQLITE_VERSION_NUMBER >= 3007010
         /**
         * \fn db_release_memory
@@ -6594,6 +6682,8 @@ namespace sqlite_orm {
         std::shared_ptr<internal::database_connection> currentTransaction;
         const bool inMemory;
         bool isOpenedForever = false;
+    public:
+        pragma_t pragma;
     };
 
     template<class ...Ts>
