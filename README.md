@@ -713,6 +713,18 @@ try{
 
 To manage in memory database just provide `:memory:` or `""` instead as filename to `make_storage`.
 
+# Comparison with other C++ libs
+
+|   |sqlite_orm|[SQLiteCpp](https://github.com/SRombauts/SQLiteCpp)|[hiberlite](https://github.com/paulftw/hiberlite)|[ODB](https://www.codesynthesis.com/products/odb/)|
+|---|:---:|:---:|:---:|:---:|
+|Schema sync|yes|no|yes|no|
+|Single responsibility principle|yes|yes|no|no|
+|STL compatible|yes|no|no|no|
+|No raw string queries|yes|no|yes|yes|
+|Transactions|yes|yes|no|yes|
+|Custom types binding|yes|no|yes|yes|
+|Doesn't use macros and/or external codegen scripts|yes|yes|no|no|
+
 # Notes
 
 To work well your data model class must be default constructable and must not have const fields mapped to database cause they are assigned during queries. Otherwise code won't compile on line with member assignment operator.
