@@ -4059,20 +4059,43 @@ namespace sqlite_orm {
         }
         
         struct pragma_t {
-            storage_type &storage;
             
             pragma_t(storage_type &storage_):storage(storage_){}
             
+            int synchronous() {
+                return this->get_pragma<int>("synchronous");
+            }
+            
+            void synchronous(int value) {
+                this->_synchronous = value;
+                this->set_pragma("synchronous", value);
+            }
+            
             int user_version() {
-                auto connection = storage.get_or_create_connection();
-                std::string query = "PRAGMA user_version";
+                return this->get_pragma<int>("user_version");
+            }
+            
+            void user_version(int value) {
+                this->set_pragma("user_version", value);
+            }
+            
+            friend class storage_t<Ts...>;
+            
+        protected:
+            storage_type &storage;
+            int _synchronous = -1;
+            
+            template<class T>
+            T get_pragma(const std::string &name) {
+                auto connection = this->storage.get_or_create_connection();
+                std::string query = "PRAGMA " + name;
                 int res = -1;
                 auto rc = sqlite3_exec(connection->get_db(),
                                        query.c_str(),
                                        [](void *data, int argc, char **argv,char **) -> int {
-                                           auto &res = *(int*)data;
+                                           auto &res = *(T*)data;
                                            if(argc){
-                                               res = row_extractor<int>().extract(argv[0]);
+                                               res = row_extractor<T>().extract(argv[0]);
                                            }
                                            return 0;
                                        }, &res, nullptr);
@@ -4083,10 +4106,11 @@ namespace sqlite_orm {
                 return res;
             }
             
-            void user_version(int value) {
-                auto connection = storage.get_or_create_connection();
+            template<class T>
+            void set_pragma(const std::string &name, const T &value) {
+                auto connection = this->storage.get_or_create_connection();
                 std::stringstream ss;
-                ss << "PRAGMA user_version = " << value;
+                ss << "PRAGMA " << name << " = " << this->storage.string_from_expression(value);
                 auto query = ss.str();
                 auto rc = sqlite3_exec(connection->get_db(), query.c_str(), nullptr, nullptr, nullptr);
                 if(rc != SQLITE_OK) {
@@ -4800,6 +4824,10 @@ namespace sqlite_orm {
                 this->foreign_keys(db, true);
             }
 #endif
+            if(this->pragma._synchronous != -1) {
+                this->pragma.synchronous(this->pragma._synchronous);
+            }
+            
             if(this->on_open){
                 this->on_open(db);
             }

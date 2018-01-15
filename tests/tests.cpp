@@ -1066,6 +1066,27 @@ void testUserVersion() {
     storage.commit();
 }
 
+void testSynchronous() {
+    cout << __func__ << endl;
+    auto storage = make_storage("");
+    const auto value = 1;
+    storage.pragma.synchronous(value);
+    assert(storage.pragma.synchronous() == value);
+    
+    storage.begin_transaction();
+    
+    const auto newValue = 2;
+    try{
+        storage.pragma.synchronous(newValue);
+        assert(0);
+    }catch(std::runtime_error) {
+        //  Safety level may not be changed inside a transaction
+        assert(storage.pragma.synchronous() == value);
+    }
+    
+    storage.commit();
+}
+
 void testAggregateFunctions() {
     cout << __func__ << endl;
     
@@ -1206,4 +1227,6 @@ int main() {
     testUserVersion();
     
     testAggregateFunctions();
+    
+    testSynchronous();
 }
