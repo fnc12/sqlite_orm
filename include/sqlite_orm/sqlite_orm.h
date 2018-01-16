@@ -4067,8 +4067,9 @@ namespace sqlite_orm {
             }
             
             void synchronous(int value) {
-                this->_synchronous = value;
+                this->_synchronous = -1;
                 this->set_pragma("synchronous", value);
+                this->_synchronous = value;
             }
             
             int user_version() {
