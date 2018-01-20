@@ -2,7 +2,7 @@
  *  Example implemented from here https://www.tutorialspoint.com/sqlite/sqlite_update_query.htm
  */
 
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <iostream>
 #include <memory>
@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     stor = std::make_shared<Storage>(initStorage("update.sqlite"));
     stor->sync_schema();
     stor->remove_all<Employee>();
-    
+
     //  insert initial values
     stor->replace(Employee{ 1, "Paul", 32, "California", 20000.0 });
     stor->replace(Employee{ 2, "Allen", 25, "Texas", 15000.0 });
@@ -52,36 +52,36 @@ int main(int argc, char **argv) {
     stor->replace(Employee{ 5, "David", 27, "Texas", 85000.0 });
     stor->replace(Employee{ 6, "Kim", 22, "South-Hall", 45000.0 });
     stor->replace(Employee{ 7, "James", 24, "Houston", 10000.0 });
-    
+
     //  show 'COMPANY' table contents
     for(auto &employee : stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;
-    
+
     //  'UPDATE COMPANY SET ADDRESS = 'Texas' WHERE ID = 6'
-    
+
     auto employee6 = stor->get<Employee>(6);
     employee6.address = "Texas";
     stor->update(employee6);    //  actually this call updates all non-primary-key columns' values to passed object's fields
-    
+
     //  show 'COMPANY' table contents again
     for(auto &employee : stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;
-    
+
     //  'UPDATE COMPANY SET ADDRESS = 'Texas', SALARY = 20000.00 WHERE AGE < 30'
     using namespace sqlite_orm;
     stor->update_all(set(&Employee::address, "Texas",
                          &Employee::salary, 20000.00),
                      where(lesser_than(&Employee::age, 30)));
-    
+
     //  show 'COMPANY' table contents one more time
     for(auto &employee : stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;
-    
+
     return 0;
 }

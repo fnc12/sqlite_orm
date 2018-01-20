@@ -6,7 +6,7 @@
 //  Copyright © 2017 John Zakharov. All rights reserved.
 //
 
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <string>
 #include <sys/time.h>
@@ -27,7 +27,7 @@ struct Foo {
 };
 
 int main(int argc, char** argv) {
-    
+
     using namespace sqlite_orm;
     auto storage = make_storage("collate.sqlite",
                                 make_table("users",
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
     storage.sync_schema();
     storage.remove_all<User>();
     storage.remove_all<Foo>();
-    
+
     storage.insert(User{
         0,
         "Lil Kim",
@@ -63,18 +63,18 @@ int main(int argc, char** argv) {
         "Nicki Minaj",
         time(nullptr),
     });
-    
+
     //  SELECT COUNT(*) FROM users WHERE name = 'lil kim'
     auto preciseLilKimsCount = storage.count<User>(where(is_equal(&User::name, "lil kim")));
     cout << "preciseLilKimsCount = " << preciseLilKimsCount << endl;
-    
+
     //  SELECT COUNT(*) FROM users WHERE name = 'lil kim' COLLATE NOCASE
     auto nocaseCount = storage.count<User>(where(is_equal(&User::name, "lil kim").collate_nocase()));
     cout << "nocaseCount = " << nocaseCount << endl;
-    
+
     //  SELECT COUNT(*) FROM users
     cout << "total users count = " << storage.count<User>() << endl;
-    
+
     storage.insert(Foo{
         "Touch",
         10,
@@ -83,14 +83,14 @@ int main(int argc, char** argv) {
         "touch",
         20,
     });
-    
+
     cout << "foo count = " << storage.count<Foo>(where(c(&Foo::text) == "touch")) << endl;
-    
+
     //  SELECT id
     //  FROM users
     //  ORDER BY name COLLATE RTRIM ASC
     auto rows = storage.select(&User::id, order_by(&User::name).collate_rtrim().asc());
     cout << "rows count = " << rows.size() << endl;
-    
+
     return 0;
 }

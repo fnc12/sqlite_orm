@@ -6,7 +6,7 @@
 //  Copyright © 2017 John Zakharov. All rights reserved.
 //
 
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <string>
 #include <vector>
@@ -35,24 +35,24 @@ int main(int argc, char **argv) {
                                                        &User::hash)));
     storage.sync_schema();
     storage.remove_all<User>();
-    
+
     User alex{
         0,
         "Alex",
         { 0x10, 0x20, 0x30, 0x40 },
     };
     alex.id = storage.insert(alex);
-    
+
     cout << "users count = " << storage.count<User>() << endl;
-    
+
     cout << "alex = " << storage.dump(storage.get<User>(alex.id)) << endl;
-    
+
     auto hash = storage.get<User>(alex.id).hash;
     assert(hash.size() == 4);
     assert(hash[0] == 0x10);
     assert(hash[1] == 0x20);
     assert(hash[2] == 0x30);
     assert(hash[3] == 0x40);
-    
+
     return 0;
 }
