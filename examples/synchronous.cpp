@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
     
     using namespace sqlite_orm;
     
-    auto storage = make_storage("index.sqlite",
+    auto storage = make_storage("synchronous.sqlite",
                                 make_table("queries",
                                            make_column("tv_sec", &Query::tv_sec),
                                            make_column("tv_usec", &Query::tv_usec),

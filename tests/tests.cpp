@@ -1,13 +1,5 @@
-//
-//  tests.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 05.01.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
 
-//#include "tests.hpp"
-
+//#include "../dev/sqlite_orm.h"
 #include "sqlite_orm.h"
 
 #include <cassert>
@@ -42,24 +34,19 @@ void testForeignKey() {
     
     //  this case didn't compile on linux until `typedef constraints_type` was added to `foreign_key_t`
     auto storage = make_storage(":memory:",
-                                make_table(
-                                           "location",
+                                make_table("location",
                                            make_column("id", &Location::id, primary_key()),
                                            make_column("place", &Location::place),
                                            make_column("country", &Location::country),
                                            make_column("city", &Location::city),
-                                           make_column("distance", &Location::distance)
-                                           ),
-                                make_table(
-                                           "visit",
+                                           make_column("distance", &Location::distance)),
+                                make_table("visit",
                                            make_column("id", &Visit::id, primary_key()),
                                            make_column("location", &Visit::location),
                                            make_column("user", &Visit::user),
                                            make_column("visited_at", &Visit::visited_at),
                                            make_column("mark", &Visit::mark),
-                                           foreign_key(&Visit::location).references(&Location::id)
-                                           )
-                                );
+                                           foreign_key(&Visit::location).references(&Location::id)));
     storage.sync_schema();
     
     int fromDate = int(time(nullptr));
@@ -71,8 +58,7 @@ void testForeignKey() {
                    where(is_equal(&Visit::user, id) and
                          greater_than(&Visit::visited_at, fromDate) and
                          lesser_than(&Visit::visited_at, toDate) and
-                         lesser_than(&Location::distance, toDistance)
-                         ),
+                         lesser_than(&Location::distance, toDistance)),
                    order_by(&Visit::visited_at));
 }
 
@@ -80,31 +66,28 @@ void testForeignKey() {
 void testForeignKey2() {
     cout << __func__ << endl;
     
-//    namespace testnamespace {
-    
-        class test1 {
-        public:
-            // Constructors
-            test1() {};
-            
-            // Variables
-            int id;
-            std::string val1;
-            std::string val2;
-        };
+    class test1 {
+    public:
+        // Constructors
+        test1() {};
         
-        class test2 {
-        public:
-            // Constructors
-            test2() {};
-            
-            // Variables
-            int id;
-            int fk_id;
-            std::string val1;
-            std::string val2;
-        };
-//    }
+        // Variables
+        int id;
+        std::string val1;
+        std::string val2;
+    };
+    
+    class test2 {
+    public:
+        // Constructors
+        test2() {};
+        
+        // Variables
+        int id;
+        int fk_id;
+        std::string val1;
+        std::string val2;
+    };
     
     auto table1 = make_table("test_1",
                              make_column("id",
@@ -157,6 +140,7 @@ void testForeignKey2() {
 
 void testTypeParsing() {
     cout << __func__ << endl;
+    using namespace sqlite_orm::internal;
     
     //  int
     assert(*to_sqlite_type("INT") == sqlite_type::INTEGER);
@@ -173,9 +157,7 @@ void testTypeParsing() {
     //  text
     assert(*to_sqlite_type("TEXT") == sqlite_type::TEXT);
     assert(*to_sqlite_type("CLOB") == sqlite_type::TEXT);
-    //    assert(*to_sqlite_type("CHARACTER()") == sqlite_type::TEXT);
     for(auto i = 0; i< 255; ++i) {
-        //        auto sqliteTypeString = "CHARACTER(" + std::to_string(i) + ")";
         assert(*to_sqlite_type("CHARACTER(" + std::to_string(i) + ")") == sqlite_type::TEXT);
         assert(*to_sqlite_type("VARCHAR(" + std::to_string(i) + ")") == sqlite_type::TEXT);
         assert(*to_sqlite_type("VARYING CHARACTER(" + std::to_string(i) + ")") == sqlite_type::TEXT);
