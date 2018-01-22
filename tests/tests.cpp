@@ -1,13 +1,4 @@
-//
-//  tests.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 05.01.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
-
-//#include "tests.hpp"
-
+//#include "../dev/sqlite_orm.h"
 #include <sqlite_orm/sqlite_orm.h>
 
 #include <cassert>
@@ -42,24 +33,19 @@ void testForeignKey() {
 
     //  this case didn't compile on linux until `typedef constraints_type` was added to `foreign_key_t`
     auto storage = make_storage(":memory:",
-                                make_table(
-                                           "location",
+                                make_table("location",
                                            make_column("id", &Location::id, primary_key()),
                                            make_column("place", &Location::place),
                                            make_column("country", &Location::country),
                                            make_column("city", &Location::city),
-                                           make_column("distance", &Location::distance)
-                                           ),
-                                make_table(
-                                           "visit",
+                                           make_column("distance", &Location::distance)),
+                                make_table("visit",
                                            make_column("id", &Visit::id, primary_key()),
                                            make_column("location", &Visit::location),
                                            make_column("user", &Visit::user),
                                            make_column("visited_at", &Visit::visited_at),
                                            make_column("mark", &Visit::mark),
-                                           foreign_key(&Visit::location).references(&Location::id)
-                                           )
-                                );
+                                           foreign_key(&Visit::location).references(&Location::id)));
     storage.sync_schema();
 
     int fromDate = int(time(nullptr));
@@ -71,41 +57,37 @@ void testForeignKey() {
                    where(is_equal(&Visit::user, id) and
                          greater_than(&Visit::visited_at, fromDate) and
                          lesser_than(&Visit::visited_at, toDate) and
-                         lesser_than(&Location::distance, toDistance)
-                         ),
+                         lesser_than(&Location::distance, toDistance)),
                    order_by(&Visit::visited_at));
 }
 
 //  appeared after #57
 void testForeignKey2() {
     cout << __func__ << endl;
-
-//    namespace testnamespace {
-
-        class test1 {
-        public:
-            // Constructors
-            test1() {};
-
-            // Variables
-            int id;
-            std::string val1;
-            std::string val2;
-        };
-
-        class test2 {
-        public:
-            // Constructors
-            test2() {};
-
-            // Variables
-            int id;
-            int fk_id;
-            std::string val1;
-            std::string val2;
-        };
-//    }
-
+    
+    class test1 {
+    public:
+        // Constructors
+        test1() {};
+        
+        // Variables
+        int id;
+        std::string val1;
+        std::string val2;
+    };
+    
+    class test2 {
+    public:
+        // Constructors
+        test2() {};
+        
+        // Variables
+        int id;
+        int fk_id;
+        std::string val1;
+        std::string val2;
+    };
+    
     auto table1 = make_table("test_1",
                              make_column("id",
                                          &test1::id,
@@ -157,6 +139,8 @@ void testForeignKey2() {
 
 void testTypeParsing() {
     cout << __func__ << endl;
+ 
+    using namespace sqlite_orm::internal;
 
     //  int
     assert(*to_sqlite_type("INT") == sqlite_type::INTEGER);
@@ -173,9 +157,7 @@ void testTypeParsing() {
     //  text
     assert(*to_sqlite_type("TEXT") == sqlite_type::TEXT);
     assert(*to_sqlite_type("CLOB") == sqlite_type::TEXT);
-    //    assert(*to_sqlite_type("CHARACTER()") == sqlite_type::TEXT);
     for(auto i = 0; i< 255; ++i) {
-        //        auto sqliteTypeString = "CHARACTER(" + std::to_string(i) + ")";
         assert(*to_sqlite_type("CHARACTER(" + std::to_string(i) + ")") == sqlite_type::TEXT);
         assert(*to_sqlite_type("VARCHAR(" + std::to_string(i) + ")") == sqlite_type::TEXT);
         assert(*to_sqlite_type("VARYING CHARACTER(" + std::to_string(i) + ")") == sqlite_type::TEXT);
@@ -1055,15 +1037,137 @@ void testUserVersion() {
     cout << __func__ << endl;
 
     auto storage = make_storage("");
-    auto version = storage.user_version();
-
-    storage.user_version(version + 1);
-    assert(storage.user_version() == version + 1);
-
+    auto version = storage.pragma.user_version();
+    
+    storage.pragma.user_version(version + 1);
+    assert(storage.pragma.user_version() == version + 1);
+    
     storage.begin_transaction();
-    storage.user_version(version + 2);
-    assert(storage.user_version() == version + 2);
+    storage.pragma.user_version(version + 2);
+    assert(storage.pragma.user_version() == version + 2);
     storage.commit();
+}
+
+void testSynchronous() {
+    cout << __func__ << endl;
+    auto storage = make_storage("");
+    const auto value = 1;
+    storage.pragma.synchronous(value);
+    assert(storage.pragma.synchronous() == value);
+    
+    storage.begin_transaction();
+    
+    const auto newValue = 2;
+    try{
+        storage.pragma.synchronous(newValue);
+        assert(0);
+    }catch(std::runtime_error) {
+        //  Safety level may not be changed inside a transaction
+        assert(storage.pragma.synchronous() == value);
+    }
+    
+    storage.commit();
+}
+
+void testAggregateFunctions() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+        std::string name;
+        int age;
+        
+        void setId(int newValue) {
+            this->id = newValue;
+        }
+        
+        const int& getId() const {
+            return this->id;
+        }
+        
+        void setName(std::string newValue) {
+            this->name = newValue;
+        }
+        
+        const std::string& getName() const {
+            return this->name;
+        }
+        
+        void setAge(int newValue) {
+            this->age = newValue;
+        }
+        
+        const int& getAge() const {
+            return this->age;
+        }
+    };
+    
+    auto storage = make_storage("test_aggregate.sqlite",
+                                make_table("users",
+                                           make_column("id",
+                                                       &User::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &User::name),
+                                           make_column("age",
+                                                       &User::age)));
+    auto storage2 = make_storage("test_aggregate.sqlite",
+                                 make_table("users",
+                                            make_column("id",
+                                                        &User::getId,
+                                                        &User::setId,
+                                                        primary_key()),
+                                            make_column("name",
+                                                        &User::getName,
+                                                        &User::setName),
+                                            make_column("age",
+                                                        &User::getAge,
+                                                        &User::setAge)));
+    storage.sync_schema();
+    storage.remove_all<User>();
+    
+    storage.replace(User{
+        1,
+        "Bebe Rexha",
+        28,
+    });
+    storage.replace(User{
+        2,
+        "Rihanna",
+        29,
+    });
+    storage.replace(User{
+        3,
+        "Cheryl Cole",
+        34,
+    });
+    
+    auto avgId = storage.avg(&User::id);
+    assert(avgId == 2);
+    
+    auto avgId2 = storage2.avg(&User::getId);
+    assert(avgId2 == avgId);
+    
+    auto avgId3 = storage2.avg(&User::setId);
+    assert(avgId3 == avgId2);
+    
+    auto avgRaw = storage.select(avg(&User::id)).front();
+    assert(avgRaw == avgId);
+    
+    auto distinctAvg = storage.select(distinct(avg(&User::id))).front();
+    assert(distinctAvg == avgId);
+    
+    auto allAvg = storage.select(all(avg(&User::id))).front();
+    assert(allAvg == avgId);
+    
+    auto avgRaw2 = storage2.select(avg(&User::getId)).front();
+    assert(avgRaw2 == avgId);
+    
+    auto distinctAvg2 = storage2.select(distinct(avg(&User::setId))).front();
+    assert(distinctAvg2 == avgId);
+    
+    auto allAvg2 = storage2.select(all(avg(&User::getId))).front();
+    assert(allAvg2 == avgId);
 }
 
 int main() {
@@ -1103,4 +1207,8 @@ int main() {
     testCurrentTimestamp();
 
     testUserVersion();
+    
+    testAggregateFunctions();
+    
+    testSynchronous();
 }

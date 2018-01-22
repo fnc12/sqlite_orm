@@ -16,6 +16,7 @@ install:
   - sudo apt-get install sqlite3 libsqlite3-dev
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
   - sudo apt-get update -qq
+  - sudo apt-cache search g++
   - sudo apt-get install g++-4.9
 
 script:
@@ -66,5 +67,9 @@ script:
   - clang++ -std=c++1y examples/date_time.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
   - clang++ -std=c++1y examples/composite_key.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/unique.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/synchronous.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
 

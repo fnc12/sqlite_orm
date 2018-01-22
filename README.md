@@ -192,7 +192,7 @@ for(auto &user : storage.iterate<User>()) {
 
 `iterate` member function returns adapter object that has `begin` and `end` member functions returning iterators that fetch object on dereference operator call.
 
-CRUD functions `get`, `get_no_throw`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::runtime_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `key_value.cpp` example in `examples` folder.
+CRUD functions `get`, `get_no_throw`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::runtime_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `date_time.cpp` example in `examples` folder.
 
 # Aggregate Functions
 
@@ -712,6 +712,19 @@ try{
 # In memory database
 
 To manage in memory database just provide `:memory:` or `""` instead as filename to `make_storage`.
+
+# Comparison with other C++ libs
+
+|   |sqlite_orm|[SQLiteCpp](https://github.com/SRombauts/SQLiteCpp)|[hiberlite](https://github.com/paulftw/hiberlite)|[ODB](https://www.codesynthesis.com/products/odb/)|
+|---|:---:|:---:|:---:|:---:|
+|Schema sync|yes|no|yes|no|
+|Single responsibility principle|yes|yes|no|no|
+|STL compatible|yes|no|no|no|
+|No raw string queries|yes|no|yes|yes|
+|Transactions|yes|yes|no|yes|
+|Custom types binding|yes|no|yes|yes|
+|Doesn't use macros and/or external codegen scripts|yes|yes|no|no|
+|Aggregate functions|yes|yes|no|yes|
 
 # Notes
 
