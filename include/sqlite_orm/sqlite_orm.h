@@ -18,6 +18,8 @@
 #include <functional>   //  std::function
 #include <ostream>  //  std::ostream
 #include <iterator> //  std::iterator_traits
+#include <regex>
+#include <map>
 
 #if defined(_MSC_VER)
 # if defined(min)
