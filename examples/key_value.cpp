@@ -12,7 +12,7 @@
  `getValue` performs `get_no_throw` by id and returns its value or returns empty string if nothing obtained from db.
  ******/
 
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <iostream>
 

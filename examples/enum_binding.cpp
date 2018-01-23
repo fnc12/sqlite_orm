@@ -6,7 +6,7 @@
 //  Copyright © 2017 John Zakharov. All rights reserved.
 //
 
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <iostream>
 #include <memory>
@@ -59,7 +59,7 @@ std::shared_ptr<Gender> GenderFromString(const std::string &s) {
 }
 
 /**
- *  This is where magic happens. To tell sqlite_orm how to act
+ *  This is where magic happens. To tell sqlite_orm/sqlite_orm.how to act
  *  with Gender enum we have to create a few service classes
  *  specializations in sqlite_orm namespace.
  */

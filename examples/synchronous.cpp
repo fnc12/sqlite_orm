@@ -6,7 +6,7 @@
 //  Copyright © 2018 John Zakharov. All rights reserved.
 //
 
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 struct Query
 {
@@ -20,9 +20,9 @@ struct Query
 };
 
 int main(int argc, char** argv) {
-    
+
     using namespace sqlite_orm;
-    
+
     auto storage = make_storage("synchronous.sqlite",
                                 make_table("queries",
                                            make_column("tv_sec", &Query::tv_sec),
@@ -36,6 +36,6 @@ int main(int argc, char** argv) {
     storage.sync_schema();
     storage.pragma.synchronous(0);
     storage.remove_all<Query>();
-    
+
     return 0;
 }
