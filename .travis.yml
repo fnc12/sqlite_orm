@@ -38,7 +38,6 @@ script:
   - ./examples/insert
   - ./examples/iteration
   - ./examples/key_value
-  - ./examples/left_and_inner_join
   - ./examples/multi_table_select
   - ./examples/nullable_enum_binding
   - ./examples/private_class_members
