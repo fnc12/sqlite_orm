@@ -1171,8 +1171,41 @@ void testAggregateFunctions() {
 }
 
 void testBusyTimeout() {
+    cout << __func__ << endl;
+    
     auto storage = make_storage("testBusyTimeout.sqlite");
     storage.busy_timeout(500);
+}
+
+void testWideString() {
+    cout << __func__ << endl;
+    
+    struct Alphabet {
+        int id;
+        std::wstring letters;
+    };
+    
+    auto storage = make_storage("wideStrings.sqlite",
+                                make_table("alphabets",
+                                           make_column("id",
+                                                       &Alphabet::id,
+                                                       primary_key()),
+                                           make_column("letters",
+                                                       &Alphabet::letters)));
+    storage.sync_schema();
+    storage.remove_all<Alphabet>();
+    
+    std::vector<std::wstring> expectedStrings = {
+        L"ﻌﺾﺒﺑﺏﺖﺘﺗﺕﺚﺜﺛﺙﺞﺠﺟﺝﺢﺤﺣﺡﺦﺨﺧﺥﺪﺩﺬﺫﺮﺭﺰﺯﺲﺴﺳﺱﺶﺸﺷﺵﺺﺼﺻﺹﻀﺿﺽﻂﻄﻃﻁﻆﻈﻇﻅﻊﻋﻉﻎﻐﻏﻍﻒﻔﻓﻑﻖﻘﻗﻕﻚﻜﻛﻙﻞﻠﻟﻝﻢﻤﻣﻡﻦﻨﻧﻥﻪﻬﻫﻩﻮﻭﻲﻴﻳﻱ",   //  arabic
+        L"ԱաԲբԳգԴդԵեԶզԷէԸըԹթԺժԻիԼլԽխԾծԿկՀհՁձՂղՃճՄմՅյՆնՇշՈոՉչՊպՋջՌռՍսՎվՏտՐրՑցՒւՓփՔքՕօՖֆ",    //  armenian
+        L"АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоППРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя",  //  russian
+        L"AaBbCcÇçDdEeFFGgĞğHhIıİiJjKkLlMmNnOoÖöPpRrSsŞşTtUuÜüVvYyZz",  //  turkish
+    };
+    for(auto &expectedString : expectedStrings) {
+        auto id = storage.insert(Alphabet{0, expectedString});
+        assert(storage.get<Alphabet>(id).letters == expectedString);
+    }
+    
 }
 
 int main() {
@@ -1218,4 +1251,6 @@ int main() {
     testSynchronous();
     
     testBusyTimeout();
+    
+    testWideString();
 }

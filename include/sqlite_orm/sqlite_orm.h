@@ -20,6 +20,8 @@
 #include <iterator> //  std::iterator_traits
 #include <regex>
 #include <map>
+#include <locale>
+#include <codecvt>
 
 #if defined(_MSC_VER)
 # if defined(min)
@@ -169,6 +171,9 @@ namespace sqlite_orm {
 
     template<>
     struct type_printer<std::string> : public text_printer {};
+    
+    template<>
+    struct type_printer<std::wstring> : public text_printer {};
 
     template<>
     struct type_printer<const char*> : public text_printer {};
@@ -2723,8 +2728,7 @@ namespace sqlite_orm {
      *  Helper class used for binding fields to sqlite3 statements.
      */
     template<class V, typename Enable = void>
-    struct statement_binder
-    {
+    struct statement_binder {
         int bind(sqlite3_stmt *stmt, int index, const V &value);
     };
 
@@ -2744,24 +2748,15 @@ namespace sqlite_orm {
     private:
         using tag = arithmetic_tag_t<V>;
 
-        int bind(
-            sqlite3_stmt *stmt, int index, const V &value,
-            const int_or_smaller_tag&
-        ) {
+        int bind(sqlite3_stmt *stmt, int index, const V &value, const int_or_smaller_tag&) {
             return sqlite3_bind_int(stmt, index, static_cast<int>(value));
         }
 
-        int bind(
-            sqlite3_stmt *stmt, int index, const V &value,
-            const bigint_tag&
-        ) {
+        int bind(sqlite3_stmt *stmt, int index, const V &value, const bigint_tag&) {
             return sqlite3_bind_int64(stmt, index, static_cast<sqlite3_int64>(value));
         }
 
-        int bind(
-            sqlite3_stmt *stmt, int index, const V &value,
-            const real_tag&
-        ) {
+        int bind(sqlite3_stmt *stmt, int index, const V &value, const real_tag&) {
             return sqlite3_bind_double(stmt, index, static_cast<double>(value));
         }
     };
@@ -2785,11 +2780,33 @@ namespace sqlite_orm {
         }
 
     private:
-        const char* string_data(const std::string& s) const
-        { return s.c_str(); }
+        const char* string_data(const std::string& s) const {
+            return s.c_str();
+        }
 
-        const char* string_data(const char* s) const
-        { return s; }
+        const char* string_data(const char* s) const{
+            return s;
+        }
+    };
+    
+    /**
+     *  Specialization for std::wstring and C-wstring.
+     */
+    template<class V>
+    struct statement_binder<
+    V,
+    std::enable_if_t<
+    std::is_same<V, std::wstring>::value
+    ||
+    std::is_same<V, const wchar_t*>::value
+    >
+    >
+    {
+        int bind(sqlite3_stmt *stmt, int index, const V &value) {
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            std::string utf8Str = converter.to_bytes(value);
+            return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
+        }
     };
 
     /**
@@ -2899,41 +2916,29 @@ namespace sqlite_orm {
     private:
         using tag = arithmetic_tag_t<V>;
 
-        V extract(
-            const char *row_value,
-            const int_or_smaller_tag& trait
-        )
-        { return static_cast<V>(atoi(row_value)); }
+        V extract(const char *row_value, const int_or_smaller_tag&) {
+            return static_cast<V>(atoi(row_value));
+        }
 
-        V extract(
-            sqlite3_stmt *stmt, int columnIndex,
-            const int_or_smaller_tag& trait
-        )
-        { return static_cast<V>(sqlite3_column_int(stmt, columnIndex)); }
+        V extract(sqlite3_stmt *stmt, int columnIndex, const int_or_smaller_tag&) {
+            return static_cast<V>(sqlite3_column_int(stmt, columnIndex));
+        }
 
-        V extract(
-            const char *row_value,
-            const bigint_tag& trait
-        )
-        { return static_cast<V>(atoll(row_value)); }
+        V extract(const char *row_value, const bigint_tag&) {
+            return static_cast<V>(atoll(row_value));
+        }
 
-        V extract(
-            sqlite3_stmt *stmt, int columnIndex,
-            const bigint_tag& trait
-        )
-        { return static_cast<V>(sqlite3_column_int64(stmt, columnIndex)); }
+        V extract(sqlite3_stmt *stmt, int columnIndex, const bigint_tag&) {
+            return static_cast<V>(sqlite3_column_int64(stmt, columnIndex));
+        }
 
-        V extract(
-            const char *row_value,
-            const real_tag& trait
-        )
-        { return static_cast<V>(atof(row_value)); }
+        V extract(const char *row_value, const real_tag&) {
+            return static_cast<V>(atof(row_value));
+        }
 
-        V extract(
-            sqlite3_stmt *stmt, int columnIndex,
-            const real_tag& trait
-        )
-        { return static_cast<V>(sqlite3_column_double(stmt, columnIndex)); }
+        V extract( sqlite3_stmt *stmt, int columnIndex, const real_tag&) {
+            return static_cast<V>(sqlite3_column_double(stmt, columnIndex));
+        }
     };
 
     /**
@@ -2957,6 +2962,35 @@ namespace sqlite_orm {
             auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
             if(cStr){
                 return cStr;
+            }else{
+                return {};
+            }
+        }
+    };
+
+    /**
+     *  Specialization for std::wstring.
+     */
+    template<class V>
+    struct row_extractor<
+    V,
+    std::enable_if_t<std::is_same<V, std::wstring>::value>
+    >
+    {
+        std::wstring extract(const char *row_value) {
+            if(row_value){
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                return converter.from_bytes(row_value);
+            }else{
+                return {};
+            }
+        }
+        
+        std::wstring extract(sqlite3_stmt *stmt, int columnIndex) {
+            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
+            if(cStr){
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                return converter.from_bytes(cStr);
             }else{
                 return {};
             }
