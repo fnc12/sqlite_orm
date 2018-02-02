@@ -1170,6 +1170,11 @@ void testAggregateFunctions() {
     assert(allAvg2 == avgId);
 }
 
+void testBusyTimeout() {
+    auto storage = make_storage("testBusyTimeout.sqlite");
+    storage.busy_timeout(500);
+}
+
 int main() {
 
     cout << "version = " << make_storage("").libversion() << endl;
@@ -1211,4 +1216,6 @@ int main() {
     testAggregateFunctions();
     
     testSynchronous();
+    
+    testBusyTimeout();
 }
