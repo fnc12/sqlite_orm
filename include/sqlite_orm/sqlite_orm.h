@@ -6324,6 +6324,11 @@ namespace sqlite_orm {
                 return sqlite3_last_insert_rowid(connection->get_db());
             }
             
+            int busy_timeout(int ms) {
+                auto connection = this->get_or_create_connection();
+                return sqlite3_busy_timeout(connection->get_db(), ms);
+            }
+            
             /**
              *  Returns libsqltie3 lib version, not sqlite_orm
              */
