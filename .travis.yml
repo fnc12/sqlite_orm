@@ -17,7 +17,7 @@ install:
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
   - sudo apt-get update -qq
 #- sudo apt-cache search g++
-  - sudo apt-get install g++-4.9
+#- sudo apt-get install g++-4.9
 
 script:
   - cmake .
