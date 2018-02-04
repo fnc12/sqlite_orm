@@ -11,6 +11,31 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testIssue86() {
+    cout << __func__ << endl;
+    
+    struct Data
+    {
+        uint8_t mUsed=0;
+        int mId = 0;
+        int mCountryId = 0;
+        int mLangId = 0;
+        std::string mName;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("cities",
+                                           make_column("U", &Data::mUsed),
+                                           make_column("Id", &Data::mId),
+                                           make_column("CntId", &Data::mCountryId),
+                                           make_column("LId", &Data::mLangId),
+                                           make_column("N", &Data::mName)));
+    storage.sync_schema();
+    std::string CurrCity = "ototo";
+    auto vms = storage.select(columns(&Data::mId, &Data::mLangId),
+                              where(like(&Data::mName, CurrCity)));
+}
+
 void testForeignKey() {
     cout << __func__ << endl;
 
@@ -1253,4 +1278,6 @@ int main() {
     testBusyTimeout();
     
     testWideString();
+    
+    testIssue86();
 }

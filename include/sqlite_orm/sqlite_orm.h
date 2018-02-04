@@ -1259,6 +1259,8 @@ namespace sqlite_orm {
             A a;
             T t;
 
+            like_t(){}
+            
             like_t(A a_, T t_):a(a_), t(t_){}
 
             operator std::string() const {
