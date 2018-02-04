@@ -16,6 +16,7 @@ install:
   - sudo apt-get install sqlite3 libsqlite3-dev cmake libc++-dev
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
   - sudo apt-get update -qq
+  - ln -s /usr/bin/c++ /usr/bin/clang++-libc++
 #- sudo apt-cache search g++
 #- sudo apt-get install g++-4.9
 
