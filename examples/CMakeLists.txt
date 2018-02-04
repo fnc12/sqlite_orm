@@ -8,6 +8,7 @@ foreach(file ${files})
             CXX_STANDARD 14
             CXX_STANDARD_REQUIRED ON
     )
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
     target_include_directories(${file_basename} PRIVATE ${SqliteOrm_INCLUDE})
     target_link_libraries(${file_basename} PRIVATE dl sqlite3 pthread)
 endforeach()
