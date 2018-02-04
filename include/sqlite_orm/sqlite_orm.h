@@ -2249,7 +2249,7 @@ namespace sqlite_orm {
 
             typedef set_t<Args...> Super;
 
-            set_t(L l_, R r_, Args&& ...args) : Super(std::forward<Args>(args)...), l(std::move(l_)), r(std::move(r_)) {}
+            set_t(L l_, R r_, Args&& ...args) : Super(std::forward<Args>(args)...), l(std::move(l_)), r(std::forward<R>(r_)) {}
 
             template<class F>
             void for_each(F f) {

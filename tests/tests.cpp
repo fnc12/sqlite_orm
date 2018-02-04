@@ -36,6 +36,40 @@ void testIssue86() {
                               where(like(&Data::mName, CurrCity)));
 }
 
+void testIssue87() {
+    cout << __func__ << endl;
+    
+    struct Data {
+        uint8_t  mDefault; /**< 0=User or 1=Default*/
+        uint8_t     mAppLang; //en_GB
+        uint8_t     mContentLang1; //de_DE
+        uint8_t     mContentLang2; //en_GB
+        uint8_t     mContentLang3;
+        uint8_t     mContentLang4;
+        uint8_t     mContentLang5;
+    };
+    
+    Data data;
+    
+    auto storage = make_storage("",
+                                make_table("data",
+                                           make_column("IsDef", &Data::mDefault, primary_key()),
+                                           make_column("AL", &Data::mAppLang),
+                                           make_column("CL1", &Data::mContentLang1),
+                                           make_column("CL2", &Data::mContentLang2),
+                                           make_column("CL3", &Data::mContentLang3),
+                                           make_column("CL4", &Data::mContentLang4),
+                                           make_column("CL5", &Data::mContentLang5)));
+    storage.sync_schema();
+    
+    storage.update_all(set(&Data::mContentLang1, data.mContentLang1,
+                           &Data::mContentLang2, data.mContentLang2,
+                           &Data::mContentLang3, data.mContentLang3,
+                           &Data::mContentLang4, data.mContentLang4,
+                           &Data::mContentLang5, data.mContentLang5),
+                       where(is_equal(&Data::mDefault, data.mDefault)));
+}
+
 void testForeignKey() {
     cout << __func__ << endl;
 
@@ -1280,4 +1314,6 @@ int main() {
     testWideString();
     
     testIssue86();
+    
+    testIssue87();
 }

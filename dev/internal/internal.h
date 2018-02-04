@@ -82,7 +82,7 @@ namespace sqlite_orm {
             
             using super = set_t<Args...>;
             
-            set_t(L l_, R r_, Args&& ...args) : super(std::forward<Args>(args)...), l(std::move(l_)), r(std::move(r_)) {}
+            set_t(L l_, R r_, Args&& ...args) : super(std::forward<Args>(args)...), l(std::move(l_)), r(std::forward<R>(r_)) {}
             
             template<class F>
             void for_each(F f) {
