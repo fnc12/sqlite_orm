@@ -6,7 +6,8 @@
 //  Copyright © 2017 John Zakharov. All rights reserved.
 //
 
-#include <sqlite_orm/sqlite_orm.h>
+//#include <sqlite_orm/sqlite_orm.h>
+#include "sqlite_orm.h"
 
 #include <string>
 #include <vector>

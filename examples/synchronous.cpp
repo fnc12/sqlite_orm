@@ -6,7 +6,8 @@
 //  Copyright © 2018 John Zakharov. All rights reserved.
 //
 
-#include <sqlite_orm/sqlite_orm.h>
+//#include <sqlite_orm/sqlite_orm.h>
+#include "sqlite_orm.h"
 
 struct Query
 {
