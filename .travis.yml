@@ -16,8 +16,8 @@ install:
   - sudo apt-get install sqlite3 libsqlite3-dev
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y;
   - sudo apt-get update -qq
-  - sudo apt-cache search g++
-  - sudo apt-get install g++-4.9
+#- sudo apt-get install g++-4.9
+  - sudo apt-get install clang
 
 script:
   - wget https://sqlite.org/2017/sqlite-amalgamation-3190300.zip 
