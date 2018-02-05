@@ -26,7 +26,7 @@ script:
   - cp -r sqlite-amalgamation-3190300/* sqlite_amalgamation
   - rm sqlite-amalgamation-3190300.zip
   - clang -c sqlite-amalgamation-3190300/sqlite3.c -o sqlite.static
-  - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o tests.out
+  - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -o tests.out
   - ./tests.out
   - clang++ -std=c++1y examples/core_functions.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
