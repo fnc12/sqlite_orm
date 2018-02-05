@@ -20,7 +20,7 @@ install:
   - sudo apt-get install clang
   - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-6 /usr/bin/gc
   - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-6 /usr/bin/g++
-  - gcc --version
+#- gcc --version
   - bash build.sh
 
 script:
