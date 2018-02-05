@@ -7,7 +7,7 @@ compiler:
   - clang
 
 #env:
-#  - COMPILER=clang++-3.9
+  - COMPILER=clang++-3.9
 
 os:
   - linux
