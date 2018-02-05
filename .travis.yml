@@ -21,7 +21,7 @@ install:
   - sudo unlink /usr/bin/gcc && sudo ln -s /usr/bin/gcc-6 /usr/bin/gc
   - sudo unlink /usr/bin/g++ && sudo ln -s /usr/bin/g++-6 /usr/bin/g++
 #- gcc --version
-  - bash build.sh
+#- bash build.sh
 
 script:
   - wget https://sqlite.org/2017/sqlite-amalgamation-3190300.zip 
