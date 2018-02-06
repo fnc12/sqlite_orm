@@ -1103,7 +1103,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE '" << impl.table.name << "' SET ";
                 std::vector<std::string> setColumnNames;
-                impl.table.for_each_column([&](auto c) {
+                impl.table.for_each_column([&setColumnNames](auto c) {
                     if(!c.template has<constraints::primary_key_t<>>()) {
                         setColumnNames.emplace_back(c.name);
                     }
