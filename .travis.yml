@@ -1,7 +1,7 @@
 
 language: cpp
 sudo: required
-dist: precise
+dist: trusty
 
 compiler:
   - clang
