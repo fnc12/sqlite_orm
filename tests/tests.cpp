@@ -1237,7 +1237,7 @@ void testBusyTimeout() {
     storage.busy_timeout(500);
 }
 
-/*void testWideString() {
+void testWideString() {
     cout << __func__ << endl;
     
     struct Alphabet {
@@ -1266,7 +1266,7 @@ void testBusyTimeout() {
         assert(storage.get<Alphabet>(id).letters == expectedString);
     }
     
-}*/
+}
 
 int main() {
 
@@ -1312,7 +1312,7 @@ int main() {
     
     testBusyTimeout();
     
-//    testWideString();
+    testWideString();
     
     testIssue86();
     
