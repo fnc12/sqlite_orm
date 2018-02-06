@@ -8,7 +8,8 @@
  *  setter: `void O::*(F)`
  */
 
-#include <sqlite_orm/sqlite_orm.h>
+//#include <sqlite_orm/sqlite_orm.h>
+#include "sqlite_orm.h"
 
 #include <iostream>
 #include <cassert>

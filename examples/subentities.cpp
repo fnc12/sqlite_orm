@@ -13,7 +13,8 @@
  *  a strict access through sqlite client.
  */
 
-#include <sqlite_orm/sqlite_orm.h>
+//#include <sqlite_orm/sqlite_orm.h>
+#include "sqlite_orm.h"
 
 #include <iostream>
 
