@@ -153,8 +153,8 @@ storage.update(user);
 Also there is a non-CRUD update version `update_all`:
 
 ```c++
-storage.update_all(set(&User::lastName, "Hardey",
-                       &User::typeId, 2),
+storage.update_all(set(c(&User::lastName) = "Hardey",
+                       c(&User::typeId) = 2),
                    where(c(&User::firstName) == "Tom"));
 ```
 
