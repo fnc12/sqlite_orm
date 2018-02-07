@@ -74,9 +74,9 @@ int main(int argc, char **argv) {
 
     //  'UPDATE COMPANY SET ADDRESS = 'Texas', SALARY = 20000.00 WHERE AGE < 30'
     using namespace sqlite_orm;
-    stor->update_all(set(&Employee::address, "Texas",
-                         &Employee::salary, 20000.00),
-                     where(lesser_than(&Employee::age, 30)));
+    stor->update_all(set(c(&Employee::address) = "Texas",
+                         c(&Employee::salary) = 20000.00),
+                     where(c(&Employee::age) < 30));
 
     //  show 'COMPANY' table contents one more time
     for(auto &employee : stor->iterate<Employee>()) {

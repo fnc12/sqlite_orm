@@ -1110,6 +1110,7 @@ void testUserVersion() {
 
 void testSynchronous() {
     cout << __func__ << endl;
+    
     auto storage = make_storage("");
     const auto value = 1;
     storage.pragma.synchronous(value);
