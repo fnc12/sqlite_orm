@@ -63,12 +63,12 @@ void testIssue87() {
                                            make_column("CL5", &Data::mContentLang5)));
     storage.sync_schema();
     
-    storage.update_all(set(&Data::mContentLang1, data.mContentLang1,
-                           &Data::mContentLang2, data.mContentLang2,
-                           &Data::mContentLang3, data.mContentLang3,
-                           &Data::mContentLang4, data.mContentLang4,
-                           &Data::mContentLang5, data.mContentLang5),
-                       where(is_equal(&Data::mDefault, data.mDefault)));
+    storage.update_all(set(c(&Data::mContentLang1) = data.mContentLang1,
+                           c(&Data::mContentLang2) = data.mContentLang2,
+                           c(&Data::mContentLang3) = data.mContentLang3,
+                           c(&Data::mContentLang4) = data.mContentLang4,
+                           c(&Data::mContentLang5) = data.mContentLang5),
+                       where(c(&Data::mDefault) == data.mDefault));
 }
 
 void testForeignKey() {
@@ -568,7 +568,7 @@ void testSelect() {
 
     //  test update_all with the same storage
 
-    storage.update_all(set(&Word::currentWord, "ototo"),
+    storage.update_all(set(assign(&Word::currentWord, "ototo")),
                        where(is_equal(&Word::id, firstId)));
 
     assert(storage.get<Word>(firstId).currentWord == "ototo");

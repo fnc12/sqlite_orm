@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
     //  been inserted does not work either, since the new value of trackartist (3)
     //  Still does not correspond to any row in the artist table.
     try{
-        storage.update_all(set(&Track::trackArtist, 3), where(is_equal(&Track::trackName, "Mr. Bojangles")));
+        storage.update_all(set(assign(&Track::trackArtist, 3)), where(is_equal(&Track::trackName, "Mr. Bojangles")));
         assert(0);
     }catch(std::runtime_error e) {
         cout << e.what() << endl;
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
     //  update the inserted row to set trackartist to 3 (since a corresponding
     //  row in the artist table now exists).
     storage.replace(Artist{ 3, "Sammy Davis Jr." });
-    storage.update_all(set(&Track::trackArtist, 3), where(is_equal(&Track::trackName, "Mr. Bojangles")));
+    storage.update_all(set(assign(&Track::trackArtist, 3)), where(is_equal(&Track::trackName, "Mr. Bojangles")));
     
     //  Now that "Sammy Davis Jr." (artistid = 3) has been added to the database,
     //  it is possible to INSERT new tracks using this artist without violating
@@ -110,7 +110,7 @@ int main(int argc, char **argv) {
     try{
         //  Try to update the artistid of a row in the artist table while there
         //  exists records in the track table that refer to it.
-        storage.update_all(set(&Artist::artistId, 4), where(is_equal(&Artist::artistName, "Dean Martin")));
+        storage.update_all(set(assign(&Artist::artistId, 4)), where(is_equal(&Artist::artistName, "Dean Martin")));
         assert(0);
     }catch(std::runtime_error e) {
         cout << e.what() << endl;
@@ -119,7 +119,8 @@ int main(int argc, char **argv) {
     //  Once all the records that refer to a row in the artist table have
     //  been deleted, it is possible to modify the artistid of the row.
     storage.remove_all<Track>(where(in(&Track::trackName, {"That''s Amore", "Christmas Blues"})));
-    storage.update_all(set(&Artist::artistId, 4), where(is_equal(&Artist::artistName, "Dean Martin")));
+    storage.update_all(set(c(&Artist::artistId) = 4),
+                       where(c(&Artist::artistName) == "Dean Martin"));
     
     return 0;
 }
