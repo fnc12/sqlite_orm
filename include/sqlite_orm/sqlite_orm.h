@@ -1421,6 +1421,13 @@ namespace sqlite_orm {
     }
 
     namespace internal {
+        
+        template<char A>
+        struct join_alias {
+            static char get() {
+                return A;
+            }
+        };
 
         template<class ...Args>
         struct join_iterator {
