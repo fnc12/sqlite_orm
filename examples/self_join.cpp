@@ -111,6 +111,11 @@ int main() {
     });
     storage.commit();
     
+    //  SELECT  m.FirstName || ' ' || m.LastName,
+    //      employees.FirstName || ' ' || employees.LastName
+    //  FROM  employees
+    //  INNER JOIN  employees m
+    //  ON m.ReportsTo = employees.EmployeeId
     using als = alias_m<Employee>;
     auto firstNames = storage.select(columns(c(alias_column<als>(&Employee::firstName)) || " " || c(alias_column<als>(&Employee::lastName)),
                                              c(&Employee::firstName) || " " || c(&Employee::lastName)),
