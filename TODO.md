@@ -4,7 +4,6 @@
 
 * `FOREIGN KEY` - sync_schema fk comparison
 * `NATURAL JOIN`
-* self `JOIN`(http://www.sqlitetutorial.net/sqlite-self-join/)
 * `order_by` with multiple arguments
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
 * `CASE`
