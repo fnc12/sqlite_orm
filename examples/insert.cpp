@@ -4,7 +4,6 @@
  *  single line and separatedly, inserting a subclass object and inserting a vector.
  */
 
-//#include <sqlite_orm/sqlite_orm.h>
 #include "sqlite_orm.h"
 
 #include <string>
@@ -101,10 +100,8 @@ int main(int argc, char **argv) {
         for(auto &employee : otherEmployees) {
             storage.insert(employee);
         }
-        return true;
+        return true;    //  commit
     });
-    /*storage.insert_range(otherEmployees.begin(),
-                         otherEmployees.end());*/
     
     Employee james{
         -1,

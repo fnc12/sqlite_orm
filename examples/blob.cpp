@@ -1,12 +1,4 @@
-//
-//  blob.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 08.06.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
 
-//#include <sqlite_orm/sqlite_orm.h>
 #include "sqlite_orm.h"
 
 #include <string>

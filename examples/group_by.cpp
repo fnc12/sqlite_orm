@@ -2,7 +2,6 @@
 //  Example is implemented from here https://www.tutorialspoint.com/sqlite/sqlite_group_by.htm
 //
 
-//#include <sqlite_orm/sqlite_orm.h>
 #include "sqlite_orm.h"
 
 #include <iostream>

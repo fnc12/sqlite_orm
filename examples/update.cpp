@@ -36,7 +36,7 @@ inline auto initStorage(const std::string &path) {
                                                &Employee::salary)));
 }
 
-typedef decltype(initStorage("")) Storage;
+using Storage = decltype(initStorage(""));
 
 static std::shared_ptr<Storage> stor;
 
