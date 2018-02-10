@@ -37,14 +37,14 @@ static auto initStorage(const std::string &path) {
 int main(int argc, char **argv) {
     using namespace DataModel;
     
-    typedef decltype(initStorage("")) Storage;
+    using Storage = decltype(initStorage(""));
     
     Storage storage = initStorage("cross_join.sqlite");
     
     //  sync schema in case db/tables do not exist
     storage.sync_schema();
     
-    //  remove old data if something left from from last time
+    //  remove old data if something left from after the last time
     storage.remove_all<Rank>();
     storage.remove_all<Suit>();
     
@@ -71,9 +71,13 @@ int main(int argc, char **argv) {
     
     /**
      *  When you pass columns(...) with members sqlite_orm gathers all types and creates
-     *  a std::set with respective table names. Once you passed `cross_join<T>` as as argument
+     *  a std::set with respective table names. Once you passed `cross_join<T>` as an argument
      *  after columns T's table name is removed from table names set.
      */
+    //  SELECT rank, suit
+    //  FROM ranks
+    //  CROSS JOIN suits
+    //  ORDER BY suit;
     auto cards = storage.select(columns(&Rank::rank, &Suit::suit),
                                 cross_join<Suit>(),
                                 order_by(&Suit::suit));

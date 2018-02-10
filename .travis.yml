@@ -61,3 +61,7 @@ script:
   - ./a.out
   - clang++ -std=c++1y examples/synchronous.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
+  - clang++ -std=c++1y examples/self_join.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
+  - clang++ -std=c++1y examples/natural_join.cpp sqlite.static -I include/sqlite_orm/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out

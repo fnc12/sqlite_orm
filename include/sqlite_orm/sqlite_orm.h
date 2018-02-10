@@ -1264,10 +1264,19 @@ namespace sqlite_orm {
 
         template<class T>
         struct cross_join_t {
-            typedef T type;
+            using type = T;
 
             operator std::string() const {
                 return "CROSS JOIN";
+            }
+        };
+        
+        template<class T>
+        struct natural_join_t {
+            using type = T;
+            
+            operator std::string() const {
+                return "NATURAL JOIN";
             }
         };
 
@@ -1296,19 +1305,10 @@ namespace sqlite_orm {
             }
         };
 
-        /*template<class T>
-        struct natural_join_t {
-            typedef T type;
-
-            operator std::string() const {
-                return "NATURAL JOIN";
-            }
-        };*/
-
         template<class T, class O>
         struct left_outer_join_t {
-            typedef T type;
-            typedef O on_type;
+            using type = T;
+            using on_type = O;
 
             on_type constraint;
 
@@ -1400,16 +1400,6 @@ namespace sqlite_orm {
     conditions::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
         return {l, expr.t};
     }
-    
-    template<class T, class R>
-    internal::conc_t<T, R> operator||(internal::expression_t<T> expr, R r) {
-        return {expr.t, r};
-    }
-    
-    template<class L, class T>
-    internal::conc_t<L, T> operator||(L l, internal::expression_t<T> expr) {
-        return {l, expr.t};
-    }
 
     template<class T, class R>
     conditions::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
@@ -1418,6 +1408,16 @@ namespace sqlite_orm {
 
     template<class L, class T>
     conditions::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
+    template<class T, class R>
+    internal::conc_t<T, R> operator||(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    internal::conc_t<L, T> operator||(L l, internal::expression_t<T> expr) {
         return {l, expr.t};
     }
     
@@ -1501,9 +1501,9 @@ namespace sqlite_orm {
 
         template<class H, class ...Tail>
         struct join_iterator<H, Tail...> : public join_iterator<Tail...>{
+            using super = join_iterator<Tail...>;
+            
             H h;
-
-            typedef join_iterator<Tail...> super;
 
             template<class L>
             void operator()(L l) {
@@ -1514,10 +1514,23 @@ namespace sqlite_orm {
 
         template<class T, class ...Tail>
         struct join_iterator<conditions::cross_join_t<T>, Tail...> : public join_iterator<Tail...>{
+            using super = join_iterator<Tail...>;
+            
             conditions::cross_join_t<T> h;
 
-            typedef join_iterator<Tail...> super;
-
+            template<class L>
+            void operator()(L l) {
+                l(h);
+                this->super::operator()(l);
+            }
+        };
+        
+        template<class T, class ...Tail>
+        struct join_iterator<conditions::natural_join_t<T>, Tail...> : public join_iterator<Tail...>{
+            using super = join_iterator<Tail...>;
+            
+            conditions::natural_join_t<T> h;
+            
             template<class L>
             void operator()(L l) {
                 l(h);
@@ -1527,9 +1540,9 @@ namespace sqlite_orm {
 
         template<class T, class O, class ...Tail>
         struct join_iterator<conditions::left_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+            using super = join_iterator<Tail...>;
+            
             conditions::left_join_t<T, O> h;
-
-            typedef join_iterator<Tail...> super;
 
             template<class L>
             void operator()(L l) {
@@ -1540,9 +1553,9 @@ namespace sqlite_orm {
 
         template<class T, class O, class ...Tail>
         struct join_iterator<conditions::join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+            using super = join_iterator<Tail...>;
+            
             conditions::join_t<T, O> h;
-
-            typedef join_iterator<Tail...> super;
 
             template<class L>
             void operator()(L l) {
@@ -1553,9 +1566,9 @@ namespace sqlite_orm {
 
         template<class T, class O, class ...Tail>
         struct join_iterator<conditions::left_outer_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+            using super = join_iterator<Tail...>;
+            
             conditions::left_outer_join_t<T, O> h;
-
-            typedef join_iterator<Tail...> super;
 
             template<class L>
             void operator()(L l) {
@@ -1566,9 +1579,9 @@ namespace sqlite_orm {
 
         template<class T, class O, class ...Tail>
         struct join_iterator<conditions::inner_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+            using super = join_iterator<Tail...>;
+            
             conditions::inner_join_t<T, O> h;
-
-            typedef join_iterator<Tail...> super;
 
             template<class L>
             void operator()(L l) {
@@ -1590,6 +1603,11 @@ namespace sqlite_orm {
 
     template<class T>
     conditions::cross_join_t<T> cross_join() {
+        return {};
+    }
+    
+    template<class T>
+    conditions::natural_join_t<T> natural_join() {
         return {};
     }
 
@@ -4846,6 +4864,12 @@ namespace sqlite_orm {
             
             template<class O>
             void process_single_condition(std::stringstream &ss, conditions::cross_join_t<O> c) {
+                ss << static_cast<std::string>(c) << " ";
+                ss << " '" << this->impl.template find_table_name<O>() << "' ";
+            }
+            
+            template<class O>
+            void process_single_condition(std::stringstream &ss, conditions::natural_join_t<O> c) {
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.template find_table_name<O>() << "' ";
             }
