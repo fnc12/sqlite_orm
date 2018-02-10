@@ -2,7 +2,7 @@
 
 `sqlite_orm` is a wonderful library but there are still features that are not implemented. Here you can find a list of them:
 
-* `FOREIGN KEY` - sync_schema fk comparison
+* `FOREIGN KEY` - sync_schema fk comparison and ability of two tables to have fk to each other
 * `NATURAL JOIN`
 * `order_by` with multiple arguments
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
