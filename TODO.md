@@ -9,7 +9,7 @@
 * `HAVING`
 * `INSERT` with specified columns (example: `storage.insert(user, columns(&User::name, &User::date));` or `storage.insert<User>(values(&User::id, 5, &User::createdAt, current_timestamp()));`)
 * `EXISTS`
-* select rowid
+* asterisk in raw select: `SELECT rowid, * FROM table`
 * `ATTACH`
 * operators +, -, *, /
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
