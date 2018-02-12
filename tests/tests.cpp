@@ -1269,6 +1269,34 @@ void testWideString() {
     
 }
 
+void testRowId() {
+    cout << __func__ << endl;
+    
+    struct SimpleTable {
+        std::string letter;
+        std::string desc;
+    };
+    
+    auto storage = make_storage("rowid.sqlite",
+                                make_table("tbl1",
+                                           make_column("letter", &SimpleTable::letter),
+                                           make_column("desc", &SimpleTable::desc)));
+    storage.sync_schema();
+    storage.remove_all<SimpleTable>();
+    
+    storage.insert(SimpleTable{"A", "first letter"});
+    storage.insert(SimpleTable{"B", "second letter"});
+    storage.insert(SimpleTable{"C", "third letter"});
+    
+    auto rows = storage.select(columns(rowid(), oid(), _rowid_(), &SimpleTable::letter, &SimpleTable::desc));
+    for(auto i = 0; i < rows.size(); ++i) {
+        auto &row = rows[i];
+        assert(std::get<0>(row) == std::get<1>(row));
+        assert(std::get<1>(row) == std::get<2>(row));
+        assert(std::get<2>(row) == i + 1);
+    }
+}
+
 int main() {
 
     cout << "version = " << make_storage("").libversion() << endl;
@@ -1318,4 +1346,6 @@ int main() {
     testIssue86();
     
     testIssue87();
+    
+    testRowId();
 }

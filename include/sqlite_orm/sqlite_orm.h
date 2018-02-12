@@ -38,8 +38,8 @@ __pragma(push_macro("max"))
 
 namespace sqlite_orm {
 
-    typedef sqlite_int64 int64;
-    typedef sqlite_uint64 uint64;
+    using int64 = sqlite_int64;
+    using uint64 = sqlite_uint64;
 
     //  got from here http://stackoverflow.com/questions/25958259/how-do-i-find-out-if-a-tuple-contains-a-type
     namespace tuple_helper {
@@ -3342,6 +3342,12 @@ namespace sqlite_orm {
             }
         };
         
+        struct rowid_t {
+            operator std::string() const {
+                return "rowid";
+            }
+        };
+        
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
@@ -3977,12 +3983,17 @@ namespace sqlite_orm {
         
         template<class T, class ...Ts>
         struct column_result_t<internal::all_t<T>, Ts...> {
-            typedef typename column_result_t<T>::type type;
+            using type = typename column_result_t<T>::type;
         };
 
         template<class L, class R, class ...Ts>
         struct column_result_t<internal::conc_t<L, R>, Ts...> {
             using type = std::string;
+        };
+        
+        template<class ...Ts>
+        struct column_result_t<internal::rowid_t, Ts...> {
+            using type = int64;
         };
         
         /**
@@ -4490,6 +4501,10 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            std::string string_from_expression(internal::rowid_t rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                return static_cast<std::string>(rid);
+            }
+            
             template<class T>
             std::string string_from_expression(aggregate_functions::group_concat_double_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
@@ -4905,13 +4920,6 @@ namespace sqlite_orm {
                 ss << " '" << this->impl.template find_table_name<T>() << "' ";
                 this->process_join_constraint(ss, l.constraint);
             }
-            
-            /*template<class T>
-             void process_single_condition(std::stringstream &ss, conditions::natural_join_t<T> l) {
-             ss << static_cast<std::string>(l) << " ";
-             ss << " '" << this->impl.template find_table_name<T>() << "' ";
-             //            this->process_join_constraint(ss, l.constraint);
-             }*/
             
             template<class C>
             void process_single_condition(std::stringstream &ss, conditions::where_t<C> w) {
@@ -6197,7 +6205,7 @@ namespace sqlite_orm {
             
             template<class It>
             void replace_range(It from, It to) {
-                typedef typename std::iterator_traits<It>::value_type O;
+                using O = typename std::iterator_traits<It>::value_type;
                 this->assert_mapped_type<O>();
                 if(from == to) {
                     return;
@@ -6247,7 +6255,7 @@ namespace sqlite_orm {
                     for(auto it = from; it != to; ++it) {
                         auto &o = *it;
                         impl.table.for_each_column([&o, &index, &stmt] (auto c) {
-                            typedef typename decltype(c)::field_type field_type;
+                            using field_type = typename decltype(c)::field_type;
                             const field_type *value = nullptr;
                             if(c.member_pointer){
                                 value = &(o.*c.member_pointer);
@@ -6325,7 +6333,7 @@ namespace sqlite_orm {
                                                 compositeKeyColumnNames.end(),
                                                 c.name);
                             if(it == compositeKeyColumnNames.end()){
-                                typedef typename decltype(c)::field_type field_type;
+                                using field_type = typename decltype(c)::field_type;
                                 const field_type *value = nullptr;
                                 if(c.member_pointer){
                                     value = &(o.*c.member_pointer);
@@ -6351,7 +6359,7 @@ namespace sqlite_orm {
             
             template<class It>
             void insert_range(It from, It to) {
-                typedef typename std::iterator_traits<It>::value_type O;
+                using O = typename std::iterator_traits<It>::value_type;
                 this->assert_mapped_type<O>();
                 if(from == to) {
                     return;
@@ -6819,6 +6827,18 @@ namespace sqlite_orm {
         public:
             pragma_t pragma;
         };
+    }
+    
+    inline internal::rowid_t rowid() {
+        return {};
+    }
+    
+    inline internal::rowid_t oid() {
+        return {};
+    }
+    
+    inline internal::rowid_t _rowid_() {
+        return {};
     }
 
     template<class ...Ts>
