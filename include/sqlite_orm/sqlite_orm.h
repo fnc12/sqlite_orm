@@ -21,7 +21,7 @@
 #include <regex>
 #include <map>
 #include <locale>
-#include <codecvt>
+#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
 
 #if defined(_MSC_VER)
 # if defined(min)
@@ -3348,6 +3348,32 @@ namespace sqlite_orm {
             }
         };
         
+        struct oid_t {
+            operator std::string() const {
+                return "oid";
+            }
+        };
+        
+        struct _rowid_t {
+            operator std::string() const {
+                return "_rowid_";
+            }
+        };
+        
+        template<class T>
+        struct table_rowid_t : public rowid_t {
+            using type = T;
+        };
+        
+        template<class T>
+        struct table_oid_t : public oid_t {
+            using type = T;
+        };
+        template<class T>
+        struct table__rowid_t : public _rowid_t {
+            using type = T;
+        };
+        
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
@@ -3996,6 +4022,31 @@ namespace sqlite_orm {
             using type = int64;
         };
         
+        template<class ...Ts>
+        struct column_result_t<internal::oid_t, Ts...> {
+            using type = int64;
+        };
+        
+        template<class ...Ts>
+        struct column_result_t<internal::_rowid_t, Ts...> {
+            using type = int64;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::table_rowid_t<T>, Ts...> {
+            using type = int64;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::table_oid_t<T>, Ts...> {
+            using type = int64;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::table__rowid_t<T>, Ts...> {
+            using type = int64;
+        };
+        
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
          */
@@ -4475,7 +4526,7 @@ namespace sqlite_orm {
             std::string string_from_expression(F O::*m, bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 if(!noTableName){
-                    ss << " '" << this->impl.template find_table_name<O>() << "'.";
+                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
                 }
                 ss << "\"" << this->impl.column_name(m) << "\"";
                 return ss.str();
@@ -4485,7 +4536,7 @@ namespace sqlite_orm {
             std::string string_from_expression(const F* (O::*g)() const, bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 if(!noTableName){
-                    ss << " '" << this->impl.template find_table_name<O>() << "'.";
+                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
                 }
                 ss << "\"" << this->impl.column_name(g) << "\"";
                 return ss.str();
@@ -4495,7 +4546,7 @@ namespace sqlite_orm {
             std::string string_from_expression(void (O::*s)(F), bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 if(!noTableName){
-                    ss << " '" << this->impl.template find_table_name<O>() << "'.";
+                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
                 }
                 ss << "\"" << this->impl.column_name(s) << "\"";
                 return ss.str();
@@ -4503,6 +4554,44 @@ namespace sqlite_orm {
             
             std::string string_from_expression(internal::rowid_t rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 return static_cast<std::string>(rid);
+            }
+            
+            std::string string_from_expression(internal::oid_t rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                return static_cast<std::string>(rid);
+            }
+            
+            std::string string_from_expression(internal::_rowid_t rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                return static_cast<std::string>(rid);
+            }
+            
+            template<class O>
+            std::string string_from_expression(internal::table_rowid_t<O> rid, bool noTableName = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                if(!noTableName){
+                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
+                }
+                ss << static_cast<std::string>(rid);
+                return ss.str();
+            }
+            
+            template<class O>
+            std::string string_from_expression(internal::table_oid_t<O> rid, bool noTableName = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                if(!noTableName){
+                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
+                }
+                ss << static_cast<std::string>(rid);
+                return ss.str();
+            }
+            
+            template<class O>
+            std::string string_from_expression(internal::table__rowid_t<O> rid, bool noTableName = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                if(!noTableName){
+                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
+                }
+                ss << static_cast<std::string>(rid);
+                return ss.str();
             }
             
             template<class T>
@@ -6833,11 +6922,26 @@ namespace sqlite_orm {
         return {};
     }
     
-    inline internal::rowid_t oid() {
+    inline internal::oid_t oid() {
         return {};
     }
     
-    inline internal::rowid_t _rowid_() {
+    inline internal::_rowid_t _rowid_() {
+        return {};
+    }
+    
+    template<class T>
+    internal::table_rowid_t<T> rowid() {
+        return {};
+    }
+    
+    template<class T>
+    internal::table_oid_t<T> oid() {
+        return {};
+    }
+    
+    template<class T>
+    internal::table__rowid_t<T> _rowid_() {
         return {};
     }
 
