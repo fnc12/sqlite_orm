@@ -3,14 +3,13 @@
 `sqlite_orm` is a wonderful library but there are still features that are not implemented. Here you can find a list of them:
 
 * `FOREIGN KEY` - sync_schema fk comparison and ability of two tables to have fk to each other
-* `NATURAL JOIN`
 * `order_by` with multiple arguments
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
 * `CASE`
 * `HAVING`
 * `INSERT` with specified columns (example: `storage.insert(user, columns(&User::name, &User::date));` or `storage.insert<User>(values(&User::id, 5, &User::createdAt, current_timestamp()));`)
 * `EXISTS`
-* select rowid
+* asterisk in raw select: `SELECT rowid, * FROM table`
 * `ATTACH`
 * operators +, -, *, /
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
