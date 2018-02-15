@@ -1288,12 +1288,22 @@ void testRowId() {
     storage.insert(SimpleTable{"B", "second letter"});
     storage.insert(SimpleTable{"C", "third letter"});
     
-    auto rows = storage.select(columns(rowid(), oid(), _rowid_(), &SimpleTable::letter, &SimpleTable::desc));
+    auto rows = storage.select(columns(rowid(),
+                                       oid(),
+                                       _rowid_(),
+                                       rowid<SimpleTable>(),
+                                       oid<SimpleTable>(),
+                                       _rowid_<SimpleTable>(),
+                                       &SimpleTable::letter,
+                                       &SimpleTable::desc));
     for(auto i = 0; i < rows.size(); ++i) {
         auto &row = rows[i];
         assert(std::get<0>(row) == std::get<1>(row));
         assert(std::get<1>(row) == std::get<2>(row));
         assert(std::get<2>(row) == i + 1);
+        assert(std::get<2>(row) == std::get<3>(row));
+        assert(std::get<3>(row) == std::get<4>(row));
+        assert(std::get<4>(row) == std::get<5>(row));
     }
 }
 
