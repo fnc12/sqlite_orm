@@ -2,7 +2,7 @@
 //  This example is implemented from here https://www.tutorialspoint.com/sqlite/sqlite_distinct_keyword.htm
 //
 
-#include "sqlite_orm.h"
+#include "sqlite_orm/sqlite_orm.h"
 
 #include <iostream>
 

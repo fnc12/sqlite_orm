@@ -11,7 +11,7 @@
 #include <iostream>
 
 //#include <sqlite_orm/sqlite_orm.h>
-#include "sqlite_orm.h"
+#include "sqlite_orm/sqlite_orm.h"
 
 using std::cout;
 using std::endl;
