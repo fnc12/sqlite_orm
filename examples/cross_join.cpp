@@ -2,8 +2,7 @@
  *  The example is implemented from here http://www.sqlitetutorial.net/sqlite-cross-join/
  */
 
-//#include <sqlite_orm/sqlite_orm.h>
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <string>
 #include <iostream>
