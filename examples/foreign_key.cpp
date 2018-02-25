@@ -2,8 +2,7 @@
 //  The example is implemented from here https://sqlite.org/foreignkeys.html
 //
 
-//#include <sqlite_orm/sqlite_orm.h>
-#include "sqlite_orm/sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <string>
 #include <iostream>
