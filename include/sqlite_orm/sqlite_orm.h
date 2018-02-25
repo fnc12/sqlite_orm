@@ -6379,9 +6379,10 @@ namespace sqlite_orm {
                 auto &impl = get_impl<O>();
                 int res = 0;
                 std::stringstream ss;
-                ss << "INSERT INTO '" << impl.table.name << "' (";
+                ss << "INSERT INTO '" << impl.table.name << "' ";
                 std::vector<std::string> columnNames;
                 auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
+                
                 impl.table.for_each_column([&impl, &columnNames, &compositeKeyColumnNames] (auto c) {
                     if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         auto it = std::find(compositeKeyColumnNames.begin(),
@@ -6394,21 +6395,29 @@ namespace sqlite_orm {
                 });
                 
                 auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << ") ";
+                if(columnNamesCount){
+                    ss << "( ";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "\"" << columnNames[i] << "\"";
+                        if(i < columnNamesCount - 1) {
+                            ss << ", ";
+                        }else{
+                            ss << ") ";
+                        }
                     }
+                }else{
+                    ss << "DEFAULT ";
                 }
-                ss << "VALUES (";
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "?";
-                    if(i < columnNamesCount - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << ")";
+                ss << "VALUES ";
+                if(columnNamesCount){
+                    ss << "( ";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "?";
+                        if(i < columnNamesCount - 1) {
+                            ss << ", ";
+                        }else{
+                            ss << ")";
+                        }
                     }
                 }
                 auto query = ss.str();

@@ -12,6 +12,24 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testIssue105() {
+    cout << __func__ << endl;
+    struct Data {
+        int str;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("data",
+                                           make_column("str", &Data::str, primary_key())
+                                           )
+                                );
+    
+    storage.sync_schema();
+    
+    Data d{0};
+    storage.insert(d);
+}
+
 void testIssue86() {
     cout << __func__ << endl;
     
@@ -1358,4 +1376,6 @@ int main() {
     testIssue87();
     
     testRowId();
+    
+    testIssue105();
 }
