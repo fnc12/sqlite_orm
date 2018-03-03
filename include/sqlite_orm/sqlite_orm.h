@@ -1228,7 +1228,7 @@ namespace sqlite_orm {
             std::tuple<Args...> args;
             
             operator std::string() const {
-                return static_cast<std::string>(order_by_t<int>());
+                return static_cast<std::string>(order_by_t<void*>());
             }
         };
 
@@ -5040,7 +5040,8 @@ namespace sqlite_orm {
                 using tuple_t = std::tuple<Args...>;
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(orderBy.args, [&expressions, this](auto &v){
                     auto expression = this->process_order_by(v);
-                    expressions.push_back(expression);
+//                    expressions.push_back(expression);
+                    expressions.insert(expressions.begin(), expression);
                 });
                 ss << static_cast<std::string>(orderBy) << " ";
                 for(size_t i = 0; i < expressions.size(); ++i) {
