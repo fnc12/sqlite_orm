@@ -2,7 +2,7 @@
  *  Implemented this example https://www.w3resource.com/sqlite/sqlite-natural-join.php
  */
 
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <string>
 #include <iostream>

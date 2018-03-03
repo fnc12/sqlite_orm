@@ -2,8 +2,7 @@
  Implemented example from here https://www.tutorialspoint.com/sqlite/sqlite_select_query.htm.
  */
 
-//#include <sqlite_orm/sqlite_orm.h>
-#include "sqlite_orm.h"
+#include <sqlite_orm/sqlite_orm.h>
 
 #include <iostream>
 
