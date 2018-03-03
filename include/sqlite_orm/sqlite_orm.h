@@ -944,8 +944,7 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct is_equal_t : public binary_condition<L, R> {
-
-            typedef is_equal_t<L, R> Self;
+            using self = is_equal_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
 
@@ -953,19 +952,19 @@ namespace sqlite_orm {
                 return "=";
             }
 
-            negated_condition_t<is_equal_t<L, R>> operator!() const {
+            negated_condition_t<self> operator!() const {
                 return {*this};
             }
 
-            collate_t<Self> collate_binary() const {
+            collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
             }
 
-            collate_t<Self> collate_nocase() const {
+            collate_t<self> collate_nocase() const {
                 return {*this, internal::collate_argument::nocase};
             }
 
-            collate_t<Self> collate_rtrim() const {
+            collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
             }
 
@@ -976,8 +975,7 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct is_not_equal_t : public binary_condition<L, R> {
-
-            typedef is_not_equal_t<L, R> Self;
+            using self = is_not_equal_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
 
@@ -985,19 +983,19 @@ namespace sqlite_orm {
                 return "!=";
             }
 
-            negated_condition_t<is_not_equal_t<L, R>> operator!() const {
+            negated_condition_t<self> operator!() const {
                 return {*this};
             }
 
-            collate_t<Self> collate_binary() const {
+            collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
             }
 
-            collate_t<Self> collate_nocase() const {
+            collate_t<self> collate_nocase() const {
                 return {*this, internal::collate_argument::nocase};
             }
 
-            collate_t<Self> collate_rtrim() const {
+            collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
             }
         };
@@ -1007,8 +1005,7 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct greater_than_t : public binary_condition<L, R> {
-
-            typedef greater_than_t<L, R> Self;
+            using self = greater_than_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
 
@@ -1016,19 +1013,19 @@ namespace sqlite_orm {
                 return ">";
             }
 
-            negated_condition_t<greater_than_t<L, R>> operator!() const {
+            negated_condition_t<self> operator!() const {
                 return {*this};
             }
 
-            collate_t<Self> collate_binary() const {
+            collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
             }
 
-            collate_t<Self> collate_nocase() const {
+            collate_t<self> collate_nocase() const {
                 return {*this, internal::collate_argument::nocase};
             }
 
-            collate_t<Self> collate_rtrim() const {
+            collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
             }
         };
@@ -1038,8 +1035,7 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct greater_or_equal_t : public binary_condition<L, R> {
-
-            typedef greater_or_equal_t<L, R> Self;
+            using self = greater_or_equal_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
 
@@ -1047,19 +1043,19 @@ namespace sqlite_orm {
                 return ">=";
             }
 
-            negated_condition_t<greater_or_equal_t<L, R>> operator!() const {
+            negated_condition_t<self> operator!() const {
                 return {*this};
             }
 
-            collate_t<Self> collate_binary() const {
+            collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
             }
 
-            collate_t<Self> collate_nocase() const {
+            collate_t<self> collate_nocase() const {
                 return {*this, internal::collate_argument::nocase};
             }
 
-            collate_t<Self> collate_rtrim() const {
+            collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
             }
         };
@@ -1069,8 +1065,7 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct lesser_than_t : public binary_condition<L, R> {
-
-            typedef lesser_than_t<L, R> Self;
+            using self = lesser_than_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
 
@@ -1078,19 +1073,19 @@ namespace sqlite_orm {
                 return "<";
             }
 
-            negated_condition_t<lesser_than_t<L, R>> operator!() const {
+            negated_condition_t<self> operator!() const {
                 return {*this};
             }
 
-            collate_t<Self> collate_binary() const {
+            collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
             }
 
-            collate_t<Self> collate_nocase() const {
+            collate_t<self> collate_nocase() const {
                 return {*this, internal::collate_argument::nocase};
             }
 
-            collate_t<Self> collate_rtrim() const {
+            collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
             }
         };
@@ -1100,8 +1095,7 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct lesser_or_equal_t : public binary_condition<L, R> {
-
-            typedef lesser_or_equal_t<L, R> Self;
+            using self = lesser_or_equal_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
 
@@ -1113,27 +1107,29 @@ namespace sqlite_orm {
                 return {*this};
             }
 
-            collate_t<Self> collate_binary() const {
+            collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
             }
 
-            collate_t<Self> collate_nocase() const {
+            collate_t<self> collate_nocase() const {
                 return {*this, internal::collate_argument::nocase};
             }
 
-            collate_t<Self> collate_rtrim() const {
+            collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
             }
         };
 
         template<class L, class E>
         struct in_t : public condition_t {
+            using self = in_t<L, E>;
+            
             L l;    //  left expression..
             std::vector<E> values;       //  values..
 
             in_t(L l_, std::vector<E> values_):l(l_), values(values_){}
 
-            negated_condition_t<in_t<L, E>> operator!() const {
+            negated_condition_t<self> operator!() const {
                 return {*this};
             }
 
@@ -1144,9 +1140,10 @@ namespace sqlite_orm {
 
         template<class T>
         struct is_null_t {
+            using self = is_null_t<T>;
             T t;
 
-            negated_condition_t<is_null_t<T>> operator!() const {
+            negated_condition_t<self> operator!() const {
                 return {*this};
             }
 
@@ -1157,9 +1154,11 @@ namespace sqlite_orm {
 
         template<class T>
         struct is_not_null_t {
+            using self = is_not_null_t<T>;
+            
             T t;
 
-            negated_condition_t<is_not_null_t<T>> operator!() const {
+            negated_condition_t<self> operator!() const {
                 return {*this};
             }
 
@@ -1179,7 +1178,7 @@ namespace sqlite_orm {
 
         template<class O>
         struct order_by_t {
-            using self_type = order_by_t<O>;
+            using self = order_by_t<O>;
 
             O o;
             int asc_desc = 0;   //  1: asc, -1: desc
@@ -1193,36 +1192,43 @@ namespace sqlite_orm {
                 return "ORDER BY";
             }
 
-            order_by_t<O> asc() {
+            self asc() {
                 auto res = *this;
                 res.asc_desc = 1;
                 return res;
             }
 
-            order_by_t<O> desc() {
+            self desc() {
                 auto res = *this;
                 res.asc_desc = -1;
                 return res;
             }
 
-            self_type collate_binary() const {
+            self collate_binary() const {
                 auto res = *this;
                 res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::binary);
                 return res;
             }
 
-            self_type collate_nocase() const {
-//                return {*this, internal::collate_argument::nocase};
+            self collate_nocase() const {
                 auto res = *this;
                 res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::nocase);
                 return res;
             }
 
-            self_type collate_rtrim() const {
-//                return {*this, internal::collate_argument::rtrim};
+            self collate_rtrim() const {
                 auto res = *this;
                 res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::rtrim);
                 return res;
+            }
+        };
+        
+        template<class ...Args>
+        struct multi_order_by_t {
+            std::tuple<Args...> args;
+            
+            operator std::string() const {
+                return static_cast<std::string>(order_by_t<int>());
             }
         };
 
@@ -1282,8 +1288,8 @@ namespace sqlite_orm {
 
         template<class T, class O>
         struct left_join_t {
-            typedef T type;
-            typedef O on_type;
+            using type = T;
+            using on_type = O;
 
             on_type constraint;
 
@@ -1294,9 +1300,8 @@ namespace sqlite_orm {
 
         template<class T, class O>
         struct join_t {
-
-            typedef T type;
-            typedef O on_type;
+            using type = T;
+            using on_type = O;
 
             on_type constraint;
 
@@ -1758,6 +1763,11 @@ namespace sqlite_orm {
     template<class O>
     conditions::order_by_t<O> order_by(O o) {
         return {o};
+    }
+    
+    template<class ...Args>
+    conditions::multi_order_by_t<Args...> multi_order_by(Args&& ...args) {
+        return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     template<class ...Args>
@@ -5025,6 +5035,24 @@ namespace sqlite_orm {
             }
             
             template<class ...Args>
+            void process_single_condition(std::stringstream &ss, conditions::multi_order_by_t<Args...> orderBy) {
+                std::vector<std::string> expressions;
+                using tuple_t = std::tuple<Args...>;
+                tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(orderBy.args, [&expressions, this](auto &v){
+                    auto expression = this->process_order_by(v);
+                    expressions.push_back(expression);
+                });
+                ss << static_cast<std::string>(orderBy) << " ";
+                for(size_t i = 0; i < expressions.size(); ++i) {
+                    ss << expressions[i];
+                    if(i < expressions.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << " ";
+            }
+            
+            template<class ...Args>
             void process_single_condition(std::stringstream &ss, conditions::group_by_t<Args...> groupBy) {
                 std::vector<std::string> expressions;
                 using tuple_t = std::tuple<Args...>;
@@ -5287,7 +5315,7 @@ namespace sqlite_orm {
                                 auto msg = sqlite3_errmsg(connection->get_db());
                                 throw std::runtime_error(msg);
                             }
-                        }else {
+                        }else{
                             auto msg = sqlite3_errmsg(connection->get_db());
                             throw std::runtime_error(msg);
                         }

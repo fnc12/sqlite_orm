@@ -6,11 +6,30 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <memory.h>
 
 using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
+
+void testMultiOrderBy() {
+    cout << __func__ << endl;
+    
+    struct Track {
+        int trackId;
+        std::string name;
+        std::shared_ptr<int> albumId;
+        int mediaTypeId;
+        std::shared_ptr<int> genreId;
+        std::shared_ptr<std::string> composer;
+        long milliseconds;
+        std::shared_ptr<long> bytes;
+        double unitPrice;
+    };
+    
+    
+}
 
 void testIssue105() {
     cout << __func__ << endl;
@@ -1378,4 +1397,6 @@ int main() {
     testRowId();
     
     testIssue105();
+    
+    testMultiOrderBy();
 }
