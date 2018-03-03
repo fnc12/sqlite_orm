@@ -1,16 +1,69 @@
-//#include "../dev/sqlite_orm.h"
-//#include <sqlite_orm/sqlite_orm.h>
+
 #include <sqlite_orm/sqlite_orm.h>
 
 #include <cassert>
 #include <vector>
 #include <string>
 #include <iostream>
+#include <memory.h>
 
 using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
+
+void testMultiOrderBy() {
+    cout << __func__ << endl;
+    
+    struct Singer {
+        int id;
+        std::string name;
+        std::string gender;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("singers",
+                                           make_column("id",
+                                                       &Singer::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &Singer::name,
+                                                       unique()),
+                                           make_column("gender",
+                                                       &Singer::gender)));
+    storage.sync_schema();
+    
+    storage.insert(Singer{ 0, "Alexandra Stan", "female" });
+    storage.insert(Singer{ 0, "Inna", "female" });
+    storage.insert(Singer{ 0, "Krewella", "female" });
+    storage.insert(Singer{ 0, "Sting", "male" });
+    storage.insert(Singer{ 0, "Lady Gaga", "female" });
+    storage.insert(Singer{ 0, "Rameez", "male" });
+    
+    {
+        //  test double ORDER BY
+        auto singers = storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc().collate_nocase(), order_by(&Singer::gender).desc()));
+        cout << "singers count = " << singers.size() << endl;
+        auto expectedIds = {1, 2, 3, 5, 6, 4};
+        assert(expectedIds.size() == singers.size());
+        auto it = expectedIds.begin();
+        for(size_t i = 0; i < singers.size(); ++i) {
+            assert(*it == singers[i].id);
+            ++it;
+        }
+    }
+    
+    //  test multi ORDER BY ith singl column with single ORDER BY
+    {
+        auto singers = storage.get_all<Singer>(order_by(&Singer::id).asc());
+        auto singers2 = storage.get_all<Singer>(multi_order_by(order_by(&Singer::id).asc()));
+        assert(singers.size() == singers2.size());
+        for(size_t i = 0; i < singers.size(); ++i) {
+            assert(singers[i].id == singers2[i].id);
+        }
+    }
+    
+}
 
 void testIssue105() {
     cout << __func__ << endl;
@@ -20,9 +73,7 @@ void testIssue105() {
     
     auto storage = make_storage("",
                                 make_table("data",
-                                           make_column("str", &Data::str, primary_key())
-                                           )
-                                );
+                                           make_column("str", &Data::str, primary_key())));
     
     storage.sync_schema();
     
@@ -1378,4 +1429,6 @@ int main() {
     testRowId();
     
     testIssue105();
+    
+    testMultiOrderBy();
 }
