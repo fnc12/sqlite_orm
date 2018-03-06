@@ -5,7 +5,6 @@
  */
 
 #include <sqlite_orm/sqlite_orm.h>
-
 #include <string>
 #include <iostream>
 
