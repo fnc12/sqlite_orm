@@ -1,10 +1,3 @@
-//
-//  date_time.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 24.09.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
 
 #include <sqlite_orm/sqlite_orm.h>
 

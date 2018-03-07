@@ -44,8 +44,8 @@ int main(int argc, char **argv) {
             "Doe",
             "john.doe@sqlitetutorial.net",
         });
-    }catch(std::runtime_error e){
-        cout << e.what() << endl;
+    }catch(std::error_code e){
+        cout << e.message() << endl;
     }
     std::vector<Contract> moreContracts = {
         Contract{

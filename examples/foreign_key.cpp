@@ -59,12 +59,12 @@ int main(int argc, char **argv) {
     storage.replace(Track{ 13, "My Way", std::make_shared<int>(2) });
     
     try{
-        //  This fails because the value inserted into the trackartist column (3)
+        //  This fails because value inserted into the trackartist column (3)
         //  does not correspond to row in the artist table.
         storage.replace(Track{ 14, "Mr. Bojangles", std::make_shared<int>(3) });
         assert(0);
-    }catch(std::runtime_error e) {
-        cout << e.what() << endl;
+    }catch(std::error_code e) {
+        cout << e.message() << endl;
     }
     
     //  This succeeds because a NULL is inserted into trackartist. A
@@ -73,12 +73,12 @@ int main(int argc, char **argv) {
     
     //  Trying to modify the trackartist field of the record after it has
     //  been inserted does not work either, since the new value of trackartist (3)
-    //  Still does not correspond to any row in the artist table.
+    //  still does not correspond to any row in the artist table.
     try{
         storage.update_all(set(assign(&Track::trackArtist, 3)), where(is_equal(&Track::trackName, "Mr. Bojangles")));
         assert(0);
-    }catch(std::runtime_error e) {
-        cout << e.what() << endl;
+    }catch(std::error_code e) {
+        cout << e.message() << endl;
     }
     
     //  Insert the required row into the artist table. It is then possible to
@@ -97,8 +97,8 @@ int main(int argc, char **argv) {
         //  the track table contains a row that refer to it.
         storage.remove_all<Artist>(where(is_equal(&Artist::artistName, "Frank Sinatra")));
         assert(0);
-    }catch(std::runtime_error e) {
-        cout << e.what() << endl;
+    }catch(std::error_code e) {
+        cout << e.message() << endl;
     }
     
     //  Delete all the records from the track table that refer to the artist
@@ -111,8 +111,8 @@ int main(int argc, char **argv) {
         //  exists records in the track table that refer to it.
         storage.update_all(set(assign(&Artist::artistId, 4)), where(is_equal(&Artist::artistName, "Dean Martin")));
         assert(0);
-    }catch(std::runtime_error e) {
-        cout << e.what() << endl;
+    }catch(std::error_code e) {
+        cout << e.message() << endl;
     }
     
     //  Once all the records that refer to a row in the artist table have
