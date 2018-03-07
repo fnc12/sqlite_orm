@@ -43,7 +43,7 @@ void testMultiOrderBy() {
     {
         //  test double ORDER BY
         auto singers = storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc().collate_nocase(), order_by(&Singer::gender).desc()));
-        cout << "singers count = " << singers.size() << endl;
+//        cout << "singers count = " << singers.size() << endl;
         auto expectedIds = {1, 2, 3, 5, 6, 4};
         assert(expectedIds.size() == singers.size());
         auto it = expectedIds.begin();
@@ -1191,7 +1191,7 @@ void testSynchronous() {
     try{
         storage.pragma.synchronous(newValue);
         assert(0);
-    }catch(std::runtime_error) {
+    }catch(std::error_code) {
         //  Safety level may not be changed inside a transaction
         assert(storage.pragma.synchronous() == value);
     }

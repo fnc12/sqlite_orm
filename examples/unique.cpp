@@ -1,6 +1,5 @@
 
 #include <sqlite_orm/sqlite_orm.h>
-
 #include <string>
 #include <memory>
 #include <iostream>
@@ -37,12 +36,12 @@ int main(int argc, char **argv) {
         auto id1 = storage.insert(Entry{ 0, sameString, std::make_shared<std::string>("The way I are") });
         cout << "inserted " << storage.dump(storage.get<Entry>(id1)) << endl;
         
-        //  it's ok but the next line will throw std::runtime_error
+        //  it's ok but the next line will throw std::error_code
         
         auto id2 = storage.insert(Entry{ 0, sameString, std::make_shared<std::string>("I got you") });
         cout << "inserted " << storage.dump(storage.get<Entry>(id2)) << endl;
-    } catch (std::runtime_error e) {
-        cerr << e.what() << endl;
+    } catch (std::error_code e) {
+        cerr << e.message() << endl;
     }
     
     return 0;

@@ -1,13 +1,5 @@
-//
-//  nullable_enum_binding.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 25.03.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
 
 #include <sqlite_orm/sqlite_orm.h>
-
 #include <iostream>
 #include <memory>
 #include <string>
@@ -99,8 +91,8 @@ namespace sqlite_orm {
     };
 
     /**
-     *  This is where sqlite_orm lib understand that your type is nullable - by
-     *  specializating type_is_nullable<T> and deriving from std::true_type.
+     *  This is where sqlite_orm lib understands that your type is nullable - by
+     *  specializing type_is_nullable<T> and deriving from std::true_type.
      */
     template<>
     struct type_is_nullable<Gender> : public std::true_type {

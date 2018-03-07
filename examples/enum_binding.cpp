@@ -1,13 +1,5 @@
-//
-//  enum_binding.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 13.03.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
 
 #include <sqlite_orm/sqlite_orm.h>
-
 #include <iostream>
 #include <memory>
 
@@ -59,19 +51,19 @@ std::shared_ptr<Gender> GenderFromString(const std::string &s) {
 }
 
 /**
- *  This is where magic happens. To tell sqlite_orm/sqlite_orm.how to act
+ *  This is where magic happens. To tell sqlite_orm how to act
  *  with Gender enum we have to create a few service classes
- *  specializations in sqlite_orm namespace.
+ *  specializations (traits) in sqlite_orm namespace.
  */
 namespace sqlite_orm {
 
     /**
      *  First of all is a type_printer template class.
-     *  It is responsible of sqlite type string representation.
+     *  It is responsible for sqlite type string representation.
      *  We want Gender to be `TEXT` so let's just derive from
      *  text_printer. Also there are other printers: real_printer and
-     *  integer_printer. We must use them if we want to map our type to `REAL` (double)
-     *  or `INTEGER` (int) respectively.
+     *  integer_printer. We must use them if we want to map our type to `REAL` (double/float)
+     *  or `INTEGER` (int/long/short etc) respectively.
      */
     template<>
     struct type_printer<Gender> : public text_printer {};
@@ -106,8 +98,8 @@ namespace sqlite_orm {
     /**
      *  This is a reverse operation: here we have to specify a way to transform string received from
      *  database to our Gender object. Here we call `GenderFromString` and throw `std::runtime_error` if it returns
-     *  nullptr. Every `row_extractor` specialization must have `extract(const char*)` function which returns
-     *  mapped type.
+     *  nullptr. Every `row_extractor` specialization must have `extract(const char*)` and `extract(sqlite3_stmt *stmt, int columnIndex)`
+     *  functions which return a mapped type value.
      */
     template<>
     struct row_extractor<Gender> {

@@ -1,14 +1,5 @@
-//
-//  view.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 05.04.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
 
-//#include <sqlite_orm/sqlite_orm.h>
 #include <sqlite_orm/sqlite_orm.h>
-
 #include <iostream>
 #include <algorithm>
 
@@ -23,7 +14,7 @@ struct MarvelHero {
 
 int main(int argc, char **argv) {
     using namespace sqlite_orm;
-    auto storage = make_storage("view.sqlite",
+    auto storage = make_storage("iteration.sqlite",
                                 make_table("marvel",
                                            make_column("id",
                                                        &MarvelHero::id,
@@ -69,7 +60,7 @@ int main(int argc, char **argv) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
     
-    /*std::vector<MarvelHero> heroesByAlgorithm;
+    std::vector<MarvelHero> heroesByAlgorithm;
     heroesByAlgorithm.reserve(storage.count<MarvelHero>());
     {
         auto view = storage.iterate<MarvelHero>();
@@ -77,9 +68,7 @@ int main(int argc, char **argv) {
                   view.end(),
                   std::back_inserter(heroesByAlgorithm));
     }
-    cout << "heroesByAlgorithm.size = " << heroesByAlgorithm.size() << endl;*/
-    
-//    auto nameLengths = storage.select(&MarvelHero::name);
+    cout << "heroesByAlgorithm.size = " << heroesByAlgorithm.size() << endl;
     
     return 0;
 }

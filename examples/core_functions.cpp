@@ -1,13 +1,5 @@
-//
-//  CoreFunctions.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 15.04.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
 
 #include <sqlite_orm/sqlite_orm.h>
-
 #include <iostream>
 #include <cassert>
 
@@ -140,13 +132,13 @@ int main(int argc, char **argv) {
     auto charString = storage.select(char_(67,72,65,82)).front();
     cout << "SELECT CHAR(67,72,65,82) = *" << charString << "*" << endl;
     
-    /*//  SELECT LOWER(name) || '@marvel.com' FROM marvel
-    auto emails = storage.select(conc(lower(&MarvelHero::name), "@marvel.com"));
+    //  SELECT LOWER(name) || '@marvel.com' FROM marvel
+    auto emails = storage.select(lower(&MarvelHero::name) || c("@marvel.com"));
     cout << "emails.size = " << emails.size() << endl;
     for(auto &email : emails) {
         cout << email << endl;
     }
-    cout << endl;*/
+    cout << endl;
     
 #endif
     

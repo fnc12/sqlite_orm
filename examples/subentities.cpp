@@ -3,18 +3,17 @@
  *  vector of marks. Mark is a subentity with one to many relation. This example shows how to manage this kind of case.
  *  First of all we got to understand how to keep data in the db. We need two tables: `students` and `marks`. Students
  *  table has column equal to all Student class members exept marks. Marks table has two columns: student_id and value itself.
- *  We create here two functions: inserting/updating student (with his/her marks) and getting student (also with his/her marks).
+ *  We create two functions here: inserting/updating student (with his/her marks) and getting student (also with his/her marks).
  *  Schema is:
  *  `CREATE TABLE students (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL, roll_no INTEGER NOT NULL)`
  *  `CREATE TABLE marks (mark INTEGER NOT NULL, student_id INTEGER NOT NULL)`
  *  One of the main ideas of `sqlite_orm` is to give a developer ability to name tables/columns as he/she wants.
  *  Many other ORM libraries manage subentities automatically and it is not correct cause developer must understand
  *  how everything works inside sqlite otherwise his/her app might not work properly. Also developer must know schema in case he or she needs
- *  a strict access through sqlite client.
+ *  a strict access with sqlite client.
  */
 
 #include <sqlite_orm/sqlite_orm.h>
-
 #include <iostream>
 
 using std::cout;
@@ -94,7 +93,6 @@ int main(int argc, char **argv) {
         
         //  also let's create another students with marks..
         Student anna{ -1, "Anna", 555 };
-//        anna.id = storage.insert(anna);
         anna.marks.push_back(6);
         anna.marks.push_back(7);
         anna.id = addStudent(anna);

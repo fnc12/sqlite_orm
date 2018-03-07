@@ -1,15 +1,7 @@
-//
-//  composite_key.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 15.10.17.
-//  Copyright © 2017 John Zakharov. All rights reserved.
-//
 
 #include <stdio.h>
 #include <string>
 #include <iostream>
-
 #include <sqlite_orm/sqlite_orm.h>
 
 using std::cout;
@@ -50,8 +42,8 @@ int main() {
             "Drake",
             "Singer",
         });
-    }catch(std::runtime_error e){
-        cout << "exception = " << e.what() << endl;
+    }catch(std::error_code e){
+        cout << "exception = " << e.message() << endl;
     }
     storage.replace(User{
         2,
