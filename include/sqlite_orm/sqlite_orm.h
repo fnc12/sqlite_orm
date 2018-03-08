@@ -22,6 +22,7 @@
 #include <map>  //  std::map
 #include <locale>
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
+#include <system_error>  // std::error_code, std::system_error
 
 #if defined(_MSC_VER)
 # if defined(min)
@@ -35,8 +36,6 @@ __pragma(push_macro("max"))
 # define __RESTORE_MAX__
 # endif
 #endif // defined(_MSC_VER)
-
-#include <system_error>  // std::error_code
 
 namespace sqlite_orm {
     
@@ -2432,7 +2431,7 @@ namespace sqlite_orm {
             database_connection(const std::string &filename) {
                 auto rc = sqlite3_open(filename.c_str(), &this->db);
                 if(rc != SQLITE_OK){
-                    throw std::error_code(sqlite3_errcode(this->db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(this->db), get_sqlite_error_category()));
                 }
             }
 
@@ -3473,7 +3472,7 @@ namespace sqlite_orm {
             
             template<class O>
             std::string dump(const O &, sqlite3 *, std::nullptr_t) {
-                throw std::make_error_code(orm_error_code::type_is_not_mapped_to_storage);
+                throw std::system_error(std::make_error_code(orm_error_code::type_is_not_mapped_to_storage));
             }
             
             bool table_exists(const std::string &tableName, sqlite3 *db) {
@@ -3491,7 +3490,7 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
                 return res;
             }
@@ -3506,10 +3505,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -3523,10 +3522,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -3540,10 +3539,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -3557,10 +3556,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -3581,7 +3580,7 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
                 return res;
             }
@@ -3719,7 +3718,7 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
                 return res;
             }
@@ -3745,10 +3744,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return;
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -3790,10 +3789,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return;
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -4173,7 +4172,7 @@ namespace sqlite_orm {
                     
                     T& operator*() {
                         if(!this->stmt) {
-                            throw std::make_error_code(orm_error_code::trying_to_dereference_null_iterator);
+                            throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
                         }
                         if(!this->temp){
                             this->extract_value(this->temp);
@@ -4183,7 +4182,7 @@ namespace sqlite_orm {
                     
                     T* operator->() {
                         if(!this->stmt) {
-                            throw std::make_error_code(orm_error_code::trying_to_dereference_null_iterator);
+                            throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
                         }
                         if(!this->temp){
                             this->extract_value(this->temp);
@@ -4203,7 +4202,7 @@ namespace sqlite_orm {
                                     *this->stmt = nullptr;
                                 }break;
                                 default:{
-                                    throw std::error_code(sqlite3_errcode(this->view.connection->get_db()), get_sqlite_error_category());
+                                    throw std::system_error(std::error_code(sqlite3_errcode(this->view.connection->get_db()), get_sqlite_error_category()));
                                 }
                             }
                         }
@@ -4249,7 +4248,7 @@ namespace sqlite_orm {
                     if(ret == SQLITE_OK){
                         return {stmt, *this};
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }
             };
@@ -4350,7 +4349,7 @@ namespace sqlite_orm {
                                                return 0;
                                            }, &res, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                     return res;
                 }
@@ -4363,7 +4362,7 @@ namespace sqlite_orm {
                     auto query = ss.str();
                     auto rc = sqlite3_exec(connection->get_db(), query.c_str(), nullptr, nullptr, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }
             };
@@ -4472,10 +4471,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -5192,10 +5191,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return;
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
             
@@ -5239,10 +5238,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return;
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
             
@@ -5316,10 +5315,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return;
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
             
@@ -5359,16 +5358,16 @@ namespace sqlite_orm {
                             if (sqlite3_step(stmt) == SQLITE_DONE) {
                                 return;
                             }else{
-                                throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                             }
                         }else{
-                            throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                            throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                         }
                     }else{
-                        throw std::make_error_code(orm_error_code::too_many_tables_specified);
+                        throw std::system_error(std::make_error_code(orm_error_code::too_many_tables_specified));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::incorrect_set_fields_specified);
+                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_set_fields_specified));
                 }
             }
             
@@ -5633,10 +5632,10 @@ namespace sqlite_orm {
                                                return 0;
                                            }, &res, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::column_not_found);
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
                 return res;
             }
@@ -5679,22 +5678,22 @@ namespace sqlite_orm {
                             }break;
                             case SQLITE_DONE: break;
                             default:{
-                                throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                             }
                         }
                     }while(stepRes != SQLITE_DONE);
                     return res;
                 }else{
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
             
             /**
              *  Select * by id routine.
-             *  throws std::error_code(orm_error_code::not_found, orm_error_category) if object not found with given id.
-             *  throws std::error_code with orm_error_category in case of db error.
+             *  throws std::system_error(orm_error_code::not_found, orm_error_category) if object not found with given id.
+             *  throws std::system_error with orm_error_category in case of db error.
              *  O is an object type to be extracted. Must be specified explicitly.
-             *  @return Object of type O where id is equal parameter passed or throws `std::error_code(orm_error_code::not_found, orm_error_category)`
+             *  @return Object of type O where id is equal parameter passed or throws `std::system_error(orm_error_code::not_found, orm_error_category)`
              *  if there is no object with such id.
              */
             template<class O, class ...Ids>
@@ -5753,23 +5752,23 @@ namespace sqlite_orm {
                                 return res;
                             }break;
                             case SQLITE_DONE:{
-                                throw std::make_error_code(sqlite_orm::orm_error_code::not_found);
+                                throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::not_found));
                             }break;
                             default:{
-                                throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                             }
                         }
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::table_has_no_primary_key_column);
+                    throw std::system_error(std::make_error_code(orm_error_code::table_has_no_primary_key_column));
                 }
             }
             
             /**
-             *  The same as `get` function but doesn't throw an exeption if noting found but returns std::shared_ptr with null value.
-             *  throws std::error_code in case of db error.
+             *  The same as `get` function but doesn't throw an exception if noting found but returns std::shared_ptr with null value.
+             *  throws std::system_error in case of db error.
              */
             template<class O, class ...Ids>
             std::shared_ptr<O> get_no_throw(Ids ...ids) {
@@ -5830,14 +5829,14 @@ namespace sqlite_orm {
                                 return {};
                             }break;
                             default:{
-                                throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                             }
                         }
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::table_has_no_primary_key_column);
+                    throw std::system_error(std::make_error_code(orm_error_code::table_has_no_primary_key_column));
                 }
             }
             
@@ -5870,7 +5869,7 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
                 return res;
             }
@@ -5903,10 +5902,10 @@ namespace sqlite_orm {
                                                return 0;
                                            }, &res, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::column_not_found);
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
                 return res;
             }
@@ -5940,10 +5939,10 @@ namespace sqlite_orm {
                                                return 0;
                                            }, &res, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::column_not_found);
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
                 return res;
             }
@@ -6012,10 +6011,10 @@ namespace sqlite_orm {
                                                return 0;
                                            }, &res, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::column_not_found);
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
                 return res;
             }
@@ -6051,10 +6050,10 @@ namespace sqlite_orm {
                                                return 0;
                                            }, &res, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::column_not_found);
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
                 return res;
             }
@@ -6088,10 +6087,10 @@ namespace sqlite_orm {
                                                return 0;
                                            }, &res, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::column_not_found);
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
                 return res;
             }
@@ -6136,10 +6135,10 @@ namespace sqlite_orm {
                                                return 0;
                                            }, &res, nullptr);
                     if(rc != SQLITE_OK) {
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::column_not_found);
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
                 return res;
             }
@@ -6182,16 +6181,16 @@ namespace sqlite_orm {
                                 }break;
                                 case SQLITE_DONE: break;
                                 default:{
-                                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                                 }
                             }
                         }while(stepRes != SQLITE_DONE);
                         return res;
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else{
-                    throw std::make_error_code(orm_error_code::column_not_found);
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
             }
             
@@ -6217,7 +6216,7 @@ namespace sqlite_orm {
                     if(columnName.length()){
                         columnNames.push_back(columnName);
                     }else{
-                        throw std::make_error_code(orm_error_code::column_not_found);
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                     }
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
@@ -6264,13 +6263,13 @@ namespace sqlite_orm {
                             }break;
                             case SQLITE_DONE: break;
                             default:{
-                                throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                             }
                         }
                     }while(stepRes != SQLITE_DONE);
                     return res;
                 }else{
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
                 return res;
             }
@@ -6338,10 +6337,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //..
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
             
@@ -6410,10 +6409,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //..
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
             
@@ -6496,10 +6495,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         res = int(sqlite3_last_insert_rowid(connection->get_db()));
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
                 return res;
             }
@@ -6578,10 +6577,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //..
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
             
@@ -6596,10 +6595,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
             
@@ -6615,10 +6614,10 @@ namespace sqlite_orm {
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                     }
                 }else {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -6694,7 +6693,7 @@ namespace sqlite_orm {
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
                 return res;
             }
@@ -6825,7 +6824,7 @@ namespace sqlite_orm {
             void begin_transaction() {
                 if(!this->inMemory){
                     if(!this->isOpenedForever){
-                        if(this->currentTransaction) throw std::make_error_code(orm_error_code::cannot_start_a_transaction_within_a_transaction);
+                        if(this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::cannot_start_a_transaction_within_a_transaction));
                         this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
                         this->on_open_internal(this->currentTransaction->get_db());
                     }
@@ -6836,7 +6835,7 @@ namespace sqlite_orm {
             
             void commit() {
                 if(!this->inMemory){
-                    if(!this->currentTransaction) throw std::make_error_code(orm_error_code::no_active_transaction);
+                    if(!this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
                 }
                 auto db = this->currentTransaction->get_db();
                 this->impl.commit(db);
@@ -6847,7 +6846,7 @@ namespace sqlite_orm {
             
             void rollback() {
                 if(!this->inMemory){
-                    if(!this->currentTransaction) throw std::make_error_code(orm_error_code::no_active_transaction);
+                    if(!this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
                 }
                 auto db = this->currentTransaction->get_db();
                 this->impl.rollback(db);
@@ -6871,7 +6870,7 @@ namespace sqlite_orm {
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -6888,7 +6887,7 @@ namespace sqlite_orm {
                                            return 0;
                                        }, &res, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::error_code(sqlite3_errcode(db), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
                 return res;
             }
@@ -6941,7 +6940,7 @@ namespace sqlite_orm {
                                        }, &tableNames,nullptr);
                 
                 if(res != SQLITE_OK) {
-                    throw std::error_code(sqlite3_errcode(connection->db()), get_sqlite_error_category());
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->db()), get_sqlite_error_category()));
                 }
                 return tableNames;
             }

@@ -63,8 +63,8 @@ int main(int argc, char **argv) {
         //  does not correspond to row in the artist table.
         storage.replace(Track{ 14, "Mr. Bojangles", std::make_shared<int>(3) });
         assert(0);
-    }catch(std::error_code e) {
-        cout << e.message() << endl;
+    }catch(std::system_error e) {
+        cout << e.what() << endl;
     }
     
     //  This succeeds because a NULL is inserted into trackartist. A
@@ -77,8 +77,8 @@ int main(int argc, char **argv) {
     try{
         storage.update_all(set(assign(&Track::trackArtist, 3)), where(is_equal(&Track::trackName, "Mr. Bojangles")));
         assert(0);
-    }catch(std::error_code e) {
-        cout << e.message() << endl;
+    }catch(std::system_error e) {
+        cout << e.what() << endl;
     }
     
     //  Insert the required row into the artist table. It is then possible to
@@ -97,8 +97,8 @@ int main(int argc, char **argv) {
         //  the track table contains a row that refer to it.
         storage.remove_all<Artist>(where(is_equal(&Artist::artistName, "Frank Sinatra")));
         assert(0);
-    }catch(std::error_code e) {
-        cout << e.message() << endl;
+    }catch(std::system_error e) {
+        cout << e.what() << endl;
     }
     
     //  Delete all the records from the track table that refer to the artist
@@ -111,8 +111,8 @@ int main(int argc, char **argv) {
         //  exists records in the track table that refer to it.
         storage.update_all(set(assign(&Artist::artistId, 4)), where(is_equal(&Artist::artistName, "Dean Martin")));
         assert(0);
-    }catch(std::error_code e) {
-        cout << e.message() << endl;
+    }catch(std::system_error e) {
+        cout << e.what() << endl;
     }
     
     //  Once all the records that refer to a row in the artist table have

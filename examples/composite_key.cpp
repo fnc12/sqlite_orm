@@ -42,8 +42,8 @@ int main() {
             "Drake",
             "Singer",
         });
-    }catch(std::error_code e){
-        cout << "exception = " << e.message() << endl;
+    }catch(std::system_error e){
+        cout << "exception = " << e.what() << endl;
     }
     storage.replace(User{
         2,
