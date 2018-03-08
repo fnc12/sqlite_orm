@@ -36,12 +36,12 @@ int main(int argc, char **argv) {
         auto id1 = storage.insert(Entry{ 0, sameString, std::make_shared<std::string>("The way I are") });
         cout << "inserted " << storage.dump(storage.get<Entry>(id1)) << endl;
         
-        //  it's ok but the next line will throw std::error_code
+        //  it's ok but the next line will throw std::system_error
         
         auto id2 = storage.insert(Entry{ 0, sameString, std::make_shared<std::string>("I got you") });
         cout << "inserted " << storage.dump(storage.get<Entry>(id2)) << endl;
-    } catch (std::error_code e) {
-        cerr << e.message() << endl;
+    } catch (std::system_error e) {
+        cerr << e.what() << endl;
     }
     
     return 0;

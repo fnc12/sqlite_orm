@@ -1191,7 +1191,7 @@ void testSynchronous() {
     try{
         storage.pragma.synchronous(newValue);
         assert(0);
-    }catch(std::error_code) {
+    }catch(std::system_error) {
         //  Safety level may not be changed inside a transaction
         assert(storage.pragma.synchronous() == value);
     }
