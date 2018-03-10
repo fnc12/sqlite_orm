@@ -100,12 +100,12 @@ namespace sqlite_orm {
         }
     };
     
-    const orm_error_category& get_orm_error_category() {
+    inline const orm_error_category& get_orm_error_category() {
         static orm_error_category res;
         return res;
     }
     
-    const sqlite_error_category& get_sqlite_error_category() {
+    inline const sqlite_error_category& get_sqlite_error_category() {
         static sqlite_error_category res;
         return res;
     }
