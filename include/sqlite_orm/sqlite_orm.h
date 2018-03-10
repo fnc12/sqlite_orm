@@ -116,7 +116,7 @@ namespace std
     template <>
     struct is_error_code_enum<sqlite_orm::orm_error_code> : std::true_type{};
     
-    std::error_code make_error_code(sqlite_orm::orm_error_code errorCode) {
+    inline std::error_code make_error_code(sqlite_orm::orm_error_code errorCode) {
         return std::error_code(static_cast<int>(errorCode), sqlite_orm::get_orm_error_category());
     }
 }
