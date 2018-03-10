@@ -2591,7 +2591,6 @@ namespace sqlite_orm {
         template<class L>
         void for_each_column_with_constraints(L l){
             l(this->col);
-//            this->apply_to_col_if(l, internal::is_column<column_type>{});
             Super::for_each_column_with_constraints(l);
         }
 
@@ -5212,12 +5211,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "DELETE FROM '" << impl.table.name << "' ";
                 ss << "WHERE ";
-                std::vector<std::string> primaryKeyColumnNames;
-                impl.table.for_each_column([&primaryKeyColumnNames] (auto c) {
-                    if(c.template has<constraints::primary_key_t<>>()) {
-                        primaryKeyColumnNames.emplace_back(c.name);
-                    }
-                });
+                auto primaryKeyColumnNames = impl.table.primary_key_column_names();
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                     ss << "\"" << primaryKeyColumnNames[i] << "\"" << " =  ?";
                     if(i < primaryKeyColumnNames.size() - 1) {
@@ -5231,10 +5225,7 @@ namespace sqlite_orm {
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    impl.table.template for_each_column_with<constraints::primary_key_t<>>([&index, stmt, &id] (auto c) {
-                        using field_type = typename decltype(c)::field_type;
-                        statement_binder<field_type>().bind(stmt, index++, id);
-                    });
+                    statement_binder<I>().bind(stmt, index++, id);
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return;
                     }else{
@@ -5290,7 +5281,7 @@ namespace sqlite_orm {
                     auto index = 1;
                     impl.table.for_each_column([&o, stmt, &index] (auto c) {
                         if(!c.template has<constraints::primary_key_t<>>()) {
-                            typedef typename decltype(c)::field_type field_type;
+                            using field_type = typename decltype(c)::field_type;
                             const field_type *value = nullptr;
                             if(c.member_pointer){
                                 value = &(o.*c.member_pointer);
