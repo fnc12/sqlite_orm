@@ -665,6 +665,15 @@ namespace sqlite_orm {
             L l;
             R r;
         };
+        
+        /**
+         *  Result of subscribe - operator
+         */
+        template<class L, class R>
+        struct sub_t {
+            L l;
+            R r;
+        };
 
         /**
          *  This class stores single column info. column_t is a pair of [column_name:member_pointer] mapped to a storage
@@ -831,6 +840,11 @@ namespace sqlite_orm {
     
     template<class L, class R>
     internal::add_t<L, R> add(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    internal::sub_t<L, R> sub(L l, R r) {
         return {l, r};
     }
 
@@ -1542,6 +1556,21 @@ namespace sqlite_orm {
     
     template<class L, class R>
     internal::add_t<L, R> operator+(internal::expression_t<L> l, internal::expression_t<R> r) {
+        return {l.t, r.t};
+    }
+    
+    template<class T, class R>
+    internal::sub_t<T, R> operator-(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    internal::sub_t<L, T> operator-(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
+    template<class L, class R>
+    internal::sub_t<L, R> operator-(internal::expression_t<L> l, internal::expression_t<R> r) {
         return {l.t, r.t};
     }
     
@@ -4119,6 +4148,11 @@ namespace sqlite_orm {
             using type = double;
         };
         
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::sub_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
         template<class ...Ts>
         struct column_result_t<internal::rowid_t, Ts...> {
             using type = int64;
@@ -4725,6 +4759,15 @@ namespace sqlite_orm {
                 auto lhs = this->string_from_expression(f.l);
                 auto rhs = this->string_from_expression(f.r);
                 ss << "(" << lhs << " + " << rhs << ") ";
+                return ss.str();
+            }
+            
+            template<class L, class R>
+            std::string string_from_expression(internal::sub_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                auto lhs = this->string_from_expression(f.l);
+                auto rhs = this->string_from_expression(f.r);
+                ss << "(" << lhs << " - " << rhs << ") ";
                 return ss.str();
             }
             
@@ -5620,6 +5663,16 @@ namespace sqlite_orm {
             
             template<class L, class R, class ...Args>
             std::set<std::string> parse_table_name(internal::add_t<L, R> &f) {
+                std::set<std::string> res;
+                auto leftSet = this->parse_table_names(f.l);
+                res.insert(leftSet.begin(), leftSet.end());
+                auto rightSet = this->parse_table_names(f.r);
+                res.insert(rightSet.begin(), rightSet.end());
+                return res;
+            }
+            
+            template<class L, class R, class ...Args>
+            std::set<std::string> parse_table_name(internal::sub_t<L, R> &f) {
                 std::set<std::string> res;
                 auto leftSet = this->parse_table_names(f.l);
                 res.insert(leftSet.begin(), leftSet.end());

@@ -43,10 +43,18 @@ void testOperators() {
                                        c(&Object::name) || suffix,
                                        &Object::name || c(suffix),
                                        c(&Object::name) || c(suffix),
+                                       
                                        add(&Object::nameLen, &Object::number),
                                        c(&Object::nameLen) + &Object::number,
                                        &Object::nameLen + c(&Object::number),
-                                       c(&Object::nameLen) + c(&Object::number)));
+                                       c(&Object::nameLen) + c(&Object::number),
+                                       c(&Object::nameLen) + 1000,
+                                       
+                                       sub(&Object::nameLen, &Object::number),
+                                       c(&Object::nameLen) - &Object::number,
+                                       &Object::nameLen - c(&Object::number),
+                                       c(&Object::nameLen) - c(&Object::number),
+                                       c(&Object::nameLen) - 1000));
     for(auto i = 0; i < rows.size(); ++i) {
         auto &row = rows[i];
         auto &name = names[i];
@@ -54,11 +62,20 @@ void testOperators() {
         assert(std::get<1>(row) == std::get<0>(row));
         assert(std::get<2>(row) == std::get<1>(row));
         assert(std::get<3>(row) == std::get<2>(row));
+        
         auto expectedAddNumber = int(name.length()) + number;
         assert(std::get<4>(row) == expectedAddNumber);
         assert(std::get<5>(row) == std::get<4>(row));
         assert(std::get<6>(row) == std::get<5>(row));
         assert(std::get<7>(row) == std::get<6>(row));
+        assert(std::get<8>(row) == int(name.length()) + 1000);
+        
+        auto expectedSubNumber = int(name.length()) - number;
+        assert(std::get<9>(row) == expectedSubNumber);
+        assert(std::get<10>(row) == std::get<9>(row));
+        assert(std::get<11>(row) == std::get<10>(row));
+        assert(std::get<12>(row) == std::get<11>(row));
+        assert(std::get<13>(row) == int(name.length()) - 1000);
     }
 }
 
