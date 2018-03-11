@@ -60,7 +60,13 @@ void testOperators() {
                                        c(&Object::nameLen) * &Object::number,
                                        &Object::nameLen * c(&Object::number),
                                        c(&Object::nameLen) * c(&Object::number),
-                                       c(&Object::nameLen) * 1000));
+                                       c(&Object::nameLen) * 1000,
+                                       
+                                       div(&Object::nameLen, &Object::number),
+                                       c(&Object::nameLen) / &Object::number,
+                                       &Object::nameLen / c(&Object::number),
+                                       c(&Object::nameLen) / c(&Object::number),
+                                       c(&Object::nameLen) / 2));
     for(auto i = 0; i < rows.size(); ++i) {
         auto &row = rows[i];
         auto &name = names[i];
@@ -89,6 +95,13 @@ void testOperators() {
         assert(std::get<16>(row) == std::get<15>(row));
         assert(std::get<17>(row) == std::get<16>(row));
         assert(std::get<18>(row) == int(name.length()) * 1000);
+        
+        auto expectedDivNumber = int(name.length()) / number;
+        assert(std::get<19>(row) == expectedDivNumber);
+        assert(std::get<20>(row) == std::get<19>(row));
+        assert(std::get<21>(row) == std::get<20>(row));
+        assert(std::get<22>(row) == std::get<21>(row));
+        assert(std::get<23>(row) == int(name.length()) / 2);
     }
 }
 
