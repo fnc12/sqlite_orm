@@ -54,7 +54,13 @@ void testOperators() {
                                        c(&Object::nameLen) - &Object::number,
                                        &Object::nameLen - c(&Object::number),
                                        c(&Object::nameLen) - c(&Object::number),
-                                       c(&Object::nameLen) - 1000));
+                                       c(&Object::nameLen) - 1000,
+                                       
+                                       mul(&Object::nameLen, &Object::number),
+                                       c(&Object::nameLen) * &Object::number,
+                                       &Object::nameLen * c(&Object::number),
+                                       c(&Object::nameLen) * c(&Object::number),
+                                       c(&Object::nameLen) * 1000));
     for(auto i = 0; i < rows.size(); ++i) {
         auto &row = rows[i];
         auto &name = names[i];
@@ -76,6 +82,13 @@ void testOperators() {
         assert(std::get<11>(row) == std::get<10>(row));
         assert(std::get<12>(row) == std::get<11>(row));
         assert(std::get<13>(row) == int(name.length()) - 1000);
+        
+        auto expectedMulNumber = int(name.length()) * number;
+        assert(std::get<14>(row) == expectedMulNumber);
+        assert(std::get<15>(row) == std::get<14>(row));
+        assert(std::get<16>(row) == std::get<15>(row));
+        assert(std::get<17>(row) == std::get<16>(row));
+        assert(std::get<18>(row) == int(name.length()) * 1000);
     }
 }
 
