@@ -312,8 +312,8 @@ namespace sqlite_orm {
 
             primary_key_t(decltype(columns) c):columns(std::move(c)){}
 
-            typedef void field_type;    //  for column iteration. Better be deleted
-            typedef std::tuple<> constraints_type;
+            using field_type = void;    //  for column iteration. Better be deleted
+            using constraints_type = std::tuple<>;
 
             operator std::string() const {
                 std::string res = "PRIMARY KEY";
@@ -656,6 +656,51 @@ namespace sqlite_orm {
             L l;
             R r;
         };
+        
+        /**
+         *  Result of addition + operator
+         */
+        template<class L, class R>
+        struct add_t {
+            L l;
+            R r;
+        };
+        
+        /**
+         *  Result of subscribe - operator
+         */
+        template<class L, class R>
+        struct sub_t {
+            L l;
+            R r;
+        };
+        
+        /**
+         *  Result of multiply * operator
+         */
+        template<class L, class R>
+        struct mul_t {
+            L l;
+            R r;
+        };
+        
+        /**
+         *  Result of divide / operator
+         */
+        template<class L, class R>
+        struct div_t {
+            L l;
+            R r;
+        };
+        
+        /**
+         *  Result of mod % operator
+         */
+        template<class L, class R>
+        struct mod_t {
+            L l;
+            R r;
+        };
 
         /**
          *  This class stores single column info. column_t is a pair of [column_name:member_pointer] mapped to a storage
@@ -665,12 +710,12 @@ namespace sqlite_orm {
          */
         template<class O, class T, class ...Op>
         struct column_t {
-            typedef O object_type;
-            typedef T field_type;
-            typedef std::tuple<Op...> constraints_type;
-            typedef field_type object_type::*member_pointer_t;
-            typedef const field_type& (object_type::*getter_type)() const;
-            typedef void (object_type::*setter_type)(field_type);
+            using object_type = O;
+            using field_type = T;
+            using constraints_type = std::tuple<Op...>;
+            using member_pointer_t = field_type object_type::*;
+            using getter_type = const field_type& (object_type::*)() const;
+            using setter_type = void (object_type::*)(field_type);
 
             /**
              *  Column name. Specified during construction in `make_column`.
@@ -805,18 +850,43 @@ namespace sqlite_orm {
 
     template<class T>
     internal::expression_t<T> c(T t) {
-        typedef internal::expression_t<T> result_type;
+        using result_type = internal::expression_t<T>;
         return result_type(t);
     }
 
     template<class R, class F>
     internal::case_t<R, F> case_(F f) {
-        typedef typename internal::case_t<R, F> ret_type;
-        return ret_type(f);
+        using result_type = typename internal::case_t<R, F>;
+        return result_type(f);
     }
 
     template<class L, class R>
     internal::conc_t<L, R> conc(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    internal::add_t<L, R> add(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    internal::sub_t<L, R> sub(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    internal::mul_t<L, R> mul(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    internal::div_t<L, R> div(L l, R r) {
+        return {l, r};
+    }
+    
+    template<class L, class R>
+    internal::mod_t<L, R> mod(L l, R r) {
         return {l, r};
     }
 
@@ -1509,6 +1579,86 @@ namespace sqlite_orm {
     template<class L, class T>
     internal::conc_t<L, T> operator||(L l, internal::expression_t<T> expr) {
         return {l, expr.t};
+    }
+    
+    template<class L, class R>
+    internal::conc_t<L, R> operator||(internal::expression_t<L> l, internal::expression_t<R> r) {
+        return {l.t, r.t};
+    }
+    
+    template<class T, class R>
+    internal::add_t<T, R> operator+(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    internal::add_t<L, T> operator+(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
+    template<class L, class R>
+    internal::add_t<L, R> operator+(internal::expression_t<L> l, internal::expression_t<R> r) {
+        return {l.t, r.t};
+    }
+    
+    template<class T, class R>
+    internal::sub_t<T, R> operator-(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    internal::sub_t<L, T> operator-(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
+    template<class L, class R>
+    internal::sub_t<L, R> operator-(internal::expression_t<L> l, internal::expression_t<R> r) {
+        return {l.t, r.t};
+    }
+    
+    template<class T, class R>
+    internal::mul_t<T, R> operator*(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    internal::mul_t<L, T> operator*(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
+    template<class L, class R>
+    internal::mul_t<L, R> operator*(internal::expression_t<L> l, internal::expression_t<R> r) {
+        return {l.t, r.t};
+    }
+    
+    template<class T, class R>
+    internal::div_t<T, R> operator/(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    internal::div_t<L, T> operator/(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
+    template<class L, class R>
+    internal::div_t<L, R> operator/(internal::expression_t<L> l, internal::expression_t<R> r) {
+        return {l.t, r.t};
+    }
+    
+    template<class T, class R>
+    internal::mod_t<T, R> operator%(internal::expression_t<T> expr, R r) {
+        return {expr.t, r};
+    }
+    
+    template<class L, class T>
+    internal::mod_t<L, T> operator%(L l, internal::expression_t<T> expr) {
+        return {l, expr.t};
+    }
+    
+    template<class L, class R>
+    internal::mod_t<L, R> operator%(internal::expression_t<L> l, internal::expression_t<R> r) {
+        return {l.t, r.t};
     }
     
     struct alias_tag {};
@@ -4052,22 +4202,22 @@ namespace sqlite_orm {
 
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::group_concat_double_t<T>, Ts...> {
-            typedef std::string type;
+            using type = std::string;
         };
 
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::max_t<T>, Ts...> {
-            typedef std::shared_ptr<typename column_result_t<T>::type> type;
+            using type = std::shared_ptr<typename column_result_t<T>::type>;
         };
 
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::min_t<T>, Ts...> {
-            typedef std::shared_ptr<typename column_result_t<T>::type> type;
+            using type = std::shared_ptr<typename column_result_t<T>::type>;
         };
 
         template<class T, class ...Ts>
         struct column_result_t<internal::distinct_t<T>, Ts...> {
-            typedef typename column_result_t<T>::type type;
+            using type = typename column_result_t<T>::type;
         };
         
         template<class T, class ...Ts>
@@ -4078,6 +4228,31 @@ namespace sqlite_orm {
         template<class L, class R, class ...Ts>
         struct column_result_t<internal::conc_t<L, R>, Ts...> {
             using type = std::string;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::add_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::sub_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::mul_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::div_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::mod_t<L, R>, Ts...> {
+            using type = double;
         };
         
         template<class ...Ts>
@@ -4677,6 +4852,51 @@ namespace sqlite_orm {
                 auto lhs = this->string_from_expression(f.l);
                 auto rhs = this->string_from_expression(f.r);
                 ss << "(" << lhs << " || " << rhs << ") ";
+                return ss.str();
+            }
+            
+            template<class L, class R>
+            std::string string_from_expression(internal::add_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                auto lhs = this->string_from_expression(f.l);
+                auto rhs = this->string_from_expression(f.r);
+                ss << "(" << lhs << " + " << rhs << ") ";
+                return ss.str();
+            }
+            
+            template<class L, class R>
+            std::string string_from_expression(internal::sub_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                auto lhs = this->string_from_expression(f.l);
+                auto rhs = this->string_from_expression(f.r);
+                ss << "(" << lhs << " - " << rhs << ") ";
+                return ss.str();
+            }
+            
+            template<class L, class R>
+            std::string string_from_expression(internal::mul_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                auto lhs = this->string_from_expression(f.l);
+                auto rhs = this->string_from_expression(f.r);
+                ss << "(" << lhs << " * " << rhs << ") ";
+                return ss.str();
+            }
+            
+            template<class L, class R>
+            std::string string_from_expression(internal::div_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                auto lhs = this->string_from_expression(f.l);
+                auto rhs = this->string_from_expression(f.r);
+                ss << "(" << lhs << " / " << rhs << ") ";
+                return ss.str();
+            }
+            
+            template<class L, class R>
+            std::string string_from_expression(internal::mod_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                auto lhs = this->string_from_expression(f.l);
+                auto rhs = this->string_from_expression(f.r);
+                ss << "(" << lhs << " % " << rhs << ") ";
                 return ss.str();
             }
             
@@ -5562,6 +5782,56 @@ namespace sqlite_orm {
             
             template<class L, class R, class ...Args>
             std::set<std::string> parse_table_name(internal::conc_t<L, R> &f) {
+                std::set<std::string> res;
+                auto leftSet = this->parse_table_names(f.l);
+                res.insert(leftSet.begin(), leftSet.end());
+                auto rightSet = this->parse_table_names(f.r);
+                res.insert(rightSet.begin(), rightSet.end());
+                return res;
+            }
+            
+            template<class L, class R, class ...Args>
+            std::set<std::string> parse_table_name(internal::add_t<L, R> &f) {
+                std::set<std::string> res;
+                auto leftSet = this->parse_table_names(f.l);
+                res.insert(leftSet.begin(), leftSet.end());
+                auto rightSet = this->parse_table_names(f.r);
+                res.insert(rightSet.begin(), rightSet.end());
+                return res;
+            }
+            
+            template<class L, class R, class ...Args>
+            std::set<std::string> parse_table_name(internal::sub_t<L, R> &f) {
+                std::set<std::string> res;
+                auto leftSet = this->parse_table_names(f.l);
+                res.insert(leftSet.begin(), leftSet.end());
+                auto rightSet = this->parse_table_names(f.r);
+                res.insert(rightSet.begin(), rightSet.end());
+                return res;
+            }
+            
+            template<class L, class R, class ...Args>
+            std::set<std::string> parse_table_name(internal::mul_t<L, R> &f) {
+                std::set<std::string> res;
+                auto leftSet = this->parse_table_names(f.l);
+                res.insert(leftSet.begin(), leftSet.end());
+                auto rightSet = this->parse_table_names(f.r);
+                res.insert(rightSet.begin(), rightSet.end());
+                return res;
+            }
+            
+            template<class L, class R, class ...Args>
+            std::set<std::string> parse_table_name(internal::div_t<L, R> &f) {
+                std::set<std::string> res;
+                auto leftSet = this->parse_table_names(f.l);
+                res.insert(leftSet.begin(), leftSet.end());
+                auto rightSet = this->parse_table_names(f.r);
+                res.insert(rightSet.begin(), rightSet.end());
+                return res;
+            }
+            
+            template<class L, class R, class ...Args>
+            std::set<std::string> parse_table_name(internal::mod_t<L, R> &f) {
                 std::set<std::string> res;
                 auto leftSet = this->parse_table_names(f.l);
                 res.insert(leftSet.begin(), leftSet.end());

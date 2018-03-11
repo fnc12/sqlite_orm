@@ -12,6 +12,115 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testOperators() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        std::string name;
+        int nameLen;
+        int number;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("objects",
+                                           make_column("name",
+                                                       &Object::name),
+                                           make_column("name_len",
+                                                       &Object::nameLen),
+                                           make_column("number",
+                                                       &Object::number)));
+    storage.sync_schema();
+    
+    std::vector<std::string> names {
+        "Zombie", "Eminem", "Upside down",
+    };
+    auto number = 10;
+    for(auto &name : names) {
+        storage.insert(Object{ name , int(name.length()), number });
+    }
+    std::string suffix = "ototo";
+    auto rows = storage.select(columns(conc(&Object::name, suffix),
+                                       c(&Object::name) || suffix,
+                                       &Object::name || c(suffix),
+                                       c(&Object::name) || c(suffix),
+                                       
+                                       add(&Object::nameLen, &Object::number),
+                                       c(&Object::nameLen) + &Object::number,
+                                       &Object::nameLen + c(&Object::number),
+                                       c(&Object::nameLen) + c(&Object::number),
+                                       c(&Object::nameLen) + 1000,
+                                       
+                                       sub(&Object::nameLen, &Object::number),
+                                       c(&Object::nameLen) - &Object::number,
+                                       &Object::nameLen - c(&Object::number),
+                                       c(&Object::nameLen) - c(&Object::number),
+                                       c(&Object::nameLen) - 1000,
+                                       
+                                       mul(&Object::nameLen, &Object::number),
+                                       c(&Object::nameLen) * &Object::number,
+                                       &Object::nameLen * c(&Object::number),
+                                       c(&Object::nameLen) * c(&Object::number),
+                                       c(&Object::nameLen) * 1000,
+                                       
+                                       div(&Object::nameLen, &Object::number),
+                                       c(&Object::nameLen) / &Object::number,
+                                       &Object::nameLen / c(&Object::number),
+                                       c(&Object::nameLen) / c(&Object::number),
+                                       c(&Object::nameLen) / 2));
+    
+    for(auto i = 0; i < rows.size(); ++i) {
+        auto &row = rows[i];
+        auto &name = names[i];
+        assert(std::get<0>(row) == name + suffix);
+        assert(std::get<1>(row) == std::get<0>(row));
+        assert(std::get<2>(row) == std::get<1>(row));
+        assert(std::get<3>(row) == std::get<2>(row));
+        
+        auto expectedAddNumber = int(name.length()) + number;
+        assert(std::get<4>(row) == expectedAddNumber);
+        assert(std::get<5>(row) == std::get<4>(row));
+        assert(std::get<6>(row) == std::get<5>(row));
+        assert(std::get<7>(row) == std::get<6>(row));
+        assert(std::get<8>(row) == int(name.length()) + 1000);
+        
+        auto expectedSubNumber = int(name.length()) - number;
+        assert(std::get<9>(row) == expectedSubNumber);
+        assert(std::get<10>(row) == std::get<9>(row));
+        assert(std::get<11>(row) == std::get<10>(row));
+        assert(std::get<12>(row) == std::get<11>(row));
+        assert(std::get<13>(row) == int(name.length()) - 1000);
+        
+        auto expectedMulNumber = int(name.length()) * number;
+        assert(std::get<14>(row) == expectedMulNumber);
+        assert(std::get<15>(row) == std::get<14>(row));
+        assert(std::get<16>(row) == std::get<15>(row));
+        assert(std::get<17>(row) == std::get<16>(row));
+        assert(std::get<18>(row) == int(name.length()) * 1000);
+        
+        auto expectedDivNumber = int(name.length()) / number;
+        assert(std::get<19>(row) == expectedDivNumber);
+        assert(std::get<20>(row) == std::get<19>(row));
+        assert(std::get<21>(row) == std::get<20>(row));
+        assert(std::get<22>(row) == std::get<21>(row));
+        assert(std::get<23>(row) == int(name.length()) / 2);
+    }
+    
+    auto rows2 = storage.select(columns(mod(&Object::nameLen, &Object::number),
+                                        c(&Object::nameLen) % &Object::number,
+                                        &Object::nameLen % c(&Object::number),
+                                        c(&Object::nameLen) % c(&Object::number),
+                                        c(&Object::nameLen) % 5));
+    for(auto i = 0; i < rows2.size(); ++i) {
+        auto &row = rows2[i];
+        auto &name = names[i];
+        assert(std::get<0>(row) == name.length() % number);
+        assert(std::get<1>(row) == std::get<0>(row));
+        assert(std::get<2>(row) == std::get<1>(row));
+        assert(std::get<3>(row) == std::get<2>(row));
+        assert(std::get<4>(row) == name.length() % 5);
+    }
+}
+
 void testMultiOrderBy() {
     cout << __func__ << endl;
     
@@ -1448,4 +1557,6 @@ int main() {
     testIssue105();
     
     testMultiOrderBy();
+    
+    testOperators();
 }
