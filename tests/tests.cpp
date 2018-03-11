@@ -67,6 +67,7 @@ void testOperators() {
                                        &Object::nameLen / c(&Object::number),
                                        c(&Object::nameLen) / c(&Object::number),
                                        c(&Object::nameLen) / 2));
+    
     for(auto i = 0; i < rows.size(); ++i) {
         auto &row = rows[i];
         auto &name = names[i];
@@ -102,6 +103,21 @@ void testOperators() {
         assert(std::get<21>(row) == std::get<20>(row));
         assert(std::get<22>(row) == std::get<21>(row));
         assert(std::get<23>(row) == int(name.length()) / 2);
+    }
+    
+    auto rows2 = storage.select(columns(mod(&Object::nameLen, &Object::number),
+                                        c(&Object::nameLen) % &Object::number,
+                                        &Object::nameLen % c(&Object::number),
+                                        c(&Object::nameLen) % c(&Object::number),
+                                        c(&Object::nameLen) % 5));
+    for(auto i = 0; i < rows2.size(); ++i) {
+        auto &row = rows2[i];
+        auto &name = names[i];
+        assert(std::get<0>(row) == name.length() % number);
+        assert(std::get<1>(row) == std::get<0>(row));
+        assert(std::get<2>(row) == std::get<1>(row));
+        assert(std::get<3>(row) == std::get<2>(row));
+        assert(std::get<4>(row) == name.length() % 5);
     }
 }
 
