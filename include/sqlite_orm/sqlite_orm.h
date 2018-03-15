@@ -4502,6 +4502,14 @@ namespace sqlite_orm {
                     this->set_pragma("user_version", value);
                 }
                 
+                int auto_vacuum() {
+                    return this->get_pragma<int>("auto_vacuum");
+                }
+                
+                void auto_vacuum(int value) {
+                    this->set_pragma("auto_vacuum", value);
+                }
+                
                 friend class storage_t<Ts...>;
                 
             protected:

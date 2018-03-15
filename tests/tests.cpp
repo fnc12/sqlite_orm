@@ -12,6 +12,19 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testAutoVacuum() {
+    auto storage = make_storage("vacuum.sqlite");
+    
+    storage.pragma.auto_vacuum(0);
+    assert(storage.pragma.auto_vacuum() == 0);
+    
+    storage.pragma.auto_vacuum(1);
+    assert(storage.pragma.auto_vacuum() == 1);
+    
+    storage.pragma.auto_vacuum(2);
+    assert(storage.pragma.auto_vacuum() == 2);
+}
+
 void testOperators() {
     cout << __func__ << endl;
     
@@ -1559,4 +1572,6 @@ int main() {
     testMultiOrderBy();
     
     testOperators();
+    
+    testAutoVacuum();
 }
