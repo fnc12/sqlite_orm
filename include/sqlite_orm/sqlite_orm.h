@@ -3631,7 +3631,7 @@ namespace sqlite_orm {
                 auto query = ss.str();
                 auto rc = sqlite3_exec(db,
                                        query.c_str(),
-                                       [](void *data, int argc, char **argv,char **/*azColName*/) -> int {
+                                       [](void *data, int argc, char **argv,char ** /*azColName*/) -> int {
                                            auto &res = *(bool*)data;
                                            if(argc){
                                                res = !!std::atoi(argv[0]);
@@ -4510,7 +4510,7 @@ namespace sqlite_orm {
                     this->set_pragma("auto_vacuum", value);
                 }
                 
-                friend class storage_t<Ts...>;
+                friend struct storage_t<Ts...>;
                 
             protected:
                 storage_type &storage;
@@ -7198,7 +7198,7 @@ namespace sqlite_orm {
                 std::string sql = std::string("SELECT name FROM sqlite_master WHERE type='table'");
                 typedef std::vector<std::string> Data;
                 int res = sqlite3_exec(connection->get_db(), sql.c_str(),
-                                       [] (void *data, int argc, char **argv, char **/*columnName*/) -> int {
+                                       [] (void *data, int argc, char **argv, char ** /*columnName*/) -> int {
                                            auto& tableNames = *(Data*)data;
                                            for(int i = 0; i < argc; i++) {
                                                if(argv[i]){
