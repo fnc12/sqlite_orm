@@ -12,8 +12,39 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testVacuum() {
+    cout << __func__ << endl;
+    
+    struct Item {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("vacuum.sqlite",
+                                make_table("items",
+                                           make_column("id",
+                                                       &Item::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &Item::name)));
+    storage.sync_schema();
+    storage.insert(Item{ 0, "One" });
+    storage.insert(Item{ 0, "Two" });
+    storage.insert(Item{ 0, "Three" });
+    storage.insert(Item{ 0, "Four" });
+    storage.insert(Item{ 0, "Five" });
+    storage.remove_all<Item>();
+    storage.vacuum();
+}
+
 void testAutoVacuum() {
-    auto storage = make_storage("vacuum.sqlite");
+    cout << __func__ << endl;
+    
+    auto filename = "autovacuum.sqlite";
+    remove(filename);
+    
+    auto storage = make_storage(filename);
+    
     
     storage.pragma.auto_vacuum(0);
     assert(storage.pragma.auto_vacuum() == 0);
@@ -1574,4 +1605,6 @@ int main() {
     testOperators();
     
     testAutoVacuum();
+    
+    testVacuum();
 }
