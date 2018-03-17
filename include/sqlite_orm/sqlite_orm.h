@@ -6871,6 +6871,22 @@ namespace sqlite_orm {
                 }
             }
             
+            void vacuum() {
+                auto connection = this->get_or_create_connection();
+                std::string query = "VACUUM";
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //  done..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                }
+            }
+            
         protected:
             
             void drop_table_internal(const std::string &tableName, sqlite3 *db) {
