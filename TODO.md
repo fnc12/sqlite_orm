@@ -10,7 +10,6 @@
 * `EXISTS`
 * asterisk in raw select: `SELECT rowid, * FROM table`
 * `ATTACH`
-* operators +, -, *, /
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
 * reusing of prepared statements - useful for query optimisation
 * subselect
