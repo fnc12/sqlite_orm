@@ -3442,7 +3442,7 @@ namespace sqlite_orm {
 
         template<size_t I, typename std::enable_if<I != 0>::type * = nullptr>
         void extract(std::tuple<Args...> &t, sqlite3_stmt *stmt) {
-            typedef typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type tuple_type;
+            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
             std::get<I - 1>(t) = row_extractor<tuple_type>().extract(stmt, I - 1);
             this->extract<I - 1>(t, stmt);
         }
@@ -3454,7 +3454,7 @@ namespace sqlite_orm {
 
         template<size_t I, typename std::enable_if<I != 0>::type * = nullptr>
         void extract(std::tuple<Args...> &t, char **argv) {
-            typedef typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type tuple_type;
+            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
             std::get<I - 1>(t) = row_extractor<tuple_type>().extract(argv[I - 1]);
             this->extract<I - 1>(t, argv);
         }
@@ -4192,12 +4192,12 @@ namespace sqlite_orm {
 
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::total_t<T>, Ts...> {
-            typedef double type;
+            using type = double;
         };
 
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::group_concat_single_t<T>, Ts...> {
-            typedef std::string type;
+            using type = std::string;
         };
 
         template<class T, class ...Ts>
@@ -4283,6 +4283,11 @@ namespace sqlite_orm {
         template<class T, class ...Ts>
         struct column_result_t<internal::table__rowid_t<T>, Ts...> {
             using type = int64;
+        };
+        
+        template<class T, class C, class ...Ts>
+        struct column_result_t<internal::alias_column_t<T, C>, Ts...> {
+            using type = typename column_result_t<C>::type;
         };
         
         /**
