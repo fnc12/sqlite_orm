@@ -123,8 +123,8 @@ Next let's get our user by id.
 try{
     auto user = storage.get<User>(insertedId);
     cout << "user = " << user.firstName << " " << user.lastName << endl;
-}catch(sqlite_orm::not_found_exception) {
-    cout << "user not found with id " << insertedId << endl;
+}catch(std::system_error e) {
+    cout << e.what() << endl;
 }catch(...){
     cout << "unknown exeption" << endl;
 }
