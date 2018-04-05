@@ -4334,6 +4334,12 @@ namespace sqlite_orm {
                     }
                     
                 public:
+                    using value_type = T;
+                    using difference_type = std::ptrdiff_t;
+                    using pointer = value_type *;
+                    using reference = value_type &;
+                    using iterator_category = std::input_iterator_tag;
+
                     iterator_t(sqlite3_stmt * stmt_, view_t<T, Args...> &view_):stmt(std::make_shared<sqlite3_stmt *>(stmt_)),view(view_){
                         this->operator++();
                     }

@@ -4,11 +4,5 @@ file(GLOB files "*.cpp")
 foreach(file ${files})
     get_filename_component(file_basename ${file} NAME_WE)
     add_executable(${file_basename} ${file})
-    set_target_properties(${file_basename} PROPERTIES
-            CXX_STANDARD 14
-            CXX_STANDARD_REQUIRED ON
-    )
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
-    target_include_directories(${file_basename} PRIVATE ${SqliteOrm_INCLUDE})
-    target_link_libraries(${file_basename} PRIVATE dl sqlite3 pthread)
+    target_link_libraries(${file_basename} PRIVATE sqlite_orm sqlite3)
 endforeach()
