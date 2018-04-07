@@ -5411,6 +5411,17 @@ namespace sqlite_orm {
                     this->pragma.synchronous(this->pragma._synchronous);
                 }
                 
+                for(auto &p : this->collatingFunctions){
+                    if(sqlite3_create_collation(db,
+                                                p.first.c_str(),
+                                                SQLITE_UTF8,
+                                                &p.second,
+                                                collate_callback) != SQLITE_OK)
+                    {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }
+                
                 if(this->on_open){
                     this->on_open(db);
                 }
@@ -5450,6 +5461,8 @@ namespace sqlite_orm {
                 }else{
                     collatingFunctions.erase(name);
                 }
+                
+                //  create collations if db is open
                 if(this->currentTransaction){
                     auto db = this->currentTransaction->get_db();
                     if(sqlite3_create_collation(db,

@@ -27,7 +27,7 @@ void testCustomCollate() {
                                                        primary_key()),
                                            make_column("name",
                                                        &Item::name)));
-    storage.open_forever();
+//    storage.open_forever();
     storage.sync_schema();
     storage.remove_all<Item>();
     storage.insert(Item{ 0, "Mercury" });
