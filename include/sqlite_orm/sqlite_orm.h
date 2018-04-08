@@ -3527,6 +3527,19 @@ namespace sqlite_orm {
             template<class L>
             void for_each_column_with_constraints(L) {}
         };
+        
+        template<class F, class ...Args>
+        struct custom_function_call_t {
+            F func;
+            std::tuple<Args...> args;
+            
+            custom_function_call_t(std::tuple<Args...> args_): args(std::move(args_)){}
+        };
+    }
+    
+    template<class F, class ...Args>
+    internal::custom_function_call_t<F, Args...> func(Args ...args) {
+        return {std::make_tuple(args...)};
     }
 
     template<class ...Cols>
@@ -3538,8 +3551,38 @@ namespace sqlite_orm {
     internal::index_t<Cols...> make_unique_index(const std::string &name, Cols ...cols) {
         return {name, true, std::make_tuple(cols...)};
     }
+    
+    template<class D, class ...Fargs>
+    struct custom_function;
+    
+    template<class D, class R, class ...Fargs>
+    struct custom_function<D, R(Fargs...)> {
+        using result_type = R;
+        using args_tuple = std::tuple<Fargs...>;
+        using self = custom_function<D, R(Fargs...)>;
+        
+        enum : int {
+            args_count = std::tuple_size<args_tuple>::value,
+        };
+        
+        /*template<class T, class ...Args>
+        custom_function_call<self, Args...> operator()(Args ...args) const {
+            return {*this, std::make_tuple(args...)};
+        }*/
+    };
 
     namespace internal {
+        
+        template<class T>
+        struct custom_function_callback;
+        
+        template<class R, class ...Args>
+        struct custom_function_callback<R(Args...)> {
+            
+            static void callback(sqlite3_context *context, int argc, sqlite3_value **argv) {
+                ff
+            }
+        };
         
         /**
          *  If T is alias than mapped_type_proxy<T>::type is alias::type
@@ -4288,6 +4331,11 @@ namespace sqlite_orm {
         template<class T, class C, class ...Ts>
         struct column_result_t<internal::alias_column_t<T, C>, Ts...> {
             using type = typename column_result_t<C>::type;
+        };
+        
+        template<class F, class ...Args, class ...Ts>
+        struct column_result_t<internal::custom_function_call_t<F, Args...>, Ts...> {
+            using type = typename F::result_type;
         };
         
         /**
@@ -5129,6 +5177,28 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            template<class F, class ...Args>
+            std::string string_from_expression(internal::custom_function_call_t<F, Args...> &call, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                ss << static_cast<std::string>(F()) << "(";
+                using tuple_t = std::tuple<Args...>;
+                const size_t argsCount = std::tuple_size<tuple_t>::value;
+                std::vector<std::string> args;
+                args.reserve(argsCount);
+                tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(call.args, [&args, this](auto &v){
+                    auto expression = this->string_from_expression(v);
+                    args.push_back(expression);
+                });
+                for(size_t i = 0; i < argsCount; ++i){
+                    ss << args[i];
+                    if(i < argsCount - 1){
+                        ss << ", ";
+                    }
+                }
+                ss << ")";
+                return ss.str();
+            }
+            
             template<class T>
             std::string process_where(conditions::is_null_t<T> &c) {
                 std::stringstream ss;
@@ -5323,7 +5393,6 @@ namespace sqlite_orm {
                 using tuple_t = std::tuple<Args...>;
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(orderBy.args, [&expressions, this](auto &v){
                     auto expression = this->process_order_by(v);
-//                    expressions.push_back(expression);
                     expressions.insert(expressions.begin(), expression);
                 });
                 ss << static_cast<std::string>(orderBy) << " ";
@@ -7184,6 +7253,10 @@ namespace sqlite_orm {
             
 #endif
             
+            static void custom_function_x_func(sqlite3_context *context, int argc, sqlite3_value **argv) {
+                ff
+            }
+            
         public:
             
 #if SQLITE_VERSION_NUMBER >= 3007010
@@ -7227,7 +7300,7 @@ namespace sqlite_orm {
                                                }
                                            }
                                            return 0;
-                                       }, &tableNames,nullptr);
+                                       }, &tableNames, nullptr);
                 
                 if(res != SQLITE_OK) {
                     throw std::system_error(std::error_code(sqlite3_errcode(connection->db()), get_sqlite_error_category()));
@@ -7240,6 +7313,22 @@ namespace sqlite_orm {
                 if(!this->currentTransaction){
                     this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
                     this->on_open_internal(this->currentTransaction->get_db());
+                }
+            }
+            
+            template<class T>
+            void create_function() {
+                if(this->currentTransaction){
+                    auto db = this->currentTransaction->get_db();
+                    T t;
+                    const auto functionName = static_cast<std::string>(t);
+                    sqlite3_create_function(db,
+                                            functionName.c_str(),
+                                            T::args_count,
+                                            SQLITE_UTF8,
+                                            nullptr,
+                                            <#void (*xFunc)(sqlite3_context *, int, sqlite3_value **)#>,
+                                            <#void (*xStep)(sqlite3_context *, int, sqlite3_value **)#>, <#void (*xFinal)(sqlite3_context *)#>)
                 }
             }
             
