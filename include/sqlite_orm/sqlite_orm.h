@@ -442,19 +442,16 @@ namespace sqlite_orm {
             collate_t(internal::collate_argument argument_):argument(argument_){}
 
             operator std::string() const {
-                std::string res = "COLLATE ";
-                switch(this->argument){
-                    case decltype(this->argument)::binary:
-                        res += "BINARY";
-                        break;
-                    case decltype(this->argument)::nocase:
-                        res += "NOCASE";
-                        break;
-                    case decltype(this->argument)::rtrim:
-                        res += "RTRIM";
-                        break;
-                }
+                std::string res = "COLLATE " + string_from_collate_argument(this->argument);
                 return res;
+            }
+            
+            static std::string string_from_collate_argument(internal::collate_argument argument){
+                switch(argument){
+                    case decltype(argument)::binary: return "BINARY";
+                    case decltype(argument)::nocase: return "NOCASE";
+                    case decltype(argument)::rtrim: return "RTRIM";
+                }
             }
         };
     }
@@ -1036,10 +1033,22 @@ namespace sqlite_orm {
             T expr;
             internal::collate_argument argument;
 
-            collate_t(T expr_, internal::collate_argument argument_):expr(expr_),argument(argument_){}
+            collate_t(T expr_, internal::collate_argument argument_):expr(expr_), argument(argument_){}
 
             operator std::string () const {
                 return constraints::collate_t{this->argument};
+            }
+        };
+        
+        template<class T>
+        struct named_collate {
+            T expr;
+            std::string name;
+            
+            named_collate(T expr_, std::string name_):expr(expr_), name(std::move(name_)){}
+            
+            operator std::string () const {
+                return"COLLATE " + this->name;
             }
         };
 
@@ -1121,6 +1130,10 @@ namespace sqlite_orm {
 
             collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
+            }
+            
+            named_collate<self> collate(std::string name) const {
+                return {*this, std::move(name)};
             }
 
         };
@@ -1337,7 +1350,7 @@ namespace sqlite_orm {
 
             O o;
             int asc_desc = 0;   //  1: asc, -1: desc
-            std::shared_ptr<internal::collate_argument> _collate_argument;
+            std::string _collate_argument;
 
             order_by_t():o(nullptr){}
 
@@ -1361,19 +1374,25 @@ namespace sqlite_orm {
 
             self collate_binary() const {
                 auto res = *this;
-                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::binary);
+                res._collate_argument = constraints::collate_t::string_from_collate_argument(internal::collate_argument::binary);
                 return res;
             }
 
             self collate_nocase() const {
                 auto res = *this;
-                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::nocase);
+                res._collate_argument = constraints::collate_t::string_from_collate_argument(internal::collate_argument::nocase);
                 return res;
             }
 
             self collate_rtrim() const {
                 auto res = *this;
-                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::rtrim);
+                res._collate_argument = constraints::collate_t::string_from_collate_argument(internal::collate_argument::rtrim);
+                return res;
+            }
+            
+            self collate(std::string name) const {
+                auto res = *this;
+                res._collate_argument = std::move(name);
                 return res;
             }
         };
@@ -3442,7 +3461,7 @@ namespace sqlite_orm {
 
         template<size_t I, typename std::enable_if<I != 0>::type * = nullptr>
         void extract(std::tuple<Args...> &t, sqlite3_stmt *stmt) {
-            typedef typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type tuple_type;
+            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
             std::get<I - 1>(t) = row_extractor<tuple_type>().extract(stmt, I - 1);
             this->extract<I - 1>(t, stmt);
         }
@@ -3454,7 +3473,7 @@ namespace sqlite_orm {
 
         template<size_t I, typename std::enable_if<I != 0>::type * = nullptr>
         void extract(std::tuple<Args...> &t, char **argv) {
-            typedef typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type tuple_type;
+            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
             std::get<I - 1>(t) = row_extractor<tuple_type>().extract(argv[I - 1]);
             this->extract<I - 1>(t, argv);
         }
@@ -3517,8 +3536,8 @@ namespace sqlite_orm {
 
         template<class ...Cols>
         struct index_t {
-            typedef std::tuple<Cols...> columns_type;
-            typedef void object_type;
+            using columns_type = std::tuple<Cols...>;
+            using object_type = void;
 
             std::string name;
             bool unique;
@@ -4192,12 +4211,12 @@ namespace sqlite_orm {
 
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::total_t<T>, Ts...> {
-            typedef double type;
+            using type = double;
         };
 
         template<class T, class ...Ts>
         struct column_result_t<aggregate_functions::group_concat_single_t<T>, Ts...> {
-            typedef std::string type;
+            using type = std::string;
         };
 
         template<class T, class ...Ts>
@@ -4283,6 +4302,11 @@ namespace sqlite_orm {
         template<class T, class ...Ts>
         struct column_result_t<internal::table__rowid_t<T>, Ts...> {
             using type = int64;
+        };
+        
+        template<class T, class C, class ...Ts>
+        struct column_result_t<internal::alias_column_t<T, C>, Ts...> {
+            using type = typename column_result_t<C>::type;
         };
         
         /**
@@ -4564,6 +4588,16 @@ namespace sqlite_orm {
             }
             
         protected:
+            using collating_function = std::function<int(int, const void*, int, const void*)>;
+            
+            std::string filename;
+            impl_type impl;
+            std::shared_ptr<internal::database_connection> currentTransaction;
+            const bool inMemory;
+            bool isOpenedForever = false;
+            std::map<std::string, collating_function> collatingFunctions;
+            
+            using collating_function_pair = typename decltype(collatingFunctions)::value_type;
             
             /**
              *  Check whether connection exists and returns it if yes or creates a new one
@@ -5174,6 +5208,12 @@ namespace sqlite_orm {
             }
             
             template<class T>
+            std::string process_where(conditions::named_collate<T> &col) {
+                auto res = this->process_where(col.expr);
+                return res + " " + static_cast<std::string>(col);
+            }
+            
+            template<class T>
             std::string process_where(conditions::collate_t<T> &col) {
                 auto res = this->process_where(col.expr);
                 return res + " " + static_cast<std::string>(col);
@@ -5215,9 +5255,8 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto columnName = this->string_from_expression(orderBy.o);
                 ss << columnName << " ";
-                if(orderBy._collate_argument){
-                    constraints::collate_t col(*orderBy._collate_argument);
-                    ss << static_cast<std::string>(col) << " ";
+                if(orderBy._collate_argument.length()){
+                    ss << "COLLATE " << orderBy._collate_argument << " ";
                 }
                 switch(orderBy.asc_desc){
                     case 1:
@@ -5374,6 +5413,17 @@ namespace sqlite_orm {
                     this->pragma.synchronous(this->pragma._synchronous);
                 }
                 
+                for(auto &p : this->collatingFunctions){
+                    if(sqlite3_create_collation(db,
+                                                p.first.c_str(),
+                                                SQLITE_UTF8,
+                                                &p.second,
+                                                collate_callback) != SQLITE_OK)
+                    {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }
+                
                 if(this->on_open){
                     this->on_open(db);
                 }
@@ -5391,6 +5441,10 @@ namespace sqlite_orm {
                 return res;
             }
 #endif
+            static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {
+                auto &f = *(collating_function*)arg;
+                return f(leftLen, lhs, rightLen, rhs);
+            }
             
         public:
             
@@ -5400,6 +5454,28 @@ namespace sqlite_orm {
                 
                 auto connection = this->get_or_create_connection();
                 return {*this, connection, std::forward<Args>(args)...};
+            }
+            
+            void create_collation(const std::string &name, collating_function f) {
+                collating_function *functionPointer = nullptr;
+                if(f){
+                    functionPointer = &(collatingFunctions[name] = f);
+                }else{
+                    collatingFunctions.erase(name);
+                }
+                
+                //  create collations if db is open
+                if(this->currentTransaction){
+                    auto db = this->currentTransaction->get_db();
+                    if(sqlite3_create_collation(db,
+                                                name.c_str(),
+                                                SQLITE_UTF8,
+                                                functionPointer,
+                                                f ? collate_callback : nullptr) != SQLITE_OK)
+                    {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }
             }
             
             template<class O, class ...Args>
@@ -7238,13 +7314,6 @@ namespace sqlite_orm {
                 }
             }
             
-            
-        protected:
-            std::string filename;
-            impl_type impl;
-            std::shared_ptr<internal::database_connection> currentTransaction;
-            const bool inMemory;
-            bool isOpenedForever = false;
         public:
             pragma_t pragma;
         };
