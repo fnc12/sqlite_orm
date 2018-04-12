@@ -442,19 +442,16 @@ namespace sqlite_orm {
             collate_t(internal::collate_argument argument_):argument(argument_){}
 
             operator std::string() const {
-                std::string res = "COLLATE ";
-                switch(this->argument){
-                    case decltype(this->argument)::binary:
-                        res += "BINARY";
-                        break;
-                    case decltype(this->argument)::nocase:
-                        res += "NOCASE";
-                        break;
-                    case decltype(this->argument)::rtrim:
-                        res += "RTRIM";
-                        break;
-                }
+                std::string res = "COLLATE " + string_from_collate_argument(this->argument);
                 return res;
+            }
+            
+            static std::string string_from_collate_argument(internal::collate_argument argument){
+                switch(argument){
+                    case decltype(argument)::binary: return "BINARY";
+                    case decltype(argument)::nocase: return "NOCASE";
+                    case decltype(argument)::rtrim: return "RTRIM";
+                }
             }
         };
     }
@@ -1353,7 +1350,7 @@ namespace sqlite_orm {
 
             O o;
             int asc_desc = 0;   //  1: asc, -1: desc
-            std::shared_ptr<internal::collate_argument> _collate_argument;
+            std::string _collate_argument;
 
             order_by_t():o(nullptr){}
 
@@ -1377,19 +1374,25 @@ namespace sqlite_orm {
 
             self collate_binary() const {
                 auto res = *this;
-                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::binary);
+                res._collate_argument = constraints::collate_t::string_from_collate_argument(internal::collate_argument::binary);
                 return res;
             }
 
             self collate_nocase() const {
                 auto res = *this;
-                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::nocase);
+                res._collate_argument = constraints::collate_t::string_from_collate_argument(internal::collate_argument::nocase);
                 return res;
             }
 
             self collate_rtrim() const {
                 auto res = *this;
-                res._collate_argument = std::make_unique<internal::collate_argument>(internal::collate_argument::rtrim);
+                res._collate_argument = constraints::collate_t::string_from_collate_argument(internal::collate_argument::rtrim);
+                return res;
+            }
+            
+            self collate(std::string name) const {
+                auto res = *this;
+                res._collate_argument = std::move(name);
                 return res;
             }
         };
@@ -5252,9 +5255,8 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto columnName = this->string_from_expression(orderBy.o);
                 ss << columnName << " ";
-                if(orderBy._collate_argument){
-                    constraints::collate_t col(*orderBy._collate_argument);
-                    ss << static_cast<std::string>(col) << " ";
+                if(orderBy._collate_argument.length()){
+                    ss << "COLLATE " << orderBy._collate_argument << " ";
                 }
                 switch(orderBy.asc_desc){
                     case 1:

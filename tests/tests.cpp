@@ -41,6 +41,10 @@ void testCustomCollate() {
     auto rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
     assert(rows.size() == 1);
     assert(rows.front() == "Mercury");
+    
+    rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
+                          order_by(&Item::name).collate("ototo"));
+    
     storage.create_collation("ototo", {});
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
@@ -52,8 +56,13 @@ void testCustomCollate() {
     } catch (std::system_error e) {
         cout << e.what() << endl;
     }
-    rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")));
+    rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
+                                             order_by(&Item::name).collate_rtrim());
+    
+    rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
+                          order_by(&Item::name).collate("alwaysequal"));
     assert(rows.size() == storage.count<Item>());
+    
 }
 
 void testVacuum() {
