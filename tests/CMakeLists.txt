@@ -8,18 +8,10 @@ else()
     add_subdirectory(third_party/sqlite)
 endif()
 
-set(SqliteOrm_UnitTarget unit_tests)
+add_executable(unit_tests tests.cpp)
 
-add_executable(${SqliteOrm_UnitTarget} tests.cpp)
-
-target_include_directories(${SqliteOrm_UnitTarget} PRIVATE ${SqliteOrm_INCLUDE})
-
-target_link_libraries(${SqliteOrm_UnitTarget} PRIVATE dl sqlite3 pthread)
-
-set_target_properties(${SqliteOrm_UnitTarget} PROPERTIES
-    CXX_STANDARD 14
-    CXX_STANDARD_REQUIRED ON)
+target_link_libraries(unit_tests PRIVATE sqlite_orm sqlite3)
 
 add_test(NAME "All_in_one_unit_test"
-    COMMAND ${SqliteOrm_UnitTarget}
+    COMMAND unit_tests
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
