@@ -182,6 +182,23 @@ namespace sqlite_orm {
             tuple_for_each_impl(std::forward<F>(f), t, std::index_sequence_for<Args...>{});
         }
     }
+    
+    
+    //  got from here https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
+    namespace static_magic {
+        
+        template <typename T, typename F>
+        auto static_if(std::true_type, T t, F f) { return t; }
+        
+        template <typename T, typename F>
+        auto static_if(std::false_type, T t, F f) { return f; }
+        
+        template <bool B, typename T, typename F>
+        auto static_if(T t, F f) { return static_if(std::integral_constant<bool, B>{}, t, f); }
+        
+        template <bool B, typename T>
+        auto static_if(T t) { return static_if(std::integral_constant<bool, B>{}, t, [](auto&&...){}); }
+    }
 
     /**
      *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
@@ -2493,6 +2510,28 @@ namespace sqlite_orm {
     }
 
     namespace internal {
+        
+        /**
+         *  Cute class used to compare setters/getters and member pointers with each other.
+         */
+        template<class L, class R>
+        struct typed_comparator {
+            bool operator()(const L &, const R &) const {
+                return false;
+            }
+        };
+        
+        template<class O>
+        struct typed_comparator<O, O> {
+            bool operator()(const O &lhs, const O &rhs) const {
+                return lhs == rhs;
+            }
+        };
+        
+        template<class L, class R>
+        bool compare_any(const L &lhs, const R &rhs) {
+            return typed_comparator<L, R>()(lhs, rhs);
+        }
 
         template<class T>
         struct distinct_t {
@@ -2658,357 +2697,6 @@ namespace sqlite_orm {
         std::string dflt_value;
         int pk;
     };
-
-    /**
-     *  Common case for table_impl class.
-     */
-    template<typename... Args>
-    struct table_impl {
-
-        std::vector<std::string> column_names() { return {}; }
-
-        template<class ...Op>
-        std::vector<std::string> column_names_exept() { return {}; }
-
-        template<class ...Op>
-        std::vector<std::string> column_names_with() { return{}; }
-
-        template<class L>
-        void for_each_column(L) {}
-
-        template<class L>
-        void for_each_column_with_constraints(L) {}
-
-        template<class F, class L>
-        void for_each_column_with_field_type(L) {}
-
-        template<class Op, class L>
-        void for_each_column_exept(L){}
-
-        template<class Op, class L>
-        void for_each_column_with(L) {}
-
-        template<class L>
-        void for_each_primary_key(L) {}
-
-        int columns_count() const {
-            return 0;
-        }
-
-    };
-
-    template<typename H, typename... T>
-    struct table_impl<H, T...> : private table_impl<T...> {
-        typedef H column_type;
-        typedef std::tuple<T...> tail_types;
-
-        table_impl(H h, T ...t) : Super(t...), col(h) {}
-
-        column_type col;
-
-        int columns_count() const {
-            return 1 + Super::columns_count();
-        }
-
-        /**
-         *  column_names_with implementation. Notice that result will be reversed.
-         *  It is reversed back in `table` class.
-         *  @return vector of column names that have specified Op... conditions.
-         */
-        template<class ...Op>
-        std::vector<std::string> column_names_with() {
-            auto res = Super::template column_names_with<Op...>();
-            if(this->col.template has_every<Op...>()) {
-                res.emplace_back(this->col.name);
-            }
-            return res;
-        }
-
-        /**
-         *  For each implementation. Calls templated lambda with its column
-         *  and passed call to superclass.
-         */
-        template<class L>
-        void for_each_column(L l){
-            this->apply_to_col_if(l, internal::is_column<column_type>{});
-            Super::for_each_column(l);
-        }
-
-        /**
-         *  For each implementation. Calls templated lambda with its column
-         *  and passed call to superclass.
-         */
-        template<class L>
-        void for_each_column_with_constraints(L l){
-            l(this->col);
-            Super::for_each_column_with_constraints(l);
-        }
-
-        template<class F, class L>
-        void for_each_column_with_field_type(L l) {
-            this->apply_to_col_if(l, std::is_same<F, typename column_type::field_type>{});
-            Super::template for_each_column_with_field_type<F, L>(l);
-        }
-
-        /**
-         *  Working version of `for_each_column_exept`. Calls lambda if column has no option and fire super's function.
-         */
-        template<class Op, class L>
-        void for_each_column_exept(L l) {
-            using has_opt = tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>;
-            this->apply_to_col_if(l, std::integral_constant<bool, !has_opt::value>{});
-            Super::template for_each_column_exept<Op, L>(l);
-        }
-
-        /**
-         *  Working version of `for_each_column_with`. Calls lambda if column has option and fire super's function.
-         */
-        template<class Op, class L>
-        void for_each_column_with(L l) {
-            this->apply_to_col_if(l, tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>{});
-            Super::template for_each_column_with<Op, L>(l);
-        }
-
-        /**
-         *  Calls l(this->col) if H is primary_key_t
-         */
-        template<class L>
-        void for_each_primary_key(L l) {
-            this->apply_to_col_if(l, internal::is_primary_key<H>{});
-            Super::for_each_primary_key(l);
-        }
-
-    protected:
-
-        template<class L>
-        void apply_to_col_if(L& l, std::true_type) {
-            l(this->col);
-        }
-
-        template<class L>
-        void apply_to_col_if(L&, std::false_type) {}
-
-    private:
-        typedef table_impl<T...> Super;
-    };
-
-    /**
-     *  Table interface class. Implementation is hidden in `table_impl` class.
-     */
-    template<class ...Cs>
-    struct table_t {
-        typedef table_impl<Cs...> impl_type;
-        typedef typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type object_type;
-
-        /**
-         *  Table name.
-         */
-        const std::string name;
-
-        /**
-         *  Implementation that stores columns information.
-         */
-        impl_type impl;
-
-        table_t(decltype(name) name_, decltype(impl) impl_):name(std::move(name_)), impl(std::move(impl_)){}
-
-        bool _without_rowid = false;
-
-        table_t<Cs...> without_rowid() const {
-            auto res = *this;
-            res._without_rowid = true;
-            return res;
-        }
-
-        /**
-         *  @return vector of column names of table.
-         */
-        std::vector<std::string> column_names() {
-            std::vector<std::string> res;
-            this->impl.for_each_column([&res](auto &c){
-                res.push_back(c.name);
-            });
-            return res;
-        }
-
-        std::vector<std::string> composite_key_columns_names() {
-            std::vector<std::string> res;
-            this->impl.for_each_primary_key([this, &res](auto c){
-                res = this->composite_key_columns_names(c);
-            });
-            return res;
-        }
-
-        std::vector<std::string> primary_key_column_names() {
-            std::vector<std::string> res;
-            this->impl.template for_each_column_with<constraints::primary_key_t<>>([&res](auto &c){
-                res.push_back(c.name);
-            });
-            if(!res.size()){
-                res = this->composite_key_columns_names();
-            }
-            return res;
-        }
-
-        template<class ...Args>
-        std::vector<std::string> composite_key_columns_names(constraints::primary_key_t<Args...> pk) {
-            std::vector<std::string> res;
-            typedef decltype(pk.columns) pk_columns_tuple;
-            res.reserve(std::tuple_size<pk_columns_tuple>::value);
-            tuple_helper::iterator<std::tuple_size<pk_columns_tuple>::value - 1, Args...>()(pk.columns, [this, &res](auto &v){
-                res.push_back(this->find_column_name(v));
-            });
-            return res;
-        }
-
-        int columns_count() const {
-            return this->impl.columns_count();
-        }
-
-        /**
-         *  Searches column name by class member pointer passed as first argument.
-         *  @return column name or empty string if nothing found.
-         */
-        template<class F, class O>
-        std::string find_column_name(F O::*m) {
-            std::string res;
-            this->template for_each_column_with_field_type<F>([&res, m](auto c) {
-                if(c.member_pointer == m) {
-                    res = c.name;
-                }
-            });
-            return res;
-        }
-
-        template<class F, class O>
-        std::string find_column_name(const F& (O::*getter)() const) {
-            std::string res;
-            this->template for_each_column_with_field_type<F>([&res, getter](auto c) {
-                if(c.getter == getter) {
-                    res = c.name;
-                }
-            });
-            return res;
-        }
-
-        template<class F, class O>
-        std::string find_column_name(void (O::*setter)(F)) {
-            std::string res;
-            this->template for_each_column_with_field_type<F>([&res, setter](auto c) {
-                if(c.setter == setter) {
-                    res = c.name;
-                }
-            });
-            return res;
-        }
-
-        /**
-         *  @return vector of column names that have constraints provided as template arguments (not_null, autoincrement).
-         */
-        template<class ...Op>
-        std::vector<std::string> column_names_with() {
-            auto res = this->impl.template column_names_with<Op...>();
-            std::reverse(res.begin(),
-                         res.end());
-            return res;
-        }
-
-        /**
-         *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise code will
-         *  not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To iterate columns with
-         *  table constraints use for_each_column_with_constraints instead.
-         *  L is lambda type. Do not specify it explicitly.
-         *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
-         */
-        template<class L>
-        void for_each_column(L l) {
-            this->impl.for_each_column(l);
-        }
-
-        template<class L>
-        void for_each_column_with_constraints(L l) {
-            this->impl.for_each_column_with_constraints(l);
-        }
-
-        template<class F, class L>
-        void for_each_column_with_field_type(L l) {
-            this->impl.template for_each_column_with_field_type<F, L>(l);
-        }
-
-        /**
-         *  Iterates all columns exept ones that have specified constraints and fires passed lambda.
-         *  Lambda must have one and only templated argument Otherwise code will not compile.
-         *  L is lambda type. Do not specify it explicitly.
-         *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
-         */
-        template<class Op, class L>
-        void for_each_column_exept(L l) {
-            this->impl.template for_each_column_exept<Op>(l);
-        }
-
-        /**
-         *  Iterates all columns that have specified constraints and fires passed lambda.
-         *  Lambda must have one and only templated argument Otherwise code will not compile.
-         *  L is lambda type. Do not specify it explicitly.
-         *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
-         */
-        template<class Op, class L>
-        void for_each_column_with(L l) {
-            this->impl.template for_each_column_with<Op>(l);
-        }
-
-        std::vector<table_info> get_table_info() {
-            std::vector<table_info> res;
-            res.reserve(size_t(this->columns_count()));
-            this->for_each_column([&res](auto col){
-                std::string dft;
-                if(auto d = col.default_value()) {
-                    typedef typename decltype(col)::field_type field_type;
-                    auto needQuotes = std::is_base_of<text_printer, type_printer<field_type>>::value;
-                    if(needQuotes){
-                        dft = "'" + *d + "'";
-                    }else{
-                        dft = *d;
-                    }
-                }
-                table_info i{
-                    -1,
-                    col.name,
-                    type_printer<typename decltype(col)::field_type>().print(),
-                    col.not_null(),
-                    dft,
-                    col.template has<constraints::primary_key_t<>>(),
-                };
-                res.emplace_back(i);
-            });
-            std::vector<std::string> compositeKeyColumnNames;
-            this->impl.for_each_primary_key([this, &compositeKeyColumnNames](auto c){
-                compositeKeyColumnNames = this->composite_key_columns_names(c);
-            });
-            for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
-                auto &columnName = compositeKeyColumnNames[i];
-                auto it = std::find_if(res.begin(),
-                                       res.end(),
-                                       [&columnName](const table_info &ti) {
-                                           return ti.name == columnName;
-                                       });
-                if(it != res.end()){
-                    it->pk = static_cast<int>(i + 1);
-                }
-            }
-            return res;
-        }
-
-    };
-
-    /**
-     *  Function used for table creation. Do not use table constructor - use this function
-     *  cause table class is templated and its constructing too (just like std::make_shared or std::make_pair).
-     */
-    template<class ...Cs>
-    table_t<Cs...> make_table(const std::string &name, Cs&& ...args) {
-        return {name, table_impl<Cs...>(std::forward<Cs>(args)...)};
-    }
 
     struct statement_finalizer {
         sqlite3_stmt *stmt = nullptr;
@@ -3607,6 +3295,635 @@ namespace sqlite_orm {
         };
         
         /**
+         *  This is a proxy class used to define what type must have result type depending on select
+         *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
+         *  for different types. E.g. specialization for core_functions::length_t has `type` int cause
+         *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
+         *  c++ SELECT return type for T
+         *  T - C++ type
+         *  Ts - tables pack from storage. Rarely used. Required in asterisk to define columns mapped for a type
+         */
+        template<class T, class ...Ts>
+        struct column_result_t;
+        
+        template<class O, class F, class ...Ts>
+        struct column_result_t<F O::*, Ts...> {
+            typedef F type;
+        };
+        
+        template<class O, class F, class ...Ts>
+        struct column_result_t<const F& (O::*)() const, Ts...> {
+            typedef F type;
+        };
+        
+        template<class O, class F, class ...Ts>
+        struct column_result_t<void (O::*)(F), Ts...> {
+            typedef F type;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<core_functions::length_t<T>, Ts...> {
+            typedef int type;
+        };
+        
+#if SQLITE_VERSION_NUMBER >= 3007016
+        
+        template<class ...Args, class ...Ts>
+        struct column_result_t<core_functions::char_t_<Args...>, Ts...> {
+            typedef std::string type;
+        };
+#endif
+        
+        template<class ...Ts>
+        struct column_result_t<core_functions::random_t, Ts...> {
+            typedef int type;
+        };
+        
+        template<class ...Ts>
+        struct column_result_t<core_functions::changes_t, Ts...> {
+            typedef int type;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<core_functions::abs_t<T>, Ts...> {
+            typedef std::shared_ptr<double> type;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<core_functions::lower_t<T>, Ts...> {
+            using type = std::string;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<core_functions::upper_t<T>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class X, class ...Ts>
+        struct column_result_t<core_functions::trim_single_t<X>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class X, class Y, class ...Ts>
+        struct column_result_t<core_functions::trim_double_t<X, Y>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class X, class ...Ts>
+        struct column_result_t<core_functions::ltrim_single_t<X>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class X, class Y, class ...Ts>
+        struct column_result_t<core_functions::ltrim_double_t<X, Y>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class X, class ...Ts>
+        struct column_result_t<core_functions::rtrim_single_t<X>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class X, class Y, class ...Ts>
+        struct column_result_t<core_functions::rtrim_double_t<X, Y>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class T, class ...Args, class ...Ts>
+        struct column_result_t<core_functions::date_t<T, Args...>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class T, class ...Args, class ...Ts>
+        struct column_result_t<core_functions::datetime_t<T, Args...>, Ts...> {
+            typedef std::string type;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<aggregate_functions::avg_t<T>, Ts...> {
+            typedef double type;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<aggregate_functions::count_t<T>, Ts...> {
+            typedef int type;
+        };
+        
+        template<class ...Ts>
+        struct column_result_t<aggregate_functions::count_asterisk_t, Ts...> {
+            typedef int type;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<aggregate_functions::sum_t<T>, Ts...> {
+            typedef std::shared_ptr<double> type;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<aggregate_functions::total_t<T>, Ts...> {
+            using type = double;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<aggregate_functions::group_concat_single_t<T>, Ts...> {
+            using type = std::string;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<aggregate_functions::group_concat_double_t<T>, Ts...> {
+            using type = std::string;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<aggregate_functions::max_t<T>, Ts...> {
+            using type = std::shared_ptr<typename column_result_t<T>::type>;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<aggregate_functions::min_t<T>, Ts...> {
+            using type = std::shared_ptr<typename column_result_t<T>::type>;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::distinct_t<T>, Ts...> {
+            using type = typename column_result_t<T>::type;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::all_t<T>, Ts...> {
+            using type = typename column_result_t<T>::type;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::conc_t<L, R>, Ts...> {
+            using type = std::string;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::add_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::sub_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::mul_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::div_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class L, class R, class ...Ts>
+        struct column_result_t<internal::mod_t<L, R>, Ts...> {
+            using type = double;
+        };
+        
+        template<class ...Ts>
+        struct column_result_t<internal::rowid_t, Ts...> {
+            using type = int64;
+        };
+        
+        template<class ...Ts>
+        struct column_result_t<internal::oid_t, Ts...> {
+            using type = int64;
+        };
+        
+        template<class ...Ts>
+        struct column_result_t<internal::_rowid_t, Ts...> {
+            using type = int64;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::table_rowid_t<T>, Ts...> {
+            using type = int64;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::table_oid_t<T>, Ts...> {
+            using type = int64;
+        };
+        
+        template<class T, class ...Ts>
+        struct column_result_t<internal::table__rowid_t<T>, Ts...> {
+            using type = int64;
+        };
+        
+        template<class T, class C, class ...Ts>
+        struct column_result_t<internal::alias_column_t<T, C>, Ts...> {
+            using type = typename column_result_t<C>::type;
+        };
+        
+        /**
+         *  Common case for table_impl class.
+         */
+        template<typename... Args>
+        struct table_impl {
+            
+            std::vector<std::string> column_names() { return {}; }
+            
+            template<class ...Op>
+            std::vector<std::string> column_names_exept() { return {}; }
+            
+            template<class ...Op>
+            std::vector<std::string> column_names_with() { return{}; }
+            
+            template<class L>
+            void for_each_column(L) {}
+            
+            template<class L>
+            void for_each_column_with_constraints(L) {}
+            
+            template<class F, class L>
+            void for_each_column_with_field_type(L) {}
+            
+            template<class Op, class L>
+            void for_each_column_exept(L){}
+            
+            template<class Op, class L>
+            void for_each_column_with(L) {}
+            
+            template<class L>
+            void for_each_primary_key(L) {}
+            
+            int columns_count() const {
+                return 0;
+            }
+            
+        };
+        
+        template<typename H, typename... T>
+        struct table_impl<H, T...> : private table_impl<T...> {
+            using column_type = H;
+            using tail_types = std::tuple<T...>;
+            
+            table_impl(H h, T ...t) : super(t...), col(h) {}
+            
+            column_type col;
+            
+            int columns_count() const {
+                return 1 + super::columns_count();
+            }
+            
+            /**
+             *  column_names_with implementation. Notice that result will be reversed.
+             *  It is reversed back in `table` class.
+             *  @return vector of column names that have specified Op... conditions.
+             */
+            template<class ...Op>
+            std::vector<std::string> column_names_with() {
+                auto res = super::template column_names_with<Op...>();
+                if(this->col.template has_every<Op...>()) {
+                    res.emplace_back(this->col.name);
+                }
+                return res;
+            }
+            
+            /**
+             *  For each implementation. Calls templated lambda with its column
+             *  and passed call to superclass.
+             */
+            template<class L>
+            void for_each_column(L l){
+                this->apply_to_col_if(l, internal::is_column<column_type>{});
+                this->super::for_each_column(l);
+            }
+            
+            /**
+             *  For each implementation. Calls templated lambda with its column
+             *  and passed call to superclass.
+             */
+            template<class L>
+            void for_each_column_with_constraints(L l){
+                l(this->col);
+                this->super::for_each_column_with_constraints(l);
+            }
+            
+            template<class F, class L>
+            void for_each_column_with_field_type(L l) {
+                this->apply_to_col_if(l, std::is_same<F, typename column_type::field_type>{});
+                this->super::template for_each_column_with_field_type<F, L>(l);
+            }
+            
+            /**
+             *  Working version of `for_each_column_exept`. Calls lambda if column has no option and fire super's function.
+             */
+            template<class Op, class L>
+            void for_each_column_exept(L l) {
+                using has_opt = tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>;
+                this->apply_to_col_if(l, std::integral_constant<bool, !has_opt::value>{});
+                this->super::template for_each_column_exept<Op, L>(l);
+            }
+            
+            /**
+             *  Working version of `for_each_column_with`. Calls lambda if column has option and fire super's function.
+             */
+            template<class Op, class L>
+            void for_each_column_with(L l) {
+                this->apply_to_col_if(l, tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>{});
+                this->super::template for_each_column_with<Op, L>(l);
+            }
+            
+            /**
+             *  Calls l(this->col) if H is primary_key_t
+             */
+            template<class L>
+            void for_each_primary_key(L l) {
+                this->apply_to_col_if(l, internal::is_primary_key<H>{});
+                this->super::for_each_primary_key(l);
+            }
+            
+            template<class L>
+            void apply_to_col_if(L& l, std::true_type) {
+                l(this->col);
+            }
+            
+            template<class L>
+            void apply_to_col_if(L&, std::false_type) {}
+            
+        private:
+            using super = table_impl<T...>;
+        };
+        
+        /**
+         *  Table interface class. Implementation is hidden in `table_impl` class.
+         */
+        template<class ...Cs>
+        struct table_t {
+            using impl_type = table_impl<Cs...>;
+            using object_type = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type;
+            
+            /**
+             *  Table name.
+             */
+            const std::string name;
+            
+            /**
+             *  Implementation that stores columns information.
+             */
+            impl_type impl;
+            
+            table_t(decltype(name) name_, decltype(impl) impl_):name(std::move(name_)), impl(std::move(impl_)){}
+            
+            bool _without_rowid = false;
+            
+            table_t<Cs...> without_rowid() const {
+                auto res = *this;
+                res._without_rowid = true;
+                return res;
+            }
+            
+            /**
+             *  Function used to get field value from object by mapped member pointer/setter/getter
+             */
+            template<class F, class C>
+            const F* get_object_field_pointer(const object_type &obj, C c) {
+                const F *res = nullptr;
+                using field_type = typename internal::column_result_t<C>::type;
+                this->for_each_column_with_field_type<field_type>([&res, &c, &obj, this](auto &col){
+                    using namespace static_magic;
+                    using column_type = typename std::remove_reference<decltype(col)>::type;
+                    using member_pointer_t = typename column_type::member_pointer_t;
+                    using getter_type = typename column_type::getter_type;
+                    using setter_type = typename column_type::setter_type;
+                    if(!res){
+                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col, &c]{
+//                            if(col.member_pointer == c){
+                            if(compare_any(col.member_pointer, c)){
+                                res = &(obj.*col.member_pointer);
+                            }
+                        })();
+                    }
+                    if(!res){
+                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col, &c]{
+                            if(compare_any(col.getter, c)){
+                                res = &((obj).*(col.getter))();
+                            }
+                            /*if(col.getter == c){
+                                res = &((obj).*(col.getter))();
+                            }*/
+                        })();
+                    }
+                    if(!res){
+                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col, &c]{
+                            if(compare_any(col.setter, c)){
+                                res = &((obj).*(col.getter))();
+                            }
+                        })();
+                    }
+                    /* [&res, &obj, &col]{
+                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col]{
+                            res = &((obj).*(col.getter))();
+                            std::cout << "res = " << res << std::endl;
+                        });
+                        [&res, &obj, &col]{
+                            static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col]{
+                                return &((obj).*(col.getter))();
+                            });
+                        }());
+                    });*/
+                    /*if(pointer){
+                        res = pointer;
+                    }*/
+                });
+                return res;
+            }
+            
+            /**
+             *  @return vector of column names of table.
+             */
+            std::vector<std::string> column_names() {
+                std::vector<std::string> res;
+                this->impl.for_each_column([&res](auto &c){
+                    res.push_back(c.name);
+                });
+                return res;
+            }
+            
+            std::vector<std::string> composite_key_columns_names() {
+                std::vector<std::string> res;
+                this->impl.for_each_primary_key([this, &res](auto c){
+                    res = this->composite_key_columns_names(c);
+                });
+                return res;
+            }
+            
+            std::vector<std::string> primary_key_column_names() {
+                std::vector<std::string> res;
+                this->impl.template for_each_column_with<constraints::primary_key_t<>>([&res](auto &c){
+                    res.push_back(c.name);
+                });
+                if(!res.size()){
+                    res = this->composite_key_columns_names();
+                }
+                return res;
+            }
+            
+            template<class ...Args>
+            std::vector<std::string> composite_key_columns_names(constraints::primary_key_t<Args...> pk) {
+                std::vector<std::string> res;
+                typedef decltype(pk.columns) pk_columns_tuple;
+                res.reserve(std::tuple_size<pk_columns_tuple>::value);
+                tuple_helper::iterator<std::tuple_size<pk_columns_tuple>::value - 1, Args...>()(pk.columns, [this, &res](auto &v){
+                    res.push_back(this->find_column_name(v));
+                });
+                return res;
+            }
+            
+            int columns_count() const {
+                return this->impl.columns_count();
+            }
+            
+            /**
+             *  Searches column name by class member pointer passed as first argument.
+             *  @return column name or empty string if nothing found.
+             */
+            template<class F, class O>
+            std::string find_column_name(F O::*m) {
+                std::string res;
+                this->template for_each_column_with_field_type<F>([&res, m](auto c) {
+                    if(c.member_pointer == m) {
+                        res = c.name;
+                    }
+                });
+                return res;
+            }
+            
+            /**
+             *  Searches column name by class getter function member pointer passed as first argument.
+             *  @return column name or empty string if nothing found.
+             */
+            template<class F, class O>
+            std::string find_column_name(const F& (O::*getter)() const) {
+                std::string res;
+                this->template for_each_column_with_field_type<F>([&res, getter](auto c) {
+                    if(c.getter == getter) {
+                        res = c.name;
+                    }
+                });
+                return res;
+            }
+            
+            /**
+             *  Searches column name by class setter function member pointer passed as first argument.
+             *  @return column name or empty string if nothing found.
+             */
+            template<class F, class O>
+            std::string find_column_name(void (O::*setter)(F)) {
+                std::string res;
+                this->template for_each_column_with_field_type<F>([&res, setter](auto c) {
+                    if(c.setter == setter) {
+                        res = c.name;
+                    }
+                });
+                return res;
+            }
+            
+            /**
+             *  @return vector of column names that have constraints provided as template arguments (not_null, autoincrement).
+             */
+            template<class ...Op>
+            std::vector<std::string> column_names_with() {
+                auto res = this->impl.template column_names_with<Op...>();
+                std::reverse(res.begin(),
+                             res.end());
+                return res;
+            }
+            
+            /**
+             *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise code will
+             *  not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To iterate columns with
+             *  table constraints use for_each_column_with_constraints instead.
+             *  L is lambda type. Do not specify it explicitly.
+             *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             */
+            template<class L>
+            void for_each_column(L l) {
+                this->impl.for_each_column(l);
+            }
+            
+            template<class L>
+            void for_each_column_with_constraints(L l) {
+                this->impl.for_each_column_with_constraints(l);
+            }
+            
+            template<class F, class L>
+            void for_each_column_with_field_type(L l) {
+                this->impl.template for_each_column_with_field_type<F, L>(l);
+            }
+            
+            /**
+             *  Iterates all columns exept ones that have specified constraints and fires passed lambda.
+             *  Lambda must have one and only templated argument Otherwise code will not compile.
+             *  L is lambda type. Do not specify it explicitly.
+             *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             */
+            template<class Op, class L>
+            void for_each_column_exept(L l) {
+                this->impl.template for_each_column_exept<Op>(l);
+            }
+            
+            /**
+             *  Iterates all columns that have specified constraints and fires passed lambda.
+             *  Lambda must have one and only templated argument Otherwise code will not compile.
+             *  L is lambda type. Do not specify it explicitly.
+             *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             */
+            template<class Op, class L>
+            void for_each_column_with(L l) {
+                this->impl.template for_each_column_with<Op>(l);
+            }
+            
+            std::vector<table_info> get_table_info() {
+                std::vector<table_info> res;
+                res.reserve(size_t(this->columns_count()));
+                this->for_each_column([&res](auto &col){
+                    std::string dft;
+                    using field_type = typename std::remove_reference<decltype(col)>::type::field_type;
+                    if(auto d = col.default_value()) {
+                        auto needQuotes = std::is_base_of<text_printer, type_printer<field_type>>::value;
+                        if(needQuotes){
+                            dft = "'" + *d + "'";
+                        }else{
+                            dft = *d;
+                        }
+                    }
+                    table_info i{
+                        -1,
+                        col.name,
+                        type_printer<field_type>().print(),
+                        col.not_null(),
+                        dft,
+                        col.template has<constraints::primary_key_t<>>(),
+                    };
+                    res.emplace_back(i);
+                });
+                std::vector<std::string> compositeKeyColumnNames;
+                this->impl.for_each_primary_key([this, &compositeKeyColumnNames](auto c){
+                    compositeKeyColumnNames = this->composite_key_columns_names(c);
+                });
+                for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
+                    auto &columnName = compositeKeyColumnNames[i];
+                    auto it = std::find_if(res.begin(),
+                                           res.end(),
+                                           [&columnName](const table_info &ti) {
+                                               return ti.name == columnName;
+                                           });
+                    if(it != res.end()){
+                        it->pk = static_cast<int>(i + 1);
+                    }
+                }
+                return res;
+            }
+            
+        };
+        
+        /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
         template<class ...Ts>
@@ -4063,231 +4380,6 @@ namespace sqlite_orm {
         private:
             using super = storage_impl<Ts...>;
             using self = storage_impl<H, Ts...>;
-        };
-
-        /**
-         *  This is a proxy class used to define what type must have result type depending on select
-         *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
-         *  for different types. E.g. specialization for core_functions::length_t has `type` int cause
-         *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
-         *  c++ SELECT return type for T
-         *  T - C++ type
-         *  Ts - tables pack from storage. Rarely used. Required in asterisk to define columns mapped for a type
-         */
-        template<class T, class ...Ts>
-        struct column_result_t;
-
-        template<class O, class F, class ...Ts>
-        struct column_result_t<F O::*, Ts...> {
-            typedef F type;
-        };
-
-        template<class O, class F, class ...Ts>
-        struct column_result_t<const F& (O::*)() const, Ts...> {
-            typedef F type;
-        };
-
-        template<class O, class F, class ...Ts>
-        struct column_result_t<void (O::*)(F), Ts...> {
-            typedef F type;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<core_functions::length_t<T>, Ts...> {
-            typedef int type;
-        };
-
-#if SQLITE_VERSION_NUMBER >= 3007016
-
-        template<class ...Args, class ...Ts>
-        struct column_result_t<core_functions::char_t_<Args...>, Ts...> {
-            typedef std::string type;
-        };
-#endif
-
-        template<class ...Ts>
-        struct column_result_t<core_functions::random_t, Ts...> {
-            typedef int type;
-        };
-
-        template<class ...Ts>
-        struct column_result_t<core_functions::changes_t, Ts...> {
-            typedef int type;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<core_functions::abs_t<T>, Ts...> {
-            typedef std::shared_ptr<double> type;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<core_functions::lower_t<T>, Ts...> {
-            using type = std::string;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<core_functions::upper_t<T>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class X, class ...Ts>
-        struct column_result_t<core_functions::trim_single_t<X>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class X, class Y, class ...Ts>
-        struct column_result_t<core_functions::trim_double_t<X, Y>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class X, class ...Ts>
-        struct column_result_t<core_functions::ltrim_single_t<X>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class X, class Y, class ...Ts>
-        struct column_result_t<core_functions::ltrim_double_t<X, Y>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class X, class ...Ts>
-        struct column_result_t<core_functions::rtrim_single_t<X>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class X, class Y, class ...Ts>
-        struct column_result_t<core_functions::rtrim_double_t<X, Y>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class T, class ...Args, class ...Ts>
-        struct column_result_t<core_functions::date_t<T, Args...>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class T, class ...Args, class ...Ts>
-        struct column_result_t<core_functions::datetime_t<T, Args...>, Ts...> {
-            typedef std::string type;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::avg_t<T>, Ts...> {
-            typedef double type;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::count_t<T>, Ts...> {
-            typedef int type;
-        };
-
-        template<class ...Ts>
-        struct column_result_t<aggregate_functions::count_asterisk_t, Ts...> {
-            typedef int type;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::sum_t<T>, Ts...> {
-            typedef std::shared_ptr<double> type;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::total_t<T>, Ts...> {
-            using type = double;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::group_concat_single_t<T>, Ts...> {
-            using type = std::string;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::group_concat_double_t<T>, Ts...> {
-            using type = std::string;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::max_t<T>, Ts...> {
-            using type = std::shared_ptr<typename column_result_t<T>::type>;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::min_t<T>, Ts...> {
-            using type = std::shared_ptr<typename column_result_t<T>::type>;
-        };
-
-        template<class T, class ...Ts>
-        struct column_result_t<internal::distinct_t<T>, Ts...> {
-            using type = typename column_result_t<T>::type;
-        };
-        
-        template<class T, class ...Ts>
-        struct column_result_t<internal::all_t<T>, Ts...> {
-            using type = typename column_result_t<T>::type;
-        };
-
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::conc_t<L, R>, Ts...> {
-            using type = std::string;
-        };
-        
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::add_t<L, R>, Ts...> {
-            using type = double;
-        };
-        
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::sub_t<L, R>, Ts...> {
-            using type = double;
-        };
-        
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::mul_t<L, R>, Ts...> {
-            using type = double;
-        };
-        
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::div_t<L, R>, Ts...> {
-            using type = double;
-        };
-        
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::mod_t<L, R>, Ts...> {
-            using type = double;
-        };
-        
-        template<class ...Ts>
-        struct column_result_t<internal::rowid_t, Ts...> {
-            using type = int64;
-        };
-        
-        template<class ...Ts>
-        struct column_result_t<internal::oid_t, Ts...> {
-            using type = int64;
-        };
-        
-        template<class ...Ts>
-        struct column_result_t<internal::_rowid_t, Ts...> {
-            using type = int64;
-        };
-        
-        template<class T, class ...Ts>
-        struct column_result_t<internal::table_rowid_t<T>, Ts...> {
-            using type = int64;
-        };
-        
-        template<class T, class ...Ts>
-        struct column_result_t<internal::table_oid_t<T>, Ts...> {
-            using type = int64;
-        };
-        
-        template<class T, class ...Ts>
-        struct column_result_t<internal::table__rowid_t<T>, Ts...> {
-            using type = int64;
-        };
-        
-        template<class T, class C, class ...Ts>
-        struct column_result_t<internal::alias_column_t<T, C>, Ts...> {
-            using type = typename column_result_t<C>::type;
         };
         
         /**
@@ -6739,13 +6831,7 @@ namespace sqlite_orm {
                     cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
                         using column_type = typename std::remove_reference<decltype(m)>::type;
                         using field_type = typename column_result_t<column_type, Ts...>::type;
-                        const field_type *value = nullptr;
-                        /*if(c.member_pointer){
-                            value = &(o.*c.member_pointer);
-                        }else{*/
-//                            value = &((o).*(m))();
-                        value = &(o.*m);
-//                        }
+                        const field_type *value = impl.table.template get_object_field_pointer<field_type>(o, m);
                         statement_binder<field_type>().bind(stmt, index++, *value);
                     });
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
@@ -7321,6 +7407,15 @@ namespace sqlite_orm {
         public:
             pragma_t pragma;
         };
+    }
+    
+    /**
+     *  Function used for table creation. Do not use table constructor - use this function
+     *  cause table class is templated and its constructing too (just like std::make_shared or std::make_pair).
+     */
+    template<class ...Cs>
+    internal::table_t<Cs...> make_table(const std::string &name, Cs&& ...args) {
+        return {name, internal::table_impl<Cs...>(std::forward<Cs>(args)...)};
     }
     
     inline internal::rowid_t rowid() {
