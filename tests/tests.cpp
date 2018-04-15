@@ -12,6 +12,66 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testExplicitInsert() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+        std::string name;
+        std::string age;
+        std::string email;
+    };
+    
+    auto storage = make_storage("explicitinsert.sqlite",
+                                make_table("users",
+                                           make_column("id",
+                                                       &User::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &User::name),
+                                           make_column("age",
+                                                       &User::age),
+                                           make_column("email",
+                                                       &User::email,
+                                                       default_value("dummy@email.com"))));
+    storage.sync_schema();
+    storage.remove_all<User>();
+    
+    //  insert user without id and email
+    User user{};
+    user.name = "Juan";
+    user.age = 57;
+    auto id = storage.insert(user, columns(&User::name, &User::age));
+    assert(storage.get<User>(id).email == "dummy@email.com");
+    
+    //  insert user without email but with id
+    User user2;
+    user2.id = 2;
+    user2.name = "Kevin";
+    user2.age = 27;
+    assert(user2.id == storage.insert(user2, columns(&User::id, &User::name, &User::age)));
+    assert(storage.get<User>(user2.id).email == "dummy@email.com");
+    
+    //  insert user with both id and email
+    User user3;
+    user3.id = 3;
+    user3.name = "Sia";
+    user3.age = 42;
+    user3.email = "sia@gmail.com";
+    assert(user3.id == storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email)));
+    assert(storage.get<User>(user3.id).email == user3.email);
+    
+    //  insert without required columns and expect exception
+    User user4;
+    user4.name = "Egor";
+    try {
+        storage.insert(user4, columns(&User::name));
+        assert(0);
+    } catch (std::system_error e) {
+//        cout << e.what() << endl;
+    }
+}
+
 void testVacuum() {
     cout << __func__ << endl;
     
@@ -1607,4 +1667,6 @@ int main() {
     testAutoVacuum();
     
     testVacuum();
+    
+    testExplicitInsert();
 }

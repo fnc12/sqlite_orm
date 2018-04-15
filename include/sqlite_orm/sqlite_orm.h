@@ -6599,7 +6599,7 @@ namespace sqlite_orm {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
                     impl.table.for_each_column([&o, &index, &stmt] (auto c) {
-                        typedef typename decltype(c)::field_type field_type;
+                        using field_type = typename decltype(c)::field_type;
                         const field_type *value = nullptr;
                         if(c.member_pointer){
                             value = &(o.*c.member_pointer);
@@ -6682,6 +6682,74 @@ namespace sqlite_orm {
                     }
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                }
+            }
+            
+            template<class O, class ...Cols>
+            int insert(const O &o, columns_t<Cols...> cols) {
+                enum{
+                    colsCount = std::tuple_size<std::tuple<Cols...>>::value,
+                };
+                static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
+                this->assert_mapped_type<O>();
+                auto connection = this->get_or_create_connection();
+                auto &impl = get_impl<O>();
+                std::stringstream ss;
+                ss << "INSERT INTO '" << impl.table.name << "' ";
+                std::vector<std::string> columnNames;
+                columnNames.reserve(colsCount);
+                cols.for_each([&columnNames, this](auto &m) {
+                    auto columnName = this->string_from_expression(m, true);
+                    if(columnName.length()){
+                        columnNames.push_back(columnName);
+                    }else{
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    }
+                });
+                ss << "(";
+                for(size_t i = 0; i < columnNames.size(); ++i){
+                    ss << columnNames[i];
+                    if(i < columnNames.size() - 1){
+                        ss << ",";
+                    }else{
+                        ss << ")";
+                    }
+                    ss << " ";
+                }
+                ss << "VALUES (";
+                for(size_t i = 0; i < columnNames.size(); ++i){
+                    ss << "?";
+                    if(i < columnNames.size() - 1){
+                        ss << ",";
+                    }else{
+                        ss << ")";
+                    }
+                    ss << " ";
+                }
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    auto index = 1;
+                    cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
+                        using column_type = typename std::remove_reference<decltype(m)>::type;
+                        using field_type = typename column_result_t<column_type, Ts...>::type;
+                        const field_type *value = nullptr;
+                        /*if(c.member_pointer){
+                            value = &(o.*c.member_pointer);
+                        }else{*/
+//                            value = &((o).*(m))();
+                        value = &(o.*m);
+//                        }
+                        statement_binder<field_type>().bind(stmt, index++, *value);
+                    });
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        return int(sqlite3_last_insert_rowid(connection->get_db()));
                     }else{
                         throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                     }
