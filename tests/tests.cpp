@@ -12,6 +12,171 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testExplicitInsert() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+        std::string name;
+        int age;
+        std::string email;
+    };
+    
+    class Visit {
+    public:
+        const int& id() const {
+            return _id;
+        }
+        
+        void setId(int newValue) {
+            _id = newValue;
+        }
+        
+        const time_t& createdAt() const {
+            return _createdAt;
+        }
+        
+        void setCreatedAt(time_t newValue) {
+            _createdAt = newValue;
+        }
+        
+        const int& usedId() const {
+            return _usedId;
+        }
+        
+        void setUsedId(int newValue) {
+            _usedId = newValue;
+        }
+        
+    private:
+        int _id;
+        time_t _createdAt;
+        int _usedId;
+    };
+    
+    auto storage = make_storage("explicitinsert.sqlite",
+                                make_table("users",
+                                           make_column("id",
+                                                       &User::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &User::name),
+                                           make_column("age",
+                                                       &User::age),
+                                           make_column("email",
+                                                       &User::email,
+                                                       default_value("dummy@email.com"))),
+                                make_table("visits",
+                                           make_column("id",
+                                                       &Visit::setId,
+                                                       &Visit::id,
+                                                       primary_key()),
+                                           make_column("created_at",
+                                                       &Visit::createdAt,
+                                                       &Visit::setCreatedAt,
+                                                       default_value(10)),
+                                           make_column("used_id",
+                                                       &Visit::usedId,
+                                                       &Visit::setUsedId)));
+    
+    storage.sync_schema();
+    storage.remove_all<User>();
+    storage.remove_all<Visit>();
+    
+    {
+        //  insert user without id and email
+        User user{};
+        user.name = "Juan";
+        user.age = 57;
+        auto id = storage.insert(user, columns(&User::name, &User::age));
+        assert(storage.get<User>(id).email == "dummy@email.com");
+        
+        //  insert user without email but with id
+        User user2;
+        user2.id = 2;
+        user2.name = "Kevin";
+        user2.age = 27;
+        assert(user2.id == storage.insert(user2, columns(&User::id, &User::name, &User::age)));
+        assert(storage.get<User>(user2.id).email == "dummy@email.com");
+        
+        //  insert user with both id and email
+        User user3;
+        user3.id = 3;
+        user3.name = "Sia";
+        user3.age = 42;
+        user3.email = "sia@gmail.com";
+        assert(user3.id == storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email)));
+        auto insertedUser3 = storage.get<User>(user3.id);
+        assert(insertedUser3.email == user3.email);
+        assert(insertedUser3.age == user3.age);
+        assert(insertedUser3.name == user3.name);
+        
+        //  insert without required columns and expect exception
+        User user4;
+        user4.name = "Egor";
+        try {
+            storage.insert(user4, columns(&User::name));
+            assert(0);
+        } catch (std::system_error e) {
+            //        cout << e.what() << endl;
+        }
+    }
+    {
+        //  insert visit without id and createdAt
+        Visit visit;
+        visit.setUsedId(1);
+        visit.setId(storage.insert(visit, columns(&Visit::usedId)));
+        {
+            auto visitFromStorage = storage.get<Visit>(visit.id());
+            assert(visitFromStorage.createdAt() == 10);
+            assert(visitFromStorage.usedId() == visit.usedId());
+            storage.remove<Visit>(visitFromStorage.usedId());
+        }
+        
+        visit.setId(storage.insert(visit, columns(&Visit::setUsedId)));
+        {
+            auto visitFromStorage = storage.get<Visit>(visit.id());
+            assert(visitFromStorage.createdAt() == 10);
+            assert(visitFromStorage.usedId() == visit.usedId());
+            storage.remove<Visit>(visitFromStorage.usedId());
+        }
+        
+        //  insert visit with id
+        Visit visit2;
+        visit2.setId(2);
+        visit2.setUsedId(1);
+        {
+            assert(visit2.id() == storage.insert(visit2, columns(&Visit::id, &Visit::usedId)));
+            auto visitFromStorage = storage.get<Visit>(visit2.id());
+            assert(visitFromStorage.usedId() == visit2.usedId());
+            storage.remove<Visit>(visit2.id());
+        }
+        {
+            assert(visit2.id() == storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId)));
+            auto visitFromStorage = storage.get<Visit>(visit2.id());
+            assert(visitFromStorage.usedId() == visit2.usedId());
+            storage.remove<Visit>(visit2.id());
+        }
+        
+        //  insert without required columns and expect exception
+        Visit visit3;
+        visit3.setId(10);
+        try {
+            storage.insert(visit3, columns(&Visit::id));
+            assert(0);
+        } catch (std::system_error e) {
+            //        cout << e.what() << endl;
+        }
+        
+        try {
+            storage.insert(visit3, columns(&Visit::setId));
+            assert(0);
+        } catch (std::system_error e) {
+            //        cout << e.what() << endl;
+        }
+    }
+}
+
 void testVacuum() {
     cout << __func__ << endl;
     
@@ -1607,4 +1772,6 @@ int main() {
     testAutoVacuum();
     
     testVacuum();
+    
+    testExplicitInsert();
 }
