@@ -6790,9 +6790,7 @@ namespace sqlite_orm {
             
             template<class O, class ...Cols>
             int insert(const O &o, columns_t<Cols...> cols) {
-                enum{
-                    colsCount = std::tuple_size<std::tuple<Cols...>>::value,
-                };
+                constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
                 auto connection = this->get_or_create_connection();
