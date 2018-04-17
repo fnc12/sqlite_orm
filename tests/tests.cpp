@@ -177,6 +177,58 @@ void testExplicitInsert() {
     }
 }
 
+void testCustomCollate() {
+    cout << __func__ << endl;
+    
+    struct Item {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("custom_collate.sqlite",
+                                make_table("items",
+                                           make_column("id",
+                                                       &Item::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &Item::name)));
+//    storage.open_forever();
+    storage.sync_schema();
+    storage.remove_all<Item>();
+    storage.insert(Item{ 0, "Mercury" });
+    storage.insert(Item{ 0, "Mars" });
+    storage.create_collation("ototo", [](int, const void *lhs, int, const void *rhs){
+        return strcmp((const char*)lhs, (const char*)rhs);
+    });
+    storage.create_collation("alwaysequal", [](int, const void *lhs, int, const void *rhs){
+        return 0;
+    });
+    auto rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
+    assert(rows.size() == 1);
+    assert(rows.front() == "Mercury");
+    
+    rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
+                          order_by(&Item::name).collate("ototo"));
+    
+    storage.create_collation("ototo", {});
+    try {
+        rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
+    } catch (std::system_error e) {
+        cout << e.what() << endl;
+    }
+    try {
+        rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
+    } catch (std::system_error e) {
+        cout << e.what() << endl;
+    }
+    rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
+                                             order_by(&Item::name).collate_rtrim());
+    
+    rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
+                          order_by(&Item::name).collate("alwaysequal"));
+    assert(rows.size() == storage.count<Item>());
+}
+
 void testVacuum() {
     cout << __func__ << endl;
     
@@ -1774,4 +1826,6 @@ int main() {
     testVacuum();
     
     testExplicitInsert();
+    
+    testCustomCollate();
 }
