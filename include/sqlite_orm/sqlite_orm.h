@@ -49,6 +49,7 @@ namespace sqlite_orm {
         table_has_no_primary_key_column,
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
+        object_has_too_many_fields,
     };
     
 }
@@ -6956,6 +6957,8 @@ namespace sqlite_orm {
 
                 // Do inserts in manageable blocks
                 int max_inserts = max_variables / columnNames.size();
+                if(max_inserts == 0)
+                    throw std::system_error(std::make_error_code(orm_error_code::object_has_too_many_fields));
                 auto it = from;
                 while (it != to)
                 {

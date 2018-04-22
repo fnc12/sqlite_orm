@@ -905,6 +905,12 @@ void testInsert() {
         std::string name;
     };
 
+    struct ObjectManyFields {
+        int id;
+        std::string name1, name2, name3, name4, name5;
+        std::string name6, name7, name8, name9, name10;
+    };
+
     auto storage = make_storage("test_insert.sqlite",
                                 make_table("objects",
                                            make_column("id",
@@ -917,7 +923,31 @@ void testInsert() {
                                                        &ObjectWithoutRowid::id,
                                                        primary_key()),
                                            make_column("name",
-                                                       &ObjectWithoutRowid::name)).without_rowid());
+                                                       &ObjectWithoutRowid::name)).without_rowid(),
+                                make_table("objects_many_fields",
+                                           make_column("id",
+                                                       &ObjectManyFields::id,
+                                                       primary_key()),
+                                           make_column("name1",
+                                                       &ObjectManyFields::name1),
+                                           make_column("name2",
+                                                       &ObjectManyFields::name2),
+                                           make_column("name3",
+                                                       &ObjectManyFields::name3),
+                                           make_column("name4",
+                                                       &ObjectManyFields::name4),
+                                           make_column("name5",
+                                                       &ObjectManyFields::name5),
+                                           make_column("name6",
+                                                       &ObjectManyFields::name6),
+                                           make_column("name7",
+                                                       &ObjectManyFields::name7),
+                                           make_column("name8",
+                                                       &ObjectManyFields::name8),
+                                           make_column("name9",
+                                                       &ObjectManyFields::name9),
+                                           make_column("name10",
+                                                       &ObjectManyFields::name10)));
 
     storage.sync_schema();
     storage.remove_all<Object>();
@@ -952,7 +982,6 @@ void testInsert() {
                          initList.end());
     assert(storage.count<Object>() == countBefore + initList.size());
 
-
     //  test empty container
     std::vector<Object> emptyVector;
     storage.insert_range(emptyVector.begin(),
@@ -963,6 +992,24 @@ void testInsert() {
     assert(storage.get<ObjectWithoutRowid>(10).name == "Life");
     storage.insert(ObjectWithoutRowid{ 20, "Death" });
     assert(storage.get<ObjectWithoutRowid>(20).name == "Death");
+
+    //  test large insert
+    sqlite3 *db;
+    auto dbFileName = "test_insert.sqlite";
+    auto rc = sqlite3_open(dbFileName, &db);
+    assert(rc == SQLITE_OK);
+
+    int max_variables = sqlite3_limit(db, SQLITE_LIMIT_VARIABLE_NUMBER, 100);
+    sqlite3_limit(db, SQLITE_LIMIT_VARIABLE_NUMBER, -1);
+    int max_inserts = max_variables / 10;
+
+    countBefore = storage.count<ObjectManyFields>();
+    std::vector<ObjectManyFields> objectManyFieldsList;
+    for(size_t i=0; i<max_inserts+1; i++)
+        objectManyFieldsList.push_back(ObjectManyFields());
+    storage.insert_range(objectManyFieldsList.begin(),
+                         objectManyFieldsList.end());
+    assert(storage.count<ObjectManyFields>() == countBefore + objectManyFieldsList.size());    
 }
 
 void testReplace() {
