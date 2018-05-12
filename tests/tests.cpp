@@ -12,6 +12,38 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testLargeInsertRange() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("large_insert_range.sqlite",
+                                make_table("users",
+                                           make_column("id",
+                                                       &User::id,
+                                                       primary_key()),
+                                           make_column("name",
+                                                       &User::name)));
+    storage.sync_schema();
+    storage.remove_all<User>();
+    int insertLimit = 10000;
+    /*storage.on_open = [&insertLimit](sqlite3 *db){
+        insertLimit = sqlite3_limit(db, SQLITE_LIMIT_COMPOUND_SELECT, -1);
+    };*/
+    std::vector<User> usersToInsert;
+    auto usersToInsertCount = insertLimit * 2;
+    usersToInsert.reserve(usersToInsertCount);
+    for(auto i = 0; i < usersToInsertCount; ++i) {
+        usersToInsert.push_back({i, "ototo"});
+    }
+    storage.insert_range(usersToInsert.begin(), usersToInsert.end());
+    auto usersCount = storage.count<User>();
+    assert(usersCount == int(usersToInsert.size()));
+}
+
 void testExplicitInsert() {
     cout << __func__ << endl;
     
@@ -1828,4 +1860,6 @@ int main() {
     testExplicitInsert();
     
     testCustomCollate();
+    
+    testLargeInsertRange();
 }
