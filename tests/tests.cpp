@@ -12,36 +12,96 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
-void testLargeInsertRange() {
+void testLimits() {
     cout << __func__ << endl;
     
-    struct User {
-        int id;
-        std::string name;
-    };
-    
-    auto storage = make_storage("large_insert_range.sqlite",
-                                make_table("users",
-                                           make_column("id",
-                                                       &User::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &User::name)));
+    auto storage = make_storage("limits.sqlite");
     storage.sync_schema();
-    storage.remove_all<User>();
-    int insertLimit = 10000;
-    /*storage.on_open = [&insertLimit](sqlite3 *db){
-        insertLimit = sqlite3_limit(db, SQLITE_LIMIT_COMPOUND_SELECT, -1);
-    };*/
-    std::vector<User> usersToInsert;
-    auto usersToInsertCount = insertLimit * 2;
-    usersToInsert.reserve(usersToInsertCount);
-    for(auto i = 0; i < usersToInsertCount; ++i) {
-        usersToInsert.push_back({i, "ototo"});
+
+    {
+        auto length = storage.limit.length();
+        auto newLength = length - 10;
+        storage.limit.length(newLength);
+        length = storage.limit.length();
+        assert(length == newLength);
     }
-    storage.insert_range(usersToInsert.begin(), usersToInsert.end());
-    auto usersCount = storage.count<User>();
-    assert(usersCount == int(usersToInsert.size()));
+    {
+        auto sqlLength = storage.limit.sql_length();
+        auto newSqlLength = sqlLength - 10;
+        storage.limit.sql_length(newSqlLength);
+        sqlLength = storage.limit.sql_length();
+        assert(sqlLength == newSqlLength);
+    }
+    {
+        auto column = storage.limit.column();
+        auto newColumn = column - 10;
+        storage.limit.column(newColumn);
+        column = storage.limit.column();
+        assert(column == newColumn);
+    }
+    {
+        auto exprDepth = storage.limit.expr_depth();
+        auto newExprDepth = exprDepth - 10;
+        storage.limit.expr_depth(newExprDepth);
+        exprDepth = storage.limit.expr_depth();
+        assert(exprDepth == newExprDepth);
+    }
+    {
+        auto compoundSelect = storage.limit.compound_select();
+        auto newCompoundSelect = compoundSelect - 10;
+        storage.limit.compound_select(newCompoundSelect);
+        compoundSelect = storage.limit.compound_select();
+        assert(compoundSelect == newCompoundSelect);
+    }
+    {
+        auto vdbeOp = storage.limit.vdbe_op();
+        auto newVdbe_op = vdbeOp - 10;
+        storage.limit.vdbe_op(newVdbe_op);
+        vdbeOp = storage.limit.vdbe_op();
+        assert(vdbeOp == newVdbe_op);
+    }
+    {
+        auto functionArg = storage.limit.function_arg();
+        auto newFunctionArg = functionArg - 10;
+        storage.limit.function_arg(newFunctionArg);
+        functionArg = storage.limit.function_arg();
+        assert(functionArg == newFunctionArg);
+    }
+    {
+        auto attached = storage.limit.attached();
+        auto newAttached = attached - 1;
+        storage.limit.attached(newAttached);
+        attached = storage.limit.attached();
+        assert(attached == newAttached);
+    }
+    {
+        auto likePatternLength = storage.limit.like_pattern_length();
+        auto newLikePatternLength = likePatternLength - 10;
+        storage.limit.like_pattern_length(newLikePatternLength);
+        likePatternLength = storage.limit.like_pattern_length();
+        assert(likePatternLength == newLikePatternLength);
+    }
+    {
+        auto variableNumber = storage.limit.variable_number();
+        auto newVariableNumber = variableNumber - 10;
+        storage.limit.variable_number(newVariableNumber);
+        variableNumber = storage.limit.variable_number();
+        assert(variableNumber == newVariableNumber);
+    }
+    {
+        auto triggerDepth = storage.limit.trigger_depth();
+        auto newTriggerDepth = triggerDepth - 10;
+        storage.limit.trigger_depth(newTriggerDepth);
+        triggerDepth = storage.limit.trigger_depth();
+        assert(triggerDepth == newTriggerDepth);
+    }
+    {
+        auto workerThreads = storage.limit.worker_threads();
+        auto newWorkerThreads = workerThreads + 1;
+        storage.limit.worker_threads(newWorkerThreads);
+        workerThreads = storage.limit.worker_threads();
+        assert(workerThreads == newWorkerThreads);
+    }
 }
 
 void testExplicitInsert() {
@@ -1861,5 +1921,5 @@ int main() {
     
     testCustomCollate();
     
-    testLargeInsertRange();
+    testLimits();
 }
