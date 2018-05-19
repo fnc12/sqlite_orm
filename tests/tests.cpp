@@ -5,7 +5,7 @@
 #include <vector>
 #include <string>
 #include <iostream>
-#include <memory.h>
+#include <memory>
 
 using namespace sqlite_orm;
 
@@ -15,7 +15,8 @@ using std::endl;
 void testLimits() {
     cout << __func__ << endl;
     
-    auto storage = make_storage("limits.sqlite");
+    auto storage2 = make_storage("limits.sqlite");
+    auto storage = storage2;
     storage.sync_schema();
 
     {

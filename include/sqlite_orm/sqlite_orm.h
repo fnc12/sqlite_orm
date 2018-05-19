@@ -4808,6 +4808,16 @@ namespace sqlite_orm {
                 }
             }
             
+            storage_t(const storage_t &other):
+            filename(other.filename),
+            impl(other.impl),
+            inMemory(other.inMemory),
+            pragma(*this),
+            limit(*this),
+            collatingFunctions(other.collatingFunctions),
+            currentTransaction(other.currentTransaction)
+            {}
+            
         protected:
             using collating_function = std::function<int(int, const void*, int, const void*)>;
             
