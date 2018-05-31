@@ -1015,10 +1015,12 @@ namespace sqlite_orm {
     namespace conditions {
 
         struct limit_t {
-            int lim;
+            int lim = 0;
             bool has_offset = false;
             bool offset_is_implicit = false;
             int off = 0;
+            
+            limit_t(){}
 
             limit_t(decltype(lim) lim_):lim(lim_){}
 
@@ -1369,7 +1371,7 @@ namespace sqlite_orm {
             int asc_desc = 0;   //  1: asc, -1: desc
             std::string _collate_argument;
 
-            order_by_t():o(nullptr){}
+            order_by_t():o(){}
 
             order_by_t(O o_):o(o_){}
 

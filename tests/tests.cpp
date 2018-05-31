@@ -12,6 +12,30 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testJoinIteratorConstructorCompilationError() {
+    cout << __func__ << endl;
+    
+    struct Tag {
+        int objectId;
+        std::string text;
+    };
+    
+    auto storage = make_storage("join_error.sqlite",
+                                make_table("tags",
+                                           make_column("object_id",
+                                                       &Tag::objectId),
+                                           make_column("text",
+                                                       &Tag::text)));
+    storage.sync_schema();
+    
+    auto offs = 0;
+    auto lim = 5;
+    storage.select(columns(&Tag::text, count(&Tag::text)),
+                   group_by(&Tag::text),
+                   order_by(count(&Tag::text)).desc(),
+                   limit(offs, lim));
+}
+
 void testLimits() {
     cout << __func__ << endl;
     
@@ -1923,4 +1947,6 @@ int main() {
     testCustomCollate();
     
     testLimits();
+    
+    testJoinIteratorConstructorCompilationError();
 }
