@@ -17,5 +17,6 @@
 * busy handler https://sqlite.org/c3ref/busy_handler.html
 * CAST https://sqlite.org/lang_expr.html#castexpr
 * CREATE VIEW and other view operations https://sqlite.org/lang_createview.html
+* triggers
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
