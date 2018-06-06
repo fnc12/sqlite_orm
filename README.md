@@ -71,28 +71,15 @@ Now we tell `sqlite_orm` library about schema and provide database filename. We 
 using namespace sqlite_orm;
 auto storage = make_storage("db.sqlite",
                             make_table("users",
-                                       make_column("id",
-                                                   &User::id,
-                                                   autoincrement(),
-                                                   primary_key()),
-                                       make_column("first_name",
-                                                   &User::firstName),
-                                       make_column("last_name",
-                                                   &User::lastName),
-                                       make_column("birth_date",
-                                                   &User::birthDate),
-                                       make_column("image_url",
-                                                   &User::imageUrl),
-                                       make_column("type_id",
-                                                   &User::typeId)),
+                                       make_column("id", &User::id, autoincrement(), primary_key()),
+                                       make_column("first_name", &User::firstName),
+                                       make_column("last_name", &User::lastName),
+                                       make_column("birth_date", &User::birthDate),
+                                       make_column("image_url", &User::imageUrl),
+                                       make_column("type_id", &User::typeId)),
                             make_table("user_types",
-                                       make_column("id",
-                                                   &UserType::id,
-                                                   autoincrement(),
-                                                   primary_key()),
-                                       make_column("name",
-                                                   &UserType::name,
-                                                   default_value("name_placeholder"))));
+                                       make_column("id", &UserType::id, autoincrement(), primary_key()),
+                                       make_column("name", &UserType::name, default_value("name_placeholder"))));
 ```
 
 Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like ~~`not_null`~~ (deduced from type), `primary_key`, `autoincrement`, `default_value` or `unique`(order isn't important).
@@ -131,7 +118,7 @@ try{
 }
 ```
 
-Probably you may not like throwing exceptions. Me too. Exception `not_found_exception` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
+Probably you may not like throwing exceptions. Me too. Exception `std::system_error` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
 
 ```c++
 if(auto user = storage.get_no_throw<User>(insertedId)){
