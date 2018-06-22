@@ -32,6 +32,7 @@ namespace sqlite_orm {
         table_has_no_primary_key_column,
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
+        object_has_too_many_fields,
     };
     
 }
@@ -7749,9 +7750,10 @@ namespace sqlite_orm {
                 }
                 return res;
             }
-            
+
+        protected:
             template<class It>
-            void insert_range(It from, It to) {
+            void insert_range_internal(It from, It to) {
                 using O = typename std::iterator_traits<It>::value_type;
                 this->assert_mapped_type<O>();
                 if(from == to) {
@@ -7830,7 +7832,47 @@ namespace sqlite_orm {
                     throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
-            
+
+        public:
+
+            template<class It>
+            void insert_range(It from, It to) {
+                using O = typename std::iterator_traits<It>::value_type;
+                this->assert_mapped_type<O>();
+                if(from == to) {
+                    return;
+                }
+
+                auto connection = this->get_or_create_connection();
+                auto &impl = get_impl<O>();
+
+                std::vector<std::string> columnNames;
+                impl.table.for_each_column([&columnNames] (auto c) {
+                    if(!c.template has<constraints::primary_key_t<>>()) {
+                        columnNames.emplace_back(c.name);
+                    }
+                });
+
+                // Get sqlite SQLITE_MAX_VARIABLE_NUMBER
+                int max_variables = sqlite3_limit(connection->get_db(), SQLITE_LIMIT_VARIABLE_NUMBER, 100);
+                sqlite3_limit(connection->get_db(), SQLITE_LIMIT_VARIABLE_NUMBER, -1);
+
+                // Do inserts in manageable blocks
+                int max_inserts = max_variables / columnNames.size();
+                if(max_inserts == 0)
+                    throw std::system_error(std::make_error_code(orm_error_code::object_has_too_many_fields));
+                auto it = from;
+                while (it != to)
+                {
+                    auto it2 = it;
+                    for(int i=0; i<max_inserts && it2 != to; i++)
+                        it2 ++;
+                    insert_range_internal(it, it2);
+                    it = it2;
+                }
+
+            }
+
             void drop_index(const std::string &indexName) {
                 auto connection = this->get_or_create_connection();
                 std::stringstream ss;
