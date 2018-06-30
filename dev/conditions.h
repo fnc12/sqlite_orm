@@ -333,7 +333,7 @@ namespace sqlite_orm {
             L l;    //  left expression..
             std::vector<E> values;       //  values..
             
-            in_t(L l_, std::vector<E> values_): l(l_), values(values_) {}
+            in_t(L l_, std::vector<E> values_): l(l_), values(std::move(values_)) {}
             
             negated_condition_t<self> operator!() const {
                 return {*this};
