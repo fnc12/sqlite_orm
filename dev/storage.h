@@ -39,6 +39,7 @@
 #include "sync_schema_result.h"
 #include "table_info.h"
 #include "storage_impl.h"
+#include "transaction_guard.h"
 
 namespace sqlite_orm {
     
@@ -193,55 +194,9 @@ namespace sqlite_orm {
                 }
             };
             
-            struct transaction_guard_t {
-                using storage_type = storage_t<Ts...>;
-                
-                /**
-                 *  This is a public lever to tell a guard what it must do in its destructor
-                 *  if `gotta_fire` is true
-                 */
-                bool commit_on_destroy = false;
-                
-                transaction_guard_t(storage_type &s): storage(s) {}
-                
-                ~transaction_guard_t() {
-                    if(this->gotta_fire){
-                        if(!this->commit_on_destroy){
-                            this->storage.rollback();
-                        }else{
-                            this->storage.commit();
-                        }
-                    }
-                }
-                
-                /**
-                 *  Call `COMMIT` explicitly. After this call
-                 *  guard will not call `COMMIT` or `ROLLBACK`
-                 *  in its destructor.
-                 */
-                void commit() {
-                    this->storage.commit();
-                    this->gotta_fire = false;
-                }
-                
-                /**
-                 *  Call `ROLLBACK` explicitly. After this call
-                 *  guard will not call `COMMIT` or `ROLLBACK`
-                 *  in its destructor.
-                 */
-                void rollback() {
-                    this->storage.rollback();
-                    this->gotta_fire = false;
-                }
-                
-            protected:
-                storage_type &storage;
-                bool gotta_fire = true;
-            };
-            
             std::function<void(sqlite3*)> on_open;
             
-            transaction_guard_t transaction_guard() {
+            transaction_guard_t<storage_type> transaction_guard() {
                 this->begin_transaction();
                 return {*this};
             }
@@ -489,8 +444,8 @@ namespace sqlite_orm {
                 return connection;
             }
             
-            template<class O, class T, class ...Op>
-            std::string serialize_column_schema(internal::column_t<O, T, Op...> c) {
+            template<class O, class T, class G, class S, class ...Op>
+            std::string serialize_column_schema(internal::column_t<O, T, G, S, Op...> c) {
                 std::stringstream ss;
                 ss << "'" << c.name << "' ";
                 using field_type = typename decltype(c)::field_type;
@@ -2224,13 +2179,13 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with max value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args>
-            std::shared_ptr<F> max(F O::*m, Args&& ...args) {
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            std::shared_ptr<Ret> max(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                std::shared_ptr<F> res;
+                std::shared_ptr<Ret> res;
                 std::stringstream ss;
                 ss << "SELECT " << static_cast<std::string>(sqlite_orm::max(0)) << "(";
                 auto columnName = this->string_from_expression(m);
@@ -2241,10 +2196,10 @@ namespace sqlite_orm {
                     auto rc = sqlite3_exec(connection->get_db(),
                                            query.c_str(),
                                            [](void *data, int argc, char **argv,char **)->int{
-                                               auto &res = *(std::shared_ptr<F>*)data;
+                                               auto &res = *(std::shared_ptr<Ret>*)data;
                                                if(argc){
                                                    if(argv[0]){
-                                                       res = std::make_shared<F>(row_extractor<F>().extract(argv[0]));
+                                                       res = std::make_shared<Ret>(row_extractor<Ret>().extract(argv[0]));
                                                    }
                                                }
                                                return 0;
@@ -2263,13 +2218,13 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with min value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args>
-            std::shared_ptr<F> min(F O::*m, Args&& ...args) {
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            std::shared_ptr<Ret> min(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                std::shared_ptr<F> res;
+                std::shared_ptr<Ret> res;
                 std::stringstream ss;
                 ss << "SELECT " << static_cast<std::string>(sqlite_orm::min(0)) << "(";
                 auto columnName = this->string_from_expression(m);
@@ -2280,10 +2235,10 @@ namespace sqlite_orm {
                     auto rc = sqlite3_exec(connection->get_db(),
                                            query.c_str(),
                                            [](void *data, int argc, char **argv,char **)->int{
-                                               auto &res = *(std::shared_ptr<F>*)data;
+                                               auto &res = *(std::shared_ptr<Ret>*)data;
                                                if(argc){
                                                    if(argv[0]){
-                                                       res = std::make_shared<F>(row_extractor<F>().extract(argv[0]));
+                                                       res = std::make_shared<Ret>(row_extractor<Ret>().extract(argv[0]));
                                                    }
                                                }
                                                return 0;
@@ -2302,13 +2257,13 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with sum value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args>
-            std::shared_ptr<F> sum(F O::*m, Args&& ...args) {
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            std::shared_ptr<Ret> sum(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                std::shared_ptr<F> res;
+                std::shared_ptr<Ret> res;
                 std::stringstream ss;
                 ss << "SELECT " << static_cast<std::string>(sqlite_orm::sum(0)) << "(";
                 auto columnName = this->string_from_expression(m);
@@ -2319,9 +2274,9 @@ namespace sqlite_orm {
                     auto rc = sqlite3_exec(connection->get_db(),
                                            query.c_str(),
                                            [](void *data, int argc, char **argv, char **)->int{
-                                               auto &res = *(std::shared_ptr<F>*)data;
+                                               auto &res = *(std::shared_ptr<Ret>*)data;
                                                if(argc){
-                                                   res = std::make_shared<F>(row_extractor<F>().extract(argv[0]));
+                                                   res = std::make_shared<Ret>(row_extractor<Ret>().extract(argv[0]));
                                                }
                                                return 0;
                                            }, &res, nullptr);
@@ -2385,7 +2340,7 @@ namespace sqlite_orm {
             /**
              *  Select a single column into std::vector<T>.
              */
-            template<class T, class ...Args, class R = typename internal::column_result_t<T, Ts...>::type>
+            template<class T, class ...Args, class R = typename internal::column_result_t<T>::type>
             std::vector<R> select(T m, Args&& ...args) {
                 auto connection = this->get_or_create_connection();
                 std::stringstream ss;
@@ -2437,7 +2392,7 @@ namespace sqlite_orm {
              *  Select several columns into std::vector<std::tuple<...>>.
              */
             template<class ...Args,
-            class R = std::tuple<typename internal::column_result_t<Args, Ts...>::type...>,
+            class R = std::tuple<typename internal::column_result_t<Args>::type...>,
             class ...Conds
             >
             std::vector<R> select(internal::columns_t<Args...> cols, Conds ...conds) {
@@ -2700,7 +2655,7 @@ namespace sqlite_orm {
                     auto index = 1;
                     cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
                         using column_type = typename std::remove_reference<decltype(m)>::type;
-                        using field_type = typename column_result_t<column_type, Ts...>::type;
+                        using field_type = typename column_result_t<column_type>::type;
                         const field_type *value = impl.table.template get_object_field_pointer<field_type>(o, m);
                         statement_binder<field_type>().bind(stmt, index++, *value);
                     });

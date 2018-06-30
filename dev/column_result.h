@@ -1,11 +1,14 @@
 #pragma once
 
+#include <type_traits>  //  std::enable_if
+
 #include "core_functions.h"
 #include "aggregate_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
 #include "rowid.h"
 #include "alias.h"
+#include "column.h"
 
 namespace sqlite_orm {
     
@@ -20,223 +23,229 @@ namespace sqlite_orm {
          *  T - C++ type
          *  Ts - tables pack from storage. Rarely used. Required in asterisk to define columns mapped for a type
          */
-        template<class T, class ...Ts>
+        template<class T, class SFINAE = void>
         struct column_result_t;
         
-        template<class O, class F, class ...Ts>
-        struct column_result_t<F O::*, Ts...> {
+        template<class O, class F>
+        struct column_result_t<F O::*, typename std::enable_if<std::is_member_pointer<F O::*>::value && !std::is_member_function_pointer<F O::*>::value>::type> {
             using type = F;
         };
         
-        template<class O, class F, class ...Ts>
-        struct column_result_t<const F& (O::*)() const, Ts...> {
-            using type = F;
+        /**
+         *  Common case for all getter types. Getter types are defined in column.h file
+         */
+        template<class T>
+        struct column_result_t<T, typename std::enable_if<is_getter<T>::value>::type> {
+            using type = typename getter_traits<T>::field_type;
         };
         
-        template<class O, class F, class ...Ts>
-        struct column_result_t<void (O::*)(F), Ts...> {
-            using type = F;
+        /**
+         *  Common case for all setter types. Setter types are defined in column.h file
+         */
+        template<class T>
+        struct column_result_t<T, typename std::enable_if<is_setter<T>::value>::type> {
+            using type = typename setter_traits<T>::field_type;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<core_functions::length_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<core_functions::length_t<T>, void> {
             using type = int;
         };
         
 #if SQLITE_VERSION_NUMBER >= 3007016
         
-        template<class ...Args, class ...Ts>
-        struct column_result_t<core_functions::char_t_<Args...>, Ts...> {
+        template<class ...Args>
+        struct column_result_t<core_functions::char_t_<Args...>, void> {
             using type = std::string;
         };
 #endif
         
-        template<class ...Ts>
-        struct column_result_t<core_functions::random_t, Ts...> {
+        template<>
+        struct column_result_t<core_functions::random_t, void> {
             using type = int;
         };
         
-        template<class ...Ts>
-        struct column_result_t<core_functions::changes_t, Ts...> {
+        template<>
+        struct column_result_t<core_functions::changes_t, void> {
             using type = int;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<core_functions::abs_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<core_functions::abs_t<T>, void> {
             using type = std::shared_ptr<double>;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<core_functions::lower_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<core_functions::lower_t<T>, void> {
             using type = std::string;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<core_functions::upper_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<core_functions::upper_t<T>, void> {
             using type = std::string;
         };
         
-        template<class X, class ...Ts>
-        struct column_result_t<core_functions::trim_single_t<X>, Ts...> {
+        template<class X>
+        struct column_result_t<core_functions::trim_single_t<X>, void> {
             using type = std::string;
         };
         
-        template<class X, class Y, class ...Ts>
-        struct column_result_t<core_functions::trim_double_t<X, Y>, Ts...> {
+        template<class X, class Y>
+        struct column_result_t<core_functions::trim_double_t<X, Y>, void> {
             using type = std::string;
         };
         
-        template<class X, class ...Ts>
-        struct column_result_t<core_functions::ltrim_single_t<X>, Ts...> {
+        template<class X>
+        struct column_result_t<core_functions::ltrim_single_t<X>, void> {
             using type = std::string;
         };
         
-        template<class X, class Y, class ...Ts>
-        struct column_result_t<core_functions::ltrim_double_t<X, Y>, Ts...> {
+        template<class X, class Y>
+        struct column_result_t<core_functions::ltrim_double_t<X, Y>, void> {
             using type = std::string;
         };
         
-        template<class X, class ...Ts>
-        struct column_result_t<core_functions::rtrim_single_t<X>, Ts...> {
+        template<class X>
+        struct column_result_t<core_functions::rtrim_single_t<X>, void> {
             using type = std::string;
         };
         
-        template<class X, class Y, class ...Ts>
-        struct column_result_t<core_functions::rtrim_double_t<X, Y>, Ts...> {
+        template<class X, class Y>
+        struct column_result_t<core_functions::rtrim_double_t<X, Y>, void> {
             using type = std::string;
         };
         
-        template<class T, class ...Args, class ...Ts>
-        struct column_result_t<core_functions::date_t<T, Args...>, Ts...> {
+        template<class T, class ...Args>
+        struct column_result_t<core_functions::date_t<T, Args...>, void> {
             using type = std::string;
         };
         
-        template<class T, class ...Args, class ...Ts>
-        struct column_result_t<core_functions::datetime_t<T, Args...>, Ts...> {
+        template<class T, class ...Args>
+        struct column_result_t<core_functions::datetime_t<T, Args...>, void> {
             using type = std::string;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::avg_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<aggregate_functions::avg_t<T>, void> {
             using type = double;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::count_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<aggregate_functions::count_t<T>, void> {
             using type = int;
         };
         
-        template<class ...Ts>
-        struct column_result_t<aggregate_functions::count_asterisk_t, Ts...> {
+        template<>
+        struct column_result_t<aggregate_functions::count_asterisk_t, void> {
             using type = int;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::sum_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<aggregate_functions::sum_t<T>, void> {
             using type = std::shared_ptr<double>;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::total_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<aggregate_functions::total_t<T>, void> {
             using type = double;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::group_concat_single_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<aggregate_functions::group_concat_single_t<T>, void> {
             using type = std::string;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::group_concat_double_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<aggregate_functions::group_concat_double_t<T>, void> {
             using type = std::string;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::max_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<aggregate_functions::max_t<T>, void> {
             using type = std::shared_ptr<typename column_result_t<T>::type>;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<aggregate_functions::min_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<aggregate_functions::min_t<T>, void> {
             using type = std::shared_ptr<typename column_result_t<T>::type>;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<internal::distinct_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<internal::distinct_t<T>, void> {
             using type = typename column_result_t<T>::type;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<internal::all_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<internal::all_t<T>, void> {
             using type = typename column_result_t<T>::type;
         };
         
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::conc_t<L, R>, Ts...> {
+        template<class L, class R>
+        struct column_result_t<internal::conc_t<L, R>, void> {
             using type = std::string;
         };
         
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::add_t<L, R>, Ts...> {
+        template<class L, class R>
+        struct column_result_t<internal::add_t<L, R>, void> {
             using type = double;
         };
         
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::sub_t<L, R>, Ts...> {
+        template<class L, class R>
+        struct column_result_t<internal::sub_t<L, R>, void> {
             using type = double;
         };
         
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::mul_t<L, R>, Ts...> {
+        template<class L, class R>
+        struct column_result_t<internal::mul_t<L, R>, void> {
             using type = double;
         };
         
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::div_t<L, R>, Ts...> {
+        template<class L, class R>
+        struct column_result_t<internal::div_t<L, R>, void> {
             using type = double;
         };
         
-        template<class L, class R, class ...Ts>
-        struct column_result_t<internal::mod_t<L, R>, Ts...> {
+        template<class L, class R>
+        struct column_result_t<internal::mod_t<L, R>, void> {
             using type = double;
         };
         
-        template<class ...Ts>
-        struct column_result_t<internal::rowid_t, Ts...> {
+        template<>
+        struct column_result_t<internal::rowid_t, void> {
             using type = int64;
         };
         
-        template<class ...Ts>
-        struct column_result_t<internal::oid_t, Ts...> {
+        template<>
+        struct column_result_t<internal::oid_t, void> {
             using type = int64;
         };
         
-        template<class ...Ts>
-        struct column_result_t<internal::_rowid_t, Ts...> {
+        template<>
+        struct column_result_t<internal::_rowid_t, void> {
             using type = int64;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<internal::table_rowid_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<internal::table_rowid_t<T>, void> {
             using type = int64;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<internal::table_oid_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<internal::table_oid_t<T>, void> {
             using type = int64;
         };
         
-        template<class T, class ...Ts>
-        struct column_result_t<internal::table__rowid_t<T>, Ts...> {
+        template<class T>
+        struct column_result_t<internal::table__rowid_t<T>, void> {
             using type = int64;
         };
         
-        template<class T, class C, class ...Ts>
-        struct column_result_t<internal::alias_column_t<T, C>, Ts...> {
+        template<class T, class C>
+        struct column_result_t<internal::alias_column_t<T, C>, void> {
             using type = typename column_result_t<C>::type;
         };
         
-        template<class T, class F, class ...Ts>
-        struct column_result_t<internal::column_pointer<T, F>, Ts...> : column_result_t<F, Ts...> {};
+        template<class T, class F>
+        struct column_result_t<internal::column_pointer<T, F>> : column_result_t<F, void> {};
     }
 }

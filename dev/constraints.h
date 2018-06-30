@@ -165,6 +165,40 @@ namespace sqlite_orm {
                 }
             }
         };
+        
+        template<class T>
+        struct is_constraint : std::false_type {};
+        
+        template<>
+        struct is_constraint<autoincrement_t> : std::true_type {};
+        
+        template<class ...Cs>
+        struct is_constraint<primary_key_t<Cs...>> : std::true_type {};
+        
+        template<>
+        struct is_constraint<unique_t> : std::true_type {};
+        
+        template<class T>
+        struct is_constraint<default_t<T>> : std::true_type {};
+        
+        template<class C, class R>
+        struct is_constraint<foreign_key_t<C, R>> : std::true_type {};
+        
+        template<>
+        struct is_constraint<collate_t> : std::true_type {};
+        
+        template<class ...Args>
+        struct constraints_size;
+        
+        template<>
+        struct constraints_size<> {
+            static constexpr const int value = 0;
+        };
+        
+        template<class H, class ...Args>
+        struct constraints_size<H, Args...> {
+            static constexpr const int value = is_constraint<H>::value + constraints_size<Args...>::value;
+        };
     }
     
 #if SQLITE_VERSION_NUMBER >= 3006019

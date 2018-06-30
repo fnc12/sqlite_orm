@@ -173,7 +173,7 @@ namespace sqlite_orm {
             /**
              *  Returns foreign keys count in table definition
              */
-            int foreign_keys_count(){
+            int foreign_keys_count() {
                 auto res = 0;
                 this->table.for_each_column_with_constraints([&res](auto c){
                     if(internal::is_foreign_key<decltype(c)>::value) {
@@ -187,6 +187,8 @@ namespace sqlite_orm {
             
             /**
              *  Is used to get column name by member pointer to a base class.
+             *  Main difference between `column_name` and `column_name_simple` is that
+             *  `column_name` has SFINAE check for type equality but `column_name_simple` has not.
              */
             template<class O, class F>
             std::string column_name_simple(F O::*m) {
@@ -196,16 +198,16 @@ namespace sqlite_orm {
             /**
              *  Same thing as above for getter.
              */
-            template<class O, class F>
-            std::string column_name_simple(const F& (O::*g)() const) {
+            template<class T, typename std::enable_if<is_getter<T>::value>::type>
+            std::string column_name_simple(T g) {
                 return this->table.find_column_name(g);
             }
             
             /**
              *  Same thing as above for setter.
              */
-            template<class O, class F>
-            std::string column_name_simple(void (O::*s)(F)) {
+            template<class T, typename std::enable_if<is_setter<T>::value>::type>
+            std::string column_name_simple(T s) {
                 return this->table.find_column_name(s);
             }
             
