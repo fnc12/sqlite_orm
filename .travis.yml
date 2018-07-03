@@ -67,3 +67,5 @@ script:
   - ./a.out
   - clang++ -std=c++1y examples/natural_join.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
+  - clang++ -std=c++1y examples/union.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
