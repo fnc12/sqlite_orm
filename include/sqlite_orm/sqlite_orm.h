@@ -213,9 +213,14 @@ namespace sqlite_orm {
         struct iterator {
             
             template<class L>
-            void operator()(std::tuple<Args...> &t, L l) {
-                l(std::get<N>(t));
-                iterator<N - 1, Args...>()(t, l);
+            void operator()(const std::tuple<Args...> &t, L l, bool reverse = true) {
+                if(reverse){
+                    l(std::get<N>(t));
+                    iterator<N - 1, Args...>()(t, l, reverse);
+                }else{
+                    iterator<N - 1, Args...>()(t, l, reverse);
+                    l(std::get<N>(t));
+                }
             }
         };
         
@@ -223,7 +228,7 @@ namespace sqlite_orm {
         struct iterator<0, Args...>{
             
             template<class L>
-            void operator()(std::tuple<Args...> &t, L l) {
+            void operator()(const std::tuple<Args...> &t, L l, bool /*reverse*/ = true) {
                 l(std::get<0>(t));
             }
         };
@@ -232,7 +237,7 @@ namespace sqlite_orm {
         struct iterator<N> {
             
             template<class L>
-            void operator()(std::tuple<> &, L) {
+            void operator()(const std::tuple<> &, L, bool /*reverse*/ = true) {
                 //..
             }
         };
@@ -1389,6 +1394,8 @@ namespace sqlite_orm {
             T expr;
             std::string name;
             
+            named_collate() = default;
+            
             named_collate(T expr_, std::string name_): expr(expr_), name(std::move(name_)) {}
             
             operator std::string () const {
@@ -2450,6 +2457,8 @@ namespace sqlite_orm {
         struct length_t : public core_function_t {
             T t;
             
+            length_t() = default;
+            
             length_t(T t_): t(t_) {}
             
             operator std::string() const {
@@ -2463,6 +2472,8 @@ namespace sqlite_orm {
         template<class T>
         struct abs_t : public core_function_t {
             T t;
+            
+            abs_t() = default;
             
             abs_t(T t_): t(t_) {}
             
@@ -2478,6 +2489,8 @@ namespace sqlite_orm {
         struct lower_t : public core_function_t {
             T t;
             
+            lower_t() = default;
+            
             lower_t(T t_): t(t_) {}
             
             operator std::string() const {
@@ -2491,6 +2504,8 @@ namespace sqlite_orm {
         template<class T>
         struct upper_t : public core_function_t {
             T t;
+            
+            upper_t() = default;
             
             upper_t(T t_): t(t_) {}
             
@@ -2516,6 +2531,8 @@ namespace sqlite_orm {
         struct trim_single_t : public core_function_t {
             X x;
             
+            trim_single_t() = default;
+            
             trim_single_t(X x_): x(x_) {}
             
             operator std::string() const {
@@ -2531,6 +2548,8 @@ namespace sqlite_orm {
             X x;
             Y y;
             
+            trim_double_t() = default;
+            
             trim_double_t(X x_, Y y_): x(x_), y(y_) {}
             
             operator std::string() const {
@@ -2544,6 +2563,8 @@ namespace sqlite_orm {
         template<class X>
         struct ltrim_single_t : public core_function_t {
             X x;
+            
+            ltrim_single_t() = default;
             
             ltrim_single_t(X x_): x(x_) {}
             
@@ -2560,6 +2581,8 @@ namespace sqlite_orm {
             X x;
             Y y;
             
+            ltrim_double_t() = default;
+            
             ltrim_double_t(X x_, Y y_): x(x_), y(y_) {}
             
             operator std::string() const {
@@ -2573,6 +2596,8 @@ namespace sqlite_orm {
         template<class X>
         struct rtrim_single_t : public core_function_t {
             X x;
+            
+            rtrim_single_t() = default;
             
             rtrim_single_t(X x_): x(x_) {}
             
@@ -2588,6 +2613,8 @@ namespace sqlite_orm {
         struct rtrim_double_t : public core_function_t {
             X x;
             Y y;
+            
+            rtrim_double_t() = default;
             
             rtrim_double_t(X x_, Y y_): x(x_), y(y_) {}
             
@@ -2608,6 +2635,8 @@ namespace sqlite_orm {
             using args_type = std::tuple<Args...>;
             
             args_type args;
+            
+            char_t_() = default;
             
             char_t_(args_type args_): args(args_) {}
             
@@ -2631,6 +2660,8 @@ namespace sqlite_orm {
             T timestring;
             modifiers_type modifiers;
             
+            date_t() = default;
+            
             date_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
             
             operator std::string() const {
@@ -2644,6 +2675,8 @@ namespace sqlite_orm {
             
             T timestring;
             modifiers_type modifiers;
+            
+            datetime_t() = default;
             
             datetime_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
             
@@ -2955,6 +2988,9 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        /**
+         *  DISCTINCT generic container.
+         */
         template<class T>
         struct distinct_t {
             T t;
@@ -2964,6 +3000,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  ALL generic container.
+         */
         template<class T>
         struct all_t {
             T t;
@@ -2978,11 +3017,11 @@ namespace sqlite_orm {
             bool distinct = false;
             
             template<class L>
-            void for_each(L) {
+            void for_each(L) const {
                 //..
             }
             
-            int count() {
+            int count() const {
                 return 0;
             }
         };
@@ -2994,12 +3033,12 @@ namespace sqlite_orm {
             columns_t(decltype(m) m_, Args&& ...args): super(std::forward<Args>(args)...), m(m_) {}
             
             template<class L>
-            void for_each(L l) {
+            void for_each(L l) const {
                 l(this->m);
                 this->super::for_each(l);
             }
             
-            int count() {
+            int count() const {
                 return 1 + this->super::count();
             }
         private:
@@ -3048,6 +3087,56 @@ namespace sqlite_orm {
             
             field_type field;
         };
+        
+        /**
+         *  Subselect object type.
+         */
+        template<class T, class ...Args>
+        struct select_t {
+            using return_type = T;
+            using conditions_type = std::tuple<Args...>;
+            
+            return_type col;
+            conditions_type conditions;
+        };
+        
+        /**
+         *  Union object type.
+         */
+        template<class L, class R>
+        struct union_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type left;
+            right_type right;
+            bool all = false;
+            
+            union_t(left_type l, right_type r, decltype(all) all_): left(std::move(l)), right(std::move(r)), all(all_) {}
+            
+            union_t(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+
+            operator std::string() const {
+                if(!this->all){
+                    return "UNION";
+                }else{
+                    return "UNION ALL";
+                }
+            }
+        };
+        
+        /**
+         *  Generic way to get DISTINCT value from any type.
+         */
+        template<class T>
+        bool get_distinct(const T &t) {
+            return false;
+        }
+        
+        template<class ...Args>
+        bool get_distinct(const columns_t<Args...> &cols) {
+            return cols.distinct;
+        }
     }
     
     template<class T>
@@ -3066,6 +3155,10 @@ namespace sqlite_orm {
         return cols;
     }
     
+    /**
+     *  SET keyword used in UPDATE ... SET queries.
+     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
+     */
     template<class ...Args>
     internal::set_t<Args...> set(Args&& ...args) {
         return {std::forward<Args>(args)...};
@@ -3083,8 +3176,35 @@ namespace sqlite_orm {
      */
     template<class T, class F>
     internal::column_pointer<T, F> column(F f) {
-        using ret_t = internal::column_pointer<T, F>;
-        return ret_t{f};
+        return {f};
+    }
+    
+    /**
+     *  Public function for subselect query. Is useful in UNION queries.
+     */
+    template<class T, class ...Args>
+    internal::select_t<T, Args...> select(T t, Args ...args) {
+        return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
+    }
+    
+    /**
+     *  Public function for UNION operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
+    template<class L, class R>
+    internal::union_t<L, R> union_(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    /**
+     *  Public function for UNION ALL operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
+    template<class L, class R>
+    internal::union_t<L, R> union_all(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs), true};
     }
 }
 #pragma once
@@ -3860,7 +3980,8 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::enable_if
+#include <type_traits>  //  std::enable_if, std::is_same
+#include <tuple>    //  std::tuple
 
 // #include "core_functions.h"
 
@@ -4038,82 +4159,98 @@ namespace sqlite_orm {
         };
         
         template<class T>
-        struct column_result_t<internal::distinct_t<T>, void> {
+        struct column_result_t<distinct_t<T>, void> {
             using type = typename column_result_t<T>::type;
         };
         
         template<class T>
-        struct column_result_t<internal::all_t<T>, void> {
+        struct column_result_t<all_t<T>, void> {
             using type = typename column_result_t<T>::type;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::conc_t<L, R>, void> {
+        struct column_result_t<conc_t<L, R>, void> {
             using type = std::string;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::add_t<L, R>, void> {
+        struct column_result_t<add_t<L, R>, void> {
             using type = double;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::sub_t<L, R>, void> {
+        struct column_result_t<sub_t<L, R>, void> {
             using type = double;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::mul_t<L, R>, void> {
+        struct column_result_t<mul_t<L, R>, void> {
             using type = double;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::div_t<L, R>, void> {
+        struct column_result_t<div_t<L, R>, void> {
             using type = double;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::mod_t<L, R>, void> {
+        struct column_result_t<mod_t<L, R>, void> {
             using type = double;
         };
         
         template<>
-        struct column_result_t<internal::rowid_t, void> {
+        struct column_result_t<rowid_t, void> {
             using type = int64;
         };
         
         template<>
-        struct column_result_t<internal::oid_t, void> {
+        struct column_result_t<oid_t, void> {
             using type = int64;
         };
         
         template<>
-        struct column_result_t<internal::_rowid_t, void> {
+        struct column_result_t<_rowid_t, void> {
             using type = int64;
         };
         
         template<class T>
-        struct column_result_t<internal::table_rowid_t<T>, void> {
+        struct column_result_t<table_rowid_t<T>, void> {
             using type = int64;
         };
         
         template<class T>
-        struct column_result_t<internal::table_oid_t<T>, void> {
+        struct column_result_t<table_oid_t<T>, void> {
             using type = int64;
         };
         
         template<class T>
-        struct column_result_t<internal::table__rowid_t<T>, void> {
+        struct column_result_t<table__rowid_t<T>, void> {
             using type = int64;
         };
         
         template<class T, class C>
-        struct column_result_t<internal::alias_column_t<T, C>, void> {
+        struct column_result_t<alias_column_t<T, C>, void> {
             using type = typename column_result_t<C>::type;
         };
         
         template<class T, class F>
-        struct column_result_t<internal::column_pointer<T, F>> : column_result_t<F, void> {};
+        struct column_result_t<column_pointer<T, F>> : column_result_t<F, void> {};
+        
+        template<class ...Args>
+        struct column_result_t<columns_t<Args...>, void> {
+            using type = std::tuple<typename column_result_t<Args>::type...>;
+        };
+        
+        template<class T, class ...Args>
+        struct column_result_t<select_t<T, Args...>> : column_result_t<T, void> {};
+        
+        template<class L, class R>
+        struct column_result_t<union_t<L, R>, void> {
+            using left_type = typename column_result_t<L>::type;
+            using right_type = typename column_result_t<R>::type;
+            static_assert(std::is_same<left_type, right_type>::value, "Union subselect queries must return same types");
+            using type = left_type;
+        };
     }
 }
 #pragma once
@@ -4882,12 +5019,12 @@ namespace sqlite_orm {
             }
             
             template<class O, class HH = typename H::object_type>
-            std::string dump(const O &o, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-                return this->super::dump(o, db, nullptr);
+            std::string dump(const O &o, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+                return this->super::dump(o, nullptr);
             }
             
             template<class O, class HH = typename H::object_type>
-            std::string dump(const O &o, sqlite3 *, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string dump(const O &o, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
                 std::stringstream ss;
                 ss << "{ ";
                 std::vector<std::pair<std::string, std::string>> pairs;
@@ -5136,7 +5273,7 @@ namespace sqlite_orm {
 #include <memory>   //  std::shared_ptr, std::make_shared
 #include <string>   //  std::string
 #include <sqlite3.h>
-#include <type_traits>  //  std::remove_reference, std::is_base_of
+#include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay
 #include <cstddef>  //  std::ptrdiff_t
 #include <iterator> //  std::input_iterator_tag, std::iterator_traits, std::distance
 #include <system_error> //  std::system_error
@@ -5818,7 +5955,7 @@ namespace sqlite_orm {
             }
             
             template<class T, class C>
-            std::string string_from_expression(alias_column_t<T, C> &als, bool noTableName = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const alias_column_t<T, C> &als, bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << T::get() << "'.";
@@ -5857,40 +5994,20 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            template<class F, class O>
-            std::string string_from_expression(const F* (O::*g)() const, bool noTableName = false, bool /*escape*/ = false) {
-                std::stringstream ss;
-                if(!noTableName){
-                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
-                }
-                ss << "\"" << this->impl.column_name(g) << "\"";
-                return ss.str();
-            }
-            
-            template<class F, class O>
-            std::string string_from_expression(void (O::*s)(F), bool noTableName = false, bool /*escape*/ = false) {
-                std::stringstream ss;
-                if(!noTableName){
-                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
-                }
-                ss << "\"" << this->impl.column_name(s) << "\"";
-                return ss.str();
-            }
-            
-            std::string string_from_expression(internal::rowid_t &rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const rowid_t &rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 return static_cast<std::string>(rid);
             }
             
-            std::string string_from_expression(internal::oid_t &rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const oid_t &rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 return static_cast<std::string>(rid);
             }
             
-            std::string string_from_expression(internal::_rowid_t &rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const _rowid_t &rid, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 return static_cast<std::string>(rid);
             }
             
             template<class O>
-            std::string string_from_expression(internal::table_rowid_t<O> &rid, bool noTableName = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const table_rowid_t<O> &rid, bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << this->impl.template find_table_name<O>() << "'.";
@@ -5900,7 +6017,7 @@ namespace sqlite_orm {
             }
             
             template<class O>
-            std::string string_from_expression(internal::table_oid_t<O> &rid, bool noTableName = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const table_oid_t<O> &rid, bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << this->impl.template find_table_name<O>() << "'.";
@@ -5910,7 +6027,7 @@ namespace sqlite_orm {
             }
             
             template<class O>
-            std::string string_from_expression(internal::table__rowid_t<O> &rid, bool noTableName = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const table__rowid_t<O> &rid, bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << this->impl.template find_table_name<O>() << "'.";
@@ -5920,7 +6037,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(aggregate_functions::group_concat_double_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::group_concat_double_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 auto expr2 = this->string_from_expression(f.y);
@@ -5929,7 +6046,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(aggregate_functions::group_concat_single_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::group_concat_single_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -5937,7 +6054,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R>
-            std::string string_from_expression(internal::conc_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const conc_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.l);
                 auto rhs = this->string_from_expression(f.r);
@@ -5946,7 +6063,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R>
-            std::string string_from_expression(internal::add_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const add_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.l);
                 auto rhs = this->string_from_expression(f.r);
@@ -5955,7 +6072,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R>
-            std::string string_from_expression(internal::sub_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const sub_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.l);
                 auto rhs = this->string_from_expression(f.r);
@@ -5964,7 +6081,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R>
-            std::string string_from_expression(internal::mul_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const mul_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.l);
                 auto rhs = this->string_from_expression(f.r);
@@ -5973,7 +6090,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R>
-            std::string string_from_expression(internal::div_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const div_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.l);
                 auto rhs = this->string_from_expression(f.r);
@@ -5982,7 +6099,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R>
-            std::string string_from_expression(internal::mod_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const mod_t<L, R> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.l);
                 auto rhs = this->string_from_expression(f.r);
@@ -5991,7 +6108,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(aggregate_functions::min_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::min_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -5999,7 +6116,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(aggregate_functions::max_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::max_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -6007,7 +6124,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(aggregate_functions::total_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::total_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -6015,21 +6132,21 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(aggregate_functions::sum_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::sum_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
                 return ss.str();
             }
             
-            std::string string_from_expression(aggregate_functions::count_asterisk_t &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::count_asterisk_t &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(*) ";
                 return ss.str();
             }
             
             template<class T>
-            std::string string_from_expression(aggregate_functions::count_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::count_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -6037,7 +6154,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(aggregate_functions::avg_t<T> &a, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::avg_t<T> &a, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(a.t);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
@@ -6045,7 +6162,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(internal::distinct_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const distinct_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -6053,7 +6170,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(internal::all_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const all_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.t);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -6061,7 +6178,7 @@ namespace sqlite_orm {
             }
             
             template<class X, class Y>
-            std::string string_from_expression(core_functions::rtrim_double_t<X, Y> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::rtrim_double_t<X, Y> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.x);
                 auto expr2 = this->string_from_expression(f.y);
@@ -6070,7 +6187,7 @@ namespace sqlite_orm {
             }
             
             template<class X>
-            std::string string_from_expression(core_functions::rtrim_single_t<X> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::rtrim_single_t<X> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.x);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -6078,7 +6195,7 @@ namespace sqlite_orm {
             }
             
             template<class X, class Y>
-            std::string string_from_expression(core_functions::ltrim_double_t<X, Y> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::ltrim_double_t<X, Y> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.x);
                 auto expr2 = this->string_from_expression(f.y);
@@ -6087,7 +6204,7 @@ namespace sqlite_orm {
             }
             
             template<class X>
-            std::string string_from_expression(core_functions::ltrim_single_t<X> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::ltrim_single_t<X> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.x);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
@@ -6095,7 +6212,7 @@ namespace sqlite_orm {
             }
             
             template<class X, class Y>
-            std::string string_from_expression(core_functions::trim_double_t<X, Y> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::trim_double_t<X, Y> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.x);
                 auto expr2 = this->string_from_expression(f.y);
@@ -6104,21 +6221,21 @@ namespace sqlite_orm {
             }
             
             template<class X>
-            std::string string_from_expression(core_functions::trim_single_t<X> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::trim_single_t<X> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(f.x);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
                 return ss.str();
             }
             
-            std::string string_from_expression(core_functions::changes_t &ch, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::changes_t &ch, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(ch) << "() ";
                 return ss.str();
             }
             
             template<class T>
-            std::string string_from_expression(core_functions::length_t<T> &len, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::length_t<T> &len, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(len.t);
                 ss << static_cast<std::string>(len) << "(" << expr << ") ";
@@ -6126,7 +6243,7 @@ namespace sqlite_orm {
             }
             
             template<class T, class ...Args>
-            std::string string_from_expression(core_functions::datetime_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::datetime_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring);
                 using tuple_t = std::tuple<Args...>;
@@ -6138,7 +6255,7 @@ namespace sqlite_orm {
             }
             
             template<class T, class ...Args>
-            std::string string_from_expression(core_functions::date_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::date_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring);
                 using tuple_t = std::tuple<Args...>;
@@ -6149,7 +6266,7 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            std::string string_from_expression(core_functions::random_t &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::random_t &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "() ";
                 return ss.str();
@@ -6158,7 +6275,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3007016
             
             template<class ...Args>
-            std::string string_from_expression(core_functions::char_t_<Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::char_t_<Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 using tuple_t = decltype(f.args);
                 std::vector<std::string> args;
@@ -6183,7 +6300,7 @@ namespace sqlite_orm {
 #endif
             
             template<class T>
-            std::string string_from_expression(core_functions::upper_t<T> &a, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::upper_t<T> &a, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(a.t);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
@@ -6191,7 +6308,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(core_functions::lower_t<T> &a, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::lower_t<T> &a, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(a.t);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
@@ -6199,7 +6316,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(core_functions::abs_t<T> &a, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const core_functions::abs_t<T> &a, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(a.t);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
@@ -6218,21 +6335,92 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string process_where(conditions::is_null_t<T> &c) {
+            std::vector<std::string> get_column_names(const T &t) {
+                auto columnName = this->string_from_expression(t);
+                if(columnName.length()){
+                    return {columnName};
+                }else{
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                }
+            }
+            
+            template<class ...Args>
+            std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) {
+                std::vector<std::string> columnNames;
+                columnNames.reserve(cols.count());
+                cols.for_each([&columnNames, this](auto &m) {
+                    auto columnName = this->string_from_expression(m);
+                    if(columnName.length()){
+                        columnNames.push_back(columnName);
+                    }else{
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    }
+                });
+                return columnNames;
+            }
+            
+            /**
+             *  Takes select_t object and returns SELECT query string
+             */
+            template<class T, class ...Args>
+            std::string string_from_expression(const internal::select_t<T, Args...> &sel, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                ss << "SELECT ";
+                if(get_distinct(sel.col)) {
+                    ss << static_cast<std::string>(distinct(0)) << " ";
+                }
+                auto columnNames = this->get_column_names(sel.col);
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << columnNames[i];
+                    if(i < columnNames.size() - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                auto tableNamesSet = this->parse_table_names(sel.col);
+                internal::join_iterator<Args...>()([&tableNamesSet, this](auto c){
+                    using original_join_type = typename decltype(c)::type;
+                    using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
+                    auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
+                    auto tableAliasString = alias_exractor<original_join_type>::get();
+                    if(!tableAliasString.length()){
+                        tableNamesSet.erase(crossJoinedTableName);
+                    }
+                });
+                if(tableNamesSet.size()){
+                    ss << "FROM ";
+                    std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
+                    for(size_t i = 0; i < tableNames.size(); ++i) {
+                        ss << " '" << tableNames[i] << "' ";
+                        if(int(i) < int(tableNames.size()) - 1) {
+                            ss << ",";
+                        }
+                        ss << " ";
+                    }
+                }
+                using tuple_t = typename std::decay<decltype(sel)>::type::conditions_type;
+                tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(sel.conditions, [&ss, this](auto &v){
+                    this->process_single_condition(ss, v);
+                }, false);
+                return ss.str();
+            }
+             
+            template<class T>
+            std::string process_where(const conditions::is_null_t<T> &c) {
                 std::stringstream ss;
                 ss << this->string_from_expression(c.t) << " " << static_cast<std::string>(c) << " ";
                 return ss.str();
             }
             
             template<class T>
-            std::string process_where(conditions::is_not_null_t<T> &c) {
+            std::string process_where(const conditions::is_not_null_t<T> &c) {
                 std::stringstream ss;
                 ss << this->string_from_expression(c.t) << " " << static_cast<std::string>(c) << " ";
                 return ss.str();
             }
             
             template<class C>
-            std::string process_where(conditions::negated_condition_t<C> &c) {
+            std::string process_where(const conditions::negated_condition_t<C> &c) {
                 std::stringstream ss;
                 ss << " " << static_cast<std::string>(c) << " ";
                 auto cString = this->process_where(c.c);
@@ -6241,14 +6429,14 @@ namespace sqlite_orm {
             }
             
             template<class L, class R>
-            std::string process_where(conditions::and_condition_t<L, R> &c) {
+            std::string process_where(const conditions::and_condition_t<L, R> &c) {
                 std::stringstream ss;
                 ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
                 return ss.str();
             }
             
             template<class L, class R>
-            std::string process_where(conditions::or_condition_t<L, R> &c) {
+            std::string process_where(const conditions::or_condition_t<L, R> &c) {
                 std::stringstream ss;
                 ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
                 return ss.str();
@@ -6258,7 +6446,7 @@ namespace sqlite_orm {
              *  Common case. Is used to process binary conditions like is_equal, not_equal
              */
             template<class C>
-            std::string process_where(C c) {
+            std::string process_where(const C &c) {
                 auto leftString = this->string_from_expression(c.l, false, true);
                 auto rightString = this->string_from_expression(c.r, false, true);
                 std::stringstream ss;
@@ -6267,19 +6455,19 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string process_where(conditions::named_collate<T> &col) {
+            std::string process_where(const conditions::named_collate<T> &col) {
                 auto res = this->process_where(col.expr);
                 return res + " " + static_cast<std::string>(col);
             }
             
             template<class T>
-            std::string process_where(conditions::collate_t<T> &col) {
+            std::string process_where(const conditions::collate_t<T> &col) {
                 auto res = this->process_where(col.expr);
                 return res + " " + static_cast<std::string>(col);
             }
             
             template<class L, class E>
-            std::string process_where(conditions::in_t<L, E> &inCondition) {
+            std::string process_where(const conditions::in_t<L, E> &inCondition) {
                 std::stringstream ss;
                 auto leftString = this->string_from_expression(inCondition.l);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " (";
@@ -6295,14 +6483,14 @@ namespace sqlite_orm {
             }
             
             template<class A, class T>
-            std::string process_where(conditions::like_t<A, T> &l) {
+            std::string process_where(const conditions::like_t<A, T> &l) {
                 std::stringstream ss;
                 ss << this->string_from_expression(l.a) << " " << static_cast<std::string>(l) << " " << this->string_from_expression(l.t) << " ";
                 return ss.str();
             }
             
             template<class A, class T>
-            std::string process_where(conditions::between_t<A, T> &bw) {
+            std::string process_where(const conditions::between_t<A, T> &bw) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr);
                 ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1) << " AND " << this->string_from_expression(bw.b2) << " ";
@@ -6310,7 +6498,7 @@ namespace sqlite_orm {
             }
             
             template<class O>
-            std::string process_order_by(conditions::order_by_t<O> &orderBy) {
+            std::string process_order_by(const conditions::order_by_t<O> &orderBy) {
                 std::stringstream ss;
                 auto columnName = this->string_from_expression(orderBy.o);
                 ss << columnName << " ";
@@ -6329,16 +6517,16 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            void process_join_constraint(std::stringstream &ss, conditions::on_t<T> &t) {
+            void process_join_constraint(std::stringstream &ss, const conditions::on_t<T> &t) {
                 ss << static_cast<std::string>(t) << " " << this->process_where(t.t) << " ";
             }
             
             template<class F, class O>
-            void process_join_constraint(std::stringstream &ss, conditions::using_t<F, O> &u) {
+            void process_join_constraint(std::stringstream &ss, const conditions::using_t<F, O> &u) {
                 ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " ) ";
             }
             
-            void process_single_condition(std::stringstream &ss, conditions::limit_t limt) {
+            void process_single_condition(std::stringstream &ss, const conditions::limit_t &limt) {
                 ss << static_cast<std::string>(limt) << " ";
                 if(limt.has_offset) {
                     if(limt.offset_is_implicit){
@@ -6353,19 +6541,19 @@ namespace sqlite_orm {
             }
             
             template<class O>
-            void process_single_condition(std::stringstream &ss, conditions::cross_join_t<O> c) {
+            void process_single_condition(std::stringstream &ss, const conditions::cross_join_t<O> &c) {
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.template find_table_name<O>() << "' ";
             }
             
             template<class O>
-            void process_single_condition(std::stringstream &ss, conditions::natural_join_t<O> c) {
+            void process_single_condition(std::stringstream &ss, const conditions::natural_join_t<O> &c) {
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.template find_table_name<O>() << "' ";
             }
             
             template<class T, class O>
-            void process_single_condition(std::stringstream &ss, conditions::inner_join_t<T, O> l) {
+            void process_single_condition(std::stringstream &ss, const conditions::inner_join_t<T, O> &l) {
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_exractor<T>::get();
                 ss << " '" << this->impl.template find_table_name<typename mapped_type_proxy<T>::type>() << "' ";
@@ -6376,42 +6564,42 @@ namespace sqlite_orm {
             }
             
             template<class T, class O>
-            void process_single_condition(std::stringstream &ss, conditions::left_outer_join_t<T, O> l) {
+            void process_single_condition(std::stringstream &ss, const conditions::left_outer_join_t<T, O> &l) {
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.template find_table_name<T>() << "' ";
                 this->process_join_constraint(ss, l.constraint);
             }
             
             template<class T, class O>
-            void process_single_condition(std::stringstream &ss, conditions::left_join_t<T, O> l) {
+            void process_single_condition(std::stringstream &ss, const conditions::left_join_t<T, O> &l) {
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.template find_table_name<T>() << "' ";
                 this->process_join_constraint(ss, l.constraint);
             }
             
             template<class T, class O>
-            void process_single_condition(std::stringstream &ss, conditions::join_t<T, O> l) {
+            void process_single_condition(std::stringstream &ss, const conditions::join_t<T, O> &l) {
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.template find_table_name<T>() << "' ";
                 this->process_join_constraint(ss, l.constraint);
             }
             
             template<class C>
-            void process_single_condition(std::stringstream &ss, conditions::where_t<C> w) {
+            void process_single_condition(std::stringstream &ss, const conditions::where_t<C> &w) {
                 ss << static_cast<std::string>(w) << " ";
                 auto whereString = this->process_where(w.c);
                 ss << "( " << whereString << ") ";
             }
             
             template<class O>
-            void process_single_condition(std::stringstream &ss, conditions::order_by_t<O> orderBy) {
+            void process_single_condition(std::stringstream &ss, const conditions::order_by_t<O> &orderBy) {
                 ss << static_cast<std::string>(orderBy) << " ";
                 auto orderByString = this->process_order_by(orderBy);
                 ss << orderByString << " ";
             }
             
             template<class ...Args>
-            void process_single_condition(std::stringstream &ss, conditions::multi_order_by_t<Args...> orderBy) {
+            void process_single_condition(std::stringstream &ss, const conditions::multi_order_by_t<Args...> &orderBy) {
                 std::vector<std::string> expressions;
                 using tuple_t = std::tuple<Args...>;
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(orderBy.args, [&expressions, this](auto &v){
@@ -6429,7 +6617,7 @@ namespace sqlite_orm {
             }
             
             template<class ...Args>
-            void process_single_condition(std::stringstream &ss, conditions::group_by_t<Args...> groupBy) {
+            void process_single_condition(std::stringstream &ss, const conditions::group_by_t<Args...> &groupBy) {
                 std::vector<std::string> expressions;
                 using tuple_t = std::tuple<Args...>;
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(groupBy.args, [&expressions, this](auto &v){
@@ -6456,7 +6644,7 @@ namespace sqlite_orm {
             
             template<class C, class ...Args>
             void process_conditions(std::stringstream &ss, C c, Args&& ...args) {
-                this->process_single_condition(ss, std::move(c));
+                this->process_single_condition(ss, c);
                 this->process_conditions(ss, std::forward<Args>(args)...);
             }
             
@@ -6764,7 +6952,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(T &) {
+            std::set<std::string> parse_table_name(const T &) {
                 return {};
             }
             
@@ -6774,27 +6962,27 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(aggregate_functions::min_t<T> &f) {
+            std::set<std::string> parse_table_name(const aggregate_functions::min_t<T> &f) {
                 return this->parse_table_name(f.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(aggregate_functions::max_t<T> &f) {
+            std::set<std::string> parse_table_name(const aggregate_functions::max_t<T> &f) {
                 return this->parse_table_name(f.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(aggregate_functions::sum_t<T> &f) {
+            std::set<std::string> parse_table_name(const aggregate_functions::sum_t<T> &f) {
                 return this->parse_table_name(f.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(aggregate_functions::total_t<T> &f) {
+            std::set<std::string> parse_table_name(const aggregate_functions::total_t<T> &f) {
                 return this->parse_table_name(f.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(aggregate_functions::group_concat_double_t<T> &f) {
+            std::set<std::string> parse_table_name(const aggregate_functions::group_concat_double_t<T> &f) {
                 auto res = this->parse_table_name(f.t);
                 auto secondSet = this->parse_table_name(f.y);
                 res.insert(secondSet.begin(), secondSet.end());
@@ -6802,27 +6990,27 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(aggregate_functions::group_concat_single_t<T> &f) {
+            std::set<std::string> parse_table_name(const aggregate_functions::group_concat_single_t<T> &f) {
                 return this->parse_table_name(f.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(aggregate_functions::count_t<T> &f) {
+            std::set<std::string> parse_table_name(const aggregate_functions::count_t<T> &f) {
                 return this->parse_table_name(f.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(aggregate_functions::avg_t<T> &a) {
+            std::set<std::string> parse_table_name(const aggregate_functions::avg_t<T> &a) {
                 return this->parse_table_name(a.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(core_functions::length_t<T> &len) {
+            std::set<std::string> parse_table_name(const core_functions::length_t<T> &len) {
                 return this->parse_table_name(len.t);
             }
             
             template<class T, class ...Args>
-            std::set<std::string> parse_table_name(core_functions::date_t<T, Args...> &f) {
+            std::set<std::string> parse_table_name(const core_functions::date_t<T, Args...> &f) {
                 auto res = this->parse_table_name(f.timestring);
                 using tuple_t = decltype(f.modifiers);
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&res, this](auto &v){
@@ -6833,7 +7021,7 @@ namespace sqlite_orm {
             }
             
             template<class T, class ...Args>
-            std::set<std::string> parse_table_name(core_functions::datetime_t<T, Args...> &f) {
+            std::set<std::string> parse_table_name(const core_functions::datetime_t<T, Args...> &f) {
                 auto res = this->parse_table_name(f.timestring);
                 using tuple_t = decltype(f.modifiers);
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&res, this](auto &v){
@@ -6844,12 +7032,12 @@ namespace sqlite_orm {
             }
             
             template<class X>
-            std::set<std::string> parse_table_name(core_functions::trim_single_t<X> &f) {
+            std::set<std::string> parse_table_name(const core_functions::trim_single_t<X> &f) {
                 return this->parse_table_name(f.x);
             }
             
             template<class X, class Y>
-            std::set<std::string> parse_table_name(core_functions::trim_double_t<X, Y> &f) {
+            std::set<std::string> parse_table_name(const core_functions::trim_double_t<X, Y> &f) {
                 auto res = this->parse_table_name(f.x);
                 auto res2 = this->parse_table_name(f.y);
                 res.insert(res2.begin(), res2.end());
@@ -6857,12 +7045,12 @@ namespace sqlite_orm {
             }
             
             template<class X>
-            std::set<std::string> parse_table_name(core_functions::rtrim_single_t<X> &f) {
+            std::set<std::string> parse_table_name(const core_functions::rtrim_single_t<X> &f) {
                 return this->parse_table_name(f.x);
             }
             
             template<class X, class Y>
-            std::set<std::string> parse_table_name(core_functions::rtrim_double_t<X, Y> &f) {
+            std::set<std::string> parse_table_name(const core_functions::rtrim_double_t<X, Y> &f) {
                 auto res = this->parse_table_name(f.x);
                 auto res2 = this->parse_table_name(f.y);
                 res.insert(res2.begin(), res2.end());
@@ -6870,12 +7058,12 @@ namespace sqlite_orm {
             }
             
             template<class X>
-            std::set<std::string> parse_table_name(core_functions::ltrim_single_t<X> &f) {
+            std::set<std::string> parse_table_name(const core_functions::ltrim_single_t<X> &f) {
                 return this->parse_table_name(f.x);
             }
             
             template<class X, class Y>
-            std::set<std::string> parse_table_name(core_functions::ltrim_double_t<X, Y> &f) {
+            std::set<std::string> parse_table_name(const core_functions::ltrim_double_t<X, Y> &f) {
                 auto res = this->parse_table_name(f.x);
                 auto res2 = this->parse_table_name(f.y);
                 res.insert(res2.begin(), res2.end());
@@ -6885,7 +7073,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3007016
             
             template<class ...Args>
-            std::set<std::string> parse_table_name(core_functions::char_t_<Args...> &f) {
+            std::set<std::string> parse_table_name(const core_functions::char_t_<Args...> &f) {
                 std::set<std::string> res;
                 using tuple_t = decltype(f.args);
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.args, [&res, this](auto &v){
@@ -6897,37 +7085,37 @@ namespace sqlite_orm {
             
 #endif
             
-            std::set<std::string> parse_table_name(core_functions::random_t &) {
+            std::set<std::string> parse_table_name(const core_functions::random_t &) {
                 return {};
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(core_functions::upper_t<T> &a) {
+            std::set<std::string> parse_table_name(const core_functions::upper_t<T> &a) {
                 return this->parse_table_name(a.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(core_functions::lower_t<T> &a) {
+            std::set<std::string> parse_table_name(const core_functions::lower_t<T> &a) {
                 return this->parse_table_name(a.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(core_functions::abs_t<T> &a) {
+            std::set<std::string> parse_table_name(const core_functions::abs_t<T> &a) {
                 return this->parse_table_name(a.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(internal::distinct_t<T> &f) {
+            std::set<std::string> parse_table_name(const distinct_t<T> &f) {
                 return this->parse_table_name(f.t);
             }
             
             template<class T>
-            std::set<std::string> parse_table_name(internal::all_t<T> &f) {
+            std::set<std::string> parse_table_name(const all_t<T> &f) {
                 return this->parse_table_name(f.t);
             }
             
             template<class L, class R, class ...Args>
-            std::set<std::string> parse_table_name(internal::conc_t<L, R> &f) {
+            std::set<std::string> parse_table_name(const conc_t<L, R> &f) {
                 std::set<std::string> res;
                 auto leftSet = this->parse_table_names(f.l);
                 res.insert(leftSet.begin(), leftSet.end());
@@ -6937,7 +7125,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R, class ...Args>
-            std::set<std::string> parse_table_name(internal::add_t<L, R> &f) {
+            std::set<std::string> parse_table_name(const add_t<L, R> &f) {
                 std::set<std::string> res;
                 auto leftSet = this->parse_table_names(f.l);
                 res.insert(leftSet.begin(), leftSet.end());
@@ -6947,7 +7135,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R, class ...Args>
-            std::set<std::string> parse_table_name(internal::sub_t<L, R> &f) {
+            std::set<std::string> parse_table_name(const sub_t<L, R> &f) {
                 std::set<std::string> res;
                 auto leftSet = this->parse_table_names(f.l);
                 res.insert(leftSet.begin(), leftSet.end());
@@ -6957,7 +7145,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R, class ...Args>
-            std::set<std::string> parse_table_name(internal::mul_t<L, R> &f) {
+            std::set<std::string> parse_table_name(const mul_t<L, R> &f) {
                 std::set<std::string> res;
                 auto leftSet = this->parse_table_names(f.l);
                 res.insert(leftSet.begin(), leftSet.end());
@@ -6967,7 +7155,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R, class ...Args>
-            std::set<std::string> parse_table_name(internal::div_t<L, R> &f) {
+            std::set<std::string> parse_table_name(const div_t<L, R> &f) {
                 std::set<std::string> res;
                 auto leftSet = this->parse_table_names(f.l);
                 res.insert(leftSet.begin(), leftSet.end());
@@ -6977,7 +7165,7 @@ namespace sqlite_orm {
             }
             
             template<class L, class R, class ...Args>
-            std::set<std::string> parse_table_name(internal::mod_t<L, R> &f) {
+            std::set<std::string> parse_table_name(const mod_t<L, R> &f) {
                 std::set<std::string> res;
                 auto leftSet = this->parse_table_names(f.l);
                 res.insert(leftSet.begin(), leftSet.end());
@@ -6987,7 +7175,7 @@ namespace sqlite_orm {
             }
             
             template<class T, class F>
-            std::set<std::string> parse_table_name(internal::column_pointer<T, F> &c) {
+            std::set<std::string> parse_table_name(const column_pointer<T, F> &c) {
                 std::set<std::string> res;
                 res.insert(this->impl.template find_table_name<T>());
                 return res;
@@ -7007,7 +7195,7 @@ namespace sqlite_orm {
             }
             
             template<class ...Args>
-            std::set<std::string> parse_table_names(internal::columns_t<Args...> &cols) {
+            std::set<std::string> parse_table_names(const internal::columns_t<Args...> &cols) {
                 std::set<std::string> res;
                 cols.for_each([&res, this](auto &m){
                     auto tableName = this->parse_table_name(m);
@@ -7144,7 +7332,7 @@ namespace sqlite_orm {
                         auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
                         constexpr const auto idsCount = std::tuple_size<decltype(idsTuple)>::value;
                         tuple_helper::iterator<idsCount - 1, Ids...>()(idsTuple, [stmt, &index](auto &v){
-                            using field_type = typename std::remove_reference<decltype(v)>::type;
+                            using field_type = typename std::decay<decltype(v)>::type;
                             statement_binder<field_type>().bind(stmt, index++, v);
                         });
                         auto stepRes = sqlite3_step(stmt);
@@ -7218,7 +7406,7 @@ namespace sqlite_orm {
                         auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
                         constexpr const auto idsCount = std::tuple_size<decltype(idsTuple)>::value;
                         tuple_helper::iterator<idsCount - 1, Ids...>()(idsTuple, [stmt, &index](auto &v){
-                            using field_type = typename std::remove_reference<decltype(v)>::type;
+                            using field_type = typename std::decay<decltype(v)>::type;
                             statement_binder<field_type>().bind(stmt, index++, v);
                         });
                         auto stepRes = sqlite3_step(stmt);
@@ -7539,7 +7727,7 @@ namespace sqlite_orm {
                     auto query = ss.str();
                     auto rc = sqlite3_exec(connection->get_db(),
                                            query.c_str(),
-                                           [](void *data, int argc, char **argv,char **)->int{
+                                           [](void *data, int argc, char **argv, char **)->int{
                                                auto &res = *(double*)data;
                                                if(argc){
                                                    res = row_extractor<double>().extract(argv[0]);
@@ -7556,112 +7744,18 @@ namespace sqlite_orm {
             }
             
             /**
-             *  Select a single column into std::vector<T>.
+             *  Select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+             *  For a single column use `auto rows = storage.select(&User::id, where(...));
+             *  For multicolumns user `auto rows = storage.select(columns(&User::id, &User::name), where(...));
              */
-            template<class T, class ...Args, class R = typename internal::column_result_t<T>::type>
-            std::vector<R> select(T m, Args&& ...args) {
+            template<
+            class T,
+            class ...Args,
+            class R = typename internal::column_result_t<T>::type>
+            std::vector<R> select(T m, Args ...args) {
+                using select_type = select_t<T, Args...>;
+                auto query = this->string_from_expression(select_type{std::move(m), std::make_tuple<Args...>(std::forward<Args>(args)...)});
                 auto connection = this->get_or_create_connection();
-                std::stringstream ss;
-                ss << "SELECT ";
-                auto columnName = this->string_from_expression(m);
-                if(columnName.length()){
-                    ss << columnName << " ";
-                    auto tableNamesSet = this->parse_table_names(m);
-                    if(tableNamesSet.size()){
-                        ss << "FROM " ;
-                        std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
-                        for(size_t i = 0; i < tableNames.size(); ++i) {
-                            ss << " '" << tableNames[i] << "' ";
-                            if(i < tableNames.size() - 1) {
-                                ss << ",";
-                            }
-                            ss << " ";
-                        }
-                    }
-                    this->process_conditions(ss, std::forward<Args>(args)...);
-                    auto query = ss.str();
-                    sqlite3_stmt *stmt;
-                    if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                        statement_finalizer finalizer{stmt};
-                        std::vector<R> res;
-                        int stepRes;
-                        do{
-                            stepRes = sqlite3_step(stmt);
-                            switch(stepRes){
-                                case SQLITE_ROW:{
-                                    res.push_back(row_extractor<R>().extract(stmt, 0));
-                                }break;
-                                case SQLITE_DONE: break;
-                                default:{
-                                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                                }
-                            }
-                        }while(stepRes != SQLITE_DONE);
-                        return res;
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                }
-            }
-            
-            /**
-             *  Select several columns into std::vector<std::tuple<...>>.
-             */
-            template<class ...Args,
-            class R = std::tuple<typename internal::column_result_t<Args>::type...>,
-            class ...Conds
-            >
-            std::vector<R> select(internal::columns_t<Args...> cols, Conds ...conds) {
-                auto connection = this->get_or_create_connection();
-                std::vector<R> res;
-                std::stringstream ss;
-                ss << "SELECT ";
-                if(cols.distinct) {
-                    ss << static_cast<std::string>(distinct(0)) << " ";
-                }
-                std::vector<std::string> columnNames;
-                columnNames.reserve(cols.count());
-                cols.for_each([&columnNames, this](auto &m) {
-                    auto columnName = this->string_from_expression(m);
-                    if(columnName.length()){
-                        columnNames.push_back(columnName);
-                    }else{
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                    }
-                });
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << " ";
-                    }
-                }
-                auto tableNamesSet = this->parse_table_names(cols);
-                internal::join_iterator<Conds...>()([&tableNamesSet, this](auto c){
-                    using original_join_type = typename decltype(c)::type;
-                    using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
-                    auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
-                    auto tableAliasString = alias_exractor<original_join_type>::get();
-                    if(!tableAliasString.length()){
-                        tableNamesSet.erase(crossJoinedTableName);
-                    }
-                });
-                if(tableNamesSet.size()){
-                    ss << " FROM ";
-                    std::vector<std::string> tableNames(tableNamesSet.begin(), tableNamesSet.end());
-                    for(size_t i = 0; i < tableNames.size(); ++i) {
-                        ss << " '" << tableNames[i] << "' ";
-                        if(int(i) < int(tableNames.size()) - 1) {
-                            ss << ",";
-                        }
-                        ss << " ";
-                    }
-                }
-                this->process_conditions(ss, conds...);
-                auto query = ss.str();
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
@@ -7685,6 +7779,41 @@ namespace sqlite_orm {
                 }
             }
             
+            template<
+            class L,
+            class R,
+            class ...Args,
+            class Ret = typename internal::column_result_t<union_t<L, R>>::type>
+            std::vector<Ret> select(union_t<L, R> op, Args ...args) {
+                std::stringstream ss;
+                ss << this->string_from_expression(op.left) << " ";
+                ss << static_cast<std::string>(op) << " ";
+                ss << this->string_from_expression(op.right) << " ";
+                auto query = ss.str();
+                auto connection = this->get_or_create_connection();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    std::vector<Ret> res;
+                    int stepRes;
+                    do{
+                        stepRes = sqlite3_step(stmt);
+                        switch(stepRes){
+                            case SQLITE_ROW:{
+                                res.push_back(row_extractor<Ret>().extract(stmt, 0));
+                            }break;
+                            case SQLITE_DONE: break;
+                            default:{
+                                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                            }
+                        }
+                    }while(stepRes != SQLITE_DONE);
+                    return res;
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                }
+            }
+            
             /**
              *  Returns a string representation of object of a class mapped to the storage.
              *  Type of string has json-like style.
@@ -7692,9 +7821,7 @@ namespace sqlite_orm {
             template<class O>
             std::string dump(const O &o) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                return this->impl.dump(o, connection->get_db());
+                return this->impl.dump(o);
             }
             
             /**
@@ -7872,7 +7999,7 @@ namespace sqlite_orm {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
                     cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
-                        using column_type = typename std::remove_reference<decltype(m)>::type;
+                        using column_type = typename std::decay<decltype(m)>::type;
                         using field_type = typename column_result_t<column_type>::type;
                         const field_type *value = impl.table.template get_object_field_pointer<field_type>(o, m);
                         statement_binder<field_type>().bind(stmt, index++, *value);

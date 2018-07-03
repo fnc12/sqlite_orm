@@ -894,7 +894,7 @@ void testForeignKey() {
     };
 
     //  this case didn't compile on linux until `typedef constraints_type` was added to `foreign_key_t`
-    auto storage = make_storage(":memory:",
+    auto storage = make_storage("test_fk.sqlite",
                                 make_table("location",
                                            make_column("id", &Location::id, primary_key()),
                                            make_column("place", &Location::place),
@@ -2126,7 +2126,7 @@ void testRowId() {
     }
 }
 
-int main() {
+int main(int argc, char **argv) {
 
     cout << "version = " << make_storage("").libversion() << endl;
 

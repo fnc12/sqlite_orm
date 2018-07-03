@@ -293,12 +293,12 @@ namespace sqlite_orm {
             }
             
             template<class O, class HH = typename H::object_type>
-            std::string dump(const O &o, sqlite3 *db, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-                return this->super::dump(o, db, nullptr);
+            std::string dump(const O &o, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+                return this->super::dump(o, nullptr);
             }
             
             template<class O, class HH = typename H::object_type>
-            std::string dump(const O &o, sqlite3 *, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string dump(const O &o, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
                 std::stringstream ss;
                 ss << "{ ";
                 std::vector<std::pair<std::string, std::string>> pairs;

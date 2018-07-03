@@ -6,6 +6,9 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        /**
+         *  DISCTINCT generic container.
+         */
         template<class T>
         struct distinct_t {
             T t;
@@ -15,6 +18,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  ALL generic container.
+         */
         template<class T>
         struct all_t {
             T t;
@@ -29,11 +35,11 @@ namespace sqlite_orm {
             bool distinct = false;
             
             template<class L>
-            void for_each(L) {
+            void for_each(L) const {
                 //..
             }
             
-            int count() {
+            int count() const {
                 return 0;
             }
         };
@@ -45,12 +51,12 @@ namespace sqlite_orm {
             columns_t(decltype(m) m_, Args&& ...args): super(std::forward<Args>(args)...), m(m_) {}
             
             template<class L>
-            void for_each(L l) {
+            void for_each(L l) const {
                 l(this->m);
                 this->super::for_each(l);
             }
             
-            int count() {
+            int count() const {
                 return 1 + this->super::count();
             }
         private:
@@ -99,6 +105,56 @@ namespace sqlite_orm {
             
             field_type field;
         };
+        
+        /**
+         *  Subselect object type.
+         */
+        template<class T, class ...Args>
+        struct select_t {
+            using return_type = T;
+            using conditions_type = std::tuple<Args...>;
+            
+            return_type col;
+            conditions_type conditions;
+        };
+        
+        /**
+         *  Union object type.
+         */
+        template<class L, class R>
+        struct union_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type left;
+            right_type right;
+            bool all = false;
+            
+            union_t(left_type l, right_type r, decltype(all) all_): left(std::move(l)), right(std::move(r)), all(all_) {}
+            
+            union_t(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+
+            operator std::string() const {
+                if(!this->all){
+                    return "UNION";
+                }else{
+                    return "UNION ALL";
+                }
+            }
+        };
+        
+        /**
+         *  Generic way to get DISTINCT value from any type.
+         */
+        template<class T>
+        bool get_distinct(const T &t) {
+            return false;
+        }
+        
+        template<class ...Args>
+        bool get_distinct(const columns_t<Args...> &cols) {
+            return cols.distinct;
+        }
     }
     
     template<class T>
@@ -117,6 +173,10 @@ namespace sqlite_orm {
         return cols;
     }
     
+    /**
+     *  SET keyword used in UPDATE ... SET queries.
+     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
+     */
     template<class ...Args>
     internal::set_t<Args...> set(Args&& ...args) {
         return {std::forward<Args>(args)...};
@@ -134,7 +194,34 @@ namespace sqlite_orm {
      */
     template<class T, class F>
     internal::column_pointer<T, F> column(F f) {
-        using ret_t = internal::column_pointer<T, F>;
-        return ret_t{f};
+        return {f};
+    }
+    
+    /**
+     *  Public function for subselect query. Is useful in UNION queries.
+     */
+    template<class T, class ...Args>
+    internal::select_t<T, Args...> select(T t, Args ...args) {
+        return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
+    }
+    
+    /**
+     *  Public function for UNION operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
+    template<class L, class R>
+    internal::union_t<L, R> union_(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    /**
+     *  Public function for UNION ALL operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
+    template<class L, class R>
+    internal::union_t<L, R> union_all(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs), true};
     }
 }
