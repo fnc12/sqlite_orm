@@ -3153,16 +3153,29 @@ namespace sqlite_orm {
         return {f};
     }
     
+    /**
+     *  Public function for subselect query. Is useful in UNION queries.
+     */
     template<class T, class ...Args>
     internal::select_t<T, Args...> select(T t, Args ...args) {
         return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
     
+    /**
+     *  Public function for UNION operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
     template<class L, class R>
     internal::union_t<L, R> union_(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs)};
     }
     
+    /**
+     *  Public function for UNION ALL operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
     template<class L, class R>
     internal::union_t<L, R> union_all(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs), true};
