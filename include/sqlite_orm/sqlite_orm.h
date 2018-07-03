@@ -7332,7 +7332,7 @@ namespace sqlite_orm {
                         auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
                         constexpr const auto idsCount = std::tuple_size<decltype(idsTuple)>::value;
                         tuple_helper::iterator<idsCount - 1, Ids...>()(idsTuple, [stmt, &index](auto &v){
-                            using field_type = typename std::remove_reference<decltype(v)>::type;
+                            using field_type = typename std::decay<decltype(v)>::type;
                             statement_binder<field_type>().bind(stmt, index++, v);
                         });
                         auto stepRes = sqlite3_step(stmt);
