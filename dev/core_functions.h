@@ -22,6 +22,8 @@ namespace sqlite_orm {
         struct length_t : public core_function_t {
             T t;
             
+            length_t() = default;
+            
             length_t(T t_): t(t_) {}
             
             operator std::string() const {
