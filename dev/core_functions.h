@@ -38,6 +38,8 @@ namespace sqlite_orm {
         struct abs_t : public core_function_t {
             T t;
             
+            abs_t() = default;
+            
             abs_t(T t_): t(t_) {}
             
             operator std::string() const {
@@ -52,6 +54,8 @@ namespace sqlite_orm {
         struct lower_t : public core_function_t {
             T t;
             
+            lower_t() = default;
+            
             lower_t(T t_): t(t_) {}
             
             operator std::string() const {
@@ -65,6 +69,8 @@ namespace sqlite_orm {
         template<class T>
         struct upper_t : public core_function_t {
             T t;
+            
+            upper_t() = default;
             
             upper_t(T t_): t(t_) {}
             
@@ -90,6 +96,8 @@ namespace sqlite_orm {
         struct trim_single_t : public core_function_t {
             X x;
             
+            trim_single_t() = default;
+            
             trim_single_t(X x_): x(x_) {}
             
             operator std::string() const {
@@ -105,6 +113,8 @@ namespace sqlite_orm {
             X x;
             Y y;
             
+            trim_double_t() = default;
+            
             trim_double_t(X x_, Y y_): x(x_), y(y_) {}
             
             operator std::string() const {
@@ -118,6 +128,8 @@ namespace sqlite_orm {
         template<class X>
         struct ltrim_single_t : public core_function_t {
             X x;
+            
+            ltrim_single_t() = default;
             
             ltrim_single_t(X x_): x(x_) {}
             
@@ -134,6 +146,8 @@ namespace sqlite_orm {
             X x;
             Y y;
             
+            ltrim_double_t() = default;
+            
             ltrim_double_t(X x_, Y y_): x(x_), y(y_) {}
             
             operator std::string() const {
@@ -147,6 +161,8 @@ namespace sqlite_orm {
         template<class X>
         struct rtrim_single_t : public core_function_t {
             X x;
+            
+            rtrim_single_t() = default;
             
             rtrim_single_t(X x_): x(x_) {}
             
@@ -162,6 +178,8 @@ namespace sqlite_orm {
         struct rtrim_double_t : public core_function_t {
             X x;
             Y y;
+            
+            rtrim_double_t() = default;
             
             rtrim_double_t(X x_, Y y_): x(x_), y(y_) {}
             
@@ -182,6 +200,8 @@ namespace sqlite_orm {
             using args_type = std::tuple<Args...>;
             
             args_type args;
+            
+            char_t_() = default;
             
             char_t_(args_type args_): args(args_) {}
             
@@ -205,6 +225,8 @@ namespace sqlite_orm {
             T timestring;
             modifiers_type modifiers;
             
+            date_t() = default;
+            
             date_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
             
             operator std::string() const {
@@ -218,6 +240,8 @@ namespace sqlite_orm {
             
             T timestring;
             modifiers_type modifiers;
+            
+            datetime_t() = default;
             
             datetime_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
             
