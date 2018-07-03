@@ -1,6 +1,7 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if
+#include <type_traits>  //  std::enable_if, std::is_same
+#include <tuple>    //  std::tuple
 
 #include "core_functions.h"
 #include "aggregate_functions.h"
@@ -171,81 +172,97 @@ namespace sqlite_orm {
         };
         
         template<class T>
-        struct column_result_t<internal::distinct_t<T>, void> {
+        struct column_result_t<distinct_t<T>, void> {
             using type = typename column_result_t<T>::type;
         };
         
         template<class T>
-        struct column_result_t<internal::all_t<T>, void> {
+        struct column_result_t<all_t<T>, void> {
             using type = typename column_result_t<T>::type;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::conc_t<L, R>, void> {
+        struct column_result_t<conc_t<L, R>, void> {
             using type = std::string;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::add_t<L, R>, void> {
+        struct column_result_t<add_t<L, R>, void> {
             using type = double;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::sub_t<L, R>, void> {
+        struct column_result_t<sub_t<L, R>, void> {
             using type = double;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::mul_t<L, R>, void> {
+        struct column_result_t<mul_t<L, R>, void> {
             using type = double;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::div_t<L, R>, void> {
+        struct column_result_t<div_t<L, R>, void> {
             using type = double;
         };
         
         template<class L, class R>
-        struct column_result_t<internal::mod_t<L, R>, void> {
+        struct column_result_t<mod_t<L, R>, void> {
             using type = double;
         };
         
         template<>
-        struct column_result_t<internal::rowid_t, void> {
+        struct column_result_t<rowid_t, void> {
             using type = int64;
         };
         
         template<>
-        struct column_result_t<internal::oid_t, void> {
+        struct column_result_t<oid_t, void> {
             using type = int64;
         };
         
         template<>
-        struct column_result_t<internal::_rowid_t, void> {
+        struct column_result_t<_rowid_t, void> {
             using type = int64;
         };
         
         template<class T>
-        struct column_result_t<internal::table_rowid_t<T>, void> {
+        struct column_result_t<table_rowid_t<T>, void> {
             using type = int64;
         };
         
         template<class T>
-        struct column_result_t<internal::table_oid_t<T>, void> {
+        struct column_result_t<table_oid_t<T>, void> {
             using type = int64;
         };
         
         template<class T>
-        struct column_result_t<internal::table__rowid_t<T>, void> {
+        struct column_result_t<table__rowid_t<T>, void> {
             using type = int64;
         };
         
         template<class T, class C>
-        struct column_result_t<internal::alias_column_t<T, C>, void> {
+        struct column_result_t<alias_column_t<T, C>, void> {
             using type = typename column_result_t<C>::type;
         };
         
         template<class T, class F>
-        struct column_result_t<internal::column_pointer<T, F>> : column_result_t<F, void> {};
+        struct column_result_t<column_pointer<T, F>> : column_result_t<F, void> {};
+        
+        template<class ...Args>
+        struct column_result_t<columns_t<Args...>, void> {
+            using type = std::tuple<typename column_result_t<Args>::type...>;
+        };
+        
+        template<class T, class ...Args>
+        struct column_result_t<select_t<T, Args...>> : column_result_t<T, void> {};
+        
+        template<class L, class R>
+        struct column_result_t<union_t<L, R>, void> {
+            using left_type = typename column_result_t<L>::type;
+            using right_type = typename column_result_t<R>::type;
+            static_assert(std::is_same<left_type, right_type>::value, "Union subselect queries must return same types");
+            using type = left_type;
+        };
     }
 }

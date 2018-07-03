@@ -28,9 +28,14 @@ namespace sqlite_orm {
         struct iterator {
             
             template<class L>
-            void operator()(std::tuple<Args...> &t, L l) {
-                l(std::get<N>(t));
-                iterator<N - 1, Args...>()(t, l);
+            void operator()(const std::tuple<Args...> &t, L l, bool reverse = true) {
+                if(reverse){
+                    l(std::get<N>(t));
+                    iterator<N - 1, Args...>()(t, l, reverse);
+                }else{
+                    iterator<N - 1, Args...>()(t, l, reverse);
+                    l(std::get<N>(t));
+                }
             }
         };
         
@@ -38,7 +43,7 @@ namespace sqlite_orm {
         struct iterator<0, Args...>{
             
             template<class L>
-            void operator()(std::tuple<Args...> &t, L l) {
+            void operator()(const std::tuple<Args...> &t, L l, bool /*reverse*/ = true) {
                 l(std::get<0>(t));
             }
         };
@@ -47,7 +52,7 @@ namespace sqlite_orm {
         struct iterator<N> {
             
             template<class L>
-            void operator()(std::tuple<> &, L) {
+            void operator()(const std::tuple<> &, L, bool /*reverse*/ = true) {
                 //..
             }
         };

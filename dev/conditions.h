@@ -71,6 +71,8 @@ namespace sqlite_orm {
             T expr;
             std::string name;
             
+            named_collate() = default;
+            
             named_collate(T expr_, std::string name_): expr(expr_), name(std::move(name_)) {}
             
             operator std::string () const {
