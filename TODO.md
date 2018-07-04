@@ -6,7 +6,6 @@
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
 * `CASE`
 * `HAVING`
-* `INSERT` with specified columns (example: `storage.insert(user, columns(&User::name, &User::date));` or `storage.insert<User>(values(&User::id, 5, &User::createdAt, current_timestamp()));`)
 * `EXISTS`
 * asterisk in raw select: `SELECT rowid, * FROM table`
 * `ATTACH`
@@ -17,5 +16,6 @@
 * busy handler https://sqlite.org/c3ref/busy_handler.html
 * CAST https://sqlite.org/lang_expr.html#castexpr
 * CREATE VIEW and other view operations https://sqlite.org/lang_createview.html
+* triggers
 
 Please feel free to add any feature that isn't listed here and not implemented yet.

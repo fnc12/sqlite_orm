@@ -12,6 +12,276 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testDifferentGettersAndSetters() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+        std::string name;
+        
+        int getIdByValConst() const {
+            return this->id;
+        }
+        
+        void setIdByVal(int id) {
+            this->id = id;
+        }
+        
+        std::string getNameByVal() {
+            return this->name;
+        }
+        
+        void setNameByConstRef(const std::string &name) {
+            this->name = name;
+        }
+        
+        const int& getConstIdByRefConst() const {
+            return this->id;
+        }
+        
+        void setIdByRef(int &id) {
+            this->id = id;
+        }
+        
+        const std::string& getConstNameByRefConst() const {
+            return this->name;
+        }
+        
+        void setNameByRef(std::string &name) {
+            this->name = std::move(name);
+        }
+    };
+    
+    auto filename = "different.sqlite";
+    auto storage0 = make_storage(filename,
+                                 make_table("users",
+                                            make_column("id", &User::id, primary_key()),
+                                            make_column("name", &User::name)));
+    auto storage1 = make_storage(filename,
+                                 make_table("users",
+                                            make_column("id", &User::getIdByValConst, &User::setIdByVal, primary_key()),
+                                            make_column("name", &User::setNameByConstRef, &User::getNameByVal)));
+    auto storage2 = make_storage(filename,
+                                 make_table("users",
+                                            make_column("id", &User::getConstIdByRefConst, &User::setIdByRef, primary_key()),
+                                            make_column("name", &User::getConstNameByRefConst, &User::setNameByRef)));
+    storage0.sync_schema();
+    storage0.remove_all<User>();
+    
+    assert(storage0.count<User>() == 0);
+    assert(storage1.count<User>() == 0);
+    assert(storage2.count<User>() == 0);
+    
+    storage0.replace(User{ 1, "Da buzz" });
+    
+    assert(storage0.count<User>() == 1);
+    assert(storage1.count<User>() == 1);
+    assert(storage2.count<User>() == 1);
+    
+    {
+        auto ids = storage0.select(&User::id);
+        assert(ids.size() == 1);
+        assert(ids.front() == 1);
+        auto ids2 = storage1.select(&User::getIdByValConst);
+        assert(ids == ids2);
+        auto ids3 = storage1.select(&User::setIdByVal);
+        assert(ids3 == ids2);
+        auto ids4 = storage2.select(&User::getConstIdByRefConst);
+        assert(ids4 == ids3);
+        auto ids5 = storage2.select(&User::setIdByRef);
+        assert(ids5 == ids4);
+    }
+    {
+        auto ids = storage0.select(&User::id, where(is_equal(&User::name, "Da buzz")));
+        assert(ids.size() == 1);
+        assert(ids.front() == 1);
+        auto ids2 = storage1.select(&User::getIdByValConst, where(is_equal(&User::setNameByConstRef, "Da buzz")));
+        assert(ids == ids2);
+        auto ids3 = storage1.select(&User::setIdByVal, where(is_equal(&User::getNameByVal, "Da buzz")));
+        assert(ids3 == ids2);
+        auto ids4 = storage2.select(&User::getConstIdByRefConst, where(is_equal(&User::getConstNameByRefConst, "Da buzz")));
+        assert(ids4 == ids3);
+        auto ids5 = storage2.select(&User::setIdByRef, where(is_equal(&User::setNameByRef, "Da buzz")));
+        assert(ids5 == ids4);
+    }
+    {
+        auto ids = storage0.select(columns(&User::id), where(is_equal(&User::name, "Da buzz")));
+        assert(ids.size() == 1);
+        assert(std::get<0>(ids.front()) == 1);
+        auto ids2 = storage1.select(columns(&User::getIdByValConst), where(is_equal(&User::setNameByConstRef, "Da buzz")));
+        assert(ids == ids2);
+        auto ids3 = storage1.select(columns(&User::setIdByVal), where(is_equal(&User::getNameByVal, "Da buzz")));
+        assert(ids3 == ids2);
+        auto ids4 = storage2.select(columns(&User::getConstIdByRefConst), where(is_equal(&User::getConstNameByRefConst, "Da buzz")));
+        assert(ids4 == ids3);
+        auto ids5 = storage2.select(columns(&User::setIdByRef), where(is_equal(&User::setNameByRef, "Da buzz")));
+        assert(ids5 == ids4);
+    }
+    {
+        auto avgValue = storage0.avg(&User::id);
+        assert(avgValue == storage1.avg(&User::getIdByValConst));
+        assert(avgValue == storage1.avg(&User::setIdByVal));
+        assert(avgValue == storage2.avg(&User::getConstIdByRefConst));
+        assert(avgValue == storage2.avg(&User::setIdByRef));
+    }
+    {
+        auto count = storage0.count(&User::id);
+        assert(count == storage1.count(&User::getIdByValConst));
+        assert(count == storage1.count(&User::setIdByVal));
+        assert(count == storage2.count(&User::getConstIdByRefConst));
+        assert(count == storage2.count(&User::setIdByRef));
+    }
+    {
+        auto groupConcat = storage0.group_concat(&User::id);
+        assert(groupConcat == storage1.group_concat(&User::getIdByValConst));
+        assert(groupConcat == storage1.group_concat(&User::setIdByVal));
+        assert(groupConcat == storage2.group_concat(&User::getConstIdByRefConst));
+        assert(groupConcat == storage2.group_concat(&User::setIdByRef));
+    }
+    {
+        auto arg = "ototo";
+        auto groupConcat = storage0.group_concat(&User::id, arg);
+        assert(groupConcat == storage1.group_concat(&User::getIdByValConst, arg));
+        assert(groupConcat == storage1.group_concat(&User::setIdByVal, arg));
+        assert(groupConcat == storage2.group_concat(&User::getConstIdByRefConst, arg));
+        assert(groupConcat == storage2.group_concat(&User::setIdByRef, arg));
+    }
+    {
+        auto max = storage0.max(&User::id);
+        assert(max);
+        assert(*max == *storage1.max(&User::getIdByValConst));
+        assert(*max == *storage1.max(&User::setIdByVal));
+        assert(*max == *storage2.max(&User::getConstIdByRefConst));
+        assert(*max == *storage2.max(&User::setIdByRef));
+    }
+    {
+        auto min = storage0.min(&User::id);
+        assert(min);
+        assert(*min == *storage1.min(&User::getIdByValConst));
+        assert(*min == *storage1.min(&User::setIdByVal));
+        assert(*min == *storage2.min(&User::getConstIdByRefConst));
+        assert(*min == *storage2.min(&User::setIdByRef));
+    }
+    {
+        auto sum = storage0.sum(&User::id);
+        assert(sum);
+        assert(*sum == *storage1.sum(&User::getIdByValConst));
+        assert(*sum == *storage1.sum(&User::setIdByVal));
+        assert(*sum == *storage2.sum(&User::getConstIdByRefConst));
+        assert(*sum == *storage2.sum(&User::setIdByRef));
+    }
+    {
+        auto total = storage0.total(&User::id);
+        assert(total == storage1.total(&User::getIdByValConst));
+        assert(total == storage1.total(&User::setIdByVal));
+        assert(total == storage2.total(&User::getConstIdByRefConst));
+        assert(total == storage2.total(&User::setIdByRef));
+    }
+}
+
+void testExplicitColumns() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        int id;
+    };
+    
+    struct User : Object {
+        std::string name;
+        
+        User(decltype(id) id_, decltype(name) name_): Object{id_}, name(std::move(name_)) {}
+    };
+    
+    struct Token : Object {
+        std::string token;
+        int usedId;
+        
+        Token(decltype(id) id_, decltype(token) token_, decltype(usedId) usedId_): Object{id_}, token(std::move(token_)), usedId(usedId_) {}
+    };
+    
+    auto storage = make_storage("column_pointer.sqlite",
+                                make_table<User>("users",
+                                                 make_column("id", &User::id, primary_key()),
+                                                 make_column("name", &User::name)),
+                                make_table<Token>("tokens",
+                                                  make_column("id", &Token::id, primary_key()),
+                                                  make_column("token", &Token::token),
+                                                  make_column("used_id", &Token::usedId),
+                                                  foreign_key(&Token::usedId).references(column<User>(&User::id))));
+    storage.sync_schema();
+    assert(storage.table_exists("users"));
+    assert(storage.table_exists("tokens"));
+    
+    storage.remove_all<User>();
+    storage.remove_all<Token>();
+    
+    auto brunoId = storage.insert(User{0, "Bruno"});
+    auto zeddId = storage.insert(User{0, "Zedd"});
+    
+    assert(storage.count<User>() == 2);
+    {
+        auto w = where(is_equal(&User::name, "Bruno"));
+        auto rows = storage.select(column<User>(&User::id), w);
+        assert(rows.size() == 1);
+        assert(rows.front() == brunoId);
+        
+        auto rows2 = storage.select(columns(column<User>(&User::id)), w);
+        assert(rows2.size() == 1);
+        assert(std::get<0>(rows2.front()) == brunoId);
+        
+        auto rows3 = storage.select(columns(column<User>(&Object::id)), w);
+        assert(rows3 == rows2);
+    }
+    {
+        auto rows = storage.select(column<User>(&User::id), where(is_equal(&User::name, "Zedd")));
+        assert(rows.size() == 1);
+        assert(rows.front() == zeddId);
+    }
+    
+    auto abcId = storage.insert(Token(0, "abc", brunoId));
+    {
+        auto w = where(is_equal(&Token::token, "abc"));
+        auto rows = storage.select(column<Token>(&Token::id), w);
+        assert(rows.size() == 1);
+        assert(rows.front() == abcId);
+        
+        auto rows2 = storage.select(columns(column<Token>(&Token::id), &Token::usedId), w);
+        assert(rows2.size() == 1);
+        assert(std::get<0>(rows2.front()) == abcId);
+        assert(std::get<1>(rows2.front()) == brunoId);
+    }
+    
+    auto joinedRows = storage.select(columns(&User::name, &Token::token),
+                                     join<Token>(on(is_equal(&Token::usedId, column<User>(&User::id)))));
+    assert(joinedRows.size() == 1);
+    assert(std::get<0>(joinedRows.front()) == "Bruno");
+    assert(std::get<1>(joinedRows.front()) == "abc");
+}
+
+void testJoinIteratorConstructorCompilationError() {
+    cout << __func__ << endl;
+    
+    struct Tag {
+        int objectId;
+        std::string text;
+    };
+    
+    auto storage = make_storage("join_error.sqlite",
+                                make_table("tags",
+                                           make_column("object_id",
+                                                       &Tag::objectId),
+                                           make_column("text",
+                                                       &Tag::text)));
+    storage.sync_schema();
+    
+    auto offs = 0;
+    auto lim = 5;
+    storage.select(columns(&Tag::text, count(&Tag::text)),
+                   group_by(&Tag::text),
+                   order_by(count(&Tag::text)).desc(),
+                   limit(offs, lim));
+}
+
 void testLimits() {
     cout << __func__ << endl;
     
@@ -624,7 +894,7 @@ void testForeignKey() {
     };
 
     //  this case didn't compile on linux until `typedef constraints_type` was added to `foreign_key_t`
-    auto storage = make_storage(":memory:",
+    auto storage = make_storage("test_fk.sqlite",
                                 make_table("location",
                                            make_column("id", &Location::id, primary_key()),
                                            make_column("place", &Location::place),
@@ -1448,7 +1718,7 @@ void testBlob() {
     struct BlobData {
         std::vector<char> data;
     };
-    typedef char byte;
+    using byte = char;
 
     auto generateData = [](int size) -> byte* {
         auto data = (byte*)::malloc(size * sizeof(byte));
@@ -1856,7 +2126,7 @@ void testRowId() {
     }
 }
 
-int main() {
+int main(int argc, char **argv) {
 
     cout << "version = " << make_storage("").libversion() << endl;
 
@@ -1923,4 +2193,10 @@ int main() {
     testCustomCollate();
     
     testLimits();
+    
+    testJoinIteratorConstructorCompilationError();
+    
+    testExplicitColumns();
+    
+    testDifferentGettersAndSetters();
 }
