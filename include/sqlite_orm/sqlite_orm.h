@@ -110,6 +110,7 @@ namespace std
 #include <regex>    //  std::regex, std::regex_match
 #include <memory>   //  std::make_shared, std::shared_ptr
 #include <vector>   //  std::vector
+#include <cctype>   //  std::toupper
 
 namespace sqlite_orm {
     using int64 = sqlite_int64;
@@ -5781,8 +5782,6 @@ namespace sqlite_orm {
             const bool inMemory;
             bool isOpenedForever = false;
             std::map<std::string, collating_function> collatingFunctions;
-            
-            using collating_function_pair = typename decltype(collatingFunctions)::value_type;
             
             /**
              *  Check whether connection exists and returns it if yes or creates a new one
