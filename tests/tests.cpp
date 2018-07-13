@@ -2057,6 +2057,7 @@ void testBusyTimeout() {
     storage.busy_timeout(500);
 }
 
+#ifndef SQLITE_ORM_OMITS_CODECVT
 void testWideString() {
     cout << __func__ << endl;
     
@@ -2087,6 +2088,7 @@ void testWideString() {
     }
     
 }
+#endif  //  SQLITE_ORM_OMITS_CODECVT
 
 void testRowId() {
     cout << __func__ << endl;
@@ -2170,7 +2172,9 @@ int main(int argc, char **argv) {
     
     testBusyTimeout();
     
+#ifndef SQLITE_ORM_OMITS_CODECVT
     testWideString();
+#endif  //  SQLITE_ORM_OMITS_CODECVT
     
     testIssue86();
     
