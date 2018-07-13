@@ -212,8 +212,8 @@ void testExplicitColumns() {
     assert(storage.table_exists("users"));
     assert(storage.table_exists("tokens"));
     
-    storage.remove_all<User>();
     storage.remove_all<Token>();
+    storage.remove_all<User>();
     
     auto brunoId = storage.insert(User{0, "Bruno"});
     auto zeddId = storage.insert(User{0, "Zedd"});
