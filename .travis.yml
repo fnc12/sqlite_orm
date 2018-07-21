@@ -17,6 +17,8 @@ script:
   - clang -c sqlite-amalgamation-3190300/sqlite3.c -o sqlite.static
   - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -o tests.out
   - ./tests.out
+  - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -D SQLITE_ORM_OMITS_CODECVT -o tests_without_codecvt.out
+  - ./tests_without_codecvt.out
   - clang++ -std=c++1y tests/static_tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -o static_tests.out
   - ./static_tests.out
   - clang++ -std=c++1y examples/core_functions.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
