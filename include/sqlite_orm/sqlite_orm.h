@@ -32,6 +32,7 @@ namespace sqlite_orm {
         table_has_no_primary_key_column,
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
+        incorrect_journal_mode_string,
     };
     
 }
@@ -3535,6 +3536,66 @@ namespace sqlite_orm {
 
 // #include "arithmetic_tag.h"
 
+// #include "journal_mode.h"
+
+
+#include <string>   //  std::string
+#include <memory>   //  std::unique_ptr
+#include <array>    //  std::array
+#include <algorithm>    //  std::transform
+#include <locale>   // std::toupper
+
+namespace sqlite_orm {
+    
+    /**
+     *  Caps case cause of 1) delete keyword; 2) https://www.sqlite.org/pragma.html#pragma_journal_mode original spelling
+     */
+    enum class journal_mode : char {
+        DELETE = 0,
+        TRUNCATE = 1,
+        PERSIST = 2,
+        MEMORY = 3,
+        WAL = 4,
+        OFF = 5,
+        };
+    
+    namespace internal {
+        
+        inline const std::string& to_string(journal_mode j) {
+            static std::string res[] = {
+                "DELETE",
+                "TRUNCATE",
+                "PERSIST",
+                "MEMORY",
+                "WAL",
+                "OFF",
+            };
+            return res[static_cast<int>(j)];
+        }
+        
+        inline std::unique_ptr<journal_mode> journal_mode_from_string(const std::string &str) {
+            std::string upper_str;
+            std::transform(str.begin(), str.end(), std::back_inserter(upper_str), ::toupper);
+            static std::array<journal_mode, 6> all = {
+                journal_mode::DELETE,
+                journal_mode::TRUNCATE,
+                journal_mode::PERSIST,
+                journal_mode::MEMORY,
+                journal_mode::WAL,
+                journal_mode::OFF,
+            };
+            for(auto j : all) {
+                if(to_string(j) == upper_str){
+                    return std::make_unique<journal_mode>(j);
+                }
+            }
+            return {};
+        }
+    }
+}
+
+// #include "error_code.h"
+
 
 namespace sqlite_orm {
     
@@ -3795,6 +3856,33 @@ namespace sqlite_orm {
         template<size_t I, typename std::enable_if<I == 0>::type * = nullptr>
         void extract(std::tuple<Args...> &, char **) {
             //..
+        }
+    };
+    
+    /**
+     *  Specialization for journal_mode.
+     */
+    template<class V>
+    struct row_extractor<
+    V,
+    std::enable_if_t<std::is_same<V, journal_mode>::value>
+    >
+    {
+        journal_mode extract(const char *row_value) {
+            if(row_value){
+                if(auto res = internal::journal_mode_from_string(row_value)){
+                    return std::move(*res);
+                }else{
+                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_journal_mode_string));
+                }
+            }else{
+                throw std::system_error(std::make_error_code(orm_error_code::incorrect_journal_mode_string));
+            }
+        }
+        
+        journal_mode extract(sqlite3_stmt *stmt, int columnIndex) {
+            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(cStr);
         }
     };
 }
@@ -5396,6 +5484,130 @@ namespace sqlite_orm {
     }
 }
 
+// #include "pragma.h"
+
+
+#include <string>   //  std::string
+#include <sqlite3.h>
+
+// #include "error_code.h"
+
+// #include "row_extractor.h"
+
+// #include "journal_mode.h"
+
+
+namespace sqlite_orm {
+    
+    template<class S>
+    struct pragma_t {
+        using storage_type = S;
+        
+        pragma_t(storage_type &storage_): storage(storage_) {}
+        
+        sqlite_orm::journal_mode journal_mode() {
+            return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
+        }
+        
+        void journal_mode(sqlite_orm::journal_mode value) {
+            this->_journal_mode = -1;
+            this->set_pragma("journal_mode", value);
+            this->_journal_mode = static_cast<decltype(this->_journal_mode)>(value);
+        }
+        
+        int synchronous() {
+            return this->get_pragma<int>("synchronous");
+        }
+        
+        void synchronous(int value) {
+            this->_synchronous = -1;
+            this->set_pragma("synchronous", value);
+            this->_synchronous = value;
+        }
+        
+        int user_version() {
+            return this->get_pragma<int>("user_version");
+        }
+        
+        void user_version(int value) {
+            this->set_pragma("user_version", value);
+        }
+        
+        int auto_vacuum() {
+            return this->get_pragma<int>("auto_vacuum");
+        }
+        
+        void auto_vacuum(int value) {
+            this->set_pragma("auto_vacuum", value);
+        }
+        
+        friend storage_type;
+        
+    protected:
+        storage_type &storage;
+        int _synchronous = -1;
+        char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
+        
+        template<class T>
+        T get_pragma(const std::string &name) {
+            auto connection = this->storage.get_or_create_connection();
+            auto query = "PRAGMA " + name;
+            T res;
+            auto rc = sqlite3_exec(connection->get_db(),
+                                   query.c_str(),
+                                   [](void *data, int argc, char **argv, char **) -> int {
+                                       auto &res = *(T*)data;
+                                       if(argc){
+                                           res = row_extractor<T>().extract(argv[0]);
+                                       }
+                                       return 0;
+                                   }, &res, nullptr);
+            if(rc == SQLITE_OK){
+                return res;
+            }else{
+                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+            }
+        }
+        
+        /**
+         *  Yevgeniy Zakharov: I wanted to refactored this function with statements and value bindings
+         *  but it turns out that bindings in pragma statements are not supported.
+         */
+        template<class T>
+        void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
+            std::shared_ptr<internal::database_connection> connection;
+            if(!db){
+                connection = this->storage.get_or_create_connection();
+                db = connection->get_db();
+            }
+            std::stringstream ss;
+            ss << "PRAGMA " << name << " = " << this->storage.string_from_expression(value);
+            auto query = ss.str();
+            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+            if(rc != SQLITE_OK) {
+                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+            }
+        }
+        
+        void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
+            std::shared_ptr<internal::database_connection> connection;
+            if(!db){
+                connection = this->storage.get_or_create_connection();
+                db = connection->get_db();
+            }
+            std::stringstream ss;
+            ss << "PRAGMA " << name << " = " << internal::to_string(value);
+            auto query = ss.str();
+            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+            if(rc != SQLITE_OK) {
+                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+            }
+        }
+    };
+}
+
+// #include "journal_mode.h"
+
 
 namespace sqlite_orm {
     
@@ -5556,75 +5768,6 @@ namespace sqlite_orm {
                 this->begin_transaction();
                 return {*this};
             }
-            
-            struct pragma_t {
-                
-                pragma_t(storage_type &storage_): storage(storage_) {}
-                
-                int synchronous() {
-                    return this->get_pragma<int>("synchronous");
-                }
-                
-                void synchronous(int value) {
-                    this->_synchronous = -1;
-                    this->set_pragma("synchronous", value);
-                    this->_synchronous = value;
-                }
-                
-                int user_version() {
-                    return this->get_pragma<int>("user_version");
-                }
-                
-                void user_version(int value) {
-                    this->set_pragma("user_version", value);
-                }
-                
-                int auto_vacuum() {
-                    return this->get_pragma<int>("auto_vacuum");
-                }
-                
-                void auto_vacuum(int value) {
-                    this->set_pragma("auto_vacuum", value);
-                }
-                
-                friend struct storage_t<Ts...>;
-                
-            protected:
-                storage_type &storage;
-                int _synchronous = -1;
-                
-                template<class T>
-                T get_pragma(const std::string &name) {
-                    auto connection = this->storage.get_or_create_connection();
-                    std::string query = "PRAGMA " + name;
-                    int res = -1;
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv, char **) -> int {
-                                               auto &res = *(T*)data;
-                                               if(argc){
-                                                   res = row_extractor<T>().extract(argv[0]);
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
-                    return res;
-                }
-                
-                template<class T>
-                void set_pragma(const std::string &name, const T &value) {
-                    auto connection = this->storage.get_or_create_connection();
-                    std::stringstream ss;
-                    ss << "PRAGMA " << name << " = " << this->storage.string_from_expression(value);
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(), query.c_str(), nullptr, nullptr, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
-                }
-            };
             
             struct limit_accesor {
                 
@@ -6656,6 +6799,10 @@ namespace sqlite_orm {
 #endif
                 if(this->pragma._synchronous != -1) {
                     this->pragma.synchronous(this->pragma._synchronous);
+                }
+                
+                if(this->pragma._journal_mode != -1) {
+                    this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma._journal_mode), db);
                 }
                 
                 for(auto &p : this->collatingFunctions){
@@ -8566,8 +8713,11 @@ namespace sqlite_orm {
                 }
             }
             
+            using pragma_type = pragma_t<storage_type>;
+            
+            friend pragma_type;
         public:
-            pragma_t pragma;
+            pragma_type pragma;
             limit_accesor limit;
         };
     }
@@ -8575,6 +8725,13 @@ namespace sqlite_orm {
     template<class ...Ts>
     internal::storage_t<Ts...> make_storage(const std::string &filename, Ts ...tables) {
         return {filename, internal::storage_impl<Ts...>(tables...)};
+    }
+    
+    /**
+     *  sqlite3_threadsafe() interface.
+     */
+    inline int threadsafe() {
+        return sqlite3_threadsafe();
     }
 }
 #pragma once
