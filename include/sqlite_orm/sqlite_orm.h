@@ -3099,6 +3099,7 @@ namespace sqlite_orm {
             
             return_type col;
             conditions_type conditions;
+            bool highest_level = false;
         };
         
         /**
@@ -6368,7 +6369,10 @@ namespace sqlite_orm {
             template<class T, class ...Args>
             std::string string_from_expression(const internal::select_t<T, Args...> &sel, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
-                ss << "( SELECT ";
+                if(!sel.highest_level){
+                    ss << "( ";
+                }
+                ss << "SELECT ";
                 if(get_distinct(sel.col)) {
                     ss << static_cast<std::string>(distinct(0)) << " ";
                 }
@@ -6405,7 +6409,9 @@ namespace sqlite_orm {
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(sel.conditions, [&ss, this](auto &v){
                     this->process_single_condition(ss, v);
                 }, false);
-                ss << ") ";
+                if(!sel.highest_level){
+                    ss << ") ";
+                }
                 return ss.str();
             }
              
@@ -7758,7 +7764,7 @@ namespace sqlite_orm {
             class R = typename internal::column_result_t<T>::type>
             std::vector<R> select(T m, Args ...args) {
                 using select_type = select_t<T, Args...>;
-                auto query = this->string_from_expression(select_type{std::move(m), std::make_tuple<Args...>(std::forward<Args>(args)...)});
+                auto query = this->string_from_expression(select_type{std::move(m), std::make_tuple<Args...>(std::forward<Args>(args)...), true});
                 auto connection = this->get_or_create_connection();
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {

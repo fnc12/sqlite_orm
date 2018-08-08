@@ -116,6 +116,7 @@ namespace sqlite_orm {
             
             return_type col;
             conditions_type conditions;
+            bool highest_level = false;
         };
         
         /**

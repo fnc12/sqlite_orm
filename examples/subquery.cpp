@@ -4,6 +4,10 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
 #include <memory>
+#include <iostream>
+
+using std::cout;
+using std::endl;
 
 struct Employee {
     int id;
@@ -145,9 +149,33 @@ int main(int argc, char **argv) {
     storage.insert(Employee{205, "Shelley", "Higgins", "SHIGGINS", "515.123.8080", "7-Jun-94", "AC_MGR", 12000, {}, std::make_unique<int>(101), 110});
     storage.insert(Employee{206, "William", "Gietz", "WGIETZ", "515.123.8181", "7-Jun-94", "AC_ACCOUNT", 8300, {}, std::make_unique<int>(205), 110});
     
-    auto rows = storage.select(columns(&Employee::firstName, &Employee::lastName, &Employee::salary),
-                               where(greater_than(&Employee::salary, select(&Employee::salary, where(is_equal(&Employee::lastName, "Alexander"))))));
-    
+    {
+        //  SELECT first_name, last_name, salary
+        //  FROM employees
+        //  WHERE salary >(
+        //          SELECT salary
+        //          FROM employees
+        //          WHERE first_name='Alexander');
+        auto rows = storage.select(columns(&Employee::firstName, &Employee::lastName, &Employee::salary),
+                                   where(greater_than(&Employee::salary,
+                                                      select(&Employee::salary,
+                                                             where(is_equal(&Employee::firstName, "Alexander"))))));
+        cout << "first_name  last_name   salary" << endl;
+        cout << "----------  ----------  ----------" << endl;
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
+        }
+    }
+    {
+        auto rows = storage.select(columns(&Employee::id, &Employee::firstName, &Employee::lastName, &Employee::salary),
+                                   where(greater_than(&Employee::salary,
+                                                      select(avg(&Employee::salary)))));
+        cout << "employee_id  first_name  last_name   salary" << endl;
+        cout << "-----------  ----------  ----------  ----------" << endl;
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        }
+    }
 
     
     return 0;
