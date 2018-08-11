@@ -328,21 +328,28 @@ namespace sqlite_orm {
             }
         };
         
-        template<class L, class E>
+        template<class L, class A>
         struct in_t : public condition_t {
-            using self = in_t<L, E>;
+            using self = in_t<L, A>;
             
-            L l;    //  left expression..
-            std::vector<E> values;       //  values..
+            L l;    //  left expression
+            A arg;       //  in arg
+            bool negative = false;  //  used in not_in
             
-            in_t(L l_, std::vector<E> values_): l(l_), values(std::move(values_)) {}
+            in_t() = default;
+            
+            in_t(L l_, A arg_, bool negative_): l(l_), arg(std::move(arg_)), negative(negative_) {}
             
             negated_condition_t<self> operator!() const {
                 return {*this};
             }
             
             operator std::string () const {
-                return "IN";
+                if(!this->negative){
+                    return "IN";
+                }else{
+                    return "NOT IN";
+                }
             }
         };
         
@@ -460,6 +467,8 @@ namespace sqlite_orm {
             A expr;
             T b1;
             T b2;
+            
+            between_t() = default;
             
             between_t(A expr_, T b1_, T b2_): expr(expr_), b1(b1_), b2(b2_) {}
             
@@ -807,13 +816,33 @@ namespace sqlite_orm {
     }
     
     template<class L, class E>
-    conditions::in_t<L, E> in(L l, std::vector<E> values) {
-        return {std::move(l), std::move(values)};
+    conditions::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
+        return {std::move(l), std::move(values), false};
     }
     
     template<class L, class E>
-    conditions::in_t<L, E> in(L l, std::initializer_list<E> values) {
-        return {std::move(l), std::move(values)};
+    conditions::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
+        return {std::move(l), std::move(values), false};
+    }
+    
+    template<class L, class A>
+    conditions::in_t<L, A> in(L l, A arg) {
+        return {std::move(l), std::move(arg), false};
+    }
+    
+    template<class L, class E>
+    conditions::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
+        return {std::move(l), std::move(values), true};
+    }
+    
+    template<class L, class E>
+    conditions::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
+        return {std::move(l), std::move(values), true};
+    }
+    
+    template<class L, class A>
+    conditions::in_t<L, A> not_in(L l, A arg) {
+        return {std::move(l), std::move(arg), true};
     }
     
     template<class L, class R>
