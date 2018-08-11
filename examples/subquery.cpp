@@ -221,11 +221,22 @@ int main(int argc, char **argv) {
         }
     }
     {
-        //  SELECT first_name, last_name,department_id
+        //  SELECT first_name, last_name, department_id
         //  FROM employees
         //  WHERE department_id IN
         //      (SELECT DEPARTMENT_ID FROM departments
         //      WHERE location_id=1700);
+        auto rows = storage.select(columns(&Employee::firstName, &Employee::lastName, &Employee::departmentId),
+                                   where(in(&Employee::departmentId,
+                                            select(&Department::id,
+                                                   where(c(&Department::locationId) == 1700)))));
+        cout << "first_name  last_name   department_id" << endl;
+        cout << "----------  ----------  -------------" << endl;
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
+        }
+    }
+    {
         
         //  SELECT first_name, last_name, department_id
         //  FROM employees
@@ -233,7 +244,6 @@ int main(int argc, char **argv) {
         //  (SELECT DEPARTMENT_ID FROM departments
         //      WHERE manager_id
         //      BETWEEN 100 AND 200);
-//        auto rows = storage.select(columns(&Employee::id, &Employee::firstName, &Employee::lastName, &Employee::salary),
         auto rows = storage.select(columns(&Employee::firstName, &Employee::lastName, &Employee::departmentId),
                                    where(not_in(&Employee::departmentId,
                                                 select(&Department::id,
@@ -244,6 +254,23 @@ int main(int argc, char **argv) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
         
+    }
+    {
+        //  SELECT last_name, salary, department_id
+        //  FROM employees e
+        //  WHERE salary >(SELECT AVG(salary)
+        //      FROM employees
+        //      WHERE department_id = e.department_id);
+        using als = alias_e<Employee>;
+        auto rows = storage.select(columns(alias_column<als>(&Employee::lastName), alias_column<als>(&Employee::salary), alias_column<als>(&Employee::departmentId)),
+                                   where(greater_than(alias_column<als>(&Employee::salary),
+                                                      select(avg(&Employee::salary),
+                                                             where(is_equal(&Employee::departmentId, alias_column<als>(&Employee::departmentId)))))));
+        cout << "last_name   salary      department_id" << endl;
+        cout << "----------  ----------  -------------" << endl;
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
+        }
     }
     
     return 0;
