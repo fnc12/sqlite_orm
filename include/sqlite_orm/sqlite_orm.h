@@ -6432,9 +6432,11 @@ namespace sqlite_orm {
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
                     auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
                     auto tableAliasString = alias_extractor<original_join_type>::get();
-                    if(tableAliasString.empty()){
+                    std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName), std::move(tableAliasString));
+                    /*if(tableAliasString.empty()){
                         tableNamesSet.erase({crossJoinedTableName, ""});
-                    }
+                    }*/
+                    tableNamesSet.erase(tableNameWithAlias);
                 });
                 if(!tableNamesSet.empty()){
                     ss << "FROM ";
