@@ -782,7 +782,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            std::string string_from_expression(const aggregate_functions::count_asterisk_t &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            template<class T>
+            std::string string_from_expression(const aggregate_functions::count_asterisk_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(*) ";
                 return ss.str();
@@ -1847,6 +1848,16 @@ namespace sqlite_orm {
             template<class T, class C>
             std::set<std::pair<std::string, std::string>> parse_table_name(const alias_column_t<T, C> &a) {
                 return this->parse_table_name(a.column, alias_extractor<T>::get());
+            }
+            
+            template<class T>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const aggregate_functions::count_asterisk_t<T> &c) {
+                auto tableName = this->impl.template find_table_name<T>();
+                if(!tableName.empty()){
+                    return {std::make_pair(std::move(tableName), "")};
+                }else{
+                    return {};
+                }
             }
             
             template<class ...Args>

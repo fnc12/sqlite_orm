@@ -30,6 +30,14 @@ struct Department {
     int locationId;
 };
 
+struct JobHistory {
+    decltype(Employee::id) employeeId;
+    std::string startDate;
+    std::string endDate;
+    decltype(Employee::jobId) jobId;
+    decltype(Employee::departmentId) departmentId;
+};
+
 int main(int argc, char **argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("subquery.sqlite",
@@ -49,7 +57,13 @@ int main(int argc, char **argv) {
                                            make_column("DEPARTMENT_ID", &Department::id, primary_key()),
                                            make_column("DEPARTMENT_NAME", &Department::name),
                                            make_column("MANAGER_ID", &Department::managerId),
-                                           make_column("LOCATION_ID", &Department::locationId)));
+                                           make_column("LOCATION_ID", &Department::locationId)),
+                                make_table("job_history",
+                                           make_column("employee_id", &JobHistory::employeeId),
+                                           make_column("start_date", &JobHistory::startDate),
+                                           make_column("end_date", &JobHistory::endDate),
+                                           make_column("job_id", &JobHistory::jobId),
+                                           make_column("department_id", &JobHistory::departmentId)));
     storage.sync_schema();
     storage.remove_all<Employee>();
     
@@ -188,7 +202,17 @@ int main(int argc, char **argv) {
     storage.replace(Department{250, "Retail Sales", 0, 1700});
     storage.replace(Department{260, "Recruiting", 0, 1700});
     storage.replace(Department{270, "Payroll", 0, 1700});
-
+    
+    storage.replace(JobHistory{102, "1993-01-13", "1998-07-24", "IT_PROG", 60});
+    storage.replace(JobHistory{101, "1989-09-21", "1993-10-27", "AC_ACCOUNT", 110});
+    storage.replace(JobHistory{101, "1993-10-28", "1997-03-15", "AC_MGR", 110});
+    storage.replace(JobHistory{201, "1996-02-17", "1999-12-19", "MK_REP", 20});
+    storage.replace(JobHistory{114, "1998-03-24", "1999-12-31", "ST_CLERK", 50});
+    storage.replace(JobHistory{122, "1999-01-01", "1999-12-31", "ST_CLERK", 50});
+    storage.replace(JobHistory{200, "1987-09-17", "1993-06-17", "AD_ASST", 90});
+    storage.replace(JobHistory{176, "1998-03-24", "1998-12-31", "SA_REP", 80});
+    storage.replace(JobHistory{176, "1999-01-01", "1999-12-31", "SA_MAN", 80});
+    storage.replace(JobHistory{200, "1994-07-01", "1998-12-31", "AC_ACCOUNT", 90});
     
     {
         //  SELECT first_name, last_name, salary
@@ -270,6 +294,24 @@ int main(int argc, char **argv) {
         cout << "----------  ----------  -------------" << endl;
         for(auto &row : rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
+        }
+    }
+    {
+        //  SELECT first_name, last_name, employee_id, job_id
+        //  FROM employees
+        //  WHERE 1 <=
+        //      (SELECT COUNT(*) FROM Job_history
+        //      WHERE employee_id = employees.employee_id);
+        auto rows = storage.select(columns(&Employee::firstName,
+                                           &Employee::lastName,
+                                           &Employee::id,
+                                           &Employee::jobId),
+                                   where(lesser_or_equal(1, select(count<JobHistory>(),
+                                                                   where(is_equal(&Employee::id, &JobHistory::employeeId))))));
+        cout << "first_name  last_name   employee_id  job_id" << endl;
+        cout << "----------  ----------  -----------  ----------" << endl;
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
         }
     }
     
