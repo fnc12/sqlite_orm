@@ -12,6 +12,35 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testIn() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    storage.replace(User{ 1 });
+    storage.replace(User{ 2 });
+    storage.replace(User{ 3 });
+    
+    {
+        auto rows = storage.get_all<User>(where(in(&User::id, {1, 2, 3})));
+        assert(rows.size() == 3);
+    }
+    {
+        std::vector<int> inArgument;
+        inArgument.push_back(1);
+        inArgument.push_back(2);
+        inArgument.push_back(3);
+        auto rows = storage.get_all<User>(where(in(&User::id, inArgument)));
+        assert(rows.size() == 3);
+    }
+}
+
 void testDifferentGettersAndSetters() {
     cout << __func__ << endl;
     
@@ -2203,4 +2232,6 @@ int main(int argc, char **argv) {
     testExplicitColumns();
     
     testDifferentGettersAndSetters();
+    
+    testIn();
 }

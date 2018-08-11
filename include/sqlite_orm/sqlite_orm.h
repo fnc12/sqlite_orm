@@ -1652,21 +1652,28 @@ namespace sqlite_orm {
             }
         };
         
-        template<class L, class E>
+        template<class L, class A>
         struct in_t : public condition_t {
-            using self = in_t<L, E>;
+            using self = in_t<L, A>;
             
-            L l;    //  left expression..
-            std::vector<E> values;       //  values..
+            L l;    //  left expression
+            A arg;       //  in arg
+            bool negative = false;  //  used in not_in
             
-            in_t(L l_, std::vector<E> values_): l(l_), values(std::move(values_)) {}
+            in_t() = default;
+            
+            in_t(L l_, A arg_, bool negative_): l(l_), arg(std::move(arg_)), negative(negative_) {}
             
             negated_condition_t<self> operator!() const {
                 return {*this};
             }
             
             operator std::string () const {
-                return "IN";
+                if(!this->negative){
+                    return "IN";
+                }else{
+                    return "NOT IN";
+                }
             }
         };
         
@@ -1784,6 +1791,8 @@ namespace sqlite_orm {
             A expr;
             T b1;
             T b2;
+            
+            between_t() = default;
             
             between_t(A expr_, T b1_, T b2_): expr(expr_), b1(b1_), b2(b2_) {}
             
@@ -2131,13 +2140,33 @@ namespace sqlite_orm {
     }
     
     template<class L, class E>
-    conditions::in_t<L, E> in(L l, std::vector<E> values) {
-        return {std::move(l), std::move(values)};
+    conditions::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
+        return {std::move(l), std::move(values), false};
     }
     
     template<class L, class E>
-    conditions::in_t<L, E> in(L l, std::initializer_list<E> values) {
-        return {std::move(l), std::move(values)};
+    conditions::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
+        return {std::move(l), std::move(values), false};
+    }
+    
+    template<class L, class A>
+    conditions::in_t<L, A> in(L l, A arg) {
+        return {std::move(l), std::move(arg), false};
+    }
+    
+    template<class L, class E>
+    conditions::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
+        return {std::move(l), std::move(values), true};
+    }
+    
+    template<class L, class E>
+    conditions::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
+        return {std::move(l), std::move(values), true};
+    }
+    
+    template<class L, class A>
+    conditions::in_t<L, A> not_in(L l, A arg) {
+        return {std::move(l), std::move(arg), true};
     }
     
     template<class L, class R>
@@ -6476,15 +6505,25 @@ namespace sqlite_orm {
                 return res + " " + static_cast<std::string>(col);
             }
             
-            template<class L, class E>
-            std::string process_where(const conditions::in_t<L, E> &inCondition) {
+            template<class L, class A>
+            std::string process_where(const conditions::in_t<L, A> &inCondition) {
                 std::stringstream ss;
                 auto leftString = this->string_from_expression(inCondition.l);
-                ss << leftString << " " << static_cast<std::string>(inCondition) << " (";
-                for(size_t index = 0; index < inCondition.values.size(); ++index) {
-                    auto &value = inCondition.values[index];
+                ss << leftString << " " << static_cast<std::string>(inCondition) << " ";
+                ss << this->string_from_expression(inCondition.arg);
+                ss << " ";
+                return ss.str();
+            }
+            
+            template<class L, class E>
+            std::string process_where(const conditions::in_t<L, std::vector<E>> &inCondition) {
+                std::stringstream ss;
+                auto leftString = this->string_from_expression(inCondition.l);
+                ss << leftString << " " << static_cast<std::string>(inCondition) << " ( ";
+                for(size_t index = 0; index < inCondition.arg.size(); ++index) {
+                    auto &value = inCondition.arg[index];
                     ss << " " << this->string_from_expression(value);
-                    if(index < inCondition.values.size() - 1) {
+                    if(index < inCondition.arg.size() - 1) {
                         ss << ", ";
                     }
                 }

@@ -1115,15 +1115,25 @@ namespace sqlite_orm {
                 return res + " " + static_cast<std::string>(col);
             }
             
-            template<class L, class E>
-            std::string process_where(const conditions::in_t<L, E> &inCondition) {
+            template<class L, class A>
+            std::string process_where(const conditions::in_t<L, A> &inCondition) {
                 std::stringstream ss;
                 auto leftString = this->string_from_expression(inCondition.l);
-                ss << leftString << " " << static_cast<std::string>(inCondition) << " (";
-                for(size_t index = 0; index < inCondition.values.size(); ++index) {
-                    auto &value = inCondition.values[index];
+                ss << leftString << " " << static_cast<std::string>(inCondition) << " ";
+                ss << this->string_from_expression(inCondition.arg);
+                ss << " ";
+                return ss.str();
+            }
+            
+            template<class L, class E>
+            std::string process_where(const conditions::in_t<L, std::vector<E>> &inCondition) {
+                std::stringstream ss;
+                auto leftString = this->string_from_expression(inCondition.l);
+                ss << leftString << " " << static_cast<std::string>(inCondition) << " ( ";
+                for(size_t index = 0; index < inCondition.arg.size(); ++index) {
+                    auto &value = inCondition.arg[index];
                     ss << " " << this->string_from_expression(value);
-                    if(index < inCondition.values.size() - 1) {
+                    if(index < inCondition.arg.size() - 1) {
                         ss << ", ";
                     }
                 }
