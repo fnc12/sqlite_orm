@@ -13,6 +13,8 @@ __pragma(push_macro("max"))
 # endif
 #endif // defined(_MSC_VER)
 
+#include <ciso646>
+
 #pragma once
 
 #include <system_error>  // std::error_code, std::system_error
