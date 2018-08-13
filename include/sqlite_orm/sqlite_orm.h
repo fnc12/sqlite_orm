@@ -1968,6 +1968,10 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  HAVING holder.
+         *  T is having argument type.
+         */
         template<class T>
         struct having_t {
             using type = T;
