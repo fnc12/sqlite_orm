@@ -988,6 +988,13 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class T>
+            std::vector<std::string> get_column_names(const internal::asterisk_t<T> &ast) {
+                std::vector<std::string> res;
+                res.push_back("*");
+                return res;
+            }
+            
             template<class ...Args>
             std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) {
                 std::vector<std::string> columnNames;
@@ -1160,6 +1167,13 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr);
                 ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1) << " AND " << this->string_from_expression(bw.b2) << " ";
+                return ss.str();
+            }
+            
+            template<class T>
+            std::string process_where(const conditions::exists_t<T> &e) {
+                std::stringstream ss;
+                ss << static_cast<std::string>(e) << " " << this->string_from_expression(e.t) << " ";
                 return ss.str();
             }
             
@@ -1860,6 +1874,12 @@ namespace sqlite_orm {
                 }else{
                     return {};
                 }
+            }
+            
+            template<class T>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &ast) {
+                auto tableName = this->impl.template find_table_name<T>();
+                return {std::make_pair(std::move(tableName), "")};
             }
             
             template<class ...Args>

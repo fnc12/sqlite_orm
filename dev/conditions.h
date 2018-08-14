@@ -138,7 +138,7 @@ namespace sqlite_orm {
             L l;
             R r;
             
-            binary_condition(){}
+            binary_condition() = default;
             
             binary_condition(L l_, R r_): l(l_), r(r_) {}
         };
@@ -482,7 +482,7 @@ namespace sqlite_orm {
             A a;
             T t;
             
-            like_t(){}
+            like_t() = default;
             
             like_t(A a_, T t_): a(a_), t(t_) {}
             
@@ -572,6 +572,21 @@ namespace sqlite_orm {
             
             operator std::string() const {
                 return "INNER JOIN";
+            }
+        };
+        
+        template<class T>
+        struct exists_t : condition_t {
+            using type = T;
+            
+            type t;
+            
+            exists_t() = default;
+            
+            exists_t(T t_) : t(std::move(t_)) {}
+            
+            operator std::string() const {
+                return "EXISTS";
             }
         };
         
@@ -933,5 +948,10 @@ namespace sqlite_orm {
     template<class A, class T>
     conditions::like_t<A, T> like(A a, T t) {
         return {a, t};
+    }
+    
+    template<class T>
+    conditions::exists_t<T> exists(T t) {
+        return {std::move(t)};
     }
 }
