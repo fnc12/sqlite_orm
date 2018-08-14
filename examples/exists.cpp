@@ -130,7 +130,13 @@ int main(int argc, char **argv) {
                                    where(is_equal(&Customer::grade, 2)
                                          and exists(select(count<Customer>(),
                                                            where(is_equal(&Customer::grade, 2)),
-                                                           group_by(&Customer::grade)))));
+                                                           group_by(&Customer::grade),
+                                                           having(greater_than(count(), 2))))));
+        cout << "CUST_CODE   CUST_NAME   CUST_CITY                            GRADE" << endl;
+        cout << "----------  ----------  -----------------------------------  ----------" << endl;
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' <<  std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        }
         
     }
     

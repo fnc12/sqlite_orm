@@ -1038,9 +1038,6 @@ namespace sqlite_orm {
                     auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
                     auto tableAliasString = alias_extractor<original_join_type>::get();
                     std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName), std::move(tableAliasString));
-                    /*if(tableAliasString.empty()){
-                        tableNamesSet.erase({crossJoinedTableName, ""});
-                    }*/
                     tableNamesSet.erase(tableNameWithAlias);
                 });
                 if(!tableNamesSet.empty()){
@@ -1312,6 +1309,12 @@ namespace sqlite_orm {
                     }
                 }
                 ss << " ";
+            }
+            
+            template<class T>
+            void process_single_condition(std::stringstream &ss, const conditions::having_t<T> &hav) {
+                ss << static_cast<std::string>(hav) << " ";
+                ss << this->process_where(hav.t) << " ";
             }
             
             /**

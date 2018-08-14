@@ -369,6 +369,9 @@ namespace sqlite_orm {
     struct type_printer<const char*> : public text_printer {};
     
     template<>
+    struct type_printer<float> : public real_printer {};
+    
+    template<>
     struct type_printer<double> : public real_printer {};
     
     template<class T>
@@ -1344,7 +1347,7 @@ namespace sqlite_orm {
             bool offset_is_implicit = false;
             int off = 0;
             
-            limit_t(){}
+            limit_t() = default;
             
             limit_t(decltype(lim) lim_): lim(lim_) {}
             
@@ -1413,7 +1416,7 @@ namespace sqlite_orm {
         struct negated_condition_t : public condition_t {
             C c;
             
-            negated_condition_t(){}
+            negated_condition_t() = default;
             
             negated_condition_t(C c_): c(c_) {}
             
@@ -1430,7 +1433,7 @@ namespace sqlite_orm {
             L l;
             R r;
             
-            and_condition_t(){}
+            and_condition_t() = default;
             
             and_condition_t(L l_, R r_): l(l_), r(r_) {}
             
@@ -1447,7 +1450,7 @@ namespace sqlite_orm {
             L l;
             R r;
             
-            or_condition_t(){}
+            or_condition_t() = default;
             
             or_condition_t(L l_, R r_): l(l_), r(r_) {}
             
@@ -1654,6 +1657,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  IN operator object.
+         */
         template<class L, class A>
         struct in_t : public condition_t {
             using self = in_t<L, A>;
@@ -1679,6 +1685,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  IS NULL operator object.
+         */
         template<class T>
         struct is_null_t {
             using self = is_null_t<T>;
@@ -1693,6 +1702,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  IS NOT NULL operator object.
+         */
         template<class T>
         struct is_not_null_t {
             using self = is_not_null_t<T>;
@@ -1708,6 +1720,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  WHERE argument holder.
+         */
         template<class C>
         struct where_t {
             C c;
@@ -1717,6 +1732,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  ORDER BY argument holder.
+         */
         template<class O>
         struct order_by_t {
             using self = order_by_t<O>;
@@ -1770,6 +1788,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  ORDER BY pack holder.
+         */
         template<class ...Args>
         struct multi_order_by_t {
             std::tuple<Args...> args;
@@ -1779,6 +1800,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  GROUP BY pack holder.
+         */
         template<class ...Args>
         struct group_by_t {
             std::tuple<Args...> args;
@@ -1788,6 +1812,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  BETWEEN operator object.
+         */
         template<class A, class T>
         struct between_t : public condition_t {
             A expr;
@@ -1803,6 +1830,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  LIKE operator object.
+         */
         template<class A, class T>
         struct like_t : public condition_t {
             A a;
@@ -1817,6 +1847,10 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  CROSS JOIN holder.
+         *  T is joined type which represents any mapped table.
+         */
         template<class T>
         struct cross_join_t {
             using type = T;
@@ -1826,6 +1860,10 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  NATURAL JOIN holder.
+         *  T is joined type which represents any mapped table.
+         */
         template<class T>
         struct natural_join_t {
             using type = T;
@@ -1835,6 +1873,11 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  LEFT JOIN holder.
+         *  T is joined type which represents any mapped table.
+         *  O is on(...) argument type.
+         */
         template<class T, class O>
         struct left_join_t {
             using type = T;
@@ -1847,6 +1890,11 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  Simple JOIN holder.
+         *  T is joined type which represents any mapped table.
+         *  O is on(...) argument type.
+         */
         template<class T, class O>
         struct join_t {
             using type = T;
@@ -1859,6 +1907,11 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  LEFT OUTER JOIN holder.
+         *  T is joined type which represents any mapped table.
+         *  O is on(...) argument type.
+         */
         template<class T, class O>
         struct left_outer_join_t {
             using type = T;
@@ -1871,15 +1924,24 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  on(...) argument holder used for JOIN, LEFT JOIN, LEFT OUTER JOIN and INNER JOIN
+         *  T is on type argument.
+         */
         template<class T>
         struct on_t {
-            T t;
+            using type = T;
+            
+            type t;
             
             operator std::string() const {
                 return "ON";
             }
         };
         
+        /**
+         *  USING argument holder.
+         */
         template<class F, class O>
         struct using_t {
             F O::*column;
@@ -1889,6 +1951,11 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  INNER JOIN holder.
+         *  T is joined type which represents any mapped table.
+         *  O is on(...) argument type.
+         */
         template<class T, class O>
         struct inner_join_t {
             using type = T;
@@ -1916,12 +1983,26 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  HAVING holder.
+         *  T is having argument type.
+         */
+        template<class T>
+        struct having_t {
+            using type = T;
+            
+            type t;
+            
+            operator std::string() const {
+                return "HAVING";
+            }
+        };
+        
     }
     
     /**
      *  Cute operators for columns
      */
-    
     template<class T, class R>
     conditions::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
         return {expr.t, r};
@@ -2279,6 +2360,11 @@ namespace sqlite_orm {
     template<class T>
     conditions::exists_t<T> exists(T t) {
         return {std::move(t)};
+    }
+    
+    template<class T>
+    conditions::having_t<T> having(T t) {
+        return {t};
     }
 }
 #pragma once
@@ -6475,9 +6561,6 @@ namespace sqlite_orm {
                     auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
                     auto tableAliasString = alias_extractor<original_join_type>::get();
                     std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName), std::move(tableAliasString));
-                    /*if(tableAliasString.empty()){
-                        tableNamesSet.erase({crossJoinedTableName, ""});
-                    }*/
                     tableNamesSet.erase(tableNameWithAlias);
                 });
                 if(!tableNamesSet.empty()){
@@ -6749,6 +6832,12 @@ namespace sqlite_orm {
                     }
                 }
                 ss << " ";
+            }
+            
+            template<class T>
+            void process_single_condition(std::stringstream &ss, const conditions::having_t<T> &hav) {
+                ss << static_cast<std::string>(hav) << " ";
+                ss << this->process_where(hav.t) << " ";
             }
             
             /**
