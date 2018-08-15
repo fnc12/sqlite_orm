@@ -1968,6 +1968,26 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T>
+        struct exists_t : condition_t {
+            using type = T;
+            using self = exists_t<type>;
+            
+            type t;
+            
+            exists_t() = default;
+            
+            exists_t(T t_) : t(std::move(t_)) {}
+            
+            operator std::string() const {
+                return "EXISTS";
+            }
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
+            }
+        };
+        
         /**
          *  HAVING holder.
          *  T is having argument type.
@@ -2340,6 +2360,11 @@ namespace sqlite_orm {
     template<class A, class T>
     conditions::like_t<A, T> like(A a, T t) {
         return {a, t};
+    }
+    
+    template<class T>
+    conditions::exists_t<T> exists(T t) {
+        return {std::move(t)};
     }
     
     template<class T>
@@ -3271,6 +3296,11 @@ namespace sqlite_orm {
         bool get_distinct(const columns_t<Args...> &cols) {
             return cols.distinct;
         }
+        
+        template<class T>
+        struct asterisk_t {
+            using type = T;
+        };
     }
     
     template<class T>
@@ -3339,6 +3369,11 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::union_t<L, R> union_all(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs), true};
+    }
+    
+    template<class T>
+    internal::asterisk_t<T> asterisk() {
+        return {};
     }
 }
 #pragma once
@@ -6481,6 +6516,13 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class T>
+            std::vector<std::string> get_column_names(const internal::asterisk_t<T> &ast) {
+                std::vector<std::string> res;
+                res.push_back("*");
+                return res;
+            }
+            
             template<class ...Args>
             std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) {
                 std::vector<std::string> columnNames;
@@ -6650,6 +6692,13 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr);
                 ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1) << " AND " << this->string_from_expression(bw.b2) << " ";
+                return ss.str();
+            }
+            
+            template<class T>
+            std::string process_where(const conditions::exists_t<T> &e) {
+                std::stringstream ss;
+                ss << static_cast<std::string>(e) << " " << this->string_from_expression(e.t) << " ";
                 return ss.str();
             }
             
@@ -7356,6 +7405,12 @@ namespace sqlite_orm {
                 }else{
                     return {};
                 }
+            }
+            
+            template<class T>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &ast) {
+                auto tableName = this->impl.template find_table_name<T>();
+                return {std::make_pair(std::move(tableName), "")};
             }
             
             template<class ...Args>

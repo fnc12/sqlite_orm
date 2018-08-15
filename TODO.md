@@ -5,7 +5,6 @@
 * `FOREIGN KEY` - sync_schema fk comparison and ability of two tables to have fk to each other
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
 * `CASE`
-* `EXISTS`
 * asterisk in raw select: `SELECT rowid, * FROM table`
 * `ATTACH`
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
@@ -18,5 +17,6 @@
 * triggers
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
 * column alias
+* `LEFT OUTER JOIN`
 
 Please feel free to add any feature that isn't listed here and not implemented yet.

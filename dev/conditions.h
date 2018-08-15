@@ -639,6 +639,26 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T>
+        struct exists_t : condition_t {
+            using type = T;
+            using self = exists_t<type>;
+            
+            type t;
+            
+            exists_t() = default;
+            
+            exists_t(T t_) : t(std::move(t_)) {}
+            
+            operator std::string() const {
+                return "EXISTS";
+            }
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
+            }
+        };
+        
         /**
          *  HAVING holder.
          *  T is having argument type.
@@ -1011,6 +1031,11 @@ namespace sqlite_orm {
     template<class A, class T>
     conditions::like_t<A, T> like(A a, T t) {
         return {a, t};
+    }
+    
+    template<class T>
+    conditions::exists_t<T> exists(T t) {
+        return {std::move(t)};
     }
     
     template<class T>
