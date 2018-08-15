@@ -32,6 +32,15 @@ struct Agent {
     std::string country;
 };
 
+struct Order {
+    std::string num;
+    int amount;
+    int advanceAmount;
+    std::string date;
+    std::string custCode;
+    std::string agentCode;
+};
+
 int main(int argc, char **argv) {
     using namespace sqlite_orm;
     
@@ -55,8 +64,16 @@ int main(int argc, char **argv) {
                                            make_column("WORKING_AREA", &Agent::workingArea),
                                            make_column("COMMISSION", &Agent::comission),
                                            make_column("PHONE_NO", &Agent::phoneNo),
-                                           make_column("COUNTRY", &Agent::country)));
+                                           make_column("COUNTRY", &Agent::country)),
+                                make_table("orders",
+                                           make_column("ORD_NUM", &Order::num, primary_key()),
+                                           make_column("ORD_AMOUNT", &Order::amount),
+                                           make_column("ADVANCE_AMOUNT", &Order::advanceAmount),
+                                           make_column("ORD_DATE", &Order::date),
+                                           make_column("CUST_CODE", &Order::custCode),
+                                           make_column("AGENT_CODE", &Order::agentCode)));
     storage.sync_schema();
+    storage.remove_all<Order>();
     storage.remove_all<Agent>();
     storage.remove_all<Customer>();
     
@@ -99,6 +116,41 @@ int main(int argc, char **argv) {
     storage.replace(Customer{"C00016", "Venkatpati", "Bangalore", "Bangalore", "India", 2, 8000.00, 11000.00, 7000.00, 12000.00, "JRTVFDD", "A007"});
     storage.replace(Customer{"C00011", "Sundariya", "Chennai", "Chennai", "India", 3, 7000.00, 11000.00, 7000.00, 11000.00, "PPHGRTS", "A010"});
     
+    storage.replace(Order{"200114", 3500, 2000, "15-AUG-08", "C00002", "A008"});
+    storage.replace(Order{"200122", 2500, 400, "16-SEP-08", "C00003", "A004"});
+    storage.replace(Order{"200118", 500, 100, "20-JUL-08", "C00023", "A006"});
+    storage.replace(Order{"200119", 4000, 700, "16-SEP-08", "C00007", "A010"});
+    storage.replace(Order{"200121", 1500, 600, "23-SEP-08", "C00008", "A004"});
+    storage.replace(Order{"200130", 2500, 400, "30-JUL-08", "C00025", "A011"});
+    storage.replace(Order{"200134", 4200, 1800, "25-SEP-08", "C00004", "A005"});
+    storage.replace(Order{"200108", 4000, 600, "15-FEB-08", "C00008", "A004"});
+    storage.replace(Order{"200103", 1500, 700, "15-MAY-08", "C00021", "A005"});
+    storage.replace(Order{"200105", 2500, 500, "18-JUL-08", "C00025", "A011"});
+    storage.replace(Order{"200109", 3500, 800, "30-JUL-08", "C00011", "A010"});
+    storage.replace(Order{"200101", 3000, 1000, "15-JUL-08", "C00001", "A008"});
+    storage.replace(Order{"200111", 1000, 300, "10-JUL-08", "C00020", "A008"});
+    storage.replace(Order{"200104", 1500, 500, "13-MAR-08", "C00006", "A004"});
+    storage.replace(Order{"200106", 2500, 700, "20-APR-08", "C00005", "A002"});
+    storage.replace(Order{"200125", 2000, 600, "10-OCT-08", "C00018", "A005"});
+    storage.replace(Order{"200117", 800, 200, "20-OCT-08", "C00014", "A001"});
+    storage.replace(Order{"200123", 500, 100, "16-SEP-08", "C00022", "A002"});
+    storage.replace(Order{"200120", 500, 100, "20-JUL-08", "C00009", "A002"});
+    storage.replace(Order{"200116", 500, 100, "13-JUL-08", "C00010", "A009"});
+    storage.replace(Order{"200124", 500, 100, "20-JUN-08", "C00017", "A007"});
+    storage.replace(Order{"200126", 500, 100, "24-JUN-08", "C00022", "A002"});
+    storage.replace(Order{"200129", 2500, 500, "20-JUL-08", "C00024", "A006"});
+    storage.replace(Order{"200127", 2500, 400, "20-JUL-08", "C00015", "A003"});
+    storage.replace(Order{"200128", 3500, 1500, "20-JUL-08", "C00009", "A002"});
+    storage.replace(Order{"200135", 2000, 800, "16-SEP-08", "C00007", "A010"});
+    storage.replace(Order{"200131", 900, 150, "26-AUG-08", "C00012", "A012"});
+    storage.replace(Order{"200133", 1200, 400, "29-JUN-08", "C00009", "A002"});
+    storage.replace(Order{"200100", 1000, 600, "08-JAN-08", "C00015", "A003"});
+    storage.replace(Order{"200110", 3000, 500, "15-APR-08", "C00019", "A010"});
+    storage.replace(Order{"200107", 4500, 900, "30-AUG-08", "C00007", "A010"});
+    storage.replace(Order{"200112", 2000, 400, "30-MAY-08", "C00016", "A007"});
+    storage.replace(Order{"200113", 4000, 600, "10-JUN-08", "C00022", "A002"});
+    storage.replace(Order{"200102", 2000, 300, "25-MAY-08", "C00012", "A012"});
+    
     {
         //  SELECT agent_code,agent_name,working_area,commission
         //  FROM agents
@@ -137,8 +189,21 @@ int main(int argc, char **argv) {
         for(auto &row : rows) {
             cout << std::get<0>(row) << '\t' <<  std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
         }
-        
     }
-    
+    {
+        //  SELECT agent_code,ord_num,ord_amount,cust_code
+        //  FROM orders
+        //  WHERE NOT EXISTS
+        //      (SELECT agent_code
+        //      FROM customer
+        //      WHERE payment_amt=1400);
+        auto rows = storage.select(columns(&Order::agentCode, &Order::num, &Order::amount, &Order::custCode),
+                                   where(not exists(select(&Customer::agentCode,
+                                                           where(is_equal(&Customer::paymentAmt, 1400))))));
+        cout << "AGENT_CODE  ORD_NUM     ORD_AMOUNT  CUST_CODE" << endl;
+        for(auto &row : rows) {
+            cout << std::get<0>(row) << '\t' <<  std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        }
+    }
     return 0;
 }

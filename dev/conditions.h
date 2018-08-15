@@ -642,6 +642,7 @@ namespace sqlite_orm {
         template<class T>
         struct exists_t : condition_t {
             using type = T;
+            using self = exists_t<type>;
             
             type t;
             
@@ -651,6 +652,10 @@ namespace sqlite_orm {
             
             operator std::string() const {
                 return "EXISTS";
+            }
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
             }
         };
         
