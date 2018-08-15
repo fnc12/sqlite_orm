@@ -18,5 +18,6 @@
 * triggers
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
 * column alias
+* `LEFT OUTER JOIN`
 
 Please feel free to add any feature that isn't listed here and not implemented yet.

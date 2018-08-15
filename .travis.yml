@@ -73,3 +73,5 @@ script:
   - ./a.out
   - clang++ -std=c++1y examples/having.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
+  - clang++ -std=c++1y examples/existss.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
