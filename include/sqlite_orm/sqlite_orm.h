@@ -6433,7 +6433,7 @@ namespace sqlite_orm {
                 using tuple_t = std::tuple<Args...>;
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&ss, this](auto &v){
                     ss << ", " << this->string_from_expression(v);
-                });
+                }, false);
                 ss << ") ";
                 return ss.str();
             }
