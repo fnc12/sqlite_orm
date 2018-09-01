@@ -41,6 +41,7 @@
 #include "storage_impl.h"
 #include "transaction_guard.h"
 #include "limit_accesor.h"
+#include "field_value_holder.h"
 
 namespace sqlite_orm {
     
@@ -2666,13 +2667,13 @@ namespace sqlite_orm {
                                                 c.name);
                             if(it == compositeKeyColumnNames.end()){
                                 using field_type = typename decltype(c)::field_type;
-                                const field_type *value = nullptr;
                                 if(c.member_pointer){
-                                    value = &(o.*c.member_pointer);
+                                    statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer);
                                 }else{
-                                    value = &((o).*(c.getter))();
+                                    using getter_type = typename decltype(c)::getter_type;
+                                    field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                                    statement_binder<field_type>().bind(stmt, index++, valueHolder.value);
                                 }
-                                statement_binder<field_type>().bind(stmt, index++, *value);
                             }
                         }
                     });
