@@ -4,7 +4,9 @@
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <cstdlib>  //  atof, atoi, atoll
 #include <string>   //  std::string, std::wstring
+#ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
+#endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>   //  std::vector
 #include <cstring>  //  strlen
 #include <algorithm>    //  std::copy
@@ -103,7 +105,7 @@ namespace sqlite_orm {
             }
         }
     };
-    
+#ifndef SQLITE_ORM_OMITS_CODECVT
     /**
      *  Specialization for std::wstring.
      */
@@ -132,7 +134,7 @@ namespace sqlite_orm {
             }
         }
     };
-    
+#endif  //  SQLITE_ORM_OMITS_CODECVT
     /**
      *  Specialization for std::vector<char>.
      */

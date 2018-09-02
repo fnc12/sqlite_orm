@@ -13,3 +13,5 @@ __pragma(push_macro("max"))
 # endif
 #endif // defined(_MSC_VER)
 
+#include <ciso646>  //  due to #166
+

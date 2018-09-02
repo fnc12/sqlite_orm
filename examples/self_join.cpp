@@ -109,6 +109,7 @@ int main() {
         "T1H 1Y8", "+1 (403) 467-3351", "+1 (403) 467-8772", "laura@chinookcorp.com"
     });
     storage.commit();
+    cout << "after commit" << endl;
     
     //  SELECT  m.FirstName || ' ' || m.LastName,
     //      employees.FirstName || ' ' || employees.LastName

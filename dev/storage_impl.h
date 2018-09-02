@@ -20,6 +20,7 @@
 #include "table_info.h"
 #include "sync_schema_result.h"
 #include "sqlite_type.h"
+#include "field_value_holder.h"
 
 namespace sqlite_orm {
     
@@ -301,16 +302,19 @@ namespace sqlite_orm {
             std::string dump(const O &o, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
                 std::stringstream ss;
                 ss << "{ ";
-                std::vector<std::pair<std::string, std::string>> pairs;
+                using pair = std::pair<std::string, std::string>;
+                std::vector<pair> pairs;
                 this->table.for_each_column([&pairs, &o] (auto &c) {
-                    using field_type = typename std::remove_reference<decltype(c)>::type::field_type;
-                    const field_type *value = nullptr;
+                    using field_type = typename std::decay<decltype(c)>::type::field_type;
+                    pair p{c.name, ""};
                     if(c.member_pointer){
-                        value = &(o.*c.member_pointer);
+                        p.second = field_printer<field_type>()(o.*c.member_pointer);
                     }else{
-                        value = &((o).*(c.getter))();
+                        using getter_type = typename std::decay<decltype(c)>::type::getter_type;
+                        field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                        p.second = field_printer<field_type>()(valueHolder.value);
                     }
-                    pairs.push_back(std::make_pair(c.name, field_printer<field_type>()(*value)));
+                    pairs.push_back(std::move(p));
                 });
                 for(size_t i = 0; i < pairs.size(); ++i) {
                     auto &p = pairs[i];

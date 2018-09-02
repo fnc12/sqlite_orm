@@ -22,7 +22,14 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  T is use to specify type explicitly for queries like
+         *  SELECT COUNT(*) FROM table_name;
+         *  T can be omitted with void.
+         */
+        template<class T>
         struct count_asterisk_t {
+            using type = T;
             
             operator std::string() const {
                 return "COUNT";
@@ -97,7 +104,12 @@ namespace sqlite_orm {
         return {t};
     }
     
-    inline aggregate_functions::count_asterisk_t count() {
+    inline aggregate_functions::count_asterisk_t<void> count() {
+        return {};
+    }
+    
+    template<class T>
+    aggregate_functions::count_asterisk_t<T> count() {
         return {};
     }
     

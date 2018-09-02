@@ -19,6 +19,35 @@ void testThreadsafe() {
     cout << "threadsafe = " << threadsafe() << endl;
 }
 
+void testIn() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    storage.replace(User{ 1 });
+    storage.replace(User{ 2 });
+    storage.replace(User{ 3 });
+    
+    {
+        auto rows = storage.get_all<User>(where(in(&User::id, {1, 2, 3})));
+        assert(rows.size() == 3);
+    }
+    {
+        std::vector<int> inArgument;
+        inArgument.push_back(1);
+        inArgument.push_back(2);
+        inArgument.push_back(3);
+        auto rows = storage.get_all<User>(where(in(&User::id, inArgument)));
+        assert(rows.size() == 3);
+    }
+}
+
 void testJournalMode() {
     cout << __func__ << endl;
     
@@ -260,8 +289,8 @@ void testExplicitColumns() {
     assert(storage.table_exists("users"));
     assert(storage.table_exists("tokens"));
     
-    storage.remove_all<User>();
     storage.remove_all<Token>();
+    storage.remove_all<User>();
     
     auto brunoId = storage.insert(User{0, "Bruno"});
     auto zeddId = storage.insert(User{0, "Zedd"});
@@ -2105,6 +2134,7 @@ void testBusyTimeout() {
     storage.busy_timeout(500);
 }
 
+#ifndef SQLITE_ORM_OMITS_CODECVT
 void testWideString() {
     cout << __func__ << endl;
     
@@ -2135,6 +2165,7 @@ void testWideString() {
     }
     
 }
+#endif  //  SQLITE_ORM_OMITS_CODECVT
 
 void testRowId() {
     cout << __func__ << endl;
@@ -2218,7 +2249,9 @@ int main(int argc, char **argv) {
     
     testBusyTimeout();
     
+#ifndef SQLITE_ORM_OMITS_CODECVT
     testWideString();
+#endif  //  SQLITE_ORM_OMITS_CODECVT
     
     testIssue86();
     
@@ -2248,7 +2281,9 @@ int main(int argc, char **argv) {
     
     testDifferentGettersAndSetters();
     
-    testJournalMode();
-    
     testThreadsafe();
+    
+    testIn();
+    
+    testJournalMode();
 }
