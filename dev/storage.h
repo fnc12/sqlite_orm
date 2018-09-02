@@ -40,6 +40,8 @@
 #include "table_info.h"
 #include "storage_impl.h"
 #include "transaction_guard.h"
+#include "pragma.h"
+#include "journal_mode.h"
 #include "limit_accesor.h"
 #include "field_value_holder.h"
 
@@ -202,75 +204,6 @@ namespace sqlite_orm {
                 this->begin_transaction();
                 return {*this};
             }
-            
-            struct pragma_t {
-                
-                pragma_t(storage_type &storage_): storage(storage_) {}
-                
-                int synchronous() {
-                    return this->get_pragma<int>("synchronous");
-                }
-                
-                void synchronous(int value) {
-                    this->_synchronous = -1;
-                    this->set_pragma("synchronous", value);
-                    this->_synchronous = value;
-                }
-                
-                int user_version() {
-                    return this->get_pragma<int>("user_version");
-                }
-                
-                void user_version(int value) {
-                    this->set_pragma("user_version", value);
-                }
-                
-                int auto_vacuum() {
-                    return this->get_pragma<int>("auto_vacuum");
-                }
-                
-                void auto_vacuum(int value) {
-                    this->set_pragma("auto_vacuum", value);
-                }
-                
-                friend struct storage_t<Ts...>;
-                
-            protected:
-                storage_type &storage;
-                int _synchronous = -1;
-                
-                template<class T>
-                T get_pragma(const std::string &name) {
-                    auto connection = this->storage.get_or_create_connection();
-                    std::string query = "PRAGMA " + name;
-                    int res = -1;
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv, char **) -> int {
-                                               auto &res = *(T*)data;
-                                               if(argc){
-                                                   res = row_extractor<T>().extract(argv[0]);
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
-                    return res;
-                }
-                
-                template<class T>
-                void set_pragma(const std::string &name, const T &value) {
-                    auto connection = this->storage.get_or_create_connection();
-                    std::stringstream ss;
-                    ss << "PRAGMA " << name << " = " << this->storage.string_from_expression(value);
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(), query.c_str(), nullptr, nullptr, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
-                }
-            };
             
             template<class S>
             friend struct limit_accesor;
@@ -1223,6 +1156,10 @@ namespace sqlite_orm {
 #endif
                 if(this->pragma._synchronous != -1) {
                     this->pragma.synchronous(this->pragma._synchronous);
+                }
+                
+                if(this->pragma._journal_mode != -1) {
+                    this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma._journal_mode), db);
                 }
                 
                 for(auto &p : this->collatingFunctions){
@@ -3154,8 +3091,11 @@ namespace sqlite_orm {
                 }
             }
             
+            using pragma_type = pragma_t<storage_type>;
+            
+            friend pragma_type;
         public:
-            pragma_t pragma;
+            pragma_type pragma;
             limit_accesor<storage_type> limit;
         };
     }
@@ -3163,5 +3103,12 @@ namespace sqlite_orm {
     template<class ...Ts>
     internal::storage_t<Ts...> make_storage(const std::string &filename, Ts ...tables) {
         return {filename, internal::storage_impl<Ts...>(tables...)};
+    }
+    
+    /**
+     *  sqlite3_threadsafe() interface.
+     */
+    inline int threadsafe() {
+        return sqlite3_threadsafe();
     }
 }

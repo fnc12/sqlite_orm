@@ -6,11 +6,18 @@
 #include <string>
 #include <iostream>
 #include <memory>
+#include <cstdio>   //  remove
 
 using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
+
+void testThreadsafe() {
+    cout << __func__ << endl;
+    
+    cout << "threadsafe = " << threadsafe() << endl;
+}
 
 void testIn() {
     cout << __func__ << endl;
@@ -38,6 +45,47 @@ void testIn() {
         inArgument.push_back(3);
         auto rows = storage.get_all<User>(where(in(&User::id, inArgument)));
         assert(rows.size() == 3);
+    }
+}
+
+void testJournalMode() {
+    cout << __func__ << endl;
+    
+    auto filename = "journal_mode.sqlite";
+    ::remove(filename);
+    auto storage = make_storage(filename);
+    auto jm = storage.pragma.journal_mode();
+    assert(jm == decltype(jm)::DELETE);
+    
+    for(auto i = 0; i < 2; ++i){
+        if(i == 0) {
+            storage.begin_transaction();
+        }
+        storage.pragma.journal_mode(journal_mode::MEMORY);
+        jm = storage.pragma.journal_mode();
+        assert(jm == decltype(jm)::MEMORY);
+        
+        if(i == 1) {    //  WAL cannot be set within a transaction
+            storage.pragma.journal_mode(journal_mode::WAL);
+            jm = storage.pragma.journal_mode();
+            assert(jm == decltype(jm)::WAL);
+        }
+        
+        storage.pragma.journal_mode(journal_mode::OFF);
+        jm = storage.pragma.journal_mode();
+        assert(jm == decltype(jm)::OFF);
+        
+        storage.pragma.journal_mode(journal_mode::PERSIST);
+        jm = storage.pragma.journal_mode();
+        assert(jm == decltype(jm)::PERSIST);
+        
+        storage.pragma.journal_mode(journal_mode::TRUNCATE);
+        jm = storage.pragma.journal_mode();
+        assert(jm == decltype(jm)::TRUNCATE);
+        
+        if(i == 0) {
+            storage.rollback();
+        }
     }
 }
 
@@ -2233,5 +2281,9 @@ int main(int argc, char **argv) {
     
     testDifferentGettersAndSetters();
     
+    testThreadsafe();
+    
     testIn();
+    
+    testJournalMode();
 }
