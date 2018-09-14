@@ -87,7 +87,7 @@ namespace sqlite_orm {
                         auto &impl = storage.template get_impl<T>();
                         auto index = 0;
                         impl.table.for_each_column([&index, &temp, this] (auto &c) {
-                            using field_type = typename std::remove_reference<decltype(c)>::type::field_type;
+                            using field_type = typename std::decay<decltype(c)>::type::field_type;
                             auto value = row_extractor<field_type>().extract(*this->stmt, index++);
                             if(c.member_pointer){
                                 auto member_pointer = c.member_pointer;
