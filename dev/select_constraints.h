@@ -116,7 +116,6 @@ namespace sqlite_orm {
             
             return_type col;
             conditions_type conditions;
-            bool highest_level = false;
         };
         
         /**
@@ -131,12 +130,9 @@ namespace sqlite_orm {
             right_type right;
             bool all = false;
             
-            union_t(left_type l, right_type r, decltype(all) all_): left(std::move(l)), right(std::move(r)), all(all_) {
-                this->left.highest_level = true;
-                this->right.highest_level = true;
-            }
+            union_t(left_type l, right_type r, decltype(all) all_): left(std::move(l)), right(std::move(r)), all(all_) {}
             
-            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
+            union_t(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
 
             operator std::string() const {
                 if(!this->all){
@@ -159,11 +155,6 @@ namespace sqlite_orm {
         bool get_distinct(const columns_t<Args...> &cols) {
             return cols.distinct;
         }
-        
-        template<class T>
-        struct asterisk_t {
-            using type = T;
-        };
     }
     
     template<class T>
@@ -232,10 +223,5 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::union_t<L, R> union_all(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs), true};
-    }
-    
-    template<class T>
-    internal::asterisk_t<T> asterisk() {
-        return {};
     }
 }
