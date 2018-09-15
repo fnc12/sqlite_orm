@@ -17,7 +17,6 @@ namespace sqlite_orm {
         table_has_no_primary_key_column,
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
-        incorrect_journal_mode_string,
     };
     
 }

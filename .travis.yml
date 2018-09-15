@@ -17,8 +17,6 @@ script:
   - clang -c sqlite-amalgamation-3190300/sqlite3.c -o sqlite.static
   - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -o tests.out
   - ./tests.out
-  - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -D SQLITE_ORM_OMITS_CODECVT -o tests_without_codecvt.out
-  - ./tests_without_codecvt.out
   - clang++ -std=c++1y tests/static_tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -o static_tests.out
   - ./static_tests.out
   - clang++ -std=c++1y examples/core_functions.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
@@ -51,6 +49,8 @@ script:
   - ./a.out
   - clang++ -std=c++1y examples/blob.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
+  - clang++ -std=c++1y examples/private_class_members.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
+  - ./a.out
   - clang++ -std=c++1y examples/foreign_key.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
   - clang++ -std=c++1y examples/index.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
@@ -68,10 +68,4 @@ script:
   - clang++ -std=c++1y examples/natural_join.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
   - clang++ -std=c++1y examples/union.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/subquery.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/having.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/exists.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
   - ./a.out
