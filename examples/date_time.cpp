@@ -53,5 +53,8 @@ int main() {
     
     cout << "SELECT * FROM datetime_text = " << storage.dump(storage.get_all<DatetimeText>().front()) << endl;
     
+    auto nowWithOffset2 = storage.select(date("now", "+2 day")).front();
+    cout << "SELECT date('now','+2 day') = " << nowWithOffset2 << endl;
+    
     return 0;
 }

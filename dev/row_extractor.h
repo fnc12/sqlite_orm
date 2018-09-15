@@ -4,7 +4,9 @@
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <cstdlib>  //  atof, atoi, atoll
 #include <string>   //  std::string, std::wstring
+#ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
+#endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>   //  std::vector
 #include <cstring>  //  strlen
 #include <algorithm>    //  std::copy
@@ -12,6 +14,8 @@
 #include <tuple>    //  std::tuple, std::tuple_size, std::tuple_element
 
 #include "arithmetic_tag.h"
+#include "journal_mode.h"
+#include "error_code.h"
 
 namespace sqlite_orm {
     
@@ -101,7 +105,7 @@ namespace sqlite_orm {
             }
         }
     };
-    
+#ifndef SQLITE_ORM_OMITS_CODECVT
     /**
      *  Specialization for std::wstring.
      */
@@ -130,7 +134,7 @@ namespace sqlite_orm {
             }
         }
     };
-    
+#endif  //  SQLITE_ORM_OMITS_CODECVT
     /**
      *  Specialization for std::vector<char>.
      */
@@ -272,6 +276,33 @@ namespace sqlite_orm {
         template<size_t I, typename std::enable_if<I == 0>::type * = nullptr>
         void extract(std::tuple<Args...> &, char **) {
             //..
+        }
+    };
+    
+    /**
+     *  Specialization for journal_mode.
+     */
+    template<class V>
+    struct row_extractor<
+    V,
+    std::enable_if_t<std::is_same<V, journal_mode>::value>
+    >
+    {
+        journal_mode extract(const char *row_value) {
+            if(row_value){
+                if(auto res = internal::journal_mode_from_string(row_value)){
+                    return std::move(*res);
+                }else{
+                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_journal_mode_string));
+                }
+            }else{
+                throw std::system_error(std::make_error_code(orm_error_code::incorrect_journal_mode_string));
+            }
+        }
+        
+        journal_mode extract(sqlite3_stmt *stmt, int columnIndex) {
+            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
+            return this->extract(cStr);
         }
     };
 }

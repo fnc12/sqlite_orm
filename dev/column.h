@@ -176,36 +176,48 @@ namespace sqlite_orm {
         struct getter_traits<getter_by_value_const<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = false;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_value<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = false;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_ref_const<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_ref<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_const_ref_const<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_const_ref<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
         };
         
         template<class T>
