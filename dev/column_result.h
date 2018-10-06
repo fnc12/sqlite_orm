@@ -171,6 +171,11 @@ namespace sqlite_orm {
             using type = std::shared_ptr<typename column_result_t<T>::type>;
         };
         
+        template<>
+        struct column_result_t<aggregate_functions::count_asterisk_without_type, void> {
+            using type = int;
+        };
+        
         template<class T>
         struct column_result_t<distinct_t<T>, void> {
             using type = typename column_result_t<T>::type;
