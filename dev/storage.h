@@ -109,9 +109,13 @@ namespace sqlite_orm {
                         this->operator++();
                     }
                     
+                    iterator_t(const iterator_t &) = default;
+                    
                     iterator_t(iterator_t&&) = default;
                     
                     iterator_t& operator=(iterator_t&&) = default;
+                    
+                    iterator_t& operator=(const iterator_t&) = default;
                     
                     ~iterator_t() {
                         if(this->stmt){
