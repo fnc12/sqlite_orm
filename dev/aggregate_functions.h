@@ -34,7 +34,12 @@ namespace sqlite_orm {
             operator std::string() const {
                 return "COUNT";
             }
-            
+        };
+        
+        struct count_asterisk_without_type {
+            operator std::string() const {
+                return "COUNT";
+            }
         };
         
         template<class T>
@@ -104,7 +109,7 @@ namespace sqlite_orm {
         return {t};
     }
     
-    inline aggregate_functions::count_asterisk_t<void> count() {
+    inline aggregate_functions::count_asterisk_without_type count() {
         return {};
     }
     
