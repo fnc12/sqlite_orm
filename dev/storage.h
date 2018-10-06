@@ -109,6 +109,14 @@ namespace sqlite_orm {
                         this->operator++();
                     }
                     
+                    iterator_t(const iterator_t &) = default;
+                    
+                    iterator_t(iterator_t&&) = default;
+                    
+                    iterator_t& operator=(iterator_t&&) = default;
+                    
+                    iterator_t& operator=(const iterator_t&) = default;
+                    
                     ~iterator_t() {
                         if(this->stmt){
                             statement_finalizer f{*this->stmt};
@@ -600,6 +608,10 @@ namespace sqlite_orm {
             
             template<class T>
             std::string string_from_expression(const aggregate_functions::count_asterisk_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                return this->string_from_expression(aggregate_functions::count_asterisk_without_type{});
+            }
+            
+            std::string string_from_expression(const aggregate_functions::count_asterisk_without_type &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(*) ";
                 return ss.str();
@@ -1697,6 +1709,10 @@ namespace sqlite_orm {
                 }else{
                     return {};
                 }
+            }
+            
+            std::set<std::pair<std::string, std::string>> parse_table_name(const aggregate_functions::count_asterisk_without_type &c) {
+                return {};
             }
             
             template<class T>
