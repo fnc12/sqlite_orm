@@ -3161,6 +3161,15 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        template <template <typename...> class C, typename...Ts>
+        std::true_type is_base_of_template_impl(const C<Ts...>*);
+        
+        template <template <typename...> class C>
+        std::false_type is_base_of_template_impl(...);
+        
+        template <typename T, template <typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
+        
         /**
          *  DISCTINCT generic container.
          */
@@ -3285,7 +3294,10 @@ namespace sqlite_orm {
             left_type left;
             right_type right;
             
-            compound_operator(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+            compound_operator(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {
+                this->left.highest_level = true;
+                this->right.highest_level = true;
+            }
         };
         
         /**
@@ -3299,10 +3311,7 @@ namespace sqlite_orm {
             
             bool all = false;
             
-            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {
-                this->left.highest_level = true;
-                this->right.highest_level = true;
-            }
+            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {}
             
             union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
 
@@ -3316,14 +3325,12 @@ namespace sqlite_orm {
         };
         
         template<class L, class R>
-        struct except_t {
-            using left_type = L;
-            using right_type = R;
+        struct except_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
             
-            left_type left;
-            right_type right;
-            
-            except_t(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+            using super::super;
             
             operator std::string() const {
                 return "EXCEPT";
@@ -4565,6 +4572,14 @@ namespace sqlite_orm {
             using left_type = typename column_result_t<L>::type;
             using right_type = typename column_result_t<R>::type;
             static_assert(std::is_same<left_type, right_type>::value, "Union subselect queries must return same types");
+            using type = left_type;
+        };
+        
+        template<class L, class R>
+        struct column_result_t<except_t<L, R>, void> {
+            using left_type = typename column_result_t<L>::type;
+            using right_type = typename column_result_t<R>::type;
+            static_assert(std::is_same<left_type, right_type>::value, "Except subselect queries must return same types");
             using type = left_type;
         };
     }
@@ -8259,7 +8274,8 @@ namespace sqlite_orm {
             template<
             class T,
             class ...Args,
-            class R = typename internal::column_result_t<T>::type>
+            class R = typename column_result_t<T>::type,
+            typename std::enable_if<!is_base_of_template<T, compound_operator>::value>::type * = nullptr>
             std::vector<R> select(T m, Args ...args) {
                 using select_type = select_t<T, Args...>;
                 auto query = this->string_from_expression(select_type{std::move(m), std::make_tuple<Args...>(std::forward<Args>(args)...), true});
@@ -8288,11 +8304,11 @@ namespace sqlite_orm {
             }
             
             template<
-            class L,
-            class R,
+            class T,
             class ...Args,
-            class Ret = typename internal::column_result_t<union_t<L, R>>::type>
-            std::vector<Ret> select(const union_t<L, R> &op, Args ...args) {
+            class Ret = typename column_result_t<T>::type,
+            typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type * = nullptr>
+            std::vector<Ret> select(T op, Args ...args) {
                 std::stringstream ss;
                 ss << this->string_from_expression(op.left) << " ";
                 ss << static_cast<std::string>(op) << " ";

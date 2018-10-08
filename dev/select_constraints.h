@@ -6,6 +6,15 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        template <template <typename...> class C, typename...Ts>
+        std::true_type is_base_of_template_impl(const C<Ts...>*);
+        
+        template <template <typename...> class C>
+        std::false_type is_base_of_template_impl(...);
+        
+        template <typename T, template <typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
+        
         /**
          *  DISCTINCT generic container.
          */
@@ -130,7 +139,10 @@ namespace sqlite_orm {
             left_type left;
             right_type right;
             
-            compound_operator(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+            compound_operator(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {
+                this->left.highest_level = true;
+                this->right.highest_level = true;
+            }
         };
         
         /**
@@ -144,10 +156,7 @@ namespace sqlite_orm {
             
             bool all = false;
             
-            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {
-                this->left.highest_level = true;
-                this->right.highest_level = true;
-            }
+            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {}
             
             union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
 
@@ -161,14 +170,12 @@ namespace sqlite_orm {
         };
         
         template<class L, class R>
-        struct except_t {
-            using left_type = L;
-            using right_type = R;
+        struct except_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
             
-            left_type left;
-            right_type right;
-            
-            except_t(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+            using super::super;
             
             operator std::string() const {
                 return "EXCEPT";

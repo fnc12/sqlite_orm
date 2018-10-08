@@ -2291,7 +2291,8 @@ namespace sqlite_orm {
             template<
             class T,
             class ...Args,
-            class R = typename internal::column_result_t<T>::type>
+            class R = typename column_result_t<T>::type,
+            typename std::enable_if<!is_base_of_template<T, compound_operator>::value>::type * = nullptr>
             std::vector<R> select(T m, Args ...args) {
                 using select_type = select_t<T, Args...>;
                 auto query = this->string_from_expression(select_type{std::move(m), std::make_tuple<Args...>(std::forward<Args>(args)...), true});
@@ -2320,11 +2321,11 @@ namespace sqlite_orm {
             }
             
             template<
-            class L,
-            class R,
+            class T,
             class ...Args,
-            class Ret = typename internal::column_result_t<union_t<L, R>>::type>
-            std::vector<Ret> select(const union_t<L, R> &op, Args ...args) {
+            class Ret = typename column_result_t<T>::type,
+            typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type * = nullptr>
+            std::vector<Ret> select(T op, Args ...args) {
                 std::stringstream ss;
                 ss << this->string_from_expression(op.left) << " ";
                 ss << static_cast<std::string>(op) << " ";

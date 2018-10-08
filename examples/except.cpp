@@ -33,8 +33,7 @@ int main() {
                                            make_column("first_name", &EmpMaster::firstName),
                                            make_column("last_name", &EmpMaster::lastName),
                                            make_column("salary", &EmpMaster::salary),
-                                           make_column("dept_id", &EmpMaster::deptId),
-                                           foreign_key(&EmpMaster::deptId).references(&DeptMaster::deptId)));
+                                           make_column("dept_id", &EmpMaster::deptId)));
     storage.sync_schema();
     storage.remove_all<DeptMaster>();
     storage.remove_all<EmpMaster>();
@@ -52,7 +51,7 @@ int main() {
             EmpMaster{1, "Honey", "Patel", 10100, 1},
             EmpMaster{2, "Shweta", "Jariwala", 19300, 2},
             EmpMaster{3, "Vinay", "Jariwala", 35100, 3},
-            EmpMaster{4, "Jagruti", "Viras", 9500, 4},
+            EmpMaster{4, "Jagruti", "Viras", 9500, 12},
         };
         storage.replace_range(valuesToInsert.begin(), valuesToInsert.end());
     }
@@ -62,7 +61,12 @@ int main() {
         //  EXCEPT
         //  SELECT dept_id
         //  FROM emp_master
-        auto rows = storage.select(<#T m#>, <#Args args...#>)
+        auto rows = storage.select(except(select(&DeptMaster::deptId),
+                                          select(&EmpMaster::deptId)));
+        cout << "rows count = " << rows.size() << endl;
+        for(auto id : rows) {
+            cout << id << endl;
+        }
     }
     
     return 0;

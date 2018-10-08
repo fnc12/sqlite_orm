@@ -269,5 +269,13 @@ namespace sqlite_orm {
             static_assert(std::is_same<left_type, right_type>::value, "Union subselect queries must return same types");
             using type = left_type;
         };
+        
+        template<class L, class R>
+        struct column_result_t<except_t<L, R>, void> {
+            using left_type = typename column_result_t<L>::type;
+            using right_type = typename column_result_t<R>::type;
+            static_assert(std::is_same<left_type, right_type>::value, "Except subselect queries must return same types");
+            using type = left_type;
+        };
     }
 }
