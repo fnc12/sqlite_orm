@@ -2324,7 +2324,7 @@ namespace sqlite_orm {
             class R,
             class ...Args,
             class Ret = typename internal::column_result_t<union_t<L, R>>::type>
-            std::vector<Ret> select(union_t<L, R> op, Args ...args) {
+            std::vector<Ret> select(const union_t<L, R> &op, Args ...args) {
                 std::stringstream ss;
                 ss << this->string_from_expression(op.left) << " ";
                 ss << static_cast<std::string>(op) << " ";

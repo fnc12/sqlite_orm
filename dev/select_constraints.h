@@ -120,18 +120,31 @@ namespace sqlite_orm {
         };
         
         /**
-         *  Union object type.
+         *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
          */
         template<class L, class R>
-        struct union_t {
+        struct compound_operator {
             using left_type = L;
             using right_type = R;
             
             left_type left;
             right_type right;
+            
+            compound_operator(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+        };
+        
+        /**
+         *  Union object type.
+         */
+        template<class L, class R>
+        struct union_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+            
             bool all = false;
             
-            union_t(left_type l, right_type r, decltype(all) all_): left(std::move(l)), right(std::move(r)), all(all_) {
+            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {
                 this->left.highest_level = true;
                 this->right.highest_level = true;
             }
@@ -144,6 +157,21 @@ namespace sqlite_orm {
                 }else{
                     return "UNION ALL";
                 }
+            }
+        };
+        
+        template<class L, class R>
+        struct except_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type left;
+            right_type right;
+            
+            except_t(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+            
+            operator std::string() const {
+                return "EXCEPT";
             }
         };
         
@@ -221,6 +249,11 @@ namespace sqlite_orm {
      */
     template<class L, class R>
     internal::union_t<L, R> union_(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    template<class L, class R>
+    internal::except_t<L, R> except(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs)};
     }
     
