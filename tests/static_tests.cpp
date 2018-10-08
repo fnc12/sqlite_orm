@@ -217,6 +217,12 @@ int main() {
                       "Incorrect sum value");
         
     }
+    {
+        auto unionValue = union_(select(&User::id), select(&Token::id));
+        static_assert(internal::is_base_of_template<decltype(unionValue), internal::compound_operator>::value, "union must be base of compound_operator");
+        auto exceptValue = except(select(&User::id), select(&Token::id));
+        static_assert(internal::is_base_of_template<decltype(exceptValue), internal::compound_operator>::value, "except must be base of compound_operator");
+    }
     
     auto storage = make_storage("",
                                 make_table("users",
