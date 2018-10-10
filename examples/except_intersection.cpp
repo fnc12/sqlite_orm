@@ -68,6 +68,19 @@ int main() {
             cout << id << endl;
         }
     }
+    {
+        //  SELECT dept_id
+        //  FROM dept_master
+        //  INTERSECT
+        //  SELECT dept_id
+        //  FROM emp_master
+        auto rows = storage.select(intersect(select(&DeptMaster::deptId),
+                                             select(&EmpMaster::deptId)));
+        cout << "rows count = " << rows.size() << endl;
+        for(auto id : rows) {
+            cout << id << endl;
+        }
+    }
     
     return 0;
 }
