@@ -410,11 +410,11 @@ namespace sqlite_orm {
             storage_t(const storage_t &other):
             filename(other.filename),
             impl(other.impl),
+            currentTransaction(other.currentTransaction),
             inMemory(other.inMemory),
-            pragma(*this),
-            limit(*this),
             collatingFunctions(other.collatingFunctions),
-            currentTransaction(other.currentTransaction)
+            pragma(*this),
+            limit(*this)
             {}
             
         protected:
