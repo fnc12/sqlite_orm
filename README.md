@@ -5,6 +5,8 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm)
 [![Donate using PayPal](https://img.shields.io/badge/donate-PayPal-brightgreen.svg)](https://paypal.me/fnc12)
+[![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/fold_left.svg?style=social&label=Follow%20%40sqlite_orm)](https://twitter.com/sqlite_orm)
+
 
 # SQLite ORM
 SQLite ORM light header only library for modern C++
