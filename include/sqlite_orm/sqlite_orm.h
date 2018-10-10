@@ -3301,7 +3301,7 @@ namespace sqlite_orm {
         };
         
         /**
-         *  Union object type.
+         *  UNION object type.
          */
         template<class L, class R>
         struct union_t : public compound_operator<L, R> {
@@ -3324,6 +3324,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  EXCEPT object type.
+         */
         template<class L, class R>
         struct except_t : public compound_operator<L, R> {
             using super = compound_operator<L, R>;
@@ -3334,6 +3337,22 @@ namespace sqlite_orm {
             
             operator std::string() const {
                 return "EXCEPT";
+            }
+        };
+        
+        /**
+         *  INTERSECT object type.
+         */
+        template<class L, class R>
+        struct intersect_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+            
+            using super::super;
+            
+            operator std::string() const {
+                return "INTERSECT";
             }
         };
         
@@ -3414,8 +3433,18 @@ namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs)};
     }
     
+    /**
+     *  Public function for EXCEPT operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/except.cpp
+     */
     template<class L, class R>
     internal::except_t<L, R> except(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    template<class L, class R>
+    internal::intersect_t<L, R> intersect(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs)};
     }
     
@@ -4567,20 +4596,14 @@ namespace sqlite_orm {
         template<class T, class ...Args>
         struct column_result_t<select_t<T, Args...>> : column_result_t<T, void> {};
         
-        template<class L, class R>
-        struct column_result_t<union_t<L, R>, void> {
-            using left_type = typename column_result_t<L>::type;
-            using right_type = typename column_result_t<R>::type;
-            static_assert(std::is_same<left_type, right_type>::value, "Union subselect queries must return same types");
-            using type = left_type;
-        };
-        
-        template<class L, class R>
-        struct column_result_t<except_t<L, R>, void> {
-            using left_type = typename column_result_t<L>::type;
-            using right_type = typename column_result_t<R>::type;
-            static_assert(std::is_same<left_type, right_type>::value, "Except subselect queries must return same types");
-            using type = left_type;
+        template<class T>
+        struct column_result_t<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+            using left_type = typename T::left_type;
+            using right_type = typename T::right_type;
+            using left_result = typename column_result_t<left_type>::type;
+            using right_result = typename column_result_t<right_type>::type;
+            static_assert(std::is_same<left_result, right_result>::value, "Compound subselect queries must return same types");
+            using type = left_result;
         };
     }
 }

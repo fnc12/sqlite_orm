@@ -146,7 +146,7 @@ namespace sqlite_orm {
         };
         
         /**
-         *  Union object type.
+         *  UNION object type.
          */
         template<class L, class R>
         struct union_t : public compound_operator<L, R> {
@@ -169,6 +169,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  EXCEPT object type.
+         */
         template<class L, class R>
         struct except_t : public compound_operator<L, R> {
             using super = compound_operator<L, R>;
@@ -179,6 +182,22 @@ namespace sqlite_orm {
             
             operator std::string() const {
                 return "EXCEPT";
+            }
+        };
+        
+        /**
+         *  INTERSECT object type.
+         */
+        template<class L, class R>
+        struct intersect_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+            
+            using super::super;
+            
+            operator std::string() const {
+                return "INTERSECT";
             }
         };
         
@@ -259,8 +278,18 @@ namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs)};
     }
     
+    /**
+     *  Public function for EXCEPT operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/except.cpp
+     */
     template<class L, class R>
     internal::except_t<L, R> except(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    template<class L, class R>
+    internal::intersect_t<L, R> intersect(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs)};
     }
     
