@@ -17,10 +17,7 @@ namespace sqlite_orm {
          *  Common case for table_impl class.
          */
         template<typename... Args>
-        struct table_impl;
-        
-        template<>
-        struct table_impl<>{
+        struct table_impl {
             
             std::vector<std::string> column_names() {
                 return {};

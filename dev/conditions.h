@@ -18,7 +18,7 @@ namespace sqlite_orm {
             bool offset_is_implicit = false;
             int off = 0;
             
-            limit_t() = default;
+            limit_t(){}
             
             limit_t(decltype(lim) lim_): lim(lim_) {}
             
@@ -87,7 +87,7 @@ namespace sqlite_orm {
         struct negated_condition_t : public condition_t {
             C c;
             
-            negated_condition_t() = default;
+            negated_condition_t(){}
             
             negated_condition_t(C c_): c(c_) {}
             
@@ -104,7 +104,7 @@ namespace sqlite_orm {
             L l;
             R r;
             
-            and_condition_t() = default;
+            and_condition_t(){}
             
             and_condition_t(L l_, R r_): l(l_), r(r_) {}
             
@@ -121,7 +121,7 @@ namespace sqlite_orm {
             L l;
             R r;
             
-            or_condition_t() = default;
+            or_condition_t(){}
             
             or_condition_t(L l_, R r_): l(l_), r(r_) {}
             
@@ -138,7 +138,7 @@ namespace sqlite_orm {
             L l;
             R r;
             
-            binary_condition() = default;
+            binary_condition(){}
             
             binary_condition(L l_, R r_): l(l_), r(r_) {}
         };
@@ -328,37 +328,24 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  IN operator object.
-         */
-        template<class L, class A>
+        template<class L, class E>
         struct in_t : public condition_t {
-            using self = in_t<L, A>;
+            using self = in_t<L, E>;
             
-            L l;    //  left expression
-            A arg;       //  in arg
-            bool negative = false;  //  used in not_in
+            L l;    //  left expression..
+            std::vector<E> values;       //  values..
             
-            in_t() = default;
-            
-            in_t(L l_, A arg_, bool negative_): l(l_), arg(std::move(arg_)), negative(negative_) {}
+            in_t(L l_, std::vector<E> values_): l(l_), values(std::move(values_)) {}
             
             negated_condition_t<self> operator!() const {
                 return {*this};
             }
             
             operator std::string () const {
-                if(!this->negative){
-                    return "IN";
-                }else{
-                    return "NOT IN";
-                }
+                return "IN";
             }
         };
         
-        /**
-         *  IS NULL operator object.
-         */
         template<class T>
         struct is_null_t {
             using self = is_null_t<T>;
@@ -373,9 +360,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  IS NOT NULL operator object.
-         */
         template<class T>
         struct is_not_null_t {
             using self = is_not_null_t<T>;
@@ -391,9 +375,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  WHERE argument holder.
-         */
         template<class C>
         struct where_t {
             C c;
@@ -403,9 +384,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  ORDER BY argument holder.
-         */
         template<class O>
         struct order_by_t {
             using self = order_by_t<O>;
@@ -459,9 +437,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  ORDER BY pack holder.
-         */
         template<class ...Args>
         struct multi_order_by_t {
             std::tuple<Args...> args;
@@ -471,9 +446,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  GROUP BY pack holder.
-         */
         template<class ...Args>
         struct group_by_t {
             std::tuple<Args...> args;
@@ -483,16 +455,11 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  BETWEEN operator object.
-         */
         template<class A, class T>
         struct between_t : public condition_t {
             A expr;
             T b1;
             T b2;
-            
-            between_t() = default;
             
             between_t(A expr_, T b1_, T b2_): expr(expr_), b1(b1_), b2(b2_) {}
             
@@ -501,15 +468,12 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  LIKE operator object.
-         */
         template<class A, class T>
         struct like_t : public condition_t {
             A a;
             T t;
             
-            like_t() = default;
+            like_t(){}
             
             like_t(A a_, T t_): a(a_), t(t_) {}
             
@@ -518,10 +482,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  CROSS JOIN holder.
-         *  T is joined type which represents any mapped table.
-         */
         template<class T>
         struct cross_join_t {
             using type = T;
@@ -531,10 +491,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  NATURAL JOIN holder.
-         *  T is joined type which represents any mapped table.
-         */
         template<class T>
         struct natural_join_t {
             using type = T;
@@ -544,11 +500,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  LEFT JOIN holder.
-         *  T is joined type which represents any mapped table.
-         *  O is on(...) argument type.
-         */
         template<class T, class O>
         struct left_join_t {
             using type = T;
@@ -561,11 +512,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  Simple JOIN holder.
-         *  T is joined type which represents any mapped table.
-         *  O is on(...) argument type.
-         */
         template<class T, class O>
         struct join_t {
             using type = T;
@@ -578,11 +524,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  LEFT OUTER JOIN holder.
-         *  T is joined type which represents any mapped table.
-         *  O is on(...) argument type.
-         */
         template<class T, class O>
         struct left_outer_join_t {
             using type = T;
@@ -595,24 +536,15 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  on(...) argument holder used for JOIN, LEFT JOIN, LEFT OUTER JOIN and INNER JOIN
-         *  T is on type argument.
-         */
         template<class T>
         struct on_t {
-            using type = T;
-            
-            type t;
+            T t;
             
             operator std::string() const {
                 return "ON";
             }
         };
         
-        /**
-         *  USING argument holder.
-         */
         template<class F, class O>
         struct using_t {
             F O::*column;
@@ -622,11 +554,6 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  INNER JOIN holder.
-         *  T is joined type which represents any mapped table.
-         *  O is on(...) argument type.
-         */
         template<class T, class O>
         struct inner_join_t {
             using type = T;
@@ -639,46 +566,12 @@ namespace sqlite_orm {
             }
         };
         
-        template<class T>
-        struct exists_t : condition_t {
-            using type = T;
-            using self = exists_t<type>;
-            
-            type t;
-            
-            exists_t() = default;
-            
-            exists_t(T t_) : t(std::move(t_)) {}
-            
-            operator std::string() const {
-                return "EXISTS";
-            }
-            
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
-        };
-        
-        /**
-         *  HAVING holder.
-         *  T is having argument type.
-         */
-        template<class T>
-        struct having_t {
-            using type = T;
-            
-            type t;
-            
-            operator std::string() const {
-                return "HAVING";
-            }
-        };
-        
     }
     
     /**
      *  Cute operators for columns
      */
+    
     template<class T, class R>
     conditions::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
         return {expr.t, r};
@@ -914,33 +807,13 @@ namespace sqlite_orm {
     }
     
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
-        return {std::move(l), std::move(values), false};
+    conditions::in_t<L, E> in(L l, std::vector<E> values) {
+        return {std::move(l), std::move(values)};
     }
     
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
-        return {std::move(l), std::move(values), false};
-    }
-    
-    template<class L, class A>
-    conditions::in_t<L, A> in(L l, A arg) {
-        return {std::move(l), std::move(arg), false};
-    }
-    
-    template<class L, class E>
-    conditions::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
-        return {std::move(l), std::move(values), true};
-    }
-    
-    template<class L, class E>
-    conditions::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
-        return {std::move(l), std::move(values), true};
-    }
-    
-    template<class L, class A>
-    conditions::in_t<L, A> not_in(L l, A arg) {
-        return {std::move(l), std::move(arg), true};
+    conditions::in_t<L, E> in(L l, std::initializer_list<E> values) {
+        return {std::move(l), std::move(values)};
     }
     
     template<class L, class R>
@@ -1031,15 +904,5 @@ namespace sqlite_orm {
     template<class A, class T>
     conditions::like_t<A, T> like(A a, T t) {
         return {a, t};
-    }
-    
-    template<class T>
-    conditions::exists_t<T> exists(T t) {
-        return {std::move(t)};
-    }
-    
-    template<class T>
-    conditions::having_t<T> having(T t) {
-        return {t};
     }
 }

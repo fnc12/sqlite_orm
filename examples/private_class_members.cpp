@@ -26,7 +26,7 @@ public:
     
     Player(int id_, std::string name_):id(id_),name(std::move(name_)){}
     
-    std::string getName() const {
+    const std::string& getName() const {
         return this->name;
     }
     
@@ -34,7 +34,7 @@ public:
         this->name = std::move(name);
     }
     
-    int getId() const {
+    const int& getId() const {
         return this->id;
     }
     

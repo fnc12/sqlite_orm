@@ -136,8 +136,8 @@ namespace sqlite_orm {
             using type = int;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::count_asterisk_t<T>, void> {
+        template<>
+        struct column_result_t<aggregate_functions::count_asterisk_t, void> {
             using type = int;
         };
         

@@ -5,7 +5,6 @@
 #include <regex>    //  std::regex, std::regex_match
 #include <memory>   //  std::make_shared, std::shared_ptr
 #include <vector>   //  std::vector
-#include <cctype>   //  std::toupper
 
 namespace sqlite_orm {
     using int64 = sqlite_int64;
