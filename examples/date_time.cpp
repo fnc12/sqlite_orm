@@ -17,10 +17,8 @@ int main() {
     
     auto storage = make_storage("",
                                 make_table("datetime_text",
-                                           make_column("d1",
-                                                       &DatetimeText::d1),
-                                           make_column("d2",
-                                                       &DatetimeText::d2)));
+                                           make_column("d1", &DatetimeText::d1),
+                                           make_column("d2", &DatetimeText::d2)));
     storage.sync_schema();
     
     //  SELECT date('now');

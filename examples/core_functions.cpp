@@ -19,15 +19,10 @@ int main(int argc, char **argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("core_functions.sqlite",
                                 make_table("marvel",
-                                           make_column("id",
-                                                       &MarvelHero::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &MarvelHero::name),
-                                           make_column("abilities",
-                                                       &MarvelHero::abilities),
-                                           make_column("points",
-                                                       &MarvelHero::points)));
+                                           make_column("id",&MarvelHero::id, primary_key()),
+                                           make_column("name", &MarvelHero::name),
+                                           make_column("abilities", &MarvelHero::abilities),
+                                           make_column("points", &MarvelHero::points)));
     storage.sync_schema();
     
     storage.remove_all<MarvelHero>();

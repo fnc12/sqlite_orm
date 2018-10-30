@@ -122,13 +122,9 @@ int main(int/* argc*/, char **/*argv*/) {
     using namespace sqlite_orm;
     auto storage = make_storage("",
                                 make_table("superheros",
-                                           make_column("id",
-                                                       &SuperHero::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &SuperHero::name),
-                                           make_column("gender",
-                                                       &SuperHero::gender)));
+                                           make_column("id", &SuperHero::id, primary_key()),
+                                           make_column("name", &SuperHero::name),
+                                           make_column("gender", &SuperHero::gender)));
     storage.sync_schema();
     storage.remove_all<SuperHero>();
 
