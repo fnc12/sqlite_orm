@@ -1040,7 +1040,7 @@ namespace sqlite_orm {
                     using original_join_type = typename decltype(c)::type;
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
                     auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
-                    auto tableAliasString = alias_exractor<original_join_type>::get();
+                    auto tableAliasString = alias_extractor<original_join_type>::get();
                     if(!tableAliasString.length()){
                         tableNamesSet.erase(crossJoinedTableName);
                     }
@@ -1213,7 +1213,7 @@ namespace sqlite_orm {
             template<class T, class O>
             void process_single_condition(std::stringstream &ss, const conditions::inner_join_t<T, O> &l) {
                 ss << static_cast<std::string>(l) << " ";
-                auto aliasString = alias_exractor<T>::get();
+                auto aliasString = alias_extractor<T>::get();
                 ss << " '" << this->impl.template find_table_name<typename mapped_type_proxy<T>::type>() << "' ";
                 if(aliasString.length()){
                     ss << "'" << aliasString << "' ";
@@ -2130,7 +2130,7 @@ namespace sqlite_orm {
             template<class O, class ...Args, class R = typename mapped_type_proxy<O>::type>
             int count(Args&& ...args) {
                 this->assert_mapped_type<R>();
-                auto tableAliasString = alias_exractor<O>::get();
+                auto tableAliasString = alias_extractor<O>::get();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<R>();

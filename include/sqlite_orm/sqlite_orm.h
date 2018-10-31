@@ -2262,10 +2262,10 @@ namespace sqlite_orm {
         };
         
         template<class T, class SFINAE = void>
-        struct alias_exractor;
+        struct alias_extractor;
         
         template<class T>
-        struct alias_exractor<T, typename std::enable_if<std::is_base_of<alias_tag, T>::value>::type> {
+        struct alias_extractor<T, typename std::enable_if<std::is_base_of<alias_tag, T>::value>::type> {
             static std::string get() {
                 std::stringstream ss;
                 ss << T::get();
@@ -2274,7 +2274,7 @@ namespace sqlite_orm {
         };
         
         template<class T>
-        struct alias_exractor<T, typename std::enable_if<!std::is_base_of<alias_tag, T>::value>::type> {
+        struct alias_extractor<T, typename std::enable_if<!std::is_base_of<alias_tag, T>::value>::type> {
             static std::string get() {
                 return {};
             }
@@ -2842,7 +2842,14 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  T is use to specify type explicitly for queries like
+         *  SELECT COUNT(*) FROM table_name;
+         *  T can be omitted with void.
+         */
+        template<class T>
         struct count_asterisk_t {
+            using type = T;
             
             operator std::string() const {
                 return "COUNT";
@@ -3149,8 +3156,8 @@ namespace sqlite_orm {
             
             union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {}
             
-            union_t(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
-
+            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
+            
             operator std::string() const {
                 if(!this->all){
                     return "UNION";
@@ -3204,6 +3211,11 @@ namespace sqlite_orm {
         bool get_distinct(const columns_t<Args...> &cols) {
             return cols.distinct;
         }
+        
+        template<class T>
+        struct asterisk_t {
+            using type = T;
+        };
     }
     
     template<class T>
@@ -3287,6 +3299,11 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::union_t<L, R> union_all(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs), true};
+    }
+    
+    template<class T>
+    internal::asterisk_t<T> asterisk() {
+        return {};
     }
 }
 #pragma once
@@ -4205,8 +4222,8 @@ namespace sqlite_orm {
             using type = int;
         };
         
-        template<>
-        struct column_result_t<aggregate_functions::count_asterisk_t, void> {
+        template<class T>
+        struct column_result_t<aggregate_functions::count_asterisk_t<T>, void> {
             using type = int;
         };
         
@@ -6484,7 +6501,7 @@ namespace sqlite_orm {
                     using original_join_type = typename decltype(c)::type;
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
                     auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
-                    auto tableAliasString = alias_exractor<original_join_type>::get();
+                    auto tableAliasString = alias_extractor<original_join_type>::get();
                     if(!tableAliasString.length()){
                         tableNamesSet.erase(crossJoinedTableName);
                     }
@@ -6657,7 +6674,7 @@ namespace sqlite_orm {
             template<class T, class O>
             void process_single_condition(std::stringstream &ss, const conditions::inner_join_t<T, O> &l) {
                 ss << static_cast<std::string>(l) << " ";
-                auto aliasString = alias_exractor<T>::get();
+                auto aliasString = alias_extractor<T>::get();
                 ss << " '" << this->impl.template find_table_name<typename mapped_type_proxy<T>::type>() << "' ";
                 if(aliasString.length()){
                     ss << "'" << aliasString << "' ";
@@ -7574,7 +7591,7 @@ namespace sqlite_orm {
             template<class O, class ...Args, class R = typename mapped_type_proxy<O>::type>
             int count(Args&& ...args) {
                 this->assert_mapped_type<R>();
-                auto tableAliasString = alias_exractor<O>::get();
+                auto tableAliasString = alias_extractor<O>::get();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<R>();
