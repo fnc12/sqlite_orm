@@ -71,7 +71,8 @@ int main(int argc, char **argv) {
                                            make_column("ADVANCE_AMOUNT", &Order::advanceAmount),
                                            make_column("ORD_DATE", &Order::date),
                                            make_column("CUST_CODE", &Order::custCode),
-                                           make_column("AGENT_CODE", &Order::agentCode)));
+                                           make_column("AGENT_CODE", &Order::agentCode)),
+                                make_trigger("update_examlog", );
     storage.sync_schema();
     storage.remove_all<Order>();
     storage.remove_all<Agent>();
@@ -158,7 +159,7 @@ int main(int argc, char **argv) {
         //      (SELECT *
         //      FROM customer
         //      WHERE grade=3 AND agents.agent_code=customer.agent_code)
-        //      ORDER BY commission;
+        //  ORDER BY commission;
         auto rows = storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
                                    where(exists(select(asterisk<Customer>(),
                                                        where(is_equal(&Customer::grade, 3) and is_equal(&Agent::code, &Customer::agentCode))))),
