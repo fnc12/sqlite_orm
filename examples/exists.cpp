@@ -158,7 +158,7 @@ int main(int argc, char **argv) {
         //      (SELECT *
         //      FROM customer
         //      WHERE grade=3 AND agents.agent_code=customer.agent_code)
-        //      ORDER BY commission;
+        //  ORDER BY commission;
         auto rows = storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
                                    where(exists(select(asterisk<Customer>(),
                                                        where(is_equal(&Customer::grade, 3) and is_equal(&Agent::code, &Customer::agentCode))))),
