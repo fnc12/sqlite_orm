@@ -71,8 +71,7 @@ int main(int argc, char **argv) {
                                            make_column("ADVANCE_AMOUNT", &Order::advanceAmount),
                                            make_column("ORD_DATE", &Order::date),
                                            make_column("CUST_CODE", &Order::custCode),
-                                           make_column("AGENT_CODE", &Order::agentCode)),
-                                make_trigger("update_examlog", );
+                                           make_column("AGENT_CODE", &Order::agentCode)));
     storage.sync_schema();
     storage.remove_all<Order>();
     storage.remove_all<Agent>();
