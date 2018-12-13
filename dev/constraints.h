@@ -82,7 +82,7 @@ namespace sqlite_orm {
          */
         template<class T>
         struct default_t {
-            typedef T value_type;
+            using value_type = T;
             
             value_type value;
             

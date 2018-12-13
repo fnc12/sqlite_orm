@@ -482,7 +482,7 @@ namespace sqlite_orm {
          */
         template<class T>
         struct default_t {
-            typedef T value_type;
+            using value_type = T;
             
             value_type value;
             
@@ -7334,29 +7334,27 @@ namespace sqlite_orm {
                 for(size_t i = 0; i < setColumnNames.size(); ++i) {
                     ss << "\"" << setColumnNames[i] << "\"" << " = ?";
                     if(i < setColumnNames.size() - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << " ";
+                        ss << ",";
                     }
+                    ss << " ";
                 }
                 ss << "WHERE ";
                 auto primaryKeyColumnNames = impl.table.primary_key_column_names();
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
                     ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ?";
                     if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << " AND ";
-                    }else{
-                        ss << " ";
+                        ss << " AND";
                     }
+                    ss << " ";
                 }
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    impl.table.for_each_column([&o, stmt, &index] (auto c) {
+                    impl.table.for_each_column([&o, stmt, &index] (auto &c) {
                         if(!c.template has<constraints::primary_key_t<>>()) {
-                            using field_type = typename decltype(c)::field_type;
+                            using field_type = typename std::decay<decltype(c)>::type::field_type;
                             const field_type *value = nullptr;
                             if(c.member_pointer){
                                 value = &(o.*c.member_pointer);
@@ -7366,9 +7364,9 @@ namespace sqlite_orm {
                             statement_binder<field_type>().bind(stmt, index++, *value);
                         }
                     });
-                    impl.table.for_each_column([&o, stmt, &index] (auto c) {
+                    impl.table.for_each_column([&o, stmt, &index] (auto &c) {
                         if(c.template has<constraints::primary_key_t<>>()) {
-                            typedef typename decltype(c)::field_type field_type;
+                            using field_type = typename std::decay<decltype(c)>::type::field_type;
                             const field_type *value = nullptr;
                             if(c.member_pointer){
                                 value = &(o.*c.member_pointer);

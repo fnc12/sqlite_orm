@@ -1898,29 +1898,20 @@ void testDefaultValue() {
 
     auto storage1 = make_storage("test_db.sqlite",
                                  make_table("User",
-                                            make_column("Id",
-                                                        &User::userId,
-                                                        primary_key()),
-                                            make_column("Name",
-                                                        &User::name),
-                                            make_column("Age",
-                                                        &User::age)));
+                                            make_column("Id", &User::userId, primary_key()),
+                                            make_column("Name", &User::name),
+                                            make_column("Age", &User::age)));
     storage1.sync_schema();
     storage1.remove_all<User>();
 
     auto storage2 = make_storage("test_db.sqlite",
                                  make_table("User",
-                                            make_column("Id",
-                                                        &User::userId,
-                                                        primary_key()),
-                                            make_column("Name",
-                                                        &User::name),
-                                            make_column("Age",
-                                                        &User::age),
-                                            make_column("Email",
-                                                        &User::email,
-                                                        default_value("example@email.com"))));
+                                            make_column("Id", &User::userId, primary_key()),
+                                            make_column("Name", &User::name),
+                                            make_column("Age", &User::age),
+                                            make_column("Email", &User::email, default_value("example@email.com"))));
     storage2.sync_schema();
+    storage2.insert(User{0, "Tom", 15});
 }
 
 //  after #18
