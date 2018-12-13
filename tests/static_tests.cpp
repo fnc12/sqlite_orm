@@ -230,6 +230,18 @@ int main() {
     //  this call is important - it tests compilation in inner storage_t::serialize_column_schema function
     storage.sync_schema();
     
+    {
+        using SelectVectorInt = decltype(storage.select(&User::id));
+        static_assert(std::is_same<SelectVectorInt, std::vector<int>>::value, "Incorrect select id vector type");
+        
+        using SelectVectorTuple = decltype(storage.select(columns(&User::id)));
+        auto ids = storage.select(columns(&User::id));
+        static_assert(std::is_same<decltype(ids), SelectVectorTuple>::value, "");
+        static_assert(std::is_same<SelectVectorTuple, std::vector<std::tuple<int>>>::value, "Incorrect select id vector type");
+        using IdsTuple = SelectVectorTuple::value_type;
+        static_assert(std::tuple_size<IdsTuple>::value == 1, "Incorrect tuple size");
+    }
+    
     
     return 0;
 }
