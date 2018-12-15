@@ -11,7 +11,7 @@
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
 #include <vector>   //  std::vector
-#include <tuple>    //  std::tuple_size, std::tuple
+#include <tuple>    //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <set>  //  std::set
 #include <algorithm>    //  std::find
@@ -303,14 +303,47 @@ namespace sqlite_orm {
             
 #if SQLITE_VERSION_NUMBER >= 3006019
             
-            template<class C, class R>
-            std::string serialize_column_schema(constraints::foreign_key_t<C, R> &fk) {
+            template<class ...Cs, class ...Rs>
+            std::string serialize_column_schema(constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> &fk) {
                 std::stringstream ss;
-                using ref_type = typename internal::table_type<decltype(fk.r)>::type;
-                auto refTableName = this->impl.template find_table_name<ref_type>();
-                auto refColumnName = this->impl.column_name(fk.r);
-                ss << "FOREIGN KEY(" << this->impl.column_name(fk.m) << ") REFERENCES ";
-                ss << refTableName << "(" << refColumnName << ") ";
+                std::vector<std::string> columnNames;
+                using columns_type_t = typename std::decay<decltype(fk)>::type::columns_type;
+                constexpr const int columnsCount = std::tuple_size<columns_type_t>::value;
+                columnNames.reserve(columnsCount);
+                tuple_helper::iterator<columnsCount - 1, Cs...>()(fk.columns, [&columnNames, this](auto &v){
+                    columnNames.push_back(this->impl.column_name(v));
+                });
+                ss << "FOREIGN KEY( ";
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << columnNames[i];
+                    if(i < columnNames.size() - 1){
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                ss << ") REFERENCES ";
+                std::vector<std::string> referencesNames;
+                using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
+                constexpr const int referencesCount = std::tuple_size<references_type_t>::value;
+                referencesNames.reserve(referencesCount);
+                {
+                    using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
+                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    auto refTableName = this->impl.template find_table_name<first_reference_mapped_type>();
+                    ss << refTableName << " ";
+                }
+                tuple_helper::iterator<referencesCount - 1, Rs...>()(fk.references, [&referencesNames, this](auto &v){
+                    referencesNames.push_back(this->impl.column_name(v));
+                });
+                ss << "( ";
+                for(size_t i = 0; i < referencesNames.size(); ++i){
+                    ss << referencesNames[i];
+                    if(i < referencesNames.size() - 1){
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                ss << ") ";
                 return ss.str();
             }
 #endif

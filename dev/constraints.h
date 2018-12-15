@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>   //  std::string
-#include <tuple>    //  std::tuple
+#include <tuple>    //  std::tuple, std::make_tuple
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
@@ -105,16 +105,25 @@ namespace sqlite_orm {
         
         /**
          *  FOREIGN KEY constraint class.
-         *  C is column which has foreign key
-         *  R is column which C references to
+         *  Cs are columns which has foreign key
+         *  Rs are column which C references to
          *  Available in SQLite 3.6.19 or higher
          */
-        template<class C, class R>
-        struct foreign_key_t {
-            C m = nullptr;
-            R r = nullptr;
+        
+        template<class A, class B>
+        struct foreign_key_t;
+        
+        template<class ...Cs, class ...Rs>
+        struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
+            using columns_type = std::tuple<Cs...>;
+            using references_type = std::tuple<Rs...>;
             
-            foreign_key_t(C m_, R r_): m(m_), r(r_) {}
+            columns_type columns;
+            references_type references;
+            
+            static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value, "Columns size must be equal to references tuple");
+            
+            foreign_key_t(columns_type columns_, references_type references_): columns(std::move(columns_)), references(std::move(references_)) {}
             
             using field_type = void;    //  for column iteration. Better be deleted
             using constraints_type = std::tuple<>;
@@ -129,20 +138,22 @@ namespace sqlite_orm {
         };
         
         /**
-         *  C can be a class member pointer, a getter function member pointer or setter
+         *  Cs can be a class member pointer, a getter function member pointer or setter
          *  func member pointer
          *  Available in SQLite 3.6.19 or higher
          */
-        template<class C>
+        template<class ...Cs>
         struct foreign_key_intermediate_t {
-            C m = nullptr;
+            using tuple_type = std::tuple<Cs...>;
             
-            foreign_key_intermediate_t(C m_): m(m_) {}
+            tuple_type columns;
             
-            template<class T>
-            foreign_key_t<C, T> references(T t) {
-                using ret_type = foreign_key_t<C, T>;
-                return ret_type(this->m, t);
+            foreign_key_intermediate_t(tuple_type columns_): columns(std::move(columns_)) {}
+            
+            template<class ...Rs>
+            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs ...references) {
+                using ret_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
+                return ret_type(std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...));
             }
         };
 #endif
@@ -207,28 +218,9 @@ namespace sqlite_orm {
      *  FOREIGN KEY constraint construction function that takes member pointer as argument
      *  Available in SQLite 3.6.19 or higher
      */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<F O::*> foreign_key(F O::*m) {
-        return {m};
-    }
-    
-    /**
-     *  FOREIGN KEY constraint construction function that takes getter function pointer as argument
-     *  Available in SQLite 3.6.19 or higher
-     */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<const F& (O::*)() const> foreign_key(const F& (O::*getter)() const) {
-        using ret_type = constraints::foreign_key_intermediate_t<const F& (O::*)() const>;
-        return ret_type(getter);
-    }
-    
-    /**
-     *  FOREIGN KEY constraint construction function that takes setter function pointer as argument
-     *  Available in SQLite 3.6.19 or higher
-     */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<void (O::*)(F)> foreign_key(void (O::*setter)(F)) {
-        return {setter};
+    template<class ...Cs>
+    constraints::foreign_key_intermediate_t<Cs...> foreign_key(Cs ...columns) {
+        return {std::make_tuple(std::forward<Cs>(columns)...)};
     }
 #endif
     

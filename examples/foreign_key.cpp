@@ -32,7 +32,7 @@ int main(int argc, char **argv) {
                                            make_column("artistid", &Artist::artistId, primary_key()),
                                            make_column("artistname", &Artist::artistName)),
                                 make_table("track",
-                                           make_column("trackid", &Track::trackId,primary_key()),
+                                           make_column("trackid", &Track::trackId, primary_key()),
                                            make_column("trackname", &Track::trackName),
                                            make_column("trackartist", &Track::trackArtist),
                                            foreign_key(&Track::trackArtist).references(&Artist::artistId)));
