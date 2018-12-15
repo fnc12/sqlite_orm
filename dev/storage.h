@@ -11,7 +11,7 @@
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
 #include <vector>   //  std::vector
-#include <tuple>    //  std::tuple_size, std::tuple
+#include <tuple>    //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <set>  //  std::set
 #include <algorithm>    //  std::find

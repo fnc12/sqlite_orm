@@ -618,28 +618,9 @@ namespace sqlite_orm {
      *  FOREIGN KEY constraint construction function that takes member pointer as argument
      *  Available in SQLite 3.6.19 or higher
      */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<F O::*> foreign_key(F O::*m) {
-        return {m};
-    }
-    
-    /**
-     *  FOREIGN KEY constraint construction function that takes getter function pointer as argument
-     *  Available in SQLite 3.6.19 or higher
-     */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<const F& (O::*)() const> foreign_key(const F& (O::*getter)() const) {
-        using ret_type = constraints::foreign_key_intermediate_t<const F& (O::*)() const>;
-        return ret_type(getter);
-    }
-    
-    /**
-     *  FOREIGN KEY constraint construction function that takes setter function pointer as argument
-     *  Available in SQLite 3.6.19 or higher
-     */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<void (O::*)(F)> foreign_key(void (O::*setter)(F)) {
-        return {setter};
+    template<class ...Cs>
+    constraints::foreign_key_intermediate_t<Cs...> foreign_key(Cs ...columns) {
+        return {std::make_tuple(std::forward<Cs>(columns)...)};
     }
 #endif
     
@@ -5685,7 +5666,7 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
 #include <vector>   //  std::vector
-#include <tuple>    //  std::tuple_size, std::tuple
+#include <tuple>    //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <set>  //  std::set
 #include <algorithm>    //  std::find

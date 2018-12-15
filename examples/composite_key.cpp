@@ -1,4 +1,7 @@
-
+/**
+ *  This example shows you how to create a storage with a tablw with a composite primary key
+ *  and another table woth foreign key to first table's primary compisite key.
+ */
 #include <stdio.h>
 #include <string>
 #include <iostream>
@@ -32,7 +35,8 @@ int main() {
                                 make_table("visits",
                                            make_column("user_id", &UserVisit::userId),
                                            make_column("user_first_name", &UserVisit::userFirstName),
-                                           make_column("time", &UserVisit::time)));
+                                           make_column("time", &UserVisit::time),
+                                           foreign_key(&UserVisit::userId, &UserVisit::userFirstName).references(&User::id, &User::firstName)));
     storage.sync_schema();
     
     storage.replace(User{
