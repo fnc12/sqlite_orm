@@ -401,7 +401,7 @@ namespace sqlite_orm {
 #pragma once
 
 #include <string>   //  std::string
-#include <tuple>    //  std::tuple
+#include <tuple>    //  std::tuple, std::make_tuple
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
@@ -505,16 +505,25 @@ namespace sqlite_orm {
         
         /**
          *  FOREIGN KEY constraint class.
-         *  C is column which has foreign key
-         *  R is column which C references to
+         *  Cs are columns which has foreign key
+         *  Rs are column which C references to
          *  Available in SQLite 3.6.19 or higher
          */
-        template<class C, class R>
-        struct foreign_key_t {
-            C m = nullptr;
-            R r = nullptr;
+        
+        template<class A, class B>
+        struct foreign_key_t;
+        
+        template<class ...Cs, class ...Rs>
+        struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
+            using columns_type = std::tuple<Cs...>;
+            using references_type = std::tuple<Rs...>;
             
-            foreign_key_t(C m_, R r_): m(m_), r(r_) {}
+            columns_type columns;
+            references_type references;
+            
+            static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value, "Columns size must be equal to references tuple");
+            
+            foreign_key_t(columns_type columns_, references_type references_): columns(std::move(columns_)), references(std::move(references_)) {}
             
             using field_type = void;    //  for column iteration. Better be deleted
             using constraints_type = std::tuple<>;
@@ -529,20 +538,22 @@ namespace sqlite_orm {
         };
         
         /**
-         *  C can be a class member pointer, a getter function member pointer or setter
+         *  Cs can be a class member pointer, a getter function member pointer or setter
          *  func member pointer
          *  Available in SQLite 3.6.19 or higher
          */
-        template<class C>
+        template<class ...Cs>
         struct foreign_key_intermediate_t {
-            C m = nullptr;
+            using tuple_type = std::tuple<Cs...>;
             
-            foreign_key_intermediate_t(C m_): m(m_) {}
+            tuple_type columns;
             
-            template<class T>
-            foreign_key_t<C, T> references(T t) {
-                using ret_type = foreign_key_t<C, T>;
-                return ret_type(this->m, t);
+            foreign_key_intermediate_t(tuple_type columns_): columns(std::move(columns_)) {}
+            
+            template<class ...Rs>
+            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs ...references) {
+                using ret_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
+                return ret_type(std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...));
             }
         };
 #endif
@@ -6309,14 +6320,47 @@ namespace sqlite_orm {
             
 #if SQLITE_VERSION_NUMBER >= 3006019
             
-            template<class C, class R>
-            std::string serialize_column_schema(constraints::foreign_key_t<C, R> &fk) {
+            template<class ...Cs, class ...Rs>
+            std::string serialize_column_schema(constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> &fk) {
                 std::stringstream ss;
-                using ref_type = typename internal::table_type<decltype(fk.r)>::type;
-                auto refTableName = this->impl.template find_table_name<ref_type>();
-                auto refColumnName = this->impl.column_name(fk.r);
-                ss << "FOREIGN KEY(" << this->impl.column_name(fk.m) << ") REFERENCES ";
-                ss << refTableName << "(" << refColumnName << ") ";
+                std::vector<std::string> columnNames;
+                using columns_type_t = typename std::decay<decltype(fk)>::type::columns_type;
+                constexpr const int columnsCount = std::tuple_size<columns_type_t>::value;
+                columnNames.reserve(columnsCount);
+                tuple_helper::iterator<columnsCount - 1, Cs...>()(fk.columns, [&columnNames, this](auto &v){
+                    columnNames.push_back(this->impl.column_name(v));
+                });
+                ss << "FOREIGN KEY( ";
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << columnNames[i];
+                    if(i < columnNames.size() - 1){
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                ss << ") REFERENCES ";
+                std::vector<std::string> referencesNames;
+                using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
+                constexpr const int referencesCount = std::tuple_size<references_type_t>::value;
+                referencesNames.reserve(referencesCount);
+                {
+                    using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
+                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    auto refTableName = this->impl.template find_table_name<first_reference_mapped_type>();
+                    ss << refTableName << " ";
+                }
+                tuple_helper::iterator<referencesCount - 1, Rs...>()(fk.references, [&referencesNames, this](auto &v){
+                    referencesNames.push_back(this->impl.column_name(v));
+                });
+                ss << "( ";
+                for(size_t i = 0; i < referencesNames.size(); ++i){
+                    ss << referencesNames[i];
+                    if(i < referencesNames.size() - 1){
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                ss << ") ";
                 return ss.str();
             }
 #endif
