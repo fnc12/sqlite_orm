@@ -18,6 +18,6 @@
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
 * column alias
 * `FULL OUTER JOIN`
-* WINDOW
+* `WINDOW`
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
