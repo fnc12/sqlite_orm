@@ -271,5 +271,21 @@ namespace sqlite_orm {
             static_assert(std::is_same<left_result, right_result>::value, "Compound subselect queries must return same types");
             using type = left_result;
         };
+        
+        /**
+         *  Result for the most simple queries like `SELECT 1`
+         */
+        template<class T>
+        struct column_result_t<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+            using type = T;
+        };
+        
+        /**
+         *  Result for the most simple queries like `SELECT 'ototo'`
+         */
+        template<>
+        struct column_result_t<const char*, void> {
+            using type = std::string;
+        };
     }
 }
