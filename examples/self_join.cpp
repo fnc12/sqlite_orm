@@ -27,6 +27,21 @@ struct Employee {
     std::string email;
 };
 
+/**
+ *  This is how custom alias is made:
+ *  1) it must have `type` alias which is equal to your mapped class
+ *  2) is must have static function with `get()` signature and return type with `operator<<`
+ */
+template<class T>
+struct custom_alias : sqlite_orm::alias_tag {
+    using type = T;
+    
+    static const std::string &get() {
+        static const std::string res = "emp";
+        return res;
+    }
+};
+
 int main() {
     using namespace sqlite_orm;
     auto storage = make_storage("self_join.sqlite",
@@ -109,23 +124,41 @@ int main() {
         "T1H 1Y8", "+1 (403) 467-3351", "+1 (403) 467-8772", "laura@chinookcorp.com"
     });
     storage.commit();
-    cout << "after commit" << endl;
     
-    //  SELECT  m.FirstName || ' ' || m.LastName,
-    //      employees.FirstName || ' ' || employees.LastName
-    //  FROM  employees
-    //  INNER JOIN  employees m
-    //  ON m.ReportsTo = employees.EmployeeId
-    using als = alias_m<Employee>;
-    auto firstNames = storage.select(columns(c(alias_column<als>(&Employee::firstName)) || " " || c(alias_column<als>(&Employee::lastName)),
-                                             c(&Employee::firstName) || " " || c(&Employee::lastName)),
-                                     inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
-    cout << "firstNames count = " << firstNames.size() << endl;
-    for(auto &row : firstNames) {
-        cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
+    {
+        //  SELECT m.FirstName || ' ' || m.LastName,
+        //      employees.FirstName || ' ' || employees.LastName
+        //  FROM employees
+        //  INNER JOIN employees m
+        //  ON m.ReportsTo = employees.EmployeeId
+        using als = alias_m<Employee>;
+        auto firstNames = storage.select(columns(c(alias_column<als>(&Employee::firstName)) || " " || c(alias_column<als>(&Employee::lastName)),
+                                                 c(&Employee::firstName) || " " || c(&Employee::lastName)),
+                                         inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
+        cout << "firstNames count = " << firstNames.size() << endl;
+        for(auto &row : firstNames) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
+        }
+        
+        assert(storage.count<Employee>() == storage.count<alias_a<Employee>>());
     }
-    
-    assert(storage.count<Employee>() == storage.count<alias_a<Employee>>());
+    {   //  same query with custom alias 'emp'
+        cout << endl;
+        
+        //  SELECT emp.FirstName || ' ' || emp.LastName,
+        //      employees.FirstName || ' ' || employees.LastName
+        //  FROM employees
+        //  INNER JOIN employees emp
+        //  ON emp.ReportsTo = employees.EmployeeId
+        using als = custom_alias<Employee>;
+        auto firstNames = storage.select(columns(c(alias_column<als>(&Employee::firstName)) || " " || c(alias_column<als>(&Employee::lastName)),
+                                                 c(&Employee::firstName) || " " || c(&Employee::lastName)),
+                                         inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
+        cout << "firstNames count = " << firstNames.size() << endl;
+        for(auto &row : firstNames) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
+        }
+    }
     
     return 0;
 }
