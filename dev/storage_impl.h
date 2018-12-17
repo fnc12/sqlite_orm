@@ -161,12 +161,12 @@ namespace sqlite_orm {
             }
             
             template<class O, class HH = typename H::object_type>
-            std::string find_table_name(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string find_table_name(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.name;
             }
             
             template<class O, class HH = typename H::object_type>
-            std::string find_table_name(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string find_table_name(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::template find_table_name<O>();
             }
             
@@ -424,6 +424,11 @@ namespace sqlite_orm {
         
         template<>
         struct storage_impl<>{
+            
+            template<class O>
+            std::string find_table_name() const {
+                return {};
+            }
             
             template<class L>
             void for_each(L) {}

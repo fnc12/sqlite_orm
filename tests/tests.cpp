@@ -1,10 +1,9 @@
-
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <cassert>
-#include <vector>
-#include <string>
-#include <iostream>
+#include <cassert>  //  assert
+#include <vector>   //  std::vector
+#include <string>   //  std::string
+#include <iostream> //  std::cout, std::endl
 #include <memory>
 #include <cstdio>   //  remove
 
@@ -12,6 +11,33 @@ using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
+
+void testSimpleQuery() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage("");
+    {
+        auto one = storage.select(1);
+        assert(one.size() == 1);
+        assert(one.front() == 1);
+    }
+    {
+        auto ototo = storage.select("ototo");
+        assert(ototo.size() == 1);
+        assert(ototo.front() == "ototo");
+    }
+    {
+        auto two = storage.select(c(1) + 1);
+        assert(two.size() == 1);
+        assert(two.front() == 2);
+    }
+    {
+        auto twoRows = storage.select(columns(1, 2));
+        assert(twoRows.size() == 1);
+        assert(std::get<0>(twoRows.front()) == 1);
+        assert(std::get<1>(twoRows.front()) == 2);
+    }
+}
 
 void testThreadsafe() {
     cout << __func__ << endl;
@@ -2315,4 +2341,6 @@ int main(int argc, char **argv) {
     testJournalMode();
     
     testEscapedIndexName();
+    
+    testSimpleQuery();
 }
