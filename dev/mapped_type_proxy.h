@@ -10,14 +10,14 @@ namespace sqlite_orm {
          *  If T is alias than mapped_type_proxy<T>::type is alias::type
          *  otherwise T is T.
          */
-        template<class T>
+        template<class T, class sfinae = void>
         struct mapped_type_proxy {
             using type = T;
         };
         
-        template<class T, char A>
-        struct mapped_type_proxy<alias<T, A>> {
-            using type = T;
+        template<class T>
+        struct mapped_type_proxy<T, typename std::enable_if<std::is_base_of<alias_tag, T>::value>::type> {
+            using type = typename T::type;
         };
     }
 }
