@@ -2379,13 +2379,21 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_base_of
+#include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer
 #include <sstream>  //  std::stringstream
 
 namespace sqlite_orm {
     
+    /**
+     *  This is base class for every class which is used as a custom table alias.
+     *  For more information please look through self_join.cpp example
+     */
     struct alias_tag {};
     
+    /**
+     *  This is a common built-in class used for custom single character table aliases.
+     *  Also you can use language aliases `alias_a`, `alias_b` etc. instead
+     */
     template<class T, char A>
     struct alias : alias_tag {
         using type = T;
@@ -2429,8 +2437,13 @@ namespace sqlite_orm {
         };
     }
     
+    /**
+     *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
+     *  column with table alias prefix like 'a.column'. For more information please look through self_join.cpp example
+     */
     template<class T, class C>
     internal::alias_column_t<T, C> alias_column(C c) {
+        static_assert(std::is_member_pointer<C>::value, "alias_column argument must be a member pointer mapped to a storage");
         return {c};
     }
     

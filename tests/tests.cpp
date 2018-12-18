@@ -12,6 +12,23 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testColumnAlias() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key())));
+    storage.sync_schema();
+    
+    storage.replace(User{1});
+    auto rows = storage.select(&User::id);
+    auto rows2 = storage.select(<#T m#>, <#Args args...#>)
+}
+
 void testSimpleQuery() {
     cout << __func__ << endl;
     
@@ -2343,4 +2360,6 @@ int main(int argc, char **argv) {
     testEscapedIndexName();
     
     testSimpleQuery();
+    
+    testColumnAlias();
 }
