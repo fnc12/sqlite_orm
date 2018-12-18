@@ -19,11 +19,8 @@ int main(int argc, char **argv) {
     
     auto storage = make_storage(":memory:",
                                 make_table("rap_artists",
-                                           make_column("id",
-                                                       &RapArtist::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &RapArtist::name)));
+                                           make_column("id", &RapArtist::id, primary_key()),
+                                           make_column("name", &RapArtist::name)));
     cout << "in memory db opened" << endl;
     storage.sync_schema();
     

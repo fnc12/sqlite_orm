@@ -39,7 +39,8 @@
 		"dev/table.h",
 		"dev/storage_impl.h",
 		"dev/storage.h",
-		"dev/finish_macros.h"
+		"dev/finish_macros.h",
+        "dev/storage_traits.h"
 	],
 	"include_paths": ["dev"]
 }

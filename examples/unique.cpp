@@ -18,15 +18,9 @@ int main(int argc, char **argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("unique.sqlite",
                                 make_table("unique_test",
-                                           make_column("id",
-                                                       &Entry::id,
-                                                       autoincrement(),
-                                                       primary_key()),
-                                           make_column("unique_text",
-                                                       &Entry::uniqueColumn,
-                                                       unique()),
-                                           make_column("nullable_text",
-                                                       &Entry::nullableColumn)));
+                                           make_column("id", &Entry::id, autoincrement(), primary_key()),
+                                           make_column("unique_text", &Entry::uniqueColumn, unique()),
+                                           make_column("nullable_text", &Entry::nullableColumn)));
     storage.sync_schema();
     storage.remove_all<Entry>();
     

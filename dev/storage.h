@@ -54,7 +54,7 @@ namespace sqlite_orm {
          */
         template<class ...Ts>
         struct storage_t {
-            using storage_type = storage_t<Ts...>;
+            using self = storage_t<Ts...>;
             using impl_type = storage_impl<Ts...>;
             
             template<class T, class ...Args>
@@ -208,7 +208,7 @@ namespace sqlite_orm {
             
             std::function<void(sqlite3*)> on_open;
             
-            transaction_guard_t<storage_type> transaction_guard() {
+            transaction_guard_t<self> transaction_guard() {
                 this->begin_transaction();
                 return {*this};
             }
@@ -221,7 +221,7 @@ namespace sqlite_orm {
              */
             storage_t(const std::string &filename_, impl_type impl_):
             filename(filename_),
-            impl(impl_),
+            impl(std::move(impl_)),
             inMemory(filename_.empty() || filename_ == ":memory:"),
             pragma(*this),
             limit(*this){
@@ -3150,12 +3150,12 @@ namespace sqlite_orm {
                 }
             }
             
-            using pragma_type = pragma_t<storage_type>;
+            using pragma_type = pragma_t<self>;
             
             friend pragma_type;
         public:
             pragma_type pragma;
-            limit_accesor<storage_type> limit;
+            limit_accesor<self> limit;
         };
     }
     

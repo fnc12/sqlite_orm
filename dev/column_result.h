@@ -22,7 +22,7 @@ namespace sqlite_orm {
          *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
          *  c++ SELECT return type for T
          *  T - C++ type
-         *  Ts - tables pack from storage. Rarely used. Required in asterisk to define columns mapped for a type
+         *  SFINAE - sfinae argument
          */
         template<class T, class SFINAE = void>
         struct column_result_t;

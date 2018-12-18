@@ -32,11 +32,8 @@ auto& getStorage() {
     using namespace sqlite_orm;
     static auto storage = make_storage("key_value_example.sqlite",
                                        make_table("key_value",
-                                                  make_column("key",
-                                                              &KeyValue::key,
-                                                              primary_key()),
-                                                  make_column("value",
-                                                              &KeyValue::value)));
+                                                  make_column("key", &KeyValue::key, primary_key()),
+                                                  make_column("value", &KeyValue::value)));
     return storage;
 }
 

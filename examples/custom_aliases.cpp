@@ -1,10 +1,6 @@
-//
-//  custom_aliases.cpp
-//  CPPTest
-//
-//  Created by John Zakharov on 12/18/18.
-//  Copyright © 2018 John Zakharov. All rights reserved.
-//
+/**
+ *  Example is taken from here https://www.tutorialspoint.com/sqlite/sqlite_alias_syntax.htm
+ */
 
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>

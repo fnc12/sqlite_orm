@@ -241,7 +241,12 @@ int main() {
         using IdsTuple = SelectVectorTuple::value_type;
         static_assert(std::tuple_size<IdsTuple>::value == 1, "Incorrect tuple size");
     }
-    
+    {
+        //  test storage traits
+        struct Visit {};
+        static_assert(internal::type_is_mapped<decltype(storage), User>::value, "User must be mapped to a storage");
+        static_assert(!internal::type_is_mapped<decltype(storage), Visit>::value, "User must be mapped to a storage");
+    }
     
     return 0;
 }

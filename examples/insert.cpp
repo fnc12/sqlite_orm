@@ -28,17 +28,11 @@ int main(int argc, char **argv) {
     
     auto storage = make_storage("insert.sqlite",
                                 make_table("COMPANY",
-                                           make_column("ID",
-                                                       &Employee::id,
-                                                       primary_key()),
-                                           make_column("NAME",
-                                                       &Employee::name),
-                                           make_column("AGE",
-                                                       &Employee::age),
-                                           make_column("ADDRESS",
-                                                       &Employee::address),
-                                           make_column("SALARY",
-                                                       &Employee::salary)));
+                                           make_column("ID", &Employee::id, primary_key()),
+                                           make_column("NAME", &Employee::name),
+                                           make_column("AGE", &Employee::age),
+                                           make_column("ADDRESS", &Employee::address),
+                                           make_column("SALARY", &Employee::salary)));
     storage.sync_schema();
     storage.remove_all<Employee>();
     

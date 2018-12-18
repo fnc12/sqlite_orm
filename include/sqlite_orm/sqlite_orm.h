@@ -4388,7 +4388,7 @@ namespace sqlite_orm {
          *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
          *  c++ SELECT return type for T
          *  T - C++ type
-         *  Ts - tables pack from storage. Rarely used. Required in asterisk to define columns mapped for a type
+         *  SFINAE - sfinae argument
          */
         template<class T, class SFINAE = void>
         struct column_result_t;
@@ -5198,6 +5198,7 @@ namespace sqlite_orm {
         template<class H, class ...Ts>
         struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
             using table_type = H;
+            using super = storage_impl<Ts...>;
             
             storage_impl(H h, Ts ...ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
             
@@ -5581,7 +5582,6 @@ namespace sqlite_orm {
             
             
         private:
-            using super = storage_impl<Ts...>;
             using self = storage_impl<H, Ts...>;
         };
         
@@ -6116,7 +6116,7 @@ namespace sqlite_orm {
          */
         template<class ...Ts>
         struct storage_t {
-            using storage_type = storage_t<Ts...>;
+            using self = storage_t<Ts...>;
             using impl_type = storage_impl<Ts...>;
             
             template<class T, class ...Args>
@@ -6270,7 +6270,7 @@ namespace sqlite_orm {
             
             std::function<void(sqlite3*)> on_open;
             
-            transaction_guard_t<storage_type> transaction_guard() {
+            transaction_guard_t<self> transaction_guard() {
                 this->begin_transaction();
                 return {*this};
             }
@@ -6283,7 +6283,7 @@ namespace sqlite_orm {
              */
             storage_t(const std::string &filename_, impl_type impl_):
             filename(filename_),
-            impl(impl_),
+            impl(std::move(impl_)),
             inMemory(filename_.empty() || filename_ == ":memory:"),
             pragma(*this),
             limit(*this){
@@ -9212,12 +9212,12 @@ namespace sqlite_orm {
                 }
             }
             
-            using pragma_type = pragma_t<storage_type>;
+            using pragma_type = pragma_t<self>;
             
             friend pragma_type;
         public:
             pragma_type pragma;
-            limit_accesor<storage_type> limit;
+            limit_accesor<self> limit;
         };
     }
     
@@ -9245,3 +9245,27 @@ __pragma(pop_macro("max"))
 # undef __RESTORE_MAX__
 # endif
 #endif // defined(_MSC_VER)
+#include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        template<class S, class T, class SFINAE = void>
+        struct type_is_mapped_impl;
+        
+        template<class S, class T>
+        struct type_is_mapped : type_is_mapped_impl<typename S::impl_type, T> {};
+        
+        template<class T>
+        struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
+        
+        template<class S, class T>
+        struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::true_type {};
+        
+        template<class S, class T>
+        struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
+        : type_is_mapped_impl<typename S::super, T> {};
+
+    }
+}

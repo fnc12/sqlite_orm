@@ -108,13 +108,9 @@ int main(int argc, char **argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("nullable_enum.sqlite",
                                 make_table("users",
-                                           make_column("id",
-                                                       &User::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &User::name),
-                                           make_column("gender",
-                                                       &User::gender)));
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("gender", &User::gender)));
     storage.sync_schema();
     storage.remove_all<User>();
 

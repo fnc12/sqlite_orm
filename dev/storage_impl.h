@@ -35,6 +35,7 @@ namespace sqlite_orm {
         template<class H, class ...Ts>
         struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
             using table_type = H;
+            using super = storage_impl<Ts...>;
             
             storage_impl(H h, Ts ...ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
             
@@ -418,7 +419,6 @@ namespace sqlite_orm {
             
             
         private:
-            using super = storage_impl<Ts...>;
             using self = storage_impl<H, Ts...>;
         };
         

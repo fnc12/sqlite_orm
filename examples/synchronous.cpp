@@ -25,8 +25,7 @@ int main(int argc, char** argv) {
                                            make_column("type", &Query::type),
                                            make_column("src_ip", &Query::src_ip),
                                            make_column("src_port", &Query::src_port),
-                                           make_column("txn_id", &Query::txn_id))
-                                );
+                                           make_column("txn_id", &Query::txn_id)));
     storage.sync_schema();
     storage.pragma.synchronous(0);
     storage.remove_all<Query>();
