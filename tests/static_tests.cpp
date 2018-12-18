@@ -241,19 +241,6 @@ int main() {
         using IdsTuple = SelectVectorTuple::value_type;
         static_assert(std::tuple_size<IdsTuple>::value == 1, "Incorrect tuple size");
     }
-    {
-        auto columnAlias = as(&User::id, "userId");
-        using ExpressionType = decltype(columnAlias)::expression_type;
-        static_assert(std::is_same<ExpressionType, decltype(&User::id)>::value, "Incorrect extression type");
-        {
-            using ResultsType = internal::column_result_t<decltype(columnAlias)>::type;
-            static_assert(std::is_same<ResultsType, int>::value, "Incorrect column alias result type");
-        }
-        {
-            auto cols = columns(columnAlias);
-            using ResultsType = internal::column_result_t<decltype(cols)>::type;
-        }
-    }
     
     
     return 0;
