@@ -27,8 +27,25 @@ struct Department {
     int empId = 0;
 };
 
-int main() {
-    using namespace sqlite_orm;
+using namespace sqlite_orm;
+
+struct EmployeeIdAlias : alias_tag {
+    static const std::string &get() {
+        static const std::string res = "COMPANY_ID";
+        return res;
+    }
+};
+
+struct CompanyNameAlias : alias_tag {
+    static const std::string &get() {
+        static const std::string res = "COMPANY_NAME";
+        return res;
+    }
+};
+
+int main(int argc, char* argv[]) {
+    cout << argv[0] << endl;
+    
     auto storage = make_storage("custom_aliases.sqlite",
                                 make_table("COMPANY",
                                            make_column("ID", &Employee::id, primary_key()),
@@ -77,8 +94,8 @@ int main() {
     //  SELECT C.ID, C.NAME, C.AGE, D.DEPT
     //  FROM COMPANY AS C, DEPARTMENT AS D
     //  WHERE  C.ID = D.EMP_ID;
-    using als_c = sqlite_orm::alias_c<Employee>;
-    using als_d = sqlite_orm::alias_d<Department>;
+    using als_c = alias_c<Employee>;
+    using als_d = alias_d<Department>;
     auto rowsWithTableAliases = storage.select(columns(alias_column<als_c>(&Employee::id),
                                                        alias_column<als_c>(&Employee::name),
                                                        alias_column<als_c>(&Employee::age),
@@ -86,7 +103,25 @@ int main() {
                                                where(is_equal(alias_column<als_c>(&Employee::id), alias_column<als_d>(&Department::empId))));
     assert(rowsWithTableAliases == simpleRows);
     
+    //  SELECT COMPANY.ID as COMPANY_ID, COMPANY.NAME AS COMPANY_NAME, COMPANY.AGE, DEPARTMENT.DEPT
+    //  FROM COMPANY, DEPARTMENT
+    //  WHERE COMPANY_ID = DEPARTMENT.EMP_ID;
+    auto rowsWithColumnAliases = storage.select(columns(as<EmployeeIdAlias>(&Employee::id),
+                                                        as<CompanyNameAlias>(&Employee::name),
+                                                        &Employee::age,
+                                                        &Department::dept),
+                                                where(is_equal(get<EmployeeIdAlias>(), &Department::empId)));
+    assert(rowsWithColumnAliases == rowsWithTableAliases);
     
+    //  SELECT C.ID AS COMPANY_ID, C.NAME AS COMPANY_NAME, C.AGE, D.DEPT
+    //  FROM COMPANY AS C, DEPARTMENT AS D
+    //  WHERE  C.ID = D.EMP_ID;
+    auto rowsWithBothTableAndColumnAliases = storage.select(columns(as<EmployeeIdAlias>(alias_column<als_c>(&Employee::id)),
+                                                                    as<CompanyNameAlias>(alias_column<als_c>(&Employee::name)),
+                                                                    alias_column<als_c>(&Employee::age),
+                                                                    alias_column<als_d>(&Department::dept)),
+                                                            where(is_equal(alias_column<als_c>(&Employee::id), alias_column<als_d>(&Department::empId))));
+    assert(rowsWithBothTableAndColumnAliases == rowsWithBothTableAndColumnAliases);
     
     return 0;
 }

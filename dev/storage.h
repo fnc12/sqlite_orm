@@ -454,6 +454,17 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class T>
+            std::string string_from_expression(const alias_holder<T> &holder, bool noTableName = false, bool /*escape*/ = false) {
+                return T::get();
+            }
+            
+            template<class T, class E>
+            std::string string_from_expression(const as_t<T, E> &als, bool noTableName = false, bool /*escape*/ = false) {
+                auto tableAliasString = alias_extractor<T>::get();
+                return this->string_from_expression(als.expression) + " AS " + tableAliasString;
+            }
+            
             template<class T, class C>
             std::string string_from_expression(const alias_column_t<T, C> &als, bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same
+#include <type_traits>  //  std::enable_if, std::is_same, std::decay
 #include <tuple>    //  std::tuple
 
 #include "core_functions.h"
@@ -256,7 +256,7 @@ namespace sqlite_orm {
         
         template<class ...Args>
         struct column_result_t<columns_t<Args...>, void> {
-            using type = std::tuple<typename column_result_t<Args>::type...>;
+            using type = std::tuple<typename column_result_t<typename std::decay<Args>::type>::type...>;
         };
         
         template<class T, class ...Args>
@@ -287,5 +287,8 @@ namespace sqlite_orm {
         struct column_result_t<const char*, void> {
             using type = std::string;
         };
+        
+        template<class T, class E>
+        struct column_result_t<as_t<T, E>, void> : column_result_t<typename std::decay<E>::type, void> {};
     }
 }

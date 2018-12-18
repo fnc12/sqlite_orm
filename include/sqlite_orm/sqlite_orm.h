@@ -2381,6 +2381,7 @@ namespace sqlite_orm {
 
 #include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer
 #include <sstream>  //  std::stringstream
+#include <string>   //  std::string
 
 namespace sqlite_orm {
     
@@ -2405,6 +2406,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  Column expression with table alias attached like 'C.ID'. This is not a column alias
+         */
         template<class T, class C>
         struct alias_column_t {
             using alias_type = T;
@@ -2435,6 +2439,19 @@ namespace sqlite_orm {
                 return {};
             }
         };
+        
+        template<class T, class E>
+        struct as_t {
+            using alias_type = T;
+            using expression_type = E;
+            
+            expression_type expression;
+        };
+        
+        template<class T>
+        struct alias_holder {
+            using type = T;
+        };
     }
     
     /**
@@ -2445,6 +2462,16 @@ namespace sqlite_orm {
     internal::alias_column_t<T, C> alias_column(C c) {
         static_assert(std::is_member_pointer<C>::value, "alias_column argument must be a member pointer mapped to a storage");
         return {c};
+    }
+    
+    template<class T, class E>
+    internal::as_t<T, E> as(E expression) {
+        return {std::move(expression)};
+    }
+    
+    template<class T>
+    internal::alias_holder<T> get() {
+        return {};
     }
     
     template<class T> using alias_a = internal::table_alias<T, 'a'>;
@@ -4332,7 +4359,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same
+#include <type_traits>  //  std::enable_if, std::is_same, std::decay
 #include <tuple>    //  std::tuple
 
 // #include "core_functions.h"
@@ -4595,7 +4622,7 @@ namespace sqlite_orm {
         
         template<class ...Args>
         struct column_result_t<columns_t<Args...>, void> {
-            using type = std::tuple<typename column_result_t<Args>::type...>;
+            using type = std::tuple<typename column_result_t<typename std::decay<Args>::type>::type...>;
         };
         
         template<class T, class ...Args>
@@ -4626,6 +4653,9 @@ namespace sqlite_orm {
         struct column_result_t<const char*, void> {
             using type = std::string;
         };
+        
+        template<class T, class E>
+        struct column_result_t<as_t<T, E>, void> : column_result_t<typename std::decay<E>::type, void> {};
     }
 }
 #pragma once
@@ -6484,6 +6514,17 @@ namespace sqlite_orm {
                     }
                     return ss.str();
                 }
+            }
+            
+            template<class T>
+            std::string string_from_expression(const alias_holder<T> &holder, bool noTableName = false, bool /*escape*/ = false) {
+                return T::get();
+            }
+            
+            template<class T, class E>
+            std::string string_from_expression(const as_t<T, E> &als, bool noTableName = false, bool /*escape*/ = false) {
+                auto tableAliasString = alias_extractor<T>::get();
+                return this->string_from_expression(als.expression) + " AS " + tableAliasString;
             }
             
             template<class T, class C>

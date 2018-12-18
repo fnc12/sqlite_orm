@@ -2,6 +2,7 @@
 
 #include <type_traits>  //  std::enable_if, std::is_base_of, std::is_member_pointer
 #include <sstream>  //  std::stringstream
+#include <string>   //  std::string
 
 namespace sqlite_orm {
     
@@ -26,6 +27,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  Column expression with table alias attached like 'C.ID'. This is not a column alias
+         */
         template<class T, class C>
         struct alias_column_t {
             using alias_type = T;
@@ -56,6 +60,19 @@ namespace sqlite_orm {
                 return {};
             }
         };
+        
+        template<class T, class E>
+        struct as_t {
+            using alias_type = T;
+            using expression_type = E;
+            
+            expression_type expression;
+        };
+        
+        template<class T>
+        struct alias_holder {
+            using type = T;
+        };
     }
     
     /**
@@ -66,6 +83,16 @@ namespace sqlite_orm {
     internal::alias_column_t<T, C> alias_column(C c) {
         static_assert(std::is_member_pointer<C>::value, "alias_column argument must be a member pointer mapped to a storage");
         return {c};
+    }
+    
+    template<class T, class E>
+    internal::as_t<T, E> as(E expression) {
+        return {std::move(expression)};
+    }
+    
+    template<class T>
+    internal::alias_holder<T> get() {
+        return {};
     }
     
     template<class T> using alias_a = internal::table_alias<T, 'a'>;
