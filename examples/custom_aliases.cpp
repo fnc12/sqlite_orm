@@ -68,6 +68,12 @@ int main() {
                                      where(is_equal(&Employee::id, &Department::empId)));
     assert(simpleRows.size() == 7);
     
+    cout << "ID" << '\t' << "NAME" << '\t' << "AGE" << '\t' << "DEPT" << endl;
+    cout << "----------" << '\t' << "----------" << '\t' << "----------" << '\t' << "----------" << endl;
+    for(auto &row : simpleRows) {
+        cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+    }
+    
     //  SELECT C.ID, C.NAME, C.AGE, D.DEPT
     //  FROM COMPANY AS C, DEPARTMENT AS D
     //  WHERE  C.ID = D.EMP_ID;
@@ -79,11 +85,8 @@ int main() {
                                                        alias_column<als_d>(&Department::dept)),
                                                where(is_equal(alias_column<als_c>(&Employee::id), alias_column<als_d>(&Department::empId))));
     assert(rowsWithTableAliases == simpleRows);
-    cout << "ID" << '\t' << "NAME" << '\t' << "AGE" << '\t' << "DEPT" << endl;
-    cout << "----------" << '\t' << "----------" << '\t' << "----------" << '\t' << "----------" << endl;
-    for(auto &row : rowsWithTableAliases) {
-        cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
-    }
+    
+    
     
     return 0;
 }

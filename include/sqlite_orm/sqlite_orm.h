@@ -2390,20 +2390,20 @@ namespace sqlite_orm {
      */
     struct alias_tag {};
     
-    /**
-     *  This is a common built-in class used for custom single character table aliases.
-     *  Also you can use language aliases `alias_a`, `alias_b` etc. instead
-     */
-    template<class T, char A>
-    struct alias : alias_tag {
-        using type = T;
-        
-        static char get() {
-            return A;
-        }
-    };
-    
     namespace internal {
+        
+        /**
+         *  This is a common built-in class used for custom single character table aliases.
+         *  Also you can use language aliases `alias_a`, `alias_b` etc. instead
+         */
+        template<class T, char A>
+        struct table_alias : alias_tag {
+            using type = T;
+            
+            static char get() {
+                return A;
+            }
+        };
         
         template<class T, class C>
         struct alias_column_t {
@@ -2447,32 +2447,32 @@ namespace sqlite_orm {
         return {c};
     }
     
-    template<class T> using alias_a = alias<T, 'a'>;
-    template<class T> using alias_b = alias<T, 'b'>;
-    template<class T> using alias_c = alias<T, 'c'>;
-    template<class T> using alias_d = alias<T, 'd'>;
-    template<class T> using alias_e = alias<T, 'e'>;
-    template<class T> using alias_f = alias<T, 'f'>;
-    template<class T> using alias_g = alias<T, 'g'>;
-    template<class T> using alias_h = alias<T, 'h'>;
-    template<class T> using alias_i = alias<T, 'i'>;
-    template<class T> using alias_j = alias<T, 'j'>;
-    template<class T> using alias_k = alias<T, 'k'>;
-    template<class T> using alias_l = alias<T, 'l'>;
-    template<class T> using alias_m = alias<T, 'm'>;
-    template<class T> using alias_n = alias<T, 'n'>;
-    template<class T> using alias_o = alias<T, 'o'>;
-    template<class T> using alias_p = alias<T, 'p'>;
-    template<class T> using alias_q = alias<T, 'q'>;
-    template<class T> using alias_r = alias<T, 'r'>;
-    template<class T> using alias_s = alias<T, 's'>;
-    template<class T> using alias_t = alias<T, 't'>;
-    template<class T> using alias_u = alias<T, 'u'>;
-    template<class T> using alias_v = alias<T, 'v'>;
-    template<class T> using alias_w = alias<T, 'w'>;
-    template<class T> using alias_x = alias<T, 'x'>;
-    template<class T> using alias_y = alias<T, 'y'>;
-    template<class T> using alias_z = alias<T, 'z'>;
+    template<class T> using alias_a = internal::table_alias<T, 'a'>;
+    template<class T> using alias_b = internal::table_alias<T, 'b'>;
+    template<class T> using alias_c = internal::table_alias<T, 'c'>;
+    template<class T> using alias_d = internal::table_alias<T, 'd'>;
+    template<class T> using alias_e = internal::table_alias<T, 'e'>;
+    template<class T> using alias_f = internal::table_alias<T, 'f'>;
+    template<class T> using alias_g = internal::table_alias<T, 'g'>;
+    template<class T> using alias_h = internal::table_alias<T, 'h'>;
+    template<class T> using alias_i = internal::table_alias<T, 'i'>;
+    template<class T> using alias_j = internal::table_alias<T, 'j'>;
+    template<class T> using alias_k = internal::table_alias<T, 'k'>;
+    template<class T> using alias_l = internal::table_alias<T, 'l'>;
+    template<class T> using alias_m = internal::table_alias<T, 'm'>;
+    template<class T> using alias_n = internal::table_alias<T, 'n'>;
+    template<class T> using alias_o = internal::table_alias<T, 'o'>;
+    template<class T> using alias_p = internal::table_alias<T, 'p'>;
+    template<class T> using alias_q = internal::table_alias<T, 'q'>;
+    template<class T> using alias_r = internal::table_alias<T, 'r'>;
+    template<class T> using alias_s = internal::table_alias<T, 's'>;
+    template<class T> using alias_t = internal::table_alias<T, 't'>;
+    template<class T> using alias_u = internal::table_alias<T, 'u'>;
+    template<class T> using alias_v = internal::table_alias<T, 'v'>;
+    template<class T> using alias_w = internal::table_alias<T, 'w'>;
+    template<class T> using alias_x = internal::table_alias<T, 'x'>;
+    template<class T> using alias_y = internal::table_alias<T, 'y'>;
+    template<class T> using alias_z = internal::table_alias<T, 'z'>;
 }
 #pragma once
 
