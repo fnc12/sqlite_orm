@@ -3,7 +3,7 @@
 #include <memory>   //  std::shared_ptr, std::make_shared
 #include <string>   //  std::string
 #include <sqlite3.h>
-#include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay
+#include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
 #include <cstddef>  //  std::ptrdiff_t
 #include <iterator> //  std::input_iterator_tag, std::iterator_traits, std::distance
 #include <system_error> //  std::system_error
@@ -3157,6 +3157,12 @@ namespace sqlite_orm {
             pragma_type pragma;
             limit_accesor<self> limit;
         };
+        
+        template<class T>
+        struct is_storage : std::false_type {};
+        
+        template<class ...Ts>
+        struct is_storage<storage_t<Ts...>> : std::true_type {};
     }
     
     template<class ...Ts>

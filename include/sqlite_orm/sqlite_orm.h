@@ -5131,7 +5131,7 @@ namespace sqlite_orm {
 #include <system_error> //  std::system_error, std::error_code
 #include <sstream>  //  std::stringstream
 #include <cstdlib>  //  std::atoi
-#include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference
+#include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference, std::false_type, std::true_type
 #include <utility>  //  std::pair, std::make_pair
 #include <vector>   //  std::vector
 #include <algorithm>    //  std::find_if
@@ -5715,6 +5715,12 @@ namespace sqlite_orm {
                 return res;
             }
         };
+        
+        template<class T>
+        struct is_storage_impl : std::false_type {};
+        
+        template<class ...Ts>
+        struct is_storage_impl<storage_impl<Ts...>> : std::true_type {};
     }
 }
 #pragma once
@@ -5722,7 +5728,7 @@ namespace sqlite_orm {
 #include <memory>   //  std::shared_ptr, std::make_shared
 #include <string>   //  std::string
 #include <sqlite3.h>
-#include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay
+#include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
 #include <cstddef>  //  std::ptrdiff_t
 #include <iterator> //  std::input_iterator_tag, std::iterator_traits, std::distance
 #include <system_error> //  std::system_error
@@ -9219,6 +9225,12 @@ namespace sqlite_orm {
             pragma_type pragma;
             limit_accesor<self> limit;
         };
+        
+        template<class T>
+        struct is_storage : std::false_type {};
+        
+        template<class ...Ts>
+        struct is_storage<storage_t<Ts...>> : std::true_type {};
     }
     
     template<class ...Ts>
@@ -9245,27 +9257,37 @@ __pragma(pop_macro("max"))
 # undef __RESTORE_MAX__
 # endif
 #endif // defined(_MSC_VER)
-#include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type
+#include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type, std::integral_constant
 
 namespace sqlite_orm {
     
     namespace internal {
         
-        template<class S, class T, class SFINAE = void>
-        struct type_is_mapped_impl;
-        
-        template<class S, class T>
-        struct type_is_mapped : type_is_mapped_impl<typename S::impl_type, T> {};
-        
-        template<class T>
-        struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
-        
-        template<class S, class T>
-        struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::true_type {};
-        
-        template<class S, class T>
-        struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
-        : type_is_mapped_impl<typename S::super, T> {};
-
+        namespace storage_traits {
+            
+            /**
+             *  S - storage_impl type
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T, class SFINAE = void>
+            struct type_is_mapped_impl;
+            
+            /**
+             *  S - storage
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T>
+            struct type_is_mapped : type_is_mapped_impl<typename S::impl_type, T> {};
+            
+            template<class T>
+            struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
+            
+            template<class S, class T>
+            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::true_type {};
+            
+            template<class S, class T>
+            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
+            : type_is_mapped_impl<typename S::super, T> {};
+        }
     }
 }
