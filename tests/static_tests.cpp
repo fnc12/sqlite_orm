@@ -244,8 +244,14 @@ int main() {
     {
         //  test storage traits
         struct Visit {};
-        static_assert(internal::type_is_mapped<decltype(storage), User>::value, "User must be mapped to a storage");
-        static_assert(!internal::type_is_mapped<decltype(storage), Visit>::value, "User must be mapped to a storage");
+        using namespace sqlite_orm::internal::storage_traits;
+        static_assert(type_is_mapped<decltype(storage), User>::value, "User must be mapped to a storage");
+        static_assert(!type_is_mapped<decltype(storage), Visit>::value, "User must be mapped to a storage");
+        
+        static_assert(internal::is_storage<decltype(storage)>::value, "is_storage works incorrectly");
+        static_assert(!internal::is_storage<User>::value, "is_storage works incorrectly");
+        static_assert(!internal::is_storage<int>::value, "is_storage works incorrectly");
+        static_assert(!internal::is_storage<void>::value, "is_storage works incorrectly");
     }
     
     return 0;

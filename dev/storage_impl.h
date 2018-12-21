@@ -6,7 +6,7 @@
 #include <system_error> //  std::system_error, std::error_code
 #include <sstream>  //  std::stringstream
 #include <cstdlib>  //  std::atoi
-#include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference
+#include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference, std::false_type, std::true_type
 #include <utility>  //  std::pair, std::make_pair
 #include <vector>   //  std::vector
 #include <algorithm>    //  std::find_if
@@ -552,5 +552,11 @@ namespace sqlite_orm {
                 return res;
             }
         };
+        
+        template<class T>
+        struct is_storage_impl : std::false_type {};
+        
+        template<class ...Ts>
+        struct is_storage_impl<storage_impl<Ts...>> : std::true_type {};
     }
 }
