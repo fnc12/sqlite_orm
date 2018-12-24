@@ -3545,6 +3545,7 @@ namespace sqlite_orm {
         
         /**
          *  Trait class used to define table mapped type by setter/getter/member
+         *  T - member pointer
          */
         template<class T, class SFINAE = void>
         struct table_type;
@@ -4682,8 +4683,13 @@ namespace sqlite_orm {
         template<typename... Args>
         struct table_impl;
         
+        /**
+         *  Final superclass for table_impl.
+         */
         template<>
         struct table_impl<>{
+            
+            static constexpr const int columns_count = 0;
             
             std::vector<std::string> column_names() {
                 return {};
@@ -4717,24 +4723,22 @@ namespace sqlite_orm {
             template<class L>
             void for_each_primary_key(L) {}
             
-            int columns_count() const {
-                return 0;
-            }
-            
         };
         
+        /**
+         *  Regular table_impl class.
+         */
         template<typename H, typename... T>
         struct table_impl<H, T...> : private table_impl<T...> {
             using column_type = H;
             using tail_types = std::tuple<T...>;
+            using super = table_impl<T...>;
             
             table_impl(H h, T ...t) : super(t...), col(h) {}
             
             column_type col;
             
-            int columns_count() const {
-                return 1 + this->super::columns_count();
-            }
+            static constexpr const int columns_count = 1 + super::columns_count;
             
             /**
              *  column_names_with implementation. Notice that result will be reversed.
@@ -4811,9 +4815,6 @@ namespace sqlite_orm {
             
             template<class L>
             void apply_to_col_if(L&, std::false_type) {}
-            
-        private:
-            using super = table_impl<T...>;
         };
     }
 }
@@ -4855,6 +4856,8 @@ namespace sqlite_orm {
         struct table_t {
             using impl_type = table_impl<Cs...>;
             using object_type = T;
+            
+            static constexpr const int columns_count = impl_type::columns_count;
             
             /**
              *  Table name.
@@ -4953,10 +4956,6 @@ namespace sqlite_orm {
                     res.push_back(this->find_column_name(v));
                 });
                 return res;
-            }
-            
-            int columns_count() const {
-                return this->impl.columns_count();
             }
             
             /**
@@ -5066,7 +5065,7 @@ namespace sqlite_orm {
             
             std::vector<table_info> get_table_info() {
                 std::vector<table_info> res;
-                res.reserve(size_t(this->columns_count()));
+                res.reserve(size_t(this->columns_count));
                 this->for_each_column([&res](auto &col){
                     std::string dft;
                     using field_type = typename std::remove_reference<decltype(col)>::type::field_type;
@@ -6420,7 +6419,7 @@ namespace sqlite_orm {
             void create_table(sqlite3 *db, const std::string &tableName, I *impl) {
                 std::stringstream ss;
                 ss << "CREATE TABLE '" << tableName << "' ( ";
-                auto columnsCount = impl->table.columns_count();
+                auto columnsCount = impl->table.columns_count;
                 auto index = 0;
                 impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, this] (auto c) {
                     ss << this->serialize_column_schema(c);
@@ -9279,6 +9278,9 @@ namespace sqlite_orm {
             template<class S, class T>
             struct type_is_mapped : type_is_mapped_impl<typename S::impl_type, T> {};
             
+            /**
+             *  Final specialisation
+             */
             template<class T>
             struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
             
@@ -9288,6 +9290,33 @@ namespace sqlite_orm {
             template<class S, class T>
             struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
             : type_is_mapped_impl<typename S::super, T> {};
+            
+            
+            /**
+             *  S - storage_impl type
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T, class SFINAE = void>
+            struct storage_columns_count_impl;
+            
+            /**
+             *  S - storage
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T>
+            struct storage_columns_count : storage_columns_count_impl<typename S::impl_type, T> {};
+            
+            /**
+             *  Final specialisation
+             */
+            template<class T>
+            struct storage_columns_count_impl<storage_impl<>, T, void> : std::integral_constant<int, 0> {};
+            
+            template<class S, class T>
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::integral_constant<int, S::table_type::columns_count> {};
+            
+            template<class S, class T>
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
         }
     }
 }

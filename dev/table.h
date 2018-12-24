@@ -28,6 +28,8 @@ namespace sqlite_orm {
             using impl_type = table_impl<Cs...>;
             using object_type = T;
             
+            static constexpr const int columns_count = impl_type::columns_count;
+            
             /**
              *  Table name.
              */
@@ -125,10 +127,6 @@ namespace sqlite_orm {
                     res.push_back(this->find_column_name(v));
                 });
                 return res;
-            }
-            
-            int columns_count() const {
-                return this->impl.columns_count();
             }
             
             /**
@@ -238,7 +236,7 @@ namespace sqlite_orm {
             
             std::vector<table_info> get_table_info() {
                 std::vector<table_info> res;
-                res.reserve(size_t(this->columns_count()));
+                res.reserve(size_t(this->columns_count));
                 this->for_each_column([&res](auto &col){
                     std::string dft;
                     using field_type = typename std::remove_reference<decltype(col)>::type::field_type;

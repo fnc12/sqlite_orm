@@ -19,8 +19,13 @@ namespace sqlite_orm {
         template<typename... Args>
         struct table_impl;
         
+        /**
+         *  Final superclass for table_impl.
+         */
         template<>
         struct table_impl<>{
+            
+            static constexpr const int columns_count = 0;
             
             std::vector<std::string> column_names() {
                 return {};
@@ -54,24 +59,22 @@ namespace sqlite_orm {
             template<class L>
             void for_each_primary_key(L) {}
             
-            int columns_count() const {
-                return 0;
-            }
-            
         };
         
+        /**
+         *  Regular table_impl class.
+         */
         template<typename H, typename... T>
         struct table_impl<H, T...> : private table_impl<T...> {
             using column_type = H;
             using tail_types = std::tuple<T...>;
+            using super = table_impl<T...>;
             
             table_impl(H h, T ...t) : super(t...), col(h) {}
             
             column_type col;
             
-            int columns_count() const {
-                return 1 + this->super::columns_count();
-            }
+            static constexpr const int columns_count = 1 + super::columns_count;
             
             /**
              *  column_names_with implementation. Notice that result will be reversed.
@@ -148,9 +151,6 @@ namespace sqlite_orm {
             
             template<class L>
             void apply_to_col_if(L&, std::false_type) {}
-            
-        private:
-            using super = table_impl<T...>;
         };
     }
 }

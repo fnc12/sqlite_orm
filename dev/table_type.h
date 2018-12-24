@@ -11,6 +11,7 @@ namespace sqlite_orm {
         
         /**
          *  Trait class used to define table mapped type by setter/getter/member
+         *  T - member pointer
          */
         template<class T, class SFINAE = void>
         struct table_type;

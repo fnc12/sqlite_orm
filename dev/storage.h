@@ -352,7 +352,7 @@ namespace sqlite_orm {
             void create_table(sqlite3 *db, const std::string &tableName, I *impl) {
                 std::stringstream ss;
                 ss << "CREATE TABLE '" << tableName << "' ( ";
-                auto columnsCount = impl->table.columns_count();
+                auto columnsCount = impl->table.columns_count;
                 auto index = 0;
                 impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, this] (auto c) {
                     ss << this->serialize_column_schema(c);
