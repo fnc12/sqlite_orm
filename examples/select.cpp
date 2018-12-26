@@ -77,4 +77,24 @@ int main(int argc, char **argv) {
         }
         cout << endl;
     }
+    
+    cout << endl;
+    
+    auto allEmployeesTuples = storage.select(asterisk<Employee>());
+    cout << "allEmployeesTuples count = " << allEmployeesTuples.size() << endl;
+    for(auto &row : allEmployeesTuples) {   //  row is std::tuple<int, std::string, int, std::shared_ptr<std::string>, std::shared_ptr<double>>
+        cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t';
+        if(auto &value = std::get<3>(row)){
+            cout << *value;
+        }else{
+            cout << "null";
+        }
+        cout << '\t';
+        if(auto &value = std::get<4>(row)){
+            cout << *value;
+        }else{
+            cout << "null";
+        }
+        cout << '\t' << endl;
+    }
 }

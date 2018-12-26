@@ -279,6 +279,16 @@ int main() {
         using VisitColumnTypes = storage_mapped_columns<decltype(storage2), Visit>::type;
         static_assert(std::is_same<VisitColumnTypes, std::tuple<int, std::string>>::value, "Incorrect storage_mapped_columns result");
     }
+    {
+        static_assert(std::is_same<internal::column_result_t<decltype(add(1, 2))>::type, double>::value, "Incorrect add result");
+        static_assert(std::is_same<internal::column_result_t<decltype(sub(2, 1))>::type, double>::value, "Incorrect sub result");
+        static_assert(std::is_same<internal::column_result_t<decltype(mul(2, 3))>::type, double>::value, "Incorrect mul result");
+        static_assert(std::is_same<internal::column_result_t<decltype(sqlite_orm::div(2, 3))>::type, double>::value, "Incorrect div result");
+    }
+    {
+        auto cols = storage.select(asterisk<User>());
+        ff
+    }
     
     return 0;
 }
