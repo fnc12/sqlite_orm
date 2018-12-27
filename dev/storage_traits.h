@@ -5,6 +5,12 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        template<class ...Ts>
+        struct storage_impl;
+        
+        template<typename... Args>
+        struct table_impl;
+        
         namespace storage_traits {
             
             /**

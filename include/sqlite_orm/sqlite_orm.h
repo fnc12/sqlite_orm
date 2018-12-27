@@ -4377,6 +4377,128 @@ namespace sqlite_orm {
 
 // #include "column.h"
 
+// #include "storage_traits.h"
+#include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type, std::integral_constant
+#include <tuple>    //  std::tuple
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        template<class ...Ts>
+        struct storage_impl;
+        
+        template<typename... Args>
+        struct table_impl;
+        
+        namespace storage_traits {
+            
+            /**
+             *  S - storage_impl type
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T, class SFINAE = void>
+            struct type_is_mapped_impl;
+            
+            /**
+             *  S - storage
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T>
+            struct type_is_mapped : type_is_mapped_impl<typename S::impl_type, T> {};
+            
+            /**
+             *  Final specialisation
+             */
+            template<class T>
+            struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
+            
+            template<class S, class T>
+            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::true_type {};
+            
+            template<class S, class T>
+            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
+            : type_is_mapped_impl<typename S::super, T> {};
+            
+            
+            /**
+             *  S - storage_impl type
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T, class SFINAE = void>
+            struct storage_columns_count_impl;
+            
+            /**
+             *  S - storage
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T>
+            struct storage_columns_count : storage_columns_count_impl<typename S::impl_type, T> {};
+            
+            /**
+             *  Final specialisation
+             */
+            template<class T>
+            struct storage_columns_count_impl<storage_impl<>, T, void> : std::integral_constant<int, 0> {};
+            
+            template<class S, class T>
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::integral_constant<int, S::table_type::columns_count> {};
+            
+            template<class S, class T>
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
+            
+            
+            /**
+             *  T - table_impl type.
+             */
+            template<class T>
+            struct table_impl_types;
+            
+            /**
+             *  type is std::tuple of field types of mapped colums.
+             */
+            template<typename... Args>
+            struct table_impl_types<table_impl<Args...>> {
+                using type = std::tuple<typename Args::field_type...>;
+            };
+            
+            
+            /**
+             *  S - storage_impl type
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T, class SFINAE = void>
+            struct storage_mapped_columns_impl;
+            
+            /**
+             *  S - storage
+             *  T - mapped or not mapped data type
+             */
+            template<class S, class T>
+            struct storage_mapped_columns : storage_mapped_columns_impl<typename S::impl_type, T> {};
+            
+            /**
+             *  Final specialisation
+             */
+            template<class T>
+            struct storage_mapped_columns_impl<storage_impl<>, T, void> {
+                using type = std::tuple<>;
+            };
+            
+            template<class S, class T>
+            struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
+                using table_type = typename S::table_type;
+                using table_impl_type = typename table_type::impl_type;
+                using type = typename table_impl_types<table_impl_type>::type;
+            };
+            
+            template<class S, class T>
+            struct storage_mapped_columns_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_mapped_columns_impl<typename S::super, T> {};
+            
+        }
+    }
+}
+
 
 namespace sqlite_orm {
     
@@ -4391,250 +4513,250 @@ namespace sqlite_orm {
          *  T - C++ type
          *  SFINAE - sfinae argument
          */
-        template<class T, class SFINAE = void>
+        template<class St, class T, class SFINAE = void>
         struct column_result_t;
         
-        template<class O, class F>
-        struct column_result_t<F O::*, typename std::enable_if<std::is_member_pointer<F O::*>::value && !std::is_member_function_pointer<F O::*>::value>::type> {
+        template<class St, class O, class F>
+        struct column_result_t<St, F O::*, typename std::enable_if<std::is_member_pointer<F O::*>::value && !std::is_member_function_pointer<F O::*>::value>::type> {
             using type = F;
         };
         
         /**
          *  Common case for all getter types. Getter types are defined in column.h file
          */
-        template<class T>
-        struct column_result_t<T, typename std::enable_if<is_getter<T>::value>::type> {
+        template<class St, class T>
+        struct column_result_t<St, T, typename std::enable_if<is_getter<T>::value>::type> {
             using type = typename getter_traits<T>::field_type;
         };
         
         /**
          *  Common case for all setter types. Setter types are defined in column.h file
          */
-        template<class T>
-        struct column_result_t<T, typename std::enable_if<is_setter<T>::value>::type> {
+        template<class St, class T>
+        struct column_result_t<St, T, typename std::enable_if<is_setter<T>::value>::type> {
             using type = typename setter_traits<T>::field_type;
         };
         
-        template<class T>
-        struct column_result_t<core_functions::length_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, core_functions::length_t<T>, void> {
             using type = int;
         };
         
 #if SQLITE_VERSION_NUMBER >= 3007016
         
-        template<class ...Args>
-        struct column_result_t<core_functions::char_t_<Args...>, void> {
+        template<class St, class ...Args>
+        struct column_result_t<St, core_functions::char_t_<Args...>, void> {
             using type = std::string;
         };
 #endif
         
-        template<>
-        struct column_result_t<core_functions::random_t, void> {
+        template<class St>
+        struct column_result_t<St, core_functions::random_t, void> {
             using type = int;
         };
         
-        template<>
-        struct column_result_t<core_functions::changes_t, void> {
+        template<class St>
+        struct column_result_t<St, core_functions::changes_t, void> {
             using type = int;
         };
         
-        template<class T>
-        struct column_result_t<core_functions::abs_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, core_functions::abs_t<T>, void> {
             using type = std::shared_ptr<double>;
         };
         
-        template<class T>
-        struct column_result_t<core_functions::lower_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, core_functions::lower_t<T>, void> {
             using type = std::string;
         };
         
-        template<class T>
-        struct column_result_t<core_functions::upper_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, core_functions::upper_t<T>, void> {
             using type = std::string;
         };
         
-        template<class X>
-        struct column_result_t<core_functions::trim_single_t<X>, void> {
+        template<class St, class X>
+        struct column_result_t<St, core_functions::trim_single_t<X>, void> {
             using type = std::string;
         };
         
-        template<class X, class Y>
-        struct column_result_t<core_functions::trim_double_t<X, Y>, void> {
+        template<class St, class X, class Y>
+        struct column_result_t<St, core_functions::trim_double_t<X, Y>, void> {
             using type = std::string;
         };
         
-        template<class X>
-        struct column_result_t<core_functions::ltrim_single_t<X>, void> {
+        template<class St, class X>
+        struct column_result_t<St, core_functions::ltrim_single_t<X>, void> {
             using type = std::string;
         };
         
-        template<class X, class Y>
-        struct column_result_t<core_functions::ltrim_double_t<X, Y>, void> {
+        template<class St, class X, class Y>
+        struct column_result_t<St, core_functions::ltrim_double_t<X, Y>, void> {
             using type = std::string;
         };
         
-        template<class X>
-        struct column_result_t<core_functions::rtrim_single_t<X>, void> {
+        template<class St, class X>
+        struct column_result_t<St, core_functions::rtrim_single_t<X>, void> {
             using type = std::string;
         };
         
-        template<class X, class Y>
-        struct column_result_t<core_functions::rtrim_double_t<X, Y>, void> {
+        template<class St, class X, class Y>
+        struct column_result_t<St, core_functions::rtrim_double_t<X, Y>, void> {
             using type = std::string;
         };
         
-        template<class T, class ...Args>
-        struct column_result_t<core_functions::date_t<T, Args...>, void> {
+        template<class St, class T, class ...Args>
+        struct column_result_t<St, core_functions::date_t<T, Args...>, void> {
             using type = std::string;
         };
         
-        template<class T, class ...Args>
-        struct column_result_t<core_functions::datetime_t<T, Args...>, void> {
+        template<class St, class T, class ...Args>
+        struct column_result_t<St, core_functions::datetime_t<T, Args...>, void> {
             using type = std::string;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::avg_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::avg_t<T>, void> {
             using type = double;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::count_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::count_t<T>, void> {
             using type = int;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::count_asterisk_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::count_asterisk_t<T>, void> {
             using type = int;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::sum_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::sum_t<T>, void> {
             using type = std::shared_ptr<double>;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::total_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::total_t<T>, void> {
             using type = double;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::group_concat_single_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::group_concat_single_t<T>, void> {
             using type = std::string;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::group_concat_double_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::group_concat_double_t<T>, void> {
             using type = std::string;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::max_t<T>, void> {
-            using type = std::shared_ptr<typename column_result_t<T>::type>;
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::max_t<T>, void> {
+            using type = std::shared_ptr<typename column_result_t<St, T>::type>;
         };
         
-        template<class T>
-        struct column_result_t<aggregate_functions::min_t<T>, void> {
-            using type = std::shared_ptr<typename column_result_t<T>::type>;
+        template<class St, class T>
+        struct column_result_t<St, aggregate_functions::min_t<T>, void> {
+            using type = std::shared_ptr<typename column_result_t<St, T>::type>;
         };
         
-        template<>
-        struct column_result_t<aggregate_functions::count_asterisk_without_type, void> {
+        template<class St>
+        struct column_result_t<St, aggregate_functions::count_asterisk_without_type, void> {
             using type = int;
         };
         
-        template<class T>
-        struct column_result_t<distinct_t<T>, void> {
-            using type = typename column_result_t<T>::type;
+        template<class St, class T>
+        struct column_result_t<St, distinct_t<T>, void> {
+            using type = typename column_result_t<St, T>::type;
         };
         
-        template<class T>
-        struct column_result_t<all_t<T>, void> {
-            using type = typename column_result_t<T>::type;
+        template<class St, class T>
+        struct column_result_t<St, all_t<T>, void> {
+            using type = typename column_result_t<St, T>::type;
         };
         
-        template<class L, class R>
-        struct column_result_t<conc_t<L, R>, void> {
+        template<class St, class L, class R>
+        struct column_result_t<St, conc_t<L, R>, void> {
             using type = std::string;
         };
         
-        template<class L, class R>
-        struct column_result_t<add_t<L, R>, void> {
+        template<class St, class L, class R>
+        struct column_result_t<St, add_t<L, R>, void> {
             using type = double;
         };
         
-        template<class L, class R>
-        struct column_result_t<sub_t<L, R>, void> {
+        template<class St, class L, class R>
+        struct column_result_t<St, sub_t<L, R>, void> {
             using type = double;
         };
         
-        template<class L, class R>
-        struct column_result_t<mul_t<L, R>, void> {
+        template<class St, class L, class R>
+        struct column_result_t<St, mul_t<L, R>, void> {
             using type = double;
         };
         
-        template<class L, class R>
-        struct column_result_t<div_t<L, R>, void> {
+        template<class St, class L, class R>
+        struct column_result_t<St, internal::div_t<L, R>, void> {
             using type = double;
         };
         
-        template<class L, class R>
-        struct column_result_t<mod_t<L, R>, void> {
+        template<class St, class L, class R>
+        struct column_result_t<St, mod_t<L, R>, void> {
             using type = double;
         };
         
-        template<>
-        struct column_result_t<rowid_t, void> {
+        template<class St>
+        struct column_result_t<St, rowid_t, void> {
             using type = int64;
         };
         
-        template<>
-        struct column_result_t<oid_t, void> {
+        template<class St>
+        struct column_result_t<St, oid_t, void> {
             using type = int64;
         };
         
-        template<>
-        struct column_result_t<_rowid_t, void> {
+        template<class St>
+        struct column_result_t<St, _rowid_t, void> {
             using type = int64;
         };
         
-        template<class T>
-        struct column_result_t<table_rowid_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, table_rowid_t<T>, void> {
             using type = int64;
         };
         
-        template<class T>
-        struct column_result_t<table_oid_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, table_oid_t<T>, void> {
             using type = int64;
         };
         
-        template<class T>
-        struct column_result_t<table__rowid_t<T>, void> {
+        template<class St, class T>
+        struct column_result_t<St, table__rowid_t<T>, void> {
             using type = int64;
         };
         
-        template<class T, class C>
-        struct column_result_t<alias_column_t<T, C>, void> {
-            using type = typename column_result_t<C>::type;
+        template<class St, class T, class C>
+        struct column_result_t<St, alias_column_t<T, C>, void> {
+            using type = typename column_result_t<St, C>::type;
         };
         
-        template<class T, class F>
-        struct column_result_t<column_pointer<T, F>> : column_result_t<F, void> {};
+        template<class St, class T, class F>
+        struct column_result_t<St, column_pointer<T, F>> : column_result_t<St, F, void> {};
         
-        template<class ...Args>
-        struct column_result_t<columns_t<Args...>, void> {
-            using type = std::tuple<typename column_result_t<typename std::decay<Args>::type>::type...>;
+        template<class St, class ...Args>
+        struct column_result_t<St, columns_t<Args...>, void> {
+            using type = std::tuple<typename column_result_t<St, typename std::decay<Args>::type>::type...>;
         };
         
-        template<class T, class ...Args>
-        struct column_result_t<select_t<T, Args...>> : column_result_t<T, void> {};
+        template<class St, class T, class ...Args>
+        struct column_result_t<St, select_t<T, Args...>> : column_result_t<St, T, void> {};
         
-        template<class T>
-        struct column_result_t<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        template<class St, class T>
+        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
             using left_type = typename T::left_type;
             using right_type = typename T::right_type;
-            using left_result = typename column_result_t<left_type>::type;
-            using right_result = typename column_result_t<right_type>::type;
+            using left_result = typename column_result_t<St, left_type>::type;
+            using right_result = typename column_result_t<St, right_type>::type;
             static_assert(std::is_same<left_result, right_result>::value, "Compound subselect queries must return same types");
             using type = left_result;
         };
@@ -4642,21 +4764,26 @@ namespace sqlite_orm {
         /**
          *  Result for the most simple queries like `SELECT 1`
          */
-        template<class T>
-        struct column_result_t<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+        template<class St, class T>
+        struct column_result_t<St, T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
             using type = T;
         };
         
         /**
          *  Result for the most simple queries like `SELECT 'ototo'`
          */
-        template<>
-        struct column_result_t<const char*, void> {
+        template<class St>
+        struct column_result_t<St, const char*, void> {
             using type = std::string;
         };
         
-        template<class T, class E>
-        struct column_result_t<as_t<T, E>, void> : column_result_t<typename std::decay<E>::type, void> {};
+        template<class St, class T, class E>
+        struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, typename std::decay<E>::type, void> {};
+        
+        template<class St, class T>
+        struct column_result_t<St, asterisk_t<T>, void> {
+            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
+        };
     }
 }
 #pragma once
@@ -4885,8 +5012,7 @@ namespace sqlite_orm {
             template<class F, class C>
             const F* get_object_field_pointer(const object_type &obj, C c) {
                 const F *res = nullptr;
-                using field_type = typename internal::column_result_t<C>::type;
-                this->for_each_column_with_field_type<field_type>([&res, &c, &obj, this](auto &col){
+                this->for_each_column_with_field_type<F>([&res, &c, &obj, this](auto &col){
                     using namespace static_magic;
                     using column_type = typename std::remove_reference<decltype(col)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
@@ -8234,7 +8360,7 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with max value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::shared_ptr<Ret> max(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
@@ -8273,7 +8399,7 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with min value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::shared_ptr<Ret> min(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
@@ -8312,7 +8438,7 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with sum value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::shared_ptr<Ret> sum(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
@@ -8400,7 +8526,7 @@ namespace sqlite_orm {
             template<
             class T,
             class ...Args,
-            class R = typename column_result_t<T>::type,
+            class R = typename column_result_t<self, T>::type,
             typename std::enable_if<!is_base_of_template<T, compound_operator>::value>::type * = nullptr>
             std::vector<R> select(T m, Args ...args) {
                 using select_type = select_t<T, Args...>;
@@ -8432,7 +8558,7 @@ namespace sqlite_orm {
             template<
             class T,
             class ...Args,
-            class Ret = typename column_result_t<T>::type,
+            class Ret = typename column_result_t<self, T>::type,
             typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type * = nullptr>
             std::vector<Ret> select(T op, Args ...args) {
                 std::stringstream ss;
@@ -8650,7 +8776,7 @@ namespace sqlite_orm {
                     auto index = 1;
                     cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
                         using column_type = typename std::decay<decltype(m)>::type;
-                        using field_type = typename column_result_t<column_type>::type;
+                        using field_type = typename column_result_t<self, column_type>::type;
                         const field_type *value = impl.table.template get_object_field_pointer<field_type>(o, m);
                         statement_binder<field_type>().bind(stmt, index++, *value);
                     });
@@ -9256,117 +9382,3 @@ __pragma(pop_macro("max"))
 # undef __RESTORE_MAX__
 # endif
 #endif // defined(_MSC_VER)
-#include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type, std::integral_constant
-#include <tuple>    //  std::tuple
-
-namespace sqlite_orm {
-    
-    namespace internal {
-        
-        namespace storage_traits {
-            
-            /**
-             *  S - storage_impl type
-             *  T - mapped or not mapped data type
-             */
-            template<class S, class T, class SFINAE = void>
-            struct type_is_mapped_impl;
-            
-            /**
-             *  S - storage
-             *  T - mapped or not mapped data type
-             */
-            template<class S, class T>
-            struct type_is_mapped : type_is_mapped_impl<typename S::impl_type, T> {};
-            
-            /**
-             *  Final specialisation
-             */
-            template<class T>
-            struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
-            
-            template<class S, class T>
-            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::true_type {};
-            
-            template<class S, class T>
-            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
-            : type_is_mapped_impl<typename S::super, T> {};
-            
-            
-            /**
-             *  S - storage_impl type
-             *  T - mapped or not mapped data type
-             */
-            template<class S, class T, class SFINAE = void>
-            struct storage_columns_count_impl;
-            
-            /**
-             *  S - storage
-             *  T - mapped or not mapped data type
-             */
-            template<class S, class T>
-            struct storage_columns_count : storage_columns_count_impl<typename S::impl_type, T> {};
-            
-            /**
-             *  Final specialisation
-             */
-            template<class T>
-            struct storage_columns_count_impl<storage_impl<>, T, void> : std::integral_constant<int, 0> {};
-            
-            template<class S, class T>
-            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::integral_constant<int, S::table_type::columns_count> {};
-            
-            template<class S, class T>
-            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
-            
-            
-            /**
-             *  T - table_impl type.
-             */
-            template<class T>
-            struct table_impl_types;
-            
-            /**
-             *  type is std::tuple of field types of mapped colums.
-             */
-            template<typename... Args>
-            struct table_impl_types<table_impl<Args...>> {
-                using type = std::tuple<typename Args::field_type...>;
-            };
-            
-            
-            /**
-             *  S - storage_impl type
-             *  T - mapped or not mapped data type
-             */
-            template<class S, class T, class SFINAE = void>
-            struct storage_mapped_columns_impl;
-            
-            /**
-             *  S - storage
-             *  T - mapped or not mapped data type
-             */
-            template<class S, class T>
-            struct storage_mapped_columns : storage_mapped_columns_impl<typename S::impl_type, T> {};
-            
-            /**
-             *  Final specialisation
-             */
-            template<class T>
-            struct storage_mapped_columns_impl<storage_impl<>, T, void> {
-                using type = std::tuple<>;
-            };
-            
-            template<class S, class T>
-            struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
-                using table_type = typename S::table_type;
-                using table_impl_type = typename table_type::impl_type;
-                using type = typename table_impl_types<table_impl_type>::type;
-            };
-            
-            template<class S, class T>
-            struct storage_mapped_columns_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_mapped_columns_impl<typename S::super, T> {};
-            
-        }
-    }
-}

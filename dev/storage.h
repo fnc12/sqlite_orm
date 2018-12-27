@@ -2167,7 +2167,7 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with max value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::shared_ptr<Ret> max(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
@@ -2206,7 +2206,7 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with min value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::shared_ptr<Ret> min(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
@@ -2245,7 +2245,7 @@ namespace sqlite_orm {
              *  @param m is a class member pointer (the same you passed into make_column).
              *  @return std::shared_ptr with sum value or null if sqlite engine returned null.
              */
-            template<class F, class O, class ...Args, class Ret = typename column_result_t<F O::*>::type>
+            template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::shared_ptr<Ret> sum(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
@@ -2333,7 +2333,7 @@ namespace sqlite_orm {
             template<
             class T,
             class ...Args,
-            class R = typename column_result_t<T>::type,
+            class R = typename column_result_t<self, T>::type,
             typename std::enable_if<!is_base_of_template<T, compound_operator>::value>::type * = nullptr>
             std::vector<R> select(T m, Args ...args) {
                 using select_type = select_t<T, Args...>;
@@ -2365,7 +2365,7 @@ namespace sqlite_orm {
             template<
             class T,
             class ...Args,
-            class Ret = typename column_result_t<T>::type,
+            class Ret = typename column_result_t<self, T>::type,
             typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type * = nullptr>
             std::vector<Ret> select(T op, Args ...args) {
                 std::stringstream ss;
@@ -2583,7 +2583,7 @@ namespace sqlite_orm {
                     auto index = 1;
                     cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
                         using column_type = typename std::decay<decltype(m)>::type;
-                        using field_type = typename column_result_t<column_type>::type;
+                        using field_type = typename column_result_t<self, column_type>::type;
                         const field_type *value = impl.table.template get_object_field_pointer<field_type>(o, m);
                         statement_binder<field_type>().bind(stmt, index++, *value);
                     });

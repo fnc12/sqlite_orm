@@ -111,7 +111,7 @@ int main() {
         using field_type = column_type::field_type;
         static_assert(std::is_same<field_type, decltype(&Object::id)>::value, "Incorrect field type");
         static_assert(std::is_same<internal::table_type<field_type>::type, Object>::value, "Incorrect mapped type");
-        static_assert(std::is_same<internal::column_result_t<field_type>::type, int>::value, "Incorrect field type");
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, field_type>::type, int>::value, "Incorrect field type");
         static_assert(std::is_member_pointer<field_type>::value, "Field type is not a member pointer");
         static_assert(!std::is_member_function_pointer<field_type>::value, "Field type is not a member pointer");
     }
@@ -278,6 +278,12 @@ int main() {
         
         using VisitColumnTypes = storage_mapped_columns<decltype(storage2), Visit>::type;
         static_assert(std::is_same<VisitColumnTypes, std::tuple<int, std::string>>::value, "Incorrect storage_mapped_columns result");
+    }
+    {
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(add(1, 2))>::type, double>::value, "Incorrect add result");
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(sub(2, 1))>::type, double>::value, "Incorrect sub result");
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(mul(2, 3))>::type, double>::value, "Incorrect mul result");
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(sqlite_orm::div(2, 3))>::type, double>::value, "Incorrect div result");
     }
     
     return 0;
