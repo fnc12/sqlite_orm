@@ -344,6 +344,12 @@ namespace sqlite_orm {
                     ss << " ";
                 }
                 ss << ") ";
+                if(fk.on_update){
+                    ss << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action << " ";
+                }
+                if(fk.on_delete){
+                    ss << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action << " ";
+                }
                 return ss.str();
             }
 #endif
