@@ -906,6 +906,11 @@ namespace sqlite_orm {
     namespace internal {
         
         /**
+         *  Inherit this class to support arithmetic types overloading
+         */
+        struct arithmetic_t {};
+        
+        /**
          *  Result of concatenation || operator
          */
         template<class L, class R>
@@ -918,45 +923,80 @@ namespace sqlite_orm {
          *  Result of addition + operator
          */
         template<class L, class R>
-        struct add_t {
-            L l;
-            R r;
+        struct add_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            add_t() = default;
+            
+            add_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
          *  Result of subscribe - operator
          */
         template<class L, class R>
-        struct sub_t {
-            L l;
-            R r;
+        struct sub_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            sub_t() = default;
+            
+            sub_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
          *  Result of multiply * operator
          */
         template<class L, class R>
-        struct mul_t {
-            L l;
-            R r;
+        struct mul_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            mul_t() = default;
+            
+            mul_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
          *  Result of divide / operator
          */
         template<class L, class R>
-        struct div_t {
-            L l;
-            R r;
+        struct div_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            div_t() = default;
+            
+            div_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
          *  Result of mod % operator
          */
         template<class L, class R>
-        struct mod_t {
-            L l;
-            R r;
+        struct mod_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            mod_t() = default;
+            
+            mod_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
@@ -2779,6 +2819,8 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
+// #include "operators.h"
+
 
 namespace sqlite_orm {
     
@@ -2984,7 +3026,7 @@ namespace sqlite_orm {
             }
         };
         
-        struct random_t : public core_function_t {
+        struct random_t : core_function_t, internal::arithmetic_t {
             
             operator std::string() const {
                 return "RANDOM";
@@ -2993,7 +3035,7 @@ namespace sqlite_orm {
         
 #endif
         template<class T, class ...Args>
-        struct date_t : public core_function_t {
+        struct date_t : core_function_t {
             using modifiers_type = std::tuple<Args...>;
             
             T timestring;
@@ -3009,7 +3051,7 @@ namespace sqlite_orm {
         };
         
         template<class T, class ...Args>
-        struct datetime_t : public core_function_t {
+        struct datetime_t : core_function_t {
             using modifiers_type = std::tuple<Args...>;
             
             T timestring;
@@ -3021,6 +3063,22 @@ namespace sqlite_orm {
             
             operator std::string() const {
                 return "DATETIME";
+            }
+        };
+        
+        template<class T, class ...Args>
+        struct julianday_t : core_function_t, internal::arithmetic_t {
+            using modifiers_type = std::tuple<Args...>;
+            
+            T timestring;
+            modifiers_type modifiers;
+            
+            julianday_t() = default;
+            
+            julianday_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
+            
+            operator std::string() const {
+                return "JULIANDAY";
             }
         };
     }
@@ -3083,12 +3141,17 @@ namespace sqlite_orm {
     
     template<class T, class ...Args, class Res = core_functions::date_t<T, Args...>>
     Res date(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(modifiers...));
+        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
     }
     
     template<class T, class ...Args, class Res = core_functions::datetime_t<T, Args...>>
     Res datetime(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(modifiers...));
+        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    }
+    
+    template<class T, class ...Args, class Res = core_functions::julianday_t<T, Args...>>
+    Res julianday(T timestring, Args ...modifiers) {
+        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
     }
     
 #if SQLITE_VERSION_NUMBER >= 3007016
@@ -3155,6 +3218,46 @@ namespace sqlite_orm {
     template<class T, class Res = core_functions::upper_t<T>>
     Res upper(T t) {
         return Res(t);
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::add_t<L, R> operator+(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::sub_t<L, R> operator-(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::mul_t<L, R> operator*(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::div_t<L, R> operator/(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::mod_t<L, R> operator%(L l, R r) {
+        return {std::move(l), std::move(r)};
     }
 }
 #pragma once
@@ -4759,6 +4862,11 @@ namespace sqlite_orm {
         template<class St, class T, class ...Args>
         struct column_result_t<St, core_functions::date_t<T, Args...>, void> {
             using type = std::string;
+        };
+        
+        template<class St, class T, class ...Args>
+        struct column_result_t<St, core_functions::julianday_t<T, Args...>, void> {
+            using type = double;
         };
         
         template<class St, class T, class ...Args>
@@ -7127,6 +7235,18 @@ namespace sqlite_orm {
             
             template<class T, class ...Args>
             std::string string_from_expression(const core_functions::date_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring);
+                using tuple_t = std::tuple<Args...>;
+                tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&ss, this](auto &v){
+                    ss << ", " << this->string_from_expression(v);
+                }, false);
+                ss << ") ";
+                return ss.str();
+            }
+            
+            template<class T, class ...Args>
+            std::string string_from_expression(const core_functions::julianday_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring);
                 using tuple_t = std::tuple<Args...>;

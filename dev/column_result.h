@@ -123,6 +123,11 @@ namespace sqlite_orm {
         };
         
         template<class St, class T, class ...Args>
+        struct column_result_t<St, core_functions::julianday_t<T, Args...>, void> {
+            using type = double;
+        };
+        
+        template<class St, class T, class ...Args>
         struct column_result_t<St, core_functions::datetime_t<T, Args...>, void> {
             using type = std::string;
         };

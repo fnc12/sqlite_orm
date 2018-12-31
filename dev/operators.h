@@ -7,6 +7,11 @@ namespace sqlite_orm {
     namespace internal {
         
         /**
+         *  Inherit this class to support arithmetic types overloading
+         */
+        struct arithmetic_t {};
+        
+        /**
          *  Result of concatenation || operator
          */
         template<class L, class R>
@@ -19,45 +24,80 @@ namespace sqlite_orm {
          *  Result of addition + operator
          */
         template<class L, class R>
-        struct add_t {
-            L l;
-            R r;
+        struct add_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            add_t() = default;
+            
+            add_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
          *  Result of subscribe - operator
          */
         template<class L, class R>
-        struct sub_t {
-            L l;
-            R r;
+        struct sub_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            sub_t() = default;
+            
+            sub_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
          *  Result of multiply * operator
          */
         template<class L, class R>
-        struct mul_t {
-            L l;
-            R r;
+        struct mul_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            mul_t() = default;
+            
+            mul_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
          *  Result of divide / operator
          */
         template<class L, class R>
-        struct div_t {
-            L l;
-            R r;
+        struct div_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            div_t() = default;
+            
+            div_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
          *  Result of mod % operator
          */
         template<class L, class R>
-        struct mod_t {
-            L l;
-            R r;
+        struct mod_t : arithmetic_t {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            mod_t() = default;
+            
+            mod_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**

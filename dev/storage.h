@@ -788,6 +788,18 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            template<class T, class ...Args>
+            std::string string_from_expression(const core_functions::julianday_t<T, Args...> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring);
+                using tuple_t = std::tuple<Args...>;
+                tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.modifiers, [&ss, this](auto &v){
+                    ss << ", " << this->string_from_expression(v);
+                }, false);
+                ss << ") ";
+                return ss.str();
+            }
+            
             std::string string_from_expression(const core_functions::random_t &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "() ";
