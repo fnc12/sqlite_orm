@@ -54,5 +54,25 @@ int main() {
     auto nowWithOffset2 = storage.select(date("now", "+2 day")).front();
     cout << "SELECT date('now','+2 day') = " << nowWithOffset2 << endl;
     
+    //  SELECT julianday('now')
+    auto juliandayNow = storage.select(julianday("now")).front();
+    cout << "SELECT julianday('now') = " << juliandayNow << endl;
+    
+    //  SELECT julianday('1776-07-04')
+    auto oldJulianday = storage.select(julianday("1776-07-04")).front();
+    cout << "SELECT julianday('1776-07-04') = " << oldJulianday << endl;
+    
+    //  SELECT julianday('now') + julianday('1776-07-04')
+    auto julianSum = storage.select(julianday("now") + julianday("1776-07-04")).front();
+    cout << "SELECT julianday('now') + julianday('1776-07-04') = " << julianSum << endl;
+    
+    //  SELECT julianday('now') - julianday('1776-07-04')
+    auto julianDiff = storage.select(julianday("now") - julianday("1776-07-04")).front();
+    cout << "SELECT julianday('now') - julianday('1776-07-04') = " << julianDiff << endl;
+    
+    //  SELECT (julianday('now') - 2440587.5)*86400.0;
+    auto julianConverted = storage.select((julianday("now") - 2440587.5) * 86400.0);
+    
+    
     return 0;
 }

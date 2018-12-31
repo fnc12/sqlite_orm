@@ -5,6 +5,7 @@
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 
 #include "conditions.h"
+#include "operators.h"
 
 namespace sqlite_orm {
     
@@ -210,7 +211,7 @@ namespace sqlite_orm {
             }
         };
         
-        struct random_t : public core_function_t {
+        struct random_t : core_function_t, internal::arithmetic_t {
             
             operator std::string() const {
                 return "RANDOM";
@@ -219,7 +220,7 @@ namespace sqlite_orm {
         
 #endif
         template<class T, class ...Args>
-        struct date_t : public core_function_t {
+        struct date_t : core_function_t {
             using modifiers_type = std::tuple<Args...>;
             
             T timestring;
@@ -235,7 +236,7 @@ namespace sqlite_orm {
         };
         
         template<class T, class ...Args>
-        struct datetime_t : public core_function_t {
+        struct datetime_t : core_function_t {
             using modifiers_type = std::tuple<Args...>;
             
             T timestring;
@@ -247,6 +248,22 @@ namespace sqlite_orm {
             
             operator std::string() const {
                 return "DATETIME";
+            }
+        };
+        
+        template<class T, class ...Args>
+        struct julianday_t : core_function_t, internal::arithmetic_t {
+            using modifiers_type = std::tuple<Args...>;
+            
+            T timestring;
+            modifiers_type modifiers;
+            
+            julianday_t() = default;
+            
+            julianday_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
+            
+            operator std::string() const {
+                return "JULIANDAY";
             }
         };
     }
@@ -309,12 +326,17 @@ namespace sqlite_orm {
     
     template<class T, class ...Args, class Res = core_functions::date_t<T, Args...>>
     Res date(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(modifiers...));
+        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
     }
     
     template<class T, class ...Args, class Res = core_functions::datetime_t<T, Args...>>
     Res datetime(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(modifiers...));
+        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    }
+    
+    template<class T, class ...Args, class Res = core_functions::julianday_t<T, Args...>>
+    Res julianday(T timestring, Args ...modifiers) {
+        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
     }
     
 #if SQLITE_VERSION_NUMBER >= 3007016
@@ -381,5 +403,45 @@ namespace sqlite_orm {
     template<class T, class Res = core_functions::upper_t<T>>
     Res upper(T t) {
         return Res(t);
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::add_t<L, R> operator+(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::sub_t<L, R> operator-(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::mul_t<L, R> operator*(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::div_t<L, R> operator/(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<
+    class L,
+    class R,
+    typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value + std::is_base_of<internal::arithmetic_t, R>::value > 0)>::type>
+    internal::mod_t<L, R> operator%(L l, R r) {
+        return {std::move(l), std::move(r)};
     }
 }
