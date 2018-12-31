@@ -942,6 +942,13 @@ namespace sqlite_orm {
                 }
                 return ss.str();
             }
+            
+            template<class T, class E>
+            std::string string_from_expression(const conditions::cast_t<T, E> &c, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+                std::stringstream ss;
+                ss << static_cast<std::string>(c) << " ( " << this->string_from_expression(c.expression) << " AS " << type_printer<T>().print() << ") ";
+                return ss.str();
+            }
              
             template<class T>
             std::string process_where(const conditions::is_null_t<T> &c) {
@@ -1767,6 +1774,11 @@ namespace sqlite_orm {
             std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &ast) {
                 auto tableName = this->impl.template find_table_name<T>();
                 return {std::make_pair(std::move(tableName), "")};
+            }
+            
+            template<class T, class E>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::cast_t<T, E> &c) {
+                return this->parse_table_name(c.expression);
             }
             
             template<class ...Args>

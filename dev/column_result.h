@@ -296,5 +296,10 @@ namespace sqlite_orm {
         struct column_result_t<St, asterisk_t<T>, void> {
             using type = typename storage_traits::storage_mapped_columns<St, T>::type;
         };
+        
+        template<class St, class T, class E>
+        struct column_result_t<St, conditions::cast_t<T, E>, void> {
+            using type = T;
+        };
     }
 }

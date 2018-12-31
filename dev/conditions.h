@@ -674,6 +674,18 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T, class E>
+        struct cast_t {
+            using to_type = T;
+            using expression_type = E;
+            
+            expression_type expression;
+            
+            operator std::string() const {
+                return "CAST";
+            }
+        };
+        
     }
     
     /**
@@ -1041,5 +1053,10 @@ namespace sqlite_orm {
     template<class T>
     conditions::having_t<T> having(T t) {
         return {t};
+    }
+    
+    template<class T, class E>
+    conditions::cast_t<T, E> cast(E e) {
+        return {e};
     }
 }
