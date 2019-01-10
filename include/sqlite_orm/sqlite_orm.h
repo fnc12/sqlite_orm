@@ -6895,7 +6895,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(T t, bool /*noTableName*/ = false, bool escape = false) {
+            typename std::enable_if<!is_base_of_template<T, compound_operator>::value, std::string>::type string_from_expression(T t, bool /*noTableName*/ = false, bool escape = false) {
                 auto isNullable = type_is_nullable<T>::value;
                 if(isNullable && !type_is_nullable<T>()(t)){
                     return "NULL";
@@ -7363,10 +7363,12 @@ namespace sqlite_orm {
             template<class T, class ...Args>
             std::string string_from_expression(const internal::select_t<T, Args...> &sel, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
-                if(!sel.highest_level){
-                    ss << "( ";
+                if(!is_base_of_template<T, compound_operator>::value){
+                    if(!sel.highest_level){
+                        ss << "( ";
+                    }
+                    ss << "SELECT ";
                 }
-                ss << "SELECT ";
                 if(get_distinct(sel.col)) {
                     ss << static_cast<std::string>(distinct(0)) << " ";
                 }
@@ -7406,8 +7408,10 @@ namespace sqlite_orm {
                 tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(sel.conditions, [&ss, this](auto &v){
                     this->process_single_condition(ss, v);
                 }, false);
-                if(!sel.highest_level){
-                    ss << ") ";
+                if(!is_base_of_template<T, compound_operator>::value){
+                    if(!sel.highest_level){
+                        ss << ") ";
+                    }
                 }
                 return ss.str();
             }
@@ -7416,6 +7420,16 @@ namespace sqlite_orm {
             std::string string_from_expression(const conditions::cast_t<T, E> &c, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ( " << this->string_from_expression(c.expression) << " AS " << type_printer<T>().print() << ") ";
+                return ss.str();
+            }
+            
+            template<class T>
+            typename std::enable_if<is_base_of_template<T, compound_operator>::value, std::string>::type string_from_expression(const T &op, bool /*noTableName*/ = false, bool /*escape*/ = false)
+            {
+                std::stringstream ss;
+                ss << this->string_from_expression(op.left) << " ";
+                ss << static_cast<std::string>(op) << " ";
+                ss << this->string_from_expression(op.right) << " ";
                 return ss.str();
             }
              
@@ -8820,9 +8834,11 @@ namespace sqlite_orm {
             template<
             class T,
             class ...Args,
-            class R = typename column_result_t<self, T>::type,
-            typename std::enable_if<!is_base_of_template<T, compound_operator>::value>::type * = nullptr>
+            class R = typename column_result_t<self, T>::type/*,
+            typename std::enable_if<!is_base_of_template<T, compound_operator>::value>::type * = nullptr*/>
             std::vector<R> select(T m, Args ...args) {
+                static_assert(!is_base_of_template<T, compound_operator>::value || std::tuple_size<std::tuple<Args...>>::value == 0,
+                              "Cannot use args with a compound operator");
                 using select_type = select_t<T, Args...>;
                 auto query = this->string_from_expression(select_type{std::move(m), std::make_tuple<Args...>(std::forward<Args>(args)...), true});
                 auto connection = this->get_or_create_connection();
@@ -8849,28 +8865,24 @@ namespace sqlite_orm {
                 }
             }
             
-            template<
+            /*template<
             class T,
-            class ...Args,
-            class Ret = typename column_result_t<self, T>::type,
+            class R = typename column_result_t<self, T>::type,
             typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type * = nullptr>
-            std::vector<Ret> select(T op, Args ...args) {
-                std::stringstream ss;
-                ss << this->string_from_expression(op.left) << " ";
-                ss << static_cast<std::string>(op) << " ";
-                ss << this->string_from_expression(op.right) << " ";
-                auto query = ss.str();
+            std::vector<R> select(T op) {
+                using select_type = select_t<T>;
+                auto query = this->string_from_expression(select_type{std::move(op)});
                 auto connection = this->get_or_create_connection();
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    std::vector<Ret> res;
+                    std::vector<R> res;
                     int stepRes;
                     do{
                         stepRes = sqlite3_step(stmt);
                         switch(stepRes){
                             case SQLITE_ROW:{
-                                res.push_back(row_extractor<Ret>().extract(stmt, 0));
+                                res.push_back(row_extractor<R>().extract(stmt, 0));
                             }break;
                             case SQLITE_DONE: break;
                             default:{
@@ -8882,7 +8894,7 @@ namespace sqlite_orm {
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
-            }
+            }*/
             
             /**
              *  Returns a string representation of object of a class mapped to the storage.
