@@ -11,6 +11,9 @@ namespace sqlite_orm {
     /**
      *  Caps case cause of 1) delete keyword; 2) https://www.sqlite.org/pragma.html#pragma_journal_mode original spelling
      */
+    #ifdef DELETE
+        #undef DELETE
+    #endif
     enum class journal_mode : char {
         DELETE = 0,
         TRUNCATE = 1,
