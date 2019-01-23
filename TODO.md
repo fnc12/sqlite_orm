@@ -19,5 +19,6 @@
 * column alias
 * `FULL OUTER JOIN`
 * `WINDOW`
+* `UPSERT` https://www.sqlite.org/lang_UPSERT.html
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
