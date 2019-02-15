@@ -395,7 +395,7 @@ namespace sqlite_orm {
                             auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
                             *dbColumnInfoType == *storageColumnInfoType &&
                             dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                            bool(dbColumnInfo.dflt_value.length()) == bool(storageColumnInfo.dflt_value.length()) &&
+                            (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
                             dbColumnInfo.pk == storageColumnInfo.pk;
                             if(!columnsAreEqual){
                                 notEqual = true;
