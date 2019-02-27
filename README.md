@@ -50,7 +50,7 @@ struct User{
     std::string firstName;
     std::string lastName;
     int birthDate;
-    std::shared_ptr<std::string> imageUrl;      
+    std::unique_ptr<std::string> imageUrl;
     int typeId;
 };
 
@@ -96,7 +96,7 @@ More details about making storage can be found in [tutorial](https://github.com/
 Let's create and insert new `User` into database. First we need to create a `User` object with any id and call `insert` function. It will return id of just created user or throw exception if something goes wrong.
 
 ```c++
-User user{-1, "Jonh", "Doe", 664416000, std::make_shared<std::string>("url_to_heaven"), 3 };
+User user{-1, "Jonh", "Doe", 664416000, std::make_unique<std::string>("url_to_heaven"), 3 };
     
 auto insertedId = storage.insert(user);
 cout << "insertedId = " << insertedId << endl;      //  insertedId = 8
@@ -121,7 +121,7 @@ try{
 }
 ```
 
-Probably you may not like throwing exceptions. Me too. Exception `std::system_error` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
+Probably you may not like throwing exceptions. Me too. Exception `std::system_error` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::unique_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
 
 ```c++
 if(auto user = storage.get_no_throw<User>(insertedId)){
@@ -131,7 +131,7 @@ if(auto user = storage.get_no_throw<User>(insertedId)){
 }
 ```
 
-`std::shared_ptr` is used as optional in `sqlite_orm`. Of course there is class optional in C++14 located at `std::experimental::optional`. But we don't want to use it until it is `experimental`.
+`std::unique_ptr` is used as optional in `sqlite_orm`. Of course there is class optional in C++14 located at `std::experimental::optional`. But we don't want to use it until it is `experimental`.
 
 We can also update our user. It updates row by id provided in `user` object and sets all other non `primary_key` fields to values stored in the passed `user` object. So you can just assign members to `user` object you want and call `update`
 
@@ -218,21 +218,21 @@ cout << "concatedUserIdWithDashes = " << concatedUserIdWithDashes << endl;      
 
 //  SELECT MAX(id) FROM users
 if(auto maxId = storage.max(&User::id)){    
-    cout << "maxId = " << *maxId <<endl;    //  maxId = 12  (maxId is std::shared_ptr<int>)
+    cout << "maxId = " << *maxId <<endl;    //  maxId = 12  (maxId is std::unique_ptr<int>)
 }else{
     cout << "maxId is null" << endl;
 }
     
 //  SELECT MAX(first_name) FROM users
 if(auto maxFirstName = storage.max(&User::firstName)){ 
-    cout << "maxFirstName = " << *maxFirstName << endl; //  maxFirstName = Jonh (maxFirstName is std::shared_ptr<std::string>)
+    cout << "maxFirstName = " << *maxFirstName << endl; //  maxFirstName = Jonh (maxFirstName is std::unique_ptr<std::string>)
 }else{
     cout << "maxFirstName is null" << endl;
 }
 
 //  SELECT MIN(id) FROM users
 if(auto minId = storage.min(&User::id)){    
-    cout << "minId = " << *minId << endl;   //  minId = 1 (minId is std::shared_ptr<int>)
+    cout << "minId = " << *minId << endl;   //  minId = 1 (minId is std::unique_ptr<int>)
 }else{
     cout << "minId is null" << endl;
 }
@@ -245,7 +245,7 @@ if(auto minLastName = storage.min(&User::lastName)){
 }
 
 //  SELECT SUM(id) FROM users
-if(auto sumId = storage.sum(&User::id)){    //  sumId is std::shared_ptr<int>
+if(auto sumId = storage.sum(&User::id)){    //  sumId is std::unique_ptr<int>
     cout << "sumId = " << *sumId << endl;
 }else{
     cout << "sumId is null" << endl;

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <memory>   //  std::shared_ptr
+#include <memory>   //  std::unique_ptr
 #include <string>   //  std::string
 #include <sstream>  //  std::stringstream
 
@@ -17,15 +17,15 @@ namespace sqlite_orm {
         struct default_value_extractor {
             
             template<class A>
-            std::shared_ptr<std::string> operator() (const A &) {
+            std::unique_ptr<std::string> operator() (const A &) {
                 return {};
             }
             
             template<class T>
-            std::shared_ptr<std::string> operator() (const constraints::default_t<T> &t) {
+            std::unique_ptr<std::string> operator() (const constraints::default_t<T> &t) {
                 std::stringstream ss;
                 ss << t.value;
-                return std::make_shared<std::string>(ss.str());
+                return std::make_unique<std::string>(ss.str());
             }
         };
         

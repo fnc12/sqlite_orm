@@ -111,7 +111,7 @@ namespace std
 #include <map>  //  std::map
 #include <string>   //  std::string
 #include <regex>    //  std::regex, std::regex_match
-#include <memory>   //  std::make_shared, std::shared_ptr
+#include <memory>   //  std::make_unique, std::unique_ptr
 #include <vector>   //  std::vector
 #include <cctype>   //  std::toupper
 
@@ -130,7 +130,7 @@ namespace sqlite_orm {
     /**
      *  @param str case doesn't matter - it is uppercased before comparing.
      */
-    inline std::shared_ptr<sqlite_type> to_sqlite_type(const std::string &str) {
+    inline std::unique_ptr<sqlite_type> to_sqlite_type(const std::string &str) {
         auto asciiStringToUpper = [](std::string &s){
             std::transform(s.begin(),
                            s.end(),
@@ -179,7 +179,7 @@ namespace sqlite_orm {
         for(auto &p : typeMap) {
             for(auto &r : p.second) {
                 if(std::regex_match(upperStr, r)){
-                    return std::make_shared<sqlite_type>(p.first);
+                    return std::make_unique<sqlite_type>(p.first);
                 }
             }
         }
@@ -864,7 +864,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <memory>   //  std::shared_ptr
+#include <memory>   //  std::unique_ptr
 #include <string>   //  std::string
 #include <sstream>  //  std::stringstream
 
@@ -882,15 +882,15 @@ namespace sqlite_orm {
         struct default_value_extractor {
             
             template<class A>
-            std::shared_ptr<std::string> operator() (const A &) {
+            std::unique_ptr<std::string> operator() (const A &) {
                 return {};
             }
             
             template<class T>
-            std::shared_ptr<std::string> operator() (const constraints::default_t<T> &t) {
+            std::unique_ptr<std::string> operator() (const constraints::default_t<T> &t) {
                 std::stringstream ss;
                 ss << t.value;
-                return std::make_shared<std::string>(ss.str());
+                return std::make_unique<std::string>(ss.str());
             }
         };
         
@@ -1099,7 +1099,7 @@ namespace sqlite_orm {
 
 #include <tuple>    //  std::tuple
 #include <string>   //  std::string
-#include <memory>   //  std::shared_ptr
+#include <memory>   //  std::unique_ptr
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if
 
 // #include "type_is_nullable.h"
@@ -1186,12 +1186,12 @@ namespace sqlite_orm {
              *  Simplified interface for `DEFAULT` constraint
              *  @return string representation of default value if it exists otherwise nullptr
              */
-            std::shared_ptr<std::string> default_value() {
-                std::shared_ptr<std::string> res;
+            std::unique_ptr<std::string> default_value() {
+                std::unique_ptr<std::string> res;
                 tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(constraints, [&res](auto &v){
                     auto dft = internal::default_value_extractor()(v);
                     if(dft){
-                        res = dft;
+                        res = std::move(dft);
                     }
                 });
                 return res;
@@ -4819,7 +4819,7 @@ namespace sqlite_orm {
         
         template<class St, class T>
         struct column_result_t<St, core_functions::abs_t<T>, void> {
-            using type = std::shared_ptr<double>;
+            using type = std::unique_ptr<double>;
         };
         
         template<class St, class T>
@@ -4894,7 +4894,7 @@ namespace sqlite_orm {
         
         template<class St, class T>
         struct column_result_t<St, aggregate_functions::sum_t<T>, void> {
-            using type = std::shared_ptr<double>;
+            using type = std::unique_ptr<double>;
         };
         
         template<class St, class T>
@@ -4914,12 +4914,12 @@ namespace sqlite_orm {
         
         template<class St, class T>
         struct column_result_t<St, aggregate_functions::max_t<T>, void> {
-            using type = std::shared_ptr<typename column_result_t<St, T>::type>;
+            using type = std::unique_ptr<typename column_result_t<St, T>::type>;
         };
         
         template<class St, class T>
         struct column_result_t<St, aggregate_functions::min_t<T>, void> {
-            using type = std::shared_ptr<typename column_result_t<St, T>::type>;
+            using type = std::unique_ptr<typename column_result_t<St, T>::type>;
         };
         
         template<class St>
@@ -5503,7 +5503,7 @@ namespace sqlite_orm {
     
     /**
      *  Function used for table creation. Do not use table constructor - use this function
-     *  cause table class is templated and its constructing too (just like std::make_shared or std::make_pair).
+     *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
     template<class ...Cs, class T = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
     internal::table_t<T, Cs...> make_table(const std::string &name, Cs&& ...args) {
@@ -6117,7 +6117,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <memory>   //  std::shared_ptr, std::make_shared
+#include <memory>   //  std::unique/shared_ptr, std::make_unique/shared
 #include <string>   //  std::string
 #include <sqlite3.h>
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
@@ -6528,7 +6528,7 @@ namespace sqlite_orm {
                 
                 view_t(storage_t &stor, decltype(connection) conn, Args&& ...args):
                 storage(stor),
-                connection(conn),
+                connection(std::move(conn)),
                 query([&args..., &stor]{
                     std::string q;
                     stor.template generate_select_asterisk<T>(&q, args...);
@@ -6537,21 +6537,23 @@ namespace sqlite_orm {
                 
                 struct iterator_t {
                 protected:
-                    std::shared_ptr<sqlite3_stmt *> stmt;
+                    sqlite3_stmt *stmt;
                     view_t<T, Args...> &view;
-                    std::shared_ptr<T> temp;
+                    // shared_ptr is used over unique_ptr here
+                    // so that the iterator can be copyable.
+                    std::shared_ptr<T> current;
                     
-                    void extract_value(decltype(temp) &temp) {
-                        temp = std::make_shared<T>();
+                    void extract_value(std::unique_ptr<T> &temp) {
+                        temp = std::make_unique<T>();
                         auto &storage = this->view.storage;
                         auto &impl = storage.template get_impl<T>();
                         auto index = 0;
                         impl.table.for_each_column([&index, &temp, this] (auto &c) {
                             using field_type = typename std::decay<decltype(c)>::type::field_type;
-                            auto value = row_extractor<field_type>().extract(*this->stmt, index++);
+                            auto value = row_extractor<field_type>().extract(this->stmt, index++);
                             if(c.member_pointer){
                                 auto member_pointer = c.member_pointer;
-                                (*temp).*member_pointer = value;
+                                (*temp).*member_pointer = std::move(value);
                             }else{
                                 ((*temp).*(c.setter))(std::move(value));
                             }
@@ -6565,7 +6567,7 @@ namespace sqlite_orm {
                     using reference = value_type &;
                     using iterator_category = std::input_iterator_tag;
                     
-                    iterator_t(sqlite3_stmt * stmt_, view_t<T, Args...> &view_): stmt(std::make_shared<sqlite3_stmt *>(stmt_)), view(view_) {
+                    iterator_t(sqlite3_stmt * stmt_, view_t<T, Args...> &view_): stmt(stmt_), view(view_) {
                         this->operator++();
                     }
                     
@@ -6578,41 +6580,43 @@ namespace sqlite_orm {
                     iterator_t& operator=(const iterator_t&) = default;
                     
                     ~iterator_t() {
-                        if(this->stmt){
-                            statement_finalizer f{*this->stmt};
-                        }
+                        statement_finalizer f{this->stmt};
                     }
                     
                     T& operator*() {
                         if(!this->stmt) {
                             throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
                         }
-                        if(!this->temp){
-                            this->extract_value(this->temp);
+                        if(!this->current){
+                            std::unique_ptr<T> value;
+                            this->extract_value(value);
+                            this->current = std::move(value);
                         }
-                        return *this->temp;
+                        return *this->current;
                     }
                     
                     T* operator->() {
                         if(!this->stmt) {
                             throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
                         }
-                        if(!this->temp){
-                            this->extract_value(this->temp);
+                        if(!this->current){
+                            std::unique_ptr<T> value;
+                            this->extract_value(value);
+                            this->current = std::move(value);
                         }
-                        return &*this->temp;
+                        return &*this->current;
                     }
                     
                     void operator++() {
-                        if(this->stmt && *this->stmt){
-                            auto ret = sqlite3_step(*this->stmt);
+                        if(this->stmt){
+                            auto ret = sqlite3_step(this->stmt);
                             switch(ret){
                                 case SQLITE_ROW:
-                                    this->temp = nullptr;
+                                    this->current = nullptr;
                                     break;
                                 case SQLITE_DONE:{
-                                    statement_finalizer f{*this->stmt};
-                                    *this->stmt = nullptr;
+                                    statement_finalizer f{this->stmt};
+                                    this->stmt = nullptr;
                                 }break;
                                 default:{
                                     throw std::system_error(std::error_code(sqlite3_errcode(this->view.connection->get_db()), get_sqlite_error_category()));
@@ -6627,7 +6631,7 @@ namespace sqlite_orm {
                     
                     bool operator==(const iterator_t &other) const {
                         if(this->stmt && other.stmt){
-                            return *this->stmt == *other.stmt;
+                            return this->stmt == other.stmt;
                         }else{
                             if(!this->stmt && !other.stmt){
                                 return true;
@@ -8291,7 +8295,7 @@ namespace sqlite_orm {
             }
             
             template<class F, class O, class ...Args>
-            std::string group_concat_internal(F O::*m, std::shared_ptr<const std::string> y, Args&& ...args) {
+            std::string group_concat_internal(F O::*m, std::unique_ptr<const std::string> y, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
@@ -8355,7 +8359,7 @@ namespace sqlite_orm {
                                     using field_type = typename decltype(c)::field_type;
                                     auto value = row_extractor<field_type>().extract(stmt, index++);
                                     if(c.member_pointer){
-                                        obj.*c.member_pointer = value;
+                                        obj.*c.member_pointer = std::move(value);
                                     }else{
                                         ((obj).*(c.setter))(std::move(value));
                                     }
@@ -8388,7 +8392,7 @@ namespace sqlite_orm {
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                std::shared_ptr<O> res;
+                std::unique_ptr<O> res;
                 std::stringstream ss;
                 ss << "SELECT ";
                 auto columnNames = impl.table.column_names();
@@ -8430,7 +8434,7 @@ namespace sqlite_orm {
                                     using field_type = typename decltype(c)::field_type;
                                     auto value = row_extractor<field_type>().extract(stmt, index++);
                                     if(c.member_pointer){
-                                        res.*c.member_pointer = value;
+                                        res.*c.member_pointer = std::move(value);
                                     }else{
                                         ((res).*(c.setter))(std::move(value));
                                     }
@@ -8453,16 +8457,16 @@ namespace sqlite_orm {
             }
             
             /**
-             *  The same as `get` function but doesn't throw an exception if noting found but returns std::shared_ptr with null value.
+             *  The same as `get` function but doesn't throw an exception if noting found but returns std::unique_ptr with null value.
              *  throws std::system_error in case of db error.
              */
             template<class O, class ...Ids>
-            std::shared_ptr<O> get_no_throw(Ids ...ids) {
+            std::unique_ptr<O> get_no_throw(Ids ...ids) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                std::shared_ptr<O> res;
+                std::unique_ptr<O> res;
                 std::stringstream ss;
                 ss << "SELECT ";
                 auto columnNames = impl.table.column_names();
@@ -8504,12 +8508,12 @@ namespace sqlite_orm {
                                     using field_type = typename decltype(c)::field_type;
                                     auto value = row_extractor<field_type>().extract(stmt, index++);
                                     if(c.member_pointer){
-                                        res.*c.member_pointer = value;
+                                        res.*c.member_pointer = std::move(value);
                                     }else{
                                         ((res).*(c.setter))(std::move(value));
                                     }
                                 });
-                                return std::make_shared<O>(std::move(res));
+                                return std::make_unique<O>(std::move(res));
                             }break;
                             case SQLITE_DONE:{
                                 return {};
@@ -8658,26 +8662,26 @@ namespace sqlite_orm {
              */
             template<class F, class O, class ...Args>
             std::string group_concat(F O::*m, const std::string &y, Args&& ...args) {
-                return this->group_concat_internal(m, std::make_shared<std::string>(y), std::forward<Args>(args)...);
+                return this->group_concat_internal(m, std::make_unique<std::string>(y), std::forward<Args>(args)...);
             }
             
             template<class F, class O, class ...Args>
             std::string group_concat(F O::*m, const char *y, Args&& ...args) {
-                return this->group_concat_internal(m, std::make_shared<std::string>(y), std::forward<Args>(args)...);
+                return this->group_concat_internal(m, std::make_unique<std::string>(y), std::forward<Args>(args)...);
             }
             
             /**
              *  MAX(x) query.
              *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return std::shared_ptr with max value or null if sqlite engine returned null.
+             *  @return std::unique_ptr with max value or null if sqlite engine returned null.
              */
             template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
-            std::shared_ptr<Ret> max(F O::*m, Args&& ...args) {
+            std::unique_ptr<Ret> max(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                std::shared_ptr<Ret> res;
+                std::unique_ptr<Ret> res;
                 std::stringstream ss;
                 ss << "SELECT " << static_cast<std::string>(sqlite_orm::max(0)) << "(";
                 auto columnName = this->string_from_expression(m);
@@ -8688,10 +8692,10 @@ namespace sqlite_orm {
                     auto rc = sqlite3_exec(connection->get_db(),
                                            query.c_str(),
                                            [](void *data, int argc, char **argv,char **)->int{
-                                               auto &res = *(std::shared_ptr<Ret>*)data;
+                                               auto &res = *(std::unique_ptr<Ret>*)data;
                                                if(argc){
                                                    if(argv[0]){
-                                                       res = std::make_shared<Ret>(row_extractor<Ret>().extract(argv[0]));
+                                                       res = std::make_unique<Ret>(row_extractor<Ret>().extract(argv[0]));
                                                    }
                                                }
                                                return 0;
@@ -8708,15 +8712,15 @@ namespace sqlite_orm {
             /**
              *  MIN(x) query.
              *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return std::shared_ptr with min value or null if sqlite engine returned null.
+             *  @return std::unique_ptr with min value or null if sqlite engine returned null.
              */
             template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
-            std::shared_ptr<Ret> min(F O::*m, Args&& ...args) {
+            std::unique_ptr<Ret> min(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                std::shared_ptr<Ret> res;
+                std::unique_ptr<Ret> res;
                 std::stringstream ss;
                 ss << "SELECT " << static_cast<std::string>(sqlite_orm::min(0)) << "(";
                 auto columnName = this->string_from_expression(m);
@@ -8727,10 +8731,10 @@ namespace sqlite_orm {
                     auto rc = sqlite3_exec(connection->get_db(),
                                            query.c_str(),
                                            [](void *data, int argc, char **argv,char **)->int{
-                                               auto &res = *(std::shared_ptr<Ret>*)data;
+                                               auto &res = *(std::unique_ptr<Ret>*)data;
                                                if(argc){
                                                    if(argv[0]){
-                                                       res = std::make_shared<Ret>(row_extractor<Ret>().extract(argv[0]));
+                                                       res = std::make_unique<Ret>(row_extractor<Ret>().extract(argv[0]));
                                                    }
                                                }
                                                return 0;
@@ -8747,15 +8751,15 @@ namespace sqlite_orm {
             /**
              *  SUM(x) query.
              *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return std::shared_ptr with sum value or null if sqlite engine returned null.
+             *  @return std::unique_ptr with sum value or null if sqlite engine returned null.
              */
             template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
-            std::shared_ptr<Ret> sum(F O::*m, Args&& ...args) {
+            std::unique_ptr<Ret> sum(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                std::shared_ptr<Ret> res;
+                std::unique_ptr<Ret> res;
                 std::stringstream ss;
                 ss << "SELECT " << static_cast<std::string>(sqlite_orm::sum(0)) << "(";
                 auto columnName = this->string_from_expression(m);
@@ -8766,9 +8770,9 @@ namespace sqlite_orm {
                     auto rc = sqlite3_exec(connection->get_db(),
                                            query.c_str(),
                                            [](void *data, int argc, char **argv, char **)->int{
-                                               auto &res = *(std::shared_ptr<Ret>*)data;
+                                               auto &res = *(std::unique_ptr<Ret>*)data;
                                                if(argc){
-                                                   res = std::make_shared<Ret>(row_extractor<Ret>().extract(argv[0]));
+                                                   res = std::make_unique<Ret>(row_extractor<Ret>().extract(argv[0]));
                                                }
                                                return 0;
                                            }, &res, nullptr);
@@ -8837,8 +8841,7 @@ namespace sqlite_orm {
             template<
             class T,
             class ...Args,
-            class R = typename column_result_t<self, T>::type/*,
-            typename std::enable_if<!is_base_of_template<T, compound_operator>::value>::type * = nullptr*/>
+            class R = typename column_result_t<self, T>::type>
             std::vector<R> select(T m, Args ...args) {
                 static_assert(!is_base_of_template<T, compound_operator>::value || std::tuple_size<std::tuple<Args...>>::value == 0,
                               "Cannot use args with a compound operator");
@@ -8867,37 +8870,6 @@ namespace sqlite_orm {
                     throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
-            
-            /*template<
-            class T,
-            class R = typename column_result_t<self, T>::type,
-            typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type * = nullptr>
-            std::vector<R> select(T op) {
-                using select_type = select_t<T>;
-                auto query = this->string_from_expression(select_type{std::move(op)});
-                auto connection = this->get_or_create_connection();
-                sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    std::vector<R> res;
-                    int stepRes;
-                    do{
-                        stepRes = sqlite3_step(stmt);
-                        switch(stepRes){
-                            case SQLITE_ROW:{
-                                res.push_back(row_extractor<R>().extract(stmt, 0));
-                            }break;
-                            case SQLITE_DONE: break;
-                            default:{
-                                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                            }
-                        }
-                    }while(stepRes != SQLITE_DONE);
-                    return res;
-                }else{
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                }
-            }*/
             
             /**
              *  Returns a string representation of object of a class mapped to the storage.

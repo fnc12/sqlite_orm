@@ -30,10 +30,10 @@ inline auto initStorage(const std::string &path) {
 
 using Storage = decltype(initStorage(""));
 
-static std::shared_ptr<Storage> stor;
+static std::unique_ptr<Storage> stor;
 
 int main(int argc, char **argv) {
-    stor = std::make_shared<Storage>(initStorage("update.sqlite"));
+    stor = std::make_unique<Storage>(initStorage("update.sqlite"));
     stor->sync_schema();
     stor->remove_all<Employee>();
 
