@@ -3147,7 +3147,7 @@ namespace sqlite_orm {
                                        }, &tableNames,nullptr);
                 
                 if(res != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->db()), get_sqlite_error_category()));
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
                 return tableNames;
             }
