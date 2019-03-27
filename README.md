@@ -121,10 +121,10 @@ try{
 }
 ```
 
-Probably you may not like throwing exceptions. Me too. Exception `std::system_error` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::unique_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
+Probably you may not like throwing exceptions. Me too. Exception `std::system_error` is thrown because return type in `get` function is not nullable. You can use alternative version `get_pointer` which returns `std::unique_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
 
 ```c++
-if(auto user = storage.get_no_throw<User>(insertedId)){
+if(auto user = storage.get_pointer<User>(insertedId)){
     cout << "user = " << user->firstName << " " << user->lastName << endl;
 }else{
     cout << "no user with id " << insertedId << endl;
@@ -183,7 +183,7 @@ for(auto &user : storage.iterate<User>()) {
 
 `iterate` member function returns adapter object that has `begin` and `end` member functions returning iterators that fetch object on dereference operator call.
 
-CRUD functions `get`, `get_no_throw`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::system_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `date_time.cpp` example in `examples` folder.
+CRUD functions `get`, `get_pointer`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::system_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `date_time.cpp` example in `examples` folder.
 
 # Aggregate Functions
 

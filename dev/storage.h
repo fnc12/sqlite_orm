@@ -2007,7 +2007,7 @@ namespace sqlite_orm {
              *  throws std::system_error in case of db error.
              */
             template<class O, class ...Ids>
-            std::unique_ptr<O> get_no_throw(Ids ...ids) {
+            std::unique_ptr<O> get_pointer(Ids ...ids) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
@@ -2075,7 +2075,25 @@ namespace sqlite_orm {
                     throw std::system_error(std::make_error_code(orm_error_code::table_has_no_primary_key_column));
                 }
             }
-            
+
+            /**
+             * A previous version of get_pointer() that returns a shared_ptr
+             * instead of a unique_ptr. New code should prefer get_pointer()
+             * unless the data needs to be shared.
+             *
+             * @note
+             * Most scenarios don't need shared ownership of data, so we should prefer
+             * unique_ptr when possible. It's more efficient, doesn't require atomic
+             * ops for a reference count (which can cause major slowdowns on
+             * weakly-ordered platforms like ARM), and can be easily promoted to a
+             * shared_ptr, exactly like we're doing here.
+             * (Conversely, you _can't_ go from shared back to unique.)
+             */
+            template<class O, class ...Ids>
+            std::shared_ptr<O> get_no_throw(Ids ...ids) {
+                return std::shared_ptr<O>(get_pointer<O>(std::forward<Ids>(ids)...));
+            }
+
             /**
              *  SELECT COUNT(*) with no conditions routine. https://www.sqlite.org/lang_aggfunc.html#count
              *  @return Number of O object in table.

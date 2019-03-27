@@ -1474,7 +1474,7 @@ void testSelect() {
     assert(firstRow->afterWord == "hey");
     assert(firstRow->occurances == 5);
 
-    auto secondRow = storage.get_no_throw<Word>(secondId);
+    auto secondRow = storage.get_pointer<Word>(secondId);
     assert(secondRow);
     assert(secondRow->currentWord == "corruption");
     assert(secondRow->beforeWord == "blood");

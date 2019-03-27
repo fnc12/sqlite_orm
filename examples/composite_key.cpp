@@ -46,7 +46,7 @@ int main() {
     });
     auto bebeRexha = storage.get<User>(1, "Bebe");
     cout << "bebeRexha = " << storage.dump(bebeRexha) << endl;
-    auto bebeRexhaMaybe = storage.get_no_throw<User>(1, "Bebe");
+    auto bebeRexhaMaybe = storage.get_pointer<User>(1, "Bebe");
     try{
         //  2 and 'Drake' values will be ignored cause they are primary keys
         storage.insert(User{ 2, "Drake", "Singer" });
