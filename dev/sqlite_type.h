@@ -3,7 +3,7 @@
 #include <map>  //  std::map
 #include <string>   //  std::string
 #include <regex>    //  std::regex, std::regex_match
-#include <memory>   //  std::make_shared, std::shared_ptr
+#include <memory>   //  std::make_unique, std::unique_ptr
 #include <vector>   //  std::vector
 #include <cctype>   //  std::toupper
 
@@ -22,7 +22,7 @@ namespace sqlite_orm {
     /**
      *  @param str case doesn't matter - it is uppercased before comparing.
      */
-    inline std::shared_ptr<sqlite_type> to_sqlite_type(const std::string &str) {
+    inline std::unique_ptr<sqlite_type> to_sqlite_type(const std::string &str) {
         auto asciiStringToUpper = [](std::string &s){
             std::transform(s.begin(),
                            s.end(),
@@ -71,7 +71,7 @@ namespace sqlite_orm {
         for(auto &p : typeMap) {
             for(auto &r : p.second) {
                 if(std::regex_match(upperStr, r)){
-                    return std::make_shared<sqlite_type>(p.first);
+                    return std::make_unique<sqlite_type>(p.first);
                 }
             }
         }

@@ -74,7 +74,7 @@ namespace sqlite_orm {
         
         template<class St, class T>
         struct column_result_t<St, core_functions::abs_t<T>, void> {
-            using type = std::shared_ptr<double>;
+            using type = std::unique_ptr<double>;
         };
         
         template<class St, class T>
@@ -149,7 +149,7 @@ namespace sqlite_orm {
         
         template<class St, class T>
         struct column_result_t<St, aggregate_functions::sum_t<T>, void> {
-            using type = std::shared_ptr<double>;
+            using type = std::unique_ptr<double>;
         };
         
         template<class St, class T>
@@ -169,12 +169,12 @@ namespace sqlite_orm {
         
         template<class St, class T>
         struct column_result_t<St, aggregate_functions::max_t<T>, void> {
-            using type = std::shared_ptr<typename column_result_t<St, T>::type>;
+            using type = std::unique_ptr<typename column_result_t<St, T>::type>;
         };
         
         template<class St, class T>
         struct column_result_t<St, aggregate_functions::min_t<T>, void> {
-            using type = std::shared_ptr<typename column_result_t<St, T>::type>;
+            using type = std::unique_ptr<typename column_result_t<St, T>::type>;
         };
         
         template<class St>

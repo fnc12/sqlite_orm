@@ -11,7 +11,7 @@ using std::cerr;
 struct Entry {
     int id;
     std::string uniqueColumn;
-    std::shared_ptr<std::string> nullableColumn;
+    std::unique_ptr<std::string> nullableColumn;
 };
 
 int main(int argc, char **argv) {
@@ -27,12 +27,12 @@ int main(int argc, char **argv) {
     try {
         auto sameString = "Bebe Rexha";
         
-        auto id1 = storage.insert(Entry{ 0, sameString, std::make_shared<std::string>("The way I are") });
+        auto id1 = storage.insert(Entry{ 0, sameString, std::make_unique<std::string>("The way I are") });
         cout << "inserted " << storage.dump(storage.get<Entry>(id1)) << endl;
         
         //  it's ok but the next line will throw std::system_error
         
-        auto id2 = storage.insert(Entry{ 0, sameString, std::make_shared<std::string>("I got you") });
+        auto id2 = storage.insert(Entry{ 0, sameString, std::make_unique<std::string>("I got you") });
         cout << "inserted " << storage.dump(storage.get<Entry>(id2)) << endl;
     } catch (std::system_error e) {
         cerr << e.what() << endl;

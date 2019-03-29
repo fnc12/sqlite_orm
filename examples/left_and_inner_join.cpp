@@ -13,25 +13,25 @@ using std::cout;
 using std::endl;
 
 struct Artist {
-    std::shared_ptr<int> artistId;
-    std::shared_ptr<std::string> name;
+    std::unique_ptr<int> artistId;
+    std::unique_ptr<std::string> name;
 };
 
 struct Album {
-    std::shared_ptr<int> albumId;
-    std::shared_ptr<std::string> title;
-    std::shared_ptr<int> artistId;
+    std::unique_ptr<int> albumId;
+    std::unique_ptr<std::string> title;
+    std::unique_ptr<int> artistId;
 };
 
 struct Track {
     int trackId;
     std::string name;
-    std::shared_ptr<int> albumId;
+    std::unique_ptr<int> albumId;
     int mediaTypeId;
-    std::shared_ptr<int> genreId;
-    std::shared_ptr<std::string> composer;
+    std::unique_ptr<int> genreId;
+    std::unique_ptr<std::string> composer;
     long milliseconds;
-    std::shared_ptr<long> bytes;
+    std::unique_ptr<long> bytes;
     double unitPrice;
 };
 

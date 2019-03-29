@@ -9,7 +9,7 @@
  object (KeyValue is a class mapped to the storage) with arguments and calls REPLACE. REPLACE (shorter version of INSERT OR REPLACE)
  removes row with a given primary key if it exists and inserts a given value in the table.
  After this there is a row in the `key_value` table with key and value passed into `setValue` function.
- `getValue` performs `get_no_throw` by id and returns its value or returns empty string if nothing obtained from db.
+ `getValue` performs `get_pointer` by id and returns its value or returns empty string if nothing obtained from db.
  ******/
 
 #include <sqlite_orm/sqlite_orm.h>
@@ -45,7 +45,7 @@ void setValue(const std::string &key, const std::string &value) {
 
 std::string getValue(const std::string &key) {
     using namespace sqlite_orm;
-    if(auto kv = getStorage().get_no_throw<KeyValue>(key)){
+    if(auto kv = getStorage().get_pointer<KeyValue>(key)){
         return kv->value;
     }else{
         return {};

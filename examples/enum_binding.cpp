@@ -41,11 +41,11 @@ std::string GenderToString(Gender gender) {
  *  that's why I placed it separatedly. You can use any transformation type/form
  *  (for example BETTER_ENUM https://github.com/aantron/better-enums)
  */
-std::shared_ptr<Gender> GenderFromString(const std::string &s) {
+std::unique_ptr<Gender> GenderFromString(const std::string &s) {
     if(s == "female") {
-        return std::make_shared<Gender>(Gender::Female);
+        return std::make_unique<Gender>(Gender::Female);
     }else if(s == "male") {
-        return std::make_shared<Gender>(Gender::Male);
+        return std::make_unique<Gender>(Gender::Male);
     }
     return nullptr;
 }

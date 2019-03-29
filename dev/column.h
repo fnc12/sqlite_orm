@@ -2,7 +2,7 @@
 
 #include <tuple>    //  std::tuple
 #include <string>   //  std::string
-#include <memory>   //  std::shared_ptr
+#include <memory>   //  std::unique_ptr
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if
 
 #include "type_is_nullable.h"
@@ -85,12 +85,12 @@ namespace sqlite_orm {
              *  Simplified interface for `DEFAULT` constraint
              *  @return string representation of default value if it exists otherwise nullptr
              */
-            std::shared_ptr<std::string> default_value() {
-                std::shared_ptr<std::string> res;
+            std::unique_ptr<std::string> default_value() {
+                std::unique_ptr<std::string> res;
                 tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(constraints, [&res](auto &v){
                     auto dft = internal::default_value_extractor()(v);
                     if(dft){
-                        res = dft;
+                        res = std::move(dft);
                     }
                 });
                 return res;

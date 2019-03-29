@@ -19,19 +19,19 @@ enum class Gender {
     Female,
 };
 
-std::shared_ptr<std::string> GenderToString(Gender gender) {
+std::unique_ptr<std::string> GenderToString(Gender gender) {
     switch(gender){
-        case Gender::Female:return std::make_shared<std::string>("female");
-        case Gender::Male:return std::make_shared<std::string>("male");
+        case Gender::Female:return std::make_unique<std::string>("female");
+        case Gender::Male:return std::make_unique<std::string>("male");
         case Gender::None:return {};
     }
 }
 
-std::shared_ptr<Gender> GenderFromString(const std::string &s) {
+std::unique_ptr<Gender> GenderFromString(const std::string &s) {
     if(s == "female") {
-        return std::make_shared<Gender>(Gender::Female);
+        return std::make_unique<Gender>(Gender::Female);
     }else if(s == "male") {
-        return std::make_shared<Gender>(Gender::Male);
+        return std::make_unique<Gender>(Gender::Male);
     }
     return nullptr;
 }

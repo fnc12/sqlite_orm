@@ -70,7 +70,7 @@ int main(int argc, char **argv) {
     cout << "customTwo = {" << std::get<0>(customTwo.front()) << ", " << std::get<1>(customTwo.front()) << "}" << endl;
     
     //  SELECT ABS(points) FROM marvel
-    auto absPoints = storage.select(abs(&MarvelHero::points));  //  std::vector<std::shared_ptr<int>>
+    auto absPoints = storage.select(abs(&MarvelHero::points));  //  std::vector<std::unique_ptr<int>>
     cout << "absPoints: ";
     for(auto &value : absPoints) {
         if(value) {

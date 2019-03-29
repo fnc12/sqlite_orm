@@ -280,7 +280,7 @@ namespace sqlite_orm {
     
     /**
      *  Function used for table creation. Do not use table constructor - use this function
-     *  cause table class is templated and its constructing too (just like std::make_shared or std::make_pair).
+     *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
     template<class ...Cs, class T = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
     internal::table_t<T, Cs...> make_table(const std::string &name, Cs&& ...args) {

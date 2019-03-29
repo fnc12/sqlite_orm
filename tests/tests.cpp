@@ -1062,8 +1062,8 @@ void testForeignKey() {
 
     struct Visit {
         int id;
-        std::shared_ptr<int> location;
-        std::shared_ptr<int> user;
+        std::unique_ptr<int> location;
+        std::unique_ptr<int> user;
         int visited_at;
         uint8_t mark;
     };
@@ -1241,8 +1241,8 @@ void testTypeParsing() {
     assert(type_is_nullable<long double>::value == false);
     assert(type_is_nullable<long double>::value == false);
     assert(type_is_nullable<std::string>::value == false);
-    assert(type_is_nullable<std::shared_ptr<int>>::value == true);
-    assert(type_is_nullable<std::shared_ptr<std::string>>::value == true);
+    assert(type_is_nullable<std::unique_ptr<int>>::value == true);
+    assert(type_is_nullable<std::unique_ptr<std::string>>::value == true);
     assert(type_is_nullable<std::unique_ptr<int>>::value == true);
     assert(type_is_nullable<std::unique_ptr<std::string>>::value == true);
 
@@ -1262,8 +1262,8 @@ void testSyncSchema() {
     struct UserBefore {
         int id;
         std::string name;
-        std::shared_ptr<int> categoryId;
-        std::shared_ptr<std::string> surname;
+        std::unique_ptr<int> categoryId;
+        std::unique_ptr<std::string> surname;
     };
 
     //  this is an new version of user..
@@ -1296,15 +1296,14 @@ void testSyncSchema() {
     storage.remove_all<UserBefore>();
 
     //  create c++ objects to insert into table..
-    std::vector<UserBefore> usersToInsert {
-        { -1, "Michael", nullptr, std::make_shared<std::string>("Scofield") },
-        { -1, "Lincoln", std::make_shared<int>(4), std::make_shared<std::string>("Burrows") },
-        { -1, "Sucre", nullptr, nullptr },
-        { -1, "Sara", std::make_shared<int>(996), std::make_shared<std::string>("Tancredi") },
-        { -1, "John", std::make_shared<int>(100500), std::make_shared<std::string>("Abruzzi") },
-        { -1, "Brad", std::make_shared<int>(65), nullptr },
-        { -1, "Paul", std::make_shared<int>(65), nullptr },
-    };
+    std::vector<UserBefore> usersToInsert;
+    usersToInsert.push_back({-1, "Michael", nullptr, std::make_unique<std::string>("Scofield")});
+    usersToInsert.push_back({-1, "Lincoln", std::make_unique<int>(4), std::make_unique<std::string>("Burrows")});
+    usersToInsert.push_back({-1, "Sucre", nullptr, nullptr});
+    usersToInsert.push_back({-1, "Sara", std::make_unique<int>(996), std::make_unique<std::string>("Tancredi")});
+    usersToInsert.push_back({-1, "John", std::make_unique<int>(100500), std::make_unique<std::string>("Abruzzi")});
+    usersToInsert.push_back({-1, "Brad", std::make_unique<int>(65), nullptr});
+    usersToInsert.push_back({-1, "Paul", std::make_unique<int>(65), nullptr});
 
     for(auto &user : usersToInsert) {
         auto insertedId = storage.insert(user);
@@ -1475,7 +1474,7 @@ void testSelect() {
     assert(firstRow->afterWord == "hey");
     assert(firstRow->occurances == 5);
 
-    auto secondRow = storage.get_no_throw<Word>(secondId);
+    auto secondRow = storage.get_pointer<Word>(secondId);
     assert(secondRow);
     assert(secondRow->currentWord == "corruption");
     assert(secondRow->beforeWord == "blood");
