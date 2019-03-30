@@ -2,13 +2,33 @@ cmake_minimum_required (VERSION 3.2)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(sqlite_orm)
+# PACKAGE_VERSION is used by cpack scripts currently
+# Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
+
+set(sqlite_orm_VERSION "1.3.0")
+set(PACKAGE_VERSION ${sqlite_orm_VERSION})
+
+project("sqlite_orm" VERSION ${PACKAGE_VERSION})
+
+message(STATUS "Configuring ${CMAKE_PROJECT_NAME} ${sqlite_orm_VERSION}")
+
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/build/cmake")
+
+# Build time options are defined here
+include(DefineInstallationPaths)
+
+# Generate the SqliteOrmConfig.cmake module
+include(GenerateConfigModule)
+
+set(ProjectName "SqliteOrm")
 
 option(SqliteOrm_BuildTests "Build sqlite_orm unit tests" ON)
 
 set(SqliteOrm_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_library(sqlite_orm INTERFACE)
-target_include_directories(sqlite_orm INTERFACE include)
+target_include_directories(sqlite_orm INTERFACE
+	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+	$<INSTALL_INTERFACE:include>)
 
 # Tests
 include(CTest)
@@ -19,3 +39,14 @@ endif()
 
 add_subdirectory(examples)
 
+install(TARGETS sqlite_orm EXPORT "${ProjectName}Targets"
+	PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development)
+
+export(EXPORT "${ProjectName}Targets"
+	FILE "${CMAKE_CURRENT_BINARY_DIR}/${ProjectName}/${ProjectName}Targets.cmake"
+	NAMESPACE "sqlite_orm::")
+
+install(EXPORT "${ProjectName}Targets"
+	FILE "${ProjectName}Targets.cmake"
+	NAMESPACE "sqlite_orm::"
+	DESTINATION "${CMAKE_INSTALL_DIR}/sqlite_orm")
