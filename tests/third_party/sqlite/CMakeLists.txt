@@ -10,10 +10,12 @@ add_custom_command(
     ${CMAKE_COMMAND} -DSQLITE3_ARCH_NAME=${SQLITE3_ARCH_NAME} -DSQLITE3_LINK=${SQLITE3_LINK} -DSQLITE3_ARCH_SHA1=${SQLITE3_ARCH_SHA1} -P "${CMAKE_CURRENT_SOURCE_DIR}/DownloadSqlite3.cmake")
 
 add_custom_command(
-    OUTPUT sqlite-amalgamation-3210000 sqlite-amalgamation-3210000/sqlite3.c
+    OUTPUT sqlite-amalgamation-3210000 sqlite-amalgamation-3210000/sqlite3.c sqlite-amalgamation-3210000/sqlite3.h
     DEPENDS ${SQLITE3_ARCH_NAME}
     COMMAND
     ${CMAKE_COMMAND} -E tar xfz ${SQLITE3_ARCH_NAME})
 
 add_library(sqlite3 sqlite-amalgamation-3210000/sqlite3.c)
+
+target_include_directories(sqlite3 INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/sqlite-amalgamation-3210000")
 target_link_libraries(sqlite3 dl pthread)
