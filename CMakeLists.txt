@@ -30,6 +30,10 @@ target_include_directories(sqlite_orm INTERFACE
 	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>)
 
+if (MSVC AND "${CMAKE_GENERATOR}" MATCHES "(Win64|x64)" AND CMAKE_BUILD_TYPE EQUAL "Debug")
+    add_compile_options(/bigobj)
+endif()
+
 # Tests
 include(CTest)
 if(SqliteOrm_BuildTests AND BUILD_TESTING)
