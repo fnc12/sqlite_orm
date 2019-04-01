@@ -8,9 +8,8 @@ install:
   - git submodule update --init --recursive
  
 image:
+  - Visual Studio 2019 Preview
   - Visual Studio 2017
-  - Visual Studio 2015
-  - Visual Studio 2013
   
 # configurations to add to build matrix
 # TODO: MinGW Makefiles and MSYS Makefiles
@@ -25,6 +24,7 @@ environment:
 
 init:
   - echo %APPVEYOR_BUILD_WORKER_IMAGE% - %configuration% - %arch%
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019 Preview" (set vs=Visual Studio 15 2019 Preview)
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (set vs=Visual Studio 15 2017)
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (set vs=Visual Studio 14 2015)
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2013" (set vs=Visual Studio 12 2013)
