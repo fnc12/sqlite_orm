@@ -45,6 +45,7 @@ matrix:
       env:
         - CC=clang
         - CXX=clang
+        - VCPKG_ALLOW_APPLE_CLANG=1
 
 
 before_install:
