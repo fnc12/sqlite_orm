@@ -54,15 +54,14 @@ matrix:
       addons:
         homebrew:
           packages:
-            - gcc6
+            - gcc7
       compiler: gcc
       os: osx
       osx_image: xcode10.1
       env:
-        - CC=gcc-6
-        - CXX=g++-6
+        - CC=gcc-7
+        - CXX=g++-7
         - SQLITE_ORM_OMITS_CODECVT=OFF
-
 
 before_install:
   # coveralls test coverage:
