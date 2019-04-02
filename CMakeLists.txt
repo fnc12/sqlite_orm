@@ -26,6 +26,11 @@ option(SqliteOrm_BuildTests "Build sqlite_orm unit tests" ON)
 
 set(SqliteOrm_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_library(sqlite_orm INTERFACE)
+
+target_sources(sqlite_orm INTERFACE
+	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>
+	$<INSTALL_INTERFACE:include/sqlite_orm/sqlite_orm.h>)
+
 target_include_directories(sqlite_orm INTERFACE
 	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>)
@@ -40,7 +45,11 @@ endif()
 add_subdirectory(examples)
 
 install(TARGETS sqlite_orm EXPORT "${ProjectName}Targets"
+	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development
 	PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development)
+
+install(FILES "include/sqlite_orm/sqlite_orm.h"
+	DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development)
 
 export(EXPORT "${ProjectName}Targets"
 	FILE "${CMAKE_CURRENT_BINARY_DIR}/${ProjectName}/${ProjectName}Targets.cmake"
