@@ -10,19 +10,24 @@ set -e
 echo "g++ version: "
 g++ --version
 
-sudo apt-get install g++-7 -y
+mkdir -p compile
+cd compile
 
-echo "g++ version after install: "
-g++ --version
+TRAVIS_JOB_NAME="clang default"
 
-cd third_party
-git clone https://github.com/Microsoft/vcpkg.git vcpkg
-cd vcpkg
-chmod +x bootstrap-vcpkg.sh
-./bootstrap-vcpkg.sh
-chmod +x vcpkg
-./vcpkg install gtest
-cd ../..
+if [ "$TRAVIS_JOB_NAME" = "clang default" ]; then cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT=ON .. ; else\
+    cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake .. ; fi
+
+
+
+#cd third_party
+#git clone https://github.com/Microsoft/vcpkg.git vcpkg
+#cd vcpkg
+#chmod +x bootstrap-vcpkg.sh
+#./bootstrap-vcpkg.sh
+#chmod +x vcpkg
+#./vcpkg install gtest
+#cd ../..
 
 #mkdir -p build
 #cd build
