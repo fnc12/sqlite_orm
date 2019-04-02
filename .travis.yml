@@ -15,10 +15,11 @@ addons:
       packages:
       - cmake
       - git
-    homeberaw:
+    homebrew:
       packages:
       - cmake
       - git
+      update: true
 
 matrix:
   include:
@@ -51,7 +52,7 @@ matrix:
         - SQLITE_ORM_OMITS_CODECVT=ON
     - name: "osx gcc"
       addons:
-        homeberaw:
+        homebrew:
           packages:
             - gcc6
       compiler: gcc
