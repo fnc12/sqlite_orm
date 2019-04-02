@@ -41,6 +41,7 @@ matrix:
     - name: "osx"
       compiler: clang
       os: osx
+      osx_image: xcode10.1
       env:
         - CC=clang
         - CXX=clang
