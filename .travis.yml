@@ -40,7 +40,7 @@ matrix:
         - CC=clang
         - CXX=clang++
         - SQLITE_ORM_OMITS_CODECVT=ON
-    - name: "osx"
+    - name: "osx clang"
       compiler: clang
       os: osx
       osx_image: xcode10.1
@@ -49,6 +49,18 @@ matrix:
         - CXX=clang
         - VCPKG_ALLOW_APPLE_CLANG=1
         - SQLITE_ORM_OMITS_CODECVT=ON
+    - name: "osx gcc"
+      addons:
+        homeberaw:
+          packages:
+            - g++-7
+      compiler: gcc
+      os: osx
+      osx_image: xcode10.1
+      env:
+        - CC=gcc-7
+        - CXX=g++-7
+        - SQLITE_ORM_OMITS_CODECVT=OFF
 
 
 before_install:
