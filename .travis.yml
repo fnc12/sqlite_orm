@@ -4,7 +4,7 @@
 # request for Ubuntu 16.04 Trusty VM
 sudo: true
 dist: xenial
-language: cpp
+#language: cpp
 
 cache:
   apt: true
@@ -59,7 +59,9 @@ before_install:
 # scripts to run before build
 before_script:
   - g++ --version
-  - build.sh
+  - g++-7 --version
+  - chmod +x build.sh
+  - ./build.sh
 #  - cd third_party
 #  - git clone https://github.com/Microsoft/vcpkg.git vcpkg
 #  - cd vcpkg
