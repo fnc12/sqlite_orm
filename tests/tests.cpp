@@ -643,7 +643,8 @@ void testExplicitInsert() {
         user3.name = "Sia";
         user3.age = 42;
         user3.email = "sia@gmail.com";
-        assert(user3.id == storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email)));
+        auto insertedId = storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email));
+        assert(user3.id == insertedId);
         auto insertedUser3 = storage.get<User>(user3.id);
         assert(insertedUser3.email == user3.email);
         assert(insertedUser3.age == user3.age);
