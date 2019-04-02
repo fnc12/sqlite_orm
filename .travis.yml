@@ -73,11 +73,11 @@ matrix:
         - CXX=clang
 
 before_install:
- # addons:
- #   apt:
- #     packages:
- #       - cmake
- #       - git
+  addons:
+    apt:
+      packages:
+        - cmake
+        - git
  # - cd thrid_party
  # - git clone https://github.com/Microsoft/vcpkg.git vcpkg
  # - cd vcpkg
