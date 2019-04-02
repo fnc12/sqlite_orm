@@ -23,6 +23,7 @@ matrix:
   include:
     - name: "gcc 7"
       compiler: gcc
+      install:
       addons:
         apt:
           sources:
