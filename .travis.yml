@@ -29,6 +29,11 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-7
+      - cd third_party/vcpkg
+      - ./bootstrap-vcpkg.sh
+      - chmod +x vcpkg
+      - ./vcpkg install gtest
+      - cd ../..
       env:
         - CC=gcc-7
         - CXX=g++-7
@@ -55,9 +60,9 @@ before_script:
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
   - cd vcpkg
   - chmod +x bootstrap-vcpkg.sh
-  - ./bootstrap-vcpkg.sh
-  - chmod +x vcpkg
-  - ./vcpkg install gtest
+#  - ./bootstrap-vcpkg.sh
+#  - chmod +x vcpkg
+#  - ./vcpkg install gtest
   - cd ../..
   - mkdir compile
   - cd compile
