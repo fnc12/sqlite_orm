@@ -89,7 +89,8 @@ before_install:
 
 # scripts to run before build
 before_script:
-  - cd thrid_party
+  - ls -a
+  - cd third_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
   - cd vcpkg
   - ./bootstarp-vcpkg.bat
