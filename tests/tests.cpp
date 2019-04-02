@@ -654,7 +654,7 @@ void testExplicitInsert() {
         user4.name = "Egor";
         try {
             storage.insert(user4, columns(&User::name));
-            assert(0);
+            throw std::runtime_error("Must not fire");
         } catch (std::system_error e) {
             //        cout << e.what() << endl;
         }
@@ -701,14 +701,14 @@ void testExplicitInsert() {
         visit3.setId(10);
         try {
             storage.insert(visit3, columns(&Visit::id));
-            assert(0);
+            throw std::runtime_error("Must not fire");
         } catch (std::system_error e) {
             //        cout << e.what() << endl;
         }
         
         try {
             storage.insert(visit3, columns(&Visit::setId));
-            assert(0);
+            throw std::runtime_error("Must not fire");
         } catch (std::system_error e) {
             //        cout << e.what() << endl;
         }
@@ -1398,7 +1398,7 @@ void testSelect() {
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
         cout << sqlite3_errmsg(db) << endl;
-        assert(0);
+        throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
 
@@ -1415,7 +1415,7 @@ void testSelect() {
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
         cout << sqlite3_errmsg(db) << endl;
-        assert(0);
+        throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
 
@@ -1432,7 +1432,7 @@ void testSelect() {
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
         cout << sqlite3_errmsg(db) << endl;
-        assert(0);
+        throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
 
@@ -1825,7 +1825,7 @@ void testTransactionGuard() {
         storage.insert(Object{0, "Lincoln"});
 
     }catch(...){
-        assert(0);
+        throw std::runtime_error("Must not fire");
     }
     auto countNow = storage.count<Object>();
     assert(countNow == countBefore + 1);
@@ -2105,7 +2105,7 @@ void testSynchronous() {
     const auto newValue = 2;
     try{
         storage.pragma.synchronous(newValue);
-        assert(0);
+        throw std::runtime_error("Must not fire");
     }catch(std::system_error) {
         //  Safety level may not be changed inside a transaction
         assert(storage.pragma.synchronous() == value);
