@@ -54,7 +54,7 @@ matrix:
       addons:
         homebrew:
           packages:
-            - gcc7
+            - gcc@7
       compiler: gcc
       os: osx
       osx_image: xcode10.1
