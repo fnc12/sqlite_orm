@@ -12,6 +12,8 @@ add_executable(unit_tests tests.cpp)
 
 target_link_libraries(unit_tests PRIVATE sqlite_orm sqlite3)
 
+enable_testing()
+
 add_test(NAME "All_in_one_unit_test"
     COMMAND unit_tests
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
