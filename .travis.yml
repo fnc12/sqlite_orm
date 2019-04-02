@@ -33,11 +33,13 @@ matrix:
       env:
         - CC=gcc-7
         - CXX=g++-7
+        - SQLITE_ORM_OMITS_CODECVT=OFF
     - name: "clang default"
       compiler: clang
       env:
         - CC=clang
         - CXX=clang++
+        - SQLITE_ORM_OMITS_CODECVT=ON
     - name: "osx"
       compiler: clang
       os: osx
@@ -46,6 +48,7 @@ matrix:
         - CC=clang
         - CXX=clang
         - VCPKG_ALLOW_APPLE_CLANG=1
+        - SQLITE_ORM_OMITS_CODECVT=ON
 
 
 before_install:
@@ -65,8 +68,7 @@ before_script:
   - cd ../..
   - mkdir compile
   - cd compile
-  - if [ "$TRAVIS_JOB_NAME" = "clang default" ]; then cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT=ON .. ; else\
-    cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake .. ; fi
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT="$SQLITE_ORM_OMITS_CODECVT" ..
 
 # build examples, and run tests (ie make & make test)
 script:
