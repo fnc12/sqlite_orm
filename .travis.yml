@@ -92,7 +92,9 @@ before_script:
   - cd third_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
   - cd vcpkg
-  - ./bootstrap-vcpkg.bat
+  - chmod +x bootstrap-vcpkg.sh
+  - ./bootstrap-vcpkg.sh
+  - chmod +x vcpkg
   - ./vcpkg install gtest
   - cd ../..
   - mkdir compile
