@@ -685,13 +685,15 @@ void testExplicitInsert() {
         visit2.setId(2);
         visit2.setUsedId(1);
         {
-            assert(visit2.id() == storage.insert(visit2, columns(&Visit::id, &Visit::usedId)));
+            auto insertedId = storage.insert(visit2, columns(&Visit::id, &Visit::usedId));
+            assert(visit2.id() == insertedId);
             auto visitFromStorage = storage.get<Visit>(visit2.id());
             assert(visitFromStorage.usedId() == visit2.usedId());
             storage.remove<Visit>(visit2.id());
         }
         {
-            assert(visit2.id() == storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId)));
+            auto insertedId = storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId));
+            assert(visit2.id() == insertedId);
             auto visitFromStorage = storage.get<Visit>(visit2.id());
             assert(visitFromStorage.usedId() == visit2.usedId());
             storage.remove<Visit>(visit2.id());
