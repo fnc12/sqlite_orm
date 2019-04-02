@@ -29,11 +29,12 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-7
-      - cd third_party/vcpkg
-      - ./bootstrap-vcpkg.sh
-      - chmod +x vcpkg
-      - ./vcpkg install gtest
-      - cd ../..
+      before_script:
+        - cd third_party/vcpkg
+        - ./bootstrap-vcpkg.sh
+        - chmod +x vcpkg
+        - ./vcpkg install gtest
+        - cd ../..
       env:
         - CC=gcc-7
         - CXX=g++-7
