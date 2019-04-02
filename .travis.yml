@@ -1,9 +1,9 @@
 # ITNOA
 # Copyright (c) 2012-2019 Sebastien Rombauts (sebastien.rombauts@gmail.com)
 
-# request for Ubuntu 14.04 Trusty VM
+# request for Ubuntu 16.04 Trusty VM
 sudo: true
-dist: trusty
+dist: xenial
 language: cpp
 
 cache:
@@ -21,44 +21,6 @@ addons:
 
 matrix:
   include:
-    - name: "gcc default (4.8)"
-      compiler: gcc
-      env:
-        - CC=gcc
-        - CXX=g++
-    - name: "gcc 4.9"
-      compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-4.9
-      env:
-        - CC=gcc-4.9
-        - CXX=g++-4.9
-      name: "gcc 5"
-      compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-5
-      env:
-        - CC=gcc-5
-        - CXX=g++-5
-      name: "gcc 6"
-      compiler: gcc
-      addons:
-        apt:
-          sources:
-            - ubuntu-toolchain-r-test
-          packages:
-            - g++-6
-      env:
-        - CC=gcc-6
-        - CXX=g++-6
     - name: "gcc 7"
       compiler: gcc
       addons:
