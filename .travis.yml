@@ -53,13 +53,13 @@ matrix:
       addons:
         homeberaw:
           packages:
-            - g++-7
+            - gcc6
       compiler: gcc
       os: osx
       osx_image: xcode10.1
       env:
-        - CC=gcc-7
-        - CXX=g++-7
+        - CC=gcc-6
+        - CXX=g++-6
         - SQLITE_ORM_OMITS_CODECVT=OFF
 
 
