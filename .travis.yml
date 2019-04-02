@@ -30,12 +30,6 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-7
-#      before_script:
-#        - cd third_party/vcpkg
-#        - ./bootstrap-vcpkg.sh
-#        - chmod +x vcpkg
-#        - ./vcpkg install gtest
-#        - cd ../..
       env:
         - CC=gcc-7
         - CXX=g++-7
@@ -58,18 +52,15 @@ before_install:
 
 # scripts to run before build
 before_script:
-  - g++ --version
-  - g++-7 --version
   - chmod +x build.sh
-  - ./build.sh
-#  - cd third_party
-#  - git clone https://github.com/Microsoft/vcpkg.git vcpkg
-#  - cd vcpkg
-#  - chmod +x bootstrap-vcpkg.sh
-#  - ./bootstrap-vcpkg.sh
-#  - chmod +x vcpkg
-#  - ./vcpkg install gtest
-#  - cd ../..
+  - cd third_party
+  - git clone https://github.com/Microsoft/vcpkg.git vcpkg
+  - cd vcpkg
+  - chmod +x bootstrap-vcpkg.sh
+  - ./bootstrap-vcpkg.sh
+  - chmod +x vcpkg
+  - ./vcpkg install gtest
+  - cd ../..
   - mkdir compile
   - cd compile
   - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake ..
