@@ -82,18 +82,19 @@ matrix:
         - CC=clang
         - CXX=clang
 
+
 before_install:
+  # coveralls test coverage:
+  - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
+
+# scripts to run before build
+before_script:
   - cd thrid_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
   - cd vcpkg
   - ./bootstarp-vcpkg.bat
   - ./vcpkg install gtest
   - cd ../..
-  # coveralls test coverage:
-  - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
-
-# scripts to run before build
-before_script:
   - mkdir compile
   - cd compile
   - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake ..
