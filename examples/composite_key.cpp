@@ -2,11 +2,13 @@
  *  This example shows you how to create a storage with a tablw with a composite primary key
  *  and another table woth foreign key to first table's primary compisite key.
  */
-#include <stdio.h>
+#include <cstdio>
+#include <ctime>
+
 #include <string>
 #include <iostream>
+
 #include <sqlite_orm/sqlite_orm.h>
-#include <sys/time.h>
 
 using std::cout;
 using std::endl;

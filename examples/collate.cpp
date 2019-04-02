@@ -1,8 +1,9 @@
+#include <ctime>
+
+#include <string>
+#include <iostream>
 
 #include <sqlite_orm/sqlite_orm.h>
-#include <string>
-#include <sys/time.h>
-#include <iostream>
 
 using std::cout;
 using std::endl;
