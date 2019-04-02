@@ -83,12 +83,12 @@ matrix:
         - CXX=clang
 
 before_install:
- # - cd thrid_party
- # - git clone https://github.com/Microsoft/vcpkg.git vcpkg
- # - cd vcpkg
- # - ./bootstarp-vcpkg.bat
- # - ./vcpkg install gtest
- # - cd ../..
+  - cd thrid_party
+  - git clone https://github.com/Microsoft/vcpkg.git vcpkg
+  - cd vcpkg
+  - ./bootstarp-vcpkg.bat
+  - ./vcpkg install gtest
+  - cd ../..
   # coveralls test coverage:
   - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
 
