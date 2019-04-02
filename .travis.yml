@@ -65,7 +65,8 @@ before_script:
   - cd ../..
   - mkdir compile
   - cd compile
-  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+  - if [[ "$TRAVIS_JOB_NAME" == "clang default" ]]; then cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT=1 .. ; else \
+    cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake .. ; fi
 
 # build examples, and run tests (ie make & make test)
 script:
