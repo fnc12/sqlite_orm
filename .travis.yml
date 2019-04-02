@@ -89,11 +89,10 @@ before_install:
 
 # scripts to run before build
 before_script:
-  - ls -a
   - cd third_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
   - cd vcpkg
-  - ./bootstarp-vcpkg.bat
+  - ./bootstrap-vcpkg.bat
   - ./vcpkg install gtest
   - cd ../..
   - mkdir compile
