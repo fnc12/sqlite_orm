@@ -9,6 +9,16 @@ language: cpp
 cache:
   apt: true
 
+addons:
+    apt:
+      packages:
+      - cmake
+      - git
+    homeberaw:
+      packages:
+      - cmake
+      - git
+
 matrix:
   include:
     - name: "gcc default (4.8)"
@@ -73,11 +83,6 @@ matrix:
         - CXX=clang
 
 before_install:
-  addons:
-    apt:
-      packages:
-        - cmake
-        - git
  # - cd thrid_party
  # - git clone https://github.com/Microsoft/vcpkg.git vcpkg
  # - cd vcpkg
