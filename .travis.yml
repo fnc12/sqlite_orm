@@ -1,81 +1,103 @@
+# ITNOA
+# Copyright (c) 2012-2019 Sebastien Rombauts (sebastien.rombauts@gmail.com)
 
+# request for Ubuntu 14.04 Trusty VM
+sudo: true
+dist: trusty
 language: cpp
-sudo: required
 
-compiler:
-  - clang
+cache:
+  apt: true
 
-os:
-  - osx
+matrix:
+  include:
+    - name: "gcc default (4.8)"
+      compiler: gcc
+      env:
+        - CC=gcc
+        - CXX=g++
+    - name: "gcc 4.9"
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-4.9
+      env:
+        - CC=gcc-4.9
+        - CXX=g++-4.9
+      name: "gcc 5"
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env:
+        - CC=gcc-5
+        - CXX=g++-5
+      name: "gcc 6"
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+      env:
+        - CC=gcc-6
+        - CXX=g++-6
+    - name: "gcc 7"
+      compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+      env:
+        - CC=gcc-7
+        - CXX=g++-7
+    - name: "clang default"
+      compiler: clang
+      env:
+        - CC=clang
+        - CXX=clang++
+    - name: "osx"
+      compiler: clang
+      os: osx
+      env:
+        - CC=clang
+        - CXX=clang
 
+before_install:
+  addons:
+    apt:
+      packages:
+        - cmake
+        - git
+  - cd thrid_party
+  - git clone https://github.com/Microsoft/vcpkg.git vcpkg
+  - cd vcpkg
+  - ./bootstarp-vcpkg.bat
+  - ./vcpkg install gtest
+  - cd ../..
+  # coveralls test coverage:
+  - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
+
+# scripts to run before build
+before_script:
+  - mkdir compile
+  - cd compile
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake ..
+
+# build examples, and run tests (ie make & make test)
 script:
-  - wget https://sqlite.org/2017/sqlite-amalgamation-3190300.zip 
-  - unzip sqlite-amalgamation-3190300.zip
-  - mkdir sqlite_amalgamation
-  - cp -r sqlite-amalgamation-3190300/* sqlite_amalgamation
-  - rm sqlite-amalgamation-3190300.zip
-  - clang -c sqlite-amalgamation-3190300/sqlite3.c -o sqlite.static
-  - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -o tests.out
-  - ./tests.out
-  - clang++ -std=c++1y tests/tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -D SQLITE_ORM_OMITS_CODECVT -o tests_without_codecvt.out
-  - ./tests_without_codecvt.out
-  - clang++ -std=c++1y tests/static_tests.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -stdlib=libc++ -o static_tests.out
-  - ./static_tests.out
-  - clang++ -std=c++1y examples/core_functions.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/distinct.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/enum_binding.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/group_by.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/in_memory.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/iteration.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/key_value.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/nullable_enum_binding.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/select.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/subentities.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/insert.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/update.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/multi_table_select.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/cross_join.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/blob.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/foreign_key.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/index.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/date_time.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/composite_key.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/unique.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/synchronous.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/self_join.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/natural_join.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/union.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/subquery.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/having.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/exists.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/except_intersection.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
-  - clang++ -std=c++1y examples/custom_aliases.cpp sqlite.static -I include/ -I sqlite_amalgamation/ -ldl -lpthread -o a.out
-  - ./a.out
+  - cmake --build . --config Debug
+  - ctest --verbose --output-on-failure -C Debug
+
+# generate and publish GCov coveralls results
+after_success:
+  - if [[ "$CXX" == "g++" ]]; then coveralls --root .. -e examples -e googletest -e sqlite3 -e tests -E ".*feature_tests.*" -E ".*CompilerId.*" --gcov-options '\-lp' ; fi
