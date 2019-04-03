@@ -54,13 +54,13 @@ matrix:
       addons:
         homebrew:
           packages:
-            - gcc@7
+            - gcc6
       compiler: gcc
       os: osx
       osx_image: xcode10.1
       env:
-        - CC=gcc-7
-        - CXX=g++-7
+        - CC=gcc-6
+        - CXX=g++-6
         - SQLITE_ORM_OMITS_CODECVT=OFF
 
 before_install:
@@ -84,7 +84,7 @@ before_script:
 
 # build examples, and run tests (ie make & make test)
 script:
-  - cmake --build . --config Debug
+  - cmake --build . --config Debug --trace --debug-output
   - ctest --verbose --output-on-failure -C Debug
 
 # generate and publish GCov coveralls results
