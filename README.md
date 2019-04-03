@@ -3,13 +3,18 @@
 </p>
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm)
 [![Donate using PayPal](https://img.shields.io/badge/donate-PayPal-brightgreen.svg)](https://paypal.me/fnc12)
 [![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/fold_left.svg?style=social&label=Follow%20%40sqlite_orm)](https://twitter.com/sqlite_orm)
 
 
 # SQLite ORM
 SQLite ORM light header only library for modern C++
+
+# Status
+| Branch | Travis | Appveyor | Coverity Scan | codecov.io | Website |
+| :----- | :----- | :------- | :------------ | :--------- | :------ |
+| [`master`](https://github.com/fcn12/sqlite_orm/tree/master) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fcn12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=master&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fcn12/sqlite_orm/) |
+| [`dev`](https://github.com/fcn12/sqlite_orm/tree/dev) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=dev)](https://travis-ci.org/fcn12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=dev&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fcn12/sqlite_orm/tree/dev) |
 
 # Advantages
 
