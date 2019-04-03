@@ -5285,26 +5285,28 @@ namespace sqlite_orm {
                     using member_pointer_t = typename column_type::member_pointer_t;
                     using getter_type = typename column_type::getter_type;
                     using setter_type = typename column_type::setter_type;
+
+					// GCC has bug that reported in https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095 so static_if must have at lease one input
                     if(!res){
-                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col, &c](int temp){
+                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c){
                             if(compare_any(col.member_pointer, c)){
                                 res = &(obj.*col.member_pointer);
                             }
-                        })(0);
+                        })(c);
                     }
                     if(!res){
-                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col, &c](int temp){
+                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col, &c](const C& c){
                             if(compare_any(col.getter, c)){
                                 res = &((obj).*(col.getter))();
                             }
-                        })(0);
+                        })(c);
                     }
                     if(!res){
-                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col, &c](int temp){
+                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C& c){
                             if(compare_any(col.setter, c)){
                                 res = &((obj).*(col.getter))();
                             }
-                        })(0);
+                        })(c);
                     }
                 });
                 return res;
