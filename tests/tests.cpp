@@ -966,7 +966,7 @@ void testAutoVacuum() {
     cout << __func__ << endl;
     
     auto filename = "autovacuum.sqlite";
-    remove(filename);
+    ::remove(filename);
     
     auto storage = make_storage(filename);
     
@@ -1790,9 +1790,17 @@ void testRemove() {
         storage.sync_schema();
         storage.remove_all<Object>();
         
-        auto id1 = storage.insert(Object{ 0, "Skillet"});
+        Object object{0, "Skillet"};
+
+        auto id1 = storage.insert(object);
         assert(storage.count<Object>() == 1);
         storage.remove<Object>(id1);
+        assert(storage.count<Object>() == 0);
+
+        id1 = storage.insert(object);
+        assert(storage.count<Object>() == 1);
+        auto object_from_database = storage.get<Object>(id1);
+        storage.remove(object_from_database);
         assert(storage.count<Object>() == 0);
     }
     {
@@ -1804,9 +1812,17 @@ void testRemove() {
         storage.sync_schema();
         storage.remove_all<Object>();
         
-        auto id1 = storage.insert(Object{ 0, "Skillet"});
+        Object object{0, "Skillet"};
+
+        auto id1 = storage.insert(object);
         assert(storage.count<Object>() == 1);
         storage.remove<Object>(id1);
+        assert(storage.count<Object>() == 0);
+
+        id1 = storage.insert(object);
+        assert(storage.count<Object>() == 1);
+        auto object_from_database = storage.get<Object>(id1);
+        storage.remove(object_from_database);
         assert(storage.count<Object>() == 0);
     }
     {

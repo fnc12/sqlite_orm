@@ -1266,6 +1266,35 @@ namespace sqlite_orm {
                     throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
                 }
             }
+
+            /**
+             * Delete routine
+             * O is an object's type. Must be not specified explicitly cause it can be deduced by
+             *      compiler from first parameter.
+             * @param o object to be updated.
+             */
+            template<class O>
+            void remove(const O &o) {
+                this->assert_mapped_type<O>();
+
+                auto &impl = this->get_impl<O>();
+
+                std::vector<std::string> primaryKeyColumnNames = impl.table.primary_key_column_names();
+
+                impl.table.for_each_column([this,&o,&primaryKeyColumnNames] (auto &c) {
+					if(std::find(primaryKeyColumnNames.cbegin(), primaryKeyColumnNames.cend(), c.name) !=
+                            primaryKeyColumnNames.cend()) {
+                        using field_type = typename std::decay<decltype(c)>::type::field_type;
+                        const field_type *value = nullptr;
+                        if(c.member_pointer){
+                            value = &(o.*c.member_pointer);
+                        }else{
+                            value = &((o).*(c.getter))();
+                        }
+                        this->remove<O>(*value);
+                    }
+                });
+            }
             
             /**
              *  Update routine. Sets all non primary key fields where primary key is equal.
