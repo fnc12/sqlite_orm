@@ -84,7 +84,7 @@ before_script:
 
 # build examples, and run tests (ie make & make test)
 script:
-  - cmake --build . --config Debug --trace --debug-output
+  - cmake --build . --config Debug
   - ctest --verbose --output-on-failure -C Debug
 
 # generate and publish GCov coveralls results

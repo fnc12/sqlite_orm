@@ -18,6 +18,7 @@ TRAVIS_JOB_NAME="clang default"
 if [ "$TRAVIS_JOB_NAME" = "clang default" ]; then cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT=ON .. ; else\
     cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake .. ; fi
 
+cmake --build . --config Debug
 
 
 #cd third_party
