@@ -21,6 +21,8 @@ if [ "$TRAVIS_JOB_NAME" = "clang default" ]; then cmake -DCMAKE_BUILD_TYPE=Debug
 cmake --build . --config Debug
 
 
+
+
 #cd third_party
 #git clone https://github.com/Microsoft/vcpkg.git vcpkg
 #cd vcpkg
