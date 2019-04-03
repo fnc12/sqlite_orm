@@ -5286,28 +5286,25 @@ namespace sqlite_orm {
                     using getter_type = typename column_type::getter_type;
                     using setter_type = typename column_type::setter_type;
                     if(!res){
-						static_if<std::is_same<C, member_pointer_t>{}>([]{})();
-//                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col, &c]{
-//                            if(compare_any(col.member_pointer, c)){
-//                                res = &(obj.*col.member_pointer);
-//                            }
-//                        })();
+                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col, &c](int temp){
+                            if(compare_any(col.member_pointer, c)){
+                                res = &(obj.*col.member_pointer);
+                            }
+                        })(0);
                     }
                     if(!res){
-                        static_if<std::is_same<C, C>{}>([]{})();
-//                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col, &c]{
-//                            if(compare_any(col.getter, c)){
-//                                res = &((obj).*(col.getter))();
-//                            }
-//                        })();
+                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col, &c](int temp){
+                            if(compare_any(col.getter, c)){
+                                res = &((obj).*(col.getter))();
+                            }
+                        })(0);
                     }
                     if(!res){
-                        static_if<std::is_same<C, setter_type>{}>([]{})();
-//                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col, &c]{
-//                            if(compare_any(col.setter, c)){
-//                                res = &((obj).*(col.getter))();
-//                            }
-//                        })();
+                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col, &c](int temp){
+                            if(compare_any(col.setter, c)){
+                                res = &((obj).*(col.getter))();
+                            }
+                        })(0);
                     }
                 });
                 return res;
