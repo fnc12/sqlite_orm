@@ -5294,7 +5294,7 @@ namespace sqlite_orm {
 //                        })();
                     }
                     if(!res){
-                        static_if<std::is_same<C, getter_type>{}>([]{})();
+                        static_if<std::is_same<C, C>{}>([]{})();
 //                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col, &c]{
 //                            if(compare_any(col.getter, c)){
 //                                res = &((obj).*(col.getter))();
