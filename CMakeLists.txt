@@ -1,7 +1,6 @@
 cmake_minimum_required (VERSION 3.2)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_VERBOSE_MAKEFILE ON)
 
 # PACKAGE_VERSION is used by cpack scripts currently
 # Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
@@ -10,6 +9,8 @@ set(sqlite_orm_VERSION "1.3.0")
 set(PACKAGE_VERSION ${sqlite_orm_VERSION})
 
 project("sqlite_orm" VERSION ${PACKAGE_VERSION})
+
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 message(STATUS "Configuring ${CMAKE_PROJECT_NAME} ${sqlite_orm_VERSION}")
 
