@@ -76,7 +76,7 @@ before_script:
   - chmod +x bootstrap-vcpkg.sh
   - ./bootstrap-vcpkg.sh
   - chmod +x vcpkg
-#  - ./vcpkg install gtest
+  - ./vcpkg install gtest
   - cd ../..
   - mkdir compile
   - cd compile
