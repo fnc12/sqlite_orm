@@ -1,9 +1,8 @@
-# ITNOA
-# Copyright (c) 2012-2019 Sebastien Rombauts (sebastien.rombauts@gmail.com)
-
-# request for Ubuntu 16.04 Trusty VM
+# Request for Ubuntu 16.04 Trusty VM
 sudo: true
 dist: xenial
+
+# This is comment to easer chagne CXX and CC flags
 #language: cpp
 
 cache:
