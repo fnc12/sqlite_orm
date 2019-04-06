@@ -1023,11 +1023,13 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            /**
-             *  Common case. Is used to process binary conditions like is_equal, not_equal
-             */
+            template<class T>
+            typename std::enable_if<std::is_arithmetic<T>::value, std::string>::type process_where(const T &c) {
+                return this->string_from_expression(c);
+            }
+            
             template<class C>
-            std::string process_where(const C &c) {
+            typename std::enable_if<is_base_of_template<C, conditions::binary_condition>::value, std::string>::type process_where(const C &c) {
                 auto leftString = this->string_from_expression(c.l, false, true);
                 auto rightString = this->string_from_expression(c.r, false, true);
                 std::stringstream ss;

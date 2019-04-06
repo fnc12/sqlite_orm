@@ -2309,6 +2309,40 @@ void testEscapedIndexName() {
     storage.sync_schema();
 }
 
+void testWhere() {
+    cout << __func__ << endl;
+    
+    struct User{
+        int id = 0;
+        std::string name;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{ 1, "Jeremy" });
+    storage.replace(User{ 2, "Nataly" });
+    
+    auto users = storage.get_all<User>();
+    assert(users.size() == 2);
+    
+    auto users2 = storage.get_all<User>(where(true));
+    assert(users2.size() == 2);
+    
+    auto users3 = storage.get_all<User>(where(false));
+    assert(users3.size() == 0);
+    
+    auto users4 = storage.get_all<User>(where(true and c(&User::id) == 1));
+    assert(users4.size() == 1);
+    assert(users4.front().id == 1);
+    
+    auto users5 = storage.get_all<User>(where(false and c(&User::id) == 1));
+    assert(users5.size() == 0);
+}
+
 int main(int argc, char **argv) {
 
     cout << "version = " << make_storage("").libversion() << endl;
@@ -2396,4 +2430,6 @@ int main(int argc, char **argv) {
     testSimpleQuery();
     
     testCast();
+    
+    testWhere();
 }
