@@ -18,13 +18,9 @@ int main(int argc, char **argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("blob.sqlite",
                                 make_table("users",
-                                           make_column("id",
-                                                       &User::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &User::name),
-                                           make_column("hash",
-                                                       &User::hash)));
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("hash", &User::hash)));
     storage.sync_schema();
     storage.remove_all<User>();
 

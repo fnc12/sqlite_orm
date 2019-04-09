@@ -21,12 +21,9 @@ auto storage = make_storage("index.sqlite",
                             make_index("idx_contacts_name", &Contract::firstName, &Contract::lastName),
                             make_unique_index("idx_contacts_email", &Contract::email),
                             make_table("contacts",
-                                       make_column("first_name",
-                                                   &Contract::firstName),
-                                       make_column("last_name",
-                                                   &Contract::lastName),
-                                       make_column("email",
-                                                   &Contract::email)));
+                                       make_column("first_name", &Contract::firstName),
+                                       make_column("last_name", &Contract::lastName),
+                                       make_column("email", &Contract::email)));
 
 int main(int argc, char **argv) {
     

@@ -20,17 +20,11 @@ auto initStorage(const std::string &path) {
     using namespace sqlite_orm;
     return make_storage(path,
                         make_table("COMPANY",
-                                   make_column("ID",
-                                               &Employee::id,
-                                               primary_key()),
-                                   make_column("NAME",
-                                               &Employee::name),
-                                   make_column("AGE",
-                                               &Employee::age),
-                                   make_column("ADDRESS",
-                                               &Employee::address),
-                                   make_column("SALARY",
-                                               &Employee::salary)));
+                                   make_column("ID", &Employee::id, primary_key()),
+                                   make_column("NAME", &Employee::name),
+                                   make_column("AGE", &Employee::age),
+                                   make_column("ADDRESS", &Employee::address),
+                                   make_column("SALARY", &Employee::salary)));
 }
 using Storage = decltype(initStorage(""));
 

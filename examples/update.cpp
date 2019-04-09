@@ -21,25 +21,19 @@ inline auto initStorage(const std::string &path) {
     using namespace sqlite_orm;
     return make_storage(path,
                         make_table("COMPANY",
-                                   make_column("ID",
-                                               &Employee::id,
-                                               primary_key()),
-                                   make_column("NAME",
-                                               &Employee::name),
-                                   make_column("AGE",
-                                               &Employee::age),
-                                   make_column("ADDRESS",
-                                               &Employee::address),
-                                   make_column("SALARY",
-                                               &Employee::salary)));
+                                   make_column("ID", &Employee::id, primary_key()),
+                                   make_column("NAME", &Employee::name),
+                                   make_column("AGE", &Employee::age),
+                                   make_column("ADDRESS", &Employee::address),
+                                   make_column("SALARY", &Employee::salary)));
 }
 
 using Storage = decltype(initStorage(""));
 
-static std::shared_ptr<Storage> stor;
+static std::unique_ptr<Storage> stor;
 
 int main(int argc, char **argv) {
-    stor = std::make_shared<Storage>(initStorage("update.sqlite"));
+    stor = std::make_unique<Storage>(initStorage("update.sqlite"));
     stor->sync_schema();
     stor->remove_all<Employee>();
 

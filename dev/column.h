@@ -2,7 +2,7 @@
 
 #include <tuple>    //  std::tuple
 #include <string>   //  std::string
-#include <memory>   //  std::shared_ptr
+#include <memory>   //  std::unique_ptr
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if
 
 #include "type_is_nullable.h"
@@ -85,12 +85,12 @@ namespace sqlite_orm {
              *  Simplified interface for `DEFAULT` constraint
              *  @return string representation of default value if it exists otherwise nullptr
              */
-            std::shared_ptr<std::string> default_value() {
-                std::shared_ptr<std::string> res;
+            std::unique_ptr<std::string> default_value() {
+                std::unique_ptr<std::string> res;
                 tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(constraints, [&res](auto &v){
                     auto dft = internal::default_value_extractor()(v);
                     if(dft){
-                        res = dft;
+                        res = std::move(dft);
                     }
                 });
                 return res;
@@ -176,36 +176,48 @@ namespace sqlite_orm {
         struct getter_traits<getter_by_value_const<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = false;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_value<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = false;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_ref_const<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_ref<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_const_ref_const<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
         };
         
         template<class O, class T>
         struct getter_traits<getter_by_const_ref<O, T>> {
             using object_type = O;
             using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
         };
         
         template<class T>

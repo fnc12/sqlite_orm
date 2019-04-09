@@ -1,9 +1,10 @@
 #pragma once
 
 #include <string>   //  std::string
-#include <tuple>    //  std::tuple
+#include <tuple>    //  std::tuple, std::make_tuple
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
+#include <ostream>  //  std::ostream
 
 namespace sqlite_orm {
     
@@ -82,7 +83,7 @@ namespace sqlite_orm {
          */
         template<class T>
         struct default_t {
-            typedef T value_type;
+            using value_type = T;
             
             value_type value;
             
@@ -105,16 +106,158 @@ namespace sqlite_orm {
         
         /**
          *  FOREIGN KEY constraint class.
-         *  C is column which has foreign key
-         *  R is column which C references to
+         *  Cs are columns which has foreign key
+         *  Rs are column which C references to
          *  Available in SQLite 3.6.19 or higher
          */
-        template<class C, class R>
-        struct foreign_key_t {
-            C m = nullptr;
-            R r = nullptr;
+        
+        template<class A, class B>
+        struct foreign_key_t;
+        
+        enum class foreign_key_action {
+            none,   //  not specified
+            no_action,
+            restrict_,
+            set_null,
+            set_default,
+            cascade,
+        };
+        
+        inline std::ostream &operator<<(std::ostream &os, foreign_key_action action) {
+            switch(action){
+                case decltype(action)::no_action:
+                    os << "NO ACTION";
+                    break;
+                case decltype(action)::restrict_:
+                    os << "RESTRICT";
+                    break;
+                case decltype(action)::set_null:
+                    os << "SET NULL";
+                    break;
+                case decltype(action)::set_default:
+                    os << "SET DEFAULT";
+                    break;
+                case decltype(action)::cascade:
+                    os << "CASCADE";
+                    break;
+                case decltype(action)::none:
+                    break;
+            }
+            return os;
+        }
+        
+        /**
+         *  F - foreign key class
+         */
+        template<class F>
+        struct on_update_delete_t {
+            using foreign_key_type = F;
             
-            foreign_key_t(C m_, R r_): m(m_), r(r_) {}
+            const foreign_key_type &fk;
+            const bool update;  //  true if update and false if delete
+            
+            on_update_delete_t(decltype(fk) fk_, decltype(update) update_, foreign_key_action action_) : fk(fk_), update(update_), _action(action_) {}
+            
+            foreign_key_action _action = foreign_key_action::none;
+            
+            foreign_key_type no_action() const {
+                auto res = this->fk;
+                if(update){
+                    res.on_update._action = foreign_key_action::no_action;
+                }else{
+                    res.on_delete._action = foreign_key_action::no_action;
+                }
+                return res;
+            }
+            
+            foreign_key_type restrict_() const {
+                auto res = this->fk;
+                if(update){
+                    res.on_update._action = foreign_key_action::restrict_;
+                }else{
+                    res.on_delete._action = foreign_key_action::restrict_;
+                }
+                return res;
+            }
+            
+            foreign_key_type set_null() const {
+                auto res = this->fk;
+                if(update){
+                    res.on_update._action = foreign_key_action::set_null;
+                }else{
+                    res.on_delete._action = foreign_key_action::set_null;
+                }
+                return res;
+            }
+            
+            foreign_key_type set_default() const {
+                auto res = this->fk;
+                if(update){
+                    res.on_update._action = foreign_key_action::set_default;
+                }else{
+                    res.on_delete._action = foreign_key_action::set_default;
+                }
+                return res;
+            }
+            
+            foreign_key_type cascade() const {
+                auto res = this->fk;
+                if(update){
+                    res.on_update._action = foreign_key_action::cascade;
+                }else{
+                    res.on_delete._action = foreign_key_action::cascade;
+                }
+                return res;
+            }
+            
+            operator bool() const {
+                return this->_action != decltype(this->_action)::none;
+            }
+            
+            operator std::string() const {
+                if(this->update){
+                    return "ON UPDATE";
+                }else{
+                    return "ON DELETE";
+                }
+            }
+        };
+        
+        template<class ...Cs, class ...Rs>
+        struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
+            using columns_type = std::tuple<Cs...>;
+            using references_type = std::tuple<Rs...>;
+            using self = foreign_key_t<columns_type, references_type>;
+            
+            columns_type columns;
+            references_type references;
+            
+            on_update_delete_t<self> on_update;
+            on_update_delete_t<self> on_delete;
+            
+            static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value, "Columns size must be equal to references tuple");
+            
+            foreign_key_t(columns_type columns_, references_type references_):
+            columns(std::move(columns_)),
+            references(std::move(references_)),
+            on_update(*this, true, foreign_key_action::none),
+            on_delete(*this, false, foreign_key_action::none)
+            {}
+            
+            foreign_key_t(const self &other):
+            columns(other.columns),
+            references(other.references),
+            on_update(*this, true, other.on_update._action),
+            on_delete(*this, false, other.on_delete._action)
+            {}
+            
+            self &operator=(const self &other) {
+                this->columns = other.columns;
+                this->references = other.references;
+                this->on_update = {*this, true, other.on_update._action};
+                this->on_delete = {*this, false, other.on_delete._action};
+                return *this;
+            }
             
             using field_type = void;    //  for column iteration. Better be deleted
             using constraints_type = std::tuple<>;
@@ -129,20 +272,22 @@ namespace sqlite_orm {
         };
         
         /**
-         *  C can be a class member pointer, a getter function member pointer or setter
+         *  Cs can be a class member pointer, a getter function member pointer or setter
          *  func member pointer
          *  Available in SQLite 3.6.19 or higher
          */
-        template<class C>
+        template<class ...Cs>
         struct foreign_key_intermediate_t {
-            C m = nullptr;
+            using tuple_type = std::tuple<Cs...>;
             
-            foreign_key_intermediate_t(C m_): m(m_) {}
+            tuple_type columns;
             
-            template<class T>
-            foreign_key_t<C, T> references(T t) {
-                using ret_type = foreign_key_t<C, T>;
-                return ret_type(this->m, t);
+            foreign_key_intermediate_t(tuple_type columns_): columns(std::move(columns_)) {}
+            
+            template<class ...Rs>
+            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs ...references) {
+                using ret_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
+                return ret_type(std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...));
             }
         };
 #endif
@@ -207,28 +352,9 @@ namespace sqlite_orm {
      *  FOREIGN KEY constraint construction function that takes member pointer as argument
      *  Available in SQLite 3.6.19 or higher
      */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<F O::*> foreign_key(F O::*m) {
-        return {m};
-    }
-    
-    /**
-     *  FOREIGN KEY constraint construction function that takes getter function pointer as argument
-     *  Available in SQLite 3.6.19 or higher
-     */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<const F& (O::*)() const> foreign_key(const F& (O::*getter)() const) {
-        using ret_type = constraints::foreign_key_intermediate_t<const F& (O::*)() const>;
-        return ret_type(getter);
-    }
-    
-    /**
-     *  FOREIGN KEY constraint construction function that takes setter function pointer as argument
-     *  Available in SQLite 3.6.19 or higher
-     */
-    template<class O, class F>
-    constraints::foreign_key_intermediate_t<void (O::*)(F)> foreign_key(void (O::*setter)(F)) {
-        return {setter};
+    template<class ...Cs>
+    constraints::foreign_key_intermediate_t<Cs...> foreign_key(Cs ...columns) {
+        return {std::make_tuple(std::forward<Cs>(columns)...)};
     }
 #endif
     

@@ -41,11 +41,11 @@ std::string GenderToString(Gender gender) {
  *  that's why I placed it separatedly. You can use any transformation type/form
  *  (for example BETTER_ENUM https://github.com/aantron/better-enums)
  */
-std::shared_ptr<Gender> GenderFromString(const std::string &s) {
+std::unique_ptr<Gender> GenderFromString(const std::string &s) {
     if(s == "female") {
-        return std::make_shared<Gender>(Gender::Female);
+        return std::make_unique<Gender>(Gender::Female);
     }else if(s == "male") {
-        return std::make_shared<Gender>(Gender::Male);
+        return std::make_unique<Gender>(Gender::Male);
     }
     return nullptr;
 }
@@ -122,13 +122,9 @@ int main(int/* argc*/, char **/*argv*/) {
     using namespace sqlite_orm;
     auto storage = make_storage("",
                                 make_table("superheros",
-                                           make_column("id",
-                                                       &SuperHero::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &SuperHero::name),
-                                           make_column("gender",
-                                                       &SuperHero::gender)));
+                                           make_column("id", &SuperHero::id, primary_key()),
+                                           make_column("name", &SuperHero::name),
+                                           make_column("gender", &SuperHero::gender)));
     storage.sync_schema();
     storage.remove_all<SuperHero>();
 

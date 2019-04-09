@@ -16,13 +16,9 @@ int main(int argc, char **argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("iteration.sqlite",
                                 make_table("marvel",
-                                           make_column("id",
-                                                       &MarvelHero::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &MarvelHero::name),
-                                           make_column("abilities",
-                                                       &MarvelHero::abilities)));
+                                           make_column("id", &MarvelHero::id, primary_key()),
+                                           make_column("name", &MarvelHero::name),
+                                           make_column("abilities", &MarvelHero::abilities)));
     storage.sync_schema();
     
     storage.remove_all<MarvelHero>();

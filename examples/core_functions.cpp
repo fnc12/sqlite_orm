@@ -19,15 +19,10 @@ int main(int argc, char **argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("core_functions.sqlite",
                                 make_table("marvel",
-                                           make_column("id",
-                                                       &MarvelHero::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &MarvelHero::name),
-                                           make_column("abilities",
-                                                       &MarvelHero::abilities),
-                                           make_column("points",
-                                                       &MarvelHero::points)));
+                                           make_column("id",&MarvelHero::id, primary_key()),
+                                           make_column("name", &MarvelHero::name),
+                                           make_column("abilities", &MarvelHero::abilities),
+                                           make_column("points", &MarvelHero::points)));
     storage.sync_schema();
     
     storage.remove_all<MarvelHero>();
@@ -75,7 +70,7 @@ int main(int argc, char **argv) {
     cout << "customTwo = {" << std::get<0>(customTwo.front()) << ", " << std::get<1>(customTwo.front()) << "}" << endl;
     
     //  SELECT ABS(points) FROM marvel
-    auto absPoints = storage.select(abs(&MarvelHero::points));  //  std::vector<std::shared_ptr<int>>
+    auto absPoints = storage.select(abs(&MarvelHero::points));  //  std::vector<std::unique_ptr<int>>
     cout << "absPoints: ";
     for(auto &value : absPoints) {
         if(value) {

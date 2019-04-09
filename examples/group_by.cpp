@@ -22,17 +22,11 @@ int main(int argc, char **argv) {
     
     auto storage = make_storage("group_by.sqlite",
                                 make_table("COMPANY",
-                                           make_column("ID",
-                                                       &Employee::id,
-                                                       primary_key()),
-                                           make_column("NAME",
-                                                       &Employee::name),
-                                           make_column("AGE",
-                                                       &Employee::age),
-                                           make_column("ADDRESS",
-                                                       &Employee::address),
-                                           make_column("SALARY",
-                                                       &Employee::salary)));
+                                           make_column("ID", &Employee::id, primary_key()),
+                                           make_column("NAME", &Employee::name),
+                                           make_column("AGE", &Employee::age),
+                                           make_column("ADDRESS", &Employee::address),
+                                           make_column("SALARY", &Employee::salary)));
     storage.sync_schema();
     storage.remove_all<Employee>();
     
@@ -45,7 +39,9 @@ int main(int argc, char **argv) {
     storage.insert(Employee{ -1, "James", 24, "Houston", 10000.0});
     
     //  If you want to know the total amount of salary on each customer, then GROUP BY query would be as follows:
-    //  SELECT NAME, SUM(SALARY) FROM COMPANY GROUP BY NAME;
+    //  SELECT NAME, SUM(SALARY)
+    //  FROM COMPANY
+    //  GROUP BY NAME;
     auto salaryName = storage.select(columns(&Employee::name, sum(&Employee::salary)),
                                      group_by(&Employee::name));
     for(auto &t : salaryName) {

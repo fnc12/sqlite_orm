@@ -87,6 +87,9 @@ namespace sqlite_orm {
     struct type_printer<const char*> : public text_printer {};
     
     template<>
+    struct type_printer<float> : public real_printer {};
+    
+    template<>
     struct type_printer<double> : public real_printer {};
     
     template<class T>

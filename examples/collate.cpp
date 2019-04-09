@@ -1,8 +1,9 @@
+#include <ctime>
+
+#include <string>
+#include <iostream>
 
 #include <sqlite_orm/sqlite_orm.h>
-#include <string>
-#include <sys/time.h>
-#include <iostream>
 
 using std::cout;
 using std::endl;
@@ -23,19 +24,12 @@ int main(int argc, char** argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("collate.sqlite",
                                 make_table("users",
-                                           make_column("id",
-                                                       &User::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &User::name),
-                                           make_column("created_at",
-                                                       &User::createdAt)),
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("created_at", &User::createdAt)),
                                 make_table("foo",
-                                           make_column("text",
-                                                       &Foo::text,
-                                                       collate_nocase()),
-                                           make_column("baz",
-                                                       &Foo::baz)));
+                                           make_column("text", &Foo::text, collate_nocase()),
+                                           make_column("baz", &Foo::baz)));
     storage.sync_schema();
     storage.remove_all<User>();
     storage.remove_all<Foo>();

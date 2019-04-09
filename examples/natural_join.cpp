@@ -32,28 +32,17 @@ int main(){
     
     auto storage = make_storage("natural_join.sqlite",
                                 make_table("doctors",
-                                           make_column("doctor_id",
-                                                       &Doctor::doctor_id,
-                                                       primary_key()),
-                                           make_column("doctor_name",
-                                                       &Doctor::doctor_name),
-                                           make_column("degree",
-                                                       &Doctor::degree)),
+                                           make_column("doctor_id", &Doctor::doctor_id, primary_key()),
+                                           make_column("doctor_name", &Doctor::doctor_name),
+                                           make_column("degree", &Doctor::degree)),
                                 make_table("speciality",
-                                           make_column("spl_id",
-                                                       &Speciality::spl_id,
-                                                       primary_key()),
-                                           make_column("spl_descrip",
-                                                       &Speciality::spl_descrip),
-                                           make_column("doctor_id",
-                                                       &Speciality::doctor_id)),
+                                           make_column("spl_id", &Speciality::spl_id, primary_key()),
+                                           make_column("spl_descrip", &Speciality::spl_descrip),
+                                           make_column("doctor_id", &Speciality::doctor_id)),
                                 make_table("visits",
-                                           make_column("doctor_id",
-                                                       &Visit::doctor_id),
-                                           make_column("patient_name",
-                                                       &Visit::patient_name),
-                                           make_column("vdate",
-                                                       &Visit::vdate)));
+                                           make_column("doctor_id", &Visit::doctor_id),
+                                           make_column("patient_name", &Visit::patient_name),
+                                           make_column("vdate", &Visit::vdate)));
     storage.sync_schema();
     storage.remove_all<Doctor>();
     storage.remove_all<Speciality>();

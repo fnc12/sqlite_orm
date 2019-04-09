@@ -13,25 +13,25 @@ using std::cout;
 using std::endl;
 
 struct Artist {
-    std::shared_ptr<int> artistId;
-    std::shared_ptr<std::string> name;
+    std::unique_ptr<int> artistId;
+    std::unique_ptr<std::string> name;
 };
 
 struct Album {
-    std::shared_ptr<int> albumId;
-    std::shared_ptr<std::string> title;
-    std::shared_ptr<int> artistId;
+    std::unique_ptr<int> albumId;
+    std::unique_ptr<std::string> title;
+    std::unique_ptr<int> artistId;
 };
 
 struct Track {
     int trackId;
     std::string name;
-    std::shared_ptr<int> albumId;
+    std::unique_ptr<int> albumId;
     int mediaTypeId;
-    std::shared_ptr<int> genreId;
-    std::shared_ptr<std::string> composer;
+    std::unique_ptr<int> genreId;
+    std::unique_ptr<std::string> composer;
     long milliseconds;
-    std::shared_ptr<long> bytes;
+    std::unique_ptr<long> bytes;
     double unitPrice;
 };
 
@@ -39,39 +39,22 @@ inline auto initStorage(const std::string &path){
     using namespace sqlite_orm;
     return make_storage(path,
                         make_table("artists",
-                                   make_column("ArtistId",
-                                               &Artist::artistId,
-                                               primary_key()),
-                                   make_column("Name",
-                                               &Artist::name)),
+                                   make_column("ArtistId", &Artist::artistId, primary_key()),
+                                   make_column("Name", &Artist::name)),
                         make_table("albums",
-                                   make_column("AlbumId",
-                                               &Album::albumId,
-                                               primary_key()),
-                                   make_column("Title",
-                                               &Album::title),
-                                   make_column("ArtistId",
-                                               &Album::artistId)),
+                                   make_column("AlbumId", &Album::albumId, primary_key()),
+                                   make_column("Title", &Album::title),
+                                   make_column("ArtistId", &Album::artistId)),
                         make_table("tracks",
-                                   make_column("TrackId",
-                                               &Track::trackId,
-                                               primary_key()),
-                                   make_column("Name",
-                                               &Track::name),
-                                   make_column("AlbumId",
-                                               &Track::albumId),
-                                   make_column("MediaTypeId",
-                                               &Track::mediaTypeId),
-                                   make_column("GenreId",
-                                               &Track::genreId),
-                                   make_column("Composer",
-                                               &Track::composer),
-                                   make_column("Milliseconds",
-                                               &Track::milliseconds),
-                                   make_column("Bytes",
-                                               &Track::bytes),
-                                   make_column("UnitPrice",
-                                               &Track::unitPrice)));
+                                   make_column("TrackId", &Track::trackId, primary_key()),
+                                   make_column("Name", &Track::name),
+                                   make_column("AlbumId", &Track::albumId),
+                                   make_column("MediaTypeId", &Track::mediaTypeId),
+                                   make_column("GenreId", &Track::genreId),
+                                   make_column("Composer", &Track::composer),
+                                   make_column("Milliseconds", &Track::milliseconds),
+                                   make_column("Bytes", &Track::bytes),
+                                   make_column("UnitPrice", &Track::unitPrice)));
 }
 
 int main(int argc, char **argv) {
@@ -262,36 +245,21 @@ int main(int argc, char **argv) {
         
         auto storage2 = make_storage("doctors.sqlite",
                                      make_table("doctors",
-                                                make_column("doctor_id",
-                                                            &Doctor::id,
-                                                            primary_key()),
-                                                make_column("doctor_name",
-                                                            &Doctor::name),
-                                                make_column("degree",
-                                                            &Doctor::degree)),
+                                                make_column("doctor_id", &Doctor::id, primary_key()),
+                                                make_column("doctor_name", &Doctor::name),
+                                                make_column("degree", &Doctor::degree)),
                                      make_table("visits",
-                                                make_column("doctor_id",
-                                                            &Visit::doctorId),
-                                                make_column("patient_name",
-                                                            &Visit::patientName),
-                                                make_column("vdate",
-                                                            &Visit::vdate)),
+                                                make_column("doctor_id", &Visit::doctorId),
+                                                make_column("patient_name", &Visit::patientName),
+                                                make_column("vdate", &Visit::vdate)),
                                      make_table("table_a",
-                                                make_column("id",
-                                                            &A::id,
-                                                            primary_key()),
-                                                make_column("des1",
-                                                            &A::des1),
-                                                make_column("des2",
-                                                            &A::des2)),
+                                                make_column("id", &A::id, primary_key()),
+                                                make_column("des1", &A::des1),
+                                                make_column("des2", &A::des2)),
                                      make_table("table_b",
-                                                make_column("id",
-                                                            &B::id,
-                                                            primary_key()),
-                                                make_column("des3",
-                                                            &B::des3),
-                                                make_column("des4",
-                                                            &B::des4)));
+                                                make_column("id", &B::id, primary_key()),
+                                                make_column("des3", &B::des3),
+                                                make_column("des4", &B::des4)));
         storage2.sync_schema();
         
         storage2.replace(Doctor{ 210, "Dr. John Linga", "MD", });

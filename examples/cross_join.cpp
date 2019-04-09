@@ -25,11 +25,9 @@ static auto initStorage(const std::string &path) {
     using namespace sqlite_orm;
     return make_storage(path,
                         make_table("ranks",
-                                   make_column("rank",
-                                               &Rank::rank)),
+                                   make_column("rank", &Rank::rank)),
                         make_table("suits",
-                                   make_column("suit",
-                                               &Suit::suit)));
+                                   make_column("suit", &Suit::suit)));
 }
 
 int main(int argc, char **argv) {
@@ -78,7 +76,7 @@ int main(int argc, char **argv) {
     //  ORDER BY suit;
     auto cards = storage.select(columns(&Rank::rank, &Suit::suit),
                                 cross_join<Suit>(),
-                                order_by(&Suit::suit));
+                                order_by(&Suit::suit)); //  cards is vector<tuple<string, string>>
     
     cout << "cards count = " << cards.size() << endl;
     for(auto card : cards) {

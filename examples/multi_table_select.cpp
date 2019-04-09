@@ -28,24 +28,15 @@ int main(int argc, char **argv) {
     using namespace sqlite_orm;
     auto storage = make_storage("multi_table_select.sqlite",
                                 make_table("ReqEquip",
-                                           make_column("ReqNumber",
-                                                       &ReqEquip::reqNumber,
-                                                       primary_key()),
-                                           make_column("Requestor",
-                                                       &ReqEquip::requestor),
-                                           make_column("Auth",
-                                                       &ReqEquip::auth),
-                                           make_column("ReqDate",
-                                                       &ReqEquip::reqDate)),
+                                           make_column("ReqNumber", &ReqEquip::reqNumber, primary_key()),
+                                           make_column("Requestor", &ReqEquip::requestor),
+                                           make_column("Auth", &ReqEquip::auth),
+                                           make_column("ReqDate", &ReqEquip::reqDate)),
                                 make_table("ReqDetail",
-                                           make_column("ReqNumber",
-                                                       &ReqDetail::reqNumber),
-                                           make_column("StockNumber",
-                                                       &ReqDetail::stockNumber),
-                                           make_column("Quantity",
-                                                       &ReqDetail::quantity),
-                                           make_column("ItemCost",
-                                                       &ReqDetail::itemCost)));
+                                           make_column("ReqNumber", &ReqDetail::reqNumber),
+                                           make_column("StockNumber", &ReqDetail::stockNumber),
+                                           make_column("Quantity", &ReqDetail::quantity),
+                                           make_column("ItemCost", &ReqDetail::itemCost)));
     
     storage.sync_schema();
     storage.remove_all<ReqEquip>();

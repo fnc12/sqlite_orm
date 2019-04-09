@@ -1,16 +1,191 @@
-
 #include <sqlite_orm/sqlite_orm.h>
 
-#include <cassert>
-#include <vector>
-#include <string>
-#include <iostream>
+#include <cassert>  //  assert
+#include <vector>   //  std::vector
+#include <string>   //  std::string
+#include <iostream> //  std::cout, std::endl
 #include <memory>
+#include <cstdio>   //  remove
 
 using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
+
+void testCast() {
+    cout << __func__ << endl;
+    
+    struct Student {
+        int id;
+        float scoreFloat;
+        std::string scoreString;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("students",
+                                           make_column("id", &Student::id, primary_key()),
+                                           make_column("score_float", &Student::scoreFloat),
+                                           make_column("score_str", &Student::scoreString)));
+    storage.sync_schema();
+    
+    storage.replace(Student{1, 10.1, "14.5"});
+    
+    {
+        auto rows = storage.select(columns(cast<int>(&Student::scoreFloat), cast<int>(&Student::scoreString)));
+        assert(rows.size() == 1);
+        auto &row = rows.front();
+        assert(std::get<0>(row) == 10);
+        assert(std::get<1>(row) == 14);
+    }
+}
+
+void testSimpleQuery() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage("");
+    {
+        //  SELECT 1
+        auto one = storage.select(1);
+        assert(one.size() == 1);
+        assert(one.front() == 1);
+    }
+    {
+        //  SELECT 'ototo'
+        auto ototo = storage.select("ototo");
+        assert(ototo.size() == 1);
+        assert(ototo.front() == "ototo");
+    }
+    {
+        //  SELECT 1 + 1
+        auto two = storage.select(c(1) + 1);
+        assert(two.size() == 1);
+        assert(two.front() == 2);
+        
+        auto twoAgain = storage.select(add(1, 1));
+        assert(two == twoAgain);
+    }
+    {
+        //  SELECT 10 / 5, 2 * 4
+        auto math = storage.select(columns(sqlite_orm::div(10, 5), mul(2, 4)));
+        assert(math.size() == 1);
+        assert(math.front() == std::make_tuple(2, 8));
+    }
+    {
+        //  SELECT 1, 2
+        auto twoRows = storage.select(columns(1, 2));
+        assert(twoRows.size() == 1);
+        assert(std::get<0>(twoRows.front()) == 1);
+        assert(std::get<1>(twoRows.front()) == 2);
+    }
+    {
+        //  SELECT 1, 2
+        //  UNION ALL
+        //  SELECT 3, 4;
+        auto twoRowsUnion = storage.select(union_all(select(columns(1, 2)), select(columns(3, 4))));
+        assert(twoRowsUnion.size() == 2);
+        assert(twoRowsUnion[0] == std::make_tuple(1, 2));
+        assert(twoRowsUnion[1] == std::make_tuple(3, 4));
+    }
+}
+
+void testThreadsafe() {
+    cout << __func__ << endl;
+    
+    cout << "threadsafe = " << threadsafe() << endl;
+}
+
+void testIn() {
+    cout << __func__ << endl;
+    {
+        struct User {
+            int id;
+        };
+        
+        auto storage = make_storage("",
+                                    make_table("users",
+                                               make_column("id", &User::id, primary_key())));
+        storage.sync_schema();
+        storage.replace(User{ 1 });
+        storage.replace(User{ 2 });
+        storage.replace(User{ 3 });
+        
+        {
+            auto rows = storage.get_all<User>(where(in(&User::id, {1, 2, 3})));
+            assert(rows.size() == 3);
+        }
+        {
+            std::vector<int> inArgument;
+            inArgument.push_back(1);
+            inArgument.push_back(2);
+            inArgument.push_back(3);
+            auto rows = storage.get_all<User>(where(in(&User::id, inArgument)));
+            assert(rows.size() == 3);
+        }
+    }
+    {
+        struct Letter {
+            int id;
+            std::string name;
+        };
+        auto storage = make_storage("",
+                                    make_table("letters",
+                                               make_column("id", &Letter::id, primary_key()),
+                                               make_column("name", &Letter::name)));
+        storage.sync_schema();
+        
+        storage.replace(Letter{1, "A"});
+        storage.replace(Letter{2, "B"});
+        storage.replace(Letter{3, "C"});
+        
+        auto letters = storage.get_all<Letter>(where(in(&Letter::id, {1, 2, 3})));
+        assert(letters.size() == 3);
+        auto rows = storage.select(columns(&Letter::name), where(in(&Letter::id, {1, 2, 3})));
+        assert(rows.size() == 3);
+        auto rows2 = storage.select(&Letter::name, where(in(&Letter::id, {1, 2, 3})));
+        assert(rows2.size() == 3);
+    }
+}
+
+void testJournalMode() {
+    cout << __func__ << endl;
+    
+    auto filename = "journal_mode.sqlite";
+    ::remove(filename);
+    auto storage = make_storage(filename);
+    auto jm = storage.pragma.journal_mode();
+    assert(jm == decltype(jm)::DELETE);
+    
+    for(auto i = 0; i < 2; ++i){
+        if(i == 0) {
+            storage.begin_transaction();
+        }
+        storage.pragma.journal_mode(journal_mode::MEMORY);
+        jm = storage.pragma.journal_mode();
+        assert(jm == decltype(jm)::MEMORY);
+        
+        if(i == 1) {    //  WAL cannot be set within a transaction
+            storage.pragma.journal_mode(journal_mode::WAL);
+            jm = storage.pragma.journal_mode();
+            assert(jm == decltype(jm)::WAL);
+        }
+        
+        storage.pragma.journal_mode(journal_mode::OFF);
+        jm = storage.pragma.journal_mode();
+        assert(jm == decltype(jm)::OFF);
+        
+        storage.pragma.journal_mode(journal_mode::PERSIST);
+        jm = storage.pragma.journal_mode();
+        assert(jm == decltype(jm)::PERSIST);
+        
+        storage.pragma.journal_mode(journal_mode::TRUNCATE);
+        jm = storage.pragma.journal_mode();
+        assert(jm == decltype(jm)::TRUNCATE);
+        
+        if(i == 0) {
+            storage.rollback();
+        }
+    }
+}
 
 void testDifferentGettersAndSetters() {
     cout << __func__ << endl;
@@ -212,8 +387,8 @@ void testExplicitColumns() {
     assert(storage.table_exists("users"));
     assert(storage.table_exists("tokens"));
     
-    storage.remove_all<User>();
     storage.remove_all<Token>();
+    storage.remove_all<User>();
     
     auto brunoId = storage.insert(User{0, "Bruno"});
     auto zeddId = storage.insert(User{0, "Zedd"});
@@ -468,7 +643,8 @@ void testExplicitInsert() {
         user3.name = "Sia";
         user3.age = 42;
         user3.email = "sia@gmail.com";
-        assert(user3.id == storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email)));
+        auto insertedId = storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email));
+        assert(user3.id == insertedId);
         auto insertedUser3 = storage.get<User>(user3.id);
         assert(insertedUser3.email == user3.email);
         assert(insertedUser3.age == user3.age);
@@ -479,7 +655,7 @@ void testExplicitInsert() {
         user4.name = "Egor";
         try {
             storage.insert(user4, columns(&User::name));
-            assert(0);
+            throw std::runtime_error("Must not fire");
         } catch (std::system_error e) {
             //        cout << e.what() << endl;
         }
@@ -509,13 +685,15 @@ void testExplicitInsert() {
         visit2.setId(2);
         visit2.setUsedId(1);
         {
-            assert(visit2.id() == storage.insert(visit2, columns(&Visit::id, &Visit::usedId)));
+            auto insertedId = storage.insert(visit2, columns(&Visit::id, &Visit::usedId));
+            assert(visit2.id() == insertedId);
             auto visitFromStorage = storage.get<Visit>(visit2.id());
             assert(visitFromStorage.usedId() == visit2.usedId());
             storage.remove<Visit>(visit2.id());
         }
         {
-            assert(visit2.id() == storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId)));
+            auto insertedId = storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId));
+            assert(visit2.id() == insertedId);
             auto visitFromStorage = storage.get<Visit>(visit2.id());
             assert(visitFromStorage.usedId() == visit2.usedId());
             storage.remove<Visit>(visit2.id());
@@ -526,14 +704,14 @@ void testExplicitInsert() {
         visit3.setId(10);
         try {
             storage.insert(visit3, columns(&Visit::id));
-            assert(0);
+            throw std::runtime_error("Must not fire");
         } catch (std::system_error e) {
             //        cout << e.what() << endl;
         }
         
         try {
             storage.insert(visit3, columns(&Visit::setId));
-            assert(0);
+            throw std::runtime_error("Must not fire");
         } catch (std::system_error e) {
             //        cout << e.what() << endl;
         }
@@ -887,8 +1065,8 @@ void testForeignKey() {
 
     struct Visit {
         int id;
-        std::shared_ptr<int> location;
-        std::shared_ptr<int> user;
+        std::unique_ptr<int> location;
+        std::unique_ptr<int> user;
         int visited_at;
         uint8_t mark;
     };
@@ -1066,8 +1244,8 @@ void testTypeParsing() {
     assert(type_is_nullable<long double>::value == false);
     assert(type_is_nullable<long double>::value == false);
     assert(type_is_nullable<std::string>::value == false);
-    assert(type_is_nullable<std::shared_ptr<int>>::value == true);
-    assert(type_is_nullable<std::shared_ptr<std::string>>::value == true);
+    assert(type_is_nullable<std::unique_ptr<int>>::value == true);
+    assert(type_is_nullable<std::unique_ptr<std::string>>::value == true);
     assert(type_is_nullable<std::unique_ptr<int>>::value == true);
     assert(type_is_nullable<std::unique_ptr<std::string>>::value == true);
 
@@ -1087,8 +1265,8 @@ void testSyncSchema() {
     struct UserBefore {
         int id;
         std::string name;
-        std::shared_ptr<int> categoryId;
-        std::shared_ptr<std::string> surname;
+        std::unique_ptr<int> categoryId;
+        std::unique_ptr<std::string> surname;
     };
 
     //  this is an new version of user..
@@ -1121,15 +1299,14 @@ void testSyncSchema() {
     storage.remove_all<UserBefore>();
 
     //  create c++ objects to insert into table..
-    std::vector<UserBefore> usersToInsert {
-        { -1, "Michael", nullptr, std::make_shared<std::string>("Scofield") },
-        { -1, "Lincoln", std::make_shared<int>(4), std::make_shared<std::string>("Burrows") },
-        { -1, "Sucre", nullptr, nullptr },
-        { -1, "Sara", std::make_shared<int>(996), std::make_shared<std::string>("Tancredi") },
-        { -1, "John", std::make_shared<int>(100500), std::make_shared<std::string>("Abruzzi") },
-        { -1, "Brad", std::make_shared<int>(65), nullptr },
-        { -1, "Paul", std::make_shared<int>(65), nullptr },
-    };
+    std::vector<UserBefore> usersToInsert;
+    usersToInsert.push_back({-1, "Michael", nullptr, std::make_unique<std::string>("Scofield")});
+    usersToInsert.push_back({-1, "Lincoln", std::make_unique<int>(4), std::make_unique<std::string>("Burrows")});
+    usersToInsert.push_back({-1, "Sucre", nullptr, nullptr});
+    usersToInsert.push_back({-1, "Sara", std::make_unique<int>(996), std::make_unique<std::string>("Tancredi")});
+    usersToInsert.push_back({-1, "John", std::make_unique<int>(100500), std::make_unique<std::string>("Abruzzi")});
+    usersToInsert.push_back({-1, "Brad", std::make_unique<int>(65), nullptr});
+    usersToInsert.push_back({-1, "Paul", std::make_unique<int>(65), nullptr});
 
     for(auto &user : usersToInsert) {
         auto insertedId = storage.insert(user);
@@ -1224,7 +1401,7 @@ void testSelect() {
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
         cout << sqlite3_errmsg(db) << endl;
-        assert(0);
+        throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
 
@@ -1241,7 +1418,7 @@ void testSelect() {
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
         cout << sqlite3_errmsg(db) << endl;
-        assert(0);
+        throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
 
@@ -1258,7 +1435,7 @@ void testSelect() {
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
         cout << sqlite3_errmsg(db) << endl;
-        assert(0);
+        throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
 
@@ -1300,7 +1477,7 @@ void testSelect() {
     assert(firstRow->afterWord == "hey");
     assert(firstRow->occurances == 5);
 
-    auto secondRow = storage.get_no_throw<Word>(secondId);
+    auto secondRow = storage.get_pointer<Word>(secondId);
     assert(secondRow);
     assert(secondRow->currentWord == "corruption");
     assert(secondRow->beforeWord == "blood");
@@ -1651,7 +1828,7 @@ void testTransactionGuard() {
         storage.insert(Object{0, "Lincoln"});
 
     }catch(...){
-        assert(0);
+        throw std::runtime_error("Must not fire");
     }
     auto countNow = storage.count<Object>();
     assert(countNow == countBefore + 1);
@@ -1798,29 +1975,20 @@ void testDefaultValue() {
 
     auto storage1 = make_storage("test_db.sqlite",
                                  make_table("User",
-                                            make_column("Id",
-                                                        &User::userId,
-                                                        primary_key()),
-                                            make_column("Name",
-                                                        &User::name),
-                                            make_column("Age",
-                                                        &User::age)));
+                                            make_column("Id", &User::userId, primary_key()),
+                                            make_column("Name", &User::name),
+                                            make_column("Age", &User::age)));
     storage1.sync_schema();
     storage1.remove_all<User>();
 
     auto storage2 = make_storage("test_db.sqlite",
                                  make_table("User",
-                                            make_column("Id",
-                                                        &User::userId,
-                                                        primary_key()),
-                                            make_column("Name",
-                                                        &User::name),
-                                            make_column("Age",
-                                                        &User::age),
-                                            make_column("Email",
-                                                        &User::email,
-                                                        default_value("example@email.com"))));
+                                            make_column("Id", &User::userId, primary_key()),
+                                            make_column("Name", &User::name),
+                                            make_column("Age", &User::age),
+                                            make_column("Email", &User::email, default_value("example@email.com"))));
     storage2.sync_schema();
+    storage2.insert(User{0, "Tom", 15});
 }
 
 //  after #18
@@ -1940,7 +2108,7 @@ void testSynchronous() {
     const auto newValue = 2;
     try{
         storage.pragma.synchronous(newValue);
-        assert(0);
+        throw std::runtime_error("Must not fire");
     }catch(std::system_error) {
         //  Safety level may not be changed inside a transaction
         assert(storage.pragma.synchronous() == value);
@@ -2057,6 +2225,7 @@ void testBusyTimeout() {
     storage.busy_timeout(500);
 }
 
+#ifndef SQLITE_ORM_OMITS_CODECVT
 void testWideString() {
     cout << __func__ << endl;
     
@@ -2087,6 +2256,7 @@ void testWideString() {
     }
     
 }
+#endif  //  SQLITE_ORM_OMITS_CODECVT
 
 void testRowId() {
     cout << __func__ << endl;
@@ -2124,6 +2294,53 @@ void testRowId() {
         assert(std::get<3>(row) == std::get<4>(row));
         assert(std::get<4>(row) == std::get<5>(row));
     }
+}
+
+void testEscapedIndexName() {
+    cout << __func__ << endl;
+    
+    struct User{
+        std::string group;
+    };
+    auto storage = make_storage("index_group.sqlite",
+                                make_index("index", &User::group),
+                                make_table("users",
+                                           make_column("group", &User::group)));
+    storage.sync_schema();
+}
+
+void testWhere() {
+    cout << __func__ << endl;
+    
+    struct User{
+        int id = 0;
+        std::string name;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{ 1, "Jeremy" });
+    storage.replace(User{ 2, "Nataly" });
+    
+    auto users = storage.get_all<User>();
+    assert(users.size() == 2);
+    
+    auto users2 = storage.get_all<User>(where(true));
+    assert(users2.size() == 2);
+    
+    auto users3 = storage.get_all<User>(where(false));
+    assert(users3.size() == 0);
+    
+    auto users4 = storage.get_all<User>(where(true and c(&User::id) == 1));
+    assert(users4.size() == 1);
+    assert(users4.front().id == 1);
+    
+    auto users5 = storage.get_all<User>(where(false and c(&User::id) == 1));
+    assert(users5.size() == 0);
 }
 
 int main(int argc, char **argv) {
@@ -2170,7 +2387,9 @@ int main(int argc, char **argv) {
     
     testBusyTimeout();
     
+#ifndef SQLITE_ORM_OMITS_CODECVT
     testWideString();
+#endif  //  SQLITE_ORM_OMITS_CODECVT
     
     testIssue86();
     
@@ -2199,4 +2418,18 @@ int main(int argc, char **argv) {
     testExplicitColumns();
     
     testDifferentGettersAndSetters();
+    
+    testThreadsafe();
+    
+    testIn();
+    
+    testJournalMode();
+    
+    testEscapedIndexName();
+    
+    testSimpleQuery();
+    
+    testCast();
+    
+    testWhere();
 }

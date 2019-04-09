@@ -5,7 +5,36 @@
 namespace sqlite_orm {
     
     namespace internal {
+
+/*
+ * This is because of bug in MSVC, for more information, please visit
+ * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
+ */
+#if defined(_MSC_VER)
+       template <template <typename...> class Base, typename Derived>
+       struct is_base_of_template_impl {
+               template<typename... Ts>
+               static constexpr std::true_type test(const Base<Ts...>*);
+
+               static constexpr std::false_type test(...);
+
+               using type = decltype(test(std::declval<Derived*>()));
+       };
+
+       template <typename Derived, template <typename...> class Base>
+       using is_base_of_template = typename is_base_of_template_impl<Base, Derived>::type;
+
+#else
+        template <template <typename...> class C, typename...Ts>
+        std::true_type is_base_of_template_impl(const C<Ts...>*);
         
+        template <template <typename...> class C>
+        std::false_type is_base_of_template_impl(...);
+        
+        template <typename T, template <typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
+
+#endif
         /**
          *  DISCTINCT generic container.
          */
@@ -116,23 +145,40 @@ namespace sqlite_orm {
             
             return_type col;
             conditions_type conditions;
+            bool highest_level = false;
         };
         
         /**
-         *  Union object type.
+         *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
          */
         template<class L, class R>
-        struct union_t {
+        struct compound_operator {
             using left_type = L;
             using right_type = R;
             
             left_type left;
             right_type right;
+            
+            compound_operator(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {
+                this->left.highest_level = true;
+                this->right.highest_level = true;
+            }
+        };
+        
+        /**
+         *  UNION object type.
+         */
+        template<class L, class R>
+        struct union_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+            
             bool all = false;
             
-            union_t(left_type l, right_type r, decltype(all) all_): left(std::move(l)), right(std::move(r)), all(all_) {}
+            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {}
             
-            union_t(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {}
+            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
 
             operator std::string() const {
                 if(!this->all){
@@ -140,6 +186,38 @@ namespace sqlite_orm {
                 }else{
                     return "UNION ALL";
                 }
+            }
+        };
+        
+        /**
+         *  EXCEPT object type.
+         */
+        template<class L, class R>
+        struct except_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+            
+            using super::super;
+            
+            operator std::string() const {
+                return "EXCEPT";
+            }
+        };
+        
+        /**
+         *  INTERSECT object type.
+         */
+        template<class L, class R>
+        struct intersect_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+            
+            using super::super;
+            
+            operator std::string() const {
+                return "INTERSECT";
             }
         };
         
@@ -155,6 +233,11 @@ namespace sqlite_orm {
         bool get_distinct(const columns_t<Args...> &cols) {
             return cols.distinct;
         }
+        
+        template<class T>
+        struct asterisk_t {
+            using type = T;
+        };
     }
     
     template<class T>
@@ -216,6 +299,21 @@ namespace sqlite_orm {
     }
     
     /**
+     *  Public function for EXCEPT operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/except.cpp
+     */
+    template<class L, class R>
+    internal::except_t<L, R> except(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    template<class L, class R>
+    internal::intersect_t<L, R> intersect(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    /**
      *  Public function for UNION ALL operator.
      *  lhs and rhs are subselect objects.
      *  Look through example in examples/union.cpp
@@ -223,5 +321,10 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::union_t<L, R> union_all(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs), true};
+    }
+    
+    template<class T>
+    internal::asterisk_t<T> asterisk() {
+        return {};
     }
 }

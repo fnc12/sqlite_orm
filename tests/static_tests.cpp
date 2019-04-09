@@ -111,7 +111,7 @@ int main() {
         using field_type = column_type::field_type;
         static_assert(std::is_same<field_type, decltype(&Object::id)>::value, "Incorrect field type");
         static_assert(std::is_same<internal::table_type<field_type>::type, Object>::value, "Incorrect mapped type");
-        static_assert(std::is_same<internal::column_result_t<field_type>::type, int>::value, "Incorrect field type");
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, field_type>::type, int>::value, "Incorrect field type");
         static_assert(std::is_member_pointer<field_type>::value, "Field type is not a member pointer");
         static_assert(!std::is_member_function_pointer<field_type>::value, "Field type is not a member pointer");
     }
@@ -217,6 +217,12 @@ int main() {
                       "Incorrect sum value");
         
     }
+    {
+        auto unionValue = union_(select(&User::id), select(&Token::id));
+        static_assert(internal::is_base_of_template<decltype(unionValue), internal::compound_operator>::value, "union must be base of compound_operator");
+        auto exceptValue = except(select(&User::id), select(&Token::id));
+        static_assert(internal::is_base_of_template<decltype(exceptValue), internal::compound_operator>::value, "except must be base of compound_operator");
+    }
     
     auto storage = make_storage("",
                                 make_table("users",
@@ -224,6 +230,61 @@ int main() {
     //  this call is important - it tests compilation in inner storage_t::serialize_column_schema function
     storage.sync_schema();
     
+    {
+        using SelectVectorInt = decltype(storage.select(&User::id));
+        static_assert(std::is_same<SelectVectorInt, std::vector<int>>::value, "Incorrect select id vector type");
+        
+        using SelectVectorTuple = decltype(storage.select(columns(&User::id)));
+        auto ids = storage.select(columns(&User::id));
+        static_assert(std::is_same<decltype(ids), SelectVectorTuple>::value, "");
+        static_assert(std::is_same<SelectVectorTuple, std::vector<std::tuple<int>>>::value, "Incorrect select id vector type");
+        using IdsTuple = SelectVectorTuple::value_type;
+        static_assert(std::tuple_size<IdsTuple>::value == 1, "Incorrect tuple size");
+    }
+    {
+        //  test storage traits
+        struct Visit {
+            int id;
+            std::string date;
+        };
+        using namespace sqlite_orm::internal::storage_traits;
+        
+        //  test type_is_mapped
+        static_assert(type_is_mapped<decltype(storage), User>::value, "User must be mapped to a storage");
+        static_assert(!type_is_mapped<decltype(storage), Visit>::value, "User must be mapped to a storage");
+        
+        //  test is_storage
+        static_assert(internal::is_storage<decltype(storage)>::value, "is_storage works incorrectly");
+        static_assert(!internal::is_storage<User>::value, "is_storage works incorrectly");
+        static_assert(!internal::is_storage<int>::value, "is_storage works incorrectly");
+        static_assert(!internal::is_storage<void>::value, "is_storage works incorrectly");
+        
+        auto storage2 = make_storage("",
+                                     make_table("visits",
+                                                make_column("id", &Visit::id, primary_key()),
+                                                make_column("date", &Visit::date)));
+        
+        //  test storage_columns_count
+        static_assert(storage_columns_count<decltype(storage), User>::value == 1, "Incorrect storage columns count value");
+        static_assert(storage_columns_count<decltype(storage), Visit>::value == 0, "Incorrect storage columns count value");
+        static_assert(storage_columns_count<decltype(storage2), Visit>::value == 2, "Incorrect storage columns count value");
+        
+        //  test storage mapped columns
+        using UserColumnsTuple = storage_mapped_columns<decltype(storage), User>::type;
+        static_assert(std::is_same<UserColumnsTuple, std::tuple<int>>::value, "Incorrect storage_mapped_columns result");
+        
+        using VisitColumsEmptyType = storage_mapped_columns<decltype(storage), Visit>::type;
+        static_assert(std::is_same<VisitColumsEmptyType, std::tuple<>>::value, "Incorrect storage_mapped_columns result");
+        
+        using VisitColumnTypes = storage_mapped_columns<decltype(storage2), Visit>::type;
+        static_assert(std::is_same<VisitColumnTypes, std::tuple<int, std::string>>::value, "Incorrect storage_mapped_columns result");
+    }
+    {
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(add(1, 2))>::type, double>::value, "Incorrect add result");
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(sub(2, 1))>::type, double>::value, "Incorrect sub result");
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(mul(2, 3))>::type, double>::value, "Incorrect mul result");
+        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(sqlite_orm::div(2, 3))>::type, double>::value, "Incorrect div result");
+    }
     
     return 0;
 }
