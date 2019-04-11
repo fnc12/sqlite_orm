@@ -730,7 +730,9 @@ For more details please check the project [wiki](https://github.com/fnc12/sqlite
 
 # Installation
 
-Just put `include/sqlite_orm/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no normal dependency manager for C++ yet.
+Use popular package manager like [vcpkg](https://github.com/Microsoft/vcpkg) and just install it with `vcpkg install sqlite_orm` command.
+
+Or just put `include/sqlite_orm/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no dominant normal dependency manager for C++ yet.
 
 # Requirements
 
