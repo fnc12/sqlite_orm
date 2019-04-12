@@ -5,8 +5,8 @@ Thank you for your interest in contributing to the sqlite_orm project!
 ## GitHub pull requests ##
 
 This is the preferred method of submitting changes.  When you submit a pull request through github,
-it activates the continuous integration (CI) build systems at Appveyor and Travis to build your changesxi
-on a variety of Linux and Windows configurations and run all the test suites.  Follow these requirements 
+it activates the continuous integration (CI) build systems at Appveyor and Travis to build your changes
+on a variety of Linux, Windows and MacOS configurations and run all the test suites.  Follow these requirements 
 for a successful pull request:
 
  1. All significant changes require a [github issue](https://github.com/fnc12/sqlite_orm/issues).  Trivial changes such as fixing a typo or a compiler warning do not.
@@ -82,10 +82,10 @@ A more detailed walkthrough of a squash can be found at [Git Ready](http://gitre
 
 ### Rebase your pull request ###
 
-If your pull request has a conflict with master, it needs to be rebased:
+If your pull request has a conflict with dev, it needs to be rebased:
 
     git checkout feature/9999-make-perfect
-    git rebase upstream master
+    git rebase upstream dev
       (resolve any conflicts, make sure it builds)
     git push -u origin feature/9999-make-perfect --force
 
@@ -93,14 +93,14 @@ If your pull request has a conflict with master, it needs to be rebased:
 
 If your pull request contains commits that are not yours, then you should use the following technique to fix the bad merge in your branch:
 
-    git checkout master
-    git pull upstream master
+    git checkout dev
+    git pull upstream dev
     git checkout -b feature/9999-make-perfect-take-2
     git cherry-pick ...
         (pick only your commits from your original pull request in ascending chronological order)
     squash your changes to a single commit if there is more than one (see above)
     git push -u origin feature/9999-make-perfect-take-2:feature/9999-make-perfect
 
-This procedure will apply only your commits in order to the current master, then you will squash them to a single commit, and then you force push your local feature/9999-make-perfect-take-2 into remote feature/9999-make-perfect which represents your pull request, replacing all the commits with the new one.
+This procedure will apply only your commits in order to the current dev, then you will squash them to a single commit, and then you force push your local feature/9999-make-perfect-take-2 into remote feature/9999-make-perfect which represents your pull request, replacing all the commits with the new one.
 
  
