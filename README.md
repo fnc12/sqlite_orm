@@ -744,7 +744,7 @@ cmake --build .
 sudo make install
 ```
 
-then you can just include `sqlite_orm.h` that install in system-wide header files location or if you use cmake build system you can just add below commands in CMakeLists.txt
+then you can just include `sqlite_orm.h` that is installed in system-wide header files location or in case you use cmake build system you can just add below commands in CMakeLists.txt
 
 ```cmake
 find_package(sqlite_orm CONFIG REQUIRED)
