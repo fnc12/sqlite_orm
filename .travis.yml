@@ -68,6 +68,7 @@ before_install:
 
 # scripts to run before build
 before_script:
+  - if [[ "$CXX" == "clang" ]]; then clang --version ; fi
   - chmod +x build.sh
   - cd third_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
