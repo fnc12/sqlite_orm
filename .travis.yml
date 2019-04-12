@@ -45,9 +45,9 @@ matrix:
       os: osx
       osx_image: xcode10.2
       env:
-#	  	- CPATH="/usr/local/opt/llvm/include"
-#		- LIBRARY_PATH="/usr/local/opt/llvm/lib"
-#		- LD_LIBRARY_PATH="/usr/local/opt/llvm/lib"
+        - CPATH=/usr/local/opt/llvm/include
+        - LIBRARY_PATH=/usr/local/opt/llvm/lib
+        - LD_LIBRARY_PATH=/usr/local/opt/llvm/lib
         - CC=clang
         - CXX=clang
         - VCPKG_ALLOW_APPLE_CLANG=1
