@@ -732,6 +732,26 @@ For more details please check the project [wiki](https://github.com/fnc12/sqlite
 
 Use popular package manager like [vcpkg](https://github.com/Microsoft/vcpkg) and just install it with `vcpkg install sqlite_orm` command.
 
+Or you can use below instructions
+
+```bash
+git clone https://github.com/fnc12/sqlite_orm.git sqlite_orm
+cd sqlite_orm
+mkdir compile
+cd compile
+cmake ..
+cmake --build .
+sudo make install
+```
+
+then you can just include `sqlite_orm.h` that install in system-wide header files location or if you use cmake build system you can just add below commands in CMakeLists.txt
+
+```cmake
+find_package(sqlite_orm CONFIG REQUIRED)
+target_link_libraries(main PRIVATE sqlite_orm::sqlite_orm)
+target_include_directories(main PRIVATE ${SQLITE_ORM_INCLUDE_DIR})
+```
+
 Or just put `include/sqlite_orm/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no dominant normal dependency manager for C++ yet.
 
 # Requirements
