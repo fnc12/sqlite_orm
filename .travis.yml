@@ -50,8 +50,8 @@ matrix:
         - CPATH=/usr/local/opt/llvm/include
         - LIBRARY_PATH=/usr/local/opt/llvm/lib
         - LD_LIBRARY_PATH=/usr/local/opt/llvm/lib
-        - CC=clang
-        - CXX=clang
+        - CC=/usr/local/opt/llvm/bin/clang
+        - CXX=/usr/local/opt/llvm/bin/clang++
         - VCPKG_ALLOW_APPLE_CLANG=1
         - SQLITE_ORM_OMITS_CODECVT=ON
     - name: "osx gcc"
