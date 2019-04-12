@@ -47,8 +47,8 @@ matrix:
 	  before_install:
 	    - brew install --with-toolchain llvm
 		- brew info llvm
-		- export PATH="/usr/local/opt/llvm/bin:$PATH"
-		- echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.bash_profile
+#		- export PATH="/usr/local/opt/llvm/bin:$PATH"
+#		- echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.bash_profile
 		- xcode-select --install
       env:
 	  	- CPATH="/usr/local/opt/llvm/include"
