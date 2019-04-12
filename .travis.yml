@@ -45,6 +45,8 @@ matrix:
       os: osx
       osx_image: xcode10.2
       env:
+        - CPPFLAGS="-I/usr/local/opt/llvm/include"
+        - LDFLAGS="-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
         - CPATH=/usr/local/opt/llvm/include
         - LIBRARY_PATH=/usr/local/opt/llvm/lib
         - LD_LIBRARY_PATH=/usr/local/opt/llvm/lib
