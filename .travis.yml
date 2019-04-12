@@ -44,16 +44,10 @@ matrix:
       compiler: clang
       os: osx
       osx_image: xcode10.2
-	  before_install:
-#	    - brew install --with-toolchain llvm
-        - brew info llvm
-#		- export PATH="/usr/local/opt/llvm/bin:$PATH"
-#		- echo 'export PATH="/usr/local/opt/llvm/bin:$PATH"' >> ~/.bash_profile
-		- xcode-select --install
       env:
-#	  	- CPATH="/usr/local/opt/llvm/include"
-#		- LIBRARY_PATH="/usr/local/opt/llvm/lib"
-#		- LD_LIBRARY_PATH="/usr/local/opt/llvm/lib"
+	  	- CPATH="/usr/local/opt/llvm/include"
+		- LIBRARY_PATH="/usr/local/opt/llvm/lib"
+		- LD_LIBRARY_PATH="/usr/local/opt/llvm/lib"
         - CC=clang
         - CXX=clang
         - VCPKG_ALLOW_APPLE_CLANG=1
@@ -78,6 +72,7 @@ before_install:
 # scripts to run before build
 before_script:
   - if [[ "$CXX" == "clang" ]]; then clang --version ; fi
+  - if [[ "$CXX" == "clang" && "$TRAVIS_OS_NAME" == "osx" ]]; then chmod +x prepare-osx-with-clang.sh ; ./prepare-osx-with-clang.sh ; fi 
   - chmod +x build.sh
   - cd third_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
