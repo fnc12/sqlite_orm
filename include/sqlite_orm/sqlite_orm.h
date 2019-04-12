@@ -2408,7 +2408,7 @@ namespace sqlite_orm {
     template<
     class L,
     class R,
-    typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type
+    typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value || std::is_base_of<conditions::condition_t, R>::value>::type
     >
     conditions::and_condition_t<L, R> operator &&(const L &l, const R &r) {
         return {l, r};
@@ -2417,7 +2417,7 @@ namespace sqlite_orm {
     template<
     class L,
     class R,
-    typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type
+    typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value || std::is_base_of<conditions::condition_t, R>::value>::type
     >
     conditions::or_condition_t<L, R> operator ||(const L &l, const R &r) {
         return {l, r};
@@ -3446,7 +3446,26 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     
     namespace internal {
-        
+
+/*
+ * This is because of bug in MSVC, for more information, please visit
+ * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
+ */
+#if defined(_MSC_VER)
+       template <template <typename...> class Base, typename Derived>
+       struct is_base_of_template_impl {
+               template<typename... Ts>
+               static constexpr std::true_type test(const Base<Ts...>*);
+
+               static constexpr std::false_type test(...);
+
+               using type = decltype(test(std::declval<Derived*>()));
+       };
+
+       template <typename Derived, template <typename...> class Base>
+       using is_base_of_template = typename is_base_of_template_impl<Base, Derived>::type;
+
+#else
         template <template <typename...> class C, typename...Ts>
         std::true_type is_base_of_template_impl(const C<Ts...>*);
         
@@ -3455,7 +3474,8 @@ namespace sqlite_orm {
         
         template <typename T, template <typename...> class C>
         using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
-        
+
+#endif
         /**
          *  DISCTINCT generic container.
          */
@@ -7485,11 +7505,13 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            /**
-             *  Common case. Is used to process binary conditions like is_equal, not_equal
-             */
+            template<class T>
+            typename std::enable_if<std::is_arithmetic<T>::value, std::string>::type process_where(const T &c) {
+                return this->string_from_expression(c);
+            }
+            
             template<class C>
-            std::string process_where(const C &c) {
+            typename std::enable_if<is_base_of_template<C, conditions::binary_condition>::value, std::string>::type process_where(const C &c) {
                 auto leftString = this->string_from_expression(c.l, false, true);
                 auto rightString = this->string_from_expression(c.r, false, true);
                 std::stringstream ss;

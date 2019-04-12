@@ -37,6 +37,23 @@ target_include_directories(sqlite_orm INTERFACE
 	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>)
 
+include(ucm)
+
+if (MSVC)
+	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")	
+	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")	
+	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")	
+	add_compile_options(/EHsc)
+
+	if ("${CMAKE_GENERATOR}" MATCHES "(Win64|x64)")
+		message(STATUS "Add /bigobj flag to compiler")
+    	add_compile_options(/bigobj)
+	endif()
+endif()
+
+ucm_print_flags()
+message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+
 # Tests
 include(CTest)
 if(SqliteOrm_BuildTests AND BUILD_TESTING)

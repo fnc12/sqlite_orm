@@ -643,7 +643,8 @@ void testExplicitInsert() {
         user3.name = "Sia";
         user3.age = 42;
         user3.email = "sia@gmail.com";
-        assert(user3.id == storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email)));
+        auto insertedId = storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email));
+        assert(user3.id == insertedId);
         auto insertedUser3 = storage.get<User>(user3.id);
         assert(insertedUser3.email == user3.email);
         assert(insertedUser3.age == user3.age);
@@ -684,13 +685,15 @@ void testExplicitInsert() {
         visit2.setId(2);
         visit2.setUsedId(1);
         {
-            assert(visit2.id() == storage.insert(visit2, columns(&Visit::id, &Visit::usedId)));
+            auto insertedId = storage.insert(visit2, columns(&Visit::id, &Visit::usedId));
+            assert(visit2.id() == insertedId);
             auto visitFromStorage = storage.get<Visit>(visit2.id());
             assert(visitFromStorage.usedId() == visit2.usedId());
             storage.remove<Visit>(visit2.id());
         }
         {
-            assert(visit2.id() == storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId)));
+            auto insertedId = storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId));
+            assert(visit2.id() == insertedId);
             auto visitFromStorage = storage.get<Visit>(visit2.id());
             assert(visitFromStorage.usedId() == visit2.usedId());
             storage.remove<Visit>(visit2.id());
@@ -2306,6 +2309,40 @@ void testEscapedIndexName() {
     storage.sync_schema();
 }
 
+void testWhere() {
+    cout << __func__ << endl;
+    
+    struct User{
+        int id = 0;
+        std::string name;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{ 1, "Jeremy" });
+    storage.replace(User{ 2, "Nataly" });
+    
+    auto users = storage.get_all<User>();
+    assert(users.size() == 2);
+    
+    auto users2 = storage.get_all<User>(where(true));
+    assert(users2.size() == 2);
+    
+    auto users3 = storage.get_all<User>(where(false));
+    assert(users3.size() == 0);
+    
+    auto users4 = storage.get_all<User>(where(true and c(&User::id) == 1));
+    assert(users4.size() == 1);
+    assert(users4.front().id == 1);
+    
+    auto users5 = storage.get_all<User>(where(false and c(&User::id) == 1));
+    assert(users5.size() == 0);
+}
+
 int main(int argc, char **argv) {
 
     cout << "version = " << make_storage("").libversion() << endl;
@@ -2393,4 +2430,6 @@ int main(int argc, char **argv) {
     testSimpleQuery();
     
     testCast();
+    
+    testWhere();
 }

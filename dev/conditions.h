@@ -900,7 +900,7 @@ namespace sqlite_orm {
     template<
     class L,
     class R,
-    typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type
+    typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value || std::is_base_of<conditions::condition_t, R>::value>::type
     >
     conditions::and_condition_t<L, R> operator &&(const L &l, const R &r) {
         return {l, r};
@@ -909,7 +909,7 @@ namespace sqlite_orm {
     template<
     class L,
     class R,
-    typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value && std::is_base_of<conditions::condition_t, R>::value>::type
+    typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value || std::is_base_of<conditions::condition_t, R>::value>::type
     >
     conditions::or_condition_t<L, R> operator ||(const L &l, const R &r) {
         return {l, r};

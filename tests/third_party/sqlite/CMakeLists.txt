@@ -17,5 +17,8 @@ add_custom_command(
 
 add_library(sqlite3 sqlite-amalgamation-3210000/sqlite3.c)
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
 target_include_directories(sqlite3 INTERFACE "${CMAKE_CURRENT_BINARY_DIR}/sqlite-amalgamation-3210000")
-target_link_libraries(sqlite3 dl pthread)
+target_link_libraries(sqlite3 PRIVATE ${CMAKE_DL_LIBS} Threads::Threads)
