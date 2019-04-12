@@ -8,7 +8,9 @@ cd third_party
 git clone https://github.com/Microsoft/vcpkg.git vcpkg
 cd vcpkg
 chmod +x bootstrap-vcpkg.sh
-./bootstrap-vcpkg.sh
+
+if [[ "$CXX" == "clang" && "$TRAVIS_OS_NAME" == "mac" ]]; then ./bootstrap-vcpkg.sh --allowAppleClang ; else ./bootstrap-vcpkg.sh ; fi
+
 chmod +x vcpkg
 ./vcpkg install gtest
 cd ../..
