@@ -44,7 +44,7 @@ matrix:
       addons:
         homebrew:
           packages:
-            - clang
+            - llvm
       compiler: clang
       os: osx
       osx_image: xcode10.2
