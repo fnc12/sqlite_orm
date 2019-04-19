@@ -63,21 +63,24 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  Collated something with custom collate function
-         */
-        template<class T>
-        struct named_collate {
-            T expr;
+        struct named_collate_base {
             std::string name;
-            
-            named_collate() = default;
-            
-            named_collate(T expr_, std::string name_): expr(expr_), name(std::move(name_)) {}
             
             operator std::string () const {
                 return "COLLATE " + this->name;
             }
+        };
+        
+        /**
+         *  Collated something with custom collate function
+         */
+        template<class T>
+        struct named_collate : named_collate_base {
+            T expr;
+            
+            named_collate() = default;
+            
+            named_collate(T expr_, std::string name_): named_collate_base{std::move(name_)}, expr(std::move(expr_)) {}
         };
         
         /**
@@ -328,24 +331,8 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  IN operator object.
-         */
-        template<class L, class A>
-        struct in_t : public condition_t {
-            using self = in_t<L, A>;
-            
-            L l;    //  left expression
-            A arg;       //  in arg
+        struct in_base {
             bool negative = false;  //  used in not_in
-            
-            in_t() = default;
-            
-            in_t(L l_, A arg_, bool negative_): l(l_), arg(std::move(arg_)), negative(negative_) {}
-            
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
             
             operator std::string () const {
                 if(!this->negative){
@@ -353,6 +340,25 @@ namespace sqlite_orm {
                 }else{
                     return "NOT IN";
                 }
+            }
+        };
+        
+        /**
+         *  IN operator object.
+         */
+        template<class L, class A>
+        struct in_t : condition_t, in_base {
+            using self = in_t<L, A>;
+            
+            L l;    //  left expression
+            A arg;       //  in arg
+            
+            in_t() = default;
+            
+            in_t(L l_, A arg_, bool negative): in_base{negative}, l(l_), arg(std::move(arg_)) {}
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
             }
         };
         
@@ -403,16 +409,19 @@ namespace sqlite_orm {
             }
         };
         
+        struct order_by_base {
+            int asc_desc = 0;   //  1: asc, -1: desc
+            std::string _collate_argument;
+        };
+        
         /**
          *  ORDER BY argument holder.
          */
         template<class O>
-        struct order_by_t {
+        struct order_by_t : order_by_base {
             using self = order_by_t<O>;
             
             O o;
-            int asc_desc = 0;   //  1: asc, -1: desc
-            std::string _collate_argument;
             
             order_by_t(): o() {}
             
@@ -615,7 +624,7 @@ namespace sqlite_orm {
          */
         template<class F, class O>
         struct using_t {
-            F O::*column;
+            F O::*column = nullptr;
             
             operator std::string() const {
                 return "USING";

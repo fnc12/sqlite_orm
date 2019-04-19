@@ -14,6 +14,14 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        struct column_base {
+            
+            /**
+             *  Column name. Specified during construction in `make_column`.
+             */
+            const std::string name;
+        };
+        
         /**
          *  This class stores single column info. column_t is a pair of [column_name:member_pointer] mapped to a storage
          *  O is a mapped class, e.g. User
@@ -21,18 +29,13 @@ namespace sqlite_orm {
          *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
          */
         template<class O, class T, class G/* = const T& (O::*)() const*/, class S/* = void (O::*)(T)*/, class ...Op>
-        struct column_t {
+        struct column_t : column_base {
             using object_type = O;
             using field_type = T;
             using constraints_type = std::tuple<Op...>;
             using member_pointer_t = field_type object_type::*;
             using getter_type = G;
             using setter_type = S;
-            
-            /**
-             *  Column name. Specified during construction in `make_column`.
-             */
-            const std::string name;
             
             /**
              *  Member pointer used to read/write member
@@ -54,6 +57,10 @@ namespace sqlite_orm {
              *  Constraints tuple
              */
             constraints_type constraints;
+            
+            column_t(std::string name, member_pointer_t member_pointer_, getter_type getter_, setter_type setter_, constraints_type constraints_):
+            column_base{std::move(name)}, member_pointer(member_pointer_), getter(getter_), setter(setter_), constraints(std::move(constraints_))
+            {}
             
             /**
              *  Simplified interface for `NOT NULL` constraint
@@ -109,6 +116,9 @@ namespace sqlite_orm {
         template<class O, class T, class ...Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
         
+        /**
+         *  Getters aliases
+         */
         template<class O, class T>
         using getter_by_value_const = T (O::*)() const;
         
@@ -127,6 +137,9 @@ namespace sqlite_orm {
         template<class O, class T>
         using getter_by_const_ref = const T& (O::*)();
         
+        /**
+         *  Setters aliases
+         */
         template<class O, class T>
         using setter_by_value = void (O::*)(T);
         

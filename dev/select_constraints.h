@@ -1,6 +1,8 @@
 #pragma once
 
 #include <string>   //  std::string
+#include <utility>  //  std::declval
+#include <type_traits>  //  std::true_type, std::false_type
 
 namespace sqlite_orm {
     
@@ -165,21 +167,9 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  UNION object type.
-         */
-        template<class L, class R>
-        struct union_t : public compound_operator<L, R> {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
-            
+        struct union_base {
             bool all = false;
             
-            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {}
-            
-            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
-
             operator std::string() const {
                 if(!this->all){
                     return "UNION";
@@ -187,6 +177,19 @@ namespace sqlite_orm {
                     return "UNION ALL";
                 }
             }
+        };
+        
+        /**
+         *  UNION object type.
+         */
+        template<class L, class R>
+        struct union_t : public compound_operator<L, R>, union_base {
+            using left_type = typename compound_operator<L, R>::left_type;
+            using right_type = typename compound_operator<L, R>::right_type;
+            
+            union_t(left_type l, right_type r, decltype(all) all): compound_operator<L, R>(std::move(l), std::move(r)), union_base{all} {}
+            
+            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
         };
         
         /**
