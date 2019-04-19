@@ -20,29 +20,32 @@ namespace sqlite_orm {
     
     namespace internal {
         
-        /**
-         *  Table interface class. Implementation is hidden in `table_impl` class.
-         */
-        template<class T, class ...Cs>
-        struct table_t {
-            using impl_type = table_impl<Cs...>;
-            using object_type = T;
-            
-            static constexpr const int columns_count = impl_type::columns_count;
+        struct table_base {
             
             /**
              *  Table name.
              */
             const std::string name;
             
+            bool _without_rowid = false;
+        };
+        
+        /**
+         *  Table interface class. Implementation is hidden in `table_impl` class.
+         */
+        template<class T, class ...Cs>
+        struct table_t : table_base {
+            using impl_type = table_impl<Cs...>;
+            using object_type = T;
+            
+            static constexpr const int columns_count = impl_type::columns_count;
+            
             /**
              *  Implementation that stores columns information.
              */
             impl_type impl;
             
-            table_t(decltype(name) name_, decltype(impl) impl_): name(std::move(name_)), impl(std::move(impl_)) {}
-            
-            bool _without_rowid = false;
+            table_t(decltype(name) name_, decltype(impl) impl_): table_base{std::move(name_)}, impl(std::move(impl_)) {}
             
             table_t<T, Cs...> without_rowid() const {
                 auto res = *this;

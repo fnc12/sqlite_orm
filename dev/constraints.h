@@ -20,24 +20,14 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  PRIMARY KEY constraint class.
-         *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
-         */
-        template<class ...Cs>
-        struct primary_key_t {
-            std::tuple<Cs...> columns;
+        struct primary_key_base {
             enum class order_by {
                 unspecified,
                 ascending,
                 descending,
             };
+            
             order_by asc_option = order_by::unspecified;
-            
-            primary_key_t(decltype(columns) c):columns(std::move(c)){}
-            
-            using field_type = void;    //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
             
             operator std::string() const {
                 std::string res = "PRIMARY KEY";
@@ -53,6 +43,22 @@ namespace sqlite_orm {
                 }
                 return res;
             }
+        };
+        
+        /**
+         *  PRIMARY KEY constraint class.
+         *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
+         */
+        template<class ...Cs>
+        struct primary_key_t : primary_key_base {
+            using order_by = primary_key_base::order_by;
+            
+            std::tuple<Cs...> columns;
+            
+            primary_key_t(decltype(columns) c):columns(std::move(c)){}
+            
+            using field_type = void;    //  for column iteration. Better be deleted
+            using constraints_type = std::tuple<>;
             
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
@@ -298,7 +304,7 @@ namespace sqlite_orm {
             collate_t(internal::collate_argument argument_): argument(argument_) {}
             
             operator std::string() const {
-                std::string res = "COLLATE " + string_from_collate_argument(this->argument);
+                std::string res = "COLLATE " + this->string_from_collate_argument(this->argument);
                 return res;
             }
             

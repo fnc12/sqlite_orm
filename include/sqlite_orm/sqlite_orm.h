@@ -420,24 +420,14 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  PRIMARY KEY constraint class.
-         *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
-         */
-        template<class ...Cs>
-        struct primary_key_t {
-            std::tuple<Cs...> columns;
+        struct primary_key_base {
             enum class order_by {
                 unspecified,
                 ascending,
                 descending,
             };
+            
             order_by asc_option = order_by::unspecified;
-            
-            primary_key_t(decltype(columns) c):columns(std::move(c)){}
-            
-            using field_type = void;    //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
             
             operator std::string() const {
                 std::string res = "PRIMARY KEY";
@@ -453,6 +443,22 @@ namespace sqlite_orm {
                 }
                 return res;
             }
+        };
+        
+        /**
+         *  PRIMARY KEY constraint class.
+         *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
+         */
+        template<class ...Cs>
+        struct primary_key_t : primary_key_base {
+            using order_by = primary_key_base::order_by;
+            
+            std::tuple<Cs...> columns;
+            
+            primary_key_t(decltype(columns) c):columns(std::move(c)){}
+            
+            using field_type = void;    //  for column iteration. Better be deleted
+            using constraints_type = std::tuple<>;
             
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
@@ -698,7 +704,7 @@ namespace sqlite_orm {
             collate_t(internal::collate_argument argument_): argument(argument_) {}
             
             operator std::string() const {
-                std::string res = "COLLATE " + string_from_collate_argument(this->argument);
+                std::string res = "COLLATE " + this->string_from_collate_argument(this->argument);
                 return res;
             }
             
@@ -1115,6 +1121,14 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        struct column_base {
+            
+            /**
+             *  Column name. Specified during construction in `make_column`.
+             */
+            const std::string name;
+        };
+        
         /**
          *  This class stores single column info. column_t is a pair of [column_name:member_pointer] mapped to a storage
          *  O is a mapped class, e.g. User
@@ -1122,18 +1136,13 @@ namespace sqlite_orm {
          *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
          */
         template<class O, class T, class G/* = const T& (O::*)() const*/, class S/* = void (O::*)(T)*/, class ...Op>
-        struct column_t {
+        struct column_t : column_base {
             using object_type = O;
             using field_type = T;
             using constraints_type = std::tuple<Op...>;
             using member_pointer_t = field_type object_type::*;
             using getter_type = G;
             using setter_type = S;
-            
-            /**
-             *  Column name. Specified during construction in `make_column`.
-             */
-            const std::string name;
             
             /**
              *  Member pointer used to read/write member
@@ -1155,6 +1164,10 @@ namespace sqlite_orm {
              *  Constraints tuple
              */
             constraints_type constraints;
+            
+            column_t(std::string name, member_pointer_t member_pointer_, getter_type getter_, setter_type setter_, constraints_type constraints_):
+            column_base{std::move(name)}, member_pointer(member_pointer_), getter(getter_), setter(setter_), constraints(std::move(constraints_))
+            {}
             
             /**
              *  Simplified interface for `NOT NULL` constraint
@@ -1210,6 +1223,9 @@ namespace sqlite_orm {
         template<class O, class T, class ...Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
         
+        /**
+         *  Getters aliases
+         */
         template<class O, class T>
         using getter_by_value_const = T (O::*)() const;
         
@@ -1228,6 +1244,9 @@ namespace sqlite_orm {
         template<class O, class T>
         using getter_by_const_ref = const T& (O::*)();
         
+        /**
+         *  Setters aliases
+         */
         template<class O, class T>
         using setter_by_value = void (O::*)(T);
         
@@ -1571,21 +1590,24 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  Collated something with custom collate function
-         */
-        template<class T>
-        struct named_collate {
-            T expr;
+        struct named_collate_base {
             std::string name;
-            
-            named_collate() = default;
-            
-            named_collate(T expr_, std::string name_): expr(expr_), name(std::move(name_)) {}
             
             operator std::string () const {
                 return "COLLATE " + this->name;
             }
+        };
+        
+        /**
+         *  Collated something with custom collate function
+         */
+        template<class T>
+        struct named_collate : named_collate_base {
+            T expr;
+            
+            named_collate() = default;
+            
+            named_collate(T expr_, std::string name_): named_collate_base{std::move(name_)}, expr(std::move(expr_)) {}
         };
         
         /**
@@ -1836,24 +1858,8 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  IN operator object.
-         */
-        template<class L, class A>
-        struct in_t : public condition_t {
-            using self = in_t<L, A>;
-            
-            L l;    //  left expression
-            A arg;       //  in arg
+        struct in_base {
             bool negative = false;  //  used in not_in
-            
-            in_t() = default;
-            
-            in_t(L l_, A arg_, bool negative_): l(l_), arg(std::move(arg_)), negative(negative_) {}
-            
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
             
             operator std::string () const {
                 if(!this->negative){
@@ -1861,6 +1867,25 @@ namespace sqlite_orm {
                 }else{
                     return "NOT IN";
                 }
+            }
+        };
+        
+        /**
+         *  IN operator object.
+         */
+        template<class L, class A>
+        struct in_t : condition_t, in_base {
+            using self = in_t<L, A>;
+            
+            L l;    //  left expression
+            A arg;       //  in arg
+            
+            in_t() = default;
+            
+            in_t(L l_, A arg_, bool negative): in_base{negative}, l(l_), arg(std::move(arg_)) {}
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
             }
         };
         
@@ -1911,16 +1936,19 @@ namespace sqlite_orm {
             }
         };
         
+        struct order_by_base {
+            int asc_desc = 0;   //  1: asc, -1: desc
+            std::string _collate_argument;
+        };
+        
         /**
          *  ORDER BY argument holder.
          */
         template<class O>
-        struct order_by_t {
+        struct order_by_t : order_by_base {
             using self = order_by_t<O>;
             
             O o;
-            int asc_desc = 0;   //  1: asc, -1: desc
-            std::string _collate_argument;
             
             order_by_t(): o() {}
             
@@ -2123,7 +2151,7 @@ namespace sqlite_orm {
          */
         template<class F, class O>
         struct using_t {
-            F O::*column;
+            F O::*column = nullptr;
             
             operator std::string() const {
                 return "USING";
@@ -3442,6 +3470,8 @@ namespace sqlite_orm {
 #pragma once
 
 #include <string>   //  std::string
+#include <utility>  //  std::declval
+#include <type_traits>  //  std::true_type, std::false_type
 
 namespace sqlite_orm {
     
@@ -3606,21 +3636,9 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  UNION object type.
-         */
-        template<class L, class R>
-        struct union_t : public compound_operator<L, R> {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
-            
+        struct union_base {
             bool all = false;
             
-            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {}
-            
-            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
-
             operator std::string() const {
                 if(!this->all){
                     return "UNION";
@@ -3628,6 +3646,19 @@ namespace sqlite_orm {
                     return "UNION ALL";
                 }
             }
+        };
+        
+        /**
+         *  UNION object type.
+         */
+        template<class L, class R>
+        struct union_t : public compound_operator<L, R>, union_base {
+            using left_type = typename compound_operator<L, R>::left_type;
+            using right_type = typename compound_operator<L, R>::right_type;
+            
+            union_t(left_type l, right_type r, decltype(all) all): compound_operator<L, R>(std::move(l), std::move(r)), union_base{all} {}
+            
+            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
         };
         
         /**
@@ -4513,6 +4544,7 @@ namespace sqlite_orm {
 
 #include <tuple>    //  std::tuple, std::make_tuple
 #include <string>   //  std::string
+#include <utility>  //  std::forward
 
 namespace sqlite_orm {
     
@@ -4534,12 +4566,12 @@ namespace sqlite_orm {
     
     template<class ...Cols>
     internal::index_t<Cols...> make_index(const std::string &name, Cols ...cols) {
-        return {name, false, std::make_tuple(cols...)};
+        return {name, false, std::make_tuple(std::forward<Cols>(cols)...)};
     }
     
     template<class ...Cols>
     internal::index_t<Cols...> make_unique_index(const std::string &name, Cols ...cols) {
-        return {name, true, std::make_tuple(cols...)};
+        return {name, true, std::make_tuple(std::forward<Cols>(cols)...)};
     }
 }
 #pragma once
@@ -5263,29 +5295,32 @@ namespace sqlite_orm {
     
     namespace internal {
         
-        /**
-         *  Table interface class. Implementation is hidden in `table_impl` class.
-         */
-        template<class T, class ...Cs>
-        struct table_t {
-            using impl_type = table_impl<Cs...>;
-            using object_type = T;
-            
-            static constexpr const int columns_count = impl_type::columns_count;
+        struct table_base {
             
             /**
              *  Table name.
              */
             const std::string name;
             
+            bool _without_rowid = false;
+        };
+        
+        /**
+         *  Table interface class. Implementation is hidden in `table_impl` class.
+         */
+        template<class T, class ...Cs>
+        struct table_t : table_base {
+            using impl_type = table_impl<Cs...>;
+            using object_type = T;
+            
+            static constexpr const int columns_count = impl_type::columns_count;
+            
             /**
              *  Implementation that stores columns information.
              */
             impl_type impl;
             
-            table_t(decltype(name) name_, decltype(impl) impl_): name(std::move(name_)), impl(std::move(impl_)) {}
-            
-            bool _without_rowid = false;
+            table_t(decltype(name) name_, decltype(impl) impl_): table_base{std::move(name_)}, impl(std::move(impl_)) {}
             
             table_t<T, Cs...> without_rowid() const {
                 auto res = *this;
@@ -5601,6 +5636,85 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        struct storage_impl_base {
+            
+            static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
+                                               std::vector<table_info>& storageTableInfo,
+                                               std::vector<table_info>& dbTableInfo)
+            {
+                bool notEqual = false;
+                
+                //  iterate through storage columns
+                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
+                    
+                    //  get storage's column info
+                    auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                    auto &columnName = storageColumnInfo.name;
+                    
+                    //  search for a column in db eith the same name
+                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
+                                                       dbTableInfo.end(),
+                                                       [&columnName](auto &ti){
+                                                           return ti.name == columnName;
+                                                       });
+                    if(dbColumnInfoIt != dbTableInfo.end()){
+                        auto &dbColumnInfo = *dbColumnInfoIt;
+                        auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
+                        auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
+                        if(dbColumnInfoType && storageColumnInfoType) {
+                            auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
+                            *dbColumnInfoType == *storageColumnInfoType &&
+                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                            (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
+                            dbColumnInfo.pk == storageColumnInfo.pk;
+                            if(!columnsAreEqual){
+                                notEqual = true;
+                                break;
+                            }
+                            dbTableInfo.erase(dbColumnInfoIt);
+                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                            --storageColumnInfoIndex;
+                        }else{
+                            
+                            //  undefined type/types
+                            notEqual = true;
+                            break;
+                        }
+                    }else{
+                        columnsToAdd.push_back(&storageColumnInfo);
+                    }
+                }
+                return notEqual;
+            }
+            
+            std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
+                std::vector<table_info> res;
+                auto query = "PRAGMA table_info('" + tableName + "')";
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **) -> int {
+                                           auto &res = *(std::vector<table_info>*)data;
+                                           if(argc){
+                                               auto index = 0;
+                                               auto cid = std::atoi(argv[index++]);
+                                               std::string name = argv[index++];
+                                               std::string type = argv[index++];
+                                               bool notnull = !!std::atoi(argv[index++]);
+                                               std::string dflt_value = argv[index] ? argv[index] : "";
+                                               index++;
+                                               auto pk = std::atoi(argv[index++]);
+                                               res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+                return res;
+            }
+            
+        };
+        
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
@@ -5781,32 +5895,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
-                std::vector<table_info> res;
-                auto query = "PRAGMA table_info('" + tableName + "')";
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **) -> int {
-                                           auto &res = *(std::vector<table_info>*)data;
-                                           if(argc){
-                                               auto index = 0;
-                                               auto cid = std::atoi(argv[index++]);
-                                               std::string name = argv[index++];
-                                               std::string type = argv[index++];
-                                               bool notnull = !!std::atoi(argv[index++]);
-                                               std::string dflt_value = argv[index] ? argv[index] : "";
-                                               index++;
-                                               auto pk = std::atoi(argv[index++]);
-                                               res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
-                }
-                return res;
-            }
-            
             void add_column(const table_info &ti, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name << " ";
@@ -5892,12 +5980,12 @@ namespace sqlite_orm {
                     auto storageTableInfo = this->table.get_table_info();
                     
                     //  now get current table info from db using `PRAGMA table_info` query..
-                    auto dbTableInfo = get_table_info(this->table.name, db);
+                    auto dbTableInfo = this->get_table_info(this->table.name, db);
                     
                     //  this vector will contain pointers to columns that gotta be added..
                     std::vector<table_info*> columnsToAdd;
                     
-                    if(get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
+                    if(this->get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;
                     }
                     
@@ -5943,62 +6031,12 @@ namespace sqlite_orm {
                 return res;
             }
             
-            static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                               std::vector<table_info>& storageTableInfo,
-                                               std::vector<table_info>& dbTableInfo)
-            {
-                bool notEqual = false;
-                
-                //  iterate through storage columns
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
-                    
-                    //  get storage's column info
-                    auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto &columnName = storageColumnInfo.name;
-                    
-                    //  search for a column in db eith the same name
-                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
-                                                       dbTableInfo.end(),
-                                                       [&columnName](auto &ti){
-                                                           return ti.name == columnName;
-                                                       });
-                    if(dbColumnInfoIt != dbTableInfo.end()){
-                        auto &dbColumnInfo = *dbColumnInfoIt;
-                        auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
-                        auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
-                        if(dbColumnInfoType && storageColumnInfoType) {
-                            auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
-                            *dbColumnInfoType == *storageColumnInfoType &&
-                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                            (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
-                            dbColumnInfo.pk == storageColumnInfo.pk;
-                            if(!columnsAreEqual){
-                                notEqual = true;
-                                break;
-                            }
-                            dbTableInfo.erase(dbColumnInfoIt);
-                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
-                            --storageColumnInfoIndex;
-                        }else{
-                            
-                            //  undefined type/types
-                            notEqual = true;
-                            break;
-                        }
-                    }else{
-                        columnsToAdd.push_back(&storageColumnInfo);
-                    }
-                }
-                return notEqual;
-            }
-            
-            
         private:
             using self = storage_impl<H, Ts...>;
         };
         
         template<>
-        struct storage_impl<>{
+        struct storage_impl<> : storage_impl_base {
             
             template<class O>
             std::string find_table_name() const {

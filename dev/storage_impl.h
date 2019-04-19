@@ -26,6 +26,85 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        struct storage_impl_base {
+            
+            static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
+                                               std::vector<table_info>& storageTableInfo,
+                                               std::vector<table_info>& dbTableInfo)
+            {
+                bool notEqual = false;
+                
+                //  iterate through storage columns
+                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
+                    
+                    //  get storage's column info
+                    auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                    auto &columnName = storageColumnInfo.name;
+                    
+                    //  search for a column in db eith the same name
+                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
+                                                       dbTableInfo.end(),
+                                                       [&columnName](auto &ti){
+                                                           return ti.name == columnName;
+                                                       });
+                    if(dbColumnInfoIt != dbTableInfo.end()){
+                        auto &dbColumnInfo = *dbColumnInfoIt;
+                        auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
+                        auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
+                        if(dbColumnInfoType && storageColumnInfoType) {
+                            auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
+                            *dbColumnInfoType == *storageColumnInfoType &&
+                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                            (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
+                            dbColumnInfo.pk == storageColumnInfo.pk;
+                            if(!columnsAreEqual){
+                                notEqual = true;
+                                break;
+                            }
+                            dbTableInfo.erase(dbColumnInfoIt);
+                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                            --storageColumnInfoIndex;
+                        }else{
+                            
+                            //  undefined type/types
+                            notEqual = true;
+                            break;
+                        }
+                    }else{
+                        columnsToAdd.push_back(&storageColumnInfo);
+                    }
+                }
+                return notEqual;
+            }
+            
+            std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
+                std::vector<table_info> res;
+                auto query = "PRAGMA table_info('" + tableName + "')";
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **) -> int {
+                                           auto &res = *(std::vector<table_info>*)data;
+                                           if(argc){
+                                               auto index = 0;
+                                               auto cid = std::atoi(argv[index++]);
+                                               std::string name = argv[index++];
+                                               std::string type = argv[index++];
+                                               bool notnull = !!std::atoi(argv[index++]);
+                                               std::string dflt_value = argv[index] ? argv[index] : "";
+                                               index++;
+                                               auto pk = std::atoi(argv[index++]);
+                                               res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+                return res;
+            }
+            
+        };
+        
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
@@ -206,32 +285,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
-                std::vector<table_info> res;
-                auto query = "PRAGMA table_info('" + tableName + "')";
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **) -> int {
-                                           auto &res = *(std::vector<table_info>*)data;
-                                           if(argc){
-                                               auto index = 0;
-                                               auto cid = std::atoi(argv[index++]);
-                                               std::string name = argv[index++];
-                                               std::string type = argv[index++];
-                                               bool notnull = !!std::atoi(argv[index++]);
-                                               std::string dflt_value = argv[index] ? argv[index] : "";
-                                               index++;
-                                               auto pk = std::atoi(argv[index++]);
-                                               res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
-                }
-                return res;
-            }
-            
             void add_column(const table_info &ti, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name << " ";
@@ -317,12 +370,12 @@ namespace sqlite_orm {
                     auto storageTableInfo = this->table.get_table_info();
                     
                     //  now get current table info from db using `PRAGMA table_info` query..
-                    auto dbTableInfo = get_table_info(this->table.name, db);
+                    auto dbTableInfo = this->get_table_info(this->table.name, db);
                     
                     //  this vector will contain pointers to columns that gotta be added..
                     std::vector<table_info*> columnsToAdd;
                     
-                    if(get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
+                    if(this->get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;
                     }
                     
@@ -368,62 +421,12 @@ namespace sqlite_orm {
                 return res;
             }
             
-            static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                               std::vector<table_info>& storageTableInfo,
-                                               std::vector<table_info>& dbTableInfo)
-            {
-                bool notEqual = false;
-                
-                //  iterate through storage columns
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
-                    
-                    //  get storage's column info
-                    auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto &columnName = storageColumnInfo.name;
-                    
-                    //  search for a column in db eith the same name
-                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
-                                                       dbTableInfo.end(),
-                                                       [&columnName](auto &ti){
-                                                           return ti.name == columnName;
-                                                       });
-                    if(dbColumnInfoIt != dbTableInfo.end()){
-                        auto &dbColumnInfo = *dbColumnInfoIt;
-                        auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
-                        auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
-                        if(dbColumnInfoType && storageColumnInfoType) {
-                            auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
-                            *dbColumnInfoType == *storageColumnInfoType &&
-                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                            (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
-                            dbColumnInfo.pk == storageColumnInfo.pk;
-                            if(!columnsAreEqual){
-                                notEqual = true;
-                                break;
-                            }
-                            dbTableInfo.erase(dbColumnInfoIt);
-                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
-                            --storageColumnInfoIndex;
-                        }else{
-                            
-                            //  undefined type/types
-                            notEqual = true;
-                            break;
-                        }
-                    }else{
-                        columnsToAdd.push_back(&storageColumnInfo);
-                    }
-                }
-                return notEqual;
-            }
-            
-            
         private:
             using self = storage_impl<H, Ts...>;
         };
         
         template<>
-        struct storage_impl<>{
+        struct storage_impl<> : storage_impl_base {
             
             template<class O>
             std::string find_table_name() const {
