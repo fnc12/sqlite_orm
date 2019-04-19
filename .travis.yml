@@ -77,14 +77,14 @@ before_install:
 
 # scripts to run before build
 before_script:
-  - if [[ "$CXX" == "clang" ]]; then clang --version ; fi
-  - if [[ "$CXX" == "clang" && "$TRAVIS_OS_NAME" == "osx" ]]; then chmod +x prepare-osx-with-clang.sh ; ./prepare-osx-with-clang.sh ; fi 
+  - if [[ "$CXX" == *"clang"* ]]; then clang --version ; fi
+  - if [[ "$CXX" == *"clang"* && "$TRAVIS_OS_NAME" == "osx" ]]; then chmod +x prepare-osx-with-clang.sh ; ./prepare-osx-with-clang.sh ; fi 
   - chmod +x build.sh
   - cd third_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
   - cd vcpkg
   - chmod +x bootstrap-vcpkg.sh
-  - if [[ "$CXX" == "clang" && "$TRAVIS_OS_NAME" == "osx" ]]; then ./bootstrap-vcpkg.sh --allowAppleClang ; else ./bootstrap-vcpkg.sh ; fi
+  - if [[ "$CXX" == *"clang"* && "$TRAVIS_OS_NAME" == "osx" ]]; then ./bootstrap-vcpkg.sh --allowAppleClang ; else ./bootstrap-vcpkg.sh ; fi
   - chmod +x vcpkg
   - ./vcpkg install gtest
   - cd ../..
