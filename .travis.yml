@@ -41,11 +41,11 @@ matrix:
         - CXX=clang++
         - SQLITE_ORM_OMITS_CODECVT=ON
     - name: "osx clang"
+      addons:
+        homebrew:
+          packages:
+            - clang
       compiler: clang
-#	  addons:
-#	  	homebrew:
-#	      packages:
-#		  - clang
       os: osx
       osx_image: xcode10.2
       env:
