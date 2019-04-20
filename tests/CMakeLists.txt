@@ -1,5 +1,7 @@
 cmake_minimum_required (VERSION 3.2)
 
+option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
+
 option(SqliteOrm_SysSqlite "Use system version of sqlite library" OFF)
 
 if(SqliteOrm_SysSqlite)
@@ -9,6 +11,11 @@ else()
 endif()
 
 add_executable(unit_tests tests.cpp)
+
+if(SQLITE_ORM_OMITS_CODECVT)
+	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
+	target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
+endif()
 
 target_link_libraries(unit_tests PRIVATE sqlite_orm sqlite3)
 
