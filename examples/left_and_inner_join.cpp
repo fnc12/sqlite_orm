@@ -57,7 +57,7 @@ inline auto initStorage(const std::string &path){
                                    make_column("UnitPrice", &Track::unitPrice)));
 }
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     
     auto storage = initStorage("chinook.db");
 

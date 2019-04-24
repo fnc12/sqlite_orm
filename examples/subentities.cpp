@@ -79,20 +79,20 @@ Student getStudent(int studentId) {
     return res; //  must be moved automatically by compiler
 }
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     decltype(Student::id) mikeId;
     decltype(Student::id) annaId;
     
     {
         storage.sync_schema();    // create tables if they don't exist
         
-        Student mike{ -1, "Mike", 123 };    //  create student named `Mike` without marks and without id
+        Student mike{ -1, "Mike", 123, {} };    //  create student named `Mike` without marks and without id
         mike.marks = { 3, 4, 5 };
         mike.id = addStudent(mike);
         mikeId = mike.id;
         
         //  also let's create another students with marks..
-        Student anna{ -1, "Anna", 555 };
+        Student anna{ -1, "Anna", 555, {} };
         anna.marks.push_back(6);
         anna.marks.push_back(7);
         anna.id = addStudent(anna);

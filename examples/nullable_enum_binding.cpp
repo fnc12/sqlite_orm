@@ -1,4 +1,5 @@
 
+#include <cassert>
 #include <sqlite_orm/sqlite_orm.h>
 #include <iostream>
 #include <memory>
@@ -25,6 +26,7 @@ std::unique_ptr<std::string> GenderToString(Gender gender) {
         case Gender::Male:return std::make_unique<std::string>("male");
         case Gender::None:return {};
     }
+    assert(false);
 }
 
 std::unique_ptr<Gender> GenderFromString(const std::string &s) {
@@ -104,7 +106,7 @@ namespace sqlite_orm {
     };
 }
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace sqlite_orm;
     auto storage = make_storage("nullable_enum.sqlite",
                                 make_table("users",

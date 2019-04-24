@@ -1,5 +1,7 @@
 
 #include <sqlite_orm/sqlite_orm.h>
+
+#include <cassert>
 #include <iostream>
 #include <memory>
 
@@ -30,6 +32,7 @@ std::string GenderToString(Gender gender) {
         case Gender::Female:return "female";
         case Gender::Male:return "male";
     }
+    assert(false); // unreachable
 }
 
 /**

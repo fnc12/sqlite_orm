@@ -51,5 +51,6 @@ namespace sqlite_orm {
             case sync_schema_result::new_columns_added_and_old_columns_removed: return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated: return os << "old table dropped and recreated";
         }
+        return os;
     }
 }

@@ -62,7 +62,7 @@ namespace sqlite_orm {
                                 break;
                             }
                             dbTableInfo.erase(dbColumnInfoIt);
-                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                            storageTableInfo.erase(storageTableInfo.begin() + static_cast<ptrdiff_t>(storageColumnInfoIndex));
                             --storageColumnInfoIndex;
                         }else{
                             

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <string>   //  std::string
 #include <tuple>    //  std::tuple, std::make_tuple
 #include <sstream>  //  std::stringstream
@@ -314,6 +315,7 @@ namespace sqlite_orm {
                     case decltype(argument)::nocase: return "NOCASE";
                     case decltype(argument)::rtrim: return "RTRIM";
                 }
+                assert(false);
             }
         };
         

@@ -25,7 +25,7 @@ auto storage = make_storage("index.sqlite",
                                        make_column("last_name", &Contract::lastName),
                                        make_column("email", &Contract::email)));
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     
     storage.sync_schema();
     storage.remove_all<Contract>();
@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
             "Doe",
             "john.doe@sqlitetutorial.net",
         });
-    }catch(std::system_error e){
+    }catch(const std::system_error& e){
         cout << e.what() << endl;
     }
     std::vector<Contract> moreContracts = {

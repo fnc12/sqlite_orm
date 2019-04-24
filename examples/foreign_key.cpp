@@ -23,7 +23,7 @@ struct Track {
     std::unique_ptr<int> trackArtist;    //  must map to &Artist::artistId
 };
 
-int main(int argc, char **argv) {
+int main(int, char **argv) {
     cout << "path = " << argv[0] << endl;
     
     using namespace sqlite_orm;
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
             //  does not correspond to row in the artist table.
             storage.replace(Track{ 14, "Mr. Bojangles", std::make_unique<int>(3) });
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
         try{
             storage.update_all(set(assign(&Track::trackArtist, 3)), where(is_equal(&Track::trackName, "Mr. Bojangles")));
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
@@ -91,7 +91,7 @@ int main(int argc, char **argv) {
             //  the track table contains a row that refer to it.
             storage.remove_all<Artist>(where(is_equal(&Artist::artistName, "Frank Sinatra")));
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
             //  exists records in the track table that refer to it.
             storage.update_all(set(assign(&Artist::artistId, 4)), where(is_equal(&Artist::artistName, "Dean Martin")));
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
         try{
             storage.remove_all<Artist>(where(c(&Artist::artistName) == "Sammy Davis Jr."));
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
