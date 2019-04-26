@@ -12,6 +12,34 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testIterateBlob() {
+    /*struct Test {
+        int64_t id;
+        std::vector<char> key;
+    };
+    
+    auto db = make_storage("",
+                           make_table("Test",
+                                      make_column("key", &Test::key),
+                                      make_column("id", &Test::id, autoincrement(), primary_key())));
+    db.sync_schema(true);
+    
+    std::vector<char> key;
+    key.resize(255);
+    for (int i = 0; i < 255; i++){
+        key[i] = i;
+    }
+    
+    Test v;
+    v.key = key;
+    
+    db.insert(v);
+    
+    for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
+        cout << w.id << endl;
+    }*/
+}
+
 void testCast() {
     cout << __func__ << endl;
     
@@ -2432,4 +2460,6 @@ int main(int argc, char **argv) {
     testCast();
     
     testWhere();
+    
+    testIterateBlob();
 }
