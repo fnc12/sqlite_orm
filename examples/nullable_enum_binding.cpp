@@ -26,7 +26,7 @@ std::unique_ptr<std::string> GenderToString(Gender gender) {
         case Gender::Male:return std::make_unique<std::string>("male");
         case Gender::None:return {};
     }
-    assert(false);
+    throw std::domain_error("Invalid Gender enum");
 }
 
 std::unique_ptr<Gender> GenderFromString(const std::string &s) {

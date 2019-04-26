@@ -315,7 +315,7 @@ namespace sqlite_orm {
                     case decltype(argument)::nocase: return "NOCASE";
                     case decltype(argument)::rtrim: return "RTRIM";
                 }
-                assert(false);
+                throw std::domain_error("Invalid collate_argument enum");
             }
         };
         

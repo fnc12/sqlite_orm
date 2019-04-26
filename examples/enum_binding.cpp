@@ -32,7 +32,7 @@ std::string GenderToString(Gender gender) {
         case Gender::Female:return "female";
         case Gender::Male:return "male";
     }
-    assert(false); // unreachable
+    throw std::domain_error("Invalid Gender enum");
 }
 
 /**
