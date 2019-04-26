@@ -400,7 +400,6 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <cassert>
 #include <string>   //  std::string
 #include <tuple>    //  std::tuple, std::make_tuple
 #include <sstream>  //  std::stringstream
