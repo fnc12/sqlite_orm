@@ -147,7 +147,7 @@ namespace sqlite_orm {
         std::vector<char> extract(const char *row_value) {
             if(row_value){
                 auto len = ::strlen(row_value);
-                return this->go(row_value, static_cast<int>(len));
+                return this->go(row_value, len);
             }else{
                 return {};
             }
@@ -161,7 +161,7 @@ namespace sqlite_orm {
         
     protected:
         
-        std::vector<char> go(const char *bytes, int len) {
+        std::vector<char> go(const char *bytes, size_t len) {
             if(len){
                 std::vector<char> res;
                 res.reserve(len);
@@ -209,7 +209,7 @@ namespace sqlite_orm {
         std::vector<char> extract(const char *row_value) {
             if(row_value){
                 auto len = ::strlen(row_value);
-                return this->go(row_value, static_cast<int>(len));
+                return this->go(row_value, len);
             }else{
                 return {};
             }
@@ -217,13 +217,13 @@ namespace sqlite_orm {
         
         std::vector<char> extract(sqlite3_stmt *stmt, int columnIndex) {
             auto bytes = static_cast<const char *>(sqlite3_column_blob(stmt, columnIndex));
-            auto len = sqlite3_column_bytes(stmt, columnIndex);
+            auto len = static_cast<size_t>(sqlite3_column_bytes(stmt, columnIndex));
             return this->go(bytes, len);
         }
         
     protected:
         
-        std::vector<char> go(const char *bytes, int len) {
+        std::vector<char> go(const char *bytes, size_t len) {
             if(len){
                 std::vector<char> res;
                 res.reserve(len);

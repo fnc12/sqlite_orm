@@ -13,7 +13,7 @@ struct MarvelHero {
     short points;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **argv) {
     cout << "path = " << argv[0] << endl;
     
     using namespace sqlite_orm;

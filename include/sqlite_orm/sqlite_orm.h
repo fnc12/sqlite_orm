@@ -268,10 +268,10 @@ namespace sqlite_orm {
     namespace static_magic {
         
         template <typename T, typename F>
-        auto static_if(std::true_type, T t, F f) { return t; }
+        auto static_if(std::true_type, T t, F) { return t; }
         
         template <typename T, typename F>
-        auto static_if(std::false_type, T t, F f) { return f; }
+        auto static_if(std::false_type, T, F f) { return f; }
         
         template <bool B, typename T, typename F>
         auto static_if(T t, F f) { return static_if(std::integral_constant<bool, B>{}, t, f); }
@@ -714,6 +714,7 @@ namespace sqlite_orm {
                     case decltype(argument)::nocase: return "NOCASE";
                     case decltype(argument)::rtrim: return "RTRIM";
                 }
+                throw std::domain_error("Invalid collate_argument enum");
             }
         };
         
@@ -3697,7 +3698,7 @@ namespace sqlite_orm {
          *  Generic way to get DISTINCT value from any type.
          */
         template<class T>
-        bool get_distinct(const T &t) {
+        bool get_distinct(const T &) {
             return false;
         }
         
@@ -4326,7 +4327,7 @@ namespace sqlite_orm {
         std::vector<char> extract(const char *row_value) {
             if(row_value){
                 auto len = ::strlen(row_value);
-                return this->go(row_value, static_cast<int>(len));
+                return this->go(row_value, len);
             }else{
                 return {};
             }
@@ -4340,7 +4341,7 @@ namespace sqlite_orm {
         
     protected:
         
-        std::vector<char> go(const char *bytes, int len) {
+        std::vector<char> go(const char *bytes, size_t len) {
             if(len){
                 std::vector<char> res;
                 res.reserve(len);
@@ -4388,7 +4389,7 @@ namespace sqlite_orm {
         std::vector<char> extract(const char *row_value) {
             if(row_value){
                 auto len = ::strlen(row_value);
-                return this->go(row_value, static_cast<int>(len));
+                return this->go(row_value, len);
             }else{
                 return {};
             }
@@ -4396,13 +4397,13 @@ namespace sqlite_orm {
         
         std::vector<char> extract(sqlite3_stmt *stmt, int columnIndex) {
             auto bytes = static_cast<const char *>(sqlite3_column_blob(stmt, columnIndex));
-            auto len = sqlite3_column_bytes(stmt, columnIndex);
+            auto len = static_cast<size_t>(sqlite3_column_bytes(stmt, columnIndex));
             return this->go(bytes, len);
         }
         
     protected:
         
-        std::vector<char> go(const char *bytes, int len) {
+        std::vector<char> go(const char *bytes, size_t len) {
             if(len){
                 std::vector<char> res;
                 res.reserve(len);
@@ -4538,6 +4539,7 @@ namespace sqlite_orm {
             case sync_schema_result::new_columns_added_and_old_columns_removed: return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated: return os << "old table dropped and recreated";
         }
+        return os;
     }
 }
 #pragma once
@@ -5340,8 +5342,8 @@ namespace sqlite_orm {
                     using member_pointer_t = typename column_type::member_pointer_t;
                     using getter_type = typename column_type::getter_type;
                     using setter_type = typename column_type::setter_type;
-
-					// GCC has bug that reported in https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095 so static_if must have at lease one input
+                    // Make static_if have at least one input as a workaround for GCC bug:
+                    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
                     if(!res){
                         static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c){
                             if(compare_any(col.member_pointer, c)){
@@ -5674,7 +5676,7 @@ namespace sqlite_orm {
                                 break;
                             }
                             dbTableInfo.erase(dbColumnInfoIt);
-                            storageTableInfo.erase(storageTableInfo.begin() + storageColumnInfoIndex);
+                            storageTableInfo.erase(storageTableInfo.begin() + static_cast<ptrdiff_t>(storageColumnInfoIndex));
                             --storageColumnInfoIndex;
                         }else{
                             
@@ -6838,7 +6840,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 std::vector<std::string> columnNames;
                 using columns_type_t = typename std::decay<decltype(fk)>::type::columns_type;
-                constexpr const int columnsCount = std::tuple_size<columns_type_t>::value;
+                constexpr const size_t columnsCount = std::tuple_size<columns_type_t>::value;
                 columnNames.reserve(columnsCount);
                 tuple_helper::iterator<columnsCount - 1, Cs...>()(fk.columns, [&columnNames, this](auto &v){
                     columnNames.push_back(this->impl.column_name(v));
@@ -6854,7 +6856,7 @@ namespace sqlite_orm {
                 ss << ") REFERENCES ";
                 std::vector<std::string> referencesNames;
                 using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
-                constexpr const int referencesCount = std::tuple_size<references_type_t>::value;
+                constexpr const size_t referencesCount = std::tuple_size<references_type_t>::value;
                 referencesNames.reserve(referencesCount);
                 {
                     using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
@@ -6958,7 +6960,7 @@ namespace sqlite_orm {
             std::string escape(std::string text) {
                 for(size_t i = 0; i < text.length(); ) {
                     if(text[i] == '\''){
-                        text.insert(text.begin() + i, '\'');
+                        text.insert(text.begin() + static_cast<ptrdiff_t>(i), '\'');
                         i += 2;
                     }
                     else
@@ -6991,12 +6993,12 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(const alias_holder<T> &holder, bool noTableName = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const alias_holder<T> &, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 return T::get();
             }
             
             template<class T, class E>
-            std::string string_from_expression(const as_t<T, E> &als, bool noTableName = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const as_t<T, E> &als, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 auto tableAliasString = alias_extractor<T>::get();
                 return this->string_from_expression(als.expression) + " AS " + tableAliasString;
             }
@@ -7187,7 +7189,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(const aggregate_functions::count_asterisk_t<T> &f, bool /*noTableName*/ = false, bool /*escape*/ = false) {
+            std::string string_from_expression(const aggregate_functions::count_asterisk_t<T> &, bool /*noTableName*/ = false, bool /*escape*/ = false) {
                 return this->string_from_expression(aggregate_functions::count_asterisk_without_type{});
             }
             
@@ -7349,9 +7351,9 @@ namespace sqlite_orm {
                     args.emplace_back(std::move(expression));
                 });
                 ss << static_cast<std::string>(f) << "(";
-                auto lim = int(args.size());
+                const auto lim = static_cast<int>(args.size());
                 for(auto i = 0; i < lim; ++i) {
-                    ss << args[i];
+                    ss << args[static_cast<size_t>(i)];
                     if(i < lim - 1) {
                         ss << ", ";
                     }else{
@@ -7388,7 +7390,7 @@ namespace sqlite_orm {
             }
             
             template<class T, class F>
-            std::string string_from_expression(const column_pointer<T, F> &c, bool noTableName = false, bool escape = false) {
+            std::string string_from_expression(const column_pointer<T, F> &c, bool noTableName = false, bool /*escape*/ = false) {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << this->impl.template find_table_name<T>() << "'.";
@@ -7409,7 +7411,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::vector<std::string> get_column_names(const internal::asterisk_t<T> &ast) {
+            std::vector<std::string> get_column_names(const internal::asterisk_t<T> &) {
                 std::vector<std::string> res;
                 res.push_back("*");
                 return res;
@@ -7418,7 +7420,7 @@ namespace sqlite_orm {
             template<class ...Args>
             std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) {
                 std::vector<std::string> columnNames;
-                columnNames.reserve(cols.count());
+                columnNames.reserve(static_cast<size_t>(cols.count()));
                 cols.for_each([&columnNames, this](auto &m) {
                     auto columnName = this->string_from_expression(m);
                     if(columnName.length()){
@@ -8303,7 +8305,7 @@ namespace sqlite_orm {
             }
             
             template<class T, class F>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const column_pointer<T, F> &c) {
+            std::set<std::pair<std::string, std::string>> parse_table_name(const column_pointer<T, F> &) {
                 std::set<std::pair<std::string, std::string>> res;
                 res.insert({this->impl.template find_table_name<T>(), ""});
                 return res;
@@ -8315,7 +8317,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const aggregate_functions::count_asterisk_t<T> &c) {
+            std::set<std::pair<std::string, std::string>> parse_table_name(const aggregate_functions::count_asterisk_t<T> &) {
                 auto tableName = this->impl.template find_table_name<T>();
                 if(!tableName.empty()){
                     return {std::make_pair(std::move(tableName), "")};
@@ -8329,7 +8331,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &ast) {
+            std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &) {
                 auto tableName = this->impl.template find_table_name<T>();
                 return {std::make_pair(std::move(tableName), "")};
             }

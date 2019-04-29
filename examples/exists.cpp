@@ -41,7 +41,7 @@ struct Order {
     std::string agentCode;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace sqlite_orm;
     
     auto storage = make_storage("exists.sqlite",
@@ -77,18 +77,18 @@ int main(int argc, char **argv) {
     storage.remove_all<Agent>();
     storage.remove_all<Customer>();
     
-    storage.replace(Agent{"A007", "Ramasundar", "Bangalore", 0.15, "077-25814763"});
-    storage.replace(Agent{"A003", "Alex", "London", 0.13, "075-12458969"});
-    storage.replace(Agent{"A008", "Alford", "New York", 0.12, "044-25874365"});
-    storage.replace(Agent{"A011", "Ravi Kumar", "Bangalore", 0.15, "077-45625874"});
-    storage.replace(Agent{"A010", "Santakumar", "Chennai", 0.14, "007-22388644"});
-    storage.replace(Agent{"A012", "Lucida", "San Jose", 0.12, "044-52981425"});
-    storage.replace(Agent{"A005", "Anderson", "Brisban", 0.13, "045-21447739"});
-    storage.replace(Agent{"A001", "Subbarao", "Bangalore", 0.14, "077-12346674"});
-    storage.replace(Agent{"A002", "Mukesh", "Mumbai", 0.11, "029-12358964"});
-    storage.replace(Agent{"A006", "McDen", "London", 0.15, "078-22255588"});
-    storage.replace(Agent{"A004", "Ivan", "Torento", 0.15, "008-22544166"});
-    storage.replace(Agent{"A009", "Benjamin", "Hampshair", 0.11, "008-22536178"});
+    storage.replace(Agent{"A007", "Ramasundar", "Bangalore", 0.15, "077-25814763", ""});
+    storage.replace(Agent{"A003", "Alex", "London", 0.13, "075-12458969", ""});
+    storage.replace(Agent{"A008", "Alford", "New York", 0.12, "044-25874365", ""});
+    storage.replace(Agent{"A011", "Ravi Kumar", "Bangalore", 0.15, "077-45625874", ""});
+    storage.replace(Agent{"A010", "Santakumar", "Chennai", 0.14, "007-22388644", ""});
+    storage.replace(Agent{"A012", "Lucida", "San Jose", 0.12, "044-52981425", ""});
+    storage.replace(Agent{"A005", "Anderson", "Brisban", 0.13, "045-21447739", ""});
+    storage.replace(Agent{"A001", "Subbarao", "Bangalore", 0.14, "077-12346674", ""});
+    storage.replace(Agent{"A002", "Mukesh", "Mumbai", 0.11, "029-12358964", ""});
+    storage.replace(Agent{"A006", "McDen", "London", 0.15, "078-22255588", ""});
+    storage.replace(Agent{"A004", "Ivan", "Torento", 0.15, "008-22544166", ""});
+    storage.replace(Agent{"A009", "Benjamin", "Hampshair", 0.11, "008-22536178", ""});
     
     storage.replace(Customer{"C00013", "Holmes", "London", "London", "UK", 2, 6000.00, 5000.00, 7000.00, 4000.00, "BBBBBBB", "A003"});
     storage.replace(Customer{"C00001", "Micheal", "New York", "New York", "USA", 2, 3000.00, 5000.00, 2000.00, 6000.00, "CCCCCCC", "A008"});

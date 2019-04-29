@@ -32,7 +32,7 @@ using Storage = decltype(initStorage(""));
 
 static std::unique_ptr<Storage> stor;
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     stor = std::make_unique<Storage>(initStorage("update.sqlite"));
     stor->sync_schema();
     stor->remove_all<Employee>();
