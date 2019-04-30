@@ -288,6 +288,9 @@ int main() {
     {
         static_assert(internal::is_bindable<bool>::value, "bool must be bindable");
         static_assert(internal::is_bindable<int>::value, "int must be bindable");
+        static_assert(internal::is_bindable<long>::value, "long must be bindable");
+        static_assert(internal::is_bindable<float>::value, "float must be bindable");
+        static_assert(internal::is_bindable<double>::value, "double must be bindable");
         static_assert(internal::is_bindable<std::string>::value, "string must be bindable");
         static_assert(internal::is_bindable<std::nullptr_t>::value, "null must be bindable");
         static_assert(internal::is_bindable<std::unique_ptr<int>>::value, "unique_ptr must be bindable");
