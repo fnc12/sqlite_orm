@@ -31,7 +31,7 @@ namespace sqlite_orm {
             view_t(storage_type &stor, decltype(connection) conn, Args&& ...args_):
             storage(stor),
             connection(std::move(conn)),
-            args(std::make_tuple(std::forward<Args>>(args_)...)){}
+            args(std::make_tuple(std::forward<Args>(args_)...)){}
             
             struct iterator_t {
             protected:
