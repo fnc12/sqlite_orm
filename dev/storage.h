@@ -106,6 +106,9 @@ namespace sqlite_orm {
             template<class T, class S, class ...Args>
             friend struct view_t;
             
+            template<class V>
+            friend struct iterator_t;
+            
             /**
              *  Check whether connection exists and returns it if yes or creates a new one
              *  and returns it.
