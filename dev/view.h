@@ -8,6 +8,7 @@
 #include <cstddef>  //  std::ptrdiff_t
 #include <ios>  //  std::make_error_code
 #include <system_error> //  std::system_error
+#include <tuple>    //  std::tuple, std::make_tuple
 
 #include "database_connection.h"
 #include "row_extractor.h"
@@ -25,17 +26,12 @@ namespace sqlite_orm {
             
             storage_type &storage;
             std::shared_ptr<internal::database_connection> connection;
+            std::tuple<Args...> args;
             
-            const std::string query;
-            
-            view_t(storage_type &stor, decltype(connection) conn, Args&& ...args):
+            view_t(storage_type &stor, decltype(connection) conn, Args&& ...args_):
             storage(stor),
             connection(std::move(conn)),
-            query([&args..., &stor]{
-                std::string q;
-                stor.template generate_select_asterisk<T>(&q, std::forward<Args>(args)...);
-                return q;
-            }()){}
+            args(std::make_tuple(std::forward<Args>>(args_)...)){}
             
             struct iterator_t {
             protected:

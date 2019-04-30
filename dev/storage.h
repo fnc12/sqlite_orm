@@ -2247,7 +2247,7 @@ namespace sqlite_orm {
             /**
              *  Select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              *  For a single column use `auto rows = storage.select(&User::id, where(...));
-             *  For multicolumns user `auto rows = storage.select(columns(&User::id, &User::name), where(...));
+             *  For multicolumns use `auto rows = storage.select(columns(&User::id, &User::name), where(...));
              */
             template<
             class T,

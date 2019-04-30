@@ -3988,13 +3988,14 @@ namespace sqlite_orm {
 #pragma once
 
 #include <sqlite3.h>
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same
+#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
 #include <string>   //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>   //  std::vector
 #include <cstddef>  //  std::nullptr_t
+#include <utility>  //  std::declval
 
 // #include "is_std_ptr.h"
 
@@ -4005,19 +4006,15 @@ namespace sqlite_orm {
      *  Helper class used for binding fields to sqlite3 statements.
      */
     template<class V, typename Enable = void>
-    struct statement_binder {
+    struct statement_binder/* {
         int bind(sqlite3_stmt *stmt, int index, const V &value);
-    };
+    }*/;
     
     /**
      *  Specialization for arithmetic types.
      */
     template<class V>
-    struct statement_binder<
-    V,
-    std::enable_if_t<std::is_arithmetic<V>::value>
-    >
-    {
+    struct statement_binder<V, std::enable_if_t<std::is_arithmetic<V>::value>> {
         int bind(sqlite3_stmt *stmt, int index, const V &value) {
             return bind(stmt, index, value, tag());
         }
@@ -4043,15 +4040,7 @@ namespace sqlite_orm {
      *  Specialization for std::string and C-string.
      */
     template<class V>
-    struct statement_binder<
-    V,
-    std::enable_if_t<
-    std::is_same<V, std::string>::value
-    ||
-    std::is_same<V, const char*>::value
-    >
-    >
-    {
+    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char*>::value>> {
         int bind(sqlite3_stmt *stmt, int index, const V &value) {
             return sqlite3_bind_text(stmt, index, string_data(value), -1, SQLITE_TRANSIENT);
         }
@@ -4065,20 +4054,13 @@ namespace sqlite_orm {
             return s;
         }
     };
+    
 #ifndef SQLITE_ORM_OMITS_CODECVT
     /**
      *  Specialization for std::wstring and C-wstring.
      */
     template<class V>
-    struct statement_binder<
-    V,
-    std::enable_if_t<
-    std::is_same<V, std::wstring>::value
-    ||
-    std::is_same<V, const wchar_t*>::value
-    >
-    >
-    {
+    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::wstring>::value || std::is_same<V, const wchar_t*>::value>> {
         int bind(sqlite3_stmt *stmt, int index, const V &value) {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             std::string utf8Str = converter.to_bytes(value);
@@ -4086,26 +4068,19 @@ namespace sqlite_orm {
         }
     };
 #endif  //  SQLITE_ORM_OMITS_CODECVT
+    
     /**
      *  Specialization for std::nullptr_t.
      */
     template<class V>
-    struct statement_binder<
-    V,
-    std::enable_if_t<std::is_same<V, std::nullptr_t>::value>
-    >
-    {
+    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::nullptr_t>::value>> {
         int bind(sqlite3_stmt *stmt, int index, const V &) {
             return sqlite3_bind_null(stmt, index);
         }
     };
     
     template<class V>
-    struct statement_binder<
-    V,
-    std::enable_if_t<is_std_ptr<V>::value>
-    >
-    {
+    struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
         using value_type = typename V::element_type;
         
         int bind(sqlite3_stmt *stmt, int index, const V &value) {
@@ -4121,11 +4096,7 @@ namespace sqlite_orm {
      *  Specialization for optional type (std::vector<char>).
      */
     template<class V>
-    struct statement_binder<
-    V,
-    std::enable_if_t<std::is_same<V, std::vector<char>>::value>
-    >
-    {
+    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::vector<char>>::value>> {
         int bind(sqlite3_stmt *stmt, int index, const V &value) {
             if (value.size()) {
                 return sqlite3_bind_blob(stmt, index, (const void *)&value.front(), int(value.size()), SQLITE_TRANSIENT);
@@ -4134,6 +4105,19 @@ namespace sqlite_orm {
             }
         }
     };
+    
+    namespace internal {
+        
+        //  got it from here https://stackoverflow.com/questions/44229676/how-to-decide-if-a-template-specialization-exist
+        
+        template <class T, std::size_t = sizeof(T)>
+        std::true_type is_bindable_impl(T *);
+        
+        std::false_type is_bindable_impl(...);
+        
+        template <class T>
+        using is_bindable = decltype(is_bindable_impl(std::declval<statement_binder<T>*>()));
+    }
 }
 #pragma once
 
@@ -6593,6 +6577,7 @@ namespace sqlite_orm {
 #include <cstddef>  //  std::ptrdiff_t
 #include <ios>  //  std::make_error_code
 #include <system_error> //  std::system_error
+#include <tuple>    //  std::tuple, std::make_tuple
 
 // #include "database_connection.h"
 
@@ -6614,17 +6599,12 @@ namespace sqlite_orm {
             
             storage_type &storage;
             std::shared_ptr<internal::database_connection> connection;
+            std::tuple<Args...> args;
             
-            const std::string query;
-            
-            view_t(storage_type &stor, decltype(connection) conn, Args&& ...args):
+            view_t(storage_type &stor, decltype(connection) conn, Args&& ...args_):
             storage(stor),
             connection(std::move(conn)),
-            query([&args..., &stor]{
-                std::string q;
-                stor.template generate_select_asterisk<T>(&q, std::forward<Args>(args)...);
-                return q;
-            }()){}
+            args(std::make_tuple(std::forward<Args>>(args_)...)){}
             
             struct iterator_t {
             protected:
@@ -8976,7 +8956,7 @@ namespace sqlite_orm {
             /**
              *  Select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              *  For a single column use `auto rows = storage.select(&User::id, where(...));
-             *  For multicolumns user `auto rows = storage.select(columns(&User::id, &User::name), where(...));
+             *  For multicolumns use `auto rows = storage.select(columns(&User::id, &User::name), where(...));
              */
             template<
             class T,
