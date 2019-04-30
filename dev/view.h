@@ -170,7 +170,9 @@ namespace sqlite_orm {
             iterator_t begin() {
                 sqlite3_stmt *stmt = nullptr;
                 auto db = this->connection->get_db();
-                auto ret = sqlite3_prepare_v2(db, this->query.c_str(), -1, &stmt, nullptr);
+                std::string query;
+                this->storage.template generate_select_asterisk<T>(&query, this->args);
+                auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK){
                     return {stmt, *this};
                 }else{

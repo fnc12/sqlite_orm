@@ -13,7 +13,7 @@ using std::cout;
 using std::endl;
 
 void testIterateBlob() {
-    /*struct Test {
+    struct Test {
         int64_t id;
         std::vector<char> key;
     };
@@ -35,7 +35,11 @@ void testIterateBlob() {
     
     db.insert(v);
     
-    for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
+    for(auto &obj : db.iterate<Test>()){
+        cout << db.dump(obj) << endl;
+    } //  test that view_t and iterator_t compile
+    
+    /*for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
         cout << w.id << endl;
     }*/
 }

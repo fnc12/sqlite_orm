@@ -1085,18 +1085,17 @@ namespace sqlite_orm {
                 ss << this->process_where(hav.t) << " ";
             }
             
+            template<class ...Args>
+            void process_conditions(std::stringstream &ss, std::tuple<Args...> args) {
+                this->process_single_condition(ss, tuple_helper::head(args));
+                this->process_conditions(ss, tuple_helper::tail(args));
+            }
+            
             /**
              *  Recursion end.
              */
-            template<class ...Args>
-            void process_conditions(std::stringstream &, std::tuple<Args...> .../*args*/) {
+            void process_conditions(std::stringstream &, std::tuple<> /*args*/) {
                 //..
-            }
-            
-            template<class C, class ...Args>
-            void process_conditions(std::stringstream &ss, std::tuple<C, Args...> args) {
-                this->process_single_condition(ss, tuple_helper::head(args));
-                this->process_conditions(ss, tuple_helper::tail(args));
             }
             
             void on_open_internal(sqlite3 *db) {
@@ -1378,7 +1377,7 @@ namespace sqlite_orm {
              *  @return impl for O
              */
             template<class O, class ...Args>
-            auto& generate_select_asterisk(std::string *query, Args&& ...args) {
+            auto& generate_select_asterisk(std::string *query, std::tuple<Args...> args) {
                 std::stringstream ss;
                 ss << "SELECT ";
                 auto &impl = this->get_impl<O>();
@@ -1397,7 +1396,7 @@ namespace sqlite_orm {
                     }
                 }
                 ss << "FROM '" << impl.table.name << "' ";
-                this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
+                this->process_conditions(ss, move(args));
                 if(query){
                     *query = ss.str();
                 }
@@ -1737,7 +1736,7 @@ namespace sqlite_orm {
                 auto connection = this->get_or_create_connection();
                 C res;
                 std::string query;
-                auto &impl = this->generate_select_asterisk<O>(&query, std::forward<Args>(args)...);
+                auto &impl = this->generate_select_asterisk<O>(&query, std::make_tuple<Args...>(std::forward<Args>(args)...));
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
