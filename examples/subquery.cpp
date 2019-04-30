@@ -38,7 +38,7 @@ struct JobHistory {
     decltype(Employee::departmentId) departmentId;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace sqlite_orm;
     auto storage = make_storage("subquery.sqlite",
                                 make_table("employees",

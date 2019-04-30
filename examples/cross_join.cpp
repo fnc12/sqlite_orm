@@ -30,7 +30,7 @@ static auto initStorage(const std::string &path) {
                                    make_column("suit", &Suit::suit)));
 }
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace DataModel;
     
     using Storage = decltype(initStorage(""));

@@ -28,7 +28,7 @@ auto initStorage(const std::string &path) {
 }
 using Storage = decltype(initStorage(""));
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     
     Storage storage = initStorage("distinct.sqlite");
     

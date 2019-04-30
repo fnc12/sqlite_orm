@@ -15,7 +15,7 @@ struct RapArtist {
     std::string name;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     
     auto storage = make_storage(":memory:",
                                 make_table("rap_artists",

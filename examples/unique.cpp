@@ -14,7 +14,7 @@ struct Entry {
     std::unique_ptr<std::string> nullableColumn;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace sqlite_orm;
     auto storage = make_storage("unique.sqlite",
                                 make_table("unique_test",
@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
         
         auto id2 = storage.insert(Entry{ 0, sameString, std::make_unique<std::string>("I got you") });
         cout << "inserted " << storage.dump(storage.get<Entry>(id2)) << endl;
-    } catch (std::system_error e) {
+    } catch (const std::system_error& e) {
         cerr << e.what() << endl;
     }
     

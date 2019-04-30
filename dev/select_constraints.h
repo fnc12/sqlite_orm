@@ -228,7 +228,7 @@ namespace sqlite_orm {
          *  Generic way to get DISTINCT value from any type.
          */
         template<class T>
-        bool get_distinct(const T &t) {
+        bool get_distinct(const T &) {
             return false;
         }
         

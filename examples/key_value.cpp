@@ -56,7 +56,7 @@ int storedKeysCount() {
     return getStorage().count<KeyValue>();
 }
 
-int main(int argc, char **argv) {
+int main(int, char **argv) {
     
     cout << argv[0] << endl;    //  to know executable path in case if you need to access sqlite directly from sqlite client
     

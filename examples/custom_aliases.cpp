@@ -41,7 +41,7 @@ struct CompanyNameAlias : alias_tag {
     }
 };
 
-int main(int argc, char* argv[]) {
+int main(int, char** argv) {
     cout << argv[0] << endl;
     
     auto storage = make_storage("custom_aliases.sqlite",

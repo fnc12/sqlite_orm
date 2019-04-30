@@ -19,7 +19,7 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     auto storage = make_storage("select.sqlite",
                                 make_table("COMPANY",
                                            make_column("ID", &Employee::id, primary_key()),

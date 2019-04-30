@@ -65,6 +65,8 @@ namespace sqlite_orm {
                     using member_pointer_t = typename column_type::member_pointer_t;
                     using getter_type = typename column_type::getter_type;
                     using setter_type = typename column_type::setter_type;
+                    // Make static_if have at least one input as a workaround for GCC bug:
+                    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
                     if(!res){
                         static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C &c){
                             if(compare_any(col.member_pointer, c)){

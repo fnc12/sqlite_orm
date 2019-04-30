@@ -56,7 +56,7 @@ void testCast() {
                                            make_column("score_str", &Student::scoreString)));
     storage.sync_schema();
     
-    storage.replace(Student{1, 10.1, "14.5"});
+    storage.replace(Student{1, 10.1f, "14.5"});
     
     {
         auto rows = storage.select(columns(cast<int>(&Student::scoreFloat), cast<int>(&Student::scoreString)));
@@ -684,7 +684,7 @@ void testExplicitInsert() {
         try {
             storage.insert(user4, columns(&User::name));
             throw std::runtime_error("Must not fire");
-        } catch (std::system_error e) {
+        } catch (const std::system_error&) {
             //        cout << e.what() << endl;
         }
     }
@@ -733,14 +733,14 @@ void testExplicitInsert() {
         try {
             storage.insert(visit3, columns(&Visit::id));
             throw std::runtime_error("Must not fire");
-        } catch (std::system_error e) {
+        } catch (const std::system_error&) {
             //        cout << e.what() << endl;
         }
         
         try {
             storage.insert(visit3, columns(&Visit::setId));
             throw std::runtime_error("Must not fire");
-        } catch (std::system_error e) {
+        } catch (const std::system_error&) {
             //        cout << e.what() << endl;
         }
     }
@@ -769,7 +769,7 @@ void testCustomCollate() {
     storage.create_collation("ototo", [](int, const void *lhs, int, const void *rhs){
         return strcmp((const char*)lhs, (const char*)rhs);
     });
-    storage.create_collation("alwaysequal", [](int, const void *lhs, int, const void *rhs){
+    storage.create_collation("alwaysequal", [](int, const void *, int, const void *){
         return 0;
     });
     auto rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
@@ -782,12 +782,12 @@ void testCustomCollate() {
     storage.create_collation("ototo", {});
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
-    } catch (std::system_error e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
-    } catch (std::system_error e) {
+    } catch (const std::system_error& e) {
         cout << e.what() << endl;
     }
     rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
@@ -795,7 +795,7 @@ void testCustomCollate() {
     
     rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                           order_by(&Item::name).collate("alwaysequal"));
-    assert(rows.size() == storage.count<Item>());
+    assert(rows.size() == static_cast<size_t>(storage.count<Item>()));
 }
 
 void testVacuum() {
@@ -898,7 +898,7 @@ void testOperators() {
                                        c(&Object::nameLen) / c(&Object::number),
                                        c(&Object::nameLen) / 2));
     
-    for(auto i = 0; i < rows.size(); ++i) {
+    for(size_t i = 0; i < rows.size(); ++i) {
         auto &row = rows[i];
         auto &name = names[i];
         assert(std::get<0>(row) == name + suffix);
@@ -940,14 +940,14 @@ void testOperators() {
                                         &Object::nameLen % c(&Object::number),
                                         c(&Object::nameLen) % c(&Object::number),
                                         c(&Object::nameLen) % 5));
-    for(auto i = 0; i < rows2.size(); ++i) {
+    for(size_t i = 0; i < rows2.size(); ++i) {
         auto &row = rows2[i];
         auto &name = names[i];
-        assert(std::get<0>(row) == name.length() % number);
+        assert(std::get<0>(row) == static_cast<int>(name.length()) % number);
         assert(std::get<1>(row) == std::get<0>(row));
         assert(std::get<2>(row) == std::get<1>(row));
         assert(std::get<3>(row) == std::get<2>(row));
-        assert(std::get<4>(row) == name.length() % 5);
+        assert(std::get<4>(row) == static_cast<int>(name.length()) % 5);
     }
 }
 
@@ -1342,7 +1342,7 @@ void testSyncSchema() {
     }
 
     //  assert count first cause we will be asserting row by row next..
-    assert(storage.count<UserBefore>() == usersToInsert.size());
+    assert(static_cast<size_t>(storage.count<UserBefore>()) == usersToInsert.size());
 
     //  now we create new storage with partial schema..
     auto newStorage = make_storage(filename,
@@ -1366,7 +1366,7 @@ void testSyncSchema() {
 
     assert(usersFromDb.size() == usersToInsert.size());
 
-    for(auto i = 0; i < usersFromDb.size(); ++i) {
+    for(size_t i = 0; i < usersFromDb.size(); ++i) {
         auto &userFromDb = usersFromDb[i];
         auto &oldUser = usersToInsert[i];
         assert(userFromDb.id == oldUser.id);
@@ -1682,7 +1682,7 @@ void testInsert() {
     auto countBefore = storage.count<Object>();
     storage.insert_range(initList.begin(),
                          initList.end());
-    assert(storage.count<Object>() == countBefore + initList.size());
+    assert(storage.count<Object>() == countBefore + static_cast<int>(initList.size()));
 
 
     //  test empty container
@@ -1925,13 +1925,13 @@ void testBlob() {
     };
     using byte = char;
 
-    auto generateData = [](int size) -> byte* {
+    auto generateData = [](size_t size) -> byte* {
         auto data = (byte*)::malloc(size * sizeof(byte));
-        for (int i = 0; i < size; ++i) {
+        for (int i = 0; i < static_cast<int>(size); ++i) {
             if ((i+1) % 10 == 0) {
                 data[i] = 0;
             } else {
-                data[i] = (rand() % 100) + 1;
+                data[i] = static_cast<byte>((rand() % 100) + 1);
             }
         }
         return data;
@@ -1943,7 +1943,7 @@ void testBlob() {
     storage.sync_schema();
     storage.remove_all<BlobData>();
 
-    auto size = 100;
+    size_t size = 100;
     auto data = generateData(size);
 
     //  write data
@@ -2016,7 +2016,7 @@ void testDefaultValue() {
                                             make_column("Age", &User::age),
                                             make_column("Email", &User::email, default_value("example@email.com"))));
     storage2.sync_schema();
-    storage2.insert(User{0, "Tom", 15});
+    storage2.insert(User{0, "Tom", 15, ""});
 }
 
 //  after #18
@@ -2137,7 +2137,7 @@ void testSynchronous() {
     try{
         storage.pragma.synchronous(newValue);
         throw std::runtime_error("Must not fire");
-    }catch(std::system_error) {
+    }catch(const std::system_error&) {
         //  Safety level may not be changed inside a transaction
         assert(storage.pragma.synchronous() == value);
     }
@@ -2313,11 +2313,11 @@ void testRowId() {
                                        _rowid_<SimpleTable>(),
                                        &SimpleTable::letter,
                                        &SimpleTable::desc));
-    for(auto i = 0; i < rows.size(); ++i) {
+    for(size_t i = 0; i < rows.size(); ++i) {
         auto &row = rows[i];
         assert(std::get<0>(row) == std::get<1>(row));
         assert(std::get<1>(row) == std::get<2>(row));
-        assert(std::get<2>(row) == i + 1);
+        assert(std::get<2>(row) == static_cast<int>(i + 1));
         assert(std::get<2>(row) == std::get<3>(row));
         assert(std::get<3>(row) == std::get<4>(row));
         assert(std::get<4>(row) == std::get<5>(row));
@@ -2371,7 +2371,7 @@ void testWhere() {
     assert(users5.size() == 0);
 }
 
-int main(int argc, char **argv) {
+int main(int, char **) {
 
     cout << "version = " << make_storage("").libversion() << endl;
 
