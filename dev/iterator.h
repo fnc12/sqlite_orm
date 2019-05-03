@@ -27,7 +27,7 @@ namespace sqlite_orm {
             /**
              *  The double-indirection is so that copies of the iterator
              *  share the same sqlite3_stmt from a sqlite3_prepare_v2()
-             *  call. When one finishes iterating it, the pointer
+             *  call. When one finishes iterating it the pointer
              *  inside the shared_ptr is nulled out in all copies.
              */
             std::shared_ptr<sqlite3_stmt *> stmt;
