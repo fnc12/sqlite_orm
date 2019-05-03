@@ -4150,7 +4150,7 @@ namespace sqlite_orm {
     #ifdef DELETE
         #undef DELETE
     #endif
-    enum class journal_mode : char {
+    enum class journal_mode : signed char {
         DELETE = 0,
         TRUNCATE = 1,
         PERSIST = 2,
@@ -6366,7 +6366,7 @@ namespace sqlite_orm {
     protected:
         storage_type &storage;
         int _synchronous = -1;
-        char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
+        signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
         
         template<class T>
         T get_pragma(const std::string &name) {

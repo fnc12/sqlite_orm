@@ -14,7 +14,7 @@ namespace sqlite_orm {
     #ifdef DELETE
         #undef DELETE
     #endif
-    enum class journal_mode : char {
+    enum class journal_mode : signed char {
         DELETE = 0,
         TRUNCATE = 1,
         PERSIST = 2,
