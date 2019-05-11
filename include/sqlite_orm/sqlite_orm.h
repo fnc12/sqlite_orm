@@ -4152,7 +4152,7 @@ namespace sqlite_orm {
     #ifdef DELETE
         #undef DELETE
     #endif
-    enum class journal_mode : char {
+    enum class journal_mode : signed char {
         DELETE = 0,
         TRUNCATE = 1,
         PERSIST = 2,
@@ -6368,7 +6368,7 @@ namespace sqlite_orm {
     protected:
         storage_type &storage;
         int _synchronous = -1;
-        char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
+        signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
         
         template<class T>
         T get_pragma(const std::string &name) {
@@ -7963,10 +7963,10 @@ namespace sqlite_orm {
             /**
              *  Delete routine.
              *  O is an object's type. Must be specified explicitly.
-             *  @param id id of object to be removed.
+             *  @param ids ids of object to be removed.
              */
-            template<class O, class I>
-            void remove(I id) {
+            template<class O, class ...Ids>
+            void remove(Ids ...ids) {
                 this->assert_mapped_type<O>();
                 
                 auto connection = this->get_or_create_connection();
@@ -7976,11 +7976,9 @@ namespace sqlite_orm {
                 ss << "WHERE ";
                 auto primaryKeyColumnNames = impl.table.primary_key_column_names();
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " =  ?";
+                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " =  ? ";
                     if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << " AND ";
-                    }else{
-                        ss << " ";
+                        ss << "AND ";
                     }
                 }
                 auto query = ss.str();
@@ -7988,7 +7986,12 @@ namespace sqlite_orm {
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    statement_binder<I>().bind(stmt, index++, id);
+                    auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
+                    constexpr const auto idsCount = std::tuple_size<decltype(idsTuple)>::value;
+                    tuple_helper::iterator<idsCount - 1, Ids...>()(idsTuple, [stmt, &index](auto &v){
+                        using field_type = typename std::decay<decltype(v)>::type;
+                        statement_binder<field_type>().bind(stmt, index++, v);
+                    });
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{

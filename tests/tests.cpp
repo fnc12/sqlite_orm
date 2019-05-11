@@ -1597,11 +1597,8 @@ void testRemove() {
     {
         auto storage = make_storage("test_remove.sqlite",
                                     make_table("objects",
-                                               make_column("id",
-                                                           &Object::id,
-                                                           primary_key()),
-                                               make_column("name",
-                                                           &Object::name)));
+                                               make_column("id", &Object::id, primary_key()),
+                                               make_column("name", &Object::name)));
         storage.sync_schema();
         storage.remove_all<Object>();
         
@@ -1613,10 +1610,8 @@ void testRemove() {
     {
         auto storage = make_storage("test_remove.sqlite",
                                     make_table("objects",
-                                               make_column("id",
-                                                           &Object::id),
-                                               make_column("name",
-                                                           &Object::name),
+                                               make_column("id", &Object::id),
+                                               make_column("name", &Object::name),
                                                primary_key(&Object::id)));
         storage.sync_schema();
         storage.remove_all<Object>();
@@ -1625,6 +1620,25 @@ void testRemove() {
         assert(storage.count<Object>() == 1);
         storage.remove<Object>(id1);
         assert(storage.count<Object>() == 0);
+    }
+    {
+        auto storage = make_storage("",
+                                    make_table("objects",
+                                               make_column("id", &Object::id),
+                                               make_column("name", &Object::name),
+                                               primary_key(&Object::id, &Object::name)));
+        storage.sync_schema();
+        storage.replace(Object{1, "Skillet"});
+        assert(storage.count<Object>() == 1);
+        storage.remove<Object>(1, "Skillet");
+        assert(storage.count<Object>() == 0);
+        
+        storage.replace(Object{1, "Skillet"});
+        storage.replace(Object{2, "Paul Cless"});
+        assert(storage.count<Object>() == 2);
+        storage.remove<Object>(1, "Skillet");
+        assert(storage.count<Object>() == 1);
+        
     }
 }
 
