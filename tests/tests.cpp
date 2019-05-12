@@ -1782,6 +1782,43 @@ void testRemove() {
         std::string name;
     };
 
+	{
+		struct Object {
+			int key_part_1;
+			int key_part_2;
+			std::string name;
+		};
+
+        auto storage = make_storage("test_remove.sqlite",
+                                   make_table("objects",
+                                              make_column("key_part_1",
+                                                          &Object::key_part_1),
+											  make_column("key_part_2",
+											              &Object::key_part_2),
+                                              make_column("name",
+                                                          &Object::name),
+											  primary_key(&Object::key_part_1, &Object::key_part_2)));
+        storage.sync_schema();
+        storage.remove_all<Object>();
+
+		cout << "salam " << endl;
+        
+        Object object{0, 0, "Skillet"};
+
+        storage.replace(object);
+        assert(storage.count<Object>() == 1);
+        storage.remove_all<Object>(where(c(&Object::key_part_1) == 0 && c(&Object::key_part_2) == 0));
+        assert(storage.count<Object>() == 0);
+
+		storage.replace(object);
+        assert(storage.count<Object>() == 1);
+		auto object_from_database = storage.get<Object>(0, 0);
+		assert(object_from_database.name == "Skillet");
+		storage.remove(object_from_database);
+		assert(storage.count<Object>() == 0);
+	}
+
+	// Simple key
     {
         auto storage = make_storage("test_remove.sqlite",
                                     make_table("objects",

@@ -48,9 +48,25 @@
 #include "ast_iterator.h"
 
 namespace sqlite_orm {
-    
+
     namespace internal {
-        
+
+		// std::apply alternative implementation from https://en.cppreference.com/w/cpp/utility/apply
+
+        template <class F, class Tuple, std::size_t... I>
+        constexpr decltype(auto) apply_impl(F&& f, Tuple&& t, std::index_sequence<I...>)
+        {
+            return std::invoke(std::forward<F>(f), std::get<I>(std::forward<Tuple>(t))...);
+        }
+         
+        template <class F, class Tuple>
+        constexpr decltype(auto) apply(F&& f, Tuple&& t)
+        {
+            return detail::apply_impl(
+                std::forward<F>(f), std::forward<Tuple>(t),
+                std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{});
+        }        
+
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
          */
@@ -1278,6 +1294,8 @@ namespace sqlite_orm {
                 this->assert_mapped_type<O>();
 
                 auto &impl = this->get_impl<O>();
+
+				this->remove_all<O>(where(decltype(impl.table.get_composite_key())::columns));
 
                 std::vector<std::string> primaryKeyColumnNames = impl.table.primary_key_column_names();
 
