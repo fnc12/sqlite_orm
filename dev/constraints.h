@@ -7,6 +7,30 @@
 #include <ostream>  //  std::ostream
 
 namespace sqlite_orm {
+
+    namespace internal {
+        // from https://stackoverflow.com/questions/22213523/c11-14-how-to-remove-a-pointer-to-member-from-a-type
+        template<class T> struct remove_member_pointer {
+            typedef T type;
+        };
+
+        template<class C, class T> struct remove_member_pointer<T C::*> {
+            typedef T type;
+        };
+
+        template<class C, bool IsMemberPointer>
+        struct column_value_type;
+
+        template<class C>
+        struct column_value_type<C, true> {
+            typedef typename remove_member_pointer<C>::type type;
+        };
+
+        template<class C>
+        struct column_value_type<C, false> {
+            typedef typename std::result_of<C>::type type;
+        };
+    }
     
     namespace constraints {
         
@@ -44,7 +68,7 @@ namespace sqlite_orm {
                 return res;
             }
         };
-        
+
         /**
          *  PRIMARY KEY constraint class.
          *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
@@ -52,8 +76,10 @@ namespace sqlite_orm {
         template<class ...Cs>
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
+            using columns_type = std::tuple<Cs...>;
+            using columns_value_type = std::tuple<typename internal::column_value_type<Cs, std::is_member_object_pointer<Cs>::value>::type...>;
             
-            std::tuple<Cs...> columns;
+            columns_type columns;
             
             primary_key_t(decltype(columns) c):columns(std::move(c)){}
             

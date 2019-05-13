@@ -1782,6 +1782,7 @@ void testRemove() {
         std::string name;
     };
 
+	// Composite key
 	{
 		struct Object {
 			int key_part_1;
@@ -1801,8 +1802,6 @@ void testRemove() {
         storage.sync_schema();
         storage.remove_all<Object>();
 
-		cout << "salam " << endl;
-        
         Object object{0, 0, "Skillet"};
 
         storage.replace(object);

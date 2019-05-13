@@ -137,7 +137,7 @@ namespace sqlite_orm {
 			typename ImplType::composite_key_type get_composite_key() {
 				return this->impl.composite_key_columns;
 			}
-            
+
             /**
              *  Searches column name by class member pointer passed as first argument.
              *  @return column name or empty string if nothing found.

@@ -15,7 +15,17 @@
 namespace sqlite_orm {
     
     namespace internal {
-        
+
+        template<class O, class C>
+        typename remove_member_pointer<C>::type invoke_column(const O& o, C& c, std::false_type) {
+            return o.*c;
+        }
+
+        template<class O, class C>
+        typename std::result_of<C>::type invoke_column(const O& o, C& c, std::true_type) {
+            return ((o).*(c))();
+        }
+
         /**
          *  This is a proxy class used to define what type must have result type depending on select
          *  arguments (member pointer, aggregate functions, etc). Below you can see specializations

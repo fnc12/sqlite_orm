@@ -50,23 +50,6 @@
 namespace sqlite_orm {
 
     namespace internal {
-
-		// std::apply alternative implementation from https://en.cppreference.com/w/cpp/utility/apply
-
-        template <class F, class Tuple, std::size_t... I>
-        constexpr decltype(auto) apply_impl(F&& f, Tuple&& t, std::index_sequence<I...>)
-        {
-            return std::invoke(std::forward<F>(f), std::get<I>(std::forward<Tuple>(t))...);
-        }
-         
-        template <class F, class Tuple>
-        constexpr decltype(auto) apply(F&& f, Tuple&& t)
-        {
-            return detail::apply_impl(
-                std::forward<F>(f), std::forward<Tuple>(t),
-                std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{});
-        }        
-
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
          */
@@ -1292,28 +1275,10 @@ namespace sqlite_orm {
             template<class O>
             void remove(const O &o) {
                 this->assert_mapped_type<O>();
-
                 auto &impl = this->get_impl<O>();
+                remove_impl(o, std::conditional_t<decltype(impl.table)::impl_type::has_primary_key, std::true_type, std::false_type>{});
+			}
 
-				this->remove_all<O>(where(decltype(impl.table.get_composite_key())::columns));
-
-                std::vector<std::string> primaryKeyColumnNames = impl.table.primary_key_column_names();
-
-                impl.table.for_each_column([this,&o,&primaryKeyColumnNames] (auto &c) {
-					if(std::find(primaryKeyColumnNames.cbegin(), primaryKeyColumnNames.cend(), c.name) !=
-                            primaryKeyColumnNames.cend()) {
-                        using field_type = typename std::decay<decltype(c)>::type::field_type;
-                        const field_type *value = nullptr;
-                        if(c.member_pointer){
-                            value = &(o.*c.member_pointer);
-                        }else{
-                            value = &((o).*(c.getter))();
-                        }
-                        this->remove<O>(*value);
-                    }
-                });
-            }
-            
             /**
              *  Update routine. Sets all non primary key fields where primary key is equal.
              *  O is an object type. May be not specified explicitly cause it can be deduced by
@@ -2970,6 +2935,62 @@ namespace sqlite_orm {
         public:
             pragma_type pragma;
             limit_accesor<self> limit;
+
+        private:
+            /*
+             * Delete routine
+             * O is an object's type. Must be not specified explicitly cause it can be deduced by
+             *      compiler from first parameter.
+             * @param o object to be updated.
+             */
+            template<class O>
+            void remove_impl(const O &o, std::false_type) {
+                this->assert_mapped_type<O>();
+
+                auto &impl = this->get_impl<O>();
+
+                std::vector<std::string> primaryKeyColumnNames = impl.table.primary_key_column_names();
+
+                impl.table.for_each_column([this,&o,&primaryKeyColumnNames] (auto &c) {
+					if(std::find(primaryKeyColumnNames.cbegin(), primaryKeyColumnNames.cend(), c.name) !=
+                            primaryKeyColumnNames.cend()) {
+                        using field_type = typename std::decay<decltype(c)>::type::field_type;
+                        const field_type *value = nullptr;
+                        if(c.member_pointer){
+                            value = &(o.*c.member_pointer);
+                        }else{
+                            value = &((o).*(c.getter))();
+                        }
+                        this->remove<O>(*value);
+                    }
+                });
+            }
+
+            /*
+             * Delete routine
+             * O is an object's type. Must be not specified explicitly cause it can be deduced by
+             *      compiler from first parameter.
+             * @param o object to be updated.
+             */
+            template<class O>
+            void remove_impl(const O &o, std::true_type) {
+                this->assert_mapped_type<O>();
+
+                auto &impl = this->get_impl<O>();
+
+				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_type composite_key_columns_type;
+				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type composite_key_columns_value_type;
+				composite_key_columns_type composite_key_columns = impl.table.get_composite_key().columns;
+				composite_key_columns_value_type composite_key_value;
+				tuple_helper::apply([&o,&composite_key_value](auto ...pks) {
+                    composite_key_value = std::make_tuple(internal::invoke_column(o, pks, internal::is_getter<decltype(pks)>{})...);
+				}, composite_key_columns);
+
+                tuple_helper::apply([this](auto ...pks) {
+					this->remove<O>(pks...);
+				}, composite_key_value);
+            }
+
         };
         
         template<class T>

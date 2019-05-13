@@ -256,6 +256,21 @@ namespace sqlite_orm {
         void tuple_for_each(const std::tuple<Args...>& t, F&& f){
             tuple_for_each_impl(std::forward<F>(f), t, std::index_sequence_for<Args...>{});
         }
+
+        // std::apply alternative implementation from https://en.cppreference.com/w/cpp/utility/apply
+        template <class F, class Tuple, std::size_t... I>
+        constexpr decltype(auto) apply_impl(F&& f, Tuple&& t, std::index_sequence<I...>)
+        {
+            return f(std::get<I>(std::forward<Tuple>(t))...);
+        }
+
+        template <class F, class Tuple>
+        constexpr decltype(auto) apply(F&& f, Tuple&& t)
+        {
+            return apply_impl(
+                std::forward<F>(f), std::forward<Tuple>(t),
+                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tuple>>::value>{});
+        }
     }
 }
 #pragma once
@@ -407,6 +422,30 @@ namespace sqlite_orm {
 #include <ostream>  //  std::ostream
 
 namespace sqlite_orm {
+
+    namespace internal {
+        // from https://stackoverflow.com/questions/22213523/c11-14-how-to-remove-a-pointer-to-member-from-a-type
+        template<class T> struct remove_member_pointer {
+            typedef T type;
+        };
+
+        template<class C, class T> struct remove_member_pointer<T C::*> {
+            typedef T type;
+        };
+
+        template<class C, bool IsMemberPointer>
+        struct column_value_type;
+
+        template<class C>
+        struct column_value_type<C, true> {
+            typedef typename remove_member_pointer<C>::type type;
+        };
+
+        template<class C>
+        struct column_value_type<C, false> {
+            typedef typename std::result_of<C>::type type;
+        };
+    }
     
     namespace constraints {
         
@@ -444,7 +483,7 @@ namespace sqlite_orm {
                 return res;
             }
         };
-        
+
         /**
          *  PRIMARY KEY constraint class.
          *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
@@ -452,8 +491,10 @@ namespace sqlite_orm {
         template<class ...Cs>
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
+            using columns_type = std::tuple<Cs...>;
+            using columns_value_type = std::tuple<typename internal::column_value_type<Cs, std::is_member_object_pointer<Cs>::value>::type...>;
             
-            std::tuple<Cs...> columns;
+            columns_type columns;
             
             primary_key_t(decltype(columns) c):columns(std::move(c)){}
             
@@ -4796,7 +4837,17 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     
     namespace internal {
-        
+
+        template<class O, class C>
+        typename remove_member_pointer<C>::type invoke_column(const O& o, C& c, std::false_type) {
+            return o.*c;
+        }
+
+        template<class O, class C>
+        typename std::result_of<C>::type invoke_column(const O& o, C& c, std::true_type) {
+            return ((o).*(c))();
+        }
+
         /**
          *  This is a proxy class used to define what type must have result type depending on select
          *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
@@ -5119,6 +5170,7 @@ namespace sqlite_orm {
         template<>
         struct table_impl<>{
             
+            static constexpr bool has_primary_key = false;
             static constexpr const int columns_count = 0;
             
             std::vector<std::string> column_names() {
@@ -5155,110 +5207,45 @@ namespace sqlite_orm {
             
         };
 
-		template<typename H, typename... T>
-		struct table_impl<H, typename std::enable_if<internal::is_primary_key<H>::value>::type, T...> : private table_impl<T...> {
+        template<typename H, bool IsCompositeKey, typename... T>
+        struct composite_key_table_impl_detail;
+
+        template<typename H, typename... T>
+        struct composite_key_table_impl_detail<H, false, T...> {
+            composite_key_table_impl_detail(H h, T ...t) {}
+        };
+
+        template<typename H, typename... T>
+        struct composite_key_table_impl_detail<H, true, T...> {
             using column_type = H;
             using tail_types = std::tuple<T...>;
             using super = table_impl<T...>;
-			using composite_key_type = H;
+            using composite_key_type = H;
 
-            table_impl(H h, T ...t) : super(t...), col(h), composite_key_columns(h) {}
+            composite_key_table_impl_detail(H h, T ...t) : col(h), composite_key_columns(h) {}
 
             column_type col;
 			composite_key_type composite_key_columns;
-
-            static constexpr const int columns_count = 1 + super::columns_count;
-
-            /**
-             *  column_names_with implementation. Notice that result will be reversed.
-             *  It is reversed back in `table` class.
-             *  @return vector of column names that have specified Op... conditions.
-             */
-            template<class ...Op>
-            std::vector<std::string> column_names_with() {
-                auto res = this->super::template column_names_with<Op...>();
-                if(this->col.template has_every<Op...>()) {
-                    res.emplace_back(this->col.name);
-                }
-                return res;
-            }
-            
-            /**
-             *  For each implementation. Calls templated lambda with its column
-             *  and passed call to superclass.
-             */
-            template<class L>
-            void for_each_column(L l){
-                this->apply_to_col_if(l, internal::is_column<column_type>{});
-                this->super::for_each_column(l);
-            }
-            
-            /**
-             *  For each implementation. Calls templated lambda with its column
-             *  and passed call to superclass.
-             */
-            template<class L>
-            void for_each_column_with_constraints(L l){
-                l(this->col);
-                this->super::for_each_column_with_constraints(l);
-            }
-            
-            template<class F, class L>
-            void for_each_column_with_field_type(L l) {
-                this->apply_to_col_if(l, std::is_same<F, typename column_type::field_type>{});
-                this->super::template for_each_column_with_field_type<F, L>(l);
-            }
-            
-            /**
-             *  Working version of `for_each_column_exept`. Calls lambda if column has no option and fire super's function.
-             */
-            template<class Op, class L>
-            void for_each_column_exept(L l) {
-                using has_opt = tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>;
-                this->apply_to_col_if(l, std::integral_constant<bool, !has_opt::value>{});
-                this->super::template for_each_column_exept<Op, L>(l);
-            }
-            
-            /**
-             *  Working version of `for_each_column_with`. Calls lambda if column has option and fire super's function.
-             */
-            template<class Op, class L>
-            void for_each_column_with(L l) {
-                this->apply_to_col_if(l, tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>{});
-                this->super::template for_each_column_with<Op, L>(l);
-            }
-            
-            /**
-             *  Calls l(this->col) if H is primary_key_t
-             */
-            template<class L>
-            void for_each_primary_key(L l) {
-                this->apply_to_col_if(l, internal::is_primary_key<H>{});
-                this->super::for_each_primary_key(l);
-            }
-            
-            template<class L>
-            void apply_to_col_if(L& l, std::true_type) {
-                l(this->col);
-            }
-            
-            template<class L>
-            void apply_to_col_if(L&, std::false_type) {}
         };
-        
+
+        template<typename H, typename... T>
+        using composite_key_table_impl = composite_key_table_impl_detail<H, internal::is_primary_key<H>::value, T...>;
+
         /**
          *  Regular table_impl class.
          */
         template<typename H, typename... T>
-        struct table_impl<H, T...> : public table_impl<T...> {
+        struct table_impl<H, T...> : public composite_key_table_impl<H, T...>, public table_impl<T...> {
             using column_type = H;
             using tail_types = std::tuple<T...>;
             using super = table_impl<T...>;
+            using composite_key_super = composite_key_table_impl<H, T...>;
             
-            table_impl(H h, T ...t) : super(t...), col(h) {}
+            table_impl(H h, T ...t) : composite_key_super(h, t...), super(t...), col(h) {}
             
             column_type col;
             
+            static constexpr bool has_primary_key = internal::is_primary_key<H>::value || super::has_primary_key;
             static constexpr const int columns_count = 1 + super::columns_count;
             
             /**
@@ -5487,7 +5474,7 @@ namespace sqlite_orm {
 			typename ImplType::composite_key_type get_composite_key() {
 				return this->impl.composite_key_columns;
 			}
-            
+
             /**
              *  Searches column name by class member pointer passed as first argument.
              *  @return column name or empty string if nothing found.
@@ -7108,9 +7095,8 @@ namespace sqlite_orm {
 
 
 namespace sqlite_orm {
-    
+
     namespace internal {
-        
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
          */
@@ -8336,28 +8322,10 @@ namespace sqlite_orm {
             template<class O>
             void remove(const O &o) {
                 this->assert_mapped_type<O>();
-
                 auto &impl = this->get_impl<O>();
+                remove_impl(o, std::conditional_t<decltype(impl.table)::impl_type::has_primary_key, std::true_type, std::false_type>{});
+			}
 
-				//this->remove_all<O>(where(impl.table.get_composite_key()));
-
-                std::vector<std::string> primaryKeyColumnNames = impl.table.primary_key_column_names();
-
-                impl.table.for_each_column([this,&o,&primaryKeyColumnNames] (auto &c) {
-					if(std::find(primaryKeyColumnNames.cbegin(), primaryKeyColumnNames.cend(), c.name) !=
-                            primaryKeyColumnNames.cend()) {
-                        using field_type = typename std::decay<decltype(c)>::type::field_type;
-                        const field_type *value = nullptr;
-                        if(c.member_pointer){
-                            value = &(o.*c.member_pointer);
-                        }else{
-                            value = &((o).*(c.getter))();
-                        }
-                        this->remove<O>(*value);
-                    }
-                });
-            }
-            
             /**
              *  Update routine. Sets all non primary key fields where primary key is equal.
              *  O is an object type. May be not specified explicitly cause it can be deduced by
@@ -10014,6 +9982,62 @@ namespace sqlite_orm {
         public:
             pragma_type pragma;
             limit_accesor<self> limit;
+
+        private:
+            /*
+             * Delete routine
+             * O is an object's type. Must be not specified explicitly cause it can be deduced by
+             *      compiler from first parameter.
+             * @param o object to be updated.
+             */
+            template<class O>
+            void remove_impl(const O &o, std::false_type) {
+                this->assert_mapped_type<O>();
+
+                auto &impl = this->get_impl<O>();
+
+                std::vector<std::string> primaryKeyColumnNames = impl.table.primary_key_column_names();
+
+                impl.table.for_each_column([this,&o,&primaryKeyColumnNames] (auto &c) {
+					if(std::find(primaryKeyColumnNames.cbegin(), primaryKeyColumnNames.cend(), c.name) !=
+                            primaryKeyColumnNames.cend()) {
+                        using field_type = typename std::decay<decltype(c)>::type::field_type;
+                        const field_type *value = nullptr;
+                        if(c.member_pointer){
+                            value = &(o.*c.member_pointer);
+                        }else{
+                            value = &((o).*(c.getter))();
+                        }
+                        this->remove<O>(*value);
+                    }
+                });
+            }
+
+            /*
+             * Delete routine
+             * O is an object's type. Must be not specified explicitly cause it can be deduced by
+             *      compiler from first parameter.
+             * @param o object to be updated.
+             */
+            template<class O>
+            void remove_impl(const O &o, std::true_type) {
+                this->assert_mapped_type<O>();
+
+                auto &impl = this->get_impl<O>();
+
+				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_type composite_key_columns_type;
+				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type composite_key_columns_value_type;
+				composite_key_columns_type composite_key_columns = impl.table.get_composite_key().columns;
+				composite_key_columns_value_type composite_key_value;
+				tuple_helper::apply([&o,&composite_key_value](auto ...pks) {
+                    composite_key_value = std::make_tuple(internal::invoke_column(o, pks, internal::is_getter<decltype(pks)>{})...);
+				}, composite_key_columns);
+
+                tuple_helper::apply([this](auto ...pks) {
+					this->remove<O>(pks...);
+				}, composite_key_value);
+            }
+
         };
         
         template<class T>
