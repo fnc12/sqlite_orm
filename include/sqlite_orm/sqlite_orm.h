@@ -4843,8 +4843,12 @@ namespace sqlite_orm {
             return o.*c;
         }
 
+        /*
+		 * I have to use (void) because msvc catch erros, for more information please read
+		 * https://developercommunity.visualstudio.com/content/problem/177433/stdresult-of-errors-on-correct-code-since-1552.html
+		 */
         template<class O, class C>
-        typename std::result_of<C>::type invoke_column(const O& o, C& c, std::true_type) {
+        typename std::result_of<C(void)>::type invoke_column(const O& o, C& c, std::true_type) {
             return ((o).*(c))();
         }
 
