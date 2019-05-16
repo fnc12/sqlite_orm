@@ -18,6 +18,7 @@ namespace sqlite_orm {
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
         incorrect_journal_mode_string,
+        not_implemented
     };
     
 }
@@ -51,6 +52,8 @@ namespace sqlite_orm {
                     return "Cannot start a transaction within a transaction";
                 case orm_error_code::no_active_transaction:
                     return "No active transaction";
+                case orm_error_code::not_implemented:
+                    return "Not implemented";
                 default:
                     return "unknown error";
             }

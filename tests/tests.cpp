@@ -1610,43 +1610,18 @@ void testRemove() {
     }
 }
 
-void testInsert() {
-    cout << __func__ << endl;
-
-    struct Object {
-        int id;
-        std::string name;
-    };
-
-    struct ObjectWithoutRowid {
-        int id;
-        std::string name;
-    };
-
-    auto storage = make_storage("test_insert.sqlite",
-                                make_table("objects",
-                                           make_column("id",
-                                                       &Object::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &Object::name)),
-                                make_table("objects_without_rowid",
-                                           make_column("id",
-                                                       &ObjectWithoutRowid::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &ObjectWithoutRowid::name)).without_rowid());
-
+template <typename Object, typename ObjectWithoutRowid, typename Storage>
+void test_insert_impl(Storage& storage) {
     storage.sync_schema();
-    storage.remove_all<Object>();
-    storage.remove_all<ObjectWithoutRowid>();
+    storage.template remove_all<Object>();
+    storage.template remove_all<ObjectWithoutRowid>();
 
     for(auto i = 0; i < 100; ++i) {
         storage.insert(Object{
             0,
             "Skillet",
         });
-        assert(storage.count<Object>() == i + 1);
+        assert(storage.template count<Object>() == i + 1);
     }
 
     auto initList = {
@@ -1665,10 +1640,10 @@ void testInsert() {
     };
 
     cout << "inserting range" << endl;
-    auto countBefore = storage.count<Object>();
+    auto countBefore = storage.template count<Object>();
     storage.insert_range(initList.begin(),
                          initList.end());
-    assert(storage.count<Object>() == countBefore + static_cast<int>(initList.size()));
+    assert(storage.template count<Object>() == countBefore + static_cast<int>(initList.size()));
 
 
     //  test empty container
@@ -1678,9 +1653,170 @@ void testInsert() {
 
     //  test insert without rowid
     storage.insert(ObjectWithoutRowid{ 10, "Life" });
-    assert(storage.get<ObjectWithoutRowid>(10).name == "Life");
+    assert(storage.template get<ObjectWithoutRowid>(10).name == "Life");
     storage.insert(ObjectWithoutRowid{ 20, "Death" });
-    assert(storage.get<ObjectWithoutRowid>(20).name == "Death");
+    assert(storage.template get<ObjectWithoutRowid>(20).name == "Death");
+}
+
+void testInsert() {
+    cout << __func__ << endl;
+
+    {
+        struct Object {
+            int id;
+            std::string name;
+        };
+
+        struct ObjectWithoutRowid {
+            int id;
+            std::string name;
+        };
+
+        auto storage = make_storage("test_insert.sqlite",
+                                    make_table("objects",
+                                               make_column("id",
+                                                           &Object::id,
+                                                           primary_key()),
+                                               make_column("name",
+                                                           &Object::name)),
+                                    make_table("objects_without_rowid",
+                                               make_column("id",
+                                                           &ObjectWithoutRowid::id,
+                                                           primary_key()),
+                                               make_column("name",
+                                                           &ObjectWithoutRowid::name)).without_rowid());
+
+        test_insert_impl<Object, ObjectWithoutRowid>(storage);
+    }
+
+    // setter and getter
+    {
+        struct Object {
+            Object() = default;
+            Object(int id, const std::string& name)
+            : id(id)
+            , name(name)
+            {}
+
+            int get_id() const {
+                return id;
+            }
+
+            const std::string& get_name() const {
+                return name;
+            }
+
+            void set_id(int id) {
+                this->id = id;
+            }
+
+            void set_name(const std::string& name) {
+                this->name = name;
+            }
+
+            int id;
+            std::string name;
+        };
+
+        struct ObjectWithoutRowid {
+            ObjectWithoutRowid() = default;
+            ObjectWithoutRowid(int id, const std::string& name)
+            : id(id)
+            , name(name)
+            {}
+
+            int get_id() const {
+                return id;
+            }
+
+            const std::string& get_name() const {
+                return name;
+            }
+
+            void set_id(int id) {
+                this->id = id;
+            }
+
+            void set_name(const std::string& name) {
+                this->name = name;
+            }
+
+            int id;
+            std::string name;
+        };
+
+        auto storage = make_storage("test_insert.sqlite",
+                                    make_table("objects",
+                                               make_column("id",
+                                                           &Object::get_id,
+                                                           &Object::set_id,
+                                                           primary_key()),
+                                               make_column("name",
+                                                           &Object::get_name,
+                                                           &Object::set_name)),
+                                               make_table("objects_without_rowid",
+                                                          make_column("id",
+                                                                      &ObjectWithoutRowid::set_id,
+                                                                      &ObjectWithoutRowid::get_id,
+                                                                      primary_key()),
+                                                          make_column("name",
+                                                                      &ObjectWithoutRowid::set_name,
+                                                                      &ObjectWithoutRowid::get_name
+                                                                      )).without_rowid());
+
+        test_insert_impl<Object, ObjectWithoutRowid>(storage);
+    }
+}
+
+template <typename Object, typename Storage>
+void test_replace_impl(Storage& storage) {
+    storage.sync_schema();
+    storage.template remove_all<Object>();
+
+    storage.replace(Object{
+        100,
+        "Baby",
+    });
+
+    assert(storage.template count<Object>() == 1);
+    auto baby = storage.template get<Object>(100);
+    assert(baby.id == 100);
+    assert(baby.name == "Baby");
+
+    storage.replace(Object{
+        200,
+        "Time",
+    });
+    assert(storage.template count<Object>() == 2);
+    auto time = storage.template get<Object>(200);
+    assert(time.id == 200);
+    assert(time.name == "Time");
+    storage.replace(Object{
+        100,
+        "Ototo",
+    });
+    assert(storage.template count<Object>() == 2);
+    auto ototo = storage.template get<Object>(100);
+    assert(ototo.id == 100);
+    assert(ototo.name == "Ototo");
+
+    auto initList = {
+        Object{
+            300,
+            "Iggy",
+        },
+        Object{
+            400,
+            "Azalea",
+        },
+    };
+    storage.replace_range(initList.begin(), initList.end());
+    assert(storage.template count<Object>() == 4);
+
+    //  test empty container
+    std::vector<Object> emptyVector;
+    storage.replace_range(emptyVector.begin(),
+                          emptyVector.end());
 }
 
 void testReplace() {
@@ -1699,52 +1835,49 @@ void testReplace() {
                                            make_column("name",
                                                        &Object::name)));
 
-    storage.sync_schema();
-    storage.remove_all<Object>();
+    test_replace_impl<Object>(storage);
 
-    storage.replace(Object{
-        100,
-        "Baby",
-    });
-    assert(storage.count<Object>() == 1);
-    auto baby = storage.get<Object>(100);
-    assert(baby.id == 100);
-    assert(baby.name == "Baby");
+	// setter and getter
+	{
+        struct Object {
+            Object() = default;
+            Object(int id, const std::string& name)
+            : id(id)
+            , name(name)
+            {}
 
-    storage.replace(Object{
-        200,
-        "Time",
-    });
-    assert(storage.count<Object>() == 2);
-    auto time = storage.get<Object>(200);
-    assert(time.id == 200);
-    assert(time.name == "Time");
-    storage.replace(Object{
-        100,
-        "Ototo",
-    });
-    assert(storage.count<Object>() == 2);
-    auto ototo = storage.get<Object>(100);
-    assert(ototo.id == 100);
-    assert(ototo.name == "Ototo");
+            int get_id() const {
+                return id;
+            }
 
-    auto initList = {
-        Object{
-            300,
-            "Iggy",
-        },
-        Object{
-            400,
-            "Azalea",
-        },
-    };
-    storage.replace_range(initList.begin(), initList.end());
-    assert(storage.count<Object>() == 4);
+            const std::string& get_name() const {
+                return name;
+            }
 
-    //  test empty container
-    std::vector<Object> emptyVector;
-    storage.replace_range(emptyVector.begin(),
-                          emptyVector.end());
+            void set_id(int id) {
+                this->id = id;
+            }
+
+            void set_name(const std::string& name) {
+                this->name = name;
+            }
+
+            int id;
+            std::string name;
+        };
+
+        auto storage = make_storage("test_replace.sqlite",
+                                    make_table("objects",
+                                               make_column("id",
+                                                           &Object::get_id,
+                                                           &Object::set_id,
+                                                           primary_key()),
+                                               make_column("name",
+                                                           &Object::get_name,
+                                                           &Object::set_name)));
+
+        test_replace_impl<Object>(storage);
+    }
 }
 
 void testEmptyStorage() {

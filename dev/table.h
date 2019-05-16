@@ -52,14 +52,17 @@ namespace sqlite_orm {
                 res._without_rowid = true;
                 return res;
             }
-            
+
             /**
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
-            template<class F, class C>
-            const F* get_object_field_pointer(const object_type &obj, C c) {
-                const F *res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &c, &obj, this](auto &col){
+            template<class F, class C, typename std::enable_if<std::is_copy_assignable<F>::value, void*>::type = nullptr>
+            F get_object_field(const object_type &obj, C c) {
+				// TODO: replace with std::optional
+                F result;
+				bool is_found_result = false; 
+
+                this->for_each_column_with_field_type<F>([&result, &is_found_result, &c, &obj, this](auto &col){
                     using namespace static_magic;
                     using column_type = typename std::remove_reference<decltype(col)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
@@ -67,31 +70,42 @@ namespace sqlite_orm {
                     using setter_type = typename column_type::setter_type;
                     // Make static_if have at least one input as a workaround for GCC bug:
                     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
-                    if(!res){
-                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c){
+                    if(!is_found_result) {
+                        static_if<std::is_same<C, member_pointer_t>{}>([&result, &is_found_result, &obj, &col](const C& c){
                             if(compare_any(col.member_pointer, c)){
-                                res = &(obj.*col.member_pointer);
+                                result = (obj.*col.member_pointer);
+								is_found_result = true;
                             }
                         })(c);
                     }
-                    if(!res){
-                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col](const C& c){
+                    if(!is_found_result) {
+                        static_if<std::is_same<C, getter_type>{}>([&result, &is_found_result, &obj, &col](const C& c){
                             if(compare_any(col.getter, c)){
-                                res = &((obj).*(col.getter))();
+                                result = ((obj).*(col.getter))();
+								is_found_result = true;
                             }
                         })(c);
                     }
-                    if(!res){
-                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C& c){
+                    if(!is_found_result) {
+                        static_if<std::is_same<C, setter_type>{}>([&result, &is_found_result, &obj, &col](const C& c){
                             if(compare_any(col.setter, c)){
-                                res = &((obj).*(col.getter))();
+                                result = ((obj).*(col.getter))();
+								is_found_result = true;
                             }
                         })(c);
                     }
                 });
-                return res;
+                return result;
             }
-            
+
+            /**
+             *  Function used to get field value from object by mapped member pointer/setter/getter
+             */
+            template<class F, class C, typename std::enable_if<!std::is_copy_assignable<F>::value, void*>::type = nullptr>
+            F get_object_field(const object_type &obj, C c) {
+                throw std::system_error(std::make_error_code(orm_error_code::not_implemented));
+            }
+           
             /**
              *  @return vector of column names of table.
              */
