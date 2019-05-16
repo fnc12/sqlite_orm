@@ -433,6 +433,14 @@ namespace sqlite_orm {
             typedef T type;
         };
 
+		template<class T> struct remove_member_function_pointer {
+			typedef T type;
+		};
+
+		template<class C, class T> struct remove_member_function_pointer<T C::*()> {
+			typedef T type;
+		};
+
         template<class C, bool IsMemberPointer>
         struct column_value_type;
 
@@ -443,7 +451,7 @@ namespace sqlite_orm {
 
         template<class C>
         struct column_value_type<C, false> {
-            typedef typename std::result_of<C>::type type;
+            typedef typename remove_member_function_pointer<C>::type type;
         };
     }
     
@@ -4848,7 +4856,7 @@ namespace sqlite_orm {
 		 * https://developercommunity.visualstudio.com/content/problem/177433/stdresult-of-errors-on-correct-code-since-1552.html
 		 */
         template<class O, class C>
-        typename std::result_of<C(void)>::type invoke_column(const O& o, C& c, std::true_type) {
+        auto invoke_column(const O& o, C& c, std::true_type) -> typename std::result_of<C(void)>::type {
             return ((o).*(c))();
         }
 

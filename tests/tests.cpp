@@ -1817,6 +1817,68 @@ void testRemove() {
 		assert(storage.count<Object>() == 0);
 	}
 
+    // Composite Key with getter and setter
+	{
+        struct Object {
+			Object() {}
+
+			Object(int key_part_1, int key_part_2, const std::string& name)
+			: key_part_1(key_part_1)
+			, key_part_2(key_part_2)
+			, name(name) {}
+
+			std::string name;
+
+			int get_key_part_1() const {
+				return key_part_1;
+			}
+
+			int get_key_part_2() const {
+				return key_part_2;
+			}
+
+			void set_key_part_1(int key_part_1) {
+				this->key_part_1 = key_part_1;
+			}
+
+			void set_key_part_2(int key_part_2) {
+				this->key_part_2 = key_part_2;
+			}
+
+		private:
+			int key_part_1;
+			int key_part_2;
+		};
+
+        auto storage = make_storage("test_remove.sqlite",
+                                   make_table("objects",
+                                              make_column("key_part_1",
+                                                          &Object::get_key_part_1,
+														  &Object::set_key_part_1),
+											  make_column("key_part_2",
+											              &Object::get_key_part_2,
+														  &Object::set_key_part_2),
+                                              make_column("name",
+                                                          &Object::name),
+											  primary_key(&Object::get_key_part_1, &Object::get_key_part_2)));
+        storage.sync_schema();
+        storage.remove_all<Object>();
+
+        Object object{0, 0, "Skillet"};
+
+        storage.replace(object);
+        assert(storage.count<Object>() == 1);
+        storage.remove_all<Object>(where(c(&Object::get_key_part_1) == 0 && c(&Object::get_key_part_2) == 0));
+        assert(storage.count<Object>() == 0);
+
+		storage.replace(object);
+        assert(storage.count<Object>() == 1);
+		auto object_from_database = storage.get<Object>(0, 0);
+		assert(object_from_database.name == "Skillet");
+		storage.remove(object_from_database);
+		assert(storage.count<Object>() == 0);
+	}
+
 	// Simple key
     {
         auto storage = make_storage("test_remove.sqlite",
