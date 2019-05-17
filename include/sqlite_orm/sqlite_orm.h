@@ -9010,15 +9010,16 @@ namespace sqlite_orm {
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    impl.table.for_each_column([&o, &index, &stmt] (auto c) {
-                        using field_type = typename decltype(c)::field_type;
-                        const field_type *value = nullptr;
+                    impl.table.for_each_column([&o, &index, &stmt] (auto &c) {
+                        using column_type = typename std::decay<decltype(c)>::type;
+                        using field_type = typename column_type::field_type;
                         if(c.member_pointer){
-                            value = &(o.*c.member_pointer);
+                            statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer);
                         }else{
-                            value = &((o).*(c.getter))();
+                            using getter_type = typename column_type::getter_type;
+                            field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                            statement_binder<field_type>().bind(stmt, index++, valueHolder.value);
                         }
-                        statement_binder<field_type>().bind(stmt, index++, *value);
                     });
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //..
@@ -9081,15 +9082,16 @@ namespace sqlite_orm {
                     auto index = 1;
                     for(auto it = from; it != to; ++it) {
                         auto &o = *it;
-                        impl.table.for_each_column([&o, &index, &stmt] (auto c) {
-                            using field_type = typename decltype(c)::field_type;
-                            const field_type *value = nullptr;
+                        impl.table.for_each_column([&o, &index, &stmt] (auto &c) {
+                            using column_type = typename std::decay<decltype(c)>::type;
+                            using field_type = typename column_type::field_type;
                             if(c.member_pointer){
-                                value = &(o.*c.member_pointer);
+                                statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer);
                             }else{
-                                value = &((o).*(c.getter))();
+                                using getter_type = typename column_type::getter_type;
+                                field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                                statement_binder<field_type>().bind(stmt, index++, valueHolder.value);
                             }
-                            statement_binder<field_type>().bind(stmt, index++, *value);
                         });
                     }
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
