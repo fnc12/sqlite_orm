@@ -2547,8 +2547,8 @@ namespace sqlite_orm {
                     cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
                         using column_type = typename std::decay<decltype(m)>::type;
                         using field_type = typename column_result_t<self, column_type>::type;
-                        const field_type value = impl.table.template get_object_field<field_type>(o, m);
-                        statement_binder<field_type>().bind(stmt, index++, value);
+                        const field_type* value = impl.table.template get_object_field_pointer<field_type>(o, m);
+                        statement_binder<field_type>().bind(stmt, index++, *value);
                     });
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return int(sqlite3_last_insert_rowid(connection->get_db()));

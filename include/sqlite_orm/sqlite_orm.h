@@ -5332,17 +5332,14 @@ namespace sqlite_orm {
                 res._without_rowid = true;
                 return res;
             }
-
+            
             /**
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
-            template<class F, class C, typename std::enable_if<std::is_copy_assignable<F>::value, void*>::type = nullptr>
-            F get_object_field(const object_type &obj, C c) {
-				// TODO: replace with std::optional
-                F result;
-				bool is_found_result = false; 
-
-                this->for_each_column_with_field_type<F>([&result, &is_found_result, &c, &obj, this](auto &col){
+            template<class F, class C>
+            const F* get_object_field_pointer(const object_type &obj, C c) {
+                const F *res = nullptr;
+                this->for_each_column_with_field_type<F>([&res, &c, &obj, this](auto &col){
                     using namespace static_magic;
                     using column_type = typename std::remove_reference<decltype(col)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
@@ -5350,42 +5347,31 @@ namespace sqlite_orm {
                     using setter_type = typename column_type::setter_type;
                     // Make static_if have at least one input as a workaround for GCC bug:
                     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
-                    if(!is_found_result) {
-                        static_if<std::is_same<C, member_pointer_t>{}>([&result, &is_found_result, &obj, &col](const C& c){
+                    if(!res){
+                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c){
                             if(compare_any(col.member_pointer, c)){
-                                result = (obj.*col.member_pointer);
-								is_found_result = true;
+                                res = &(obj.*col.member_pointer);
                             }
                         })(c);
                     }
-                    if(!is_found_result) {
-                        static_if<std::is_same<C, getter_type>{}>([&result, &is_found_result, &obj, &col](const C& c){
+                    if(!res){
+                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col](const C& c){
                             if(compare_any(col.getter, c)){
-                                result = ((obj).*(col.getter))();
-								is_found_result = true;
+                                res = &((obj).*(col.getter))();
                             }
                         })(c);
                     }
-                    if(!is_found_result) {
-                        static_if<std::is_same<C, setter_type>{}>([&result, &is_found_result, &obj, &col](const C& c){
+                    if(!res){
+                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C& c){
                             if(compare_any(col.setter, c)){
-                                result = ((obj).*(col.getter))();
-								is_found_result = true;
+                                res = &((obj).*(col.getter))();
                             }
                         })(c);
                     }
                 });
-                return result;
+                return res;
             }
-
-            /**
-             *  Function used to get field value from object by mapped member pointer/setter/getter
-             */
-            template<class F, class C, typename std::enable_if<!std::is_copy_assignable<F>::value, void*>::type = nullptr>
-            F get_object_field(const object_type &obj, C c) {
-                throw std::system_error(std::make_error_code(orm_error_code::not_implemented));
-            }
-           
+            
             /**
              *  @return vector of column names of table.
              */
@@ -9086,8 +9072,8 @@ namespace sqlite_orm {
                     cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
                         using column_type = typename std::decay<decltype(m)>::type;
                         using field_type = typename column_result_t<self, column_type>::type;
-                        const field_type value = impl.table.template get_object_field<field_type>(o, m);
-                        statement_binder<field_type>().bind(stmt, index++, value);
+                        const field_type* value = impl.table.template get_object_field_pointer<field_type>(o, m);
+                        statement_binder<field_type>().bind(stmt, index++, *value);
                     });
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return int(sqlite3_last_insert_rowid(connection->get_db()));
