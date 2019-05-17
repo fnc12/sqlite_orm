@@ -2752,23 +2752,6 @@ namespace sqlite_orm {
                 return index;
             }
 
-            template<class O>
-            unsigned int fill_statement_for_each_non_primary_key_column(const O& o, unsigned int index, sqlite3_stmt* const stmt) {
-                auto& impl = get_impl<O>();
-                impl.table.for_each_column([&o, &index, &stmt, &impl] (auto c) {
-                    using field_type = typename decltype(c)::field_type;
-					if (!c.template has<constraints::primary_key_t<>>()) {
-                         if(c.member_pointer) {
-                             statement_binder<field_type>().bind(stmt, index++, (o.*c.member_pointer));
-                         } else {
-                             statement_binder<field_type>().bind(stmt, index++, ((o).*(c.getter))());
-                         }
-                    }
-                });
-
-                return index;
-            }
-
             template<class Func>
             void fill_statement(const std::string& query, Func func) {
                 auto connection = this->get_or_create_connection();
@@ -2790,13 +2773,6 @@ namespace sqlite_orm {
             void fill_statement(const O& o, const std::string& query) {
                 fill_statement(query, [&o, this](sqlite3_stmt* const stmt) {
                     fill_statement_for_each_column(o, 1, stmt);
-                });
-            }
-
-            template<class O>
-            void fill_statement_for_non_primary_key(const O& o, const std::string& query) {
-                fill_statement(query, [&o, this](sqlite3_stmt* const stmt) {
-                    fill_statement_for_each_non_primary_key_column(o, 1, stmt);
                 });
             }
 
