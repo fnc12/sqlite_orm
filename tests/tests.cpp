@@ -1705,7 +1705,6 @@ void testInsert() {
             const std::string& get_name() const {
                 return name;
             }
-
             void set_id(int id) {
                 this->id = id;
             }
@@ -2299,25 +2298,14 @@ void testAggregateFunctions() {
     
     auto storage = make_storage("test_aggregate.sqlite",
                                 make_table("users",
-                                           make_column("id",
-                                                       &User::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &User::name),
-                                           make_column("age",
-                                                       &User::age)));
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("age", &User::age)));
     auto storage2 = make_storage("test_aggregate.sqlite",
                                  make_table("users",
-                                            make_column("id",
-                                                        &User::getId,
-                                                        &User::setId,
-                                                        primary_key()),
-                                            make_column("name",
-                                                        &User::getName,
-                                                        &User::setName),
-                                            make_column("age",
-                                                        &User::getAge,
-                                                        &User::setAge)));
+                                            make_column("id", &User::getId, &User::setId, primary_key()),
+                                            make_column("name", &User::getName, &User::setName),
+                                            make_column("age", &User::getAge, &User::setAge)));
     storage.sync_schema();
     storage.remove_all<User>();
     

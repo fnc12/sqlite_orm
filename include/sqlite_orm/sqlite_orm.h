@@ -7979,7 +7979,7 @@ namespace sqlite_orm {
                     ss << " ";
                 }
 
-				fill_statement(o, ss.str());
+                fill_statement(o, ss.str());
             }
             
             template<class ...Args, class ...Wargs>
@@ -8988,7 +8988,7 @@ namespace sqlite_orm {
                     }
                 }
 
-				fill_statement(o, ss.str());
+                fill_statement(o, ss.str());
             }
             
             template<class It>
@@ -9036,7 +9036,7 @@ namespace sqlite_orm {
                     ss << " ";
                 }
 
-				fill_statement_range(from, to, ss.str());
+                fill_statement_range(from, to, ss.str());
             }
             
             template<class O, class ...Cols>
@@ -9237,7 +9237,8 @@ namespace sqlite_orm {
                     }
                     ss << " ";
                 }
-				fill_statement_range(from, to, ss.str());
+
+                fill_statement_range(from, to, ss.str());
             }
             
             void drop_index(const std::string &indexName) {
@@ -9286,7 +9287,7 @@ namespace sqlite_orm {
                         statement_binder<field_type>().bind(stmt, index++, ((o).*(c.getter))());
                     }
                 });
-            
+
                 return index;
             }
 
@@ -9303,7 +9304,7 @@ namespace sqlite_orm {
                          }
                     }
                 });
-            
+
                 return index;
             }
 
@@ -9349,13 +9350,13 @@ namespace sqlite_orm {
             
             template<class It>
             void fill_statement_for_non_primary_key_range(It from, It to, const std::string& query) {
-            	fill_statement(query, [&from, &to, this](sqlite3_stmt* const stmt) {
+                fill_statement(query, [&from, &to, this](sqlite3_stmt* const stmt) {
                     int index = 1;
                     for (const It it = from; it != to; ++it)
                         index = fill_statement_for_each_non_primary_key_column(*it, index, stmt);
                 });
             }
-  
+
             void drop_table_internal(const std::string &tableName, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "DROP TABLE '" << tableName + "'";
