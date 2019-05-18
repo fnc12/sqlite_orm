@@ -34,10 +34,10 @@ namespace sqlite_orm {
             struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
             
             template<class S, class T>
-            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::true_type {};
+            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> : std::true_type {};
             
             template<class S, class T>
-            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
+            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type>
             : type_is_mapped_impl<typename S::super, T> {};
             
             
@@ -62,10 +62,10 @@ namespace sqlite_orm {
             struct storage_columns_count_impl<storage_impl<>, T, void> : std::integral_constant<int, 0> {};
             
             template<class S, class T>
-            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::integral_constant<int, S::table_type::columns_count> {};
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> : std::integral_constant<int, S::column_traits::columns_count> {};
             
             template<class S, class T>
-            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
             
             
             /**
@@ -106,14 +106,14 @@ namespace sqlite_orm {
             };
             
             template<class S, class T>
-            struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
-                using table_type = typename S::table_type;
-                using table_impl_type = typename table_type::impl_type;
+            struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> {
+                using column_traits = typename S::column_traits;
+                using table_impl_type = typename column_traits::impl_type;
                 using type = typename table_impl_types<table_impl_type>::type;
             };
             
             template<class S, class T>
-            struct storage_mapped_columns_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_mapped_columns_impl<typename S::super, T> {};
+            struct storage_mapped_columns_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type> : storage_mapped_columns_impl<typename S::super, T> {};
             
         }
     }

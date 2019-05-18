@@ -24,7 +24,7 @@
 #include "type_printer.h"
 #include "tuple_helper.h"
 #include "constraints.h"
-#include "table_type.h"
+#include "column_traits.h"
 #include "type_is_nullable.h"
 #include "field_printer.h"
 #include "rowid.h"
@@ -186,7 +186,7 @@ namespace sqlite_orm {
                 referencesNames.reserve(referencesCount);
                 {
                     using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
-                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    using first_reference_mapped_type = typename internal::column_traits<first_reference_t>::type;
                     auto refTableName = this->impl.template find_table_name<first_reference_mapped_type>();
                     ss << refTableName << " ";
                 }
@@ -2652,7 +2652,7 @@ namespace sqlite_orm {
                 }
                 using columns_type = typename decltype(impl->table)::columns_type;
                 using head_t = typename std::tuple_element<0, columns_type>::type;
-                using indexed_type = typename internal::table_type<head_t>::type;
+                using indexed_type = typename internal::column_traits<head_t>::type;
                 ss << "INDEX IF NOT EXISTS '" << impl->table.name << "' ON '" << this->impl.template find_table_name<indexed_type>() << "' ( ";
                 std::vector<std::string> columnNames;
                 tuple_helper::iterator<std::tuple_size<columns_type>::value - 1, Cols...>()(impl->table.columns, [&columnNames, this](auto &v){

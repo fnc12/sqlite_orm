@@ -415,14 +415,525 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <string>   //  std::string
-#include <tuple>    //  std::tuple, std::make_tuple
-#include <sstream>  //  std::stringstream
-#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
-#include <ostream>  //  std::ostream
+#include <type_traits>  //  std::false_type, std::true_type
 
-// #include "column_traits.h"
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        /**
+         *  Inherit this class to support arithmetic types overloading
+         */
+        struct arithmetic_t {};
+        
+        template<class L, class R>
+        struct binary_operator {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
+            
+            binary_operator() = default;
+            
+            binary_operator(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+        };
+        
+        /**
+         *  Result of concatenation || operator
+         */
+        template<class L, class R>
+        struct conc_t : binary_operator<L, R> {
+            using super = binary_operator<L, R>;
+            
+            using super::super;
+        };
+        
+        /**
+         *  Result of addition + operator
+         */
+        template<class L, class R>
+        struct add_t : arithmetic_t, binary_operator<L, R> {
+            using super = binary_operator<L, R>;
+            
+            using super::super;
+        };
+        
+        /**
+         *  Result of substitute - operator
+         */
+        template<class L, class R>
+        struct sub_t : arithmetic_t, binary_operator<L, R> {
+            using super = binary_operator<L, R>;
+            
+            using super::super;
+        };
+        
+        /**
+         *  Result of multiply * operator
+         */
+        template<class L, class R>
+        struct mul_t : arithmetic_t, binary_operator<L, R> {
+            using super = binary_operator<L, R>;
+            
+            using super::super;
+        };
+        
+        /**
+         *  Result of divide / operator
+         */
+        template<class L, class R>
+        struct div_t : arithmetic_t, binary_operator<L, R> {
+            using super = binary_operator<L, R>;
+            
+            using super::super;
+        };
+        
+        /**
+         *  Result of mod % operator
+         */
+        template<class L, class R>
+        struct mod_t : arithmetic_t, binary_operator<L, R> {
+            using super = binary_operator<L, R>;
+            
+            using super::super;
+        };
+        
+        /**
+         *  Result of assign = operator
+         */
+        template<class L, class R>
+        struct assign_t {
+            L l;
+            R r;
+            
+            assign_t(){}
+            
+            assign_t(L l_, R r_): l(l_), r(r_) {}
+        };
+        
+        /**
+         *  Assign operator traits. Common case
+         */
+        template<class T>
+        struct is_assign_t : public std::false_type {};
+        
+        /**
+         *  Assign operator traits. Specialized case
+         */
+        template<class L, class R>
+        struct is_assign_t<assign_t<L, R>> : public std::true_type {};
+        
+        /**
+         *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
+         */
+        template<class T>
+        struct expression_t {
+            T t;
+            
+            expression_t(T t_): t(t_) {}
+            
+            template<class R>
+            assign_t<T, R> operator=(R r) const {
+                return {this->t, std::move(r)};
+            }
+        };
+        
+    }
+    
+    /**
+     *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or `storage.update(set(c(&User::name) = "Dua Lipa"));
+     */
+    template<class T>
+    internal::expression_t<T> c(T t) {
+        using result_type = internal::expression_t<T>;
+        return result_type(std::move(t));
+    }
+    
+    /**
+     *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT name + '@gmail.com' FROM users
+     */
+    template<class L, class R>
+    internal::conc_t<L, R> conc(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    /**
+     *  Public interface for + operator. Example: `select(add(&User::age, 100));` => SELECT age + 100 FROM users
+     */
+    template<class L, class R>
+    internal::add_t<L, R> add(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    /**
+     *  Public interface for - operator. Example: `select(add(&User::age, 1));` => SELECT age - 1 FROM users
+     */
+    template<class L, class R>
+    internal::sub_t<L, R> sub(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<class L, class R>
+    internal::mul_t<L, R> mul(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<class L, class R>
+    internal::div_t<L, R> div(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<class L, class R>
+    internal::mod_t<L, R> mod(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+    template<class L, class R>
+    internal::assign_t<L, R> assign(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+    
+}
+#pragma once
+
+#include <string>   //  std::string
+#include <utility>  //  std::declval
+#include <type_traits>  //  std::true_type, std::false_type
+
+namespace sqlite_orm {
+    
+    namespace internal {
+
+/*
+ * This is because of bug in MSVC, for more information, please visit
+ * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
+ */
+#if defined(_MSC_VER)
+       template <template <typename...> class Base, typename Derived>
+       struct is_base_of_template_impl {
+               template<typename... Ts>
+               static constexpr std::true_type test(const Base<Ts...>*);
+
+               static constexpr std::false_type test(...);
+
+               using type = decltype(test(std::declval<Derived*>()));
+       };
+
+       template <typename Derived, template <typename...> class Base>
+       using is_base_of_template = typename is_base_of_template_impl<Base, Derived>::type;
+
+#else
+        template <template <typename...> class C, typename...Ts>
+        std::true_type is_base_of_template_impl(const C<Ts...>*);
+        
+        template <template <typename...> class C>
+        std::false_type is_base_of_template_impl(...);
+        
+        template <typename T, template <typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
+
+#endif
+        /**
+         *  DISCTINCT generic container.
+         */
+        template<class T>
+        struct distinct_t {
+            T t;
+            
+            operator std::string() const {
+                return "DISTINCT";
+            }
+        };
+        
+        /**
+         *  ALL generic container.
+         */
+        template<class T>
+        struct all_t {
+            T t;
+            
+            operator std::string() const {
+                return "ALL";
+            }
+        };
+        
+        template<class ...Args>
+        struct columns_t {
+            bool distinct = false;
+            
+            template<class L>
+            void for_each(L) const {
+                //..
+            }
+            
+            int count() const {
+                return 0;
+            }
+        };
+        
+        template<class T, class ...Args>
+        struct columns_t<T, Args...> : public columns_t<Args...> {
+            T m;
+            
+            columns_t(decltype(m) m_, Args&& ...args): super(std::forward<Args>(args)...), m(m_) {}
+            
+            template<class L>
+            void for_each(L l) const {
+                l(this->m);
+                this->super::for_each(l);
+            }
+            
+            int count() const {
+                return 1 + this->super::count();
+            }
+        private:
+            using super = columns_t<Args...>;
+        };
+        
+        template<class ...Args>
+        struct set_t {
+            
+            operator std::string() const {
+                return "SET";
+            }
+            
+            template<class F>
+            void for_each(F) {
+                //..
+            }
+        };
+        
+        template<class L, class ...Args>
+        struct set_t<L, Args...> : public set_t<Args...> {
+            static_assert(is_assign_t<typename std::remove_reference<L>::type>::value, "set_t argument must be assign_t");
+            
+            L l;
+            
+            using super = set_t<Args...>;
+            using self = set_t<L, Args...>;
+            
+            set_t(L l_, Args&& ...args) : super(std::forward<Args>(args)...), l(std::forward<L>(l_)) {}
+            
+            template<class F>
+            void for_each(F f) {
+                f(l);
+                this->super::for_each(f);
+            }
+        };
+        
+        /**
+         *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
+         *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
+         */
+        template<class T, class F>
+        struct column_pointer {
+            using type = T;
+            using field_type = F;
+            
+            field_type field;
+        };
+        
+        /**
+         *  Subselect object type.
+         */
+        template<class T, class ...Args>
+        struct select_t {
+            using return_type = T;
+            using conditions_type = std::tuple<Args...>;
+            
+            return_type col;
+            conditions_type conditions;
+            bool highest_level = false;
+        };
+        
+        /**
+         *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
+         */
+        template<class L, class R>
+        struct compound_operator {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type left;
+            right_type right;
+            
+            compound_operator(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {
+                this->left.highest_level = true;
+                this->right.highest_level = true;
+            }
+        };
+        
+        struct union_base {
+            bool all = false;
+            
+            operator std::string() const {
+                if(!this->all){
+                    return "UNION";
+                }else{
+                    return "UNION ALL";
+                }
+            }
+        };
+        
+        /**
+         *  UNION object type.
+         */
+        template<class L, class R>
+        struct union_t : public compound_operator<L, R>, union_base {
+            using left_type = typename compound_operator<L, R>::left_type;
+            using right_type = typename compound_operator<L, R>::right_type;
+            
+            union_t(left_type l, right_type r, decltype(all) all): compound_operator<L, R>(std::move(l), std::move(r)), union_base{all} {}
+            
+            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
+        };
+        
+        /**
+         *  EXCEPT object type.
+         */
+        template<class L, class R>
+        struct except_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+            
+            using super::super;
+            
+            operator std::string() const {
+                return "EXCEPT";
+            }
+        };
+        
+        /**
+         *  INTERSECT object type.
+         */
+        template<class L, class R>
+        struct intersect_t : public compound_operator<L, R> {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+            
+            using super::super;
+            
+            operator std::string() const {
+                return "INTERSECT";
+            }
+        };
+        
+        /**
+         *  Generic way to get DISTINCT value from any type.
+         */
+        template<class T>
+        bool get_distinct(const T &) {
+            return false;
+        }
+        
+        template<class ...Args>
+        bool get_distinct(const columns_t<Args...> &cols) {
+            return cols.distinct;
+        }
+        
+        template<class T>
+        struct asterisk_t {
+            using type = T;
+        };
+    }
+    
+    template<class T>
+    internal::distinct_t<T> distinct(T t) {
+        return {t};
+    }
+    
+    template<class T>
+    internal::all_t<T> all(T t) {
+        return {t};
+    }
+    
+    template<class ...Args>
+    internal::columns_t<Args...> distinct(internal::columns_t<Args...> cols) {
+        cols.distinct = true;
+        return cols;
+    }
+    
+    /**
+     *  SET keyword used in UPDATE ... SET queries.
+     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
+     */
+    template<class ...Args>
+    internal::set_t<Args...> set(Args&& ...args) {
+        return {std::forward<Args>(args)...};
+    }
+    
+    template<class ...Args>
+    internal::columns_t<Args...> columns(Args&& ...args) {
+        return {std::forward<Args>(args)...};
+    }
+    
+    /**
+     *  Use it like this:
+     *  struct MyType : BaseType { ... };
+     *  storage.select(column<MyType>(&BaseType::id));
+     */
+    template<class T, class F>
+    internal::column_pointer<T, F> column(F f) {
+        return {f};
+    }
+    
+    /**
+     *  Public function for subselect query. Is useful in UNION queries.
+     */
+    template<class T, class ...Args>
+    internal::select_t<T, Args...> select(T t, Args ...args) {
+        return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
+    }
+    
+    /**
+     *  Public function for UNION operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
+    template<class L, class R>
+    internal::union_t<L, R> union_(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    /**
+     *  Public function for EXCEPT operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/except.cpp
+     */
+    template<class L, class R>
+    internal::except_t<L, R> except(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    template<class L, class R>
+    internal::intersect_t<L, R> intersect(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs)};
+    }
+    
+    /**
+     *  Public function for UNION ALL operator.
+     *  lhs and rhs are subselect objects.
+     *  Look through example in examples/union.cpp
+     */
+    template<class L, class R>
+    internal::union_t<L, R> union_all(L lhs, R rhs) {
+        return {std::move(lhs), std::move(rhs), true};
+    }
+    
+    template<class T>
+    internal::asterisk_t<T> asterisk() {
+        return {};
+    }
+}
+#pragma once
+
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if
+
+// #include "select_constraints.h"
+
 
 namespace sqlite_orm {
     
@@ -565,29 +1076,48 @@ namespace sqlite_orm {
             using field_type = T;
         };
 
-        // from https://stackoverflow.com/questions/22213523/c11-14-how-to-remove-a-pointer-to-member-from-a-type
-        template<class T> struct remove_member_pointer {
-            typedef T type;
+        /**
+         *  Trait class used to define table mapped type by setter/getter/member
+         *  T - member pointer
+         */
+        template<class T, class SFINAE = void>
+        struct column_traits;
+        
+        template<class O, class F>
+        struct column_traits<F O::*, typename std::enable_if<std::is_member_pointer<F O::*>::value && !std::is_member_function_pointer<F O::*>::value>::type> {
+            using type = O;
+            using field_type = F;
         };
-
-        template<class C, class T> struct remove_member_pointer<T C::*> {
-            typedef T type;
+        
+        template<class T>
+        struct column_traits<T, typename std::enable_if<is_getter<T>::value>::type> {
+            using type = typename getter_traits<T>::object_type;
+            using field_type = typename getter_traits<T>::field_type;
         };
-
-        template<class C, bool IsMemberPointer>
-        struct column_value_type;
-
-        template<class C>
-        struct column_value_type<C, true> {
-            typedef typename remove_member_pointer<C>::type type;
+        
+        template<class T>
+        struct column_traits<T, typename std::enable_if<is_setter<T>::value>::type> {
+            using type = typename setter_traits<T>::object_type;
+            using field_type = typename setter_traits<T>::field_type;
         };
-
-        template<class C>
-        struct column_value_type<C, false> {
-            typedef typename getter_traits<C>::field_type type;
+        
+        template<class T, class F>
+        struct column_traits<column_pointer<T, F>, void> {
+            using type = T;
+            using field_type = F;
         };
     }
 }
+#pragma once
+
+#include <string>   //  std::string
+#include <tuple>    //  std::tuple, std::make_tuple
+#include <sstream>  //  std::stringstream
+#include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
+#include <ostream>  //  std::ostream
+
+// #include "column_traits.h"
+
 
 namespace sqlite_orm {
     
@@ -636,7 +1166,7 @@ namespace sqlite_orm {
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
             using columns_type = std::tuple<Cs...>;
-            using columns_value_type = std::tuple<typename internal::column_value_type<Cs, std::is_member_object_pointer<Cs>::value>::type...>;
+            using columns_value_type = std::tuple<typename internal::column_traits<Cs>::field_type...>;
             
             columns_type columns;
             
@@ -1088,188 +1618,6 @@ namespace sqlite_orm {
             }
         };
         
-    }
-    
-}
-#pragma once
-
-#include <type_traits>  //  std::false_type, std::true_type
-
-namespace sqlite_orm {
-    
-    namespace internal {
-        
-        /**
-         *  Inherit this class to support arithmetic types overloading
-         */
-        struct arithmetic_t {};
-        
-        template<class L, class R>
-        struct binary_operator {
-            using left_type = L;
-            using right_type = R;
-            
-            left_type l;
-            right_type r;
-            
-            binary_operator() = default;
-            
-            binary_operator(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
-        };
-        
-        /**
-         *  Result of concatenation || operator
-         */
-        template<class L, class R>
-        struct conc_t : binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
-        };
-        
-        /**
-         *  Result of addition + operator
-         */
-        template<class L, class R>
-        struct add_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
-        };
-        
-        /**
-         *  Result of substitute - operator
-         */
-        template<class L, class R>
-        struct sub_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
-        };
-        
-        /**
-         *  Result of multiply * operator
-         */
-        template<class L, class R>
-        struct mul_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
-        };
-        
-        /**
-         *  Result of divide / operator
-         */
-        template<class L, class R>
-        struct div_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
-        };
-        
-        /**
-         *  Result of mod % operator
-         */
-        template<class L, class R>
-        struct mod_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
-        };
-        
-        /**
-         *  Result of assign = operator
-         */
-        template<class L, class R>
-        struct assign_t {
-            L l;
-            R r;
-            
-            assign_t(){}
-            
-            assign_t(L l_, R r_): l(l_), r(r_) {}
-        };
-        
-        /**
-         *  Assign operator traits. Common case
-         */
-        template<class T>
-        struct is_assign_t : public std::false_type {};
-        
-        /**
-         *  Assign operator traits. Specialized case
-         */
-        template<class L, class R>
-        struct is_assign_t<assign_t<L, R>> : public std::true_type {};
-        
-        /**
-         *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
-         */
-        template<class T>
-        struct expression_t {
-            T t;
-            
-            expression_t(T t_): t(t_) {}
-            
-            template<class R>
-            assign_t<T, R> operator=(R r) const {
-                return {this->t, std::move(r)};
-            }
-        };
-        
-    }
-    
-    /**
-     *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or `storage.update(set(c(&User::name) = "Dua Lipa"));
-     */
-    template<class T>
-    internal::expression_t<T> c(T t) {
-        using result_type = internal::expression_t<T>;
-        return result_type(std::move(t));
-    }
-    
-    /**
-     *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT name + '@gmail.com' FROM users
-     */
-    template<class L, class R>
-    internal::conc_t<L, R> conc(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
-    
-    /**
-     *  Public interface for + operator. Example: `select(add(&User::age, 100));` => SELECT age + 100 FROM users
-     */
-    template<class L, class R>
-    internal::add_t<L, R> add(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
-    
-    /**
-     *  Public interface for - operator. Example: `select(add(&User::age, 1));` => SELECT age - 1 FROM users
-     */
-    template<class L, class R>
-    internal::sub_t<L, R> sub(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
-    
-    template<class L, class R>
-    internal::mul_t<L, R> mul(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
-    
-    template<class L, class R>
-    internal::div_t<L, R> div(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
-    
-    template<class L, class R>
-    internal::mod_t<L, R> mod(L l, R r) {
-        return {std::move(l), std::move(r)};
-    }
-    
-    template<class L, class R>
-    internal::assign_t<L, R> assign(L l, R r) {
-        return {std::move(l), std::move(r)};
     }
     
 }
@@ -3495,339 +3843,6 @@ namespace sqlite_orm {
 #pragma once
 
 #include <string>   //  std::string
-#include <utility>  //  std::declval
-#include <type_traits>  //  std::true_type, std::false_type
-
-namespace sqlite_orm {
-    
-    namespace internal {
-
-/*
- * This is because of bug in MSVC, for more information, please visit
- * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
- */
-#if defined(_MSC_VER)
-       template <template <typename...> class Base, typename Derived>
-       struct is_base_of_template_impl {
-               template<typename... Ts>
-               static constexpr std::true_type test(const Base<Ts...>*);
-
-               static constexpr std::false_type test(...);
-
-               using type = decltype(test(std::declval<Derived*>()));
-       };
-
-       template <typename Derived, template <typename...> class Base>
-       using is_base_of_template = typename is_base_of_template_impl<Base, Derived>::type;
-
-#else
-        template <template <typename...> class C, typename...Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>*);
-        
-        template <template <typename...> class C>
-        std::false_type is_base_of_template_impl(...);
-        
-        template <typename T, template <typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
-
-#endif
-        /**
-         *  DISCTINCT generic container.
-         */
-        template<class T>
-        struct distinct_t {
-            T t;
-            
-            operator std::string() const {
-                return "DISTINCT";
-            }
-        };
-        
-        /**
-         *  ALL generic container.
-         */
-        template<class T>
-        struct all_t {
-            T t;
-            
-            operator std::string() const {
-                return "ALL";
-            }
-        };
-        
-        template<class ...Args>
-        struct columns_t {
-            bool distinct = false;
-            
-            template<class L>
-            void for_each(L) const {
-                //..
-            }
-            
-            int count() const {
-                return 0;
-            }
-        };
-        
-        template<class T, class ...Args>
-        struct columns_t<T, Args...> : public columns_t<Args...> {
-            T m;
-            
-            columns_t(decltype(m) m_, Args&& ...args): super(std::forward<Args>(args)...), m(m_) {}
-            
-            template<class L>
-            void for_each(L l) const {
-                l(this->m);
-                this->super::for_each(l);
-            }
-            
-            int count() const {
-                return 1 + this->super::count();
-            }
-        private:
-            using super = columns_t<Args...>;
-        };
-        
-        template<class ...Args>
-        struct set_t {
-            
-            operator std::string() const {
-                return "SET";
-            }
-            
-            template<class F>
-            void for_each(F) {
-                //..
-            }
-        };
-        
-        template<class L, class ...Args>
-        struct set_t<L, Args...> : public set_t<Args...> {
-            static_assert(is_assign_t<typename std::remove_reference<L>::type>::value, "set_t argument must be assign_t");
-            
-            L l;
-            
-            using super = set_t<Args...>;
-            using self = set_t<L, Args...>;
-            
-            set_t(L l_, Args&& ...args) : super(std::forward<Args>(args)...), l(std::forward<L>(l_)) {}
-            
-            template<class F>
-            void for_each(F f) {
-                f(l);
-                this->super::for_each(f);
-            }
-        };
-        
-        /**
-         *  This class is used to store explicit mapped type T and its column descriptor (member pointer/getter/setter).
-         *  Is useful when mapped type is derived from other type and base class has members mapped to a storage.
-         */
-        template<class T, class F>
-        struct column_pointer {
-            using type = T;
-            using field_type = F;
-            
-            field_type field;
-        };
-        
-        /**
-         *  Subselect object type.
-         */
-        template<class T, class ...Args>
-        struct select_t {
-            using return_type = T;
-            using conditions_type = std::tuple<Args...>;
-            
-            return_type col;
-            conditions_type conditions;
-            bool highest_level = false;
-        };
-        
-        /**
-         *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
-         */
-        template<class L, class R>
-        struct compound_operator {
-            using left_type = L;
-            using right_type = R;
-            
-            left_type left;
-            right_type right;
-            
-            compound_operator(left_type l, right_type r): left(std::move(l)), right(std::move(r)) {
-                this->left.highest_level = true;
-                this->right.highest_level = true;
-            }
-        };
-        
-        struct union_base {
-            bool all = false;
-            
-            operator std::string() const {
-                if(!this->all){
-                    return "UNION";
-                }else{
-                    return "UNION ALL";
-                }
-            }
-        };
-        
-        /**
-         *  UNION object type.
-         */
-        template<class L, class R>
-        struct union_t : public compound_operator<L, R>, union_base {
-            using left_type = typename compound_operator<L, R>::left_type;
-            using right_type = typename compound_operator<L, R>::right_type;
-            
-            union_t(left_type l, right_type r, decltype(all) all): compound_operator<L, R>(std::move(l), std::move(r)), union_base{all} {}
-            
-            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
-        };
-        
-        /**
-         *  EXCEPT object type.
-         */
-        template<class L, class R>
-        struct except_t : public compound_operator<L, R> {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
-            
-            using super::super;
-            
-            operator std::string() const {
-                return "EXCEPT";
-            }
-        };
-        
-        /**
-         *  INTERSECT object type.
-         */
-        template<class L, class R>
-        struct intersect_t : public compound_operator<L, R> {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
-            
-            using super::super;
-            
-            operator std::string() const {
-                return "INTERSECT";
-            }
-        };
-        
-        /**
-         *  Generic way to get DISTINCT value from any type.
-         */
-        template<class T>
-        bool get_distinct(const T &) {
-            return false;
-        }
-        
-        template<class ...Args>
-        bool get_distinct(const columns_t<Args...> &cols) {
-            return cols.distinct;
-        }
-        
-        template<class T>
-        struct asterisk_t {
-            using type = T;
-        };
-    }
-    
-    template<class T>
-    internal::distinct_t<T> distinct(T t) {
-        return {t};
-    }
-    
-    template<class T>
-    internal::all_t<T> all(T t) {
-        return {t};
-    }
-    
-    template<class ...Args>
-    internal::columns_t<Args...> distinct(internal::columns_t<Args...> cols) {
-        cols.distinct = true;
-        return cols;
-    }
-    
-    /**
-     *  SET keyword used in UPDATE ... SET queries.
-     *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
-     */
-    template<class ...Args>
-    internal::set_t<Args...> set(Args&& ...args) {
-        return {std::forward<Args>(args)...};
-    }
-    
-    template<class ...Args>
-    internal::columns_t<Args...> columns(Args&& ...args) {
-        return {std::forward<Args>(args)...};
-    }
-    
-    /**
-     *  Use it like this:
-     *  struct MyType : BaseType { ... };
-     *  storage.select(column<MyType>(&BaseType::id));
-     */
-    template<class T, class F>
-    internal::column_pointer<T, F> column(F f) {
-        return {f};
-    }
-    
-    /**
-     *  Public function for subselect query. Is useful in UNION queries.
-     */
-    template<class T, class ...Args>
-    internal::select_t<T, Args...> select(T t, Args ...args) {
-        return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
-    }
-    
-    /**
-     *  Public function for UNION operator.
-     *  lhs and rhs are subselect objects.
-     *  Look through example in examples/union.cpp
-     */
-    template<class L, class R>
-    internal::union_t<L, R> union_(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
-    }
-    
-    /**
-     *  Public function for EXCEPT operator.
-     *  lhs and rhs are subselect objects.
-     *  Look through example in examples/except.cpp
-     */
-    template<class L, class R>
-    internal::except_t<L, R> except(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
-    }
-    
-    template<class L, class R>
-    internal::intersect_t<L, R> intersect(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs)};
-    }
-    
-    /**
-     *  Public function for UNION ALL operator.
-     *  lhs and rhs are subselect objects.
-     *  Look through example in examples/union.cpp
-     */
-    template<class L, class R>
-    internal::union_t<L, R> union_all(L lhs, R rhs) {
-        return {std::move(lhs), std::move(rhs), true};
-    }
-    
-    template<class T>
-    internal::asterisk_t<T> asterisk() {
-        return {};
-    }
-}
-#pragma once
-
-#include <string>   //  std::string
 #include <sqlite3.h>
 #include <system_error> //  std::error_code, std::system_error
 
@@ -3857,47 +3872,6 @@ namespace sqlite_orm {
             
         protected:
             sqlite3 *db = nullptr;
-        };
-    }
-}
-#pragma once
-
-#include <type_traits>  //  std::enable_if, std::is_member_pointer
-
-// #include "select_constraints.h"
-
-// #include "column.h"
-
-
-namespace sqlite_orm {
-    
-    namespace internal {
-        
-        /**
-         *  Trait class used to define table mapped type by setter/getter/member
-         *  T - member pointer
-         */
-        template<class T, class SFINAE = void>
-        struct table_type;
-        
-        template<class O, class F>
-        struct table_type<F O::*, typename std::enable_if<std::is_member_pointer<F O::*>::value && !std::is_member_function_pointer<F O::*>::value>::type> {
-            using type = O;
-        };
-        
-        template<class T>
-        struct table_type<T, typename std::enable_if<is_getter<T>::value>::type> {
-            using type = typename getter_traits<T>::object_type;
-        };
-        
-        template<class T>
-        struct table_type<T, typename std::enable_if<is_setter<T>::value>::type> {
-            using type = typename setter_traits<T>::object_type;
-        };
-        
-        template<class T, class F>
-        struct table_type<column_pointer<T, F>, void> {
-            using type = T;
         };
     }
 }
@@ -4719,6 +4693,8 @@ namespace sqlite_orm {
 
 // #include "column.h"
 
+// #include "column_traits.h"
+
 // #include "storage_traits.h"
 #include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type, std::integral_constant
 #include <tuple>    //  std::tuple
@@ -4756,10 +4732,10 @@ namespace sqlite_orm {
             struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
             
             template<class S, class T>
-            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::true_type {};
+            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> : std::true_type {};
             
             template<class S, class T>
-            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
+            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type>
             : type_is_mapped_impl<typename S::super, T> {};
             
             
@@ -4784,10 +4760,10 @@ namespace sqlite_orm {
             struct storage_columns_count_impl<storage_impl<>, T, void> : std::integral_constant<int, 0> {};
             
             template<class S, class T>
-            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::integral_constant<int, S::table_type::columns_count> {};
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> : std::integral_constant<int, S::column_traits::columns_count> {};
             
             template<class S, class T>
-            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
             
             
             /**
@@ -4828,14 +4804,14 @@ namespace sqlite_orm {
             };
             
             template<class S, class T>
-            struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
-                using table_type = typename S::table_type;
-                using table_impl_type = typename table_type::impl_type;
+            struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> {
+                using column_traits = typename S::column_traits;
+                using table_impl_type = typename column_traits::impl_type;
                 using type = typename table_impl_types<table_impl_type>::type;
             };
             
             template<class S, class T>
-            struct storage_mapped_columns_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_mapped_columns_impl<typename S::super, T> {};
+            struct storage_mapped_columns_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type> : storage_mapped_columns_impl<typename S::super, T> {};
             
         }
     }
@@ -4847,7 +4823,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class O, class C>
-        typename remove_member_pointer<C>::type invoke_column(const O& o, C& c, std::false_type) {
+        typename column_traits<C>::field_type invoke_column(const O& o, C& c, std::false_type) {
             return o.*c;
         }
 
@@ -4856,7 +4832,7 @@ namespace sqlite_orm {
 		 * https://developercommunity.visualstudio.com/content/problem/177433/stdresult-of-errors-on-correct-code-since-1552.html
 		 */
         template<class O, class C>
-        auto invoke_column(const O& o, C& c, std::true_type) -> typename getter_traits<C>::field_type {
+        typename column_traits<C>::field_type invoke_column(const O& o, C& c, std::true_type) {
             return ((o).*(c))();
         }
 
@@ -5804,12 +5780,12 @@ namespace sqlite_orm {
         
         template<class H, class ...Ts>
         struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
-            using table_type = H;
+            using column_traits = H;
             using super = storage_impl<Ts...>;
             
             storage_impl(H h, Ts ...ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
             
-            table_type table;
+            column_traits table;
             
             template<class L>
             void for_each(L l) {
@@ -6288,7 +6264,7 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
-// #include "table_type.h"
+// #include "column_traits.h"
 
 // #include "type_is_nullable.h"
 
@@ -7245,7 +7221,7 @@ namespace sqlite_orm {
                 referencesNames.reserve(referencesCount);
                 {
                     using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
-                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    using first_reference_mapped_type = typename internal::column_traits<first_reference_t>::type;
                     auto refTableName = this->impl.template find_table_name<first_reference_mapped_type>();
                     ss << refTableName << " ";
                 }
@@ -9711,7 +9687,7 @@ namespace sqlite_orm {
                 }
                 using columns_type = typename decltype(impl->table)::columns_type;
                 using head_t = typename std::tuple_element<0, columns_type>::type;
-                using indexed_type = typename internal::table_type<head_t>::type;
+                using indexed_type = typename internal::column_traits<head_t>::type;
                 ss << "INDEX IF NOT EXISTS '" << impl->table.name << "' ON '" << this->impl.template find_table_name<indexed_type>() << "' ( ";
                 std::vector<std::string> columnNames;
                 tuple_helper::iterator<std::tuple_size<columns_type>::value - 1, Cols...>()(impl->table.columns, [&columnNames, this](auto &v){

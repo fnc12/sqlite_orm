@@ -113,12 +113,12 @@ namespace sqlite_orm {
         
         template<class H, class ...Ts>
         struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
-            using table_type = H;
+            using column_traits = H;
             using super = storage_impl<Ts...>;
             
             storage_impl(H h, Ts ...ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
             
-            table_type table;
+            column_traits table;
             
             template<class L>
             void for_each(L l) {

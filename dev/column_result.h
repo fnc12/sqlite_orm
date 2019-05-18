@@ -10,6 +10,7 @@
 #include "rowid.h"
 #include "alias.h"
 #include "column.h"
+#include "column_traits.h"
 #include "storage_traits.h"
 
 namespace sqlite_orm {
@@ -17,7 +18,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class O, class C>
-        typename remove_member_pointer<C>::type invoke_column(const O& o, C& c, std::false_type) {
+        typename column_traits<C>::field_type invoke_column(const O& o, C& c, std::false_type) {
             return o.*c;
         }
 
@@ -26,7 +27,7 @@ namespace sqlite_orm {
 		 * https://developercommunity.visualstudio.com/content/problem/177433/stdresult-of-errors-on-correct-code-since-1552.html
 		 */
         template<class O, class C>
-        auto invoke_column(const O& o, C& c, std::true_type) -> typename getter_traits<C>::field_type {
+        typename column_traits<C>::field_type invoke_column(const O& o, C& c, std::true_type) {
             return ((o).*(c))();
         }
 

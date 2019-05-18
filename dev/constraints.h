@@ -55,7 +55,7 @@ namespace sqlite_orm {
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
             using columns_type = std::tuple<Cs...>;
-            using columns_value_type = std::tuple<typename internal::column_value_type<Cs, std::is_member_object_pointer<Cs>::value>::type...>;
+            using columns_value_type = std::tuple<typename internal::column_traits<Cs>::field_type...>;
             
             columns_type columns;
             

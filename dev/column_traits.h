@@ -1,4 +1,8 @@
+#pragma once
+
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if
+
+#include "select_constraints.h"
 
 namespace sqlite_orm {
     
@@ -141,26 +145,35 @@ namespace sqlite_orm {
             using field_type = T;
         };
 
-        // from https://stackoverflow.com/questions/22213523/c11-14-how-to-remove-a-pointer-to-member-from-a-type
-        template<class T> struct remove_member_pointer {
-            typedef T type;
+        /**
+         *  Trait class used to define table mapped type by setter/getter/member
+         *  T - member pointer
+         */
+        template<class T, class SFINAE = void>
+        struct column_traits;
+        
+        template<class O, class F>
+        struct column_traits<F O::*, typename std::enable_if<std::is_member_pointer<F O::*>::value && !std::is_member_function_pointer<F O::*>::value>::type> {
+            using type = O;
+            using field_type = F;
         };
-
-        template<class C, class T> struct remove_member_pointer<T C::*> {
-            typedef T type;
+        
+        template<class T>
+        struct column_traits<T, typename std::enable_if<is_getter<T>::value>::type> {
+            using type = typename getter_traits<T>::object_type;
+            using field_type = typename getter_traits<T>::field_type;
         };
-
-        template<class C, bool IsMemberPointer>
-        struct column_value_type;
-
-        template<class C>
-        struct column_value_type<C, true> {
-            typedef typename remove_member_pointer<C>::type type;
+        
+        template<class T>
+        struct column_traits<T, typename std::enable_if<is_setter<T>::value>::type> {
+            using type = typename setter_traits<T>::object_type;
+            using field_type = typename setter_traits<T>::field_type;
         };
-
-        template<class C>
-        struct column_value_type<C, false> {
-            typedef typename getter_traits<C>::field_type type;
+        
+        template<class T, class F>
+        struct column_traits<column_pointer<T, F>, void> {
+            using type = T;
+            using field_type = F;
         };
     }
 }
