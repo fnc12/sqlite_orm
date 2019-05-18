@@ -6,39 +6,9 @@
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <ostream>  //  std::ostream
 
+#include "column_traits.h"
+
 namespace sqlite_orm {
-
-    namespace internal {
-        // from https://stackoverflow.com/questions/22213523/c11-14-how-to-remove-a-pointer-to-member-from-a-type
-        template<class T> struct remove_member_pointer {
-            typedef T type;
-        };
-
-        template<class C, class T> struct remove_member_pointer<T C::*> {
-            typedef T type;
-        };
-
-		template<class T> struct remove_member_function_pointer {
-			typedef T type;
-		};
-
-		template<class C, class T> struct remove_member_function_pointer<T C::*()> {
-			typedef T type;
-		};
-
-        template<class C, bool IsMemberPointer>
-        struct column_value_type;
-
-        template<class C>
-        struct column_value_type<C, true> {
-            typedef typename remove_member_pointer<C>::type type;
-        };
-
-        template<class C>
-        struct column_value_type<C, false> {
-            typedef typename remove_member_function_pointer<C>::type type;
-        };
-    }
     
     namespace constraints {
         

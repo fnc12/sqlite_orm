@@ -26,7 +26,7 @@ namespace sqlite_orm {
 		 * https://developercommunity.visualstudio.com/content/problem/177433/stdresult-of-errors-on-correct-code-since-1552.html
 		 */
         template<class O, class C>
-        auto invoke_column(const O& o, C& c, std::true_type) -> typename std::result_of<C(void)>::type {
+        auto invoke_column(const O& o, C& c, std::true_type) -> typename getter_traits<C>::field_type {
             return ((o).*(c))();
         }
 

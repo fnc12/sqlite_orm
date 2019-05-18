@@ -421,9 +421,150 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <ostream>  //  std::ostream
 
-namespace sqlite_orm {
+// #include "column_traits.h"
+#include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if
 
+namespace sqlite_orm {
+    
     namespace internal {
+        /**
+         *  Getters aliases
+         */
+        template<class O, class T>
+        using getter_by_value_const = T (O::*)() const;
+        
+        template<class O, class T>
+        using getter_by_value = T (O::*)();
+        
+        template<class O, class T>
+        using getter_by_ref_const = T& (O::*)() const;
+        
+        template<class O, class T>
+        using getter_by_ref = T& (O::*)();
+        
+        template<class O, class T>
+        using getter_by_const_ref_const = const T& (O::*)() const;
+        
+        template<class O, class T>
+        using getter_by_const_ref = const T& (O::*)();
+        
+        /**
+         *  Setters aliases
+         */
+        template<class O, class T>
+        using setter_by_value = void (O::*)(T);
+        
+        template<class O, class T>
+        using setter_by_ref = void (O::*)(T&);
+        
+        template<class O, class T>
+        using setter_by_const_ref = void (O::*)(const T&);
+        
+        template<class T>
+        struct is_getter : std::false_type {};
+        
+        template<class O, class T>
+        struct is_getter<getter_by_value_const<O, T>> : std::true_type {};
+        
+        template<class O, class T>
+        struct is_getter<getter_by_value<O, T>> : std::true_type {};
+        
+        template<class O, class T>
+        struct is_getter<getter_by_ref_const<O, T>> : std::true_type {};
+        
+        template<class O, class T>
+        struct is_getter<getter_by_ref<O, T>> : std::true_type {};
+        
+        template<class O, class T>
+        struct is_getter<getter_by_const_ref_const<O, T>> : std::true_type {};
+        
+        template<class O, class T>
+        struct is_getter<getter_by_const_ref<O, T>> : std::true_type {};
+        
+        template<class T>
+        struct is_setter : std::false_type {};
+        
+        template<class O, class T>
+        struct is_setter<setter_by_value<O, T>> : std::true_type {};
+        
+        template<class O, class T>
+        struct is_setter<setter_by_ref<O, T>> : std::true_type {};
+        
+        template<class O, class T>
+        struct is_setter<setter_by_const_ref<O, T>> : std::true_type {};
+        
+        template<class T>
+        struct getter_traits;
+        
+        template<class O, class T>
+        struct getter_traits<getter_by_value_const<O, T>> {
+            using object_type = O;
+            using field_type = T;
+            
+            static constexpr const bool returns_lvalue = false;
+        };
+        
+        template<class O, class T>
+        struct getter_traits<getter_by_value<O, T>> {
+            using object_type = O;
+            using field_type = T;
+            
+            static constexpr const bool returns_lvalue = false;
+        };
+        
+        template<class O, class T>
+        struct getter_traits<getter_by_ref_const<O, T>> {
+            using object_type = O;
+            using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
+        };
+        
+        template<class O, class T>
+        struct getter_traits<getter_by_ref<O, T>> {
+            using object_type = O;
+            using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
+        };
+        
+        template<class O, class T>
+        struct getter_traits<getter_by_const_ref_const<O, T>> {
+            using object_type = O;
+            using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
+        };
+        
+        template<class O, class T>
+        struct getter_traits<getter_by_const_ref<O, T>> {
+            using object_type = O;
+            using field_type = T;
+            
+            static constexpr const bool returns_lvalue = true;
+        };
+        
+        template<class T>
+        struct setter_traits;
+        
+        template<class O, class T>
+        struct setter_traits<setter_by_value<O, T>> {
+            using object_type = O;
+            using field_type = T;
+        };
+        
+        template<class O, class T>
+        struct setter_traits<setter_by_ref<O, T>> {
+            using object_type = O;
+            using field_type = T;
+        };
+        
+        template<class O, class T>
+        struct setter_traits<setter_by_const_ref<O, T>> {
+            using object_type = O;
+            using field_type = T;
+        };
+
         // from https://stackoverflow.com/questions/22213523/c11-14-how-to-remove-a-pointer-to-member-from-a-type
         template<class T> struct remove_member_pointer {
             typedef T type;
@@ -432,14 +573,6 @@ namespace sqlite_orm {
         template<class C, class T> struct remove_member_pointer<T C::*> {
             typedef T type;
         };
-
-		template<class T> struct remove_member_function_pointer {
-			typedef T type;
-		};
-
-		template<class C, class T> struct remove_member_function_pointer<T C::*()> {
-			typedef T type;
-		};
 
         template<class C, bool IsMemberPointer>
         struct column_value_type;
@@ -451,9 +584,12 @@ namespace sqlite_orm {
 
         template<class C>
         struct column_value_type<C, false> {
-            typedef typename remove_member_function_pointer<C>::type type;
+            typedef typename getter_traits<C>::field_type type;
         };
     }
+}
+
+namespace sqlite_orm {
     
     namespace constraints {
         
@@ -1152,6 +1288,8 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
+// #include "column_traits.h"
+
 
 namespace sqlite_orm {
     
@@ -1246,7 +1384,7 @@ namespace sqlite_orm {
                 return res;
             }
         };
-        
+
         /**
          *  Column traits. Common case.
          */
@@ -1258,144 +1396,6 @@ namespace sqlite_orm {
          */
         template<class O, class T, class ...Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
-        
-        /**
-         *  Getters aliases
-         */
-        template<class O, class T>
-        using getter_by_value_const = T (O::*)() const;
-        
-        template<class O, class T>
-        using getter_by_value = T (O::*)();
-        
-        template<class O, class T>
-        using getter_by_ref_const = T& (O::*)() const;
-        
-        template<class O, class T>
-        using getter_by_ref = T& (O::*)();
-        
-        template<class O, class T>
-        using getter_by_const_ref_const = const T& (O::*)() const;
-        
-        template<class O, class T>
-        using getter_by_const_ref = const T& (O::*)();
-        
-        /**
-         *  Setters aliases
-         */
-        template<class O, class T>
-        using setter_by_value = void (O::*)(T);
-        
-        template<class O, class T>
-        using setter_by_ref = void (O::*)(T&);
-        
-        template<class O, class T>
-        using setter_by_const_ref = void (O::*)(const T&);
-        
-        template<class T>
-        struct is_getter : std::false_type {};
-        
-        template<class O, class T>
-        struct is_getter<getter_by_value_const<O, T>> : std::true_type {};
-        
-        template<class O, class T>
-        struct is_getter<getter_by_value<O, T>> : std::true_type {};
-        
-        template<class O, class T>
-        struct is_getter<getter_by_ref_const<O, T>> : std::true_type {};
-        
-        template<class O, class T>
-        struct is_getter<getter_by_ref<O, T>> : std::true_type {};
-        
-        template<class O, class T>
-        struct is_getter<getter_by_const_ref_const<O, T>> : std::true_type {};
-        
-        template<class O, class T>
-        struct is_getter<getter_by_const_ref<O, T>> : std::true_type {};
-        
-        template<class T>
-        struct is_setter : std::false_type {};
-        
-        template<class O, class T>
-        struct is_setter<setter_by_value<O, T>> : std::true_type {};
-        
-        template<class O, class T>
-        struct is_setter<setter_by_ref<O, T>> : std::true_type {};
-        
-        template<class O, class T>
-        struct is_setter<setter_by_const_ref<O, T>> : std::true_type {};
-        
-        template<class T>
-        struct getter_traits;
-        
-        template<class O, class T>
-        struct getter_traits<getter_by_value_const<O, T>> {
-            using object_type = O;
-            using field_type = T;
-            
-            static constexpr const bool returns_lvalue = false;
-        };
-        
-        template<class O, class T>
-        struct getter_traits<getter_by_value<O, T>> {
-            using object_type = O;
-            using field_type = T;
-            
-            static constexpr const bool returns_lvalue = false;
-        };
-        
-        template<class O, class T>
-        struct getter_traits<getter_by_ref_const<O, T>> {
-            using object_type = O;
-            using field_type = T;
-            
-            static constexpr const bool returns_lvalue = true;
-        };
-        
-        template<class O, class T>
-        struct getter_traits<getter_by_ref<O, T>> {
-            using object_type = O;
-            using field_type = T;
-            
-            static constexpr const bool returns_lvalue = true;
-        };
-        
-        template<class O, class T>
-        struct getter_traits<getter_by_const_ref_const<O, T>> {
-            using object_type = O;
-            using field_type = T;
-            
-            static constexpr const bool returns_lvalue = true;
-        };
-        
-        template<class O, class T>
-        struct getter_traits<getter_by_const_ref<O, T>> {
-            using object_type = O;
-            using field_type = T;
-            
-            static constexpr const bool returns_lvalue = true;
-        };
-        
-        template<class T>
-        struct setter_traits;
-        
-        template<class O, class T>
-        struct setter_traits<setter_by_value<O, T>> {
-            using object_type = O;
-            using field_type = T;
-        };
-        
-        template<class O, class T>
-        struct setter_traits<setter_by_ref<O, T>> {
-            using object_type = O;
-            using field_type = T;
-        };
-        
-        template<class O, class T>
-        struct setter_traits<setter_by_const_ref<O, T>> {
-            using object_type = O;
-            using field_type = T;
-        };
     }
     
     /**
@@ -4856,7 +4856,7 @@ namespace sqlite_orm {
 		 * https://developercommunity.visualstudio.com/content/problem/177433/stdresult-of-errors-on-correct-code-since-1552.html
 		 */
         template<class O, class C>
-        auto invoke_column(const O& o, C& c, std::true_type) -> typename std::result_of<C(void)>::type {
+        auto invoke_column(const O& o, C& c, std::true_type) -> typename getter_traits<C>::field_type {
             return ((o).*(c))();
         }
 
@@ -10041,6 +10041,7 @@ namespace sqlite_orm {
 				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type composite_key_columns_value_type;
 				composite_key_columns_type composite_key_columns = impl.table.get_composite_key().columns;
 				composite_key_columns_value_type composite_key_value;
+
 				tuple_helper::apply([&o,&composite_key_value](auto ...pks) {
                     composite_key_value = std::make_tuple(internal::invoke_column(o, pks, internal::is_getter<decltype(pks)>{})...);
 				}, composite_key_columns);

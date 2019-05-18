@@ -2982,6 +2982,7 @@ namespace sqlite_orm {
 				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type composite_key_columns_value_type;
 				composite_key_columns_type composite_key_columns = impl.table.get_composite_key().columns;
 				composite_key_columns_value_type composite_key_value;
+
 				tuple_helper::apply([&o,&composite_key_value](auto ...pks) {
                     composite_key_value = std::make_tuple(internal::invoke_column(o, pks, internal::is_getter<decltype(pks)>{})...);
 				}, composite_key_columns);
