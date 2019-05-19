@@ -9,6 +9,7 @@ install:
  
 image:
   - Visual Studio 2017
+  - Ubuntu
   
 # configurations to add to build matrix
 # TODO: MinGW Makefiles and MSYS Makefiles
@@ -20,6 +21,20 @@ environment:
   matrix:
   - arch: Win32
   - arch: Win64
+  - arch: arm
+  - arch: arm64
+  - arch: amd64
+
+matrix:
+  exclude:
+    - image: Visual Studio 2017
+      arch: arm
+    - image: Visual Studio 2017
+      arch: arm64
+    - image: Ubuntu
+      arch: Win32
+    - image: Ubuntu
+      arch: Win64
 
 init:
   - echo %APPVEYOR_BUILD_WORKER_IMAGE% - %configuration% - %arch%
