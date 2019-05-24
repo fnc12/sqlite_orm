@@ -12,6 +12,26 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testIsNull() {
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{1, std::make_unique<std::string>("Sheldon")});
+    storage.replace(User{2});
+    storage.replace(User{3, std::make_unique<std::string>("Leonard")});
+    
+    assert(storage.count<User>() == 3);
+    assert(storage.count<User>(where(is_null(&User::name))) == 1);
+    assert(storage.count<User>(where(is_not_null(&User::name))) == 2);
+}
+
 void testIterateBlob() {
     struct Test {
         int64_t id;
@@ -2499,4 +2519,6 @@ int main(int, char **) {
     testWhere();
     
     testIterateBlob();
+    
+    testIsNull();
 }
