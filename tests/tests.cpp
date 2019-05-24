@@ -1722,17 +1722,43 @@ void testReplace() {
         int id;
         std::string name;
     };
+    
+    struct User {
+        
+        User(int id_, std::string name_): id(id_), name(move(name_)) {}
+        
+        int getId() const {
+            return this->id;
+        }
+        
+        void setId(int id) {
+            this->id = id;
+        }
+        
+        std::string getName() const { 
+            return this->name;
+        }
+        
+        void setName(std::string name) {
+            this->name = move(name);
+        }
+        
+    private:
+        int id = 0;
+        std::string name;
+    };
 
     auto storage = make_storage("test_replace.sqlite",
                                 make_table("objects",
-                                           make_column("id",
-                                                       &Object::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &Object::name)));
+                                           make_column("id", &Object::id, primary_key()),
+                                           make_column("name", &Object::name)),
+                                make_table("users",
+                                           make_column("id", &User::getId, &User::setId, primary_key()),
+                                           make_column("name", &User::setName, &User::getName)));
 
     storage.sync_schema();
     storage.remove_all<Object>();
+    storage.remove_all<User>();
 
     storage.replace(Object{
         100,
@@ -1777,6 +1803,10 @@ void testReplace() {
     std::vector<Object> emptyVector;
     storage.replace_range(emptyVector.begin(),
                           emptyVector.end());
+    
+
+    assert(storage.count<User>() == 0);
+    storage.replace(User{10, "Daddy Yankee"});
 }
 
 void testEmptyStorage() {
@@ -2198,25 +2228,14 @@ void testAggregateFunctions() {
     
     auto storage = make_storage("test_aggregate.sqlite",
                                 make_table("users",
-                                           make_column("id",
-                                                       &User::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &User::name),
-                                           make_column("age",
-                                                       &User::age)));
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("age", &User::age)));
     auto storage2 = make_storage("test_aggregate.sqlite",
                                  make_table("users",
-                                            make_column("id",
-                                                        &User::getId,
-                                                        &User::setId,
-                                                        primary_key()),
-                                            make_column("name",
-                                                        &User::getName,
-                                                        &User::setName),
-                                            make_column("age",
-                                                        &User::getAge,
-                                                        &User::setAge)));
+                                            make_column("id", &User::getId, &User::setId, primary_key()),
+                                            make_column("name", &User::getName, &User::setName),
+                                            make_column("age", &User::getAge, &User::setAge)));
     storage.sync_schema();
     storage.remove_all<User>();
     
