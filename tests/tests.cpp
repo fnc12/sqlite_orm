@@ -6,6 +6,7 @@
 #include <iostream> //  std::cout, std::endl
 #include <memory>
 #include <cstdio>   //  remove
+#include <numeric>  //  std::iota
 
 using namespace sqlite_orm;
 
@@ -44,11 +45,8 @@ void testIterateBlob() {
                                       make_column("id", &Test::id, autoincrement(), primary_key())));
     db.sync_schema(true);
     
-    std::vector<char> key;
-    key.resize(255);
-    for (int i = 0; i < 255; i++){
-        key[i] = i;
-    }
+    std::vector<char> key(255);
+    iota(key.begin(), key.end(), 0);
     
     Test v;
     v.key = key;
@@ -56,6 +54,10 @@ void testIterateBlob() {
     db.insert(v);
     
     for(auto &obj : db.iterate<Test>()){
+        cout << db.dump(obj) << endl;
+    } //  test that view_t and iterator_t compile
+    
+    for(const auto &obj : db.iterate<Test>()){
         cout << db.dump(obj) << endl;
     } //  test that view_t and iterator_t compile
     

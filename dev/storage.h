@@ -914,7 +914,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto leftString = this->string_from_expression(inCondition.l, false, false);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " ";
-                ss << this->string_from_expression(inCondition.arg, false);
+                ss << this->string_from_expression(inCondition.arg, false, false);
                 ss << " ";
                 return ss.str();
             }
