@@ -7725,7 +7725,7 @@ namespace sqlite_orm {
             
             template<class F, class O>
             void process_join_constraint(std::stringstream &ss, const conditions::using_t<F, O> &u) {
-                ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " ) ";
+                ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true, false) << " ) ";
             }
             
             void process_single_condition(std::stringstream &ss, const conditions::limit_t &limt) {
