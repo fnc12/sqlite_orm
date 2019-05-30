@@ -9,6 +9,8 @@ install:
  
 image:
   - Visual Studio 2017
+
+os: Visual Studio 2015 Preview
   
 # configurations to add to build matrix
 # TODO: MinGW Makefiles and MSYS Makefiles
