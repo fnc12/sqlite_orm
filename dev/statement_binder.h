@@ -127,5 +127,39 @@ namespace sqlite_orm {
         
         template <class T>
         using is_bindable = decltype(is_bindable_impl(std::declval<statement_binder<T>*>()));
+        
+        struct conditional_binder_base {
+            sqlite3_stmt *stmt = nullptr;
+            int &index;
+            
+            conditional_binder_base(decltype(stmt) stmt_, decltype(index) index_):
+            stmt(stmt_),
+            index(index_)
+            {}
+        };
+        
+        template<class T, class C>
+        struct conditional_binder;
+        
+        template<class T>
+        struct conditional_binder<T, std::true_type> : conditional_binder_base {
+            
+            using conditional_binder_base::conditional_binder_base;
+            
+            void operator()(const T &t) const {
+                /*auto bindResult =*/ statement_binder<T>().bind(this->stmt, this->index++, t);
+//                auto errorText = 
+//                bindResult = bindResult;
+            }
+        };
+        
+        template<class T>
+        struct conditional_binder<T, std::false_type> : conditional_binder_base {
+            using conditional_binder_base::conditional_binder_base;
+            
+            void operator()(const T &t) const {
+                //..
+            }
+        };
     }
 }

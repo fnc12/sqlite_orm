@@ -399,6 +399,7 @@ namespace sqlite_orm {
         
         /**
          *  WHERE argument holder.
+         *  C is conditions type. Can be any condition like: is_equal_t, is_null_t, exists_t etc
          */
         template<class C>
         struct where_t {

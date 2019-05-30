@@ -497,10 +497,8 @@ void testJoinIteratorConstructorCompilationError() {
     
     auto storage = make_storage("join_error.sqlite",
                                 make_table("tags",
-                                           make_column("object_id",
-                                                       &Tag::objectId),
-                                           make_column("text",
-                                                       &Tag::text)));
+                                           make_column("object_id", &Tag::objectId),
+                                           make_column("text", &Tag::text)));
     storage.sync_schema();
     
     auto offs = 0;
@@ -834,11 +832,8 @@ void testVacuum() {
     
     auto storage = make_storage("vacuum.sqlite",
                                 make_table("items",
-                                           make_column("id",
-                                                       &Item::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &Item::name)));
+                                           make_column("id", &Item::id, primary_key()),
+                                           make_column("name", &Item::name)));
     storage.sync_schema();
     storage.insert(Item{ 0, "One" });
     storage.insert(Item{ 0, "Two" });
@@ -879,12 +874,9 @@ void testOperators() {
     
     auto storage = make_storage("",
                                 make_table("objects",
-                                           make_column("name",
-                                                       &Object::name),
-                                           make_column("name_len",
-                                                       &Object::nameLen),
-                                           make_column("number",
-                                                       &Object::number)));
+                                           make_column("name", &Object::name),
+                                           make_column("name_len", &Object::nameLen),
+                                           make_column("number", &Object::number)));
     storage.sync_schema();
     
     std::vector<std::string> names {
@@ -894,86 +886,126 @@ void testOperators() {
     for(auto &name : names) {
         storage.insert(Object{ name , int(name.length()), number });
     }
-    std::string suffix = "ototo";
-    auto rows = storage.select(columns(conc(&Object::name, suffix),
-                                       c(&Object::name) || suffix,
-                                       &Object::name || c(suffix),
-                                       c(&Object::name) || c(suffix),
-                                       
-                                       add(&Object::nameLen, &Object::number),
-                                       c(&Object::nameLen) + &Object::number,
-                                       &Object::nameLen + c(&Object::number),
-                                       c(&Object::nameLen) + c(&Object::number),
-                                       c(&Object::nameLen) + 1000,
-                                       
-                                       sub(&Object::nameLen, &Object::number),
-                                       c(&Object::nameLen) - &Object::number,
-                                       &Object::nameLen - c(&Object::number),
-                                       c(&Object::nameLen) - c(&Object::number),
-                                       c(&Object::nameLen) - 1000,
-                                       
-                                       mul(&Object::nameLen, &Object::number),
-                                       c(&Object::nameLen) * &Object::number,
-                                       &Object::nameLen * c(&Object::number),
-                                       c(&Object::nameLen) * c(&Object::number),
-                                       c(&Object::nameLen) * 1000,
-                                       
-                                       div(&Object::nameLen, &Object::number),
-                                       c(&Object::nameLen) / &Object::number,
-                                       &Object::nameLen / c(&Object::number),
-                                       c(&Object::nameLen) / c(&Object::number),
-                                       c(&Object::nameLen) / 2));
-    
-    for(size_t i = 0; i < rows.size(); ++i) {
-        auto &row = rows[i];
-        auto &name = names[i];
-        assert(std::get<0>(row) == name + suffix);
-        assert(std::get<1>(row) == std::get<0>(row));
-        assert(std::get<2>(row) == std::get<1>(row));
-        assert(std::get<3>(row) == std::get<2>(row));
-        
-        auto expectedAddNumber = int(name.length()) + number;
-        assert(std::get<4>(row) == expectedAddNumber);
-        assert(std::get<5>(row) == std::get<4>(row));
-        assert(std::get<6>(row) == std::get<5>(row));
-        assert(std::get<7>(row) == std::get<6>(row));
-        assert(std::get<8>(row) == int(name.length()) + 1000);
-        
-        auto expectedSubNumber = int(name.length()) - number;
-        assert(std::get<9>(row) == expectedSubNumber);
-        assert(std::get<10>(row) == std::get<9>(row));
-        assert(std::get<11>(row) == std::get<10>(row));
-        assert(std::get<12>(row) == std::get<11>(row));
-        assert(std::get<13>(row) == int(name.length()) - 1000);
-        
-        auto expectedMulNumber = int(name.length()) * number;
-        assert(std::get<14>(row) == expectedMulNumber);
-        assert(std::get<15>(row) == std::get<14>(row));
-        assert(std::get<16>(row) == std::get<15>(row));
-        assert(std::get<17>(row) == std::get<16>(row));
-        assert(std::get<18>(row) == int(name.length()) * 1000);
-        
-        auto expectedDivNumber = int(name.length()) / number;
-        assert(std::get<19>(row) == expectedDivNumber);
-        assert(std::get<20>(row) == std::get<19>(row));
-        assert(std::get<21>(row) == std::get<20>(row));
-        assert(std::get<22>(row) == std::get<21>(row));
-        assert(std::get<23>(row) == int(name.length()) / 2);
+    {
+        auto rows = storage.select(c(&Object::nameLen) + 1000);
+        for(size_t i = 0; i < rows.size(); ++i){
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(int(row) == name.length() + 1000);
+        }
     }
-    
-    auto rows2 = storage.select(columns(mod(&Object::nameLen, &Object::number),
-                                        c(&Object::nameLen) % &Object::number,
-                                        &Object::nameLen % c(&Object::number),
-                                        c(&Object::nameLen) % c(&Object::number),
-                                        c(&Object::nameLen) % 5));
-    for(size_t i = 0; i < rows2.size(); ++i) {
-        auto &row = rows2[i];
-        auto &name = names[i];
-        assert(std::get<0>(row) == static_cast<int>(name.length()) % number);
-        assert(std::get<1>(row) == std::get<0>(row));
-        assert(std::get<2>(row) == std::get<1>(row));
-        assert(std::get<3>(row) == std::get<2>(row));
-        assert(std::get<4>(row) == static_cast<int>(name.length()) % 5);
+    {
+        auto rows = storage.select(columns(c(&Object::nameLen) + 1000));
+        for(size_t i = 0; i < rows.size(); ++i){
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(int(std::get<0>(row)) == name.length() + 1000);
+        }
+    }
+    {
+        std::string suffix = "ototo";
+        auto rows = storage.select(c(&Object::name) || suffix);
+        for(size_t i = 0; i < rows.size(); ++i){
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(row == name + suffix);
+        }
+    }
+    {
+        std::string suffix = "ototo";
+        auto rows = storage.select(columns(conc(&Object::name,  suffix)));
+        for(size_t i = 0; i < rows.size(); ++i){
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(std::get<0>(row) == name + suffix);
+        }
+    }
+    {
+        std::string suffix = "ototo";
+        auto rows = storage.select(columns(conc(&Object::name, suffix),
+                                           c(&Object::name) || suffix,
+                                           &Object::name || c(suffix),
+                                           c(&Object::name) || c(suffix),
+                                           
+                                           add(&Object::nameLen, &Object::number),
+                                           c(&Object::nameLen) + &Object::number,
+                                           &Object::nameLen + c(&Object::number),
+                                           c(&Object::nameLen) + c(&Object::number),
+                                           c(&Object::nameLen) + 1000,
+                                           
+                                           sub(&Object::nameLen, &Object::number),
+                                           c(&Object::nameLen) - &Object::number,
+                                           &Object::nameLen - c(&Object::number),
+                                           c(&Object::nameLen) - c(&Object::number),
+                                           c(&Object::nameLen) - 1000,
+                                           
+                                           mul(&Object::nameLen, &Object::number),
+                                           c(&Object::nameLen) * &Object::number,
+                                           &Object::nameLen * c(&Object::number),
+                                           c(&Object::nameLen) * c(&Object::number),
+                                           c(&Object::nameLen) * 1000,
+                                           
+                                           div(&Object::nameLen, &Object::number),
+                                           c(&Object::nameLen) / &Object::number,
+                                           &Object::nameLen / c(&Object::number),
+                                           c(&Object::nameLen) / c(&Object::number),
+                                           c(&Object::nameLen) / 2));
+        
+        for(size_t i = 0; i < rows.size(); ++i) {
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(std::get<0>(row) == name + suffix);
+            assert(std::get<1>(row) == std::get<0>(row));
+            assert(std::get<2>(row) == std::get<1>(row));
+            assert(std::get<3>(row) == std::get<2>(row));
+            
+            auto expectedAddNumber = int(name.length()) + number;
+            assert(std::get<4>(row) == expectedAddNumber);
+            assert(std::get<5>(row) == std::get<4>(row));
+            assert(std::get<6>(row) == std::get<5>(row));
+            assert(std::get<7>(row) == std::get<6>(row));
+            {
+                auto &rowValue = std::get<8>(row);
+                assert(rowValue == int(name.length()) + 1000);
+            }
+            
+            auto expectedSubNumber = int(name.length()) - number;
+            assert(std::get<9>(row) == expectedSubNumber);
+            assert(std::get<10>(row) == std::get<9>(row));
+            assert(std::get<11>(row) == std::get<10>(row));
+            assert(std::get<12>(row) == std::get<11>(row));
+            assert(std::get<13>(row) == int(name.length()) - 1000);
+            
+            auto expectedMulNumber = int(name.length()) * number;
+            assert(std::get<14>(row) == expectedMulNumber);
+            assert(std::get<15>(row) == std::get<14>(row));
+            assert(std::get<16>(row) == std::get<15>(row));
+            assert(std::get<17>(row) == std::get<16>(row));
+            assert(std::get<18>(row) == int(name.length()) * 1000);
+            
+            auto expectedDivNumber = int(name.length()) / number;
+            assert(std::get<19>(row) == expectedDivNumber);
+            assert(std::get<20>(row) == std::get<19>(row));
+            assert(std::get<21>(row) == std::get<20>(row));
+            assert(std::get<22>(row) == std::get<21>(row));
+            assert(std::get<23>(row) == int(name.length()) / 2);
+        }
+    }
+    {
+        auto rows = storage.select(columns(mod(&Object::nameLen, &Object::number),
+                                            c(&Object::nameLen) % &Object::number,
+                                            &Object::nameLen % c(&Object::number),
+                                            c(&Object::nameLen) % c(&Object::number),
+                                            c(&Object::nameLen) % 5));
+        for(size_t i = 0; i < rows.size(); ++i) {
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(std::get<0>(row) == static_cast<int>(name.length()) % number);
+            assert(std::get<1>(row) == std::get<0>(row));
+            assert(std::get<2>(row) == std::get<1>(row));
+            assert(std::get<3>(row) == std::get<2>(row));
+            assert(std::get<4>(row) == static_cast<int>(name.length()) % 5);
+        }
     }
 }
 
@@ -1494,6 +1526,29 @@ void testSelect() {
     sqlite3_finalize(stmt);
 
     auto secondId = sqlite3_last_insert_rowid(db);
+    
+    {
+        //  SELECT ID, CURRENT_WORD, BEFORE_WORD, AFTER_WORD, OCCURANCES
+        //  FROM WORDS
+        //  WHERE ID = firstId
+        
+        sql = "SELECT ID, CURRENT_WORD, BEFORE_WORD, AFTER_WORD, OCCURANCES FROM WORDS WHERE ID = ?";
+        rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+        assert(rc == SQLITE_OK);
+        
+        sqlite3_bind_int64(stmt, 1, firstId);
+        rc = sqlite3_step(stmt);
+        if(rc != SQLITE_ROW){
+            cout << sqlite3_errmsg(db) << endl;
+            throw std::runtime_error(sqlite3_errmsg(db));
+        }
+        assert(sqlite3_column_int(stmt, 0) == firstId);
+        assert(::strcmp((const char *)sqlite3_column_text(stmt, 1), "best") == 0);
+        assert(::strcmp((const char *)sqlite3_column_text(stmt, 2), "behaviour") == 0);
+        assert(::strcmp((const char *)sqlite3_column_text(stmt, 3), "hey") == 0);
+        assert(sqlite3_column_int(stmt, 4) == 5);
+        sqlite3_finalize(stmt);
+    }
 
     sqlite3_close(db);
 
@@ -1507,18 +1562,11 @@ void testSelect() {
 
     auto storage = make_storage(dbFileName,
                                 make_table("WORDS",
-                                           make_column("ID",
-                                                       &Word::id,
-                                                       primary_key(),
-                                                       autoincrement()),
-                                           make_column("CURRENT_WORD",
-                                                       &Word::currentWord),
-                                           make_column("BEFORE_WORD",
-                                                       &Word::beforeWord),
-                                           make_column("AFTER_WORD",
-                                                       &Word::afterWord),
-                                           make_column("OCCURANCES",
-                                                       &Word::occurances)));
+                                           make_column("ID", &Word::id, primary_key(), autoincrement()),
+                                           make_column("CURRENT_WORD", &Word::currentWord),
+                                           make_column("BEFORE_WORD", &Word::beforeWord),
+                                           make_column("AFTER_WORD", &Word::afterWord),
+                                           make_column("OCCURANCES", &Word::occurances)));
 
     storage.sync_schema();  //  sync schema must not alter any data cause schemas are the same
 
@@ -2434,7 +2482,7 @@ int main(int, char **) {
 
     cout << "version = " << make_storage("").libversion() << endl;
 
-    testTypeParsing();
+    /*testTypeParsing();
 
     testSyncSchema();
 
@@ -2487,10 +2535,11 @@ int main(int, char **) {
     testIssue105();
     
     testMultiOrderBy();
+    */
     
     testOperators();
     
-    testAutoVacuum();
+    /*testAutoVacuum();
     
     testVacuum();
     
@@ -2522,5 +2571,5 @@ int main(int, char **) {
     
     testIterateBlob();
     
-    testIsNull();
+    testIsNull();*/
 }
