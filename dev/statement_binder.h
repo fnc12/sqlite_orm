@@ -18,7 +18,7 @@ namespace sqlite_orm {
      *  Helper class used for binding fields to sqlite3 statements.
      */
     template<class V, typename Enable = void>
-    struct statement_binder;
+    struct statement_binder : std::false_type {};
     
     /**
      *  Specialization for arithmetic types.
@@ -118,15 +118,8 @@ namespace sqlite_orm {
     
     namespace internal {
         
-        //  got it from here https://stackoverflow.com/questions/44229676/how-to-decide-if-a-template-specialization-exist
-        
-        template <class T, std::size_t = sizeof(T)>
-        std::true_type is_bindable_impl(T *);
-        
-        std::false_type is_bindable_impl(...);
-        
-        template <class T>
-        using is_bindable = decltype(is_bindable_impl(std::declval<statement_binder<T>*>()));
+        template<class T>
+        using is_bindable = std::integral_constant<bool, !std::is_base_of<std::false_type, statement_binder<T>>::value>;
         
         struct conditional_binder_base {
             sqlite3_stmt *stmt = nullptr;
@@ -147,9 +140,7 @@ namespace sqlite_orm {
             using conditional_binder_base::conditional_binder_base;
             
             void operator()(const T &t) const {
-                /*auto bindResult =*/ statement_binder<T>().bind(this->stmt, this->index++, t);
-//                auto errorText = 
-//                bindResult = bindResult;
+                statement_binder<T>().bind(this->stmt, this->index++, t);
             }
         };
         
