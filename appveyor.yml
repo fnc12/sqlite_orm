@@ -8,7 +8,7 @@ install:
   - git submodule update --init --recursive
  
 image:
-  - Visual Studio 2017 v15.7.5
+  - Visual Studio 2017
   
 # configurations to add to build matrix
 # TODO: MinGW Makefiles and MSYS Makefiles
