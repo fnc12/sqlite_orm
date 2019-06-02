@@ -1721,6 +1721,30 @@ void testRemove() {
     }
 }
 
+void testRemoveAll() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("objects",
+                                           make_column("id", &Object::id, primary_key()),
+                                           make_column("name", &Object::name)));
+    storage.sync_schema();
+    
+    storage.replace(Object{ 1, "Ototo" });
+    storage.replace(Object{ 2, "Contigo" });
+    
+    assert(storage.count<Object>() == 2);
+    
+    storage.remove_all<Object>(where(c(&Object::id) == 1));
+    
+    assert(storage.count<Object>() == 1);
+}
+
 void testInsert() {
     cout << __func__ << endl;
 
@@ -2612,4 +2636,6 @@ int main(int, char **) {
     testIterateBlob();
     
     testIsNull();
+    
+    testRemoveAll();
 }

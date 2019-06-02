@@ -8118,11 +8118,18 @@ namespace sqlite_orm {
                 auto &impl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << impl.table.name << "' ";
-                this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
+                auto argsTuple = std::make_tuple(std::forward<Args>(args)...);
+                this->process_conditions(ss, argsTuple);
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
+                    auto index = 1;
+                    iterate_ast(argsTuple, [stmt, &index](auto &node){
+                        using node_type = typename std::decay<decltype(node)>::type;
+                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                        binder(node);
+                    });
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
@@ -8878,8 +8885,8 @@ namespace sqlite_orm {
              */
             template<class O, class ...Args, class R = typename mapped_type_proxy<O>::type>
             int count(Args&& ...args) {
-                this->assert_mapped_type<O>();
-                auto rows = this->select(sqlite_orm::count<O>(), std::forward<Args>(args)...);
+                this->assert_mapped_type<R>();
+                auto rows = this->select(sqlite_orm::count<R>(), std::forward<Args>(args)...);
                 if(!rows.empty()){
                     return rows.front();
                 }else{
