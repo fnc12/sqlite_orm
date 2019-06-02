@@ -399,6 +399,8 @@ namespace sqlite_orm {
         struct where_t {
             C c;
             
+            where_t() = default;
+            
             operator std::string () const {
                 return "WHERE";
             }
