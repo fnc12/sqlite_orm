@@ -7717,7 +7717,7 @@ namespace sqlite_orm {
                 }
                 auto tableNamesSet = this->parse_table_names(sel.col);
                 internal::join_iterator<Args...>()([&tableNamesSet, this](const auto &c){
-                    using original_join_type = typename std::decay<decltype(c)>::type::type;
+                    using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
                     auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
                     auto tableAliasString = alias_extractor<original_join_type>::get();
