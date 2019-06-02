@@ -12,6 +12,7 @@
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "iterator.h"
+#include "ast_iterator.h"
 
 namespace sqlite_orm {
     
@@ -51,6 +52,12 @@ namespace sqlite_orm {
                 this->storage.template generate_select_asterisk<T>(&query, this->args);
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK){
+                    auto index = 1;
+                    iterate_ast(this->args, [&index, stmt](auto &node){
+                        using node_type = typename std::decay<decltype(node)>::type;
+                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                        binder(node);
+                    });
                     return {stmt, *this};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));

@@ -1,10 +1,11 @@
 #pragma once
 
+#include <vector>   //  std::vector
+
 #include "conditions.h"
 #include "select_constraints.h"
 #include "operators.h"
-
-#include <iostream>
+#include "tuple_helper.h"
 
 namespace sqlite_orm {
     
@@ -22,7 +23,7 @@ namespace sqlite_orm {
              */
             template<class L>
             void operator()(const T &t, const L &l) const {
-                std::cout << "t is " << typeid(t).name() << std::endl;
+                l(t);
             }
         };
         
@@ -49,8 +50,8 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &binaryCondition, const L &l) const {
-                l(binaryCondition.l);
-                l(binaryCondition.r);
+                iterate_ast(binaryCondition.l, l);
+                iterate_ast(binaryCondition.r, l);
             }
         };
         
@@ -60,8 +61,8 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &binaryOperator, const L &l) const {
-                l(binaryOperator.l);
-                l(binaryOperator.r);
+                iterate_ast(binaryOperator.l, l);
+                iterate_ast(binaryOperator.r, l);
             }
         };
         
@@ -71,7 +72,7 @@ namespace sqlite_orm {
             
             template<class C>
             void operator()(const node_type &assign, const C &l) const {
-                l(assign.r);
+                iterate_ast(assign.r, l);
             }
         };
         
@@ -87,15 +88,71 @@ namespace sqlite_orm {
             }
         };
         
-        /*template<class L, class R>
-        struct ast_iterator<conc_t<L, R>, void> {
-            using node_type = conc_t<L, R>;
+        template<class L, class A>
+        struct ast_iterator<conditions::in_t<L, A>, void> {
+            using node_type = conditions::in_t<L, A>;
             
             template<class C>
-            void operator()(const node_type &conc, const C &l) const {
-                l(conc.l);
-                l(conc.r);
+            void operator()(const node_type &in, const C &l) const {
+                iterate_ast(in.l, l);
+                iterate_ast(in.arg, l);
             }
-        };*/
+        };
+        
+        template<class T>
+        struct ast_iterator<std::vector<T>, void> {
+            using node_type = std::vector<T>;
+            
+            template<class L>
+            void operator()(const node_type &vec, const L &l) const {
+                for(auto &i : vec) {
+                    iterate_ast(i, l);
+                }
+            }
+        };
+        
+        template<>
+        struct ast_iterator<std::vector<char>, void> {
+            using node_type = std::vector<char>;
+            
+            template<class L>
+            void operator()(const node_type &vec, const L &l) const {
+                l(vec);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+            using node_type = T;
+            
+            template<class L>
+            void operator()(const node_type &c, const L &l) const {
+                iterate_ast(c.left, l);
+                iterate_ast(c.right, l);
+            }
+        };
+        
+        template<class T, class ...Args>
+        struct ast_iterator<select_t<T, Args...>, void> {
+            using node_type = select_t<T, Args...>;
+            
+            template<class L>
+            void operator()(const node_type &sel, const L &l) const {
+                iterate_ast(sel.col, l);
+                iterate_ast(sel.conditions, l);
+            }
+        };
+        
+        template<class ...Args>
+        struct ast_iterator<std::tuple<Args...>, void> {
+            using node_type = std::tuple<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &tuple, const L &l) const {
+                tuple_helper::iterator<std::tuple_size<node_type>::value - 1, Args...>()(tuple, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
     }
 }

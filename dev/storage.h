@@ -15,7 +15,6 @@
 #include <utility>  //  std::forward, std::pair
 #include <set>  //  std::set
 #include <algorithm>    //  std::find
-#include <iostream>
 
 #include "alias.h"
 #include "database_connection.h"
@@ -499,7 +498,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const aggregate_functions::min_t<T> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, false);
+                auto expr = this->string_from_expression(f.t, noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
                 return ss.str();
             }
@@ -1105,16 +1104,11 @@ namespace sqlite_orm {
             }
             
             template<class ...Args>
-            void process_conditions(std::stringstream &ss, std::tuple<Args...> args) {
-                this->process_single_condition(ss, tuple_helper::head(args));
-                this->process_conditions(ss, tuple_helper::tail(args));
-            }
-            
-            /**
-             *  Recursion end.
-             */
-            void process_conditions(std::stringstream &, std::tuple<> /*args*/) {
-                //..
+            void process_conditions(std::stringstream &ss, const std::tuple<Args...> &args) {
+                using argsType = typename std::decay<decltype(args)>::type;
+                tuple_helper::iterator<std::tuple_size<argsType>::value - 1, Args...>()(args, [this, &ss](auto &v){
+                    this->process_single_condition(ss, v);
+                });
             }
             
             void on_open_internal(sqlite3 *db) {
@@ -1383,17 +1377,11 @@ namespace sqlite_orm {
                                     binder(node);
                                 });
                             });
-                            tuple_helper::iterator<std::tuple_size<decltype(whereArgsTuple)>::value - 1, Wargs...>()(whereArgsTuple, [stmt, &index](auto &v){
-                                using arg_type = typename std::decay<decltype(v)>::type;
-//                                std::cout << "v is " << typeid(arg_type).name() << std::endl;
-                                
-                                iterate_ast(v, [stmt, &index](auto &node){
-                                    using node_type = typename std::decay<decltype(node)>::type;
-                                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                                    binder(node);
-                                });
+                            iterate_ast(whereArgsTuple, [stmt, &index](auto &node){
+                                using node_type = typename std::decay<decltype(node)>::type;
+                                conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                                binder(node);
                             });
-                            
                             if (sqlite3_step(stmt) == SQLITE_DONE) {
                                 //  done..
                             }else{
@@ -1419,7 +1407,7 @@ namespace sqlite_orm {
              *  @return impl for O
              */
             template<class O, class ...Args>
-            auto& generate_select_asterisk(std::string *query, std::tuple<Args...> args) {
+            auto& generate_select_asterisk(std::string *query, const std::tuple<Args...> &args) {
                 std::stringstream ss;
                 ss << "SELECT ";
                 auto &impl = this->get_impl<O>();
@@ -1729,39 +1717,19 @@ namespace sqlite_orm {
             }
             
             template<class F, class O, class ...Args>
-            std::string group_concat_internal(F O::*m, std::unique_ptr<const std::string> y, Args&& ...args) {
+            std::string group_concat_internal(F O::*m, std::unique_ptr<std::string> y, Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<O>();
-                std::string res;
-                std::stringstream ss;
-                ss << "SELECT " << static_cast<std::string>(sqlite_orm::group_concat(0)) << "(";
-                auto columnName = this->string_from_expression(m, false, false);
-                if(columnName.length()){
-                    ss << columnName;
-                    if(y){
-                        ss << ",\"" << *y << "\"";
-                    }
-                    ss << ") FROM '"<< impl.table.name << "' ";
-                    this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **) -> int {
-                                               auto &res = *(std::string*)data;
-                                               if(argc){
-                                                   res = row_extractor<std::string>().extract(argv[0]);
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
+                std::vector<std::string> rows;
+                if(y){
+                    rows = this->select(sqlite_orm::group_concat(m, move(*y)), std::forward<Args>(args)...);
                 }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    rows = this->select(sqlite_orm::group_concat(m), std::forward<Args>(args)...);
                 }
-                return res;
+                if(!rows.empty()){
+                    return move(rows.front());
+                }else{
+                    return {};
+                }
             }
             
         public:
@@ -1778,10 +1746,17 @@ namespace sqlite_orm {
                 auto connection = this->get_or_create_connection();
                 C res;
                 std::string query;
-                auto &impl = this->generate_select_asterisk<O>(&query, std::make_tuple<Args...>(std::forward<Args>(args)...));
+                auto argsTuple = std::make_tuple<Args...>(std::forward<Args>(args)...);
+                auto &impl = this->generate_select_asterisk<O>(&query, argsTuple);
                 sqlite3_stmt *stmt;
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
+                    auto index = 1;
+                    iterate_ast(argsTuple, [stmt, &index](auto &node){
+                        using node_type = typename std::decay<decltype(node)>::type;
+                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                        binder(node);
+                    });
                     int stepRes;
                     do{
                         stepRes = sqlite3_step(stmt);
@@ -1983,37 +1958,18 @@ namespace sqlite_orm {
             }
 
             /**
-             *  SELECT COUNT(*) with no conditions routine. https://www.sqlite.org/lang_aggfunc.html#count
+             *  SELECT COUNT(*) https://www.sqlite.org/lang_aggfunc.html#count
              *  @return Number of O object in table.
              */
             template<class O, class ...Args, class R = typename mapped_type_proxy<O>::type>
             int count(Args&& ...args) {
-                this->assert_mapped_type<R>();
-                auto tableAliasString = alias_extractor<O>::get();
-                
-                auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<R>();
-                int res = 0;
-                std::stringstream ss;
-                ss << "SELECT " << static_cast<std::string>(sqlite_orm::count()) << "(*) FROM '" << impl.table.name << "' ";
-                if(!tableAliasString.empty()) {
-                    ss << "'" << tableAliasString << "' ";
+                this->assert_mapped_type<O>();
+                auto rows = this->select(sqlite_orm::count<O>(), std::forward<Args>(args)...);
+                if(!rows.empty()){
+                    return rows.front();
+                }else{
+                    return 0;
                 }
-                this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
-                auto query = ss.str();
-                auto rc = sqlite3_exec(connection->get_db(),
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv, char **) -> int {
-                                           auto &res = *(int*)data;
-                                           if(argc){
-                                               res = row_extractor<int>().extract(argv[0]);
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                }
-                return res;
             }
             
             /**
@@ -2023,33 +1979,12 @@ namespace sqlite_orm {
             template<class F, class O, class ...Args>
             int count(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<O>();
-                int res = 0;
-                std::stringstream ss;
-                ss << "SELECT " << static_cast<std::string>(sqlite_orm::count(0)) << "(";
-                auto columnName = this->string_from_expression(m, false, false);
-                if(columnName.length()){
-                    ss << columnName << ") FROM '"<< impl.table.name << "' ";
-                    this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **) -> int {
-                                               auto &res = *(int*)data;
-                                               if(argc){
-                                                   res = row_extractor<int>().extract(argv[0]);
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
+                auto rows = this->select(sqlite_orm::count(m), std::forward<Args>(args)...);
+                if(!rows.empty()){
+                    return rows.front();
                 }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    return 0;
                 }
-                return res;
             }
             
             /**
@@ -2060,33 +1995,12 @@ namespace sqlite_orm {
             template<class F, class O, class ...Args>
             double avg(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<O>();
-                double res = 0;
-                std::stringstream ss;
-                ss << "SELECT " << static_cast<std::string>(sqlite_orm::avg(0)) << "(";
-                auto columnName = this->string_from_expression(m, false, false);
-                if(columnName.length()){
-                    ss << columnName << ") FROM '"<< impl.table.name << "' ";
-                    this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **)->int{
-                                               auto &res = *(double*)data;
-                                               if(argc){
-                                                   res = row_extractor<double>().extract(argv[0]);
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
+                auto rows = this->select(sqlite_orm::avg(m), std::forward<Args>(args)...);
+                if(!rows.empty()){
+                    return rows.front();
                 }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    return 0;
                 }
-                return res;
             }
             
             template<class F, class O>
@@ -2113,13 +2027,19 @@ namespace sqlite_orm {
              *  @return group_concat query result.
              */
             template<class F, class O, class ...Args>
-            std::string group_concat(F O::*m, const std::string &y, Args&& ...args) {
-                return this->group_concat_internal(m, std::make_unique<std::string>(y), std::forward<Args>(args)...);
+            std::string group_concat(F O::*m, std::string y, Args&& ...args) {
+                return this->group_concat_internal(m, std::make_unique<std::string>(move(y)), std::forward<Args>(args)...);
             }
             
             template<class F, class O, class ...Args>
             std::string group_concat(F O::*m, const char *y, Args&& ...args) {
-                return this->group_concat_internal(m, std::make_unique<std::string>(y), std::forward<Args>(args)...);
+                std::unique_ptr<std::string> str;
+                if(y){
+                    str = std::make_unique<std::string>(y);
+                }else{
+                    str = std::make_unique<std::string>();
+                }
+                return this->group_concat_internal(m, move(str), std::forward<Args>(args)...);
             }
             
             /**
@@ -2130,35 +2050,12 @@ namespace sqlite_orm {
             template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::unique_ptr<Ret> max(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<O>();
-                std::unique_ptr<Ret> res;
-                std::stringstream ss;
-                ss << "SELECT " << static_cast<std::string>(sqlite_orm::max(0)) << "(";
-                auto columnName = this->string_from_expression(m, false, false);
-                if(columnName.length()){
-                    ss << columnName << ") FROM '" << impl.table.name << "' ";
-                    this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **)->int{
-                                               auto &res = *(std::unique_ptr<Ret>*)data;
-                                               if(argc){
-                                                   if(argv[0]){
-                                                       res = std::make_unique<Ret>(row_extractor<Ret>().extract(argv[0]));
-                                                   }
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
+                auto rows = this->select(sqlite_orm::max(m), std::forward<Args>(args)...);
+                if(!rows.empty()){
+                    return std::move(rows.front());
                 }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    return {};
                 }
-                return res;
             }
             
             /**
@@ -2169,35 +2066,12 @@ namespace sqlite_orm {
             template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::unique_ptr<Ret> min(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<O>();
-                std::unique_ptr<Ret> res;
-                std::stringstream ss;
-                ss << "SELECT " << static_cast<std::string>(sqlite_orm::min(0)) << "(";
-                auto columnName = this->string_from_expression(m, false, false);
-                if(columnName.length()){
-                    ss << columnName << ") FROM '" << impl.table.name << "' ";
-                    this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv,char **)->int{
-                                               auto &res = *(std::unique_ptr<Ret>*)data;
-                                               if(argc){
-                                                   if(argv[0]){
-                                                       res = std::make_unique<Ret>(row_extractor<Ret>().extract(argv[0]));
-                                                   }
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
+                auto rows = this->select(sqlite_orm::min(m), std::forward<Args>(args)...);
+                if(!rows.empty()){
+                    return std::move(rows.front());
                 }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    return {};
                 }
-                return res;
             }
             
             /**
@@ -2208,33 +2082,16 @@ namespace sqlite_orm {
             template<class F, class O, class ...Args, class Ret = typename column_result_t<self, F O::*>::type>
             std::unique_ptr<Ret> sum(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<O>();
-                std::unique_ptr<Ret> res;
-                std::stringstream ss;
-                ss << "SELECT " << static_cast<std::string>(sqlite_orm::sum(0)) << "(";
-                auto columnName = this->string_from_expression(m, false, false);
-                if(columnName.length()){
-                    ss << columnName << ") FROM '"<< impl.table.name << "' ";
-                    this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv, char **)->int{
-                                               auto &res = *(std::unique_ptr<Ret>*)data;
-                                               if(argc){
-                                                   res = std::make_unique<Ret>(row_extractor<Ret>().extract(argv[0]));
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                std::vector<std::unique_ptr<double>> rows = this->select(sqlite_orm::sum(m), std::forward<Args>(args)...);
+                if(!rows.empty()){
+                    if(rows.front()){
+                        return std::make_unique<Ret>(std::move(*rows.front()));
+                    }else{
+                        return {};
                     }
                 }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    return {};
                 }
-                return res;
             }
             
             /**
@@ -2245,44 +2102,12 @@ namespace sqlite_orm {
             template<class F, class O, class ...Args>
             double total(F O::*m, Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                double res = 0;
-                std::stringstream ss;
-                ss << "SELECT " << static_cast<std::string>(sqlite_orm::total(0)) << "(";
-                auto columnName = this->string_from_expression(m, false, false);
-                if(!columnName.empty()){
-                    ss << columnName << ") ";
-                    auto tableNamesSet = this->parse_table_names(m);
-                    if(!tableNamesSet.empty()){
-                        ss << "FROM " ;
-                        std::vector<std::pair<std::string, std::string>> tableNames(tableNamesSet.begin(), tableNamesSet.end());
-                        for(size_t i = 0; i < tableNames.size(); ++i) {
-                            ss << "'" << tableNames[i].first << "' ";
-                            if(i < tableNames.size() - 1) {
-                                ss << ",";
-                            }
-                            ss << " ";
-                        }
-                    }
-                    this->process_conditions(ss, std::make_tuple(std::forward<Args>(args)...));
-                    auto query = ss.str();
-                    auto rc = sqlite3_exec(connection->get_db(),
-                                           query.c_str(),
-                                           [](void *data, int argc, char **argv, char **)->int{
-                                               auto &res = *(double*)data;
-                                               if(argc){
-                                                   res = row_extractor<double>().extract(argv[0]);
-                                               }
-                                               return 0;
-                                           }, &res, nullptr);
-                    if(rc != SQLITE_OK) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
+                auto rows = this->select(sqlite_orm::total(m), std::forward<Args>(args)...);
+                if(!rows.empty()){
+                    return std::move(rows.front());
                 }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    return {};
                 }
-                return res;
             }
             
             /**
@@ -2305,25 +2130,11 @@ namespace sqlite_orm {
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    using conditions_type = typename select_type::conditions_type;
-                    
-                    iterate_ast(sel.col, [stmt, &index](auto &node){
+                    iterate_ast(sel, [stmt, &index](auto &node){
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                         binder(node);
                     });
-                    
-                    tuple_helper::iterator<std::tuple_size<conditions_type>::value - 1, Args...>()(sel.conditions, [stmt, &index](auto &v){
-                        using arg_type = typename std::decay<decltype(v)>::type;
-                        std::cout << "v is " << typeid(arg_type).name() << std::endl;
-                        
-                        iterate_ast(v, [stmt, &index](auto &node){
-                            using node_type = typename std::decay<decltype(node)>::type;
-                            conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                            binder(node);
-                        });
-                    });
-                    
                     std::vector<R> res;
                     int stepRes;
                     do{

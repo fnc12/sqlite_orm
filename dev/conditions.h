@@ -100,40 +100,6 @@ namespace sqlite_orm {
         };
         
         /**
-         *  Result of and operator
-         */
-        template<class L, class R>
-        struct and_condition_t : public condition_t {
-            L l;
-            R r;
-            
-            and_condition_t() = default;
-            
-            and_condition_t(L l_, R r_): l(l_), r(r_) {}
-            
-            operator std::string () const {
-                return "AND";
-            }
-        };
-        
-        /**
-         *  Result of or operator
-         */
-        template<class L, class R>
-        struct or_condition_t : public condition_t {
-            L l;
-            R r;
-            
-            or_condition_t() = default;
-            
-            or_condition_t(L l_, R r_): l(l_), r(r_) {}
-            
-            operator std::string () const {
-                return "OR";
-            }
-        };
-        
-        /**
          *  Base class for binary conditions
          */
         template<class L, class R>
@@ -144,6 +110,34 @@ namespace sqlite_orm {
             binary_condition() = default;
             
             binary_condition(L l_, R r_): l(l_), r(r_) {}
+        };
+        
+        /**
+         *  Result of and operator
+         */
+        template<class L, class R>
+        struct and_condition_t : public binary_condition<L, R> {
+            using super = binary_condition<L, R>;
+            
+            using super::super;
+            
+            operator std::string () const {
+                return "AND";
+            }
+        };
+        
+        /**
+         *  Result of or operator
+         */
+        template<class L, class R>
+        struct or_condition_t : public binary_condition<L, R> {
+            using super = binary_condition<L, R>;
+            
+            using super::super;
+            
+            operator std::string () const {
+                return "OR";
+            }
         };
         
         /**

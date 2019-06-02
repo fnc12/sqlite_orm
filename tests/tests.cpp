@@ -42,16 +42,15 @@ void testIterateBlob() {
     auto db = make_storage("",
                            make_table("Test",
                                       make_column("key", &Test::key),
-                                      make_column("id", &Test::id, autoincrement(), primary_key())));
+                                      make_column("id", &Test::id, primary_key())));
     db.sync_schema(true);
     
     std::vector<char> key(255);
     iota(key.begin(), key.end(), 0);
     
-    Test v;
-    v.key = key;
+    Test v{5, key};
     
-    db.insert(v);
+    db.replace(v);
     
     for(auto &obj : db.iterate<Test>()){
         cout << db.dump(obj) << endl;
@@ -61,9 +60,19 @@ void testIterateBlob() {
         cout << db.dump(obj) << endl;
     } //  test that view_t and iterator_t compile
     
-    /*for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
+    auto keysCount = db.count<Test>(where(c(&Test::key) == key));
+    auto keysCountRows = db.select(count<Test>(), where(c(&Test::key) == key));
+    assert(keysCountRows.size() == 1);
+    assert(keysCountRows.front() == 1);
+    assert(keysCount == keysCountRows.front());
+    assert(db.get_all<Test>(where(c(&Test::key) == key)).size() == 1);
+    
+    int iterationsCount = 0;
+    for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
         cout << w.id << endl;
-    }*/
+        ++iterationsCount;
+    }
+    assert(iterationsCount == 1);
 }
 
 void testCast() {
@@ -2309,21 +2318,9 @@ void testAggregateFunctions() {
     storage.sync_schema();
     storage.remove_all<User>();
     
-    storage.replace(User{
-        1,
-        "Bebe Rexha",
-        28,
-    });
-    storage.replace(User{
-        2,
-        "Rihanna",
-        29,
-    });
-    storage.replace(User{
-        3,
-        "Cheryl Cole",
-        34,
-    });
+    storage.replace(User{ 1, "Bebe Rexha", 28});
+    storage.replace(User{ 2, "Rihanna", 29 });
+    storage.replace(User{ 3, "Cheryl Cole", 34 });
     
     auto avgId = storage.avg(&User::id);
     assert(avgId == 2);
@@ -2346,11 +2343,54 @@ void testAggregateFunctions() {
     auto avgRaw2 = storage2.select(avg(&User::getId)).front();
     assert(avgRaw2 == avgId);
     
+    auto avgRaw3 = storage2.select(avg(&User::setId)).front();
+    assert(avgRaw3 == avgRaw2);
+    
     auto distinctAvg2 = storage2.select(distinct(avg(&User::setId))).front();
     assert(distinctAvg2 == avgId);
     
+    auto distinctAvg3 = storage2.select(distinct(avg(&User::getId))).front();
+    assert(distinctAvg3 == distinctAvg2);
+    
     auto allAvg2 = storage2.select(all(avg(&User::getId))).front();
     assert(allAvg2 == avgId);
+    
+    auto allAvg3 = storage2.select(all(avg(&User::setId))).front();
+    assert(allAvg3 == allAvg2);
+    
+    //  next we test that all aggregate functions support arguments bindings.
+    //  This is why id = 1 condition is important here
+    {
+        auto avg1 = storage.avg(&User::id, where(is_equal(&User::id, 1)));
+        assert(avg1 == 1);
+    }
+    {
+        auto count1 = storage.count(&User::id, where(is_equal(&User::id, 1)));
+        assert(count1 == 1);
+    }
+    {
+        auto max1 = storage.max(&User::id, where(is_equal(&User::id, 1)));
+        assert(max1);
+        assert(*max1 == 1);
+    }
+    {
+        auto min1 = storage.min(&User::id, where(is_equal(&User::id, 1)));
+        assert(min1);
+        assert(*min1 == 1);
+    }
+    {
+        auto total1 = storage.total(&User::id, where(is_equal(&User::id, 1)));
+        assert(total1 == 1);
+    }
+    {
+        auto sum1 = storage.sum(&User::id, where(is_equal(&User::id, 1)));
+        assert(sum1);
+        assert(*sum1 == 1);
+    }
+    {
+        auto groupConcat = storage.group_concat(&User::name, where(is_equal(&User::id, 1)));
+        assert(groupConcat == "Bebe Rexha");
+    }
 }
 
 void testBusyTimeout() {
@@ -2471,6 +2511,7 @@ void testWhere() {
     assert(users3.size() == 0);
     
     auto users4 = storage.get_all<User>(where(true and c(&User::id) == 1));
+//    cout << "users4.size() = " << users4.size() << endl;
     assert(users4.size() == 1);
     assert(users4.front().id == 1);
     
@@ -2482,7 +2523,7 @@ int main(int, char **) {
 
     cout << "version = " << make_storage("").libversion() << endl;
 
-    /*testTypeParsing();
+    testTypeParsing();
 
     testSyncSchema();
 
@@ -2535,11 +2576,10 @@ int main(int, char **) {
     testIssue105();
     
     testMultiOrderBy();
-    */
     
     testOperators();
     
-    /*testAutoVacuum();
+    testAutoVacuum();
     
     testVacuum();
     
@@ -2571,5 +2611,5 @@ int main(int, char **) {
     
     testIterateBlob();
     
-    testIsNull();*/
+    testIsNull();
 }

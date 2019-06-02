@@ -105,9 +105,9 @@ namespace sqlite_orm {
     /**
      *  Specialization for optional type (std::vector<char>).
      */
-    template<class V>
-    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::vector<char>>::value>> {
-        int bind(sqlite3_stmt *stmt, int index, const V &value) {
+    template<>
+    struct statement_binder<std::vector<char>, void> {
+        int bind(sqlite3_stmt *stmt, int index, const std::vector<char> &value) {
             if (value.size()) {
                 return sqlite3_bind_blob(stmt, index, (const void *)&value.front(), int(value.size()), SQLITE_TRANSIENT);
             }else{
