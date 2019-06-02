@@ -1108,7 +1108,7 @@ namespace sqlite_orm {
                 using argsType = typename std::decay<decltype(args)>::type;
                 tuple_helper::iterator<std::tuple_size<argsType>::value - 1, Args...>()(args, [this, &ss](auto &v){
                     this->process_single_condition(ss, v);
-                });
+                }, false);
             }
             
             void on_open_internal(sqlite3 *db) {
@@ -1433,7 +1433,7 @@ namespace sqlite_orm {
                     }
                 }
                 ss << "FROM '" << impl.table.name << "' ";
-                this->process_conditions(ss, move(args));
+                this->process_conditions(ss, args);
                 if(query){
                     *query = ss.str();
                 }

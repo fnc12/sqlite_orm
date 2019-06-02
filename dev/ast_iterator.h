@@ -151,7 +151,17 @@ namespace sqlite_orm {
             void operator()(const node_type &tuple, const L &l) const {
                 tuple_helper::iterator<std::tuple_size<node_type>::value - 1, Args...>()(tuple, [&l](auto &v){
                     iterate_ast(v, l);
-                });
+                }, false);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::having_t<T>, void> {
+            using node_type = conditions::having_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &hav, const L &l) const {
+                iterate_ast(hav.t, l);
             }
         };
     }

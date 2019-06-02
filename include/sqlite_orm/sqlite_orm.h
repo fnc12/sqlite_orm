@@ -6899,7 +6899,17 @@ namespace sqlite_orm {
             void operator()(const node_type &tuple, const L &l) const {
                 tuple_helper::iterator<std::tuple_size<node_type>::value - 1, Args...>()(tuple, [&l](auto &v){
                     iterate_ast(v, l);
-                });
+                }, false);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::having_t<T>, void> {
+            using node_type = conditions::having_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &hav, const L &l) const {
+                iterate_ast(hav.t, l);
             }
         };
     }
@@ -8023,7 +8033,7 @@ namespace sqlite_orm {
                 using argsType = typename std::decay<decltype(args)>::type;
                 tuple_helper::iterator<std::tuple_size<argsType>::value - 1, Args...>()(args, [this, &ss](auto &v){
                     this->process_single_condition(ss, v);
-                });
+                }, false);
             }
             
             void on_open_internal(sqlite3 *db) {
@@ -8348,7 +8358,7 @@ namespace sqlite_orm {
                     }
                 }
                 ss << "FROM '" << impl.table.name << "' ";
-                this->process_conditions(ss, move(args));
+                this->process_conditions(ss, args);
                 if(query){
                     *query = ss.str();
                 }
