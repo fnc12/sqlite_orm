@@ -2644,7 +2644,6 @@ void testWhere() {
     assert(users3.size() == 0);
     
     auto users4 = storage.get_all<User>(where(true and c(&User::id) == 1));
-//    cout << "users4.size() = " << users4.size() << endl;
     assert(users4.size() == 1);
     assert(users4.front().id == 1);
     
