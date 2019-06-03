@@ -949,7 +949,7 @@ namespace sqlite_orm {
             std::string process_where(const conditions::between_t<A, T> &bw) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr, false, false, true);
-                ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1, false, false, true) << " AND " << this->string_from_expression(bw.b2, false, false) << " ";
+                ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1, false, false, true) << " AND " << this->string_from_expression(bw.b2, false, false, true) << " ";
                 return ss.str();
             }
             

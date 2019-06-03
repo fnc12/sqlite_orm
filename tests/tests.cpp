@@ -13,6 +13,93 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testBetween() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        int id = 0;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("objects",
+                                           make_column("id", &Object::id, autoincrement(), primary_key())));
+    storage.sync_schema();
+    
+    storage.insert(Object{});
+    storage.insert(Object{});
+    storage.insert(Object{});
+    storage.insert(Object{});
+    storage.insert(Object{});
+    
+    auto allObjects = storage.get_all<Object>();
+    auto rows = storage.select(&Object::id, where(between(&Object::id, 1, 3)));
+    assert(rows.size() == 3);
+}
+
+void testLike() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, autoincrement(), primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.insert(User{0, "Sia"});
+    storage.insert(User{0, "Stark"});
+    storage.insert(User{0, "Index"});
+    
+    auto whereCondition = where(like(&User::name, "S%"));
+    auto users = storage.get_all<User>(whereCondition);
+    assert(users.size() == 2);
+    
+    auto rows = storage.select(&User::id, whereCondition);
+    assert(rows.size() == 2);
+}
+
+void testExists() {
+    cout << __func__ << endl;
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    
+    struct Visit {
+        int id = 0;
+        int userId = 0;
+        time_t time = 0;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)),
+                                make_table("visits",
+                                           make_column("id", &Visit::id, primary_key()),
+                                           make_column("userId", &Visit::userId),
+                                           make_column("time", &Visit::time),
+                                           foreign_key(&Visit::userId).references(&User::id)));
+    storage.sync_schema();
+    
+    storage.replace(User{1, "Daddy Yankee"});
+    storage.replace(User{2, "Don Omar"});
+    
+    storage.replace(Visit{1, 1, 100000});
+    storage.replace(Visit{2, 1, 100001});
+    storage.replace(Visit{3, 1, 100002});
+    storage.replace(Visit{4, 1, 200000});
+    
+    storage.replace(Visit{5, 2, 100000});
+    
+    auto rows = storage.select(&User::id, where(exists(select(&Visit::id, where(c(&Visit::time) == 200000 and eq(&Visit::userId, &User::id))))));
+    assert(!rows.empty() == 1);
+}
+
 void testIsNull() {
     struct User {
         int id = 0;
@@ -99,6 +186,12 @@ void testCast() {
         auto &row = rows.front();
         assert(std::get<0>(row) == 10);
         assert(std::get<1>(row) == 14);
+    }
+    {
+        auto rows = storage.select(cast<std::string>(5));
+        assert(rows.size() == 1);
+        auto &row = rows.front();
+        assert(row == "5");
     }
 }
 
@@ -2638,4 +2731,10 @@ int main(int, char **) {
     testIsNull();
     
     testRemoveAll();
+    
+    testExists();
+    
+    testLike();
+    
+    testBetween();
 }

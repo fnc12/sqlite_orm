@@ -6908,6 +6908,49 @@ namespace sqlite_orm {
                 iterate_ast(hav.t, l);
             }
         };
+        
+        template<class T, class E>
+        struct ast_iterator<conditions::cast_t<T, E>, void> {
+            using node_type = conditions::cast_t<T, E>;
+            
+            template<class L>
+            void operator()(const node_type &c, const L &l) const {
+                iterate_ast(c.expression, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::exists_t<T>, void> {
+            using node_type = conditions::exists_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &e, const L &l) const {
+                iterate_ast(e.t, l);
+            }
+        };
+        
+        /*template<class A, class T>
+        struct ast_iterator<conditions::like_t<A, T>, void> {
+            using node_type = conditions::like_t<A, T>;
+            
+            template<class L>
+            void operator()(const node_type &lk, const L &l) const {
+                iterate_ast(lk.a, l);
+                iterate_ast(lk.t, l);
+            }
+        };*/
+        
+        template<class A, class T>
+        struct ast_iterator<conditions::between_t<A, T>, void> {
+            using node_type = conditions::between_t<A, T>;
+            
+            template<class L>
+            void operator()(const node_type &b, const L &l) const {
+                iterate_ast(b.expr, l);
+                iterate_ast(b.b1, l);
+                iterate_ast(b.b2, l);
+            }
+        };
     }
 }
 
@@ -7870,7 +7913,7 @@ namespace sqlite_orm {
             std::string process_where(const conditions::between_t<A, T> &bw) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr, false, false, true);
-                ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1, false, false, true) << " AND " << this->string_from_expression(bw.b2, false, false) << " ";
+                ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1, false, false, true) << " AND " << this->string_from_expression(bw.b2, false, false, true) << " ";
                 return ss.str();
             }
             
