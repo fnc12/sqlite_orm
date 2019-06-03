@@ -360,7 +360,7 @@ namespace sqlite_orm {
             
             std::string string_from_expression(const char *t, bool /*noTableName*/, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                if(ignoreBindable){
+                if(!ignoreBindable){
                     std::string text = t;
                     if(escape){
                         text = this->escape(text);
@@ -1360,7 +1360,7 @@ namespace sqlite_orm {
                         std::vector<std::string> setPairs;
                         set.for_each([this, &setPairs](auto &asgn){
                             std::stringstream sss;
-                            sss << this->string_from_expression(asgn.l, true, false) << " = " << this->string_from_expression(asgn.r, false, false) << " ";
+                            sss << this->string_from_expression(asgn.l, true, false, true) << " = " << this->string_from_expression(asgn.r, false, false, true) << " ";
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();

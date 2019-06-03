@@ -13,6 +13,25 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testNot() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        int id = 0;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("objects",
+                                           make_column("id", &Object::id, primary_key())));
+    storage.sync_schema();
+    
+    storage.replace(Object{2});
+    
+    auto rows = storage.select(&Object::id, where(not is_equal(&Object::id, 1)));
+    assert(rows.size() == 1);
+    assert(rows.front() == 2);
+}
+
 void testBetween() {
     cout << __func__ << endl;
     
@@ -882,11 +901,8 @@ void testCustomCollate() {
     
     auto storage = make_storage("custom_collate.sqlite",
                                 make_table("items",
-                                           make_column("id",
-                                                       &Item::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &Item::name)));
+                                           make_column("id", &Item::id, primary_key()),
+                                           make_column("name", &Item::name)));
 //    storage.open_forever();
     storage.sync_schema();
     storage.remove_all<Item>();
@@ -2737,4 +2753,6 @@ int main(int, char **) {
     testLike();
     
     testBetween();
+    
+    testNot();
 }

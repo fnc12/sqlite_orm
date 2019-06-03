@@ -6929,7 +6929,7 @@ namespace sqlite_orm {
             }
         };
         
-        /*template<class A, class T>
+        template<class A, class T>
         struct ast_iterator<conditions::like_t<A, T>, void> {
             using node_type = conditions::like_t<A, T>;
             
@@ -6938,7 +6938,7 @@ namespace sqlite_orm {
                 iterate_ast(lk.a, l);
                 iterate_ast(lk.t, l);
             }
-        };*/
+        };
         
         template<class A, class T>
         struct ast_iterator<conditions::between_t<A, T>, void> {
@@ -6949,6 +6949,26 @@ namespace sqlite_orm {
                 iterate_ast(b.expr, l);
                 iterate_ast(b.b1, l);
                 iterate_ast(b.b2, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::named_collate<T>, void> {
+            using node_type = conditions::named_collate<T>;
+            
+            template<class L>
+            void operator()(const node_type &col, const L &l) const {
+                iterate_ast(col.expr, l);
+            }
+        };
+        
+        template<class C>
+        struct ast_iterator<conditions::negated_condition_t<C>, void> {
+            using node_type = conditions::negated_condition_t<C>;
+            
+            template<class L>
+            void operator()(const node_type &neg, const L &l) const {
+                iterate_ast(neg.c, l);
             }
         };
     }
@@ -7324,7 +7344,7 @@ namespace sqlite_orm {
             
             std::string string_from_expression(const char *t, bool /*noTableName*/, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                if(ignoreBindable){
+                if(!ignoreBindable){
                     std::string text = t;
                     if(escape){
                         text = this->escape(text);
@@ -8324,7 +8344,7 @@ namespace sqlite_orm {
                         std::vector<std::string> setPairs;
                         set.for_each([this, &setPairs](auto &asgn){
                             std::stringstream sss;
-                            sss << this->string_from_expression(asgn.l, true, false) << " = " << this->string_from_expression(asgn.r, false, false) << " ";
+                            sss << this->string_from_expression(asgn.l, true, false, true) << " = " << this->string_from_expression(asgn.r, false, false, true) << " ";
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();
