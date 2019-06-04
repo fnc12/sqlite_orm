@@ -1782,23 +1782,67 @@ void testRemove() {
         std::string name;
     };
 
-	// Composite key
-	{
-		struct Object {
-			int key_part_1;
-			int key_part_2;
-			std::string name;
-		};
+    // Getter key
+    {
+        struct Object
+        {
+        public:
+            int get_id() const
+            {
+                return id;
+            }
+
+            void set_id(int id)
+            {
+                this->id = id;
+            }
+
+            int id;
+            std::string name;
+        };
 
         auto storage = make_storage("test_remove.sqlite",
-                                   make_table("objects",
-                                              make_column("key_part_1",
-                                                          &Object::key_part_1),
-											  make_column("key_part_2",
-											              &Object::key_part_2),
-                                              make_column("name",
-                                                          &Object::name),
-											  primary_key(&Object::key_part_1, &Object::key_part_2)));
+                                    make_table("objects",
+                                               make_column("id",
+                                                           &Object::get_id, &Object::set_id, primary_key()),
+                                               make_column("name",
+                                                           &Object::name)));
+        storage.sync_schema();
+        storage.remove_all<Object>();
+
+        Object object{0, "Skillet"};
+
+        int id = storage.insert(object);
+        assert(storage.count<Object>() == 1);
+        storage.remove<Object>(id);
+        assert(storage.count<Object>() == 0);
+
+        id = storage.insert(object);
+        assert(storage.count<Object>() == 1);
+        auto object_from_database = storage.get<Object>(id);
+        assert(object_from_database.name == "Skillet");
+        storage.remove_by_object(object_from_database);
+        assert(storage.count<Object>() == 0);
+    }
+
+    // Composite key
+    {
+        struct Object
+        {
+            int key_part_1;
+            int key_part_2;
+            std::string name;
+        };
+
+        auto storage = make_storage("test_remove.sqlite",
+                                    make_table("objects",
+                                               make_column("key_part_1",
+                                                           &Object::key_part_1),
+                                               make_column("key_part_2",
+                                                           &Object::key_part_2),
+                                               make_column("name",
+                                                           &Object::name),
+                                               primary_key(&Object::key_part_1, &Object::key_part_2)));
         storage.sync_schema();
         storage.remove_all<Object>();
 
@@ -1809,58 +1853,61 @@ void testRemove() {
         storage.remove_all<Object>(where(c(&Object::key_part_1) == 0 && c(&Object::key_part_2) == 0));
         assert(storage.count<Object>() == 0);
 
-		storage.replace(object);
+        storage.replace(object);
         assert(storage.count<Object>() == 1);
-		auto object_from_database = storage.get<Object>(0, 0);
-		assert(object_from_database.name == "Skillet");
-		storage.remove_by_object(object_from_database);
-		assert(storage.count<Object>() == 0);
-	}
+        auto object_from_database = storage.get<Object>(0, 0);
+        assert(object_from_database.name == "Skillet");
+        storage.remove_by_object(object_from_database);
+        assert(storage.count<Object>() == 0);
+    }
 
     // Composite Key with getter and setter
-	{
-        struct Object {
-			Object() {}
+    {
+        struct Object
+        {
+            Object() {}
 
-			Object(int key_part_1, int key_part_2, const std::string& name)
-			: key_part_1(key_part_1)
-			, key_part_2(key_part_2)
-			, name(name) {}
+            Object(int key_part_1, int key_part_2, const std::string &name)
+                : key_part_1(key_part_1), key_part_2(key_part_2), name(name) {}
 
-			std::string name;
+            std::string name;
 
-			int get_key_part_1() const {
-				return key_part_1;
-			}
+            int get_key_part_1() const
+            {
+                return key_part_1;
+            }
 
-			int get_key_part_2() const {
-				return key_part_2;
-			}
+            int get_key_part_2() const
+            {
+                return key_part_2;
+            }
 
-			void set_key_part_1(int key_part_1) {
-				this->key_part_1 = key_part_1;
-			}
+            void set_key_part_1(int key_part_1)
+            {
+                this->key_part_1 = key_part_1;
+            }
 
-			void set_key_part_2(int key_part_2) {
-				this->key_part_2 = key_part_2;
-			}
+            void set_key_part_2(int key_part_2)
+            {
+                this->key_part_2 = key_part_2;
+            }
 
-		private:
-			int key_part_1;
-			int key_part_2;
-		};
+        private:
+            int key_part_1;
+            int key_part_2;
+        };
 
         auto storage = make_storage("test_remove.sqlite",
-                                   make_table("objects",
-                                              make_column("key_part_1",
-                                                          &Object::get_key_part_1,
-														  &Object::set_key_part_1),
-											  make_column("key_part_2",
-											              &Object::get_key_part_2,
-														  &Object::set_key_part_2),
-                                              make_column("name",
-                                                          &Object::name),
-											  primary_key(&Object::get_key_part_1, &Object::get_key_part_2)));
+                                    make_table("objects",
+                                               make_column("key_part_1",
+                                                           &Object::get_key_part_1,
+                                                           &Object::set_key_part_1),
+                                               make_column("key_part_2",
+                                                           &Object::get_key_part_2,
+                                                           &Object::set_key_part_2),
+                                               make_column("name",
+                                                           &Object::name),
+                                               primary_key(&Object::get_key_part_1, &Object::get_key_part_2)));
         storage.sync_schema();
         storage.remove_all<Object>();
 
@@ -1871,15 +1918,15 @@ void testRemove() {
         storage.remove_all<Object>(where(c(&Object::get_key_part_1) == 0 && c(&Object::get_key_part_2) == 0));
         assert(storage.count<Object>() == 0);
 
-		storage.replace(object);
+        storage.replace(object);
         assert(storage.count<Object>() == 1);
-		auto object_from_database = storage.get<Object>(0, 0);
-		assert(object_from_database.name == "Skillet");
-		storage.remove_by_object(object_from_database);
-		assert(storage.count<Object>() == 0);
-	}
+        auto object_from_database = storage.get<Object>(0, 0);
+        assert(object_from_database.name == "Skillet");
+        storage.remove_by_object(object_from_database);
+        assert(storage.count<Object>() == 0);
+    }
 
-	// Simple key
+    // Simple key
     {
         auto storage = make_storage("test_remove.sqlite",
                                     make_table("objects",
@@ -1887,7 +1934,7 @@ void testRemove() {
                                                make_column("name", &Object::name)));
         storage.sync_schema();
         storage.remove_all<Object>();
-        
+
         Object object{0, "Skillet"};
 
         auto id1 = storage.insert(object);
@@ -1909,7 +1956,7 @@ void testRemove() {
                                                primary_key(&Object::id)));
         storage.sync_schema();
         storage.remove_all<Object>();
-        
+
         Object object{0, "Skillet"};
 
         auto id1 = storage.insert(object);
@@ -1934,13 +1981,12 @@ void testRemove() {
         assert(storage.count<Object>() == 1);
         storage.remove<Object>(1, "Skillet");
         assert(storage.count<Object>() == 0);
-        
+
         storage.replace(Object{1, "Skillet"});
         storage.replace(Object{2, "Paul Cless"});
         assert(storage.count<Object>() == 2);
         storage.remove<Object>(1, "Skillet");
         assert(storage.count<Object>() == 1);
-        
     }
 }
 

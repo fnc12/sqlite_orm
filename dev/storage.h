@@ -2523,7 +2523,7 @@ namespace sqlite_orm {
                         auto &o = *it;
                         impl.table.for_each_column([&o, &index, &stmt] (auto c) {
                             if(!c.template has<constraints::primary_key_t<>>()){
-                                typedef typename decltype(c)::field_type field_type;
+                                using field_type = typename decltype(c)::field_type;
                                 const field_type *value = nullptr;
                                 if(c.member_pointer){
                                     value = &(o.*c.member_pointer);
@@ -2954,14 +2954,14 @@ namespace sqlite_orm {
                 impl.table.for_each_column([this,&o,&primaryKeyColumnNames] (auto &c) {
 					if(std::find(primaryKeyColumnNames.cbegin(), primaryKeyColumnNames.cend(), c.name) !=
                             primaryKeyColumnNames.cend()) {
-                        using field_type = typename std::decay<decltype(c)>::type::field_type;
-                        const field_type *value = nullptr;
-                        if(c.member_pointer){
-                            value = &(o.*c.member_pointer);
-                        }else{
-                            value = &((o).*(c.getter))();
+                        using column_type = typename std::decay<decltype(c)>::type;
+                        if(c.member_pointer) {
+                            this->remove<O>(o.*c.member_pointer);
+                        } else {
+                            using getter_type = typename column_type::getter_type;
+                            field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                            this->remove<O>(valueHolder.value);
                         }
-                        this->remove<O>(*value);
                     }
                 });
             }
@@ -2978,8 +2978,8 @@ namespace sqlite_orm {
 
                 auto &impl = this->get_impl<O>();
 
-				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_type composite_key_columns_type;
-				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type composite_key_columns_value_type;
+				using composite_key_columns_type = typename decltype(impl.table)::impl_type::composite_key_type::columns_type;
+				using composite_key_columns_value_type = typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type;
 				composite_key_columns_type composite_key_columns = impl.table.get_composite_key().columns;
 				composite_key_columns_value_type composite_key_value;
 
@@ -2987,7 +2987,7 @@ namespace sqlite_orm {
                     composite_key_value = std::make_tuple(internal::invoke_column(o, pks, internal::is_getter<decltype(pks)>{})...);
 				}, composite_key_columns);
 
-                tuple_helper::apply([this](auto ...pks) {
+                tuple_helper::apply([this](auto& ...pks) {
 					this->remove<O>(pks...);
 				}, composite_key_value);
             }

@@ -4732,10 +4732,10 @@ namespace sqlite_orm {
             struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
             
             template<class S, class T>
-            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> : std::true_type {};
+            struct type_is_mapped_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::true_type {};
             
             template<class S, class T>
-            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type>
+            struct type_is_mapped_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
             : type_is_mapped_impl<typename S::super, T> {};
             
             
@@ -4760,10 +4760,10 @@ namespace sqlite_orm {
             struct storage_columns_count_impl<storage_impl<>, T, void> : std::integral_constant<int, 0> {};
             
             template<class S, class T>
-            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> : std::integral_constant<int, S::column_traits::columns_count> {};
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> : std::integral_constant<int, S::table_type::columns_count> {};
             
             template<class S, class T>
-            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
+            struct storage_columns_count_impl<S, T,  typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_columns_count_impl<typename S::super, T> {};
             
             
             /**
@@ -4804,14 +4804,14 @@ namespace sqlite_orm {
             };
             
             template<class S, class T>
-            struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::column_traits::object_type>::value>::type> {
-                using column_traits = typename S::column_traits;
-                using table_impl_type = typename column_traits::impl_type;
+            struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
+                using table_type = typename S::table_type;
+                using table_impl_type = typename table_type::impl_type;
                 using type = typename table_impl_types<table_impl_type>::type;
             };
             
             template<class S, class T>
-            struct storage_mapped_columns_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::column_traits::object_type>::value>::type> : storage_mapped_columns_impl<typename S::super, T> {};
+            struct storage_mapped_columns_impl<S, T, typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type> : storage_mapped_columns_impl<typename S::super, T> {};
             
         }
     }
@@ -5780,12 +5780,12 @@ namespace sqlite_orm {
         
         template<class H, class ...Ts>
         struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
-            using column_traits = H;
+            using table_type = H;
             using super = storage_impl<Ts...>;
             
             storage_impl(H h, Ts ...ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
             
-            column_traits table;
+            table_type table;
             
             template<class L>
             void for_each(L l) {
@@ -9558,7 +9558,7 @@ namespace sqlite_orm {
                         auto &o = *it;
                         impl.table.for_each_column([&o, &index, &stmt] (auto c) {
                             if(!c.template has<constraints::primary_key_t<>>()){
-                                typedef typename decltype(c)::field_type field_type;
+                                using field_type = typename decltype(c)::field_type;
                                 const field_type *value = nullptr;
                                 if(c.member_pointer){
                                     value = &(o.*c.member_pointer);
@@ -9989,14 +9989,14 @@ namespace sqlite_orm {
                 impl.table.for_each_column([this,&o,&primaryKeyColumnNames] (auto &c) {
 					if(std::find(primaryKeyColumnNames.cbegin(), primaryKeyColumnNames.cend(), c.name) !=
                             primaryKeyColumnNames.cend()) {
-                        using field_type = typename std::decay<decltype(c)>::type::field_type;
-                        const field_type *value = nullptr;
-                        if(c.member_pointer){
-                            value = &(o.*c.member_pointer);
-                        }else{
-                            value = &((o).*(c.getter))();
+                        using column_type = typename std::decay<decltype(c)>::type;
+                        if(c.member_pointer) {
+                            this->remove<O>(o.*c.member_pointer);
+                        } else {
+                            using getter_type = typename column_type::getter_type;
+                            field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                            this->remove<O>(valueHolder.value);
                         }
-                        this->remove<O>(*value);
                     }
                 });
             }
@@ -10013,8 +10013,8 @@ namespace sqlite_orm {
 
                 auto &impl = this->get_impl<O>();
 
-				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_type composite_key_columns_type;
-				typedef typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type composite_key_columns_value_type;
+				using composite_key_columns_type = typename decltype(impl.table)::impl_type::composite_key_type::columns_type;
+				using composite_key_columns_value_type = typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type;
 				composite_key_columns_type composite_key_columns = impl.table.get_composite_key().columns;
 				composite_key_columns_value_type composite_key_value;
 
@@ -10022,7 +10022,7 @@ namespace sqlite_orm {
                     composite_key_value = std::make_tuple(internal::invoke_column(o, pks, internal::is_getter<decltype(pks)>{})...);
 				}, composite_key_columns);
 
-                tuple_helper::apply([this](auto ...pks) {
+                tuple_helper::apply([this](auto& ...pks) {
 					this->remove<O>(pks...);
 				}, composite_key_value);
             }
