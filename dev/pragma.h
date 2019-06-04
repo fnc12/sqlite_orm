@@ -91,7 +91,7 @@ namespace sqlite_orm {
                 db = connection->get_db();
             }
             std::stringstream ss;
-            ss << "PRAGMA " << name << " = " << this->storage.string_from_expression(value);
+            ss << "PRAGMA " << name << " = " << this->storage.string_from_expression(value, false, false);
             auto query = ss.str();
             auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if(rc != SQLITE_OK) {

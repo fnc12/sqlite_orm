@@ -301,6 +301,8 @@ namespace sqlite_orm {
         struct collate_t {
             internal::collate_argument argument;
             
+            collate_t() : collate_t(internal::collate_argument::binary) {}
+            
             collate_t(internal::collate_argument argument_): argument(argument_) {}
             
             operator std::string() const {

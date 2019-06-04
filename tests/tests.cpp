@@ -6,11 +6,180 @@
 #include <iostream> //  std::cout, std::endl
 #include <memory>
 #include <cstdio>   //  remove
+#include <numeric>  //  std::iota
 
 using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
+
+void testNot() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        int id = 0;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("objects",
+                                           make_column("id", &Object::id, primary_key())));
+    storage.sync_schema();
+    
+    storage.replace(Object{2});
+    
+    auto rows = storage.select(&Object::id, where(not is_equal(&Object::id, 1)));
+    assert(rows.size() == 1);
+    assert(rows.front() == 2);
+}
+
+void testBetween() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        int id = 0;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("objects",
+                                           make_column("id", &Object::id, autoincrement(), primary_key())));
+    storage.sync_schema();
+    
+    storage.insert(Object{});
+    storage.insert(Object{});
+    storage.insert(Object{});
+    storage.insert(Object{});
+    storage.insert(Object{});
+    
+    auto allObjects = storage.get_all<Object>();
+    auto rows = storage.select(&Object::id, where(between(&Object::id, 1, 3)));
+    assert(rows.size() == 3);
+}
+
+void testLike() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, autoincrement(), primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.insert(User{0, "Sia"});
+    storage.insert(User{0, "Stark"});
+    storage.insert(User{0, "Index"});
+    
+    auto whereCondition = where(like(&User::name, "S%"));
+    auto users = storage.get_all<User>(whereCondition);
+    assert(users.size() == 2);
+    
+    auto rows = storage.select(&User::id, whereCondition);
+    assert(rows.size() == 2);
+}
+
+void testExists() {
+    cout << __func__ << endl;
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    
+    struct Visit {
+        int id = 0;
+        int userId = 0;
+        time_t time = 0;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)),
+                                make_table("visits",
+                                           make_column("id", &Visit::id, primary_key()),
+                                           make_column("userId", &Visit::userId),
+                                           make_column("time", &Visit::time),
+                                           foreign_key(&Visit::userId).references(&User::id)));
+    storage.sync_schema();
+    
+    storage.replace(User{1, "Daddy Yankee"});
+    storage.replace(User{2, "Don Omar"});
+    
+    storage.replace(Visit{1, 1, 100000});
+    storage.replace(Visit{2, 1, 100001});
+    storage.replace(Visit{3, 1, 100002});
+    storage.replace(Visit{4, 1, 200000});
+    
+    storage.replace(Visit{5, 2, 100000});
+    
+    auto rows = storage.select(&User::id, where(exists(select(&Visit::id, where(c(&Visit::time) == 200000 and eq(&Visit::userId, &User::id))))));
+    assert(!rows.empty() == 1);
+}
+
+void testIsNull() {
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{1, std::make_unique<std::string>("Sheldon")});
+    storage.replace(User{2});
+    storage.replace(User{3, std::make_unique<std::string>("Leonard")});
+    
+    assert(storage.count<User>() == 3);
+    assert(storage.count<User>(where(is_null(&User::name))) == 1);
+    assert(storage.count<User>(where(is_not_null(&User::name))) == 2);
+}
+
+void testIterateBlob() {
+    struct Test {
+        int64_t id;
+        std::vector<char> key;
+    };
+    
+    auto db = make_storage("",
+                           make_table("Test",
+                                      make_column("key", &Test::key),
+                                      make_column("id", &Test::id, primary_key())));
+    db.sync_schema(true);
+    
+    std::vector<char> key(255);
+    iota(key.begin(), key.end(), 0);
+    
+    Test v{5, key};
+    
+    db.replace(v);
+    
+    for(auto &obj : db.iterate<Test>()){
+        cout << db.dump(obj) << endl;
+    } //  test that view_t and iterator_t compile
+    
+    for(const auto &obj : db.iterate<Test>()){
+        cout << db.dump(obj) << endl;
+    } //  test that view_t and iterator_t compile
+    
+    auto keysCount = db.count<Test>(where(c(&Test::key) == key));
+    auto keysCountRows = db.select(count<Test>(), where(c(&Test::key) == key));
+    assert(keysCountRows.size() == 1);
+    assert(keysCountRows.front() == 1);
+    assert(keysCount == keysCountRows.front());
+    assert(db.get_all<Test>(where(c(&Test::key) == key)).size() == 1);
+    
+    int iterationsCount = 0;
+    for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
+        cout << w.id << endl;
+        ++iterationsCount;
+    }
+    assert(iterationsCount == 1);
+}
 
 void testCast() {
     cout << __func__ << endl;
@@ -36,6 +205,12 @@ void testCast() {
         auto &row = rows.front();
         assert(std::get<0>(row) == 10);
         assert(std::get<1>(row) == 14);
+    }
+    {
+        auto rows = storage.select(cast<std::string>(5));
+        assert(rows.size() == 1);
+        auto &row = rows.front();
+        assert(row == "5");
     }
 }
 
@@ -443,10 +618,8 @@ void testJoinIteratorConstructorCompilationError() {
     
     auto storage = make_storage("join_error.sqlite",
                                 make_table("tags",
-                                           make_column("object_id",
-                                                       &Tag::objectId),
-                                           make_column("text",
-                                                       &Tag::text)));
+                                           make_column("object_id", &Tag::objectId),
+                                           make_column("text", &Tag::text)));
     storage.sync_schema();
     
     auto offs = 0;
@@ -728,11 +901,8 @@ void testCustomCollate() {
     
     auto storage = make_storage("custom_collate.sqlite",
                                 make_table("items",
-                                           make_column("id",
-                                                       &Item::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &Item::name)));
+                                           make_column("id", &Item::id, primary_key()),
+                                           make_column("name", &Item::name)));
 //    storage.open_forever();
     storage.sync_schema();
     storage.remove_all<Item>();
@@ -780,11 +950,8 @@ void testVacuum() {
     
     auto storage = make_storage("vacuum.sqlite",
                                 make_table("items",
-                                           make_column("id",
-                                                       &Item::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &Item::name)));
+                                           make_column("id", &Item::id, primary_key()),
+                                           make_column("name", &Item::name)));
     storage.sync_schema();
     storage.insert(Item{ 0, "One" });
     storage.insert(Item{ 0, "Two" });
@@ -825,12 +992,9 @@ void testOperators() {
     
     auto storage = make_storage("",
                                 make_table("objects",
-                                           make_column("name",
-                                                       &Object::name),
-                                           make_column("name_len",
-                                                       &Object::nameLen),
-                                           make_column("number",
-                                                       &Object::number)));
+                                           make_column("name", &Object::name),
+                                           make_column("name_len", &Object::nameLen),
+                                           make_column("number", &Object::number)));
     storage.sync_schema();
     
     std::vector<std::string> names {
@@ -840,86 +1004,126 @@ void testOperators() {
     for(auto &name : names) {
         storage.insert(Object{ name , int(name.length()), number });
     }
-    std::string suffix = "ototo";
-    auto rows = storage.select(columns(conc(&Object::name, suffix),
-                                       c(&Object::name) || suffix,
-                                       &Object::name || c(suffix),
-                                       c(&Object::name) || c(suffix),
-                                       
-                                       add(&Object::nameLen, &Object::number),
-                                       c(&Object::nameLen) + &Object::number,
-                                       &Object::nameLen + c(&Object::number),
-                                       c(&Object::nameLen) + c(&Object::number),
-                                       c(&Object::nameLen) + 1000,
-                                       
-                                       sub(&Object::nameLen, &Object::number),
-                                       c(&Object::nameLen) - &Object::number,
-                                       &Object::nameLen - c(&Object::number),
-                                       c(&Object::nameLen) - c(&Object::number),
-                                       c(&Object::nameLen) - 1000,
-                                       
-                                       mul(&Object::nameLen, &Object::number),
-                                       c(&Object::nameLen) * &Object::number,
-                                       &Object::nameLen * c(&Object::number),
-                                       c(&Object::nameLen) * c(&Object::number),
-                                       c(&Object::nameLen) * 1000,
-                                       
-                                       div(&Object::nameLen, &Object::number),
-                                       c(&Object::nameLen) / &Object::number,
-                                       &Object::nameLen / c(&Object::number),
-                                       c(&Object::nameLen) / c(&Object::number),
-                                       c(&Object::nameLen) / 2));
-    
-    for(size_t i = 0; i < rows.size(); ++i) {
-        auto &row = rows[i];
-        auto &name = names[i];
-        assert(std::get<0>(row) == name + suffix);
-        assert(std::get<1>(row) == std::get<0>(row));
-        assert(std::get<2>(row) == std::get<1>(row));
-        assert(std::get<3>(row) == std::get<2>(row));
-        
-        auto expectedAddNumber = int(name.length()) + number;
-        assert(std::get<4>(row) == expectedAddNumber);
-        assert(std::get<5>(row) == std::get<4>(row));
-        assert(std::get<6>(row) == std::get<5>(row));
-        assert(std::get<7>(row) == std::get<6>(row));
-        assert(std::get<8>(row) == int(name.length()) + 1000);
-        
-        auto expectedSubNumber = int(name.length()) - number;
-        assert(std::get<9>(row) == expectedSubNumber);
-        assert(std::get<10>(row) == std::get<9>(row));
-        assert(std::get<11>(row) == std::get<10>(row));
-        assert(std::get<12>(row) == std::get<11>(row));
-        assert(std::get<13>(row) == int(name.length()) - 1000);
-        
-        auto expectedMulNumber = int(name.length()) * number;
-        assert(std::get<14>(row) == expectedMulNumber);
-        assert(std::get<15>(row) == std::get<14>(row));
-        assert(std::get<16>(row) == std::get<15>(row));
-        assert(std::get<17>(row) == std::get<16>(row));
-        assert(std::get<18>(row) == int(name.length()) * 1000);
-        
-        auto expectedDivNumber = int(name.length()) / number;
-        assert(std::get<19>(row) == expectedDivNumber);
-        assert(std::get<20>(row) == std::get<19>(row));
-        assert(std::get<21>(row) == std::get<20>(row));
-        assert(std::get<22>(row) == std::get<21>(row));
-        assert(std::get<23>(row) == int(name.length()) / 2);
+    {
+        auto rows = storage.select(c(&Object::nameLen) + 1000);
+        for(size_t i = 0; i < rows.size(); ++i){
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(int(row) == name.length() + 1000);
+        }
     }
-    
-    auto rows2 = storage.select(columns(mod(&Object::nameLen, &Object::number),
-                                        c(&Object::nameLen) % &Object::number,
-                                        &Object::nameLen % c(&Object::number),
-                                        c(&Object::nameLen) % c(&Object::number),
-                                        c(&Object::nameLen) % 5));
-    for(size_t i = 0; i < rows2.size(); ++i) {
-        auto &row = rows2[i];
-        auto &name = names[i];
-        assert(std::get<0>(row) == static_cast<int>(name.length()) % number);
-        assert(std::get<1>(row) == std::get<0>(row));
-        assert(std::get<2>(row) == std::get<1>(row));
-        assert(std::get<3>(row) == std::get<2>(row));
-        assert(std::get<4>(row) == static_cast<int>(name.length()) % 5);
+    {
+        auto rows = storage.select(columns(c(&Object::nameLen) + 1000));
+        for(size_t i = 0; i < rows.size(); ++i){
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(int(std::get<0>(row)) == name.length() + 1000);
+        }
+    }
+    {
+        std::string suffix = "ototo";
+        auto rows = storage.select(c(&Object::name) || suffix);
+        for(size_t i = 0; i < rows.size(); ++i){
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(row == name + suffix);
+        }
+    }
+    {
+        std::string suffix = "ototo";
+        auto rows = storage.select(columns(conc(&Object::name,  suffix)));
+        for(size_t i = 0; i < rows.size(); ++i){
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(std::get<0>(row) == name + suffix);
+        }
+    }
+    {
+        std::string suffix = "ototo";
+        auto rows = storage.select(columns(conc(&Object::name, suffix),
+                                           c(&Object::name) || suffix,
+                                           &Object::name || c(suffix),
+                                           c(&Object::name) || c(suffix),
+                                           
+                                           add(&Object::nameLen, &Object::number),
+                                           c(&Object::nameLen) + &Object::number,
+                                           &Object::nameLen + c(&Object::number),
+                                           c(&Object::nameLen) + c(&Object::number),
+                                           c(&Object::nameLen) + 1000,
+                                           
+                                           sub(&Object::nameLen, &Object::number),
+                                           c(&Object::nameLen) - &Object::number,
+                                           &Object::nameLen - c(&Object::number),
+                                           c(&Object::nameLen) - c(&Object::number),
+                                           c(&Object::nameLen) - 1000,
+                                           
+                                           mul(&Object::nameLen, &Object::number),
+                                           c(&Object::nameLen) * &Object::number,
+                                           &Object::nameLen * c(&Object::number),
+                                           c(&Object::nameLen) * c(&Object::number),
+                                           c(&Object::nameLen) * 1000,
+                                           
+                                           div(&Object::nameLen, &Object::number),
+                                           c(&Object::nameLen) / &Object::number,
+                                           &Object::nameLen / c(&Object::number),
+                                           c(&Object::nameLen) / c(&Object::number),
+                                           c(&Object::nameLen) / 2));
+        
+        for(size_t i = 0; i < rows.size(); ++i) {
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(std::get<0>(row) == name + suffix);
+            assert(std::get<1>(row) == std::get<0>(row));
+            assert(std::get<2>(row) == std::get<1>(row));
+            assert(std::get<3>(row) == std::get<2>(row));
+            
+            auto expectedAddNumber = int(name.length()) + number;
+            assert(std::get<4>(row) == expectedAddNumber);
+            assert(std::get<5>(row) == std::get<4>(row));
+            assert(std::get<6>(row) == std::get<5>(row));
+            assert(std::get<7>(row) == std::get<6>(row));
+            {
+                auto &rowValue = std::get<8>(row);
+                assert(rowValue == int(name.length()) + 1000);
+            }
+            
+            auto expectedSubNumber = int(name.length()) - number;
+            assert(std::get<9>(row) == expectedSubNumber);
+            assert(std::get<10>(row) == std::get<9>(row));
+            assert(std::get<11>(row) == std::get<10>(row));
+            assert(std::get<12>(row) == std::get<11>(row));
+            assert(std::get<13>(row) == int(name.length()) - 1000);
+            
+            auto expectedMulNumber = int(name.length()) * number;
+            assert(std::get<14>(row) == expectedMulNumber);
+            assert(std::get<15>(row) == std::get<14>(row));
+            assert(std::get<16>(row) == std::get<15>(row));
+            assert(std::get<17>(row) == std::get<16>(row));
+            assert(std::get<18>(row) == int(name.length()) * 1000);
+            
+            auto expectedDivNumber = int(name.length()) / number;
+            assert(std::get<19>(row) == expectedDivNumber);
+            assert(std::get<20>(row) == std::get<19>(row));
+            assert(std::get<21>(row) == std::get<20>(row));
+            assert(std::get<22>(row) == std::get<21>(row));
+            assert(std::get<23>(row) == int(name.length()) / 2);
+        }
+    }
+    {
+        auto rows = storage.select(columns(mod(&Object::nameLen, &Object::number),
+                                            c(&Object::nameLen) % &Object::number,
+                                            &Object::nameLen % c(&Object::number),
+                                            c(&Object::nameLen) % c(&Object::number),
+                                            c(&Object::nameLen) % 5));
+        for(size_t i = 0; i < rows.size(); ++i) {
+            auto &row = rows[i];
+            auto &name = names[i];
+            assert(std::get<0>(row) == static_cast<int>(name.length()) % number);
+            assert(std::get<1>(row) == std::get<0>(row));
+            assert(std::get<2>(row) == std::get<1>(row));
+            assert(std::get<3>(row) == std::get<2>(row));
+            assert(std::get<4>(row) == static_cast<int>(name.length()) % 5);
+        }
     }
 }
 
@@ -1440,6 +1644,29 @@ void testSelect() {
     sqlite3_finalize(stmt);
 
     auto secondId = sqlite3_last_insert_rowid(db);
+    
+    {
+        //  SELECT ID, CURRENT_WORD, BEFORE_WORD, AFTER_WORD, OCCURANCES
+        //  FROM WORDS
+        //  WHERE ID = firstId
+        
+        sql = "SELECT ID, CURRENT_WORD, BEFORE_WORD, AFTER_WORD, OCCURANCES FROM WORDS WHERE ID = ?";
+        rc = sqlite3_prepare_v2(db, sql, -1, &stmt, nullptr);
+        assert(rc == SQLITE_OK);
+        
+        sqlite3_bind_int64(stmt, 1, firstId);
+        rc = sqlite3_step(stmt);
+        if(rc != SQLITE_ROW){
+            cout << sqlite3_errmsg(db) << endl;
+            throw std::runtime_error(sqlite3_errmsg(db));
+        }
+        assert(sqlite3_column_int(stmt, 0) == firstId);
+        assert(::strcmp((const char *)sqlite3_column_text(stmt, 1), "best") == 0);
+        assert(::strcmp((const char *)sqlite3_column_text(stmt, 2), "behaviour") == 0);
+        assert(::strcmp((const char *)sqlite3_column_text(stmt, 3), "hey") == 0);
+        assert(sqlite3_column_int(stmt, 4) == 5);
+        sqlite3_finalize(stmt);
+    }
 
     sqlite3_close(db);
 
@@ -1453,18 +1680,11 @@ void testSelect() {
 
     auto storage = make_storage(dbFileName,
                                 make_table("WORDS",
-                                           make_column("ID",
-                                                       &Word::id,
-                                                       primary_key(),
-                                                       autoincrement()),
-                                           make_column("CURRENT_WORD",
-                                                       &Word::currentWord),
-                                           make_column("BEFORE_WORD",
-                                                       &Word::beforeWord),
-                                           make_column("AFTER_WORD",
-                                                       &Word::afterWord),
-                                           make_column("OCCURANCES",
-                                                       &Word::occurances)));
+                                           make_column("ID", &Word::id, primary_key(), autoincrement()),
+                                           make_column("CURRENT_WORD", &Word::currentWord),
+                                           make_column("BEFORE_WORD", &Word::beforeWord),
+                                           make_column("AFTER_WORD", &Word::afterWord),
+                                           make_column("OCCURANCES", &Word::occurances)));
 
     storage.sync_schema();  //  sync schema must not alter any data cause schemas are the same
 
@@ -1608,6 +1828,30 @@ void testRemove() {
         assert(storage.count<Object>() == 1);
         
     }
+}
+
+void testRemoveAll() {
+    cout << __func__ << endl;
+    
+    struct Object {
+        int id;
+        std::string name;
+    };
+    
+    auto storage = make_storage("",
+                                make_table("objects",
+                                           make_column("id", &Object::id, primary_key()),
+                                           make_column("name", &Object::name)));
+    storage.sync_schema();
+    
+    storage.replace(Object{ 1, "Ototo" });
+    storage.replace(Object{ 2, "Contigo" });
+    
+    assert(storage.count<Object>() == 2);
+    
+    storage.remove_all<Object>(where(c(&Object::id) == 1));
+    
+    assert(storage.count<Object>() == 1);
 }
 
 void testInsert() {
@@ -2207,21 +2451,9 @@ void testAggregateFunctions() {
     storage.sync_schema();
     storage.remove_all<User>();
     
-    storage.replace(User{
-        1,
-        "Bebe Rexha",
-        28,
-    });
-    storage.replace(User{
-        2,
-        "Rihanna",
-        29,
-    });
-    storage.replace(User{
-        3,
-        "Cheryl Cole",
-        34,
-    });
+    storage.replace(User{ 1, "Bebe Rexha", 28});
+    storage.replace(User{ 2, "Rihanna", 29 });
+    storage.replace(User{ 3, "Cheryl Cole", 34 });
     
     auto avgId = storage.avg(&User::id);
     assert(avgId == 2);
@@ -2244,11 +2476,54 @@ void testAggregateFunctions() {
     auto avgRaw2 = storage2.select(avg(&User::getId)).front();
     assert(avgRaw2 == avgId);
     
+    auto avgRaw3 = storage2.select(avg(&User::setId)).front();
+    assert(avgRaw3 == avgRaw2);
+    
     auto distinctAvg2 = storage2.select(distinct(avg(&User::setId))).front();
     assert(distinctAvg2 == avgId);
     
+    auto distinctAvg3 = storage2.select(distinct(avg(&User::getId))).front();
+    assert(distinctAvg3 == distinctAvg2);
+    
     auto allAvg2 = storage2.select(all(avg(&User::getId))).front();
     assert(allAvg2 == avgId);
+    
+    auto allAvg3 = storage2.select(all(avg(&User::setId))).front();
+    assert(allAvg3 == allAvg2);
+    
+    //  next we test that all aggregate functions support arguments bindings.
+    //  This is why id = 1 condition is important here
+    {
+        auto avg1 = storage.avg(&User::id, where(is_equal(&User::id, 1)));
+        assert(avg1 == 1);
+    }
+    {
+        auto count1 = storage.count(&User::id, where(is_equal(&User::id, 1)));
+        assert(count1 == 1);
+    }
+    {
+        auto max1 = storage.max(&User::id, where(is_equal(&User::id, 1)));
+        assert(max1);
+        assert(*max1 == 1);
+    }
+    {
+        auto min1 = storage.min(&User::id, where(is_equal(&User::id, 1)));
+        assert(min1);
+        assert(*min1 == 1);
+    }
+    {
+        auto total1 = storage.total(&User::id, where(is_equal(&User::id, 1)));
+        assert(total1 == 1);
+    }
+    {
+        auto sum1 = storage.sum(&User::id, where(is_equal(&User::id, 1)));
+        assert(sum1);
+        assert(*sum1 == 1);
+    }
+    {
+        auto groupConcat = storage.group_concat(&User::name, where(is_equal(&User::id, 1)));
+        assert(groupConcat == "Bebe Rexha");
+    }
 }
 
 void testBusyTimeout() {
@@ -2465,4 +2740,18 @@ int main(int, char **) {
     testCast();
     
     testWhere();
+    
+    testIterateBlob();
+    
+    testIsNull();
+    
+    testRemoveAll();
+    
+    testExists();
+    
+    testLike();
+    
+    testBetween();
+    
+    testNot();
 }

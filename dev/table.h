@@ -68,21 +68,21 @@ namespace sqlite_orm {
                     // Make static_if have at least one input as a workaround for GCC bug:
                     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
                     if(!res){
-                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c){
+                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C &c){
                             if(compare_any(col.member_pointer, c)){
                                 res = &(obj.*col.member_pointer);
                             }
                         })(c);
                     }
                     if(!res){
-                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col](const C& c){
+                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col](const C &c){
                             if(compare_any(col.getter, c)){
                                 res = &((obj).*(col.getter))();
                             }
                         })(c);
                     }
                     if(!res){
-                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C& c){
+                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C &c){
                             if(compare_any(col.setter, c)){
                                 res = &((obj).*(col.getter))();
                             }
