@@ -1813,7 +1813,7 @@ void testRemove() {
         assert(storage.count<Object>() == 1);
 		auto object_from_database = storage.get<Object>(0, 0);
 		assert(object_from_database.name == "Skillet");
-		storage.remove(object_from_database);
+		storage.remove_by_object(object_from_database);
 		assert(storage.count<Object>() == 0);
 	}
 
@@ -1875,7 +1875,7 @@ void testRemove() {
         assert(storage.count<Object>() == 1);
 		auto object_from_database = storage.get<Object>(0, 0);
 		assert(object_from_database.name == "Skillet");
-		storage.remove(object_from_database);
+		storage.remove_by_object(object_from_database);
 		assert(storage.count<Object>() == 0);
 	}
 
@@ -1898,7 +1898,7 @@ void testRemove() {
         id1 = storage.insert(object);
         assert(storage.count<Object>() == 1);
         auto object_from_database = storage.get<Object>(id1);
-        storage.remove(object_from_database);
+        storage.remove_by_object(object_from_database);
         assert(storage.count<Object>() == 0);
     }
     {
@@ -1920,7 +1920,7 @@ void testRemove() {
         id1 = storage.insert(object);
         assert(storage.count<Object>() == 1);
         auto object_from_database = storage.get<Object>(id1);
-        storage.remove(object_from_database);
+        storage.remove_by_object(object_from_database);
         assert(storage.count<Object>() == 0);
     }
     {

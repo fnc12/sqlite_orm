@@ -8308,10 +8308,10 @@ namespace sqlite_orm {
              * @param o object to be updated.
              */
             template<class O>
-            void remove(const O &o) {
+            void remove_by_object(const O &o) {
                 this->assert_mapped_type<O>();
                 auto &impl = this->get_impl<O>();
-                remove_impl(o, std::conditional_t<decltype(impl.table)::impl_type::has_primary_key, std::true_type, std::false_type>{});
+                remove_by_object_impl(o, std::conditional_t<decltype(impl.table)::impl_type::has_primary_key, std::true_type, std::false_type>{});
 			}
 
             /**
@@ -9979,7 +9979,7 @@ namespace sqlite_orm {
              * @param o object to be updated.
              */
             template<class O>
-            void remove_impl(const O &o, std::false_type) {
+            void remove_by_object_impl(const O &o, std::false_type) {
                 this->assert_mapped_type<O>();
 
                 auto &impl = this->get_impl<O>();
@@ -10008,7 +10008,7 @@ namespace sqlite_orm {
              * @param o object to be updated.
              */
             template<class O>
-            void remove_impl(const O &o, std::true_type) {
+            void remove_by_object_impl(const O &o, std::true_type) {
                 this->assert_mapped_type<O>();
 
                 auto &impl = this->get_impl<O>();
