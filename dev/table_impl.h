@@ -62,41 +62,16 @@ namespace sqlite_orm {
             
         };
 
-        template<typename H, bool IsCompositeKey, typename... T>
-        struct composite_key_table_impl_detail;
-
-        template<typename H, typename... T>
-        struct composite_key_table_impl_detail<H, false, T...> {
-            composite_key_table_impl_detail(H h, T ...t) {}
-        };
-
-        template<typename H, typename... T>
-        struct composite_key_table_impl_detail<H, true, T...> {
-            using column_type = H;
-            using tail_types = std::tuple<T...>;
-            using super = table_impl<T...>;
-            using composite_key_type = H;
-
-            composite_key_table_impl_detail(H h, T ...t) : col(h), composite_key_columns(h) {}
-
-            column_type col;
-			composite_key_type composite_key_columns;
-        };
-
-        template<typename H, typename... T>
-        using composite_key_table_impl = composite_key_table_impl_detail<H, internal::is_primary_key<H>::value, T...>;
-
         /**
          *  Regular table_impl class.
          */
         template<typename H, typename... T>
-        struct table_impl<H, T...> : public composite_key_table_impl<H, T...>, public table_impl<T...> {
+        struct table_impl<H, T...> : private table_impl<T...> {
             using column_type = H;
             using tail_types = std::tuple<T...>;
             using super = table_impl<T...>;
-            using composite_key_super = composite_key_table_impl<H, T...>;
             
-            table_impl(H h, T ...t) : composite_key_super(h, t...), super(t...), col(h) {}
+            table_impl(H h, T ...t) : super(t...), col(h) {}
             
             column_type col;
             

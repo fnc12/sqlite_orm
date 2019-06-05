@@ -67,20 +67,5 @@ namespace sqlite_orm {
         void tuple_for_each(const std::tuple<Args...>& t, F&& f){
             tuple_for_each_impl(std::forward<F>(f), t, std::index_sequence_for<Args...>{});
         }
-
-        // std::apply alternative implementation from https://en.cppreference.com/w/cpp/utility/apply
-        template <class F, class Tuple, std::size_t... I>
-        constexpr decltype(auto) apply_impl(F&& f, Tuple&& t, std::index_sequence<I...>)
-        {
-            return f(std::get<I>(std::forward<Tuple>(t))...);
-        }
-
-        template <class F, class Tuple>
-        constexpr decltype(auto) apply(F&& f, Tuple&& t)
-        {
-            return apply_impl(
-                std::forward<F>(f), std::forward<Tuple>(t),
-                std::make_index_sequence<std::tuple_size<std::remove_reference_t<Tuple>>::value>{});
-        }
     }
 }
