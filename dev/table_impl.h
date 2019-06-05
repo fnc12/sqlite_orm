@@ -23,9 +23,7 @@ namespace sqlite_orm {
          *  Final superclass for table_impl.
          */
         template<>
-        struct table_impl<>{
-            
-            static constexpr bool has_primary_key = false;
+        struct table_impl<> {
             static constexpr const int columns_count = 0;
             
             std::vector<std::string> column_names() {
@@ -75,7 +73,6 @@ namespace sqlite_orm {
             
             column_type col;
             
-            static constexpr bool has_primary_key = internal::is_primary_key<H>::value || super::has_primary_key;
             static constexpr const int columns_count = 1 + super::columns_count;
             
             /**
