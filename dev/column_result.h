@@ -18,16 +18,12 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class O, class C>
-        typename column_traits<C>::field_type invoke_column(const O& o, C& c, std::false_type) {
+        typename column_traits<C>::field_type invoke_column(const O& o, const C& c, std::false_type) {
             return o.*c;
         }
 
-        /*
-		 * I have to use (void) because msvc catch erros, for more information please read
-		 * https://developercommunity.visualstudio.com/content/problem/177433/stdresult-of-errors-on-correct-code-since-1552.html
-		 */
         template<class O, class C>
-        typename column_traits<C>::field_type invoke_column(const O& o, C& c, std::true_type) {
+        typename column_traits<C>::field_type invoke_column(const O& o, const C& c, std::true_type) {
             return ((o).*(c))();
         }
 

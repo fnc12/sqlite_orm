@@ -1275,8 +1275,50 @@ namespace sqlite_orm {
             template<class O>
             void remove_by_object(const O &o) {
                 this->assert_mapped_type<O>();
+                
+                auto connection = this->get_or_create_connection();
                 auto &impl = this->get_impl<O>();
-                remove_by_object_impl(o, std::conditional_t<decltype(impl.table)::impl_type::has_primary_key, std::true_type, std::false_type>{});
+                std::stringstream ss;
+                ss << "DELETE FROM '" << impl.table.name << "' ";
+                ss << "WHERE ";
+
+                auto primaryKeyColumnNames = impl.table.primary_key_column_names();
+                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " =  ? ";
+                    if(i < primaryKeyColumnNames.size() - 1) {
+                        ss << "AND ";
+                    }
+                }
+
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    auto index = 1;
+                    impl.table.for_each_column([&o, &index, &stmt, &primaryKeyColumnNames] (auto &c) {
+                        auto it = std::find(primaryKeyColumnNames.begin(),
+                                            primaryKeyColumnNames.end(),
+                                            c.name);
+                        if(it != primaryKeyColumnNames.end()){
+                            using column_type = typename std::decay<decltype(c)>::type;
+                            using field_type = typename column_type::field_type;
+                            if(c.member_pointer){
+                                statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer);
+                            }else{
+                                using getter_type = typename column_type::getter_type;
+                                field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                                statement_binder<field_type>().bind(stmt, index++, valueHolder.value);
+                            }
+                        }
+                    });
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                }
 			}
 
             /**
@@ -2935,64 +2977,7 @@ namespace sqlite_orm {
         public:
             pragma_type pragma;
             limit_accesor<self> limit;
-
-        private:
-            /*
-             * Delete routine
-             * O is an object's type. Must be not specified explicitly cause it can be deduced by
-             *      compiler from first parameter.
-             * @param o object to be updated.
-             */
-            template<class O>
-            void remove_by_object_impl(const O &o, std::false_type) {
-                this->assert_mapped_type<O>();
-
-                auto &impl = this->get_impl<O>();
-
-                std::vector<std::string> primaryKeyColumnNames = impl.table.primary_key_column_names();
-
-                impl.table.for_each_column([this,&o,&primaryKeyColumnNames] (auto &c) {
-					if(std::find(primaryKeyColumnNames.cbegin(), primaryKeyColumnNames.cend(), c.name) !=
-                            primaryKeyColumnNames.cend()) {
-                        using column_type = typename std::decay<decltype(c)>::type;
-                        if(c.member_pointer) {
-                            this->remove<O>(o.*c.member_pointer);
-                        } else {
-                            using getter_type = typename column_type::getter_type;
-                            field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
-                            this->remove<O>(valueHolder.value);
-                        }
-                    }
-                });
-            }
-
-            /*
-             * Delete routine
-             * O is an object's type. Must be not specified explicitly cause it can be deduced by
-             *      compiler from first parameter.
-             * @param o object to be updated.
-             */
-            template<class O>
-            void remove_by_object_impl(const O &o, std::true_type) {
-                this->assert_mapped_type<O>();
-
-                auto &impl = this->get_impl<O>();
-
-				using composite_key_columns_type = typename decltype(impl.table)::impl_type::composite_key_type::columns_type;
-				using composite_key_columns_value_type = typename decltype(impl.table)::impl_type::composite_key_type::columns_value_type;
-				composite_key_columns_type composite_key_columns = impl.table.get_composite_key().columns;
-				composite_key_columns_value_type composite_key_value;
-
-				tuple_helper::apply([&o,&composite_key_value](auto ...pks) {
-                    composite_key_value = std::make_tuple(internal::invoke_column(o, pks, internal::is_getter<decltype(pks)>{})...);
-				}, composite_key_columns);
-
-                tuple_helper::apply([this](auto& ...pks) {
-					this->remove<O>(pks...);
-				}, composite_key_value);
-            }
-
-        };
+         };
         
         template<class T>
         struct is_storage : std::false_type {};
