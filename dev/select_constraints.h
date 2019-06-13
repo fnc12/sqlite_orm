@@ -63,35 +63,12 @@ namespace sqlite_orm {
         
         template<class ...Args>
         struct columns_t {
+            using columns_type = std::tuple<Args...>;
+            
+            columns_type columns;
             bool distinct = false;
             
-            template<class L>
-            void for_each(L) const {
-                //..
-            }
-            
-            int count() const {
-                return 0;
-            }
-        };
-        
-        template<class T, class ...Args>
-        struct columns_t<T, Args...> : public columns_t<Args...> {
-            T m;
-            
-            columns_t(decltype(m) m_, Args&& ...args): super(std::forward<Args>(args)...), m(m_) {}
-            
-            template<class L>
-            void for_each(L l) const {
-                l(this->m);
-                this->super::for_each(l);
-            }
-            
-            int count() const {
-                return 1 + this->super::count();
-            }
-        private:
-            using super = columns_t<Args...>;
+            static constexpr const int count = std::tuple_size<columns_type>::value;
         };
         
         template<class ...Args>
@@ -270,7 +247,7 @@ namespace sqlite_orm {
     
     template<class ...Args>
     internal::columns_t<Args...> columns(Args&& ...args) {
-        return {std::forward<Args>(args)...};
+        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
     
     /**

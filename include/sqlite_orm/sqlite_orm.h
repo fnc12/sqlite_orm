@@ -3508,35 +3508,12 @@ namespace sqlite_orm {
         
         template<class ...Args>
         struct columns_t {
+            using columns_type = std::tuple<Args...>;
+            
+            columns_type columns;
             bool distinct = false;
             
-            template<class L>
-            void for_each(L) const {
-                //..
-            }
-            
-            int count() const {
-                return 0;
-            }
-        };
-        
-        template<class T, class ...Args>
-        struct columns_t<T, Args...> : public columns_t<Args...> {
-            T m;
-            
-            columns_t(decltype(m) m_, Args&& ...args): super(std::forward<Args>(args)...), m(m_) {}
-            
-            template<class L>
-            void for_each(L l) const {
-                l(this->m);
-                this->super::for_each(l);
-            }
-            
-            int count() const {
-                return 1 + this->super::count();
-            }
-        private:
-            using super = columns_t<Args...>;
+            static constexpr const int count = std::tuple_size<columns_type>::value;
         };
         
         template<class ...Args>
@@ -3715,7 +3692,7 @@ namespace sqlite_orm {
     
     template<class ...Args>
     internal::columns_t<Args...> columns(Args&& ...args) {
-        return {std::forward<Args>(args)...};
+        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
     
     /**
@@ -6806,9 +6783,10 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &cols, const L &l) const {
-                cols.for_each([&l](auto &col){
+                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
+                tuple_helper::iterator<std::tuple_size<columns_tuple>::value - 1, Args...>()(cols.columns, [&l](auto &col){
                     iterate_ast(col, l);
-                });
+                }, false);
             }
         };
         
@@ -7723,15 +7701,16 @@ namespace sqlite_orm {
             template<class ...Args>
             std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) {
                 std::vector<std::string> columnNames;
-                columnNames.reserve(static_cast<size_t>(cols.count()));
-                cols.for_each([&columnNames, this](auto &m) {
+                columnNames.reserve(static_cast<size_t>(cols.count));
+                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
+                tuple_helper::iterator<std::tuple_size<columns_tuple>::value - 1, Args...>()(cols.columns, [&columnNames, this](auto &m){
                     auto columnName = this->string_from_expression(m, false, false, true);
                     if(columnName.length()){
                         columnNames.push_back(columnName);
                     }else{
                         throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                     }
-                });
+                }, false);
                 return columnNames;
             }
             
@@ -8680,10 +8659,11 @@ namespace sqlite_orm {
             template<class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_names(const internal::columns_t<Args...> &cols) {
                 std::set<std::pair<std::string, std::string>> res;
-                cols.for_each([&res, this](auto &m){
+                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
+                tuple_helper::iterator<std::tuple_size<columns_tuple>::value - 1, Args...>()(cols.columns, [&res, this](auto &m){
                     auto tableName = this->parse_table_name(m);
                     res.insert(tableName.begin(), tableName.end());
-                });
+                }, false);
                 return res;
             }
             
@@ -9279,14 +9259,15 @@ namespace sqlite_orm {
                 ss << "INSERT INTO '" << impl.table.name << "' ";
                 std::vector<std::string> columnNames;
                 columnNames.reserve(colsCount);
-                cols.for_each([&columnNames, this](auto &m) {
+                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
+                tuple_helper::iterator<std::tuple_size<columns_tuple>::value - 1, Cols...>()(cols.columns, [&columnNames, this](auto &m){
                     auto columnName = this->string_from_expression(m, true, false);
-                    if(columnName.length()){
+                    if(!columnName.empty()){
                         columnNames.push_back(columnName);
                     }else{
                         throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                     }
-                });
+                }, false);
                 ss << "(";
                 for(size_t i = 0; i < columnNames.size(); ++i){
                     ss << columnNames[i];
@@ -9312,12 +9293,12 @@ namespace sqlite_orm {
                 if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    cols.for_each([&o, &index, &stmt, &impl] (auto &m) {
+                    tuple_helper::iterator<std::tuple_size<columns_tuple>::value - 1, Cols...>()(cols.columns, [&o, &index, &stmt, &impl] (auto &m) {
                         using column_type = typename std::decay<decltype(m)>::type;
                         using field_type = typename column_result_t<self, column_type>::type;
                         const field_type *value = impl.table.template get_object_field_pointer<field_type>(o, m);
                         statement_binder<field_type>().bind(stmt, index++, *value);
-                    });
+                    }, false);
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         return int(sqlite3_last_insert_rowid(connection->get_db()));
                     }else{
