@@ -68,4 +68,8 @@ namespace sqlite_orm {
             tuple_for_each_impl(std::forward<F>(f), t, std::index_sequence_for<Args...>{});
         }
     }
+    
+    namespace internal {
+        
+    }
 }
