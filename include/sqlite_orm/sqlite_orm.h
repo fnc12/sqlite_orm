@@ -246,7 +246,7 @@ namespace sqlite_orm {
             }
         };
         
-        template <class F, typename T, std::size_t... I>
+        /*template <class F, typename T, std::size_t... I>
         void tuple_for_each_impl(F&& f, const T& t, std::index_sequence<I...>){
             int _[] = { (f(std::get<I>(t)), int{}) ... };
             (void)_;
@@ -255,11 +255,16 @@ namespace sqlite_orm {
         template <typename F, typename ...Args>
         void tuple_for_each(const std::tuple<Args...>& t, F&& f){
             tuple_for_each_impl(std::forward<F>(f), t, std::index_sequence_for<Args...>{});
-        }
+        }*/
     }
     
     namespace internal {
         
+        template<class L, class ...Args>
+        void iterate_tuple(const std::tuple<Args...> &t, const L &l) {
+            using tuple_type = std::tuple<Args...>;
+            tuple_helper::iterator<std::tuple_size<tuple_type>::value - 1, Args...>()(t, l, false);
+        }
     }
 }
 #pragma once
@@ -1192,7 +1197,7 @@ namespace sqlite_orm {
              */
             std::unique_ptr<std::string> default_value() {
                 std::unique_ptr<std::string> res;
-                tuple_helper::tuple_for_each(constraints, [&res](auto &v){
+                iterate_tuple(constraints, [&res](auto &v){
                     auto dft = internal::default_value_extractor()(v);
                     if(dft){
                         res = std::move(dft);
@@ -5345,7 +5350,7 @@ namespace sqlite_orm {
             
             std::vector<std::string> composite_key_columns_names() {
                 std::vector<std::string> res;
-                this->impl.for_each_primary_key([this, &res](auto c){
+                this->impl.for_each_primary_key([this, &res](auto &c){
                     res = this->composite_key_columns_names(c);
                 });
                 return res;
@@ -5363,13 +5368,13 @@ namespace sqlite_orm {
             }
             
             template<class ...Args>
-            std::vector<std::string> composite_key_columns_names(constraints::primary_key_t<Args...> pk) {
+            std::vector<std::string> composite_key_columns_names(const constraints::primary_key_t<Args...> &pk) {
                 std::vector<std::string> res;
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
                 tuple_helper::iterator<std::tuple_size<pk_columns_tuple>::value - 1, Args...>()(pk.columns, [this, &res](auto &v){
                     res.push_back(this->find_column_name(v));
-                });
+                }, false);
                 return res;
             }
             
@@ -7095,7 +7100,7 @@ namespace sqlite_orm {
                 columnNames.reserve(std::tuple_size<decltype(fk.columns)>::value);
                 tuple_helper::iterator<std::tuple_size<decltype(fk.columns)>::value - 1, Cs...>()(fk.columns, [&columnNames, this](auto &c){
                     columnNames.push_back(this->impl.column_name(c));
-                });
+                }, false);
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << columnNames[i];
                     if(i < columnNames.size() - 1) {
@@ -7165,7 +7170,7 @@ namespace sqlite_orm {
                 ss << "CREATE TABLE '" << tableName << "' ( ";
                 auto columnsCount = impl->table.columns_count;
                 auto index = 0;
-                impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, this] (auto c) {
+                impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, this] (auto &c) {
                     ss << this->serialize_column_schema(c);
                     if(index < columnsCount - 1) {
                         ss << ", ";
@@ -7631,7 +7636,7 @@ namespace sqlite_orm {
                 using tuple_t = decltype(f.args);
                 std::vector<std::string> args;
                 args.reserve(std::tuple_size<tuple_t>::value);
-                tuple_helper::tuple_for_each(f.args, [&args, this, noTableName, escape, ignoreBindable](auto &v){
+                iterate_tuple(f.args, [&args, this, noTableName, escape, ignoreBindable](auto &v){
                     auto expression = this->string_from_expression(v, noTableName, escape, ignoreBindable);
                     args.emplace_back(std::move(expression));
                 });
@@ -8203,7 +8208,7 @@ namespace sqlite_orm {
                     tuple_helper::iterator<idsCount - 1, Ids...>()(idsTuple, [stmt, &index](auto &v){
                         using field_type = typename std::decay<decltype(v)>::type;
                         statement_binder<field_type>().bind(stmt, index++, v);
-                    });
+                    }, false);
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
@@ -9330,7 +9335,7 @@ namespace sqlite_orm {
                 std::vector<std::string> columnNames;
                 auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
                 
-                impl.table.for_each_column([&impl, &columnNames, &compositeKeyColumnNames] (auto c) {
+                impl.table.for_each_column([&impl, &columnNames, &compositeKeyColumnNames] (auto &c) {
                     if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         auto it = std::find(compositeKeyColumnNames.begin(),
                                             compositeKeyColumnNames.end(),
@@ -9347,10 +9352,11 @@ namespace sqlite_orm {
                     for(size_t i = 0; i < columnNamesCount; ++i) {
                         ss << "\"" << columnNames[i] << "\"";
                         if(i < columnNamesCount - 1) {
-                            ss << ", ";
+                            ss << ",";
                         }else{
-                            ss << ") ";
+                            ss << ")";
                         }
+                        ss << " ";
                     }
                 }else{
                     ss << "DEFAULT ";
