@@ -13,6 +13,55 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testCompositeKeyColumnsNames() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::string name;
+        std::string info;
+    };
+    
+    {
+        auto table = make_table("t",
+                                make_column("id", &User::id),
+                                make_column("name", &User::name),
+                                make_column("info", &User::info),
+                                primary_key(&User::id, &User::name));
+        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        std::vector<std::string> expected = {"id", "name"};
+        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+    }
+    {
+        auto table = make_table("t",
+                                make_column("id", &User::id),
+                                make_column("name", &User::name),
+                                make_column("info", &User::info),
+                                primary_key(&User::name, &User::id));
+        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        std::vector<std::string> expected = {"name", "id"};
+        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+    }
+    {
+        auto table = make_table("t",
+                                make_column("id", &User::id),
+                                make_column("name", &User::name),
+                                make_column("info", &User::info),
+                                primary_key(&User::name, &User::id, &User::info));
+        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        std::vector<std::string> expected = {"name", "id", "info"};
+        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+    }
+    {
+        auto table = make_table("t",
+                                make_column("id", &User::id),
+                                make_column("name", &User::name),
+                                make_column("info", &User::info));
+        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        assert(compositeKeyColumnsNames.empty());
+    }
+}
+
 void testNot() {
     cout << __func__ << endl;
     
@@ -2268,15 +2317,21 @@ void testDefaultValue() {
                                             make_column("Age", &User::age)));
     storage1.sync_schema();
     storage1.remove_all<User>();
-
+    
+    auto emailColumn = make_column("Email", &User::email, default_value("example@email.com"));
+ 
     auto storage2 = make_storage("test_db.sqlite",
                                  make_table("User",
                                             make_column("Id", &User::userId, primary_key()),
                                             make_column("Name", &User::name),
                                             make_column("Age", &User::age),
-                                            make_column("Email", &User::email, default_value("example@email.com"))));
+                                            emailColumn));
     storage2.sync_schema();
     storage2.insert(User{0, "Tom", 15, ""});
+    
+    auto emailDefault = emailColumn.default_value();
+    assert(emailDefault);
+    assert(*emailDefault == "example@email.com");
 }
 
 //  after #18
@@ -2291,7 +2346,7 @@ void testCompositeKey() {
     };
 
     auto recordsTableName = "records";
-    auto storage = make_storage("compisite_key.db",
+    auto storage = make_storage("",
                                 make_table(recordsTableName,
                                            make_column("year", &Record::year),
                                            make_column("month", &Record::month),
@@ -2301,7 +2356,7 @@ void testCompositeKey() {
     storage.sync_schema();
     assert(storage.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
 
-    auto storage2 = make_storage("compisite_key2.db",
+    auto storage2 = make_storage("",
                                  make_table(recordsTableName,
                                             make_column("year", &Record::year),
                                             make_column("month", &Record::month),
@@ -2310,7 +2365,7 @@ void testCompositeKey() {
     storage2.sync_schema();
     assert(storage2.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
 
-    auto storage3 = make_storage("compisite_key3.db",
+    auto storage3 = make_storage("",
                                  make_table(recordsTableName,
                                             make_column("year", &Record::year),
                                             make_column("month", &Record::month),
@@ -2754,4 +2809,6 @@ int main(int, char **) {
     testBetween();
     
     testNot();
+    
+    testCompositeKeyColumnsNames();
 }

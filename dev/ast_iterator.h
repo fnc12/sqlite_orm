@@ -83,9 +83,9 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &cols, const L &l) const {
                 using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
-                tuple_helper::iterator<std::tuple_size<columns_tuple>::value - 1, Args...>()(cols.columns, [&l](auto &col){
+                iterate_tuple(cols.columns, [&l](auto &col){
                     iterate_ast(col, l);
-                }, false);
+                });
             }
         };
         
@@ -150,9 +150,9 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &tuple, const L &l) const {
-                tuple_helper::iterator<std::tuple_size<node_type>::value - 1, Args...>()(tuple, [&l](auto &v){
+                iterate_tuple(tuple, [&l](auto &v){
                     iterate_ast(v, l);
-                }, false);
+                });
             }
         };
         
