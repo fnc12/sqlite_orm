@@ -127,9 +127,9 @@ namespace sqlite_orm {
                 std::vector<std::string> res;
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
-                tuple_helper::iterator<std::tuple_size<pk_columns_tuple>::value - 1, Args...>()(pk.columns, [this, &res](auto &v){
+                iterate_tuple(pk.columns, [this, &res](auto &v){
                     res.push_back(this->find_column_name(v));
-                }, false);
+                });
                 return res;
             }
             
