@@ -213,5 +213,8 @@ int main(int, char **argv) {
     //  SELECT rtrim('totn6372', '0123456789');
     cout << "rtrim('totn6372', '0123456789') = *" << storage.select(rtrim("totn6372", "0123456789")).front() << "*" << endl;
     
+    //  SELECT COALESCE(10,20);
+    cout << "COALESCE(10,20) = " << storage.select(coalesce<int>(10, 20)).front() << endl;
+    
     return 0;
 }

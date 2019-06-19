@@ -6,6 +6,7 @@
 #include "select_constraints.h"
 #include "operators.h"
 #include "tuple_helper.h"
+#include "core_functions.h"
 
 namespace sqlite_orm {
     
@@ -226,6 +227,36 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &neg, const L &l) const {
                 iterate_ast(neg.c, l);
+            }
+        };
+        
+        template<class R, class ...Args>
+        struct ast_iterator<core_functions::coalesce_t<R, Args...>, void> {
+            using node_type = core_functions::coalesce_t<R, Args...>;
+            
+            template<class L>
+            void operator()(const node_type &c, const L &l) const {
+                iterate_ast(c.args, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<core_functions::length_t<T>, void> {
+            using node_type = core_functions::length_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &length, const L &l) const {
+                iterate_ast(length.arg, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<core_functions::abs_t<T>, void> {
+            using node_type = core_functions::abs_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.arg, l);
             }
         };
     }

@@ -21,11 +21,11 @@ namespace sqlite_orm {
          */
         template<class T>
         struct length_t : public core_function_t {
-            T t;
+            using arg_type = T;
             
-            length_t() = default;
+            arg_type arg;
             
-            length_t(T t_): t(t_) {}
+            length_t(arg_type arg_) : arg(std::move(arg_)) {}
             
             operator std::string() const {
                 return "LENGTH";
@@ -37,11 +37,11 @@ namespace sqlite_orm {
          */
         template<class T>
         struct abs_t : public core_function_t {
-            T t;
+            using arg_type = T;
             
-            abs_t() = default;
+            arg_type arg;
             
-            abs_t(T t_): t(t_) {}
+            abs_t(arg_type arg_): arg(std::move(arg_)) {}
             
             operator std::string() const {
                 return "ABS";
@@ -219,6 +219,21 @@ namespace sqlite_orm {
         };
         
 #endif
+        
+        template<class R, class ...Args>
+        struct coalesce_t : core_function_t {
+            using return_type = R;
+            using args_type = std::tuple<Args...>;
+            
+            args_type args;
+            
+            coalesce_t(args_type args_) : args(std::move(args_)) {}
+            
+            operator std::string() const {
+                return "COALESCE";
+            }
+        };
+        
         template<class T, class ...Args>
         struct date_t : core_function_t {
             using modifiers_type = std::tuple<Args...>;
@@ -349,6 +364,11 @@ namespace sqlite_orm {
     
 #endif
     
+    template<class R, class ...Args>
+    core_functions::coalesce_t<R, Args...> coalesce(Args&& ...args) {
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+    
     template<class X, class Res = core_functions::trim_single_t<X>>
     Res trim(X x) {
         return Res(x);
@@ -385,14 +405,12 @@ namespace sqlite_orm {
     
     template<class T>
     core_functions::length_t<T> length(T t) {
-        using result_type = core_functions::length_t<T>;
-        return result_type(t);
+        return {t};
     }
     
     template<class T>
     core_functions::abs_t<T> abs(T t) {
-        using result_type = core_functions::abs_t<T>;
-        return result_type(t);
+        return {t};
     }
     
     template<class T, class Res = core_functions::lower_t<T>>

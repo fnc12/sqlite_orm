@@ -13,6 +13,25 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testLength() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(length("ototo"));
+    assert(!rows.empty());
+    assert(rows.front() == 5);
+}
+
+void testAbs() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(sqlite_orm::abs(-10));
+    assert(!rows.empty());
+    assert(rows.front());
+    assert(*rows.front() == 10);
+}
+
 void testCompositeKeyColumnsNames() {
     cout << __func__ << endl;
     
@@ -2811,4 +2830,8 @@ int main(int, char **) {
     testNot();
     
     testCompositeKeyColumnsNames();
+    
+    testLength();
+    
+    testAbs();
 }
