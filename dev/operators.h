@@ -122,6 +122,10 @@ namespace sqlite_orm {
             assign_t<T, R> operator=(R r) const {
                 return {this->t, std::move(r)};
             }
+            
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+                return {this->t, nullptr};
+            }
         };
         
     }

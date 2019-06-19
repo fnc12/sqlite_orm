@@ -13,6 +13,31 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testSetNull() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{1, std::make_unique<std::string>("Ototo")});
+    assert(storage.count<User>() == 1);
+    
+//    storage.update_all(set(c(&User::name) = nullptr));
+    storage.update_all(set(assign(&User::name, nullptr)));
+    
+    auto rows = storage.get_all<User>();
+    assert(rows.size() == 1);
+    assert(!rows.front().name);
+}
+
 void testCompositeKeyColumnsNames() {
     cout << __func__ << endl;
     
@@ -2811,4 +2836,6 @@ int main(int, char **) {
     testNot();
     
     testCompositeKeyColumnsNames();
+    
+    testSetNull();
 }

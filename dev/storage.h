@@ -323,6 +323,10 @@ namespace sqlite_orm {
                 }
             }
             
+            std::string string_from_expression(std::nullptr_t, bool /*noTableName*/, bool /*escape*/, bool /*ignoreBindable*/ = false) {
+                return "NULL";
+            }
+            
             template<class T>
             std::string string_from_expression(const alias_holder<T> &, bool /*noTableName*/, bool /*escape*/, bool /*ignoreBindable*/ = false) {
                 return T::get();

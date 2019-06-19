@@ -1028,6 +1028,10 @@ namespace sqlite_orm {
             assign_t<T, R> operator=(R r) const {
                 return {this->t, std::move(r)};
             }
+            
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+                return {this->t, nullptr};
+            }
         };
         
     }
@@ -7261,6 +7265,10 @@ namespace sqlite_orm {
                     }
                     return ss.str();
                 }
+            }
+            
+            std::string string_from_expression(std::nullptr_t, bool /*noTableName*/, bool /*escape*/, bool /*ignoreBindable*/ = false) {
+                return "NULL";
             }
             
             template<class T>
