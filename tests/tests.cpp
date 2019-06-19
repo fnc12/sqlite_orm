@@ -30,12 +30,31 @@ void testSetNull() {
     storage.replace(User{1, std::make_unique<std::string>("Ototo")});
     assert(storage.count<User>() == 1);
     
-//    storage.update_all(set(c(&User::name) = nullptr));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(rows.front().name);
+    }
     storage.update_all(set(assign(&User::name, nullptr)));
-    
-    auto rows = storage.get_all<User>();
-    assert(rows.size() == 1);
-    assert(!rows.front().name);
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(!rows.front().name);
+    }
+    storage.update_all(set(assign(&User::name, "ototo")));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(rows.front().name);
+        assert(*rows.front().name == "ototo");
+    }
+    storage.update_all(set(assign(&User::name, nullptr)),
+                       where(is_equal(&User::id, 1)));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(!rows.front().name);
+    }
 }
 
 void testCompositeKeyColumnsNames() {

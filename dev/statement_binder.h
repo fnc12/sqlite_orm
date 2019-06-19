@@ -82,9 +82,9 @@ namespace sqlite_orm {
     /**
      *  Specialization for std::nullptr_t.
      */
-    template<class V>
-    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::nullptr_t>::value>> {
-        int bind(sqlite3_stmt *stmt, int index, const V &) {
+    template<>
+    struct statement_binder<std::nullptr_t, void> {
+        int bind(sqlite3_stmt *stmt, int index, const std::nullptr_t &) {
             return sqlite3_bind_null(stmt, index);
         }
     };
