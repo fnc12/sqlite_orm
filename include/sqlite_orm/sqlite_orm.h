@@ -2886,11 +2886,11 @@ namespace sqlite_orm {
          */
         template<class T>
         struct upper_t : public core_function_t {
-            T t;
+            using arg_type = T;
             
-            upper_t() = default;
+            arg_type arg;
             
-            upper_t(T t_): t(t_) {}
+            upper_t(arg_type arg_): arg(std::move(arg_)) {}
             
             operator std::string() const {
                 return "UPPER";
@@ -3235,9 +3235,9 @@ namespace sqlite_orm {
         return {t};
     }
     
-    template<class T, class Res = core_functions::upper_t<T>>
-    Res upper(T t) {
-        return Res(t);
+    template<class T>
+    core_functions::upper_t<T> upper(T t) {
+        return {t};
     }
     
     template<
@@ -6992,6 +6992,16 @@ namespace sqlite_orm {
                 iterate_ast(low.arg, l);
             }
         };
+        
+        template<class T>
+        struct ast_iterator<core_functions::upper_t<T>, void> {
+            using node_type = core_functions::upper_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &u, const L &l) const {
+                iterate_ast(u.arg, l);
+            }
+        };
     }
 }
 
@@ -7732,7 +7742,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const core_functions::upper_t<T> &a, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(a.t, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(a.arg, noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
                 return ss.str();
             }
@@ -8605,7 +8615,7 @@ namespace sqlite_orm {
             
             template<class T>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::upper_t<T> &a) {
-                return this->parse_table_name(a.t);
+                return this->parse_table_name(a.arg);
             }
             
             template<class T>

@@ -13,6 +13,15 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testUpper() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(upper("ototo"));
+    assert(!rows.empty());
+    assert(rows.front() == "OTOTO");
+}
+
 void testLower() {
     cout << __func__ << endl;
     
@@ -2845,4 +2854,6 @@ int main(int, char **) {
     testAbs();
     
     testLower();
+    
+    testUpper();
 }

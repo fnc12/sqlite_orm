@@ -727,7 +727,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const core_functions::upper_t<T> &a, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(a.t, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(a.arg, noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
                 return ss.str();
             }
@@ -1600,7 +1600,7 @@ namespace sqlite_orm {
             
             template<class T>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::upper_t<T> &a) {
-                return this->parse_table_name(a.t);
+                return this->parse_table_name(a.arg);
             }
             
             template<class T>

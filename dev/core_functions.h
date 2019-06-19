@@ -69,11 +69,11 @@ namespace sqlite_orm {
          */
         template<class T>
         struct upper_t : public core_function_t {
-            T t;
+            using arg_type = T;
             
-            upper_t() = default;
+            arg_type arg;
             
-            upper_t(T t_): t(t_) {}
+            upper_t(arg_type arg_): arg(std::move(arg_)) {}
             
             operator std::string() const {
                 return "UPPER";
@@ -418,9 +418,9 @@ namespace sqlite_orm {
         return {t};
     }
     
-    template<class T, class Res = core_functions::upper_t<T>>
-    Res upper(T t) {
-        return Res(t);
+    template<class T>
+    core_functions::upper_t<T> upper(T t) {
+        return {t};
     }
     
     template<
