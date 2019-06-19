@@ -1028,6 +1028,10 @@ namespace sqlite_orm {
             assign_t<T, R> operator=(R r) const {
                 return {this->t, std::move(r)};
             }
+            
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+                return {this->t, nullptr};
+            }
         };
         
     }
@@ -4001,9 +4005,9 @@ namespace sqlite_orm {
     /**
      *  Specialization for std::nullptr_t.
      */
-    template<class V>
-    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::nullptr_t>::value>> {
-        int bind(sqlite3_stmt *stmt, int index, const V &) {
+    template<>
+    struct statement_binder<std::nullptr_t, void> {
+        int bind(sqlite3_stmt *stmt, int index, const std::nullptr_t &) {
             return sqlite3_bind_null(stmt, index);
         }
     };
@@ -7263,6 +7267,14 @@ namespace sqlite_orm {
                 }
             }
             
+            std::string string_from_expression(std::nullptr_t, bool /*noTableName*/, bool /*escape*/, bool ignoreBindable = false) {
+                if(ignoreBindable){
+                    return "?";
+                }else{
+                    return "NULL";
+                }
+            }
+            
             template<class T>
             std::string string_from_expression(const alias_holder<T> &, bool /*noTableName*/, bool /*escape*/, bool /*ignoreBindable*/ = false) {
                 return T::get();
@@ -7275,12 +7287,12 @@ namespace sqlite_orm {
             }
             
             template<class T, class C>
-            std::string string_from_expression(const alias_column_t<T, C> &als, bool noTableName, bool escape, bool /*ignoreBindable*/ = false) {
+            std::string string_from_expression(const alias_column_t<T, C> &als, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << T::get() << "'.";
                 }
-                ss << this->string_from_expression(als.column, true, escape);
+                ss << this->string_from_expression(als.column, true, escape, ignoreBindable);
                 return ss.str();
             }
             
@@ -9259,7 +9271,7 @@ namespace sqlite_orm {
                 columnNames.reserve(colsCount);
                 using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&columnNames, this](auto &m){
-                    auto columnName = this->string_from_expression(m, true, false);
+                    auto columnName = this->string_from_expression(m, true, false, true);
                     if(!columnName.empty()){
                         columnNames.push_back(columnName);
                     }else{
