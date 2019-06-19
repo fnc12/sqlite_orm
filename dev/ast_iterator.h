@@ -259,5 +259,15 @@ namespace sqlite_orm {
                 iterate_ast(a.arg, l);
             }
         };
+        
+        template<class T>
+        struct ast_iterator<core_functions::lower_t<T>, void> {
+            using node_type = core_functions::lower_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &low, const L &l) const {
+                iterate_ast(low.arg, l);
+            }
+        };
     }
 }

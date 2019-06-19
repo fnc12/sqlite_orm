@@ -13,6 +13,15 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testLower() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(lower("OTOTO"));
+    assert(!rows.empty());
+    assert(rows.front() == "ototo");
+}
+
 void testLength() {
     cout << __func__ << endl;
     
@@ -2834,4 +2843,6 @@ int main(int, char **) {
     testLength();
     
     testAbs();
+    
+    testLower();
 }

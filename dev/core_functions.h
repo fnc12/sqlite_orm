@@ -53,11 +53,11 @@ namespace sqlite_orm {
          */
         template<class T>
         struct lower_t : public core_function_t {
-            T t;
+            using arg_type = T;
             
-            lower_t() = default;
+            arg_type arg;
             
-            lower_t(T t_): t(t_) {}
+            lower_t(arg_type arg_): arg(std::move(arg_)) {}
             
             operator std::string() const {
                 return "LOWER";
@@ -413,9 +413,9 @@ namespace sqlite_orm {
         return {t};
     }
     
-    template<class T, class Res = core_functions::lower_t<T>>
-    Res lower(T t) {
-        return Res(t);
+    template<class T>
+    core_functions::lower_t<T> lower(T t) {
+        return {t};
     }
     
     template<class T, class Res = core_functions::upper_t<T>>

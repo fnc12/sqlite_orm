@@ -2870,11 +2870,11 @@ namespace sqlite_orm {
          */
         template<class T>
         struct lower_t : public core_function_t {
-            T t;
+            using arg_type = T;
             
-            lower_t() = default;
+            arg_type arg;
             
-            lower_t(T t_): t(t_) {}
+            lower_t(arg_type arg_): arg(std::move(arg_)) {}
             
             operator std::string() const {
                 return "LOWER";
@@ -3230,9 +3230,9 @@ namespace sqlite_orm {
         return {t};
     }
     
-    template<class T, class Res = core_functions::lower_t<T>>
-    Res lower(T t) {
-        return Res(t);
+    template<class T>
+    core_functions::lower_t<T> lower(T t) {
+        return {t};
     }
     
     template<class T, class Res = core_functions::upper_t<T>>
@@ -6982,6 +6982,16 @@ namespace sqlite_orm {
                 iterate_ast(a.arg, l);
             }
         };
+        
+        template<class T>
+        struct ast_iterator<core_functions::lower_t<T>, void> {
+            using node_type = core_functions::lower_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &low, const L &l) const {
+                iterate_ast(low.arg, l);
+            }
+        };
     }
 }
 
@@ -7730,7 +7740,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const core_functions::lower_t<T> &a, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(a.t, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(a.arg, noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
                 return ss.str();
             }
@@ -8600,7 +8610,7 @@ namespace sqlite_orm {
             
             template<class T>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::lower_t<T> &a) {
-                return this->parse_table_name(a.t);
+                return this->parse_table_name(a.arg);
             }
             
             template<class T>
