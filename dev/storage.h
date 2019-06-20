@@ -85,6 +85,7 @@ namespace sqlite_orm {
             }
             
             storage_t(const storage_t &other):
+            on_open(other.on_open),
             filename(other.filename),
             impl(other.impl),
             currentTransaction(other.currentTransaction),
@@ -1261,7 +1262,6 @@ namespace sqlite_orm {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
                     auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
-                    constexpr const auto idsCount = std::tuple_size<decltype(idsTuple)>::value;
                     iterate_tuple(idsTuple, [stmt, &index](auto &v){
                         using field_type = typename std::decay<decltype(v)>::type;
                         statement_binder<field_type>().bind(stmt, index++, v);
