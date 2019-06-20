@@ -56,7 +56,9 @@ namespace sqlite_orm {
                     iterate_ast(this->args, [&index, stmt](auto &node){
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                        binder(node);
+                        if(SQLITE_OK != binder(node)){
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                        }
                     });
                     return {stmt, *this};
                 }else{
