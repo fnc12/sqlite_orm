@@ -13,6 +13,24 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testStorageCopy() {
+    cout << __func__ << endl;
+    int calledCount = 0;
+    
+    auto storage = make_storage({});
+    storage.on_open = [&calledCount](sqlite3 *){
+        ++calledCount;
+    };
+    storage.on_open(nullptr);
+    assert(calledCount == 1);
+    
+    auto storageCopy = storage;
+    assert(storageCopy.on_open);
+    
+    storageCopy.on_open(nullptr);
+    assert(calledCount == 2);
+}
+
 void testSetNull() {
     cout << __func__ << endl;
     
@@ -2857,4 +2875,6 @@ int main(int, char **) {
     testCompositeKeyColumnsNames();
     
     testSetNull();
+    
+    testStorageCopy();
 }

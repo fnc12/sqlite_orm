@@ -85,6 +85,7 @@ namespace sqlite_orm {
             }
             
             storage_t(const storage_t &other):
+            on_open(other.on_open),
             filename(other.filename),
             impl(other.impl),
             currentTransaction(other.currentTransaction),
