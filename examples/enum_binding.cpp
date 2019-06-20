@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <memory>
+#include <cassert>
 
 using std::cout;
 using std::endl;
