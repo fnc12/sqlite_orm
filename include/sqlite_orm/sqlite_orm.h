@@ -2938,39 +2938,42 @@ namespace sqlite_orm {
             
             args_type args;
             
-            trim_double_t(X &&x, Y &&y): args(x, y) {}
+            trim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
         };
         
-        /**
-         *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
-         */
-        template<class X>
-        struct ltrim_single_t : public core_function_t {
-            X x;
-            
-            ltrim_single_t() = default;
-            
-            ltrim_single_t(X x_): x(x_) {}
-            
+        struct ltrim_string {
             operator std::string() const {
                 return "LTRIM";
             }
         };
         
         /**
+         *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
+         */
+        template<class X>
+        struct ltrim_single_t : public core_function_t, ltrim_string {
+            using arg_type = X;
+            
+            arg_type arg;
+            
+            ltrim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
+        };
+        
+        /**
          *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X, class Y>
-        struct ltrim_double_t : public core_function_t {
-            X x;
-            Y y;
+        struct ltrim_double_t : public core_function_t, ltrim_string {
+            using args_type = std::tuple<X, Y>;
             
-            ltrim_double_t() = default;
+            args_type args;
             
-            ltrim_double_t(X x_, Y y_): x(x_), y(y_) {}
-            
+            ltrim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
+        };
+        
+        struct rtrim_string {
             operator std::string() const {
-                return static_cast<std::string>(ltrim_single_t<X>(0));
+                return "RTRIM";
             }
         };
         
@@ -2978,33 +2981,25 @@ namespace sqlite_orm {
          *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X>
-        struct rtrim_single_t : public core_function_t {
-            X x;
+        struct rtrim_single_t : public core_function_t, rtrim_string {
+            using arg_type = X;
             
-            rtrim_single_t() = default;
+            arg_type arg;
             
-            rtrim_single_t(X x_): x(x_) {}
-            
-            operator std::string() const {
-                return "RTRIM";
-            }
+            rtrim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
         };
         
         /**
          *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X, class Y>
-        struct rtrim_double_t : public core_function_t {
+        struct rtrim_double_t : public core_function_t, rtrim_string {
             X x;
             Y y;
             
             rtrim_double_t() = default;
             
             rtrim_double_t(X x_, Y y_): x(x_), y(y_) {}
-            
-            operator std::string() const {
-                return static_cast<std::string>(rtrim_single_t<X>(0));
-            }
         };
         
         
@@ -3197,19 +3192,19 @@ namespace sqlite_orm {
         return {std::move(x), std::move(y)};
     }
     
-    template<class X, class Res = core_functions::ltrim_single_t<X>>
-    Res ltrim(X x) {
-        return Res(x);
+    template<class X>
+    core_functions::ltrim_single_t<X> ltrim(X &&x) {
+        return {std::move(x)};
     }
     
-    template<class X, class Y, class Res = core_functions::ltrim_double_t<X, Y>>
-    Res ltrim(X x, Y y) {
-        return Res(x, y);
+    template<class X, class Y>
+    core_functions::ltrim_double_t<X, Y> ltrim(X &&x, Y &&y) {
+        return {std::move(x), std::move(y)};
     }
     
-    template<class X, class Res = core_functions::rtrim_single_t<X>>
-    Res rtrim(X x) {
-        return Res(x);
+    template<class X>
+    core_functions::rtrim_single_t<X> rtrim(X &&x) {
+        return {std::move(x)};
     }
     
     template<class X, class Y, class Res = core_functions::rtrim_double_t<X, Y>>
@@ -5317,7 +5312,7 @@ namespace sqlite_orm {
             template<class F, class C>
             const F* get_object_field_pointer(const object_type &obj, C c) {
                 const F *res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &c, &obj, this](auto &col){
+                this->for_each_column_with_field_type<F>([&res, &c, &obj](auto &col){
                     using namespace static_magic;
                     using column_type = typename std::remove_reference<decltype(col)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
@@ -6807,7 +6802,6 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &cols, const L &l) const {
-                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&l](auto &col){
                     iterate_ast(col, l);
                 });
@@ -7023,6 +7017,38 @@ namespace sqlite_orm {
                 iterate_tuple(f.args, [&l](auto &v){
                     iterate_ast(v, l);
                 });
+            }
+        };
+        
+        template<class X>
+        struct ast_iterator<core_functions::ltrim_single_t<X>, void> {
+            using node_type = core_functions::ltrim_single_t<X>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_ast(f.arg, l);
+            }
+        };
+        
+        template<class X, class Y>
+        struct ast_iterator<core_functions::ltrim_double_t<X, Y>, void> {
+            using node_type = core_functions::ltrim_double_t<X, Y>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+        template<class X>
+        struct ast_iterator<core_functions::rtrim_single_t<X>, void> {
+            using node_type = core_functions::rtrim_single_t<X>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_ast(f.arg, l);
             }
         };
     }
@@ -7651,7 +7677,7 @@ namespace sqlite_orm {
             template<class X>
             std::string string_from_expression(const core_functions::rtrim_single_t<X> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.x, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(f.arg, noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
                 return ss.str();
             }
@@ -7659,8 +7685,8 @@ namespace sqlite_orm {
             template<class X, class Y>
             std::string string_from_expression(const core_functions::ltrim_double_t<X, Y> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.x, noTableName, escape, ignoreBindable);
-                auto expr2 = this->string_from_expression(f.y, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(std::get<0>(f.args), noTableName, escape, ignoreBindable);
+                auto expr2 = this->string_from_expression(std::get<1>(f.args), noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ") ";
                 return ss.str();
             }
@@ -7668,7 +7694,7 @@ namespace sqlite_orm {
             template<class X>
             std::string string_from_expression(const core_functions::ltrim_single_t<X> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.x, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(f.arg, noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
                 return ss.str();
             }
@@ -7708,7 +7734,6 @@ namespace sqlite_orm {
             std::string string_from_expression(const core_functions::datetime_t<T, Args...> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring, noTableName, escape, ignoreBindable);
-                using tuple_t = std::tuple<Args...>;
                 iterate_tuple(f.modifiers, [&ss, this, noTableName, escape, ignoreBindable](auto &v){
                     ss << ", " << this->string_from_expression(v, noTableName, escape, ignoreBindable);
                 });
@@ -7720,7 +7745,6 @@ namespace sqlite_orm {
             std::string string_from_expression(const core_functions::date_t<T, Args...> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring, noTableName, escape, ignoreBindable);
-                using tuple_t = std::tuple<Args...>;
                 iterate_tuple(f.modifiers, [&ss, this, noTableName, escape, ignoreBindable](auto &v){
                     ss << ", " << this->string_from_expression(v, noTableName, escape, ignoreBindable);
                 });
@@ -7732,7 +7756,6 @@ namespace sqlite_orm {
             std::string string_from_expression(const core_functions::julianday_t<T, Args...> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring, noTableName, escape, ignoreBindable);
-                using tuple_t = std::tuple<Args...>;
                 iterate_tuple(f.modifiers, [&ss, this, noTableName, escape, ignoreBindable](auto &v){
                     ss << ", " << this->string_from_expression(v, noTableName, escape, ignoreBindable);
                 });
@@ -8620,7 +8643,7 @@ namespace sqlite_orm {
             
             template<class X>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::rtrim_single_t<X> &f) {
-                return this->parse_table_name(f.x);
+                return this->parse_table_name(f.arg);
             }
             
             template<class X, class Y>
@@ -8633,13 +8656,13 @@ namespace sqlite_orm {
             
             template<class X>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::ltrim_single_t<X> &f) {
-                return this->parse_table_name(f.x);
+                return this->parse_table_name(f.arg);
             }
             
             template<class X, class Y>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::ltrim_double_t<X, Y> &f) {
-                auto res = this->parse_table_name(f.x);
-                auto res2 = this->parse_table_name(f.y);
+                auto res = this->parse_table_name(std::get<0>(f.args));
+                auto res2 = this->parse_table_name(std::get<1>(f.args));
                 res.insert(res2.begin(), res2.end());
                 return res;
             }

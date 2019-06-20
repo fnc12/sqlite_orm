@@ -13,6 +13,33 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testRtrim() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(rtrim("ototo   "));
+    assert(rows.size() == 1);
+    assert(rows.front() == "ototo");
+}
+
+void testLtrimDouble() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(ltrim("  ototo", " "));
+    assert(rows.size() == 1);
+    assert(rows.front() == "ototo");
+}
+
+void testLtrim() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(ltrim("  ototo"));
+    assert(rows.size() == 1);
+    assert(rows.front() == "ototo");
+}
+
 void testTrimDouble() {
     cout << __func__ << endl;
     
@@ -2944,4 +2971,10 @@ int main(int, char **) {
     testStorageCopy();
     
     testTrimDouble();
+    
+    testLtrim();
+    
+    testLtrimDouble();
+    
+    testRtrim();
 }

@@ -83,7 +83,6 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &cols, const L &l) const {
-                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&l](auto &col){
                     iterate_ast(col, l);
                 });
@@ -299,6 +298,38 @@ namespace sqlite_orm {
                 iterate_tuple(f.args, [&l](auto &v){
                     iterate_ast(v, l);
                 });
+            }
+        };
+        
+        template<class X>
+        struct ast_iterator<core_functions::ltrim_single_t<X>, void> {
+            using node_type = core_functions::ltrim_single_t<X>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_ast(f.arg, l);
+            }
+        };
+        
+        template<class X, class Y>
+        struct ast_iterator<core_functions::ltrim_double_t<X, Y>, void> {
+            using node_type = core_functions::ltrim_double_t<X, Y>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+        template<class X>
+        struct ast_iterator<core_functions::rtrim_single_t<X>, void> {
+            using node_type = core_functions::rtrim_single_t<X>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_ast(f.arg, l);
             }
         };
     }

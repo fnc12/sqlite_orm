@@ -117,39 +117,42 @@ namespace sqlite_orm {
             
             args_type args;
             
-            trim_double_t(X &&x, Y &&y): args(x, y) {}
+            trim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
         };
         
-        /**
-         *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
-         */
-        template<class X>
-        struct ltrim_single_t : public core_function_t {
-            X x;
-            
-            ltrim_single_t() = default;
-            
-            ltrim_single_t(X x_): x(x_) {}
-            
+        struct ltrim_string {
             operator std::string() const {
                 return "LTRIM";
             }
         };
         
         /**
+         *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
+         */
+        template<class X>
+        struct ltrim_single_t : public core_function_t, ltrim_string {
+            using arg_type = X;
+            
+            arg_type arg;
+            
+            ltrim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
+        };
+        
+        /**
          *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X, class Y>
-        struct ltrim_double_t : public core_function_t {
-            X x;
-            Y y;
+        struct ltrim_double_t : public core_function_t, ltrim_string {
+            using args_type = std::tuple<X, Y>;
             
-            ltrim_double_t() = default;
+            args_type args;
             
-            ltrim_double_t(X x_, Y y_): x(x_), y(y_) {}
-            
+            ltrim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
+        };
+        
+        struct rtrim_string {
             operator std::string() const {
-                return static_cast<std::string>(ltrim_single_t<X>(0));
+                return "RTRIM";
             }
         };
         
@@ -157,33 +160,25 @@ namespace sqlite_orm {
          *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X>
-        struct rtrim_single_t : public core_function_t {
-            X x;
+        struct rtrim_single_t : public core_function_t, rtrim_string {
+            using arg_type = X;
             
-            rtrim_single_t() = default;
+            arg_type arg;
             
-            rtrim_single_t(X x_): x(x_) {}
-            
-            operator std::string() const {
-                return "RTRIM";
-            }
+            rtrim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
         };
         
         /**
          *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X, class Y>
-        struct rtrim_double_t : public core_function_t {
+        struct rtrim_double_t : public core_function_t, rtrim_string {
             X x;
             Y y;
             
             rtrim_double_t() = default;
             
             rtrim_double_t(X x_, Y y_): x(x_), y(y_) {}
-            
-            operator std::string() const {
-                return static_cast<std::string>(rtrim_single_t<X>(0));
-            }
         };
         
         
@@ -376,19 +371,19 @@ namespace sqlite_orm {
         return {std::move(x), std::move(y)};
     }
     
-    template<class X, class Res = core_functions::ltrim_single_t<X>>
-    Res ltrim(X x) {
-        return Res(x);
+    template<class X>
+    core_functions::ltrim_single_t<X> ltrim(X &&x) {
+        return {std::move(x)};
     }
     
-    template<class X, class Y, class Res = core_functions::ltrim_double_t<X, Y>>
-    Res ltrim(X x, Y y) {
-        return Res(x, y);
+    template<class X, class Y>
+    core_functions::ltrim_double_t<X, Y> ltrim(X &&x, Y &&y) {
+        return {std::move(x), std::move(y)};
     }
     
-    template<class X, class Res = core_functions::rtrim_single_t<X>>
-    Res rtrim(X x) {
-        return Res(x);
+    template<class X>
+    core_functions::rtrim_single_t<X> rtrim(X &&x) {
+        return {std::move(x)};
     }
     
     template<class X, class Y, class Res = core_functions::rtrim_double_t<X, Y>>
