@@ -13,12 +13,21 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testTrim() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(trim("   ototo   "));
+    assert(rows.size() == 1);
+    assert(rows.front() == "ototo");
+}
+
 void testUpper() {
     cout << __func__ << endl;
     
     auto storage = make_storage({});
     auto rows = storage.select(upper("ototo"));
-    assert(!rows.empty());
+    assert(rows.size() == 1);
     assert(rows.front() == "OTOTO");
 }
 
@@ -27,7 +36,7 @@ void testLower() {
     
     auto storage = make_storage({});
     auto rows = storage.select(lower("OTOTO"));
-    assert(!rows.empty());
+    assert(rows.size() == 1);
     assert(rows.front() == "ototo");
 }
 
@@ -36,7 +45,7 @@ void testLength() {
     
     auto storage = make_storage({});
     auto rows = storage.select(length("ototo"));
-    assert(!rows.empty());
+    assert(rows.size() == 1);
     assert(rows.front() == 5);
 }
 
@@ -45,9 +54,53 @@ void testAbs() {
     
     auto storage = make_storage({});
     auto rows = storage.select(sqlite_orm::abs(-10));
-    assert(!rows.empty());
+    assert(rows.size() == 1);
     assert(rows.front());
     assert(*rows.front() == 10);
+}
+
+void testSetNull() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{1, std::make_unique<std::string>("Ototo")});
+    assert(storage.count<User>() == 1);
+    
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(rows.front().name);
+    }
+    storage.update_all(set(assign(&User::name, nullptr)));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(!rows.front().name);
+    }
+    storage.update_all(set(assign(&User::name, "ototo")));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(rows.front().name);
+        assert(*rows.front().name == "ototo");
+    }
+    storage.update_all(set(assign(&User::name, nullptr)),
+                       where(is_equal(&User::id, 1)));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(!rows.front().name);
+    }
 }
 
 void testCompositeKeyColumnsNames() {
@@ -2856,4 +2909,8 @@ int main(int, char **) {
     testLower();
     
     testUpper();
+    
+    testSetNull();
+    
+    testTrim();
 }

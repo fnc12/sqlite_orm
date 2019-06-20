@@ -1028,6 +1028,10 @@ namespace sqlite_orm {
             assign_t<T, R> operator=(R r) const {
                 return {this->t, std::move(r)};
             }
+            
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+                return {this->t, nullptr};
+            }
         };
         
     }
@@ -2910,13 +2914,13 @@ namespace sqlite_orm {
         /**
          *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
          */
-        template<class X>
+        template<class T>
         struct trim_single_t : public core_function_t {
-            X x;
+            using arg_type = T;
             
-            trim_single_t() = default;
+            arg_type arg;
             
-            trim_single_t(X x_): x(x_) {}
+            trim_single_t(arg_type arg_): arg(std::move(arg_)) {}
             
             operator std::string() const {
                 return "TRIM";
@@ -3186,9 +3190,9 @@ namespace sqlite_orm {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
     
-    template<class X, class Res = core_functions::trim_single_t<X>>
-    Res trim(X x) {
-        return Res(x);
+    template<class T>
+    core_functions::trim_single_t<T> trim(T &&t) {
+        return {std::move(t)};
     }
     
     template<class X, class Y, class Res = core_functions::trim_double_t<X, Y>>
@@ -3221,18 +3225,18 @@ namespace sqlite_orm {
     }
     
     template<class T>
-    core_functions::length_t<T> length(T t) {
-        return {t};
+    core_functions::length_t<T> length(T &&t) {
+        return {std::move(t)};
     }
     
     template<class T>
-    core_functions::abs_t<T> abs(T t) {
-        return {t};
+    core_functions::abs_t<T> abs(T &&t) {
+        return {std::move(t)};
     }
     
     template<class T>
-    core_functions::lower_t<T> lower(T t) {
-        return {t};
+    core_functions::lower_t<T> lower(T &&t) {
+        return {std::move(t)};
     }
     
     template<class T>
@@ -4019,9 +4023,9 @@ namespace sqlite_orm {
     /**
      *  Specialization for std::nullptr_t.
      */
-    template<class V>
-    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::nullptr_t>::value>> {
-        int bind(sqlite3_stmt *stmt, int index, const V &) {
+    template<>
+    struct statement_binder<std::nullptr_t, void> {
+        int bind(sqlite3_stmt *stmt, int index, const std::nullptr_t &) {
             return sqlite3_bind_null(stmt, index);
         }
     };
@@ -7002,6 +7006,16 @@ namespace sqlite_orm {
                 iterate_ast(u.arg, l);
             }
         };
+        
+        template<class T>
+        struct ast_iterator<core_functions::trim_single_t<T>, void> {
+            using node_type = core_functions::trim_single_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &t, const L &l) const {
+                iterate_ast(t.arg, l);
+            }
+        };
     }
 }
 
@@ -7338,6 +7352,14 @@ namespace sqlite_orm {
                 }
             }
             
+            std::string string_from_expression(std::nullptr_t, bool /*noTableName*/, bool /*escape*/, bool ignoreBindable = false) {
+                if(ignoreBindable){
+                    return "?";
+                }else{
+                    return "NULL";
+                }
+            }
+            
             template<class T>
             std::string string_from_expression(const alias_holder<T> &, bool /*noTableName*/, bool /*escape*/, bool /*ignoreBindable*/ = false) {
                 return T::get();
@@ -7370,12 +7392,12 @@ namespace sqlite_orm {
             }
             
             template<class T, class C>
-            std::string string_from_expression(const alias_column_t<T, C> &als, bool noTableName, bool escape, bool /*ignoreBindable*/ = false) {
+            std::string string_from_expression(const alias_column_t<T, C> &als, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << T::get() << "'.";
                 }
-                ss << this->string_from_expression(als.column, true, escape);
+                ss << this->string_from_expression(als.column, true, escape, ignoreBindable);
                 return ss.str();
             }
             
@@ -7651,7 +7673,7 @@ namespace sqlite_orm {
             template<class X>
             std::string string_from_expression(const core_functions::trim_single_t<X> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.x, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(f.arg, noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(f) << "(" << expr << ") ";
                 return ss.str();
             }
@@ -8557,7 +8579,7 @@ namespace sqlite_orm {
             
             template<class X>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::trim_single_t<X> &f) {
-                return this->parse_table_name(f.x);
+                return this->parse_table_name(f.arg);
             }
             
             template<class X, class Y>
@@ -9353,7 +9375,7 @@ namespace sqlite_orm {
                 columnNames.reserve(colsCount);
                 using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&columnNames, this](auto &m){
-                    auto columnName = this->string_from_expression(m, true, false);
+                    auto columnName = this->string_from_expression(m, true, false, true);
                     if(!columnName.empty()){
                         columnNames.push_back(columnName);
                     }else{
