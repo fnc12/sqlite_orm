@@ -139,8 +139,8 @@ namespace sqlite_orm {
             
             using conditional_binder_base::conditional_binder_base;
             
-            void operator()(const T &t) const {
-                statement_binder<T>().bind(this->stmt, this->index++, t);
+            int operator()(const T &t) const {
+                return statement_binder<T>().bind(this->stmt, this->index++, t);
             }
         };
         
@@ -148,8 +148,8 @@ namespace sqlite_orm {
         struct conditional_binder<T, std::false_type> : conditional_binder_base {
             using conditional_binder_base::conditional_binder_base;
             
-            void operator()(const T &t) const {
-                //..
+            int operator()(const T &) const {
+                return SQLITE_OK;
             }
         };
     }

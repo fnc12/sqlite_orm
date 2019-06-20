@@ -13,6 +13,15 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testTrimDouble() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(trim("   ototo   ", " "));
+    assert(rows.size() == 1);
+    assert(rows.front() == "ototo");
+}
+
 void testTrim() {
     cout << __func__ << endl;
     
@@ -57,6 +66,24 @@ void testAbs() {
     assert(rows.size() == 1);
     assert(rows.front());
     assert(*rows.front() == 10);
+}
+
+void testStorageCopy() {
+    cout << __func__ << endl;
+    int calledCount = 0;
+    
+    auto storage = make_storage({});
+    storage.on_open = [&calledCount](sqlite3 *){
+        ++calledCount;
+    };
+    storage.on_open(nullptr);
+    assert(calledCount == 1);
+    
+    auto storageCopy = storage;
+    assert(storageCopy.on_open);
+    
+    storageCopy.on_open(nullptr);
+    assert(calledCount == 2);
 }
 
 void testSetNull() {
@@ -2913,4 +2940,8 @@ int main(int, char **) {
     testSetNull();
     
     testTrim();
+
+    testStorageCopy();
+    
+    testTrimDouble();
 }
