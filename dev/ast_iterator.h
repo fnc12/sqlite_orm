@@ -357,7 +357,18 @@ namespace sqlite_orm {
                 });
             }
         };
-        
 #endif
+        
+        template<class ...Args>
+        struct ast_iterator<core_functions::date_t<Args...>, void> {
+            using node_type = core_functions::date_t<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
     }
 }

@@ -13,6 +13,16 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testDate() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(date("now", "start of month", "+1 month", "-1 day"));
+    assert(rows.size() == 1);
+    assert(!rows.front().empty());
+    
+}
+
 #if SQLITE_VERSION_NUMBER >= 3007016
 void testChar() {
     cout << __func__ << endl;
@@ -2981,4 +2991,6 @@ int main(int, char **) {
 #if SQLITE_VERSION_NUMBER >= 3007016
     testChar();
 #endif
+    
+    testDate();
 }

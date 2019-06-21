@@ -3032,34 +3032,37 @@ namespace sqlite_orm {
         
 #endif
         
+        struct coalesce_string {
+            operator std::string() const {
+                return "COALESCE";
+            }
+        };
+        
         template<class R, class ...Args>
-        struct coalesce_t : core_function_t {
+        struct coalesce_t : core_function_t, coalesce_string {
             using return_type = R;
             using args_type = std::tuple<Args...>;
             
             args_type args;
             
             coalesce_t(args_type args_) : args(std::move(args_)) {}
-            
-            operator std::string() const {
-                return "COALESCE";
-            }
         };
         
-        template<class T, class ...Args>
-        struct date_t : core_function_t {
-            using modifiers_type = std::tuple<Args...>;
-            
-            T timestring;
-            modifiers_type modifiers;
-            
-            date_t() = default;
-            
-            date_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
-            
+        struct date_string {
             operator std::string() const {
                 return "DATE";
             }
+        };
+        
+        template<class ...Args>
+        struct date_t : core_function_t, date_string {
+            using args_type = std::tuple<Args...>;
+            
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
+            args_type args;
+            
+            date_t(args_type &&args_): args(std::move(args_)) {}
         };
         
         template<class T, class ...Args>
@@ -3151,9 +3154,10 @@ namespace sqlite_orm {
         return {};
     }
     
-    template<class T, class ...Args, class Res = core_functions::date_t<T, Args...>>
-    Res date(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    template<class ...Args>
+    core_functions::date_t<Args...> date(Args &&...args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {std::move(t)};
     }
     
     template<class T, class ...Args, class Res = core_functions::datetime_t<T, Args...>>
@@ -7075,8 +7079,19 @@ namespace sqlite_orm {
                 });
             }
         };
-        
 #endif
+        
+        template<class ...Args>
+        struct ast_iterator<core_functions::date_t<Args...>, void> {
+            using node_type = core_functions::date_t<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
     }
 }
 
@@ -7767,13 +7782,21 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            template<class T, class ...Args>
-            std::string string_from_expression(const core_functions::date_t<T, Args...> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
+            template<class ...Args>
+            std::string string_from_expression(const core_functions::date_t<Args...> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring, noTableName, escape, ignoreBindable);
-                iterate_tuple(f.modifiers, [&ss, this, noTableName, escape, ignoreBindable](auto &v){
-                    ss << ", " << this->string_from_expression(v, noTableName, escape, ignoreBindable);
+                ss << static_cast<std::string>(f) << "(";
+                std::vector<std::string> argStrings;
+                argStrings.reserve(f.args_size);
+                iterate_tuple(f.args, [this, noTableName, escape, ignoreBindable, &argStrings](auto &v){
+                    argStrings.push_back(this->string_from_expression(v, noTableName, escape, ignoreBindable));
                 });
+                for(size_t i = 0; i < argStrings.size(); ++i){
+                    ss << argStrings[i];
+                    if(i < argStrings.size() - 1){
+                        ss << ", ";
+                    }
+                }
                 ss << ") ";
                 return ss.str();
             }
@@ -8634,9 +8657,8 @@ namespace sqlite_orm {
             
             template<class T, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::date_t<T, Args...> &f) {
-                auto res = this->parse_table_name(f.timestring);
-                using tuple_t = decltype(f.modifiers);
-                iterate_tuple(f.modifiers, [&res, this](auto &v){
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
                     auto tableNames = this->parse_table_name(v);
                     res.insert(tableNames.begin(), tableNames.end());
                 });

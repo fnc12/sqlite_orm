@@ -211,34 +211,37 @@ namespace sqlite_orm {
         
 #endif
         
+        struct coalesce_string {
+            operator std::string() const {
+                return "COALESCE";
+            }
+        };
+        
         template<class R, class ...Args>
-        struct coalesce_t : core_function_t {
+        struct coalesce_t : core_function_t, coalesce_string {
             using return_type = R;
             using args_type = std::tuple<Args...>;
             
             args_type args;
             
             coalesce_t(args_type args_) : args(std::move(args_)) {}
-            
-            operator std::string() const {
-                return "COALESCE";
-            }
         };
         
-        template<class T, class ...Args>
-        struct date_t : core_function_t {
-            using modifiers_type = std::tuple<Args...>;
-            
-            T timestring;
-            modifiers_type modifiers;
-            
-            date_t() = default;
-            
-            date_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
-            
+        struct date_string {
             operator std::string() const {
                 return "DATE";
             }
+        };
+        
+        template<class ...Args>
+        struct date_t : core_function_t, date_string {
+            using args_type = std::tuple<Args...>;
+            
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
+            args_type args;
+            
+            date_t(args_type &&args_): args(std::move(args_)) {}
         };
         
         template<class T, class ...Args>
@@ -330,9 +333,10 @@ namespace sqlite_orm {
         return {};
     }
     
-    template<class T, class ...Args, class Res = core_functions::date_t<T, Args...>>
-    Res date(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    template<class ...Args>
+    core_functions::date_t<Args...> date(Args &&...args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {std::move(t)};
     }
     
     template<class T, class ...Args, class Res = core_functions::datetime_t<T, Args...>>
