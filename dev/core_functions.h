@@ -173,12 +173,11 @@ namespace sqlite_orm {
          */
         template<class X, class Y>
         struct rtrim_double_t : public core_function_t, rtrim_string {
-            X x;
-            Y y;
+            using args_type = std::tuple<X, Y>;
             
-            rtrim_double_t() = default;
+            args_type args;
             
-            rtrim_double_t(X x_, Y y_): x(x_), y(y_) {}
+            rtrim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
         };
         
         
@@ -386,9 +385,9 @@ namespace sqlite_orm {
         return {std::move(x)};
     }
     
-    template<class X, class Y, class Res = core_functions::rtrim_double_t<X, Y>>
-    Res rtrim(X x, Y y) {
-        return Res(x, y);
+    template<class X, class Y>
+    core_functions::rtrim_double_t<X, Y> rtrim(X &&x, Y &&y) {
+        return {std::move(x), std::move(y)};
     }
     
     inline core_functions::changes_t changes() {

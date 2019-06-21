@@ -2994,12 +2994,11 @@ namespace sqlite_orm {
          */
         template<class X, class Y>
         struct rtrim_double_t : public core_function_t, rtrim_string {
-            X x;
-            Y y;
+            using args_type = std::tuple<X, Y>;
             
-            rtrim_double_t() = default;
+            args_type args;
             
-            rtrim_double_t(X x_, Y y_): x(x_), y(y_) {}
+            rtrim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
         };
         
         
@@ -3207,9 +3206,9 @@ namespace sqlite_orm {
         return {std::move(x)};
     }
     
-    template<class X, class Y, class Res = core_functions::rtrim_double_t<X, Y>>
-    Res rtrim(X x, Y y) {
-        return Res(x, y);
+    template<class X, class Y>
+    core_functions::rtrim_double_t<X, Y> rtrim(X &&x, Y &&y) {
+        return {std::move(x), std::move(y)};
     }
     
     inline core_functions::changes_t changes() {
@@ -7051,6 +7050,18 @@ namespace sqlite_orm {
                 iterate_ast(f.arg, l);
             }
         };
+        
+        template<class X, class Y>
+        struct ast_iterator<core_functions::rtrim_double_t<X, Y>, void> {
+            using node_type = core_functions::rtrim_double_t<X, Y>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
     }
 }
 
@@ -7668,8 +7679,8 @@ namespace sqlite_orm {
             template<class X, class Y>
             std::string string_from_expression(const core_functions::rtrim_double_t<X, Y> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.x, noTableName, escape, ignoreBindable);
-                auto expr2 = this->string_from_expression(f.y, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(std::get<0>(f.args), noTableName, escape, ignoreBindable);
+                auto expr2 = this->string_from_expression(std::get<1>(f.args), noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ") ";
                 return ss.str();
             }
@@ -8648,8 +8659,8 @@ namespace sqlite_orm {
             
             template<class X, class Y>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::rtrim_double_t<X, Y> &f) {
-                auto res = this->parse_table_name(f.x);
-                auto res2 = this->parse_table_name(f.y);
+                auto res = this->parse_table_name(std::get<0>(f.args));
+                auto res2 = this->parse_table_name(std::get<1>(f.args));
                 res.insert(res2.begin(), res2.end());
                 return res;
             }
@@ -9446,7 +9457,6 @@ namespace sqlite_orm {
                 ss << "INSERT INTO '" << impl.table.name << "' ";
                 std::vector<std::string> columnNames;
                 columnNames.reserve(colsCount);
-                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&columnNames, this](auto &m){
                     auto columnName = this->string_from_expression(m, true, false, true);
                     if(!columnName.empty()){

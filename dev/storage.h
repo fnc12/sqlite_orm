@@ -602,8 +602,8 @@ namespace sqlite_orm {
             template<class X, class Y>
             std::string string_from_expression(const core_functions::rtrim_double_t<X, Y> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.x, noTableName, escape, ignoreBindable);
-                auto expr2 = this->string_from_expression(f.y, noTableName, escape, ignoreBindable);
+                auto expr = this->string_from_expression(std::get<0>(f.args), noTableName, escape, ignoreBindable);
+                auto expr2 = this->string_from_expression(std::get<1>(f.args), noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ") ";
                 return ss.str();
             }
@@ -1582,8 +1582,8 @@ namespace sqlite_orm {
             
             template<class X, class Y>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::rtrim_double_t<X, Y> &f) {
-                auto res = this->parse_table_name(f.x);
-                auto res2 = this->parse_table_name(f.y);
+                auto res = this->parse_table_name(std::get<0>(f.args));
+                auto res2 = this->parse_table_name(std::get<1>(f.args));
                 res.insert(res2.begin(), res2.end());
                 return res;
             }
@@ -2380,7 +2380,6 @@ namespace sqlite_orm {
                 ss << "INSERT INTO '" << impl.table.name << "' ";
                 std::vector<std::string> columnNames;
                 columnNames.reserve(colsCount);
-                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&columnNames, this](auto &m){
                     auto columnName = this->string_from_expression(m, true, false, true);
                     if(!columnName.empty()){
