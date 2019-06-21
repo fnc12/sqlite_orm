@@ -667,10 +667,18 @@ namespace sqlite_orm {
             template<class T, class ...Args>
             std::string string_from_expression(const core_functions::datetime_t<T, Args...> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << static_cast<std::string>(f) << "(" << this->string_from_expression(f.timestring, noTableName, escape, ignoreBindable);
-                iterate_tuple(f.modifiers, [&ss, this, noTableName, escape, ignoreBindable](auto &v){
-                    ss << ", " << this->string_from_expression(v, noTableName, escape, ignoreBindable);
+                ss << static_cast<std::string>(f) << "(";
+                std::vector<std::string> argStrings;
+                argStrings.reserve(f.args_size);
+                iterate_tuple(f.args, [this, noTableName, escape, ignoreBindable, &argStrings](auto &v){
+                    argStrings.push_back(this->string_from_expression(v, noTableName, escape, ignoreBindable));
                 });
+                for(size_t i = 0; i < argStrings.size(); ++i){
+                    ss << argStrings[i];
+                    if(i < argStrings.size() - 1){
+                        ss << ", ";
+                    }
+                }
                 ss << ") ";
                 return ss.str();
             }
@@ -1140,7 +1148,6 @@ namespace sqlite_orm {
             
             template<class ...Args>
             void process_conditions(std::stringstream &ss, const std::tuple<Args...> &args) {
-                using argsType = typename std::decay<decltype(args)>::type;
                 iterate_tuple(args, [this, &ss](auto &v){
                     this->process_single_condition(ss, v);
                 });
@@ -1560,9 +1567,8 @@ namespace sqlite_orm {
             
             template<class T, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::datetime_t<T, Args...> &f) {
-                auto res = this->parse_table_name(f.timestring);
-                using tuple_t = decltype(f.modifiers);
-                iterate_tuple(f.modifiers, [&res, this](auto &v){
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
                     auto tableNames = this->parse_table_name(v);
                     res.insert(tableNames.begin(), tableNames.end());
                 });

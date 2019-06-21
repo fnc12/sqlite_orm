@@ -13,6 +13,15 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testDatetime() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(datetime("now"));
+    assert(rows.size() == 1);
+    assert(!rows.front().empty());
+}
+
 void testDate() {
     cout << __func__ << endl;
     
@@ -2993,4 +3002,6 @@ int main(int, char **) {
 #endif
     
     testDate();
+    
+    testDatetime();
 }

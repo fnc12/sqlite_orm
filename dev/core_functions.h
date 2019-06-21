@@ -244,20 +244,21 @@ namespace sqlite_orm {
             date_t(args_type &&args_): args(std::move(args_)) {}
         };
         
-        template<class T, class ...Args>
-        struct datetime_t : core_function_t {
-            using modifiers_type = std::tuple<Args...>;
-            
-            T timestring;
-            modifiers_type modifiers;
-            
-            datetime_t() = default;
-            
-            datetime_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
-            
+        struct datetime_string {
             operator std::string() const {
                 return "DATETIME";
             }
+        };
+        
+        template<class ...Args>
+        struct datetime_t : core_function_t, datetime_string {
+            using args_type = std::tuple<Args...>;
+            
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
+            args_type args;
+            
+            datetime_t(args_type &&args_): args(std::move(args_)) {}
         };
         
         template<class T, class ...Args>
@@ -339,9 +340,10 @@ namespace sqlite_orm {
         return {std::move(t)};
     }
     
-    template<class T, class ...Args, class Res = core_functions::datetime_t<T, Args...>>
-    Res datetime(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    template<class ...Args>
+    core_functions::datetime_t<Args...> datetime(Args &&...args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {std::move(t)};
     }
     
     template<class T, class ...Args, class Res = core_functions::julianday_t<T, Args...>>
