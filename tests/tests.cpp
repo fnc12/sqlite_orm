@@ -13,6 +13,17 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+#if SQLITE_VERSION_NUMBER >= 3007016
+void testChar() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(char_(67,72,65,82));
+    assert(rows.size() == 1);
+    assert(rows.front() == "CHAR");
+}
+#endif
+
 void testRtrim() {
     cout << __func__ << endl;
     
@@ -2967,4 +2978,7 @@ int main(int, char **) {
     testLtrim();
     
     testRtrim();
+#if SQLITE_VERSION_NUMBER >= 3007016
+    testChar();
+#endif
 }

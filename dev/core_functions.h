@@ -184,22 +184,22 @@ namespace sqlite_orm {
         
 #if SQLITE_VERSION_NUMBER >= 3007016
         
+        struct char_string {
+            operator std::string() const {
+                return "CHAR";
+            }
+        };
+        
         /**
          *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
          */
         template<class ...Args>
-        struct char_t_ : public core_function_t {
+        struct char_t_ : public core_function_t, char_string {
             using args_type = std::tuple<Args...>;
             
             args_type args;
             
-            char_t_() = default;
-            
-            char_t_(args_type args_): args(args_) {}
-            
-            operator std::string() const {
-                return "CHAR";
-            }
+            char_t_(args_type &&args_): args(std::move(args_)) {}
         };
         
         struct random_t : core_function_t, internal::arithmetic_t {

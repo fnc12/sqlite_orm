@@ -344,5 +344,20 @@ namespace sqlite_orm {
                 });
             }
         };
+        
+#if SQLITE_VERSION_NUMBER >= 3007016
+        template<class ...Args>
+        struct ast_iterator<core_functions::char_t_<Args...>, void> {
+            using node_type = core_functions::char_t_<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+#endif
     }
 }

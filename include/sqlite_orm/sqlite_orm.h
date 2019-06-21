@@ -3005,22 +3005,22 @@ namespace sqlite_orm {
         
 #if SQLITE_VERSION_NUMBER >= 3007016
         
+        struct char_string {
+            operator std::string() const {
+                return "CHAR";
+            }
+        };
+        
         /**
          *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
          */
         template<class ...Args>
-        struct char_t_ : public core_function_t {
+        struct char_t_ : public core_function_t, char_string {
             using args_type = std::tuple<Args...>;
             
             args_type args;
             
-            char_t_() = default;
-            
-            char_t_(args_type args_): args(args_) {}
-            
-            operator std::string() const {
-                return "CHAR";
-            }
+            char_t_(args_type &&args_): args(std::move(args_)) {}
         };
         
         struct random_t : core_function_t, internal::arithmetic_t {
@@ -7062,6 +7062,21 @@ namespace sqlite_orm {
                 });
             }
         };
+        
+#if SQLITE_VERSION_NUMBER >= 3007016
+        template<class ...Args>
+        struct ast_iterator<core_functions::char_t_<Args...>, void> {
+            using node_type = core_functions::char_t_<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+#endif
     }
 }
 
@@ -8835,7 +8850,6 @@ namespace sqlite_orm {
             template<class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_names(const internal::columns_t<Args...> &cols) {
                 std::set<std::pair<std::string, std::string>> res;
-                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&res, this](auto &m){
                     auto tableName = this->parse_table_name(m);
                     res.insert(tableName.begin(), tableName.end());
