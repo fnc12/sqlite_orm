@@ -13,7 +13,7 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
-void testLeftJoin() {
+void testJoin() {
     cout << __func__ << endl;
     
     struct User {
@@ -54,8 +54,14 @@ void testLeftJoin() {
     storage.replace(Visit{id++, smith.id, 25});
     storage.replace(Visit{id++, smith.id, 35});
     
-    auto rows = storage.get_all<User>(left_join<Visit>(on(is_equal(&Visit::userId, 2))));
-    assert(rows.size() == 6);
+    {
+        auto rows = storage.get_all<User>(left_join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+    {
+        auto rows = storage.get_all<User>(join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
 }
 
 void testJulianday() {
@@ -3082,5 +3088,5 @@ int main(int, char **) {
     
     testJulianday();
     
-    testLeftJoin();
+    testJoin();
 }

@@ -567,21 +567,25 @@ namespace sqlite_orm {
             left_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
         
+        struct join_string {
+            operator std::string() const {
+                return "JOIN";
+            }
+        };
+        
         /**
          *  Simple JOIN holder.
          *  T is joined type which represents any mapped table.
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct join_t {
+        struct join_t : join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
-            operator std::string() const {
-                return "JOIN";
-            }
+            join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
         
         /**
