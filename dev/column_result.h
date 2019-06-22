@@ -49,6 +49,11 @@ namespace sqlite_orm {
             using type = typename setter_traits<T>::field_type;
         };
         
+        template<class St, class R, class ...Args>
+        struct column_result_t<St, core_functions::coalesce_t<R, Args...>, void> {
+            using type = R;
+        };
+        
         template<class St, class T>
         struct column_result_t<St, core_functions::length_t<T>, void> {
             using type = int;

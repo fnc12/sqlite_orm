@@ -59,7 +59,7 @@ namespace sqlite_orm {
             template<class F, class C>
             const F* get_object_field_pointer(const object_type &obj, C c) {
                 const F *res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &c, &obj, this](auto &col){
+                this->for_each_column_with_field_type<F>([&res, &c, &obj](auto &col){
                     using namespace static_magic;
                     using column_type = typename std::remove_reference<decltype(col)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;

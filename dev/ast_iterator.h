@@ -6,6 +6,7 @@
 #include "select_constraints.h"
 #include "operators.h"
 #include "tuple_helper.h"
+#include "core_functions.h"
 
 namespace sqlite_orm {
     
@@ -82,7 +83,6 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &cols, const L &l) const {
-                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&l](auto &col){
                     iterate_ast(col, l);
                 });
@@ -226,6 +226,172 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &neg, const L &l) const {
                 iterate_ast(neg.c, l);
+            }
+        };
+        
+        template<class R, class ...Args>
+        struct ast_iterator<core_functions::coalesce_t<R, Args...>, void> {
+            using node_type = core_functions::coalesce_t<R, Args...>;
+            
+            template<class L>
+            void operator()(const node_type &c, const L &l) const {
+                iterate_ast(c.args, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<core_functions::length_t<T>, void> {
+            using node_type = core_functions::length_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &length, const L &l) const {
+                iterate_ast(length.arg, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<core_functions::abs_t<T>, void> {
+            using node_type = core_functions::abs_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.arg, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<core_functions::lower_t<T>, void> {
+            using node_type = core_functions::lower_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &low, const L &l) const {
+                iterate_ast(low.arg, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<core_functions::upper_t<T>, void> {
+            using node_type = core_functions::upper_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &u, const L &l) const {
+                iterate_ast(u.arg, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<core_functions::trim_single_t<T>, void> {
+            using node_type = core_functions::trim_single_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &t, const L &l) const {
+                iterate_ast(t.arg, l);
+            }
+        };
+        
+        template<class X, class Y>
+        struct ast_iterator<core_functions::trim_double_t<X, Y>, void> {
+            using node_type = core_functions::trim_double_t<X, Y>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+        template<class X>
+        struct ast_iterator<core_functions::ltrim_single_t<X>, void> {
+            using node_type = core_functions::ltrim_single_t<X>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_ast(f.arg, l);
+            }
+        };
+        
+        template<class X, class Y>
+        struct ast_iterator<core_functions::ltrim_double_t<X, Y>, void> {
+            using node_type = core_functions::ltrim_double_t<X, Y>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+        template<class X>
+        struct ast_iterator<core_functions::rtrim_single_t<X>, void> {
+            using node_type = core_functions::rtrim_single_t<X>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_ast(f.arg, l);
+            }
+        };
+        
+        template<class X, class Y>
+        struct ast_iterator<core_functions::rtrim_double_t<X, Y>, void> {
+            using node_type = core_functions::rtrim_double_t<X, Y>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+#if SQLITE_VERSION_NUMBER >= 3007016
+        template<class ...Args>
+        struct ast_iterator<core_functions::char_t_<Args...>, void> {
+            using node_type = core_functions::char_t_<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+#endif
+        
+        template<class ...Args>
+        struct ast_iterator<core_functions::date_t<Args...>, void> {
+            using node_type = core_functions::date_t<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+        template<class ...Args>
+        struct ast_iterator<core_functions::datetime_t<Args...>, void> {
+            using node_type = core_functions::datetime_t<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+        template<class ...Args>
+        struct ast_iterator<core_functions::julianday_t<Args...>, void> {
+            using node_type = core_functions::julianday_t<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
             }
         };
     }

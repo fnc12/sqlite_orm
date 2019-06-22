@@ -16,19 +16,27 @@ namespace sqlite_orm {
          */
         struct core_function_t {};
         
+        struct length_string {
+            operator std::string() const {
+                return "LENGTH";
+            }
+        };
+        
         /**
          *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
          */
         template<class T>
-        struct length_t : public core_function_t {
-            T t;
+        struct length_t : core_function_t, length_string {
+            using arg_type = T;
             
-            length_t() = default;
+            arg_type arg;
             
-            length_t(T t_): t(t_) {}
-            
+            length_t(arg_type &&arg_) : arg(std::move(arg_)) {}
+        };
+        
+        struct abs_string {
             operator std::string() const {
-                return "LENGTH";
+                return "ABS";
             }
         };
         
@@ -36,15 +44,17 @@ namespace sqlite_orm {
          *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
          */
         template<class T>
-        struct abs_t : public core_function_t {
-            T t;
+        struct abs_t : core_function_t, abs_string {
+            using arg_type = T;
             
-            abs_t() = default;
+            arg_type arg;
             
-            abs_t(T t_): t(t_) {}
-            
+            abs_t(arg_type &&arg_): arg(std::move(arg_)) {}
+        };
+        
+        struct lower_string {
             operator std::string() const {
-                return "ABS";
+                return "LOWER";
             }
         };
         
@@ -52,15 +62,17 @@ namespace sqlite_orm {
          *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
          */
         template<class T>
-        struct lower_t : public core_function_t {
-            T t;
+        struct lower_t : core_function_t, lower_string {
+            using arg_type = T;
             
-            lower_t() = default;
+            arg_type arg;
             
-            lower_t(T t_): t(t_) {}
-            
+            lower_t(arg_type &&arg_): arg(std::move(arg_)) {}
+        };
+        
+        struct upper_string {
             operator std::string() const {
-                return "LOWER";
+                return "UPPER";
             }
         };
         
@@ -68,16 +80,12 @@ namespace sqlite_orm {
          *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
          */
         template<class T>
-        struct upper_t : public core_function_t {
-            T t;
+        struct upper_t : core_function_t, upper_string {
+            using arg_type = T;
             
-            upper_t() = default;
+            arg_type arg;
             
-            upper_t(T t_): t(t_) {}
-            
-            operator std::string() const {
-                return "UPPER";
-            }
+            upper_t(arg_type &&arg_): arg(std::move(arg_)) {}
         };
         
         /**
@@ -90,36 +98,39 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
-         */
-        template<class X>
-        struct trim_single_t : public core_function_t {
-            X x;
-            
-            trim_single_t() = default;
-            
-            trim_single_t(X x_): x(x_) {}
-            
+        struct trim_string {
             operator std::string() const {
                 return "TRIM";
             }
         };
         
         /**
+         *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
+         */
+        template<class T>
+        struct trim_single_t : core_function_t, trim_string {
+            using arg_type = T;
+            
+            arg_type arg;
+            
+            trim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
+        };
+        
+        /**
          *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
          */
         template<class X, class Y>
-        struct trim_double_t : public core_function_t {
-            X x;
-            Y y;
+        struct trim_double_t : core_function_t, trim_string {
+            using args_type = std::tuple<X, Y>;
             
-            trim_double_t() = default;
+            args_type args;
             
-            trim_double_t(X x_, Y y_): x(x_), y(y_) {}
-            
+            trim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
+        };
+        
+        struct ltrim_string {
             operator std::string() const {
-                return static_cast<std::string>(trim_single_t<X>(0));
+                return "LTRIM";
             }
         };
         
@@ -127,32 +138,29 @@ namespace sqlite_orm {
          *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X>
-        struct ltrim_single_t : public core_function_t {
-            X x;
+        struct ltrim_single_t : core_function_t, ltrim_string {
+            using arg_type = X;
             
-            ltrim_single_t() = default;
+            arg_type arg;
             
-            ltrim_single_t(X x_): x(x_) {}
-            
-            operator std::string() const {
-                return "LTRIM";
-            }
+            ltrim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
         };
         
         /**
          *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X, class Y>
-        struct ltrim_double_t : public core_function_t {
-            X x;
-            Y y;
+        struct ltrim_double_t : core_function_t, ltrim_string {
+            using args_type = std::tuple<X, Y>;
             
-            ltrim_double_t() = default;
+            args_type args;
             
-            ltrim_double_t(X x_, Y y_): x(x_), y(y_) {}
-            
+            ltrim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
+        };
+        
+        struct rtrim_string {
             operator std::string() const {
-                return static_cast<std::string>(ltrim_single_t<X>(0));
+                return "RTRIM";
             }
         };
         
@@ -160,55 +168,46 @@ namespace sqlite_orm {
          *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X>
-        struct rtrim_single_t : public core_function_t {
-            X x;
+        struct rtrim_single_t : core_function_t, rtrim_string {
+            using arg_type = X;
             
-            rtrim_single_t() = default;
+            arg_type arg;
             
-            rtrim_single_t(X x_): x(x_) {}
-            
-            operator std::string() const {
-                return "RTRIM";
-            }
+            rtrim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
         };
         
         /**
          *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X, class Y>
-        struct rtrim_double_t : public core_function_t {
-            X x;
-            Y y;
+        struct rtrim_double_t : core_function_t, rtrim_string {
+            using args_type = std::tuple<X, Y>;
             
-            rtrim_double_t() = default;
+            args_type args;
             
-            rtrim_double_t(X x_, Y y_): x(x_), y(y_) {}
-            
-            operator std::string() const {
-                return static_cast<std::string>(rtrim_single_t<X>(0));
-            }
+            rtrim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
         };
         
         
         
 #if SQLITE_VERSION_NUMBER >= 3007016
         
+        struct char_string {
+            operator std::string() const {
+                return "CHAR";
+            }
+        };
+        
         /**
          *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
          */
         template<class ...Args>
-        struct char_t_ : public core_function_t {
+        struct char_t_ : core_function_t, char_string {
             using args_type = std::tuple<Args...>;
             
             args_type args;
             
-            char_t_() = default;
-            
-            char_t_(args_type args_): args(args_) {}
-            
-            operator std::string() const {
-                return "CHAR";
-            }
+            char_t_(args_type &&args_): args(std::move(args_)) {}
         };
         
         struct random_t : core_function_t, internal::arithmetic_t {
@@ -219,52 +218,72 @@ namespace sqlite_orm {
         };
         
 #endif
-        template<class T, class ...Args>
-        struct date_t : core_function_t {
-            using modifiers_type = std::tuple<Args...>;
+        
+        struct coalesce_string {
+            operator std::string() const {
+                return "COALESCE";
+            }
+        };
+        
+        template<class R, class ...Args>
+        struct coalesce_t : core_function_t, coalesce_string {
+            using return_type = R;
+            using args_type = std::tuple<Args...>;
             
-            T timestring;
-            modifiers_type modifiers;
+            args_type args;
             
-            date_t() = default;
-            
-            date_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
-            
+            coalesce_t(args_type args_) : args(std::move(args_)) {}
+        };
+        
+        struct date_string {
             operator std::string() const {
                 return "DATE";
             }
         };
         
-        template<class T, class ...Args>
-        struct datetime_t : core_function_t {
-            using modifiers_type = std::tuple<Args...>;
+        template<class ...Args>
+        struct date_t : core_function_t, date_string {
+            using args_type = std::tuple<Args...>;
             
-            T timestring;
-            modifiers_type modifiers;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            datetime_t() = default;
+            args_type args;
             
-            datetime_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
-            
+            date_t(args_type &&args_): args(std::move(args_)) {}
+        };
+        
+        struct datetime_string {
             operator std::string() const {
                 return "DATETIME";
             }
         };
         
-        template<class T, class ...Args>
-        struct julianday_t : core_function_t, internal::arithmetic_t {
-            using modifiers_type = std::tuple<Args...>;
+        template<class ...Args>
+        struct datetime_t : core_function_t, datetime_string {
+            using args_type = std::tuple<Args...>;
             
-            T timestring;
-            modifiers_type modifiers;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            julianday_t() = default;
+            args_type args;
             
-            julianday_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
-            
+            datetime_t(args_type &&args_): args(std::move(args_)) {}
+        };
+        
+        struct julianday_string {
             operator std::string() const {
                 return "JULIANDAY";
             }
+        };
+        
+        template<class ...Args>
+        struct julianday_t : core_function_t, internal::arithmetic_t, julianday_string {
+            using args_type = std::tuple<Args...>;
+            
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
+            args_type args;
+            
+            julianday_t(args_type &&args_): args(std::move(args_)) {}
         };
     }
     
@@ -324,19 +343,22 @@ namespace sqlite_orm {
         return {};
     }
     
-    template<class T, class ...Args, class Res = core_functions::date_t<T, Args...>>
-    Res date(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    template<class ...Args>
+    core_functions::date_t<Args...> date(Args &&...args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {std::move(t)};
     }
     
-    template<class T, class ...Args, class Res = core_functions::datetime_t<T, Args...>>
-    Res datetime(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    template<class ...Args>
+    core_functions::datetime_t<Args...> datetime(Args &&...args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {std::move(t)};
     }
     
-    template<class T, class ...Args, class Res = core_functions::julianday_t<T, Args...>>
-    Res julianday(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    template<class ...Args>
+    core_functions::julianday_t<Args...> julianday(Args &&...args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {std::move(t)};
     }
     
 #if SQLITE_VERSION_NUMBER >= 3007016
@@ -349,34 +371,39 @@ namespace sqlite_orm {
     
 #endif
     
-    template<class X, class Res = core_functions::trim_single_t<X>>
-    Res trim(X x) {
-        return Res(x);
+    template<class R, class ...Args>
+    core_functions::coalesce_t<R, Args...> coalesce(Args&& ...args) {
+        return {std::make_tuple(std::forward<Args>(args)...)};
     }
     
-    template<class X, class Y, class Res = core_functions::trim_double_t<X, Y>>
-    Res trim(X x, Y y) {
-        return Res(x, y);
+    template<class T>
+    core_functions::trim_single_t<T> trim(T &&t) {
+        return {std::move(t)};
     }
     
-    template<class X, class Res = core_functions::ltrim_single_t<X>>
-    Res ltrim(X x) {
-        return Res(x);
+    template<class X, class Y>
+    core_functions::trim_double_t<X, Y> trim(X &&x, Y &&y) {
+        return {std::move(x), std::move(y)};
     }
     
-    template<class X, class Y, class Res = core_functions::ltrim_double_t<X, Y>>
-    Res ltrim(X x, Y y) {
-        return Res(x, y);
+    template<class X>
+    core_functions::ltrim_single_t<X> ltrim(X &&x) {
+        return {std::move(x)};
     }
     
-    template<class X, class Res = core_functions::rtrim_single_t<X>>
-    Res rtrim(X x) {
-        return Res(x);
+    template<class X, class Y>
+    core_functions::ltrim_double_t<X, Y> ltrim(X &&x, Y &&y) {
+        return {std::move(x), std::move(y)};
     }
     
-    template<class X, class Y, class Res = core_functions::rtrim_double_t<X, Y>>
-    Res rtrim(X x, Y y) {
-        return Res(x, y);
+    template<class X>
+    core_functions::rtrim_single_t<X> rtrim(X &&x) {
+        return {std::move(x)};
+    }
+    
+    template<class X, class Y>
+    core_functions::rtrim_double_t<X, Y> rtrim(X &&x, Y &&y) {
+        return {std::move(x), std::move(y)};
     }
     
     inline core_functions::changes_t changes() {
@@ -384,25 +411,23 @@ namespace sqlite_orm {
     }
     
     template<class T>
-    core_functions::length_t<T> length(T t) {
-        using result_type = core_functions::length_t<T>;
-        return result_type(t);
+    core_functions::length_t<T> length(T &&t) {
+        return {std::move(t)};
     }
     
     template<class T>
-    core_functions::abs_t<T> abs(T t) {
-        using result_type = core_functions::abs_t<T>;
-        return result_type(t);
+    core_functions::abs_t<T> abs(T &&t) {
+        return {std::move(t)};
     }
     
-    template<class T, class Res = core_functions::lower_t<T>>
-    Res lower(T t) {
-        return Res(t);
+    template<class T>
+    core_functions::lower_t<T> lower(T &&t) {
+        return {std::move(t)};
     }
     
-    template<class T, class Res = core_functions::upper_t<T>>
-    Res upper(T t) {
-        return Res(t);
+    template<class T>
+    core_functions::upper_t<T> upper(T t) {
+        return {std::move(t)};
     }
     
     template<
