@@ -588,21 +588,25 @@ namespace sqlite_orm {
             join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
         
+        struct left_outer_join_string {
+            operator std::string() const {
+                return "LEFT OUTER JOIN";
+            }
+        };
+        
         /**
          *  LEFT OUTER JOIN holder.
          *  T is joined type which represents any mapped table.
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct left_outer_join_t {
+        struct left_outer_join_t : left_outer_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
-            operator std::string() const {
-                return "LEFT OUTER JOIN";
-            }
+            left_outer_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
         
         struct on_string {
