@@ -7945,7 +7945,6 @@ namespace sqlite_orm {
             std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(static_cast<size_t>(cols.count));
-                using columns_tuple = typename std::decay<decltype(cols)>::type::columns_type;
                 iterate_tuple(cols.columns, [&columnNames, this](auto &m){
                     auto columnName = this->string_from_expression(m, false, false, true);
                     if(columnName.length()){
@@ -8698,6 +8697,16 @@ namespace sqlite_orm {
             }
             
             template<class T, class ...Args>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::julianday_t<T, Args...> &f) {
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
+            }
+            
+            template<class T, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::date_t<T, Args...> &f) {
                 std::set<std::pair<std::string, std::string>> res;
                 iterate_tuple(f.args, [&res, this](auto &v){
@@ -8898,12 +8907,12 @@ namespace sqlite_orm {
             }
             
             template<class ...Args>
-            std::set<std::pair<std::string, std::string>> parse_table_names(Args...) {
+            std::set<std::pair<std::string, std::string>> parse_table_names(Args &&...) {
                 return {};
             }
             
             template<class H, class ...Args>
-            std::set<std::pair<std::string, std::string>> parse_table_names(H h, Args&& ...args) {
+            std::set<std::pair<std::string, std::string>> parse_table_names(H h, Args &&...args) {
                 auto res = this->parse_table_names(std::forward<Args>(args)...);
                 auto tableName = this->parse_table_name(h);
                 res.insert(tableName.begin(), tableName.end());

@@ -16,10 +16,31 @@ using std::endl;
 void testJulianday() {
     cout << __func__ << endl;
     
-    auto storage = make_storage({});
-    auto rows = storage.select(julianday("2016-10-18"));
-    assert(rows.size() == 1);
-    assert(rows.front() == 2457679.5);
+    struct Test {
+        std::string text;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("test",
+                                           make_column("text", &Test::text)));
+    storage.sync_schema();
+    auto singleTestCase = [&storage](const std::string &arg, double expected){
+        {
+            auto rows = storage.select(julianday(arg));
+            assert(rows.size() == 1);
+            assert((rows.front() - expected) < 0.001); //  too much precision
+        }
+        {
+            storage.insert(Test{arg});
+            auto rows = storage.select(julianday(&Test::text));
+            assert(rows.size() == 1);
+            assert((rows.front() - expected) < 0.001);
+            storage.remove_all<Test>();
+        }
+    };
+    singleTestCase("2016-10-18", 2457679.5);
+    singleTestCase("2016-10-18 16:45", 2457680.19791667);
+    singleTestCase("2016-10-18 16:45:30", 2457680.19826389);
 }
 
 void testDatetime() {
