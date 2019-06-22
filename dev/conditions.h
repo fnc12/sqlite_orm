@@ -668,8 +668,6 @@ namespace sqlite_orm {
             
             type t;
             
-            exists_t() = default;
-            
             exists_t(T t_) : t(std::move(t_)) {}
             
             operator std::string() const {
