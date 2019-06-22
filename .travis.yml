@@ -63,14 +63,14 @@ before_script:
   - chmod +x build.sh
   - cd third_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
+  - mv -f -t ./vcpkg ~/.cache/vcpkg/* || echo "No cached files for vcpkg."
   - cd vcpkg
   - chmod +x bootstrap-vcpkg.sh
-  - if [[ "$CXX" == *"clang"* && "$TRAVIS_OS_NAME" == "osx" ]]; then ./bootstrap-vcpkg.sh --allowAppleClang ; else ./bootstrap-vcpkg.sh ; fi
+  - if [[ ! "${CXX:-}" && "$TRAVIS_OS_NAME" == "osx" ]]; then ./bootstrap-vcpkg.sh --allowAppleClang ; else ./bootstrap-vcpkg.sh ; fi
   - chmod +x vcpkg
   - ./vcpkg install gtest
-  - cd ../..
-  - mkdir compile
-  - cd compile
+  - cd ${TRAVIS_BUILD_DIR}
+  - mkdir compile && cd compile
   - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT="$SQLITE_ORM_OMITS_CODECVT" ..
 
 # build examples, and run tests (ie make & make test)
@@ -81,3 +81,13 @@ script:
 # generate and publish GCov coveralls results
 after_success:
   - if [[ "$CXX" == "g++" ]]; then coveralls --root .. -e examples -e googletest -e sqlite3 -e tests -E ".*feature_tests.*" -E ".*CompilerId.*" --gcov-options '\-lp' ; fi
+
+before_cache:
+- |
+  # Select files for caching
+  mkdir -p ~/.cache/vcpkg
+  mv -u -t ~/.cache/vcpkg ${TRAVIS_BUILD_DIR}/third_party/vcpkg/installed
+
+cache:
+  directories:
+  - ~/.cache
