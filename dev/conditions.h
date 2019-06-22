@@ -640,21 +640,25 @@ namespace sqlite_orm {
             }
         };
         
+        struct inner_join_string {
+            operator std::string() const {
+                return "INNER JOIN";
+            }
+        };
+        
         /**
          *  INNER JOIN holder.
          *  T is joined type which represents any mapped table.
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct inner_join_t {
+        struct inner_join_t : inner_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
-            operator std::string() const {
-                return "INNER JOIN";
-            }
+            inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
         
         template<class T>

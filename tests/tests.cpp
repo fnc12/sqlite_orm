@@ -66,6 +66,10 @@ void testJoin() {
         auto rows = storage.get_all<User>(left_outer_join<Visit>(on(is_equal(&Visit::userId, 2))));
         assert(rows.size() == 6);
     }
+    {
+        auto rows = storage.get_all<User>(inner_join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
 }
 
 void testJulianday() {

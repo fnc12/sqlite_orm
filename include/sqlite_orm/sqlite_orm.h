@@ -2156,21 +2156,25 @@ namespace sqlite_orm {
             }
         };
         
+        struct inner_join_string {
+            operator std::string() const {
+                return "INNER JOIN";
+            }
+        };
+        
         /**
          *  INNER JOIN holder.
          *  T is joined type which represents any mapped table.
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct inner_join_t {
+        struct inner_join_t : inner_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
-            operator std::string() const {
-                return "INNER JOIN";
-            }
+            inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
         
         template<class T>
@@ -7174,6 +7178,16 @@ namespace sqlite_orm {
         template<class T, class O>
         struct ast_iterator<conditions::left_outer_join_t<T, O>, void> {
             using node_type = conditions::left_outer_join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::inner_join_t<T, O>, void> {
+            using node_type = conditions::inner_join_t<T, O>;
             
             template<class L>
             void operator()(const node_type &j, const L &l) const {

@@ -434,5 +434,15 @@ namespace sqlite_orm {
                 iterate_ast(j.constraint, l);
             }
         };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::inner_join_t<T, O>, void> {
+            using node_type = conditions::inner_join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
     }
 }
