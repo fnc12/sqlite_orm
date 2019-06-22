@@ -16,19 +16,27 @@ namespace sqlite_orm {
          */
         struct core_function_t {};
         
+        struct length_string {
+            operator std::string() const {
+                return "LENGTH";
+            }
+        };
+        
         /**
          *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
          */
         template<class T>
-        struct length_t : public core_function_t {
+        struct length_t : core_function_t, length_string {
             using arg_type = T;
             
             arg_type arg;
             
             length_t(arg_type &&arg_) : arg(std::move(arg_)) {}
-            
+        };
+        
+        struct abs_string {
             operator std::string() const {
-                return "LENGTH";
+                return "ABS";
             }
         };
         
@@ -36,15 +44,17 @@ namespace sqlite_orm {
          *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
          */
         template<class T>
-        struct abs_t : public core_function_t {
+        struct abs_t : core_function_t, abs_string {
             using arg_type = T;
             
             arg_type arg;
             
             abs_t(arg_type &&arg_): arg(std::move(arg_)) {}
-            
+        };
+        
+        struct lower_string {
             operator std::string() const {
-                return "ABS";
+                return "LOWER";
             }
         };
         
@@ -52,15 +62,17 @@ namespace sqlite_orm {
          *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
          */
         template<class T>
-        struct lower_t : public core_function_t {
+        struct lower_t : core_function_t, lower_string {
             using arg_type = T;
             
             arg_type arg;
             
             lower_t(arg_type &&arg_): arg(std::move(arg_)) {}
-            
+        };
+        
+        struct upper_string {
             operator std::string() const {
-                return "LOWER";
+                return "UPPER";
             }
         };
         
@@ -68,16 +80,12 @@ namespace sqlite_orm {
          *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
          */
         template<class T>
-        struct upper_t : public core_function_t {
+        struct upper_t : core_function_t, upper_string {
             using arg_type = T;
             
             arg_type arg;
             
             upper_t(arg_type &&arg_): arg(std::move(arg_)) {}
-            
-            operator std::string() const {
-                return "UPPER";
-            }
         };
         
         /**
@@ -100,7 +108,7 @@ namespace sqlite_orm {
          *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
          */
         template<class T>
-        struct trim_single_t : public core_function_t, trim_string {
+        struct trim_single_t : core_function_t, trim_string {
             using arg_type = T;
             
             arg_type arg;
@@ -112,7 +120,7 @@ namespace sqlite_orm {
          *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
          */
         template<class X, class Y>
-        struct trim_double_t : public core_function_t, trim_string {
+        struct trim_double_t : core_function_t, trim_string {
             using args_type = std::tuple<X, Y>;
             
             args_type args;
@@ -130,7 +138,7 @@ namespace sqlite_orm {
          *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X>
-        struct ltrim_single_t : public core_function_t, ltrim_string {
+        struct ltrim_single_t : core_function_t, ltrim_string {
             using arg_type = X;
             
             arg_type arg;
@@ -142,7 +150,7 @@ namespace sqlite_orm {
          *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
          */
         template<class X, class Y>
-        struct ltrim_double_t : public core_function_t, ltrim_string {
+        struct ltrim_double_t : core_function_t, ltrim_string {
             using args_type = std::tuple<X, Y>;
             
             args_type args;
@@ -160,7 +168,7 @@ namespace sqlite_orm {
          *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X>
-        struct rtrim_single_t : public core_function_t, rtrim_string {
+        struct rtrim_single_t : core_function_t, rtrim_string {
             using arg_type = X;
             
             arg_type arg;
@@ -172,7 +180,7 @@ namespace sqlite_orm {
          *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
          */
         template<class X, class Y>
-        struct rtrim_double_t : public core_function_t, rtrim_string {
+        struct rtrim_double_t : core_function_t, rtrim_string {
             using args_type = std::tuple<X, Y>;
             
             args_type args;
@@ -194,7 +202,7 @@ namespace sqlite_orm {
          *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
          */
         template<class ...Args>
-        struct char_t_ : public core_function_t, char_string {
+        struct char_t_ : core_function_t, char_string {
             using args_type = std::tuple<Args...>;
             
             args_type args;
