@@ -1,29 +1,10 @@
-# Request for Ubuntu 16.04 Trusty VM
-sudo: true
+# Defaults
+os: linux
 dist: xenial
-
-# This is comment to easer chagne CXX and CC flags
-#language: cpp
-
-cache:
-  apt: true
-
-addons:
-    apt:
-      update: true
-      packages:
-      - cmake
-      - git
-    homebrew:
-      packages:
-      - cmake
-      - git
-      update: true
 
 matrix:
   include:
     - name: "gcc 7"
-      compiler: gcc
       addons:
         apt:
           sources:
@@ -31,45 +12,45 @@ matrix:
           packages:
             - g++-7
       env:
-        - CC=gcc-7
-        - CXX=g++-7
-        - SQLITE_ORM_OMITS_CODECVT=OFF
+        - CC: gcc-7
+        - CXX: g++-7
+        - SQLITE_ORM_OMITS_CODECVT: OFF
+
     - name: "clang default"
+      language: cpp
       compiler: clang
       env:
-        - CC=clang
-        - CXX=clang++
-        - SQLITE_ORM_OMITS_CODECVT=ON
-    - name: "osx clang"
+        - SQLITE_ORM_OMITS_CODECVT: ON
+
+    - name: "OSX LLVM/Clang"
+      os: osx
+      osx_image: xcode10.2
       addons:
         homebrew:
           packages:
             - llvm
-      compiler: clang
-      os: osx
-      osx_image: xcode10.2
       env:
-        - CPPFLAGS="-I/usr/local/opt/llvm/include"
-        - LDFLAGS="-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
-        - CPATH=/usr/local/opt/llvm/include
-        - LIBRARY_PATH=/usr/local/opt/llvm/lib
-        - LD_LIBRARY_PATH=/usr/local/opt/llvm/lib
-        - CC=/usr/local/opt/llvm/bin/clang
-        - CXX=/usr/local/opt/llvm/bin/clang++
-        - VCPKG_ALLOW_APPLE_CLANG=1
-        - SQLITE_ORM_OMITS_CODECVT=ON
+        - CPPFLAGS: "-I/usr/local/opt/llvm/include"
+        - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
+        - CPATH: /usr/local/opt/llvm/include
+        - LIBRARY_PATH: /usr/local/opt/llvm/lib
+        - LD_LIBRARY_PATH: /usr/local/opt/llvm/lib
+        - CC: /usr/local/opt/llvm/bin/clang
+        - CXX: /usr/local/opt/llvm/bin/clang++
+        - SQLITE_ORM_OMITS_CODECVT: ON
+
     - name: "osx gcc"
+      os: osx
+      osx_image: xcode10.1
       addons:
         homebrew:
           packages:
-            - gcc6
-      compiler: gcc
-      os: osx
-      osx_image: xcode10.1
+            - gcc@6
+          update: true
       env:
-        - CC=gcc-6
-        - CXX=g++-6
-        - SQLITE_ORM_OMITS_CODECVT=OFF
+        - CC: gcc-6
+        - CXX: g++-6
+        - SQLITE_ORM_OMITS_CODECVT: OFF
 
 before_install:
   # coveralls test coverage:
