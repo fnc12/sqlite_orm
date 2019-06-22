@@ -261,20 +261,21 @@ namespace sqlite_orm {
             datetime_t(args_type &&args_): args(std::move(args_)) {}
         };
         
-        template<class T, class ...Args>
-        struct julianday_t : core_function_t, internal::arithmetic_t {
-            using modifiers_type = std::tuple<Args...>;
-            
-            T timestring;
-            modifiers_type modifiers;
-            
-            julianday_t() = default;
-            
-            julianday_t(T timestring_, modifiers_type modifiers_): timestring(timestring_), modifiers(modifiers_) {}
-            
+        struct julianday_string {
             operator std::string() const {
                 return "JULIANDAY";
             }
+        };
+        
+        template<class ...Args>
+        struct julianday_t : core_function_t, internal::arithmetic_t, julianday_string {
+            using args_type = std::tuple<Args...>;
+            
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
+            args_type args;
+            
+            julianday_t(args_type &&args_): args(std::move(args_)) {}
         };
     }
     
@@ -346,9 +347,10 @@ namespace sqlite_orm {
         return {std::move(t)};
     }
     
-    template<class T, class ...Args, class Res = core_functions::julianday_t<T, Args...>>
-    Res julianday(T timestring, Args ...modifiers) {
-        return Res(timestring, std::make_tuple(std::forward<Args>(modifiers)...));
+    template<class ...Args>
+    core_functions::julianday_t<Args...> julianday(Args &&...args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {std::move(t)};
     }
     
 #if SQLITE_VERSION_NUMBER >= 3007016

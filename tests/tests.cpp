@@ -13,6 +13,15 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testJulianday() {
+    cout << __func__ << endl;
+    
+    auto storage = make_storage({});
+    auto rows = storage.select(julianday("2016-10-18"));
+    assert(rows.size() == 1);
+    assert(rows.front() == 2457679.5);
+}
+
 void testDatetime() {
     cout << __func__ << endl;
     
@@ -3004,4 +3013,6 @@ int main(int, char **) {
     testDate();
     
     testDatetime();
+    
+    testJulianday();
 }
