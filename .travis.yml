@@ -58,6 +58,18 @@ matrix:
         - CXX=/usr/local/opt/llvm/bin/clang++
         - VCPKG_ALLOW_APPLE_CLANG=1
         - SQLITE_ORM_OMITS_CODECVT=ON
+    - name: "osx gcc"
+      addons:
+        homebrew:
+          packages:
+            - gcc6
+      compiler: gcc
+      os: osx
+      osx_image: xcode10.1
+      env:
+        - CC=gcc-6
+        - CXX=g++-6
+        - SQLITE_ORM_OMITS_CODECVT=OFF
 
 before_install:
   # coveralls test coverage:
