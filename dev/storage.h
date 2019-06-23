@@ -1635,8 +1635,7 @@ namespace sqlite_orm {
             template<class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::char_t_<Args...> &f) {
                 std::set<std::pair<std::string, std::string>> res;
-                using tuple_t = decltype(f.args);
-                tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(f.args, [&res, this](auto &v){
+                iterate_tuple(f.args, [&res, this](auto &v){
                     auto tableNames = this->parse_table_name(v);
                     res.insert(tableNames.begin(), tableNames.end());
                 });
@@ -1674,7 +1673,7 @@ namespace sqlite_orm {
                 return this->parse_table_name(f.t);
             }
             
-            template<class L, class R, class ...Args>
+            template<class L, class R>
             std::set<std::pair<std::string, std::string>> parse_table_name(const conc_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
                 auto leftSet = this->parse_table_names(f.lhs);
@@ -1684,7 +1683,7 @@ namespace sqlite_orm {
                 return res;
             }
             
-            template<class L, class R, class ...Args>
+            template<class L, class R>
             std::set<std::pair<std::string, std::string>> parse_table_name(const add_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
                 auto leftSet = this->parse_table_names(f.lhs);
@@ -1694,7 +1693,7 @@ namespace sqlite_orm {
                 return res;
             }
             
-            template<class L, class R, class ...Args>
+            template<class L, class R>
             std::set<std::pair<std::string, std::string>> parse_table_name(const sub_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
                 auto leftSet = this->parse_table_names(f.lhs);
@@ -1704,7 +1703,7 @@ namespace sqlite_orm {
                 return res;
             }
             
-            template<class L, class R, class ...Args>
+            template<class L, class R>
             std::set<std::pair<std::string, std::string>> parse_table_name(const mul_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
                 auto leftSet = this->parse_table_names(f.lhs);
@@ -1714,7 +1713,7 @@ namespace sqlite_orm {
                 return res;
             }
             
-            template<class L, class R, class ...Args>
+            template<class L, class R>
             std::set<std::pair<std::string, std::string>> parse_table_name(const div_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
                 auto leftSet = this->parse_table_names(f.lhs);
@@ -1724,7 +1723,7 @@ namespace sqlite_orm {
                 return res;
             }
             
-            template<class L, class R, class ...Args>
+            template<class L, class R>
             std::set<std::pair<std::string, std::string>> parse_table_name(const mod_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
                 auto leftSet = this->parse_table_names(f.lhs);
