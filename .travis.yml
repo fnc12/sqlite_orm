@@ -75,6 +75,10 @@ matrix:
         - CXX: g++-6
 
 before_install:
+  - |
+    if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then
+      export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Use coreutils from homebrew.
+    fi
   # coveralls test coverage:
   - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
   # vcpkg library manager
