@@ -292,8 +292,10 @@ namespace sqlite_orm {
             using node_type = core_functions::trim_single_t<T>;
             
             template<class L>
-            void operator()(const node_type &t, const L &l) const {
-                iterate_ast(t.arg, l);
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
             }
         };
         

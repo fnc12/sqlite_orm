@@ -134,11 +134,13 @@ namespace sqlite_orm {
          */
         template<class T>
         struct trim_single_t : core_function_t<std::string, trim_string> {
-            using arg_type = T;
+            using args_type = std::tuple<T>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            trim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
+            args_type args;
+            
+            trim_single_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         /**
@@ -402,7 +404,7 @@ namespace sqlite_orm {
     }
     
     template<class T>
-    core_functions::trim_single_t<T> trim(T &&t) {
+    core_functions::trim_single_t<T> trim(T t) {
         return {std::move(t)};
     }
     
