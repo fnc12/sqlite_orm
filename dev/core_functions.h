@@ -154,7 +154,7 @@ namespace sqlite_orm {
             
             args_type args;
             
-            trim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
+            trim_double_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         struct ltrim_string {
@@ -168,11 +168,13 @@ namespace sqlite_orm {
          */
         template<class X>
         struct ltrim_single_t : core_function_t<std::string, ltrim_string> {
-            using arg_type = X;
+            using args_type = std::tuple<X>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            ltrim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
+            args_type args;
+            
+            ltrim_single_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         /**
@@ -182,9 +184,11 @@ namespace sqlite_orm {
         struct ltrim_double_t : core_function_t<std::string, ltrim_string> {
             using args_type = std::tuple<X, Y>;
             
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
             args_type args;
             
-            ltrim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
+            ltrim_double_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         struct rtrim_string {
@@ -198,11 +202,13 @@ namespace sqlite_orm {
          */
         template<class X>
         struct rtrim_single_t : core_function_t<std::string, rtrim_string> {
-            using arg_type = X;
+            using args_type = std::tuple<X>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            rtrim_single_t(arg_type &&arg_): arg(std::move(arg_)) {}
+            args_type args;
+            
+            rtrim_single_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         /**
@@ -406,28 +412,33 @@ namespace sqlite_orm {
     }
     
     template<class T>
-    core_functions::trim_single_t<T> trim(T t) {
-        return {std::move(t)};
+    core_functions::trim_single_t<T> trim(T &&t) {
+        std::tuple<T> args{std::forward<T>(t)};
+        return {std::move(args)};
     }
     
     template<class X, class Y>
     core_functions::trim_double_t<X, Y> trim(X &&x, Y &&y) {
-        return {std::move(x), std::move(y)};
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {std::move(args)};
     }
     
     template<class X>
     core_functions::ltrim_single_t<X> ltrim(X &&x) {
-        return {std::move(x)};
+        std::tuple<X> args{std::forward<X>(x)};
+        return {std::move(args)};
     }
     
     template<class X, class Y>
     core_functions::ltrim_double_t<X, Y> ltrim(X &&x, Y &&y) {
-        return {std::move(x), std::move(y)};
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {std::move(args)};
     }
     
     template<class X>
     core_functions::rtrim_single_t<X> rtrim(X &&x) {
-        return {std::move(x)};
+        std::tuple<X> args{std::forward<X>(x)};
+        return {std::move(args)};
     }
     
     template<class X, class Y>
@@ -458,7 +469,7 @@ namespace sqlite_orm {
     }
     
     template<class T>
-    core_functions::upper_t<T> upper(T t) {
+    core_functions::upper_t<T> upper(T &&t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }

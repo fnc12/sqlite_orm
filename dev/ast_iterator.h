@@ -317,7 +317,9 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &f, const L &l) const {
-                iterate_ast(f.arg, l);
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
             }
         };
         
@@ -339,7 +341,9 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &f, const L &l) const {
-                iterate_ast(f.arg, l);
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
             }
         };
         

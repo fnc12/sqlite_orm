@@ -611,8 +611,19 @@ namespace sqlite_orm {
             template<class X>
             std::string string_from_expression(const core_functions::rtrim_single_t<X> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName, escape, ignoreBindable);
-                ss << static_cast<std::string>(f) << "(" << expr << ") ";
+                ss << static_cast<std::string>(f) << "(";
+                std::vector<std::string> argStrings;
+                argStrings.reserve(f.args_size);
+                iterate_tuple(f.args, [this, noTableName, escape, ignoreBindable, &argStrings](auto &v){
+                    argStrings.push_back(this->string_from_expression(v, noTableName, escape, ignoreBindable));
+                });
+                for(size_t i = 0; i < argStrings.size(); ++i){
+                    ss << argStrings[i];
+                    if(i < argStrings.size() - 1){
+                        ss << ", ";
+                    }
+                }
+                ss << ") ";
                 return ss.str();
             }
             
@@ -628,8 +639,19 @@ namespace sqlite_orm {
             template<class X>
             std::string string_from_expression(const core_functions::ltrim_single_t<X> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName, escape, ignoreBindable);
-                ss << static_cast<std::string>(f) << "(" << expr << ") ";
+                ss << static_cast<std::string>(f) << "(";
+                std::vector<std::string> argStrings;
+                argStrings.reserve(f.args_size);
+                iterate_tuple(f.args, [this, noTableName, escape, ignoreBindable, &argStrings](auto &v){
+                    argStrings.push_back(this->string_from_expression(v, noTableName, escape, ignoreBindable));
+                });
+                for(size_t i = 0; i < argStrings.size(); ++i){
+                    ss << argStrings[i];
+                    if(i < argStrings.size() - 1){
+                        ss << ", ";
+                    }
+                }
+                ss << ") ";
                 return ss.str();
             }
             
@@ -1693,7 +1715,12 @@ namespace sqlite_orm {
             
             template<class X>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::rtrim_single_t<X> &f) {
-                return this->parse_table_name(f.arg);
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
             }
             
             template<class X, class Y>
@@ -1706,14 +1733,21 @@ namespace sqlite_orm {
             
             template<class X>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::ltrim_single_t<X> &f) {
-                return this->parse_table_name(f.arg);
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
             }
             
             template<class X, class Y>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::ltrim_double_t<X, Y> &f) {
-                auto res = this->parse_table_name(std::get<0>(f.args));
-                auto res2 = this->parse_table_name(std::get<1>(f.args));
-                res.insert(res2.begin(), res2.end());
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
                 return res;
             }
             
