@@ -14,7 +14,6 @@ matrix:
       env:
         - CC: gcc-7
         - CXX: g++-7
-        - SQLITE_ORM_OMITS_CODECVT: OFF
 
     - name: "clang default"
       language: cpp
@@ -28,7 +27,6 @@ matrix:
       language: cpp
       env:
         - VCPKG_ALLOW_APPLE_CLANG: 1
-        - SQLITE_ORM_OMITS_CODECVT: OFF
 
     - name: "OSX LLVM/Clang"
       os: osx
@@ -58,7 +56,6 @@ matrix:
       env:
         - CC: gcc-6
         - CXX: g++-6
-        - SQLITE_ORM_OMITS_CODECVT: OFF
 
 before_install:
   # coveralls test coverage:
@@ -78,7 +75,7 @@ before_script:
   - ./vcpkg install gtest
   - cd ${TRAVIS_BUILD_DIR}
   - mkdir compile && cd compile
-  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT="$SQLITE_ORM_OMITS_CODECVT" ..
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT="${SQLITE_ORM_OMITS_CODECVT:OFF}" ..
 
 # build examples, and run tests (ie make & make test)
 script:
