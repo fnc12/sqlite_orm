@@ -2829,7 +2829,7 @@ namespace sqlite_orm {
 #pragma once
 
 #include <string>   //  std::string
-#include <tuple>    //  std::make_tuple
+#include <tuple>    //  std::make_tuple, std::tuple_size
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>   //  std::unique_ptr
 
@@ -2905,11 +2905,13 @@ namespace sqlite_orm {
          */
         template<class T>
         struct length_t : core_function_t<int, length_string> {
-            using arg_type = T;
+            using args_type = std::tuple<T>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            length_t(arg_type &&arg_) : arg(std::move(arg_)) {}
+            args_type args;
+            
+            length_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         struct abs_string {
@@ -2923,11 +2925,13 @@ namespace sqlite_orm {
          */
         template<class T>
         struct abs_t : core_function_t<std::unique_ptr<double>, abs_string> {
-            using arg_type = T;
+            using args_type = std::tuple<T>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            abs_t(arg_type &&arg_): arg(std::move(arg_)) {}
+            args_type args;
+            
+            abs_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         struct lower_string {
@@ -3245,8 +3249,7 @@ namespace sqlite_orm {
     
     template<class ...Args>
     core_functions::char_t_<Args...> char_(Args&& ...args) {
-        using result_type = core_functions::char_t_<Args...>;
-        return result_type(std::make_tuple(std::forward<Args>(args)...));
+        return {std::make_tuple(std::forward<Args>(args)...)};
     }
     
 #endif
@@ -3292,12 +3295,14 @@ namespace sqlite_orm {
     
     template<class T>
     core_functions::length_t<T> length(T &&t) {
-        return {std::move(t)};
+        std::tuple<T> args{std::forward<T>(t)};
+        return {std::move(args)};
     }
     
     template<class T>
     core_functions::abs_t<T> abs(T &&t) {
-        return {std::move(t)};
+        std::tuple<T> args{std::forward<T>(t)};
+        return {std::move(args)};
     }
     
     template<class T>
@@ -6927,8 +6932,10 @@ namespace sqlite_orm {
             using node_type = core_functions::length_t<T>;
             
             template<class L>
-            void operator()(const node_type &length, const L &l) const {
-                iterate_ast(length.arg, l);
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
             }
         };
         
@@ -6937,8 +6944,10 @@ namespace sqlite_orm {
             using node_type = core_functions::abs_t<T>;
             
             template<class L>
-            void operator()(const node_type &a, const L &l) const {
-                iterate_ast(a.arg, l);
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
             }
         };
         
@@ -7799,10 +7808,21 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::string string_from_expression(const core_functions::length_t<T> &len, bool noTableName, bool escape, bool ignoreBindable = false) {
+            std::string string_from_expression(const core_functions::length_t<T> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(len.arg, noTableName, escape, ignoreBindable);
-                ss << static_cast<std::string>(len) << "(" << expr << ") ";
+                ss << static_cast<std::string>(f) << "(";
+                std::vector<std::string> argStrings;
+                argStrings.reserve(f.args_size);
+                iterate_tuple(f.args, [this, noTableName, escape, ignoreBindable, &argStrings](auto &v){
+                    argStrings.push_back(this->string_from_expression(v, noTableName, escape, ignoreBindable));
+                });
+                for(size_t i = 0; i < argStrings.size(); ++i){
+                    ss << argStrings[i];
+                    if(i < argStrings.size() - 1){
+                        ss << ", ";
+                    }
+                }
+                ss << ") ";
                 return ss.str();
             }
             
@@ -7863,6 +7883,25 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            template<class T>
+            std::string string_from_expression(const core_functions::abs_t<T> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
+                std::stringstream ss;
+                ss << static_cast<std::string>(f) << "(";
+                std::vector<std::string> argStrings;
+                argStrings.reserve(f.args_size);
+                iterate_tuple(f.args, [this, noTableName, escape, ignoreBindable, &argStrings](auto &v){
+                    argStrings.push_back(this->string_from_expression(v, noTableName, escape, ignoreBindable));
+                });
+                for(size_t i = 0; i < argStrings.size(); ++i){
+                    ss << argStrings[i];
+                    if(i < argStrings.size() - 1){
+                        ss << ", ";
+                    }
+                }
+                ss << ") ";
+                return ss.str();
+            }
+            
             std::string string_from_expression(const core_functions::random_t &f, bool /*noTableName*/, bool /*escape*/, bool /*ignoreBindable*/ = false) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "() ";
@@ -7906,14 +7945,6 @@ namespace sqlite_orm {
             
             template<class T>
             std::string string_from_expression(const core_functions::lower_t<T> &a, bool noTableName, bool escape, bool ignoreBindable = false) {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(a.arg, noTableName, escape, ignoreBindable);
-                ss << static_cast<std::string>(a) << "(" << expr << ") ";
-                return ss.str();
-            }
-            
-            template<class T>
-            std::string string_from_expression(const core_functions::abs_t<T> &a, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(a.arg, noTableName, escape, ignoreBindable);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
@@ -8699,8 +8730,13 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::length_t<T> &len) {
-                return this->parse_table_name(len.arg);
+            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::length_t<T> &f) {
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
             }
             
             template<class T, class ...Args>
@@ -8785,6 +8821,15 @@ namespace sqlite_orm {
             }
             
 #endif
+            template<class T>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::abs_t<T> &f) {
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
+            }
             
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::random_t &) {
                 return {};
@@ -8797,11 +8842,6 @@ namespace sqlite_orm {
             
             template<class T>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::lower_t<T> &a) {
-                return this->parse_table_name(a.arg);
-            }
-            
-            template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::abs_t<T> &a) {
                 return this->parse_table_name(a.arg);
             }
             

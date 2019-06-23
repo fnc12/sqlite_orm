@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>   //  std::string
-#include <tuple>    //  std::make_tuple
+#include <tuple>    //  std::make_tuple, std::tuple_size
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>   //  std::unique_ptr
 
@@ -35,11 +35,13 @@ namespace sqlite_orm {
          */
         template<class T>
         struct length_t : core_function_t<int, length_string> {
-            using arg_type = T;
+            using args_type = std::tuple<T>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            length_t(arg_type &&arg_) : arg(std::move(arg_)) {}
+            args_type args;
+            
+            length_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         struct abs_string {
@@ -53,11 +55,13 @@ namespace sqlite_orm {
          */
         template<class T>
         struct abs_t : core_function_t<std::unique_ptr<double>, abs_string> {
-            using arg_type = T;
+            using args_type = std::tuple<T>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            abs_t(arg_type &&arg_): arg(std::move(arg_)) {}
+            args_type args;
+            
+            abs_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         struct lower_string {
@@ -375,8 +379,7 @@ namespace sqlite_orm {
     
     template<class ...Args>
     core_functions::char_t_<Args...> char_(Args&& ...args) {
-        using result_type = core_functions::char_t_<Args...>;
-        return result_type(std::make_tuple(std::forward<Args>(args)...));
+        return {std::make_tuple(std::forward<Args>(args)...)};
     }
     
 #endif
@@ -422,12 +425,14 @@ namespace sqlite_orm {
     
     template<class T>
     core_functions::length_t<T> length(T &&t) {
-        return {std::move(t)};
+        std::tuple<T> args{std::forward<T>(t)};
+        return {std::move(args)};
     }
     
     template<class T>
     core_functions::abs_t<T> abs(T &&t) {
-        return {std::move(t)};
+        std::tuple<T> args{std::forward<T>(t)};
+        return {std::move(args)};
     }
     
     template<class T>
