@@ -150,6 +150,8 @@ namespace sqlite_orm {
         struct trim_double_t : core_function_t<std::string, trim_string> {
             using args_type = std::tuple<X, Y>;
             
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
             args_type args;
             
             trim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}

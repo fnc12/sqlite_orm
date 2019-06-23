@@ -3020,6 +3020,8 @@ namespace sqlite_orm {
         struct trim_double_t : core_function_t<std::string, trim_string> {
             using args_type = std::tuple<X, Y>;
             
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
             args_type args;
             
             trim_double_t(X x, Y y): args(std::forward<X>(x), std::forward<Y>(y)) {}
@@ -7809,9 +7811,19 @@ namespace sqlite_orm {
             template<class X, class Y>
             std::string string_from_expression(const core_functions::trim_double_t<X, Y> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(std::get<0>(f.args), noTableName, escape, ignoreBindable);
-                auto expr2 = this->string_from_expression(std::get<1>(f.args), noTableName, escape, ignoreBindable);
-                ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ") ";
+                ss << static_cast<std::string>(f) << "(";
+                std::vector<std::string> argStrings;
+                argStrings.reserve(f.args_size);
+                iterate_tuple(f.args, [this, noTableName, escape, ignoreBindable, &argStrings](auto &v){
+                    argStrings.push_back(this->string_from_expression(v, noTableName, escape, ignoreBindable));
+                });
+                for(size_t i = 0; i < argStrings.size(); ++i){
+                    ss << argStrings[i];
+                    if(i < argStrings.size() - 1){
+                        ss << ", ";
+                    }
+                }
+                ss << ") ";
                 return ss.str();
             }
             
@@ -8846,9 +8858,11 @@ namespace sqlite_orm {
             
             template<class X, class Y>
             std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::trim_double_t<X, Y> &f) {
-                auto res = this->parse_table_name(std::get<0>(f.args));
-                auto res2 = this->parse_table_name(std::get<1>(f.args));
-                res.insert(res2.begin(), res2.end());
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
                 return res;
             }
             
