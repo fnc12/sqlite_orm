@@ -22,6 +22,14 @@ matrix:
       env:
         - SQLITE_ORM_OMITS_CODECVT: ON
 
+    - name: AppleClang Xcode-10.2
+      os: osx
+      osx_image: xcode10.2
+      language: cpp
+      env:
+        - VCPKG_ALLOW_APPLE_CLANG: 1
+        - SQLITE_ORM_OMITS_CODECVT: OFF
+
     - name: "OSX LLVM/Clang"
       os: osx
       osx_image: xcode10.2
