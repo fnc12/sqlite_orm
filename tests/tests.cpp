@@ -13,6 +13,29 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testUniquePtrInUpdate() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.insert(User{});
+    storage.insert(User{});
+    storage.insert(User{});
+    
+    storage.update_all(set(assign(&User::name, std::make_unique<std::string>("Nick"))));
+    
+    assert(storage.count<User>(where(is_null(&User::name))) == 0);
+}
+
 void testJoin() {
     cout << __func__ << endl;
     
@@ -3097,4 +3120,6 @@ int main(int, char **) {
     testJulianday();
     
     testJoin();
+    
+    testUniquePtrInUpdate();
 }

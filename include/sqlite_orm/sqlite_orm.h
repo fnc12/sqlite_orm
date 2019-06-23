@@ -922,12 +922,10 @@ namespace sqlite_orm {
             using left_type = L;
             using right_type = R;
             
-            left_type l;
-            right_type r;
+            left_type lhs;
+            right_type rhs;
             
-            binary_operator() = default;
-            
-            binary_operator(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+            binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
         };
         
         /**
@@ -998,9 +996,7 @@ namespace sqlite_orm {
             L l;
             R r;
             
-            assign_t(){}
-            
-            assign_t(L l_, R r_): l(l_), r(r_) {}
+            assign_t(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
@@ -1022,7 +1018,7 @@ namespace sqlite_orm {
         struct expression_t {
             T t;
             
-            expression_t(T t_): t(t_) {}
+            expression_t(T t_): t(std::move(t_)) {}
             
             template<class R>
             assign_t<T, R> operator=(R r) const {
@@ -1041,8 +1037,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::expression_t<T> c(T t) {
-        using result_type = internal::expression_t<T>;
-        return result_type(std::move(t));
+        return {std::move(t)};
     }
     
     /**
@@ -2183,8 +2178,6 @@ namespace sqlite_orm {
             using self = exists_t<type>;
             
             type t;
-            
-            exists_t() = default;
             
             exists_t(T t_) : t(std::move(t_)) {}
             
@@ -6812,8 +6805,8 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &binaryOperator, const L &l) const {
-                iterate_ast(binaryOperator.l, l);
-                iterate_ast(binaryOperator.r, l);
+                iterate_ast(binaryOperator.lhs, l);
+                iterate_ast(binaryOperator.rhs, l);
             }
         };
         
@@ -7682,8 +7675,8 @@ namespace sqlite_orm {
             template<class L, class R>
             std::string string_from_expression(const conc_t<L, R> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto lhs = this->string_from_expression(f.l, noTableName, escape, ignoreBindable);
-                auto rhs = this->string_from_expression(f.r, noTableName, escape, ignoreBindable);
+                auto lhs = this->string_from_expression(f.lhs, noTableName, escape, ignoreBindable);
+                auto rhs = this->string_from_expression(f.rhs, noTableName, escape, ignoreBindable);
                 ss << "(" << lhs << " || " << rhs << ") ";
                 return ss.str();
             }
@@ -7691,8 +7684,8 @@ namespace sqlite_orm {
             template<class L, class R>
             std::string string_from_expression(const add_t<L, R> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto lhs = this->string_from_expression(f.l, noTableName, escape, ignoreBindable);
-                auto rhs = this->string_from_expression(f.r, noTableName, escape, ignoreBindable);
+                auto lhs = this->string_from_expression(f.lhs, noTableName, escape, ignoreBindable);
+                auto rhs = this->string_from_expression(f.rhs, noTableName, escape, ignoreBindable);
                 ss << "(" << lhs << " + " << rhs << ") ";
                 return ss.str();
             }
@@ -7700,8 +7693,8 @@ namespace sqlite_orm {
             template<class L, class R>
             std::string string_from_expression(const sub_t<L, R> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto lhs = this->string_from_expression(f.l, noTableName, escape, ignoreBindable);
-                auto rhs = this->string_from_expression(f.r, noTableName, escape, ignoreBindable);
+                auto lhs = this->string_from_expression(f.lhs, noTableName, escape, ignoreBindable);
+                auto rhs = this->string_from_expression(f.rhs, noTableName, escape, ignoreBindable);
                 ss << "(" << lhs << " - " << rhs << ") ";
                 return ss.str();
             }
@@ -7709,8 +7702,8 @@ namespace sqlite_orm {
             template<class L, class R>
             std::string string_from_expression(const mul_t<L, R> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto lhs = this->string_from_expression(f.l, noTableName, escape, ignoreBindable);
-                auto rhs = this->string_from_expression(f.r, noTableName, escape, ignoreBindable);
+                auto lhs = this->string_from_expression(f.lhs, noTableName, escape, ignoreBindable);
+                auto rhs = this->string_from_expression(f.rhs, noTableName, escape, ignoreBindable);
                 ss << "(" << lhs << " * " << rhs << ") ";
                 return ss.str();
             }
@@ -7718,8 +7711,8 @@ namespace sqlite_orm {
             template<class L, class R>
             std::string string_from_expression(const div_t<L, R> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto lhs = this->string_from_expression(f.l, noTableName, escape, ignoreBindable);
-                auto rhs = this->string_from_expression(f.r, noTableName, escape, ignoreBindable);
+                auto lhs = this->string_from_expression(f.lhs, noTableName, escape, ignoreBindable);
+                auto rhs = this->string_from_expression(f.rhs, noTableName, escape, ignoreBindable);
                 ss << "(" << lhs << " / " << rhs << ") ";
                 return ss.str();
             }
@@ -7727,8 +7720,8 @@ namespace sqlite_orm {
             template<class L, class R>
             std::string string_from_expression(const mod_t<L, R> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto lhs = this->string_from_expression(f.l, noTableName, escape, ignoreBindable);
-                auto rhs = this->string_from_expression(f.r, noTableName, escape, ignoreBindable);
+                auto lhs = this->string_from_expression(f.lhs, noTableName, escape, ignoreBindable);
+                auto rhs = this->string_from_expression(f.rhs, noTableName, escape, ignoreBindable);
                 ss << "(" << lhs << " % " << rhs << ") ";
                 return ss.str();
             }
@@ -8886,9 +8879,9 @@ namespace sqlite_orm {
             template<class L, class R, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const conc_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
-                auto leftSet = this->parse_table_names(f.l);
+                auto leftSet = this->parse_table_names(f.lhs);
                 res.insert(leftSet.begin(), leftSet.end());
-                auto rightSet = this->parse_table_names(f.r);
+                auto rightSet = this->parse_table_names(f.rhs);
                 res.insert(rightSet.begin(), rightSet.end());
                 return res;
             }
@@ -8896,9 +8889,9 @@ namespace sqlite_orm {
             template<class L, class R, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const add_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
-                auto leftSet = this->parse_table_names(f.l);
+                auto leftSet = this->parse_table_names(f.lhs);
                 res.insert(leftSet.begin(), leftSet.end());
-                auto rightSet = this->parse_table_names(f.r);
+                auto rightSet = this->parse_table_names(f.rhs);
                 res.insert(rightSet.begin(), rightSet.end());
                 return res;
             }
@@ -8906,9 +8899,9 @@ namespace sqlite_orm {
             template<class L, class R, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const sub_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
-                auto leftSet = this->parse_table_names(f.l);
+                auto leftSet = this->parse_table_names(f.lhs);
                 res.insert(leftSet.begin(), leftSet.end());
-                auto rightSet = this->parse_table_names(f.r);
+                auto rightSet = this->parse_table_names(f.rhs);
                 res.insert(rightSet.begin(), rightSet.end());
                 return res;
             }
@@ -8916,9 +8909,9 @@ namespace sqlite_orm {
             template<class L, class R, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const mul_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
-                auto leftSet = this->parse_table_names(f.l);
+                auto leftSet = this->parse_table_names(f.lhs);
                 res.insert(leftSet.begin(), leftSet.end());
-                auto rightSet = this->parse_table_names(f.r);
+                auto rightSet = this->parse_table_names(f.rhs);
                 res.insert(rightSet.begin(), rightSet.end());
                 return res;
             }
@@ -8926,9 +8919,9 @@ namespace sqlite_orm {
             template<class L, class R, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const div_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
-                auto leftSet = this->parse_table_names(f.l);
+                auto leftSet = this->parse_table_names(f.lhs);
                 res.insert(leftSet.begin(), leftSet.end());
-                auto rightSet = this->parse_table_names(f.r);
+                auto rightSet = this->parse_table_names(f.rhs);
                 res.insert(rightSet.begin(), rightSet.end());
                 return res;
             }
@@ -8936,9 +8929,9 @@ namespace sqlite_orm {
             template<class L, class R, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const mod_t<L, R> &f) {
                 std::set<std::pair<std::string, std::string>> res;
-                auto leftSet = this->parse_table_names(f.l);
+                auto leftSet = this->parse_table_names(f.lhs);
                 res.insert(leftSet.begin(), leftSet.end());
-                auto rightSet = this->parse_table_names(f.r);
+                auto rightSet = this->parse_table_names(f.rhs);
                 res.insert(rightSet.begin(), rightSet.end());
                 return res;
             }
