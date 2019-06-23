@@ -26,7 +26,13 @@ matrix:
       osx_image: xcode10.2
       language: cpp
       env:
-        - VCPKG_ALLOW_APPLE_CLANG: 1
+        - VCPKG_CXX: g++-6 # Compiler to build vcpkg
+        - SQLITE_ORM_OMITS_CODECVT: ON
+      addons:
+        homebrew:
+          packages:
+            - gcc@6
+          update: true
 
     - name: "OSX LLVM/Clang"
       os: osx
@@ -70,8 +76,18 @@ before_script:
   - mv -f -t ./vcpkg ~/.cache/vcpkg/* || echo "No cached files for vcpkg."
   - cd vcpkg
   - chmod +x bootstrap-vcpkg.sh
-  - if [[ ! "${CXX:-}" && "$TRAVIS_OS_NAME" == "osx" ]]; then ./bootstrap-vcpkg.sh --allowAppleClang ; else ./bootstrap-vcpkg.sh ; fi
-  - chmod +x vcpkg
+  - |
+    # Build vcpkg
+    ( set -eu
+      if [[ ${VCPKG_CC:-} ]]; then eval "CC=${VCPKG_CC}"; fi
+      if [[ ${VCPKG_CXX:-} ]]; then eval "CXX=${VCPKG_CXX}"; fi
+      if [[ ${TRAVIS_OS_NAME} == "osx" && ! ${VCPKG_CXX:-} ]]; then
+        ./bootstrap-vcpkg.sh --allowAppleClang
+      else
+        ./bootstrap-vcpkg.sh
+      fi
+      chmod +x vcpkg
+    )
   - ./vcpkg install gtest
   - cd ${TRAVIS_BUILD_DIR}
   - mkdir compile && cd compile
