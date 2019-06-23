@@ -113,7 +113,15 @@ namespace sqlite_orm {
         /**
          *  CHANGES() function https://sqlite.org/lang_corefunc.html#changes
          */
-        using changes_t = core_function_t<int, changes_string>;
+        struct changes_t : core_function_t<int, changes_string> {
+            using args_type = std::tuple<>;
+            
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            
+            args_type args;
+            
+            changes_t(args_type &&args_) : args(std::move(args_)) {}
+        };
         
         struct trim_string {
             operator std::string() const {
@@ -424,7 +432,7 @@ namespace sqlite_orm {
     }
     
     inline core_functions::changes_t changes() {
-        return {};
+        return {{}};
     }
     
     template<class T>
