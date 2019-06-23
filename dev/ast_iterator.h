@@ -394,5 +394,55 @@ namespace sqlite_orm {
                 });
             }
         };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::left_join_t<T, O>, void> {
+            using node_type = conditions::left_join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::on_t<T>, void> {
+            using node_type = conditions::on_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &o, const L &l) const {
+                iterate_ast(o.arg, l);
+            }
+        };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::join_t<T, O>, void> {
+            using node_type = conditions::join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::left_outer_join_t<T, O>, void> {
+            using node_type = conditions::left_outer_join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::inner_join_t<T, O>, void> {
+            using node_type = conditions::inner_join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
     }
 }

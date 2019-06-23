@@ -1030,7 +1030,7 @@ namespace sqlite_orm {
             
             template<class T>
             void process_join_constraint(std::stringstream &ss, const conditions::on_t<T> &t) {
-                ss << static_cast<std::string>(t) << " " << this->process_where(t.t) << " ";
+                ss << static_cast<std::string>(t) << " " << this->process_where(t.arg) << " ";
             }
             
             template<class F, class O>
