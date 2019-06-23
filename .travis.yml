@@ -4,7 +4,18 @@ dist: xenial
 
 matrix:
   include:
-    - name: "gcc 7"
+    - name: "GCC-9"
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-9
+      env:
+        - CC: gcc-9
+        - CXX: g++-9
+
+    - name: "GCC-7"
       addons:
         apt:
           sources:
@@ -15,13 +26,13 @@ matrix:
         - CC: gcc-7
         - CXX: g++-7
 
-    - name: "clang default"
+    - name: "LLVM/Clang (Travis default)"
       language: cpp
       compiler: clang
       env:
         - SQLITE_ORM_OMITS_CODECVT: ON
 
-    - name: AppleClang Xcode-10.2
+    - name: AppleClang-10.0.1
       os: osx
       osx_image: xcode10.2
       language: cpp
@@ -34,7 +45,7 @@ matrix:
             - gcc@6
           update: true
 
-    - name: "OSX LLVM/Clang"
+    - name: "OSX LLVM/Clang (latest)"
       os: osx
       osx_image: xcode10.2
       addons:
@@ -51,7 +62,7 @@ matrix:
         - CXX: /usr/local/opt/llvm/bin/clang++
         - SQLITE_ORM_OMITS_CODECVT: ON
 
-    - name: "osx gcc"
+    - name: "GCC-6"
       os: osx
       osx_image: xcode10.1
       addons:
