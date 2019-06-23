@@ -785,18 +785,50 @@ namespace sqlite_orm {
 #endif
             
             template<class T>
-            std::string string_from_expression(const core_functions::upper_t<T> &a, bool noTableName, bool escape, bool ignoreBindable = false) {
+            std::string string_from_expression(const core_functions::upper_t<T> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(a.arg, noTableName, escape, ignoreBindable);
-                ss << static_cast<std::string>(a) << "(" << expr << ") ";
+                using tuple_t = decltype(f.args);
+                std::vector<std::string> args;
+                args.reserve(std::tuple_size<tuple_t>::value);
+                iterate_tuple(f.args, [&args, this, noTableName, escape, ignoreBindable](auto &v){
+                    auto expression = this->string_from_expression(v, noTableName, escape, ignoreBindable);
+                    args.emplace_back(std::move(expression));
+                });
+                ss << static_cast<std::string>(f) << "(";
+                const auto lim = static_cast<int>(args.size());
+                for(auto i = 0; i < lim; ++i) {
+                    ss << args[static_cast<size_t>(i)];
+                    if(i < lim - 1) {
+                        ss << ", ";
+                    }else{
+                        ss << " ";
+                    }
+                }
+                ss << ") ";
                 return ss.str();
             }
             
             template<class T>
-            std::string string_from_expression(const core_functions::lower_t<T> &a, bool noTableName, bool escape, bool ignoreBindable = false) {
+            std::string string_from_expression(const core_functions::lower_t<T> &f, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(a.arg, noTableName, escape, ignoreBindable);
-                ss << static_cast<std::string>(a) << "(" << expr << ") ";
+                using tuple_t = decltype(f.args);
+                std::vector<std::string> args;
+                args.reserve(std::tuple_size<tuple_t>::value);
+                iterate_tuple(f.args, [&args, this, noTableName, escape, ignoreBindable](auto &v){
+                    auto expression = this->string_from_expression(v, noTableName, escape, ignoreBindable);
+                    args.emplace_back(std::move(expression));
+                });
+                ss << static_cast<std::string>(f) << "(";
+                const auto lim = static_cast<int>(args.size());
+                for(auto i = 0; i < lim; ++i) {
+                    ss << args[static_cast<size_t>(i)];
+                    if(i < lim - 1) {
+                        ss << ", ";
+                    }else{
+                        ss << " ";
+                    }
+                }
+                ss << ") ";
                 return ss.str();
             }
             
@@ -1685,13 +1717,23 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::upper_t<T> &a) {
-                return this->parse_table_name(a.arg);
+            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::upper_t<T> &f) {
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
             }
             
             template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::lower_t<T> &a) {
-                return this->parse_table_name(a.arg);
+            std::set<std::pair<std::string, std::string>> parse_table_name(const core_functions::lower_t<T> &f) {
+                std::set<std::pair<std::string, std::string>> res;
+                iterate_tuple(f.args, [&res, this](auto &v){
+                    auto tableNames = this->parse_table_name(v);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
             }
             
             template<class T>

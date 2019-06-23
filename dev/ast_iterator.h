@@ -268,8 +268,10 @@ namespace sqlite_orm {
             using node_type = core_functions::lower_t<T>;
             
             template<class L>
-            void operator()(const node_type &low, const L &l) const {
-                iterate_ast(low.arg, l);
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
             }
         };
         
@@ -278,8 +280,10 @@ namespace sqlite_orm {
             using node_type = core_functions::upper_t<T>;
             
             template<class L>
-            void operator()(const node_type &u, const L &l) const {
-                iterate_ast(u.arg, l);
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
             }
         };
         

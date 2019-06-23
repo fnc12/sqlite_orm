@@ -75,11 +75,13 @@ namespace sqlite_orm {
          */
         template<class T>
         struct lower_t : core_function_t<std::string, lower_string> {
-            using arg_type = T;
+            using args_type = std::tuple<T>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            lower_t(arg_type &&arg_): arg(std::move(arg_)) {}
+            args_type args;
+            
+            lower_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         struct upper_string {
@@ -93,11 +95,13 @@ namespace sqlite_orm {
          */
         template<class T>
         struct upper_t : core_function_t<std::string, upper_string> {
-            using arg_type = T;
+            using args_type = std::tuple<T>;
             
-            arg_type arg;
+            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
             
-            upper_t(arg_type &&arg_): arg(std::move(arg_)) {}
+            args_type args;
+            
+            upper_t(args_type &&args_) : args(std::move(args_)) {}
         };
         
         struct changes_string {
@@ -437,12 +441,14 @@ namespace sqlite_orm {
     
     template<class T>
     core_functions::lower_t<T> lower(T &&t) {
-        return {std::move(t)};
+        std::tuple<T> args{std::forward<T>(t)};
+        return {std::move(args)};
     }
     
     template<class T>
     core_functions::upper_t<T> upper(T t) {
-        return {std::move(t)};
+        std::tuple<T> args{std::forward<T>(t)};
+        return {std::move(args)};
     }
     
     template<
