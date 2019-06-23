@@ -77,11 +77,7 @@ matrix:
 before_install:
   # coveralls test coverage:
   - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
-
-# scripts to run before build
-before_script:
-  - if [[ "$CXX" == *"clang"* ]]; then clang --version ; fi
-  - chmod +x build.sh
+  # vcpkg library manager
   - cd third_party
   - git clone https://github.com/Microsoft/vcpkg.git vcpkg
   - mv -f -t ./vcpkg ~/.cache/vcpkg/* || echo "No cached files for vcpkg."
@@ -99,7 +95,23 @@ before_script:
       fi
       chmod +x vcpkg
     )
-  - ./vcpkg install gtest
+    export PATH=$PATH:${TRAVIS_BUILD_DIR}/third_party/vcpkg
+
+install:
+  - vcpkg install gtest
+  - |
+    # Update installed (cached) packages
+    ( set -eu
+      vcpkg update # print potential updates
+      if [[ $(vcpkg upgrade) != *'installed packages are up-to-date'* ]]
+      then
+        vcpkg upgrade --no-dry-run
+      fi
+    )
+
+# scripts to run before build
+before_script:
+  - if [[ "$CXX" == *"clang"* ]]; then clang --version ; fi
   - cd ${TRAVIS_BUILD_DIR}
   - mkdir compile && cd compile
   - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT="${SQLITE_ORM_OMITS_CODECVT:OFF}" ..
