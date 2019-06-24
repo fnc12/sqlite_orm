@@ -43,6 +43,7 @@ matrix:
         homebrew:
           packages:
             - gcc@6
+            - catch2
           update: true
 
     - name: "LLVM/Clang (latest)"
@@ -52,6 +53,7 @@ matrix:
         homebrew:
           packages:
             - llvm
+            - catch2
       env:
         - CPPFLAGS: "-I/usr/local/opt/llvm/include"
         - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
@@ -69,6 +71,7 @@ matrix:
         homebrew:
           packages:
             - gcc@6
+            - catch2
           update: true
       env:
         - CC: gcc-6
@@ -110,7 +113,7 @@ before_install:
     )
 
 install:
-  - vcpkg install catch2
+  - if [[ ${TRAVIS_OS_NAME} == "linux" ]]; then vcpkg install catch2; fi
   - |
     # Update installed (cached) packages
     ( set -eu
