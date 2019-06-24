@@ -13,6 +13,88 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testUniquePtrInUpdate() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.insert(User{});
+    storage.insert(User{});
+    storage.insert(User{});
+    
+    storage.update_all(set(assign(&User::name, std::make_unique<std::string>("Nick"))));
+    
+    assert(storage.count<User>(where(is_null(&User::name))) == 0);
+}
+
+void testJoin() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    
+    struct Visit {
+        int id = 0;
+        int userId = 0;
+        time_t date = 0;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)),
+                                make_table("visits",
+                                           make_column("id", &Visit::id, primary_key()),
+                                           make_column("user_id", &Visit::userId),
+                                           make_column("date", &Visit::date)));
+    storage.sync_schema();
+    
+    int id = 1;
+    User will{id++, "Will"};
+    User smith{id++, "Smith"};
+    User nicole{id++, "Nicole"};
+    
+    storage.replace(will);
+    storage.replace(smith);
+    storage.replace(nicole);
+    
+    id = 1;
+    storage.replace(Visit{id++, will.id, 10});
+    storage.replace(Visit{id++, will.id, 20});
+    storage.replace(Visit{id++, will.id, 30});
+    
+    storage.replace(Visit{id++, smith.id, 25});
+    storage.replace(Visit{id++, smith.id, 35});
+    
+    {
+        auto rows = storage.get_all<User>(left_join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+    {
+        auto rows = storage.get_all<User>(join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+    {
+        auto rows = storage.get_all<User>(left_outer_join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+    {
+        auto rows = storage.get_all<User>(inner_join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+}
+
 void testJulianday() {
     cout << __func__ << endl;
     
@@ -3036,4 +3118,8 @@ int main(int, char **) {
     testDatetime();
     
     testJulianday();
+    
+    testJoin();
+    
+    testUniquePtrInUpdate();
 }

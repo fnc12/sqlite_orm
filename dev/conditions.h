@@ -347,8 +347,6 @@ namespace sqlite_orm {
             L l;    //  left expression
             A arg;       //  in arg
             
-            in_t() = default;
-            
             in_t(L l_, A arg_, bool negative): in_base{negative}, l(l_), arg(std::move(arg_)) {}
             
             negated_condition_t<self> operator!() const {
@@ -391,19 +389,21 @@ namespace sqlite_orm {
             }
         };
         
+        struct where_string {
+            operator std::string () const {
+                return "WHERE";
+            }
+        };
+        
         /**
          *  WHERE argument holder.
          *  C is conditions type. Can be any condition like: is_equal_t, is_null_t, exists_t etc
          */
         template<class C>
-        struct where_t {
+        struct where_t : where_string {
             C c;
             
-            where_t() = default;
-            
-            operator std::string () const {
-                return "WHERE";
-            }
+            where_t(C c_) : c(std::move(c_)) {}
         };
         
         struct order_by_base {
@@ -411,22 +411,22 @@ namespace sqlite_orm {
             std::string _collate_argument;
         };
         
+        struct order_by_string {
+            operator std::string() const {
+                return "ORDER BY";
+            }
+        };
+        
         /**
          *  ORDER BY argument holder.
          */
         template<class O>
-        struct order_by_t : order_by_base {
+        struct order_by_t : order_by_base, order_by_string {
             using self = order_by_t<O>;
             
             O o;
             
-            order_by_t(): o() {}
-            
             order_by_t(O o_): o(o_) {}
-            
-            operator std::string() const {
-                return "ORDER BY";
-            }
             
             self asc() {
                 auto res = *this;
@@ -469,12 +469,12 @@ namespace sqlite_orm {
          *  ORDER BY pack holder.
          */
         template<class ...Args>
-        struct multi_order_by_t {
-            std::tuple<Args...> args;
+        struct multi_order_by_t : order_by_string {
+            using args_type = std::tuple<Args...>;
             
-            operator std::string() const {
-                return static_cast<std::string>(order_by_t<void*>());
-            }
+            args_type args;
+            
+            multi_order_by_t(args_type args_) : args(std::move(args_)) {}
         };
         
         /**
@@ -498,8 +498,6 @@ namespace sqlite_orm {
             T b1;
             T b2;
             
-            between_t() = default;
-            
             between_t(A expr_, T b1_, T b2_): expr(expr_), b1(b1_), b2(b2_) {}
             
             operator std::string() const {
@@ -514,8 +512,6 @@ namespace sqlite_orm {
         struct like_t : public condition_t {
             A a;
             T t;
-            
-            like_t() = default;
             
             like_t(A a_, T t_): a(a_), t(t_) {}
             
@@ -550,20 +546,30 @@ namespace sqlite_orm {
             }
         };
         
+        struct left_join_string {
+            operator std::string() const {
+                return "LEFT JOIN";
+            }
+        };
+        
         /**
          *  LEFT JOIN holder.
          *  T is joined type which represents any mapped table.
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct left_join_t {
+        struct left_join_t : left_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
+            left_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+        };
+        
+        struct join_string {
             operator std::string() const {
-                return "LEFT JOIN";
+                return "JOIN";
             }
         };
         
@@ -573,14 +579,18 @@ namespace sqlite_orm {
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct join_t {
+        struct join_t : join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
+            join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+        };
+        
+        struct left_outer_join_string {
             operator std::string() const {
-                return "JOIN";
+                return "LEFT OUTER JOIN";
             }
         };
         
@@ -590,14 +600,18 @@ namespace sqlite_orm {
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct left_outer_join_t {
+        struct left_outer_join_t : left_outer_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
+            left_outer_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+        };
+        
+        struct on_string {
             operator std::string() const {
-                return "LEFT OUTER JOIN";
+                return "ON";
             }
         };
         
@@ -606,14 +620,12 @@ namespace sqlite_orm {
          *  T is on type argument.
          */
         template<class T>
-        struct on_t {
-            using type = T;
+        struct on_t : on_string {
+            using arg_type = T;
             
-            type t;
+            arg_type arg;
             
-            operator std::string() const {
-                return "ON";
-            }
+            on_t(arg_type arg_) : arg(std::move(arg_)) {}
         };
         
         /**
@@ -628,21 +640,25 @@ namespace sqlite_orm {
             }
         };
         
+        struct inner_join_string {
+            operator std::string() const {
+                return "INNER JOIN";
+            }
+        };
+        
         /**
          *  INNER JOIN holder.
          *  T is joined type which represents any mapped table.
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct inner_join_t {
+        struct inner_join_t : inner_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
-            operator std::string() const {
-                return "INNER JOIN";
-            }
+            inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
         
         template<class T>
@@ -651,8 +667,6 @@ namespace sqlite_orm {
             using self = exists_t<type>;
             
             type t;
-            
-            exists_t() = default;
             
             exists_t(T t_) : t(std::move(t_)) {}
             
