@@ -7196,6 +7196,15 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class T>
+            std::string string_from_expression(const std::unique_ptr<T> &ptr, bool noTableName, bool escape, bool ignoreBindable = false) {
+                if(ptr){
+                    return this->string_from_expression(*ptr, noTableName, escape, ignoreBindable);
+                }else{
+                    return this->string_from_expression((std::nullptr_t)nullptr, noTableName, escape, ignoreBindable);
+                }
+            }
+            
             std::string string_from_expression(std::nullptr_t, bool /*noTableName*/, bool /*escape*/, bool ignoreBindable = false) {
                 if(ignoreBindable){
                     return "?";
