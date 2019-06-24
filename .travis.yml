@@ -83,6 +83,16 @@ before_install:
   # coveralls test coverage:
   - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
 
+install:
+  - |
+    # Catch2 test framework
+    if [[ ${TRAVIS_OS_NAME} == "linux" ]]; then
+      git clone --depth=1 --quiet https://github.com/catchorg/Catch2.git
+      cd Catch2
+      cmake -Bbuild -H. -DBUILD_TESTING=OFF
+      sudo env "PATH=$PATH" cmake --build ./build --target install
+    fi
+
 # scripts to run before build
 before_script:
   - if [[ "$CXX" == *"clang"* ]]; then clang --version ; fi
