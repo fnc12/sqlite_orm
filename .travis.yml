@@ -103,7 +103,7 @@ before_script:
 # build examples, and run tests (ie make & make test)
 script:
   - cmake --build . --config Debug
-  - ctest --verbose --output-on-failure -C Debug
+  - ctest --verbose --output-on-failure -C Debug -j $(nproc)
 
 # generate and publish GCov coveralls results
 after_success:
