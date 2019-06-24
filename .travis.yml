@@ -37,12 +37,10 @@ matrix:
       osx_image: xcode10.2
       language: cpp
       env:
-        - VCPKG_CXX: g++-6 # Compiler to build vcpkg
         - SQLITE_ORM_OMITS_CODECVT: ON
       addons:
         homebrew:
           packages:
-            - gcc@6
             - catch2
           update: true
 
@@ -84,52 +82,13 @@ before_install:
     fi
   # coveralls test coverage:
   - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
-  # vcpkg library manager
-  - |
-    VCPKG_DIR="${TRAVIS_BUILD_DIR}/third_party/vcpkg"
-    export PATH=$PATH:${VCPKG_DIR:?}
-  - git clone https://github.com/Microsoft/vcpkg.git ${VCPKG_DIR:?}
-  - mv -f -t ${VCPKG_DIR:?} ~/.cache/vcpkg/* || echo "No cached files for vcpkg."
-  - |
-    # Build vcpkg
-    cd ${VCPKG_DIR} # Outside `(...)` Travis OSX bug
-    ( set -euxo pipefail
-      VCPKG_SRC_HASH="${VCPKG_DIR}/vcpkg_src_hash" && touch ${VCPKG_SRC_HASH}
-      GENERATE_SRC_HASH='( git log --format=format:%H --max-count=1 -- toolsrc )'
-      if [[ ${VCPKG_CC:-} ]]; then eval "CC=${VCPKG_CC}"; fi
-      if [[ ${VCPKG_CXX:-} ]]; then eval "CXX=${VCPKG_CXX}"; fi
-      if [[ ! -x "$(command -v vcpkg)" ||
-        ( $(vcpkg update) == 'Warning: Different source'*'for vcpkg'* ) ||
-        ( $(eval $GENERATE_SRC_HASH) != $(< ${VCPKG_SRC_HASH}) ) ]]
-      then
-        if [[ ${TRAVIS_OS_NAME} == "osx" && ! ${VCPKG_CXX:-} ]]; then
-          bootstrap-vcpkg.sh --allowAppleClang
-        else
-          bootstrap-vcpkg.sh
-        fi
-        eval ${GENERATE_SRC_HASH} > ${VCPKG_SRC_HASH}
-      fi
-      chmod +x vcpkg
-    )
-
-install:
-  - if [[ ${TRAVIS_OS_NAME} == "linux" ]]; then vcpkg install catch2; fi
-  - |
-    # Update installed (cached) packages
-    ( set -eu
-      vcpkg update # print potential updates
-      if [[ $(vcpkg upgrade) != *'installed packages are up-to-date'* ]]
-      then
-        vcpkg upgrade --no-dry-run
-      fi
-    )
 
 # scripts to run before build
 before_script:
   - if [[ "$CXX" == *"clang"* ]]; then clang --version ; fi
   - cd ${TRAVIS_BUILD_DIR}
   - mkdir compile && cd compile
-  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT="${SQLITE_ORM_OMITS_CODECVT:OFF}" ..
+  - cmake -DCMAKE_BUILD_TYPE=Debug -DSQLITE_ORM_OMITS_CODECVT="${SQLITE_ORM_OMITS_CODECVT:OFF}" ..
 
 # build examples, and run tests (ie make & make test)
 script:
@@ -139,13 +98,3 @@ script:
 # generate and publish GCov coveralls results
 after_success:
   - if [[ "$CXX" == "g++" ]]; then coveralls --root .. -e examples -e googletest -e sqlite3 -e tests -E ".*feature_tests.*" -E ".*CompilerId.*" --gcov-options '\-lp' ; fi
-
-before_cache:
-- |
-  # Select files for caching
-  mkdir -p ~/.cache/vcpkg
-  mv -u -t ~/.cache/vcpkg ${VCPKG_DIR}/vcpkg ${VCPKG_DIR}/installed ${VCPKG_DIR}/vcpkg_src_hash
-
-cache:
-  directories:
-  - ~/.cache
