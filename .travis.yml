@@ -110,7 +110,6 @@ before_install:
     )
 
 install:
-  - vcpkg install gtest
   - vcpkg install catch2
   - |
     # Update installed (cached) packages
