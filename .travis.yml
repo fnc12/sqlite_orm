@@ -11,6 +11,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-9
+            - ninja-build
       env:
         - CC: gcc-9
         - CXX: g++-9
@@ -22,6 +23,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-7
+            - ninja-build
       env:
         - CC: gcc-7
         - CXX: g++-7
@@ -29,6 +31,10 @@ matrix:
     - name: "LLVM/Clang (Travis default)"
       language: cpp
       compiler: clang
+      addons:
+        apt:
+          packages:
+            - ninja-build
       env:
         - SQLITE_ORM_OMITS_CODECVT: ON
 
@@ -42,6 +48,7 @@ matrix:
         homebrew:
           packages:
             - catch2
+            - ninja
           update: true
 
     - name: "LLVM/Clang (latest)"
@@ -52,6 +59,7 @@ matrix:
           packages:
             - llvm
             - catch2
+            - ninja
       env:
         - CPPFLAGS: "-I/usr/local/opt/llvm/include"
         - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
@@ -70,6 +78,7 @@ matrix:
           packages:
             - gcc@6
             - catch2
+            - ninja
           update: true
       env:
         - CC: gcc-6
@@ -98,11 +107,11 @@ before_script:
   - if [[ "$CXX" == *"clang"* ]]; then clang --version ; fi
   - cd ${TRAVIS_BUILD_DIR}
   - mkdir compile && cd compile
-  - cmake -DCMAKE_BUILD_TYPE=Debug -DSQLITE_ORM_OMITS_CODECVT="${SQLITE_ORM_OMITS_CODECVT:OFF}" ..
+  - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DSQLITE_ORM_OMITS_CODECVT="${SQLITE_ORM_OMITS_CODECVT:OFF}" ..
 
 # build examples, and run tests (ie make & make test)
 script:
-  - cmake --build . --config Debug
+  - cmake --build . --config Debug -- -k 10
   - ctest --verbose --output-on-failure -C Debug -j $(nproc)
 
 # generate and publish GCov coveralls results
