@@ -45,7 +45,7 @@ matrix:
             - gcc@6
           update: true
 
-    - name: "OSX LLVM/Clang (latest)"
+    - name: "LLVM/Clang (latest)"
       os: osx
       osx_image: xcode10.2
       addons:
