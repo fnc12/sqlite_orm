@@ -1,104 +1,114 @@
-# Request for Ubuntu 16.04 Trusty VM
-sudo: true
+# Defaults
+os: linux
 dist: xenial
-
-# This is comment to easer chagne CXX and CC flags
-#language: cpp
-
-cache:
-  apt: true
-
-addons:
-    apt:
-      update: true
-      packages:
-      - cmake
-      - git
-    homebrew:
-      packages:
-      - cmake
-      - git
-      update: true
 
 matrix:
   include:
-    - name: "gcc 7"
-      compiler: gcc
+    - name: "GCC-9"
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-9
+            - ninja-build
+      env:
+        - CC: gcc-9
+        - CXX: g++-9
+
+    - name: "GCC-7"
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
             - g++-7
+            - ninja-build
       env:
-        - CC=gcc-7
-        - CXX=g++-7
-        - SQLITE_ORM_OMITS_CODECVT=OFF
-    - name: "clang default"
+        - CC: gcc-7
+        - CXX: g++-7
+
+    - name: "LLVM/Clang (Travis default)"
+      language: cpp
       compiler: clang
+      addons:
+        apt:
+          packages:
+            - ninja-build
       env:
-        - CC=clang
-        - CXX=clang++
-        - SQLITE_ORM_OMITS_CODECVT=ON
-    - name: "osx clang"
+        - SQLITE_ORM_OMITS_CODECVT: ON
+
+    - name: AppleClang-10.0.1
+      os: osx
+      osx_image: xcode10.2
+      language: cpp
+      env:
+        - SQLITE_ORM_OMITS_CODECVT: ON
+      addons:
+        homebrew:
+          packages:
+            - catch2
+            - ninja
+          update: true
+
+    - name: "LLVM/Clang (latest)"
+      os: osx
+      osx_image: xcode10.2
       addons:
         homebrew:
           packages:
             - llvm
+            - catch2
+            - ninja
           update: true
-      compiler: clang
+      env:
+        - CPPFLAGS: "-I/usr/local/opt/llvm/include"
+        - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
+        - CPATH: /usr/local/opt/llvm/include
+        - LIBRARY_PATH: /usr/local/opt/llvm/lib
+        - LD_LIBRARY_PATH: /usr/local/opt/llvm/lib
+        - CC: /usr/local/opt/llvm/bin/clang
+        - CXX: /usr/local/opt/llvm/bin/clang++
+        - SQLITE_ORM_OMITS_CODECVT: ON
+
+    - name: "GCC-6"
       os: osx
       osx_image: xcode10.2
-      env:
-        - CPPFLAGS="-I/usr/local/opt/llvm/include"
-        - LDFLAGS="-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
-        - CPATH=/usr/local/opt/llvm/include
-        - LIBRARY_PATH=/usr/local/opt/llvm/lib
-        - LD_LIBRARY_PATH=/usr/local/opt/llvm/lib
-        - CC=/usr/local/opt/llvm/bin/clang
-        - CXX=/usr/local/opt/llvm/bin/clang++
-        - VCPKG_ALLOW_APPLE_CLANG=1
-        - SQLITE_ORM_OMITS_CODECVT=ON
-    - name: "osx gcc"
       addons:
         homebrew:
           packages:
-            - gcc6
+            - gcc@6
+            - catch2
+            - ninja
           update: true
-      compiler: gcc
-      os: osx
-      osx_image: xcode10.1
       env:
-        - CC=gcc-6
-        - CXX=g++-6
-        - SQLITE_ORM_OMITS_CODECVT=OFF
+        - CC: gcc-6
+        - CXX: g++-6
 
 before_install:
-  # coveralls test coverage:
-  - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
+  - |
+    if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then
+      export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Use coreutils from homebrew.
+    fi
+
+install:
+  - |
+    # Catch2 test framework
+    if [[ ${TRAVIS_OS_NAME} == "linux" ]]; then
+      git clone --depth=1 --quiet https://github.com/catchorg/Catch2.git
+      cd Catch2
+      cmake -Bbuild -H. -DBUILD_TESTING=OFF
+      sudo env "PATH=$PATH" cmake --build ./build --target install
+    fi
 
 # scripts to run before build
 before_script:
   - if [[ "$CXX" == *"clang"* ]]; then clang --version ; fi
-  - if [[ "$CXX" == *"clang"* && "$TRAVIS_OS_NAME" == "osx" ]]; then chmod +x prepare-osx-with-clang.sh ; ./prepare-osx-with-clang.sh ; fi 
-  - chmod +x build.sh
-  - cd third_party
-  - git clone https://github.com/Microsoft/vcpkg.git vcpkg
-  - cd vcpkg
-  - chmod +x bootstrap-vcpkg.sh
-  - if [[ "$CXX" == *"clang"* && "$TRAVIS_OS_NAME" == "osx" ]]; then ./bootstrap-vcpkg.sh --allowAppleClang ; else ./bootstrap-vcpkg.sh ; fi
-  - chmod +x vcpkg
-  - ./vcpkg install gtest
-  - cd ../..
-  - mkdir compile
-  - cd compile
-  - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_TOOLCHAIN_FILE=../third_party/vcpkg/scripts/buildsystems/vcpkg.cmake -DSQLITE_ORM_OMITS_CODECVT="$SQLITE_ORM_OMITS_CODECVT" ..
+  - cd ${TRAVIS_BUILD_DIR}
+  - mkdir compile && cd compile
+  - cmake -G Ninja -DCMAKE_BUILD_TYPE=Debug -DSQLITE_ORM_OMITS_CODECVT="${SQLITE_ORM_OMITS_CODECVT:OFF}" ..
 
 # build examples, and run tests (ie make & make test)
 script:
-  - cmake --build . --config Debug
-  - ctest --verbose --output-on-failure -C Debug
-
-# generate and publish GCov coveralls results
-after_success:
-  - if [[ "$CXX" == "g++" ]]; then coveralls --root .. -e examples -e googletest -e sqlite3 -e tests -E ".*feature_tests.*" -E ".*CompilerId.*" --gcov-options '\-lp' ; fi
+  - cmake --build . --config Debug -- -k 10
+  - ctest --verbose --output-on-failure -C Debug -j $(nproc)
