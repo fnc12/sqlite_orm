@@ -89,8 +89,6 @@ before_install:
     if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then
       export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Use coreutils from homebrew.
     fi
-  # coveralls test coverage:
-  - if [[ "$CXX" == "g++" ]]; then pip install --user cpp-coveralls ; fi
 
 install:
   - |
@@ -113,7 +111,3 @@ before_script:
 script:
   - cmake --build . --config Debug -- -k 10
   - ctest --verbose --output-on-failure -C Debug -j $(nproc)
-
-# generate and publish GCov coveralls results
-after_success:
-  - if [[ "$CXX" == "g++" ]]; then coveralls --root .. -e examples -e googletest -e sqlite3 -e tests -E ".*feature_tests.*" -E ".*CompilerId.*" --gcov-options '\-lp' ; fi
