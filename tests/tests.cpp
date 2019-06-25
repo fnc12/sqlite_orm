@@ -4,7 +4,7 @@
 #include <vector>   //  std::vector
 #include <string>   //  std::string
 #include <iostream> //  std::cout, std::endl
-#include <memory>
+#include <memory>   //  std::unique_ptr
 #include <cstdio>   //  remove
 #include <numeric>  //  std::iota
 
@@ -34,6 +34,11 @@ void testUniquePtrInUpdate() {
     storage.update_all(set(assign(&User::name, std::make_unique<std::string>("Nick"))));
     
     assert(storage.count<User>(where(is_null(&User::name))) == 0);
+    
+    std::unique_ptr<std::string> ptr;
+    storage.update_all(set(assign(&User::name, move(ptr))));
+    
+    assert(storage.count<User>(where(is_not_null(&User::name))) == 0);
 }
 
 void testJoin() {
