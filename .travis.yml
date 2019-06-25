@@ -60,6 +60,7 @@ matrix:
             - llvm
             - catch2
             - ninja
+          update: true
       env:
         - CPPFLAGS: "-I/usr/local/opt/llvm/include"
         - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
@@ -72,7 +73,7 @@ matrix:
 
     - name: "GCC-6"
       os: osx
-      osx_image: xcode10.1
+      osx_image: xcode10.2
       addons:
         homebrew:
           packages:
