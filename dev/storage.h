@@ -301,7 +301,11 @@ namespace sqlite_orm {
             typename std::enable_if<!is_base_of_template<T, compound_operator>::value, std::string>::type string_from_expression(const T &t, bool /*noTableName*/, bool escape, bool ignoreBindable = false) {
                 auto isNullable = type_is_nullable<T>::value;
                 if(isNullable && !type_is_nullable<T>()(t)){
-                    return "NULL";
+                    if(ignoreBindable){
+                        return "?";
+                    }else{
+                        return "NULL";
+                    }
                 }else{
                     auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
                     std::stringstream ss;
@@ -321,15 +325,6 @@ namespace sqlite_orm {
                         ss << "'";
                     }
                     return ss.str();
-                }
-            }
-            
-            template<class T>
-            std::string string_from_expression(const std::unique_ptr<T> &ptr, bool noTableName, bool escape, bool ignoreBindable = false) {
-                if(ptr){
-                    return this->string_from_expression(*ptr, noTableName, escape, ignoreBindable);
-                }else{
-                    return this->string_from_expression((std::nullptr_t)nullptr, noTableName, escape, ignoreBindable);
                 }
             }
             
