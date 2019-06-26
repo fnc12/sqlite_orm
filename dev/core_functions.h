@@ -4,6 +4,7 @@
 #include <tuple>    //  std::make_tuple, std::tuple_size
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>   //  std::unique_ptr
+#include <vector>   //  std::vector
 
 #include "conditions.h"
 #include "operators.h"
@@ -117,6 +118,12 @@ namespace sqlite_orm {
         struct julianday_string {
             operator std::string() const {
                 return "JULIANDAY";
+            }
+        };
+        
+        struct zeroblob_string {
+            operator std::string() const {
+                return "ZEROBLOB";
             }
         };
     }
@@ -322,6 +329,12 @@ namespace sqlite_orm {
     core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args &&...args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
+    }
+    
+    template<class N>
+    core_functions::core_function_t<std::vector<char>, core_functions::zeroblob_string, N> zeroblob(N &&n) {
+        std::tuple<N> args{std::forward<N>(n)};
+        return {std::move(args)};
     }
     
     template<
