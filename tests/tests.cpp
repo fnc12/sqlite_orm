@@ -7,11 +7,46 @@
 #include <memory>   //  std::unique_ptr
 #include <cstdio>   //  remove
 #include <numeric>  //  std::iota
+#include <algorithm>    //  std::fill
 
 using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
+
+void testZeroblob() {
+    cout << __func__ << endl;
+    
+    struct Test {
+        int value = 0;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("test",
+                                           make_column("value", &Test::value)));
+    storage.sync_schema();
+    
+    {
+        auto rows = storage.select(zeroblob(10));
+        assert(rows.size() == 1);
+        auto &row = rows.front();
+        assert(row.size() == 10);
+        std::vector<char> expectedValue(10);
+        std::fill(expectedValue.begin(), expectedValue.end(), 0);
+        assert(row == expectedValue);
+    }
+    {
+        storage.insert(Test{100});
+        
+        auto rows = storage.select(zeroblob(&Test::value));
+        assert(rows.size() == 1);
+        auto &row = rows.front();
+        assert(row.size() == 100);
+        std::vector<char> expectedValue(100);
+        std::fill(expectedValue.begin(), expectedValue.end(), 0);
+        assert(row == expectedValue);
+    }
+}
 
 void testUniquePtrInUpdate() {
     cout << __func__ << endl;
@@ -3127,4 +3162,6 @@ int main(int, char **) {
     testJoin();
     
     testUniquePtrInUpdate();
+    
+    testZeroblob();
 }
