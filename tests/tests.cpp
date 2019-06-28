@@ -14,6 +14,49 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testSubstr() {
+    cout << __func__ << endl;
+    
+    struct Test {
+        std::string text;
+        int x = 0;
+        int y = 0;
+    };
+    auto storage = make_storage({},
+                                make_table("test",
+                                           make_column("text", &Test::text),
+                                           make_column("x", &Test::x),
+                                           make_column("y", &Test::y)));
+    storage.sync_schema();
+    
+    {
+        auto rows = storage.select(substr("SQLite substr", 8));
+        assert(rows.size() == 1);
+        assert(rows.front() == "substr");
+    }
+    {
+        storage.insert(Test{"SQLite substr", 8});
+        assert(storage.count<Test>() == 1);
+        auto rows = storage.select(substr(&Test::text, &Test::x));
+        assert(rows.size() == 1);
+        assert(rows.front() == "substr");
+    }
+    {
+        auto rows = storage.select(substr("SQLite substr", 1, 6));
+        assert(rows.size() == 1);
+        assert(rows.front() == "SQLite");
+    }
+    {
+        
+        storage.remove_all<Test>();
+        storage.insert(Test{"SQLite substr", 1, 6});
+        assert(storage.count<Test>() == 1);
+        auto rows = storage.select(substr(&Test::text, &Test::x, &Test::y));
+        assert(rows.size() == 1);
+        assert(rows.front() == "SQLite");
+    }
+}
+
 void testZeroblob() {
     cout << __func__ << endl;
     
@@ -3164,4 +3207,6 @@ int main(int, char **) {
     testUniquePtrInUpdate();
     
     testZeroblob();
+    
+    testSubstr();
 }
