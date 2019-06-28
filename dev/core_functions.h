@@ -126,6 +126,12 @@ namespace sqlite_orm {
                 return "ZEROBLOB";
             }
         };
+        
+        struct substr_string {
+            operator std::string() const {
+                return "SUBSTR";
+            }
+        };
     }
     
     /**
@@ -331,9 +337,30 @@ namespace sqlite_orm {
         return {std::move(t)};
     }
     
+    /**
+     *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
+     */
     template<class N>
     core_functions::core_function_t<std::vector<char>, core_functions::zeroblob_string, N> zeroblob(N &&n) {
         std::tuple<N> args{std::forward<N>(n)};
+        return {std::move(args)};
+    }
+    
+    /**
+     *  SUBSTR(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
+     */
+    template<class X, class Y>
+    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y> substr(X &&x, Y &&y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {std::move(args)};
+    }
+    
+    /**
+     *  SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
+     */
+    template<class X, class Y, class Z>
+    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y, Z> substr(X &&x, Y &&y, Z &&z) {
+        std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
         return {std::move(args)};
     }
     
