@@ -17,16 +17,6 @@ namespace sqlite_orm {
     
     namespace internal {
 
-        template<class O, class C>
-        typename column_traits<C>::field_type invoke_column(const O& o, const C& c, std::false_type) {
-            return o.*c;
-        }
-
-        template<class O, class C>
-        typename column_traits<C>::field_type invoke_column(const O& o, const C& c, std::true_type) {
-            return ((o).*(c))();
-        }
-
         /**
          *  This is a proxy class used to define what type must have result type depending on select
          *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
