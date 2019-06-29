@@ -82,9 +82,9 @@ namespace sqlite_orm {
     /**
      *  Specialization for std::nullptr_t.
      */
-    template<class V>
-    struct statement_binder<V, std::enable_if_t<std::is_same<V, std::nullptr_t>::value>> {
-        int bind(sqlite3_stmt *stmt, int index, const V &) {
+    template<>
+    struct statement_binder<std::nullptr_t, void> {
+        int bind(sqlite3_stmt *stmt, int index, const std::nullptr_t &) {
             return sqlite3_bind_null(stmt, index);
         }
     };
@@ -139,8 +139,8 @@ namespace sqlite_orm {
             
             using conditional_binder_base::conditional_binder_base;
             
-            void operator()(const T &t) const {
-                statement_binder<T>().bind(this->stmt, this->index++, t);
+            int operator()(const T &t) const {
+                return statement_binder<T>().bind(this->stmt, this->index++, t);
             }
         };
         
@@ -148,8 +148,8 @@ namespace sqlite_orm {
         struct conditional_binder<T, std::false_type> : conditional_binder_base {
             using conditional_binder_base::conditional_binder_base;
             
-            void operator()(const T &t) const {
-                //..
+            int operator()(const T &) const {
+                return SQLITE_OK;
             }
         };
     }

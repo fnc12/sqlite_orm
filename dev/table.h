@@ -59,7 +59,7 @@ namespace sqlite_orm {
             template<class F, class C>
             const F* get_object_field_pointer(const object_type &obj, C c) {
                 const F *res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &c, &obj, this](auto &col){
+                this->for_each_column_with_field_type<F>([&res, &c, &obj](auto &col){
                     using namespace static_magic;
                     using column_type = typename std::remove_reference<decltype(col)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
@@ -105,7 +105,7 @@ namespace sqlite_orm {
             
             std::vector<std::string> composite_key_columns_names() {
                 std::vector<std::string> res;
-                this->impl.for_each_primary_key([this, &res](auto c){
+                this->impl.for_each_primary_key([this, &res](auto &c){
                     res = this->composite_key_columns_names(c);
                 });
                 return res;
@@ -123,11 +123,11 @@ namespace sqlite_orm {
             }
             
             template<class ...Args>
-            std::vector<std::string> composite_key_columns_names(constraints::primary_key_t<Args...> pk) {
+            std::vector<std::string> composite_key_columns_names(const constraints::primary_key_t<Args...> &pk) {
                 std::vector<std::string> res;
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
-                tuple_helper::iterator<std::tuple_size<pk_columns_tuple>::value - 1, Args...>()(pk.columns, [this, &res](auto &v){
+                iterate_tuple(pk.columns, [this, &res](auto &v){
                     res.push_back(this->find_column_name(v));
                 });
                 return res;

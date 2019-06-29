@@ -6,6 +6,7 @@
 #include "select_constraints.h"
 #include "operators.h"
 #include "tuple_helper.h"
+#include "core_functions.h"
 
 namespace sqlite_orm {
     
@@ -61,8 +62,8 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &binaryOperator, const L &l) const {
-                iterate_ast(binaryOperator.l, l);
-                iterate_ast(binaryOperator.r, l);
+                iterate_ast(binaryOperator.lhs, l);
+                iterate_ast(binaryOperator.rhs, l);
             }
         };
         
@@ -82,7 +83,7 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &cols, const L &l) const {
-                cols.for_each([&l](auto &col){
+                iterate_tuple(cols.columns, [&l](auto &col){
                     iterate_ast(col, l);
                 });
             }
@@ -149,9 +150,9 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &tuple, const L &l) const {
-                tuple_helper::iterator<std::tuple_size<node_type>::value - 1, Args...>()(tuple, [&l](auto &v){
+                iterate_tuple(tuple, [&l](auto &v){
                     iterate_ast(v, l);
-                }, false);
+                });
             }
         };
         
@@ -225,6 +226,68 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &neg, const L &l) const {
                 iterate_ast(neg.c, l);
+            }
+        };
+        
+        template<class R, class S, class ...Args>
+        struct ast_iterator<core_functions::core_function_t<R, S, Args...>, void> {
+            using node_type = core_functions::core_function_t<R, S, Args...>;
+            
+            template<class L>
+            void operator()(const node_type &f, const L &l) const {
+                iterate_tuple(f.args, [&l](auto &v){
+                    iterate_ast(v, l);
+                });
+            }
+        };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::left_join_t<T, O>, void> {
+            using node_type = conditions::left_join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::on_t<T>, void> {
+            using node_type = conditions::on_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &o, const L &l) const {
+                iterate_ast(o.arg, l);
+            }
+        };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::join_t<T, O>, void> {
+            using node_type = conditions::join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::left_outer_join_t<T, O>, void> {
+            using node_type = conditions::left_outer_join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
+            }
+        };
+        
+        template<class T, class O>
+        struct ast_iterator<conditions::inner_join_t<T, O>, void> {
+            using node_type = conditions::inner_join_t<T, O>;
+            
+            template<class L>
+            void operator()(const node_type &j, const L &l) const {
+                iterate_ast(j.constraint, l);
             }
         };
     }

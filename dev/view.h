@@ -53,10 +53,12 @@ namespace sqlite_orm {
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK){
                     auto index = 1;
-                    iterate_ast(this->args, [&index, stmt](auto &node){
+                    iterate_ast(this->args, [&index, stmt, db](auto &node){
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                        binder(node);
+                        if(SQLITE_OK != binder(node)){
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                        }
                     });
                     return {stmt, *this};
                 }else{

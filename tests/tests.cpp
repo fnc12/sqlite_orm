@@ -4,14 +4,213 @@
 #include <vector>   //  std::vector
 #include <string>   //  std::string
 #include <iostream> //  std::cout, std::endl
-#include <memory>
+#include <memory>   //  std::unique_ptr
 #include <cstdio>   //  remove
 #include <numeric>  //  std::iota
+#include <algorithm>    //  std::fill
 
 using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
+
+void testUniquePtrInUpdate() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.insert(User{});
+    storage.insert(User{});
+    storage.insert(User{});
+    
+    storage.update_all(set(assign(&User::name, std::make_unique<std::string>("Nick"))));
+    
+    assert(storage.count<User>(where(is_null(&User::name))) == 0);
+    
+    std::unique_ptr<std::string> ptr;
+    storage.update_all(set(assign(&User::name, move(ptr))));
+    
+    assert(storage.count<User>(where(is_not_null(&User::name))) == 0);
+}
+
+void testJoin() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    
+    struct Visit {
+        int id = 0;
+        int userId = 0;
+        time_t date = 0;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)),
+                                make_table("visits",
+                                           make_column("id", &Visit::id, primary_key()),
+                                           make_column("user_id", &Visit::userId),
+                                           make_column("date", &Visit::date)));
+    storage.sync_schema();
+    
+    int id = 1;
+    User will{id++, "Will"};
+    User smith{id++, "Smith"};
+    User nicole{id++, "Nicole"};
+    
+    storage.replace(will);
+    storage.replace(smith);
+    storage.replace(nicole);
+    
+    id = 1;
+    storage.replace(Visit{id++, will.id, 10});
+    storage.replace(Visit{id++, will.id, 20});
+    storage.replace(Visit{id++, will.id, 30});
+    
+    storage.replace(Visit{id++, smith.id, 25});
+    storage.replace(Visit{id++, smith.id, 35});
+    
+    {
+        auto rows = storage.get_all<User>(left_join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+    {
+        auto rows = storage.get_all<User>(join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+    {
+        auto rows = storage.get_all<User>(left_outer_join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+    {
+        auto rows = storage.get_all<User>(inner_join<Visit>(on(is_equal(&Visit::userId, 2))));
+        assert(rows.size() == 6);
+    }
+}
+
+void testStorageCopy() {
+    cout << __func__ << endl;
+    int calledCount = 0;
+    
+    auto storage = make_storage({});
+    storage.on_open = [&calledCount](sqlite3 *){
+        ++calledCount;
+    };
+    storage.on_open(nullptr);
+    assert(calledCount == 1);
+    
+    auto storageCopy = storage;
+    assert(storageCopy.on_open);
+    
+    storageCopy.on_open(nullptr);
+    assert(calledCount == 2);
+}
+
+void testSetNull() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::unique_ptr<std::string> name;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{1, std::make_unique<std::string>("Ototo")});
+    assert(storage.count<User>() == 1);
+    
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(rows.front().name);
+    }
+    storage.update_all(set(assign(&User::name, nullptr)));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(!rows.front().name);
+    }
+    storage.update_all(set(assign(&User::name, "ototo")));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(rows.front().name);
+        assert(*rows.front().name == "ototo");
+    }
+    storage.update_all(set(assign(&User::name, nullptr)),
+                       where(is_equal(&User::id, 1)));
+    {
+        auto rows = storage.get_all<User>();
+        assert(rows.size() == 1);
+        assert(!rows.front().name);
+    }
+}
+
+void testCompositeKeyColumnsNames() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::string name;
+        std::string info;
+    };
+    
+    {
+        auto table = make_table("t",
+                                make_column("id", &User::id),
+                                make_column("name", &User::name),
+                                make_column("info", &User::info),
+                                primary_key(&User::id, &User::name));
+        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        std::vector<std::string> expected = {"id", "name"};
+        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+    }
+    {
+        auto table = make_table("t",
+                                make_column("id", &User::id),
+                                make_column("name", &User::name),
+                                make_column("info", &User::info),
+                                primary_key(&User::name, &User::id));
+        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        std::vector<std::string> expected = {"name", "id"};
+        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+    }
+    {
+        auto table = make_table("t",
+                                make_column("id", &User::id),
+                                make_column("name", &User::name),
+                                make_column("info", &User::info),
+                                primary_key(&User::name, &User::id, &User::info));
+        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        std::vector<std::string> expected = {"name", "id", "info"};
+        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+    }
+    {
+        auto table = make_table("t",
+                                make_column("id", &User::id),
+                                make_column("name", &User::name),
+                                make_column("info", &User::info));
+        auto compositeKeyColumnsNames = table.composite_key_columns_names();
+        assert(compositeKeyColumnsNames.empty());
+    }
+}
 
 void testNot() {
     cout << __func__ << endl;
@@ -2428,15 +2627,21 @@ void testDefaultValue() {
                                             make_column("Age", &User::age)));
     storage1.sync_schema();
     storage1.remove_all<User>();
-
+    
+    auto emailColumn = make_column("Email", &User::email, default_value("example@email.com"));
+ 
     auto storage2 = make_storage("test_db.sqlite",
                                  make_table("User",
                                             make_column("Id", &User::userId, primary_key()),
                                             make_column("Name", &User::name),
                                             make_column("Age", &User::age),
-                                            make_column("Email", &User::email, default_value("example@email.com"))));
+                                            emailColumn));
     storage2.sync_schema();
     storage2.insert(User{0, "Tom", 15, ""});
+    
+    auto emailDefault = emailColumn.default_value();
+    assert(emailDefault);
+    assert(*emailDefault == "example@email.com");
 }
 
 //  after #18
@@ -2451,7 +2656,7 @@ void testCompositeKey() {
     };
 
     auto recordsTableName = "records";
-    auto storage = make_storage("compisite_key.db",
+    auto storage = make_storage("",
                                 make_table(recordsTableName,
                                            make_column("year", &Record::year),
                                            make_column("month", &Record::month),
@@ -2461,7 +2666,7 @@ void testCompositeKey() {
     storage.sync_schema();
     assert(storage.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
 
-    auto storage2 = make_storage("compisite_key2.db",
+    auto storage2 = make_storage("",
                                  make_table(recordsTableName,
                                             make_column("year", &Record::year),
                                             make_column("month", &Record::month),
@@ -2470,7 +2675,7 @@ void testCompositeKey() {
     storage2.sync_schema();
     assert(storage2.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
 
-    auto storage3 = make_storage("compisite_key3.db",
+    auto storage3 = make_storage("",
                                  make_table(recordsTableName,
                                             make_column("year", &Record::year),
                                             make_column("month", &Record::month),
@@ -2914,4 +3119,14 @@ int main(int, char **) {
     testBetween();
     
     testNot();
+    
+    testCompositeKeyColumnsNames();
+    
+    testSetNull();
+
+    testStorageCopy();
+    
+    testJoin();
+    
+    testUniquePtrInUpdate();
 }

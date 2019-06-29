@@ -2,41 +2,13 @@
 
 #include <string>   //  std::string
 #include <utility>  //  std::declval
-#include <type_traits>  //  std::true_type, std::false_type
+
+#include "is_base_of_template.h"
 
 namespace sqlite_orm {
     
     namespace internal {
-
-/*
- * This is because of bug in MSVC, for more information, please visit
- * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
- */
-#if defined(_MSC_VER)
-       template <template <typename...> class Base, typename Derived>
-       struct is_base_of_template_impl {
-               template<typename... Ts>
-               static constexpr std::true_type test(const Base<Ts...>*);
-
-               static constexpr std::false_type test(...);
-
-               using type = decltype(test(std::declval<Derived*>()));
-       };
-
-       template <typename Derived, template <typename...> class Base>
-       using is_base_of_template = typename is_base_of_template_impl<Base, Derived>::type;
-
-#else
-        template <template <typename...> class C, typename...Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>*);
         
-        template <template <typename...> class C>
-        std::false_type is_base_of_template_impl(...);
-        
-        template <typename T, template <typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
-
-#endif
         /**
          *  DISCTINCT generic container.
          */
@@ -63,35 +35,12 @@ namespace sqlite_orm {
         
         template<class ...Args>
         struct columns_t {
+            using columns_type = std::tuple<Args...>;
+            
+            columns_type columns;
             bool distinct = false;
             
-            template<class L>
-            void for_each(L) const {
-                //..
-            }
-            
-            int count() const {
-                return 0;
-            }
-        };
-        
-        template<class T, class ...Args>
-        struct columns_t<T, Args...> : public columns_t<Args...> {
-            T m;
-            
-            columns_t(decltype(m) m_, Args&& ...args): super(std::forward<Args>(args)...), m(m_) {}
-            
-            template<class L>
-            void for_each(L l) const {
-                l(this->m);
-                this->super::for_each(l);
-            }
-            
-            int count() const {
-                return 1 + this->super::count();
-            }
-        private:
-            using super = columns_t<Args...>;
+            static constexpr const int count = std::tuple_size<columns_type>::value;
         };
         
         template<class ...Args>
@@ -270,7 +219,7 @@ namespace sqlite_orm {
     
     template<class ...Args>
     internal::columns_t<Args...> columns(Args&& ...args) {
-        return {std::forward<Args>(args)...};
+        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
     
     /**

@@ -16,12 +16,10 @@ namespace sqlite_orm {
             using left_type = L;
             using right_type = R;
             
-            left_type l;
-            right_type r;
+            left_type lhs;
+            right_type rhs;
             
-            binary_operator() = default;
-            
-            binary_operator(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+            binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
         };
         
         /**
@@ -92,9 +90,7 @@ namespace sqlite_orm {
             L l;
             R r;
             
-            assign_t(){}
-            
-            assign_t(L l_, R r_): l(l_), r(r_) {}
+            assign_t(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
         };
         
         /**
@@ -116,11 +112,15 @@ namespace sqlite_orm {
         struct expression_t {
             T t;
             
-            expression_t(T t_): t(t_) {}
+            expression_t(T t_): t(std::move(t_)) {}
             
             template<class R>
             assign_t<T, R> operator=(R r) const {
                 return {this->t, std::move(r)};
+            }
+            
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+                return {this->t, nullptr};
             }
         };
         
@@ -131,8 +131,7 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::expression_t<T> c(T t) {
-        using result_type = internal::expression_t<T>;
-        return result_type(std::move(t));
+        return {std::move(t)};
     }
     
     /**
