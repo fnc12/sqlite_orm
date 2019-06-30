@@ -152,17 +152,32 @@ namespace sqlite_orm {
             return os;
         }
         
+        struct on_update_delete_base {
+            const bool update;  //  true if update and false if delete
+            
+            operator std::string() const {
+                if(this->update){
+                    return "ON UPDATE";
+                }else{
+                    return "ON DELETE";
+                }
+            }
+        };
+        
         /**
          *  F - foreign key class
          */
         template<class F>
-        struct on_update_delete_t {
+        struct on_update_delete_t : on_update_delete_base {
             using foreign_key_type = F;
             
             const foreign_key_type &fk;
-            const bool update;  //  true if update and false if delete
             
-            on_update_delete_t(decltype(fk) fk_, decltype(update) update_, foreign_key_action action_) : fk(fk_), update(update_), _action(action_) {}
+            on_update_delete_t(decltype(fk) fk_, decltype(update) update, foreign_key_action action_) :
+            on_update_delete_base{update},
+            fk(fk_),
+            _action(action_)
+            {}
             
             foreign_key_action _action = foreign_key_action::none;
             
@@ -219,14 +234,6 @@ namespace sqlite_orm {
             operator bool() const {
                 return this->_action != decltype(this->_action)::none;
             }
-            
-            operator std::string() const {
-                if(this->update){
-                    return "ON UPDATE";
-                }else{
-                    return "ON DELETE";
-                }
-            }
         };
         
         template<class ...Cs, class ...Rs>
@@ -269,7 +276,7 @@ namespace sqlite_orm {
             using constraints_type = std::tuple<>;
             
             template<class L>
-            void for_each_column(L) {}
+            void for_each_column(const L &) {}
             
             template<class ...Opts>
             constexpr bool has_every() const  {
@@ -292,16 +299,13 @@ namespace sqlite_orm {
             
             template<class ...Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs ...references) {
-                using ret_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
-                return ret_type(std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...));
+                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...)};
             }
         };
 #endif
         
         struct collate_t {
-            internal::collate_argument argument;
-            
-            collate_t() : collate_t(internal::collate_argument::binary) {}
+            internal::collate_argument argument = internal::collate_argument::binary;
             
             collate_t(internal::collate_argument argument_): argument(argument_) {}
             
@@ -386,7 +390,7 @@ namespace sqlite_orm {
     
     template<class T>
     constraints::default_t<T> default_value(T t) {
-        return {t};
+        return {std::move(t)};
     }
     
     inline constraints::collate_t collate_nocase() {

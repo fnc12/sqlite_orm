@@ -14,6 +14,69 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
+void testSimpleCase() {
+    cout << __func__ << endl;
+    
+    struct User {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+        std::string country;
+    };
+    
+    struct Track {
+        int id = 0;
+        std::string name;
+        long milliseconds = 0;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, autoincrement(), primary_key()),
+                                           make_column("first_name", &User::firstName),
+                                           make_column("last_name", &User::lastName),
+                                           make_column("country", &User::country)),
+                                make_table("tracks",
+                                           make_column("trackid", &Track::id, autoincrement(), primary_key()),
+                                           make_column("name", &Track::name),
+                                           make_column("milliseconds", &Track::milliseconds)));
+    storage.sync_schema();
+    
+    {   //  test simple case
+        storage.insert(User{0, "Roberto", "Almeida", "Mexico"});
+        storage.insert(User{0, "Julia", "Bernett", "USA"});
+        storage.insert(User{0, "Camille", "Bernard", "Argentina"});
+        storage.insert(User{0, "Michelle", "Brooks", "USA"});
+        storage.insert(User{0, "Robet", "Brown", "USA"});
+        
+        auto rows = storage.select(columns(case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end()),
+                                   multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
+        assert(rows.size() == storage.count<User>());
+        assert(std::get<0>(rows[0]) == "Foreign");
+        assert(std::get<0>(rows[1]) == "Foreign");
+        assert(std::get<0>(rows[2]) == "Dosmetic");
+        assert(std::get<0>(rows[3]) == "Dosmetic");
+        assert(std::get<0>(rows[4]) == "Dosmetic");
+    }
+    {   //  test searched case
+        storage.insert(Track{0, "For Those About To Rock", 400000});
+        storage.insert(Track{0, "Balls to the Wall", 500000});
+        storage.insert(Track{0, "Fast as a Shark", 200000});
+        storage.insert(Track{0, "Restless and Wild", 100000});
+        storage.insert(Track{0, "Princess of the Dawn", 50000});
+        
+        /*auto rows = storage.select(case_<std::string>()
+                                   .when(c(&Track::milliseconds) < 60000, then("short"))
+                                   .when(c(&Track::milliseconds) >= 60000 and c(&Track::milliseconds) < 300000, then("medium"))
+                                   .else_("long")
+                                   .end(),
+                                   order_by(&Track::name));
+        assert(rows.size() == storage.count<Track>());*/
+    }
+    
+    
+}
+
 void testUniquePtrInUpdate() {
     cout << __func__ << endl;
     
@@ -2969,4 +3032,6 @@ int main(int, char **) {
     testJoin();
     
     testUniquePtrInUpdate();
+    
+    testSimpleCase();
 }

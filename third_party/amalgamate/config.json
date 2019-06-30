@@ -6,7 +6,6 @@
 		"dev/error_code.h",
 		"dev/sqlite_type.h",
 		"dev/tuple_helper.h",
-		"dev/static_magic.h",
 		"dev/type_printer.h",
 		"dev/collate_argument.h",
 		"dev/constraints.h",

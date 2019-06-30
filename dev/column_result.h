@@ -228,5 +228,10 @@ namespace sqlite_orm {
         struct column_result_t<St, conditions::cast_t<T, E>, void> {
             using type = T;
         };
+        
+        template<class St, class R, class T, class E, class ...Args>
+        struct column_result_t<St, simple_case_t<R, T, E, Args...>, void> {
+            using type = R;
+        };
     }
 }

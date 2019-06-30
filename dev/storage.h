@@ -720,6 +720,22 @@ namespace sqlite_orm {
                 ss << this->string_from_expression(op.right, noTableName, escape, ignoreBindable) << " ";
                 return ss.str();
             }
+            
+            template<class R, class T, class E, class ...Args>
+            std::string string_from_expression(const internal::simple_case_t<R, T, E, Args...> &c, bool noTableName, bool escape, bool ignoreBindable = false) {
+                std::stringstream ss;
+                ss << "CASE ";
+                ss << this->string_from_expression(c.case_expression, noTableName, escape, ignoreBindable) << " ";
+                iterate_tuple(c.args, [&ss, this, noTableName, escape, ignoreBindable](auto &pair){
+                    ss << "WHEN " << this->string_from_expression(pair.first, noTableName, escape, ignoreBindable) << " ";
+                    ss << "THEN " << this->string_from_expression(pair.second, noTableName, escape, ignoreBindable) << " ";
+                });
+                c.else_expression.apply([&ss, this, noTableName, escape, ignoreBindable](auto &el){
+                    ss << "ELSE " << this->string_from_expression(el, noTableName, escape, ignoreBindable) << " ";
+                });
+                ss << "END ";
+                return ss.str();
+            }
              
             template<class T>
             std::string process_where(const conditions::is_null_t<T> &c) {
@@ -1498,6 +1514,24 @@ namespace sqlite_orm {
                 return this->parse_table_name(c.expression);
             }
             
+            template<class R, class T, class E, class ...Args>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const simple_case_t<R, T, E, Args...> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto caseExpressionSet = this->parse_table_name(c.case_expression);
+                res.insert(caseExpressionSet.begin(), caseExpressionSet.end());
+                iterate_tuple(c.args, [this, &res](auto &pair){
+                    auto leftSet = this->parse_table_name(pair.first);
+                    res.insert(leftSet.begin(), leftSet.end());
+                    auto rightSet = this->parse_table_name(pair.second);
+                    res.insert(rightSet.begin(), rightSet.end());
+                });
+                c.else_expression.apply([this, &res](auto &el){
+                    auto tableNames = this->parse_table_name(el);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
+            }
+            
             template<class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_names(Args &&...) {
                 return {};
@@ -1572,8 +1606,8 @@ namespace sqlite_orm {
                             case SQLITE_ROW:{
                                 O obj;
                                 auto index = 0;
-                                impl.table.for_each_column([&index, &obj, stmt] (auto c) {
-                                    using field_type = typename decltype(c)::field_type;
+                                impl.table.for_each_column([&index, &obj, stmt] (auto &c) {
+                                    using field_type = typename std::decay<decltype(c)>::type::field_type;
                                     auto value = row_extractor<field_type>().extract(stmt, index++);
                                     if(c.member_pointer){
                                         obj.*c.member_pointer = std::move(value);
@@ -2248,19 +2282,20 @@ namespace sqlite_orm {
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db] (auto c) {
+                    impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db] (auto &c) {
                         if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()){
                             auto it = std::find(compositeKeyColumnNames.begin(),
                                                 compositeKeyColumnNames.end(),
                                                 c.name);
                             if(it == compositeKeyColumnNames.end()){
-                                using field_type = typename decltype(c)::field_type;
+                                using column_type = typename std::decay<decltype(c)>::type;
+                                using field_type = typename column_type::field_type;
                                 if(c.member_pointer){
                                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
                                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                                     }
                                 }else{
-                                    using getter_type = typename decltype(c)::getter_type;
+                                    using getter_type = typename column_type::getter_type;
                                     field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
                                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
                                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));

@@ -290,5 +290,22 @@ namespace sqlite_orm {
                 iterate_ast(j.constraint, l);
             }
         };
+        
+        template<class R, class T, class E, class ...Args>
+        struct ast_iterator<simple_case_t<R, T, E, Args...>, void> {
+            using node_type = simple_case_t<R, T, E, Args...>;
+            
+            template<class L>
+            void operator()(const node_type &c, const L &l) const {
+                iterate_ast(c.case_expression, l);
+                iterate_tuple(c.args, [&l](auto &pair){
+                    iterate_ast(pair.first, l);
+                    iterate_ast(pair.second, l);
+                });
+                c.else_expression.apply([&l](auto &el){
+                    iterate_ast(el, l);
+                });
+            }
+        };
     }
 }
