@@ -65,13 +65,18 @@ void testSimpleCase() {
         storage.insert(Track{0, "Restless and Wild", 100000});
         storage.insert(Track{0, "Princess of the Dawn", 50000});
         
-        /*auto rows = storage.select(case_<std::string>()
+        auto rows = storage.select(case_<std::string>()
                                    .when(c(&Track::milliseconds) < 60000, then("short"))
                                    .when(c(&Track::milliseconds) >= 60000 and c(&Track::milliseconds) < 300000, then("medium"))
                                    .else_("long")
                                    .end(),
                                    order_by(&Track::name));
-        assert(rows.size() == storage.count<Track>());*/
+        assert(rows.size() == storage.count<Track>());
+        assert(rows[0] == "long");
+        assert(rows[1] == "medium");
+        assert(rows[2] == "long");
+        assert(rows[3] == "short");
+        assert(rows[4] == "medium");
     }
     
     

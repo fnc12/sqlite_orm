@@ -3769,7 +3769,7 @@ namespace sqlite_orm {
             using args_type = std::tuple<Args...>;
             using else_expression_type = E;
             
-            case_expression_type case_expression;
+            optional_container<case_expression_type> case_expression;
             args_type args;
             optional_container<else_expression_type> else_expression;
         };
@@ -3786,7 +3786,7 @@ namespace sqlite_orm {
             using args_type = std::tuple<Args...>;
             using else_expression_type = E;
             
-            case_expression_type case_expression;
+            optional_container<case_expression_type> case_expression;
             args_type args;
             optional_container<else_expression_type> else_expression;
             
@@ -3806,7 +3806,7 @@ namespace sqlite_orm {
             
             template<class El>
             simple_case_builder<R, T, El, Args...> else_(El el) {
-                return {std::move(this->case_expression), std::move(args), {std::move(el)}};
+                return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
             }
         };
     }
@@ -3818,7 +3818,12 @@ namespace sqlite_orm {
     
     template<class R, class T>
     internal::simple_case_builder<R, T, void> case_(T t) {
-        return {std::move(t)};
+        return {{std::move(t)}};
+    }
+    
+    template<class R>
+    internal::simple_case_builder<R, void, void> case_() {
+        return {};
     }
     
     template<class T>
@@ -7081,7 +7086,9 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &c, const L &l) const {
-                iterate_ast(c.case_expression, l);
+                c.case_expression.apply([&l](auto &c){
+                    iterate_ast(c, l);
+                });
                 iterate_tuple(c.args, [&l](auto &pair){
                     iterate_ast(pair.first, l);
                     iterate_ast(pair.second, l);
@@ -7405,48 +7412,8 @@ namespace sqlite_orm {
             
             template<class T>
             typename std::enable_if<is_bindable<T>::value, std::string>::type string_from_expression(const T &t, bool , bool escape, bool ignoreBindable = false) {
-                /*if(ignoreBindable){
-                    return "?";
-                }else{
-                    if(!type_is_nullable<T>{}(t)){
-                        return "NULL";
-                    }else{
-                        return field_printer<T>()(t);
-                    }
-                }*/
                 return "?";
             }
-            
-            /*template<class T>
-            typename std::enable_if<!is_base_of_template<T, compound_operator>::value, std::string>::type string_from_expression(const T &t, bool , bool escape, bool ignoreBindable = false) {
-                auto isNullable = type_is_nullable<T>::value;
-                if(isNullable && !type_is_nullable<T>()(t)){
-                    if(ignoreBindable){
-                        return "?";
-                    }else{
-                        return "NULL";
-                    }
-                }else{
-                    auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
-                    std::stringstream ss;
-                    if(needQuotes && !ignoreBindable){
-                        ss << "'";
-                    }
-                    if(!ignoreBindable){
-                        std::string text = field_printer<T>()(t);
-                        if(escape){
-                            text = this->escape(text);
-                        }
-                        ss << text;
-                    }else{
-                        ss << "? ";
-                    }
-                    if(needQuotes && !ignoreBindable){
-                        ss << "'";
-                    }
-                    return ss.str();
-                }
-            }*/
             
             std::string string_from_expression(std::nullptr_t, bool /*noTableName*/, bool /*escape*/, bool ignoreBindable = false) {
                 if(ignoreBindable){
@@ -7845,7 +7812,9 @@ namespace sqlite_orm {
             std::string string_from_expression(const internal::simple_case_t<R, T, E, Args...> &c, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
                 ss << "CASE ";
-                ss << this->string_from_expression(c.case_expression, noTableName, escape, ignoreBindable) << " ";
+                c.case_expression.apply([&ss, this, noTableName, escape, ignoreBindable](auto &c){
+                    ss << this->string_from_expression(c, noTableName, escape, ignoreBindable) << " ";
+                });
                 iterate_tuple(c.args, [&ss, this, noTableName, escape, ignoreBindable](auto &pair){
                     ss << "WHEN " << this->string_from_expression(pair.first, noTableName, escape, ignoreBindable) << " ";
                     ss << "THEN " << this->string_from_expression(pair.second, noTableName, escape, ignoreBindable) << " ";
@@ -7897,11 +7866,6 @@ namespace sqlite_orm {
                 ss << " (" << this->string_from_expression(c.r,  noTableName, escape, ignoreBindable) << ") ";
                 return ss.str();
             }
-            
-            /*template<class T>
-            typename std::enable_if<std::is_arithmetic<T>::value, std::string>::type string_from_expression(const T &c, bool noTableName, bool escape, bool ignoreBindable = false) {
-                return this->string_from_expression(c, noTableName, escape, ignoreBindable);
-            }*/
             
             template<class C>
             typename std::enable_if<is_base_of_template<C, conditions::binary_condition>::value, std::string>::type string_from_expression(const C &c, bool noTableName, bool escape, bool ignoreBindable = false) {
@@ -8475,7 +8439,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const T &) {
+            std::set<std::pair<std::string, std::string>> parse_table_name(const T &t) {
                 return {};
             }
             
@@ -8647,8 +8611,10 @@ namespace sqlite_orm {
             template<class R, class T, class E, class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_name(const simple_case_t<R, T, E, Args...> &c) {
                 std::set<std::pair<std::string, std::string>> res;
-                auto caseExpressionSet = this->parse_table_name(c.case_expression);
-                res.insert(caseExpressionSet.begin(), caseExpressionSet.end());
+                c.case_expression.apply([this, &res](auto &c){
+                    auto caseExpressionSet = this->parse_table_name(c);
+                    res.insert(caseExpressionSet.begin(), caseExpressionSet.end());
+                });
                 iterate_tuple(c.args, [this, &res](auto &pair){
                     auto leftSet = this->parse_table_name(pair.first);
                     res.insert(leftSet.begin(), leftSet.end());
@@ -8659,6 +8625,86 @@ namespace sqlite_orm {
                     auto tableNames = this->parse_table_name(el);
                     res.insert(tableNames.begin(), tableNames.end());
                 });
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::and_condition_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::or_condition_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::is_equal_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::is_not_equal_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::greater_than_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::greater_or_equal_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::lesser_than_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::lesser_or_equal_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
                 return res;
             }
             
@@ -9132,7 +9178,7 @@ namespace sqlite_orm {
                     }while(stepRes != SQLITE_DONE);
                     return res;
                 }else{
-                    auto errMsg = sqlite3_errmsg(db);
+                    auto msg = sqlite3_errmsg(db);
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }

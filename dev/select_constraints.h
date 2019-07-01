@@ -208,7 +208,7 @@ namespace sqlite_orm {
             using args_type = std::tuple<Args...>;
             using else_expression_type = E;
             
-            case_expression_type case_expression;
+            optional_container<case_expression_type> case_expression;
             args_type args;
             optional_container<else_expression_type> else_expression;
         };
@@ -225,7 +225,7 @@ namespace sqlite_orm {
             using args_type = std::tuple<Args...>;
             using else_expression_type = E;
             
-            case_expression_type case_expression;
+            optional_container<case_expression_type> case_expression;
             args_type args;
             optional_container<else_expression_type> else_expression;
             
@@ -245,7 +245,7 @@ namespace sqlite_orm {
             
             template<class El>
             simple_case_builder<R, T, El, Args...> else_(El el) {
-                return {std::move(this->case_expression), std::move(args), {std::move(el)}};
+                return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
             }
         };
     }
@@ -257,7 +257,12 @@ namespace sqlite_orm {
     
     template<class R, class T>
     internal::simple_case_builder<R, T, void> case_(T t) {
-        return {std::move(t)};
+        return {{std::move(t)}};
+    }
+    
+    template<class R>
+    internal::simple_case_builder<R, void, void> case_() {
+        return {};
     }
     
     template<class T>

@@ -297,7 +297,9 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &c, const L &l) const {
-                iterate_ast(c.case_expression, l);
+                c.case_expression.apply([&l](auto &c){
+                    iterate_ast(c, l);
+                });
                 iterate_tuple(c.args, [&l](auto &pair){
                     iterate_ast(pair.first, l);
                     iterate_ast(pair.second, l);
