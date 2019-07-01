@@ -18,5 +18,6 @@
 * `WINDOW`
 * `UPSERT` https://www.sqlite.org/lang_UPSERT.html
 * `CHECK` constraint
+* `SAVEPOINT` https://www.sqlite.org/lang_savepoint.html
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
