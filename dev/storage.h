@@ -1595,6 +1595,11 @@ namespace sqlite_orm {
                 return res;
             }
             
+            template<class T, class E>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const as_t<T, E> &a) {
+                return this->parse_table_name(a.expression);
+            }
+            
             template<class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_names(Args &&...) {
                 return {};

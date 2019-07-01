@@ -7098,6 +7098,16 @@ namespace sqlite_orm {
                 });
             }
         };
+        
+        template<class T, class E>
+        struct ast_iterator<as_t<T, E>, void> {
+            using node_type = as_t<T, E>;
+            
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.expression, l);
+            }
+        };
     }
 }
 
@@ -8439,7 +8449,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const T &t) {
+            std::set<std::pair<std::string, std::string>> parse_table_name(const T &) {
                 return {};
             }
             
@@ -8706,6 +8716,11 @@ namespace sqlite_orm {
                 auto rightTableNames = this->parse_table_name(c.r);
                 res.insert(rightTableNames.begin(), rightTableNames.end());
                 return res;
+            }
+            
+            template<class T, class E>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const as_t<T, E> &a) {
+                return this->parse_table_name(a.expression);
             }
             
             template<class ...Args>
@@ -9178,7 +9193,6 @@ namespace sqlite_orm {
                     }while(stepRes != SQLITE_DONE);
                     return res;
                 }else{
-                    auto msg = sqlite3_errmsg(db);
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }

@@ -42,6 +42,13 @@ void testSimpleCase() {
                                            make_column("milliseconds", &Track::milliseconds)));
     storage.sync_schema();
     
+    struct GradeAlias : alias_tag {
+        static const std::string &get() {
+            static const std::string res = "Grade";
+            return res;
+        }
+    };
+    
     {   //  test simple case
         storage.insert(User{0, "Roberto", "Almeida", "Mexico"});
         storage.insert(User{0, "Julia", "Bernett", "USA"});
@@ -51,12 +58,20 @@ void testSimpleCase() {
         
         auto rows = storage.select(columns(case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end()),
                                    multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
-        assert(rows.size() == storage.count<User>());
-        assert(std::get<0>(rows[0]) == "Foreign");
-        assert(std::get<0>(rows[1]) == "Foreign");
-        assert(std::get<0>(rows[2]) == "Dosmetic");
-        assert(std::get<0>(rows[3]) == "Dosmetic");
-        assert(std::get<0>(rows[4]) == "Dosmetic");
+        auto assertRows = [&storage](auto &rows){
+            assert(rows.size() == storage.count<User>());
+            assert(std::get<0>(rows[0]) == "Foreign");
+            assert(std::get<0>(rows[1]) == "Foreign");
+            assert(std::get<0>(rows[2]) == "Dosmetic");
+            assert(std::get<0>(rows[3]) == "Dosmetic");
+            assert(std::get<0>(rows[4]) == "Dosmetic");
+        };
+        assertRows(rows);
+        
+        rows = storage.select(columns(as<GradeAlias>(case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end())),
+                                   multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
+        
+        assertRows(rows);
     }
     {   //  test searched case
         storage.insert(Track{0, "For Those About To Rock", 400000});
@@ -71,12 +86,23 @@ void testSimpleCase() {
                                    .else_("long")
                                    .end(),
                                    order_by(&Track::name));
-        assert(rows.size() == storage.count<Track>());
-        assert(rows[0] == "long");
-        assert(rows[1] == "medium");
-        assert(rows[2] == "long");
-        assert(rows[3] == "short");
-        assert(rows[4] == "medium");
+        auto assertRows = [&storage](auto &rows){
+            assert(rows.size() == storage.count<Track>());
+            assert(rows[0] == "long");
+            assert(rows[1] == "medium");
+            assert(rows[2] == "long");
+            assert(rows[3] == "short");
+            assert(rows[4] == "medium");
+        };
+        assertRows(rows);
+        
+        rows = storage.select(as<GradeAlias>(case_<std::string>()
+                                             .when(c(&Track::milliseconds) < 60000, then("short"))
+                                             .when(c(&Track::milliseconds) >= 60000 and c(&Track::milliseconds) < 300000, then("medium"))
+                                             .else_("long")
+                                             .end()),
+                              order_by(&Track::name));
+        assertRows(rows);
     }
     
     
