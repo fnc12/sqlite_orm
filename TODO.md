@@ -4,7 +4,6 @@
 
 * `FOREIGN KEY` - sync_schema fk comparison and ability of two tables to have fk to each other
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
-* `CASE`
 * `ATTACH`
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
 * reusing of prepared statements - useful for query optimisation
