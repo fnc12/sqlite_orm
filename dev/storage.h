@@ -298,34 +298,8 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            typename std::enable_if<!is_base_of_template<T, compound_operator>::value, std::string>::type string_from_expression(const T &t, bool /*noTableName*/, bool escape, bool ignoreBindable = false) {
-                auto isNullable = type_is_nullable<T>::value;
-                if(isNullable && !type_is_nullable<T>()(t)){
-                    if(ignoreBindable){
-                        return "?";
-                    }else{
-                        return "NULL";
-                    }
-                }else{
-                    auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
-                    std::stringstream ss;
-                    if(needQuotes && !ignoreBindable){
-                        ss << "'";
-                    }
-                    if(!ignoreBindable){
-                        std::string text = field_printer<T>()(t);
-                        if(escape){
-                            text = this->escape(text);
-                        }
-                        ss << text;
-                    }else{
-                        ss << "? ";
-                    }
-                    if(needQuotes && !ignoreBindable){
-                        ss << "'";
-                    }
-                    return ss.str();
-                }
+            typename std::enable_if<is_bindable<T>::value, std::string>::type string_from_expression(const T &t, bool , bool escape, bool ignoreBindable = false) {
+                return "?";
             }
             
             std::string string_from_expression(std::nullptr_t, bool /*noTableName*/, bool /*escape*/, bool ignoreBindable = false) {
@@ -720,88 +694,105 @@ namespace sqlite_orm {
                 ss << this->string_from_expression(op.right, noTableName, escape, ignoreBindable) << " ";
                 return ss.str();
             }
+            
+            template<class R, class T, class E, class ...Args>
+            std::string string_from_expression(const internal::simple_case_t<R, T, E, Args...> &c, bool noTableName, bool escape, bool ignoreBindable = false) {
+                std::stringstream ss;
+                ss << "CASE ";
+                c.case_expression.apply([&ss, this, noTableName, escape, ignoreBindable](auto &c){
+                    ss << this->string_from_expression(c, noTableName, escape, ignoreBindable) << " ";
+                });
+                iterate_tuple(c.args, [&ss, this, noTableName, escape, ignoreBindable](auto &pair){
+                    ss << "WHEN " << this->string_from_expression(pair.first, noTableName, escape, ignoreBindable) << " ";
+                    ss << "THEN " << this->string_from_expression(pair.second, noTableName, escape, ignoreBindable) << " ";
+                });
+                c.else_expression.apply([&ss, this, noTableName, escape, ignoreBindable](auto &el){
+                    ss << "ELSE " << this->string_from_expression(el, noTableName, escape, ignoreBindable) << " ";
+                });
+                ss << "END ";
+                return ss.str();
+            }
              
             template<class T>
-            std::string process_where(const conditions::is_null_t<T> &c) {
+            std::string string_from_expression(const conditions::is_null_t<T> &c, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << this->string_from_expression(c.t, false, false, true) << " " << static_cast<std::string>(c) << " ";
+                ss << this->string_from_expression(c.t, noTableName, escape, ignoreBindable) << " " << static_cast<std::string>(c) << " ";
                 return ss.str();
             }
             
             template<class T>
-            std::string process_where(const conditions::is_not_null_t<T> &c) {
+            std::string string_from_expression(const conditions::is_not_null_t<T> &c, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << this->string_from_expression(c.t, false, false, true) << " " << static_cast<std::string>(c) << " ";
+                ss << this->string_from_expression(c.t, noTableName, escape, ignoreBindable) << " " << static_cast<std::string>(c) << " ";
                 return ss.str();
             }
             
             template<class C>
-            std::string process_where(const conditions::negated_condition_t<C> &c) {
+            std::string string_from_expression(const conditions::negated_condition_t<C> &c, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << " " << static_cast<std::string>(c) << " ";
-                auto cString = this->process_where(c.c);
+                ss << static_cast<std::string>(c) << " ";
+                auto cString = this->string_from_expression(c.c, noTableName, escape, ignoreBindable);
                 ss << " (" << cString << " ) ";
                 return ss.str();
             }
             
             template<class L, class R>
-            std::string process_where(const conditions::and_condition_t<L, R> &c) {
+            std::string string_from_expression(const conditions::and_condition_t<L, R> &c, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
+                ss << " (" << this->string_from_expression(c.l, noTableName, escape, ignoreBindable) << ") ";
+                ss << static_cast<std::string>(c);
+                ss << " (" << this->string_from_expression(c.r, noTableName, escape, ignoreBindable) << ") ";
                 return ss.str();
             }
             
             template<class L, class R>
-            std::string process_where(const conditions::or_condition_t<L, R> &c) {
+            std::string string_from_expression(const conditions::or_condition_t<L, R> &c, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << " (" << this->process_where(c.l) << ") " << static_cast<std::string>(c) << " (" << this->process_where(c.r) << ") ";
+                ss << " (" << this->string_from_expression(c.l, noTableName, escape, ignoreBindable) << ") ";
+                ss << static_cast<std::string>(c);
+                ss << " (" << this->string_from_expression(c.r,  noTableName, escape, ignoreBindable) << ") ";
                 return ss.str();
             }
             
-            template<class T>
-            typename std::enable_if<std::is_arithmetic<T>::value, std::string>::type process_where(const T &c) {
-                return this->string_from_expression(c, false, false, true);
-            }
-            
             template<class C>
-            typename std::enable_if<is_base_of_template<C, conditions::binary_condition>::value, std::string>::type process_where(const C &c) {
-                auto leftString = this->string_from_expression(c.l, false, true, true);
-                auto rightString = this->string_from_expression(c.r, false, true, true);
+            typename std::enable_if<is_base_of_template<C, conditions::binary_condition>::value, std::string>::type string_from_expression(const C &c, bool noTableName, bool escape, bool ignoreBindable = false) {
+                auto leftString = this->string_from_expression(c.l, noTableName, escape, ignoreBindable);
+                auto rightString = this->string_from_expression(c.r, noTableName, escape, ignoreBindable);
                 std::stringstream ss;
                 ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
                 return ss.str();
             }
             
             template<class T>
-            std::string process_where(const conditions::named_collate<T> &col) {
-                auto res = this->process_where(col.expr);
+            std::string string_from_expression(const conditions::named_collate<T> &col, bool noTableName, bool escape, bool ignoreBindable = false) {
+                auto res = this->string_from_expression(col.expr, noTableName, escape, ignoreBindable);
                 return res + " " + static_cast<std::string>(col);
             }
             
             template<class T>
-            std::string process_where(const conditions::collate_t<T> &col) {
-                auto res = this->process_where(col.expr);
+            std::string string_from_expression(const conditions::collate_t<T> &col, bool noTableName, bool escape, bool ignoreBindable = false) {
+                auto res = this->string_from_expression(col.expr, noTableName, escape, ignoreBindable);
                 return res + " " + static_cast<std::string>(col);
             }
             
             template<class L, class A>
-            std::string process_where(const conditions::in_t<L, A> &inCondition) {
+            std::string string_from_expression(const conditions::in_t<L, A> &inCondition, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto leftString = this->string_from_expression(inCondition.l, false, false, true);
+                auto leftString = this->string_from_expression(inCondition.l, noTableName, escape, ignoreBindable);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " ";
-                ss << this->string_from_expression(inCondition.arg, false, false, true);
+                ss << this->string_from_expression(inCondition.arg, noTableName, escape, ignoreBindable);
                 ss << " ";
                 return ss.str();
             }
             
             template<class L, class E>
-            std::string process_where(const conditions::in_t<L, std::vector<E>> &inCondition) {
+            std::string string_from_expression(const conditions::in_t<L, std::vector<E>> &inCondition, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto leftString = this->string_from_expression(inCondition.l, false, false, true);
+                auto leftString = this->string_from_expression(inCondition.l, noTableName, escape, ignoreBindable);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " ( ";
                 for(size_t index = 0; index < inCondition.arg.size(); ++index) {
                     auto &value = inCondition.arg[index];
-                    ss << " " << this->string_from_expression(value, false, false, true);
+                    ss << " " << this->string_from_expression(value, noTableName, escape, ignoreBindable);
                     if(index < inCondition.arg.size() - 1) {
                         ss << ", ";
                     }
@@ -811,26 +802,30 @@ namespace sqlite_orm {
             }
             
             template<class A, class T>
-            std::string process_where(const conditions::like_t<A, T> &l) {
+            std::string string_from_expression(const conditions::like_t<A, T> &l, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << this->string_from_expression(l.a, false, false, true) << " ";
+                ss << this->string_from_expression(l.a, noTableName, escape, ignoreBindable) << " ";
                 ss << static_cast<std::string>(l) << " ";
-                ss << this->string_from_expression(l.t, false, false, true) << " ";
+                ss << this->string_from_expression(l.t, noTableName, escape, ignoreBindable) << " ";
                 return ss.str();
             }
             
             template<class A, class T>
-            std::string process_where(const conditions::between_t<A, T> &bw) {
+            std::string string_from_expression(const conditions::between_t<A, T> &bw, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(bw.expr, false, false, true);
-                ss << expr << " " << static_cast<std::string>(bw) << " " << this->string_from_expression(bw.b1, false, false, true) << " AND " << this->string_from_expression(bw.b2, false, false, true) << " ";
+                auto expr = this->string_from_expression(bw.expr, noTableName, escape, ignoreBindable);
+                ss << expr << " " << static_cast<std::string>(bw) << " ";
+                ss << this->string_from_expression(bw.b1, noTableName, escape, ignoreBindable);
+                ss << " AND ";
+                ss << this->string_from_expression(bw.b2, noTableName, escape, ignoreBindable) << " ";
                 return ss.str();
             }
             
             template<class T>
-            std::string process_where(const conditions::exists_t<T> &e) {
+            std::string string_from_expression(const conditions::exists_t<T> &e, bool noTableName, bool escape, bool ignoreBindable = false) {
                 std::stringstream ss;
-                ss << static_cast<std::string>(e) << " " << this->string_from_expression(e.t, false, false, true) << " ";
+                ss << static_cast<std::string>(e) << " ";
+                ss << this->string_from_expression(e.t, noTableName, escape, ignoreBindable) << " ";
                 return ss.str();
             }
             
@@ -855,7 +850,7 @@ namespace sqlite_orm {
             
             template<class T>
             void process_join_constraint(std::stringstream &ss, const conditions::on_t<T> &t) {
-                ss << static_cast<std::string>(t) << " " << this->process_where(t.arg) << " ";
+                ss << static_cast<std::string>(t) << " " << this->string_from_expression(t.arg, false, false, true) << " ";
             }
             
             template<class F, class O>
@@ -924,7 +919,7 @@ namespace sqlite_orm {
             template<class C>
             void process_single_condition(std::stringstream &ss, const conditions::where_t<C> &w) {
                 ss << static_cast<std::string>(w) << " ";
-                auto whereString = this->process_where(w.c);
+                auto whereString = this->string_from_expression(w.c, false, false, true);
                 ss << "( " << whereString << ") ";
             }
             
@@ -974,7 +969,7 @@ namespace sqlite_orm {
             template<class T>
             void process_single_condition(std::stringstream &ss, const conditions::having_t<T> &hav) {
                 ss << static_cast<std::string>(hav) << " ";
-                ss << this->process_where(hav.t) << " ";
+                ss << this->string_from_expression(hav.t, false, false, true) << " ";
             }
             
             template<class ...Args>
@@ -1243,7 +1238,9 @@ namespace sqlite_orm {
                         std::vector<std::string> setPairs;
                         set.for_each([this, &setPairs](auto &asgn){
                             std::stringstream sss;
-                            sss << this->string_from_expression(asgn.l, true, false, true) << " = " << this->string_from_expression(asgn.r, false, false, true) << " ";
+                            sss << this->string_from_expression(asgn.l, true, false, true);
+                            sss << " = ";
+                            sss << this->string_from_expression(asgn.r, false, false, true) << " ";
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();
@@ -1498,6 +1495,111 @@ namespace sqlite_orm {
                 return this->parse_table_name(c.expression);
             }
             
+            template<class R, class T, class E, class ...Args>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const simple_case_t<R, T, E, Args...> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                c.case_expression.apply([this, &res](auto &c){
+                    auto caseExpressionSet = this->parse_table_name(c);
+                    res.insert(caseExpressionSet.begin(), caseExpressionSet.end());
+                });
+                iterate_tuple(c.args, [this, &res](auto &pair){
+                    auto leftSet = this->parse_table_name(pair.first);
+                    res.insert(leftSet.begin(), leftSet.end());
+                    auto rightSet = this->parse_table_name(pair.second);
+                    res.insert(rightSet.begin(), rightSet.end());
+                });
+                c.else_expression.apply([this, &res](auto &el){
+                    auto tableNames = this->parse_table_name(el);
+                    res.insert(tableNames.begin(), tableNames.end());
+                });
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::and_condition_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::or_condition_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::is_equal_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::is_not_equal_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::greater_than_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::greater_or_equal_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::lesser_than_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class L, class R>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::lesser_or_equal_t<L, R> &c) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto leftTableNames = this->parse_table_name(c.l);
+                res.insert(leftTableNames.begin(), leftTableNames.end());
+                auto rightTableNames = this->parse_table_name(c.r);
+                res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class T, class E>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const as_t<T, E> &a) {
+                return this->parse_table_name(a.expression);
+            }
+            
             template<class ...Args>
             std::set<std::pair<std::string, std::string>> parse_table_names(Args &&...) {
                 return {};
@@ -1572,8 +1674,8 @@ namespace sqlite_orm {
                             case SQLITE_ROW:{
                                 O obj;
                                 auto index = 0;
-                                impl.table.for_each_column([&index, &obj, stmt] (auto c) {
-                                    using field_type = typename decltype(c)::field_type;
+                                impl.table.for_each_column([&index, &obj, stmt] (auto &c) {
+                                    using field_type = typename std::decay<decltype(c)>::type::field_type;
                                     auto value = row_extractor<field_type>().extract(stmt, index++);
                                     if(c.member_pointer){
                                         obj.*c.member_pointer = std::move(value);
@@ -1962,13 +2064,13 @@ namespace sqlite_orm {
                             }break;
                             case SQLITE_DONE: break;
                             default:{
-                                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                             }
                         }
                     }while(stepRes != SQLITE_DONE);
                     return res;
                 }else{
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
             }
             
@@ -2248,19 +2350,20 @@ namespace sqlite_orm {
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db] (auto c) {
+                    impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db] (auto &c) {
                         if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()){
                             auto it = std::find(compositeKeyColumnNames.begin(),
                                                 compositeKeyColumnNames.end(),
                                                 c.name);
                             if(it == compositeKeyColumnNames.end()){
-                                using field_type = typename decltype(c)::field_type;
+                                using column_type = typename std::decay<decltype(c)>::type;
+                                using field_type = typename column_type::field_type;
                                 if(c.member_pointer){
                                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
                                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                                     }
                                 }else{
-                                    using getter_type = typename decltype(c)::getter_type;
+                                    using getter_type = typename column_type::getter_type;
                                     field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
                                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
                                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));

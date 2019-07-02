@@ -18,7 +18,7 @@ namespace sqlite_orm {
             columns_type columns;
             
             template<class L>
-            void for_each_column_with_constraints(L) {}
+            void for_each_column_with_constraints(const L &) {}
         };
     }
     

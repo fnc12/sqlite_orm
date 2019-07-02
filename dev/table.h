@@ -160,7 +160,7 @@ namespace sqlite_orm {
                 std::string res;
                 using field_type = typename getter_traits<G>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, getter](auto c) {
-                    if(c.getter == getter) {
+                    if(compare_any(c.getter, getter)) {
                         res = c.name;
                     }
                 });
@@ -176,7 +176,7 @@ namespace sqlite_orm {
                 std::string res;
                 using field_type = typename setter_traits<S>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, setter](auto c) {
-                    if(c.setter == setter) {
+                    if(compare_any(c.setter, setter)) {
                         res = c.name;
                     }
                 });
@@ -189,8 +189,7 @@ namespace sqlite_orm {
             template<class ...Op>
             std::vector<std::string> column_names_with() {
                 auto res = this->impl.template column_names_with<Op...>();
-                std::reverse(res.begin(),
-                             res.end());
+                std::reverse(res.begin(), res.end());
                 return res;
             }
             

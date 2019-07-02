@@ -3,7 +3,7 @@
 #include <tuple>    //  std::tuple
 #include <string>   //  std::string
 #include <memory>   //  std::unique_ptr
-#include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if
+#include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if, std::is_member_pointer, std::is_member_function_pointer
 
 #include "type_is_nullable.h"
 #include "tuple_helper.h"
@@ -94,7 +94,7 @@ namespace sqlite_orm {
              */
             std::unique_ptr<std::string> default_value() {
                 std::unique_ptr<std::string> res;
-                iterate_tuple(constraints, [&res](auto &v){
+                iterate_tuple(this->constraints, [&res](auto &v){
                     auto dft = internal::default_value_extractor()(v);
                     if(dft){
                         res = std::move(dft);
@@ -115,6 +115,12 @@ namespace sqlite_orm {
          */
         template<class O, class T, class ...Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
+        
+        template<class T, class SFINAE = void>
+        struct is_field_member_pointer : std::false_type {};
+        
+        template<class T>
+        struct is_field_member_pointer<T, typename std::enable_if<std::is_member_pointer<T>::value && !std::is_member_function_pointer<T>::value>::type> : std::true_type {};
         
         /**
          *  Getters aliases

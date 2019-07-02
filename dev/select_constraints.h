@@ -2,8 +2,11 @@
 
 #include <string>   //  std::string
 #include <utility>  //  std::declval
+#include <tuple>    //  std::tuple, std::get, std::tuple_size
 
 #include "is_base_of_template.h"
+#include "tuple_helper.h"
+#include "optional_container.h"
 
 namespace sqlite_orm {
     
@@ -190,16 +193,86 @@ namespace sqlite_orm {
         struct asterisk_t {
             using type = T;
         };
+        
+        template<class T>
+        struct then_t {
+            using expression_type = T;
+            
+            expression_type expression;
+        };
+        
+        template<class R, class T, class E, class ...Args>
+        struct simple_case_t {
+            using return_type = R;
+            using case_expression_type = T;
+            using args_type = std::tuple<Args...>;
+            using else_expression_type = E;
+            
+            optional_container<case_expression_type> case_expression;
+            args_type args;
+            optional_container<else_expression_type> else_expression;
+        };
+        
+        /**
+         *  T is a case expression type
+         *  E is else type (void is ELSE is omitted)
+         *  Args... is a pack of WHEN expressions
+         */
+        template<class R, class T, class E, class ...Args>
+        struct simple_case_builder {
+            using return_type = R;
+            using case_expression_type = T;
+            using args_type = std::tuple<Args...>;
+            using else_expression_type = E;
+            
+            optional_container<case_expression_type> case_expression;
+            args_type args;
+            optional_container<else_expression_type> else_expression;
+            
+            template<class W, class Th>
+            simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
+                using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
+                result_args_type result_args;
+                move_tuple<std::tuple_size<args_type>::value>(result_args, this->args);
+                std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
+                std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
+                return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
+            }
+            
+            simple_case_t<R, T, E, Args...> end() {
+                return {std::move(this->case_expression), std::move(args), std::move(this->else_expression)};
+            }
+            
+            template<class El>
+            simple_case_builder<R, T, El, Args...> else_(El el) {
+                return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
+            }
+        };
+    }
+    
+    template<class T>
+    internal::then_t<T> then(T t) {
+        return {std::move(t)};
+    }
+    
+    template<class R, class T>
+    internal::simple_case_builder<R, T, void> case_(T t) {
+        return {{std::move(t)}};
+    }
+    
+    template<class R>
+    internal::simple_case_builder<R, void, void> case_() {
+        return {};
     }
     
     template<class T>
     internal::distinct_t<T> distinct(T t) {
-        return {t};
+        return {std::move(t)};
     }
     
     template<class T>
     internal::all_t<T> all(T t) {
-        return {t};
+        return {std::move(t)};
     }
     
     template<class ...Args>
