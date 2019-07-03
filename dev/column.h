@@ -92,7 +92,7 @@ namespace sqlite_orm {
              *  Simplified interface for `DEFAULT` constraint
              *  @return string representation of default value if it exists otherwise nullptr
              */
-            std::unique_ptr<std::string> default_value() {
+            std::unique_ptr<std::string> default_value() const {
                 std::unique_ptr<std::string> res;
                 iterate_tuple(this->constraints, [&res](auto &v){
                     auto dft = internal::default_value_extractor()(v);
