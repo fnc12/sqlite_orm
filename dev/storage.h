@@ -144,7 +144,7 @@ namespace sqlite_orm {
             }
             
             template<class ...Cs>
-            std::string serialize_column_schema(const constraints::primary_key_t<Cs...> fk) {
+            std::string serialize_column_schema(const constraints::primary_key_t<Cs...> &fk) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(fk) << " (";
                 std::vector<std::string> columnNames;
