@@ -187,9 +187,7 @@ namespace sqlite_orm {
              */
             template<class ...Op>
             std::vector<std::string> column_names_with() {
-                auto res = this->impl.template column_names_with<Op...>();
-                std::reverse(res.begin(), res.end());
-                return res;
+                return this->impl.template column_names_with<Op...>();
             }
             
             /**

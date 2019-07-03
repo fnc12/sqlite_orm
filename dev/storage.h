@@ -127,11 +127,12 @@ namespace sqlite_orm {
             }
             
             template<class O, class T, class G, class S, class ...Op>
-            std::string serialize_column_schema(internal::column_t<O, T, G, S, Op...> c) {
+            std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {
                 std::stringstream ss;
                 ss << "'" << c.name << "' ";
-                using field_type = typename decltype(c)::field_type;
-                using constraints_type = typename decltype(c)::constraints_type;
+                using column_type = typename std::decay<decltype(c)>::type;
+                using field_type = typename column_type::field_type;
+                using constraints_type = typename column_type::constraints_type;
                 ss << type_printer<field_type>().print() << " ";
                 tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(c.constraints, [&ss](auto &v){
                     ss << static_cast<std::string>(v) << ' ';
@@ -143,7 +144,7 @@ namespace sqlite_orm {
             }
             
             template<class ...Cs>
-            std::string serialize_column_schema(constraints::primary_key_t<Cs...> fk) {
+            std::string serialize_column_schema(const constraints::primary_key_t<Cs...> &fk) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(fk) << " (";
                 std::vector<std::string> columnNames;
@@ -164,7 +165,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3006019
             
             template<class ...Cs, class ...Rs>
-            std::string serialize_column_schema(constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> &fk) {
+            std::string serialize_column_schema(const constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> &fk) {
                 std::stringstream ss;
                 std::vector<std::string> columnNames;
                 using columns_type_t = typename std::decay<decltype(fk)>::type::columns_type;
