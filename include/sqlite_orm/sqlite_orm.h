@@ -4819,8 +4819,8 @@ namespace sqlite_orm {
         template<class ...Ts>
         struct storage_impl;
         
-        template<typename... Args>
-        struct table_impl;
+        template<class T, class... Args>
+        struct table_t;
         
         namespace storage_traits {
             
@@ -4880,16 +4880,16 @@ namespace sqlite_orm {
             
             
             /**
-             *  T - table_impl type.
+             *  T - table type.
              */
             template<class T>
-            struct table_impl_types;
+            struct table_types;
             
             /**
              *  type is std::tuple of field types of mapped colums.
              */
-            template<typename... Args>
-            struct table_impl_types<table_impl<Args...>> {
+            template<class T, class... Args>
+            struct table_types<table_t<T, Args...>> {
                 using type = std::tuple<typename Args::field_type...>;
             };
             
@@ -4919,8 +4919,7 @@ namespace sqlite_orm {
             template<class S, class T>
             struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
                 using table_type = typename S::table_type;
-                using table_impl_type = typename table_type::impl_type;
-                using type = typename table_impl_types<table_impl_type>::type;
+                using type = typename table_types<table_type>::type;
             };
             
             template<class S, class T>
