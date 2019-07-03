@@ -60,7 +60,6 @@ namespace sqlite_orm {
             const F* get_object_field_pointer(const object_type &obj, C c) {
                 const F *res = nullptr;
                 this->for_each_column_with_field_type<F>([&res, &c, &obj](auto &col){
-                    using namespace static_magic;
                     using column_type = typename std::remove_reference<decltype(col)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
                     using getter_type = typename column_type::getter_type;
@@ -201,17 +200,17 @@ namespace sqlite_orm {
              *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class L>
-            void for_each_column(L l) {
+            void for_each_column(const L &l) {
                 this->impl.for_each_column(l);
             }
             
             template<class L>
-            void for_each_column_with_constraints(L l) {
+            void for_each_column_with_constraints(const L &l) {
                 this->impl.for_each_column_with_constraints(l);
             }
             
             template<class F, class L>
-            void for_each_column_with_field_type(L l) {
+            void for_each_column_with_field_type(const L &l) {
                 this->impl.template for_each_column_with_field_type<F, L>(l);
             }
             
@@ -221,10 +220,10 @@ namespace sqlite_orm {
              *  L is lambda type. Do not specify it explicitly.
              *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
-            template<class Op, class L>
-            void for_each_column_exept(L l) {
+            /*template<class Op, class L>
+            void for_each_column_exept(const L &l) {
                 this->impl.template for_each_column_exept<Op>(l);
-            }
+            }*/
             
             /**
              *  Iterates all columns that have specified constraints and fires passed lambda.
@@ -233,7 +232,7 @@ namespace sqlite_orm {
              *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class Op, class L>
-            void for_each_column_with(L l) {
+            void for_each_column_with(const L &l) {
                 this->impl.template for_each_column_with<Op>(l);
             }
             
@@ -242,7 +241,7 @@ namespace sqlite_orm {
                 res.reserve(size_t(this->columns_count));
                 this->for_each_column([&res](auto &col){
                     std::string dft;
-                    using field_type = typename std::remove_reference<decltype(col)>::type::field_type;
+                    using field_type = typename std::decay<decltype(col)>::type::field_type;
                     if(auto d = col.default_value()) {
                         auto needQuotes = std::is_base_of<text_printer, type_printer<field_type>>::value;
                         if(needQuotes){
@@ -262,7 +261,7 @@ namespace sqlite_orm {
                     res.emplace_back(i);
                 });
                 std::vector<std::string> compositeKeyColumnNames;
-                this->impl.for_each_primary_key([this, &compositeKeyColumnNames](auto c){
+                this->impl.for_each_primary_key([this, &compositeKeyColumnNames](auto &c){
                     compositeKeyColumnNames = this->composite_key_columns_names(c);
                 });
                 for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {

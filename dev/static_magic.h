@@ -5,7 +5,7 @@
 namespace sqlite_orm {
     
     //  got from here https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
-    namespace static_magic {
+    namespace internal {
         
         template <typename T, typename F>
         auto static_if(std::true_type, T t, F) { return t; }
