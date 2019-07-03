@@ -61,7 +61,7 @@ namespace sqlite_orm {
         template<size_t N, size_t I, class L, class R>
         void move_tuple_impl(L &lhs, R &rhs) {
             std::get<I>(lhs) = std::move(std::get<I>(rhs));
-            static_magic::static_if<std::integral_constant<bool, N != I + 1>{}>([](auto &lhs, auto &rhs){
+            internal::static_if<std::integral_constant<bool, N != I + 1>{}>([](auto &lhs, auto &rhs){
                 move_tuple_impl<N, I + 1>(lhs, rhs);
             })(lhs, rhs);
         }
@@ -72,7 +72,7 @@ namespace sqlite_orm {
         template<size_t N, class L, class R>
         void move_tuple(L &lhs, R &rhs) {
             using bool_type = std::integral_constant<bool, N != 0>;
-            static_magic::static_if<bool_type{}>([](auto &lhs, auto &rhs){
+            static_if<bool_type{}>([](auto &lhs, auto &rhs){
                 tuple_helper::move_tuple_impl<N, 0>(lhs, rhs);
             })(lhs, rhs);
         }

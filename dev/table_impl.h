@@ -8,6 +8,7 @@
 #include "column.h"
 #include "tuple_helper.h"
 #include "constraints.h"
+#include "static_magic.h"
 
 namespace sqlite_orm {
     
@@ -42,22 +43,19 @@ namespace sqlite_orm {
             }
             
             template<class L>
-            void for_each_column(L) {}
+            void for_each_column(const L &) {}
             
             template<class L>
-            void for_each_column_with_constraints(L) {}
+            void for_each_column_with_constraints(const L &) {}
             
             template<class F, class L>
-            void for_each_column_with_field_type(L) {}
+            void for_each_column_with_field_type(const L &) {}
             
             template<class Op, class L>
-            void for_each_column_exept(L) {}
-            
-            template<class Op, class L>
-            void for_each_column_with(L) {}
+            void for_each_column_with(const L &) {}
             
             template<class L>
-            void for_each_primary_key(L) {}
+            void for_each_primary_key(const L &) {}
             
         };
         
@@ -95,8 +93,8 @@ namespace sqlite_orm {
              *  and passed call to superclass.
              */
             template<class L>
-            void for_each_column(L l){
-                this->apply_to_col_if(l, internal::is_column<column_type>{});
+            void for_each_column(const L &l){
+                static_if<internal::is_column<column_type>{}>(l)(this->col);
                 this->super::for_each_column(l);
             }
             
@@ -105,33 +103,24 @@ namespace sqlite_orm {
              *  and passed call to superclass.
              */
             template<class L>
-            void for_each_column_with_constraints(L l){
+            void for_each_column_with_constraints(const L &l){
                 l(this->col);
                 this->super::for_each_column_with_constraints(l);
             }
             
             template<class F, class L>
-            void for_each_column_with_field_type(L l) {
-                this->apply_to_col_if(l, std::is_same<F, typename column_type::field_type>{});
+            void for_each_column_with_field_type(const L &l) {
+                static_if<std::is_same<F, typename column_type::field_type>{}>(l)(this->col);
                 this->super::template for_each_column_with_field_type<F, L>(l);
-            }
-            
-            /**
-             *  Working version of `for_each_column_exept`. Calls lambda if column has no option and fire super's function.
-             */
-            template<class Op, class L>
-            void for_each_column_exept(L l) {
-                using has_opt = tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>;
-                this->apply_to_col_if(l, std::integral_constant<bool, !has_opt::value>{});
-                this->super::template for_each_column_exept<Op, L>(l);
             }
             
             /**
              *  Working version of `for_each_column_with`. Calls lambda if column has option and fire super's function.
              */
             template<class Op, class L>
-            void for_each_column_with(L l) {
-                this->apply_to_col_if(l, tuple_helper::tuple_contains_type<Op, typename column_type::constraints_type>{});
+            void for_each_column_with(const L &l) {
+                using tuple_helper::tuple_contains_type;
+                static_if<tuple_contains_type<Op, typename column_type::constraints_type>{}>(l)(this->col);
                 this->super::template for_each_column_with<Op, L>(l);
             }
             
@@ -139,18 +128,10 @@ namespace sqlite_orm {
              *  Calls l(this->col) if H is primary_key_t
              */
             template<class L>
-            void for_each_primary_key(L l) {
-                this->apply_to_col_if(l, internal::is_primary_key<H>{});
+            void for_each_primary_key(const L &l) {
+                static_if<internal::is_primary_key<H>{}>(l)(this->col);
                 this->super::for_each_primary_key(l);
             }
-            
-            template<class L>
-            void apply_to_col_if(L& l, std::true_type) {
-                l(this->col);
-            }
-            
-            template<class L>
-            void apply_to_col_if(L&, std::false_type) {}
         };
     }
 }
