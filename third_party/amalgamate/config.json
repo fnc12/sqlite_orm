@@ -34,7 +34,6 @@
 		"dev/mapped_type_proxy.h",
 		"dev/rowid.h",
 		"dev/column_result.h",
-		"dev/table_impl.h",
 		"dev/table.h",
 		"dev/storage_impl.h",
 		"dev/storage.h",

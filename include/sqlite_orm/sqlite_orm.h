@@ -4819,8 +4819,8 @@ namespace sqlite_orm {
         template<class ...Ts>
         struct storage_impl;
         
-        template<typename... Args>
-        struct table_impl;
+        template<class T, class... Args>
+        struct table_t;
         
         namespace storage_traits {
             
@@ -4880,16 +4880,16 @@ namespace sqlite_orm {
             
             
             /**
-             *  T - table_impl type.
+             *  T - table type.
              */
             template<class T>
-            struct table_impl_types;
+            struct table_types;
             
             /**
              *  type is std::tuple of field types of mapped colums.
              */
-            template<typename... Args>
-            struct table_impl_types<table_impl<Args...>> {
+            template<class T, class... Args>
+            struct table_types<table_t<T, Args...>> {
                 using type = std::tuple<typename Args::field_type...>;
             };
             
@@ -4919,8 +4919,7 @@ namespace sqlite_orm {
             template<class S, class T>
             struct storage_mapped_columns_impl<S, T, typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
                 using table_type = typename S::table_type;
-                using table_impl_type = typename table_type::impl_type;
-                using type = typename table_impl_types<table_impl_type>::type;
+                using type = typename table_types<table_type>::type;
             };
             
             template<class S, class T>
@@ -5156,118 +5155,11 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <vector>   //  std::vector
-#include <string>   //  std::string
-#include <tuple>    //  std::tuple, std::tuple_size
-#include <type_traits>  //  std::is_same, std::integral_constant, std::true_type, std::false_type
-
-// #include "column.h"
-
-// #include "tuple_helper.h"
-
-// #include "constraints.h"
-
-// #include "static_magic.h"
-
-
-namespace sqlite_orm {
-    
-    namespace internal {
-        
-        /**
-         *  Regular table_impl class.
-         */
-        template<class... Cs>
-        struct table_impl {
-            using columns_type = std::tuple<Cs...>;
-            
-            columns_type columns;
-            
-            table_impl(Cs ...columns_) : columns{std::forward<Cs>(columns_)...} {}
-            
-            static constexpr const int columns_count = static_cast<int>(std::tuple_size<columns_type>::value);
-            
-            /**
-             *  column_names_with implementation.
-             *  @return vector of column names that have specified Op... constraints.
-             */
-            template<class ...Op>
-            std::vector<std::string> column_names_with() {
-                std::vector<std::string> res;
-                iterate_tuple(this->columns, [&res](auto &column){
-                    if(column.template has_every<Op...>()) {
-                        res.emplace_back(column.name);
-                    }
-                });
-                return res;
-            }
-            
-            /**
-             *  For each implementation. Calls templated lambda with every column not dedicated constraint
-             */
-            template<class L>
-            void for_each_column(const L &l){
-                iterate_tuple(this->columns, [&l](auto &column){
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<internal::is_column<column_type>{}>(l)(column);
-                });
-            }
-            
-            /**
-             *  For each implementation. Calls templated lambda with every column
-             *  and dedicated constraint
-             */
-            template<class L>
-            void for_each_column_with_constraints(const L &l){
-                iterate_tuple(this->columns, l);
-            }
-            
-            /**
-             *  For each implementation with a specific field type. Calls **l** only
-             *  for columns with field_type equal F
-             */
-            template<class F, class L>
-            void for_each_column_with_field_type(const L &l) {
-                iterate_tuple(this->columns, [&l](auto &column){
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<std::is_same<F, typename column_type::field_type>{}>(l)(column);
-                });
-            }
-            
-            /**
-             *  Calls **l** for every column with specified constraint Op
-             */
-            template<class Op, class L>
-            void for_each_column_with(const L &l) {
-                using tuple_helper::tuple_contains_type;
-                iterate_tuple(this->columns, [&l](auto &column){
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<tuple_contains_type<Op, typename column_type::constraints_type>{}>(l)(column);
-                });
-            }
-            
-            /**
-             *  Calls **l** with every primary key dedicated constraint
-             */
-            template<class L>
-            void for_each_primary_key(const L &l) {
-                iterate_tuple(this->columns, [&l](auto &column){
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<internal::is_primary_key<column_type>{}>(l)(column);
-                });
-            }
-        };
-    }
-}
-#pragma once
-
 #include <string>   //  std::string
 #include <type_traits>  //  std::remove_reference, std::is_same, std::is_base_of
 #include <vector>   //  std::vector
 #include <tuple>    //  std::tuple_size, std::tuple_element
 #include <algorithm>    //  std::reverse, std::find_if
-
-// #include "table_impl.h"
 
 // #include "column_result.h"
 
@@ -5305,17 +5197,14 @@ namespace sqlite_orm {
          */
         template<class T, class ...Cs>
         struct table_t : table_base {
-            using impl_type = table_impl<Cs...>;
             using object_type = T;
+            using columns_type = std::tuple<Cs...>;
             
-            static constexpr const int columns_count = impl_type::columns_count;
+            static constexpr const int columns_count = static_cast<int>(std::tuple_size<columns_type>::value);
             
-            /**
-             *  Implementation that stores columns information.
-             */
-            impl_type impl;
+            columns_type columns;
             
-            table_t(decltype(name) name_, decltype(impl) impl_): table_base{std::move(name_)}, impl(std::move(impl_)) {}
+            table_t(decltype(name) name_, columns_type columns_): table_base{std::move(name_)}, columns(std::move(columns_)) {}
             
             table_t<T, Cs...> without_rowid() const {
                 auto res = *this;
@@ -5366,15 +5255,26 @@ namespace sqlite_orm {
              */
             std::vector<std::string> column_names() {
                 std::vector<std::string> res;
-                this->impl.for_each_column([&res](auto &c){
+                this->for_each_column([&res](auto &c){
                     res.push_back(c.name);
                 });
                 return res;
             }
             
+            /**
+             *  Calls **l** with every primary key dedicated constraint
+             */
+            template<class L>
+            void for_each_primary_key(const L &l) {
+                iterate_tuple(this->columns, [&l](auto &column){
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    static_if<internal::is_primary_key<column_type>{}>(l)(column);
+                });
+            }
+            
             std::vector<std::string> composite_key_columns_names() {
                 std::vector<std::string> res;
-                this->impl.for_each_primary_key([this, &res](auto &c){
+                this->for_each_primary_key([this, &res](auto &c){
                     res = this->composite_key_columns_names(c);
                 });
                 return res;
@@ -5382,7 +5282,7 @@ namespace sqlite_orm {
             
             std::vector<std::string> primary_key_column_names() {
                 std::vector<std::string> res;
-                this->impl.template for_each_column_with<constraints::primary_key_t<>>([&res](auto &c){
+                this->for_each_column_with<constraints::primary_key_t<>>([&res](auto &c){
                     res.push_back(c.name);
                 });
                 if(!res.size()){
@@ -5457,7 +5357,13 @@ namespace sqlite_orm {
              */
             template<class ...Op>
             std::vector<std::string> column_names_with() {
-                return this->impl.template column_names_with<Op...>();
+                std::vector<std::string> res;
+                iterate_tuple(this->columns, [&res](auto &column){
+                    if(column.template has_every<Op...>()) {
+                        res.emplace_back(column.name);
+                    }
+                });
+                return res;
             }
             
             /**
@@ -5469,29 +5375,24 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_column(const L &l) {
-                this->impl.for_each_column(l);
+                iterate_tuple(this->columns, [&l](auto &column){
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    static_if<internal::is_column<column_type>{}>(l)(column);
+                });
             }
             
             template<class L>
             void for_each_column_with_constraints(const L &l) {
-                this->impl.for_each_column_with_constraints(l);
+                iterate_tuple(this->columns, l);
             }
             
             template<class F, class L>
             void for_each_column_with_field_type(const L &l) {
-                this->impl.template for_each_column_with_field_type<F, L>(l);
+                iterate_tuple(this->columns, [&l](auto &column){
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    static_if<std::is_same<F, typename column_type::field_type>{}>(l)(column);
+                });
             }
-            
-            /**
-             *  Iterates all columns exept ones that have specified constraints and fires passed lambda.
-             *  Lambda must have one and only templated argument Otherwise code will not compile.
-             *  L is lambda type. Do not specify it explicitly.
-             *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
-             */
-            /*template<class Op, class L>
-            void for_each_column_exept(const L &l) {
-                this->impl.template for_each_column_exept<Op>(l);
-            }*/
             
             /**
              *  Iterates all columns that have specified constraints and fires passed lambda.
@@ -5501,7 +5402,11 @@ namespace sqlite_orm {
              */
             template<class Op, class L>
             void for_each_column_with(const L &l) {
-                this->impl.template for_each_column_with<Op>(l);
+                using tuple_helper::tuple_contains_type;
+                iterate_tuple(this->columns, [&l](auto &column){
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    static_if<tuple_contains_type<Op, typename column_type::constraints_type>{}>(l)(column);
+                });
             }
             
             std::vector<table_info> get_table_info() {
@@ -5528,10 +5433,7 @@ namespace sqlite_orm {
                     };
                     res.emplace_back(i);
                 });
-                std::vector<std::string> compositeKeyColumnNames;
-                this->impl.for_each_primary_key([this, &compositeKeyColumnNames](auto &c){
-                    compositeKeyColumnNames = this->composite_key_columns_names(c);
-                });
+                auto compositeKeyColumnNames = this->composite_key_columns_names();
                 for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
                     auto &columnName = compositeKeyColumnNames[i];
                     auto it = std::find_if(res.begin(),
@@ -5554,13 +5456,13 @@ namespace sqlite_orm {
      *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
     template<class ...Cs, class T = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
-    internal::table_t<T, Cs...> make_table(const std::string &name, Cs&& ...args) {
-        return {name, internal::table_impl<Cs...>(std::forward<Cs>(args)...)};
+    internal::table_t<T, Cs...> make_table(const std::string &name, Cs ...args) {
+        return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
     
     template<class T, class ...Cs>
-    internal::table_t<T, Cs...> make_table(const std::string &name, Cs&& ...args) {
-        return {name, internal::table_impl<Cs...>(std::forward<Cs>(args)...)};
+    internal::table_t<T, Cs...> make_table(const std::string &name, Cs ...args) {
+        return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
 }
 #pragma once
