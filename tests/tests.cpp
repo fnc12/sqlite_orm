@@ -1,5 +1,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 
+#define CATCH_CONFIG_MAIN
+
+#include <catch2/catch.hpp>
+
 #include <cassert>  //  assert
 #include <vector>   //  std::vector
 #include <string>   //  std::string
@@ -9,13 +13,13 @@
 #include <numeric>  //  std::iota
 #include <algorithm>    //  std::fill
 
+
 using namespace sqlite_orm;
 
 using std::cout;
 using std::endl;
 
-void testSimpleCase() {
-    cout << __func__ << endl;
+TEST_CASE("Case", "select"){
     
     struct User {
         int id = 0;
@@ -49,31 +53,37 @@ void testSimpleCase() {
         }
     };
     
-    {   //  test simple case
+    {
         storage.insert(User{0, "Roberto", "Almeida", "Mexico"});
         storage.insert(User{0, "Julia", "Bernett", "USA"});
         storage.insert(User{0, "Camille", "Bernard", "Argentina"});
         storage.insert(User{0, "Michelle", "Brooks", "USA"});
         storage.insert(User{0, "Robet", "Brown", "USA"});
         
-        auto rows = storage.select(columns(case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end()),
+        auto rows = storage.select(columns(case_<std::string>(&User::country)
+                                           .when("USA", then("Dosmetic"))
+                                           .else_("Foreign")
+                                           .end()),
                                    multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
-        auto assertRows = [&storage](auto &rows){
-            assert(rows.size() == storage.count<User>());
-            assert(std::get<0>(rows[0]) == "Foreign");
-            assert(std::get<0>(rows[1]) == "Foreign");
-            assert(std::get<0>(rows[2]) == "Dosmetic");
-            assert(std::get<0>(rows[3]) == "Dosmetic");
-            assert(std::get<0>(rows[4]) == "Dosmetic");
+        auto verifyRows = [&storage](auto &rows){
+            REQUIRE(rows.size() == storage.count<User>());
+            REQUIRE(std::get<0>(rows[0]) == "Foreign");
+            REQUIRE(std::get<0>(rows[1]) == "Foreign");
+            REQUIRE(std::get<0>(rows[2]) == "Dosmetic");
+            REQUIRE(std::get<0>(rows[3]) == "Dosmetic");
+            REQUIRE(std::get<0>(rows[4]) == "Dosmetic");
         };
-        assertRows(rows);
+        verifyRows(rows);
         
-        rows = storage.select(columns(as<GradeAlias>(case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end())),
-                                   multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
+        rows = storage.select(columns(as<GradeAlias>(case_<std::string>(&User::country)
+                                                     .when("USA", then("Dosmetic"))
+                                                     .else_("Foreign")
+                                                     .end())),
+                              multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
         
-        assertRows(rows);
+        verifyRows(rows);
     }
-    {   //  test searched case
+    {
         storage.insert(Track{0, "For Those About To Rock", 400000});
         storage.insert(Track{0, "Balls to the Wall", 500000});
         storage.insert(Track{0, "Fast as a Shark", 200000});
@@ -86,15 +96,15 @@ void testSimpleCase() {
                                    .else_("long")
                                    .end(),
                                    order_by(&Track::name));
-        auto assertRows = [&storage](auto &rows){
-            assert(rows.size() == storage.count<Track>());
-            assert(rows[0] == "long");
-            assert(rows[1] == "medium");
-            assert(rows[2] == "long");
-            assert(rows[3] == "short");
-            assert(rows[4] == "medium");
+        auto verifyRows = [&storage](auto &rows){
+            REQUIRE(rows.size() == storage.count<Track>());
+            REQUIRE(rows[0] == "long");
+            REQUIRE(rows[1] == "medium");
+            REQUIRE(rows[2] == "long");
+            REQUIRE(rows[3] == "short");
+            REQUIRE(rows[4] == "medium");
         };
-        assertRows(rows);
+        verifyRows(rows);
         
         rows = storage.select(as<GradeAlias>(case_<std::string>()
                                              .when(c(&Track::milliseconds) < 60000, then("short"))
@@ -102,14 +112,13 @@ void testSimpleCase() {
                                              .else_("long")
                                              .end()),
                               order_by(&Track::name));
-        assertRows(rows);
+        verifyRows(rows);
     }
     
     
 }
 
-void testUniquePtrInUpdate() {
-    cout << __func__ << endl;
+TEST_CASE("Unique ptr in update", "update"){
     
     struct User {
         int id = 0;
@@ -126,18 +135,18 @@ void testUniquePtrInUpdate() {
     storage.insert(User{});
     storage.insert(User{});
     
-    storage.update_all(set(assign(&User::name, std::make_unique<std::string>("Nick"))));
-    
-    assert(storage.count<User>(where(is_null(&User::name))) == 0);
-    
-    std::unique_ptr<std::string> ptr;
-    storage.update_all(set(assign(&User::name, move(ptr))));
-    
-    assert(storage.count<User>(where(is_not_null(&User::name))) == 0);
+    {
+        storage.update_all(set(assign(&User::name, std::make_unique<std::string>("Nick"))));
+        REQUIRE(storage.count<User>(where(is_null(&User::name))) == 0);
+    }
+    {
+        std::unique_ptr<std::string> ptr;
+        storage.update_all(set(assign(&User::name, move(ptr))));
+        REQUIRE(storage.count<User>(where(is_not_null(&User::name))) == 0);
+    }
 }
 
-void testJoin() {
-    cout << __func__ << endl;
+TEST_CASE("Join", "get_all"){
     
     struct User {
         int id = 0;
@@ -179,42 +188,41 @@ void testJoin() {
     
     {
         auto rows = storage.get_all<User>(left_join<Visit>(on(is_equal(&Visit::userId, 2))));
-        assert(rows.size() == 6);
+        REQUIRE(rows.size() == 6);
     }
     {
         auto rows = storage.get_all<User>(join<Visit>(on(is_equal(&Visit::userId, 2))));
-        assert(rows.size() == 6);
+        REQUIRE(rows.size() == 6);
     }
     {
         auto rows = storage.get_all<User>(left_outer_join<Visit>(on(is_equal(&Visit::userId, 2))));
-        assert(rows.size() == 6);
+        REQUIRE(rows.size() == 6);
     }
     {
         auto rows = storage.get_all<User>(inner_join<Visit>(on(is_equal(&Visit::userId, 2))));
-        assert(rows.size() == 6);
+        REQUIRE(rows.size() == 6);
     }
 }
 
-void testStorageCopy() {
-    cout << __func__ << endl;
+TEST_CASE("Storage copy", "on_open"){
     int calledCount = 0;
     
     auto storage = make_storage({});
+    
     storage.on_open = [&calledCount](sqlite3 *){
         ++calledCount;
     };
+    
     storage.on_open(nullptr);
-    assert(calledCount == 1);
+    REQUIRE(calledCount == 1);
     
     auto storageCopy = storage;
-    assert(storageCopy.on_open);
-    
+    REQUIRE(storageCopy.on_open);
     storageCopy.on_open(nullptr);
-    assert(calledCount == 2);
+    REQUIRE(calledCount == 2);
 }
 
-void testSetNull() {
-    cout << __func__ << endl;
+TEST_CASE("Set null", "update_all") {
     
     struct User {
         int id = 0;
@@ -228,37 +236,37 @@ void testSetNull() {
     storage.sync_schema();
     
     storage.replace(User{1, std::make_unique<std::string>("Ototo")});
-    assert(storage.count<User>() == 1);
+    REQUIRE(storage.count<User>() == 1);
     
-    {
-        auto rows = storage.get_all<User>();
-        assert(rows.size() == 1);
-        assert(rows.front().name);
-    }
+    auto rows = storage.get_all<User>();
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front().name);
+    
     storage.update_all(set(assign(&User::name, nullptr)));
     {
         auto rows = storage.get_all<User>();
-        assert(rows.size() == 1);
-        assert(!rows.front().name);
+        REQUIRE(rows.size() == 1);
+        REQUIRE(!rows.front().name);
     }
+    
     storage.update_all(set(assign(&User::name, "ototo")));
     {
         auto rows = storage.get_all<User>();
-        assert(rows.size() == 1);
-        assert(rows.front().name);
-        assert(*rows.front().name == "ototo");
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front().name);
+        REQUIRE(*rows.front().name == "ototo");
     }
+    
     storage.update_all(set(assign(&User::name, nullptr)),
                        where(is_equal(&User::id, 1)));
     {
         auto rows = storage.get_all<User>();
-        assert(rows.size() == 1);
-        assert(!rows.front().name);
+        REQUIRE(rows.size() == 1);
+        REQUIRE(!rows.front().name);
     }
 }
 
-void testCompositeKeyColumnsNames() {
-    cout << __func__ << endl;
+TEST_CASE("Composite key column names", "table"){
     
     struct User {
         int id = 0;
@@ -274,7 +282,7 @@ void testCompositeKeyColumnsNames() {
                                 primary_key(&User::id, &User::name));
         auto compositeKeyColumnsNames = table.composite_key_columns_names();
         std::vector<std::string> expected = {"id", "name"};
-        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+        REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
     {
         auto table = make_table("t",
@@ -284,7 +292,7 @@ void testCompositeKeyColumnsNames() {
                                 primary_key(&User::name, &User::id));
         auto compositeKeyColumnsNames = table.composite_key_columns_names();
         std::vector<std::string> expected = {"name", "id"};
-        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+        REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
     {
         auto table = make_table("t",
@@ -294,7 +302,7 @@ void testCompositeKeyColumnsNames() {
                                 primary_key(&User::name, &User::id, &User::info));
         auto compositeKeyColumnsNames = table.composite_key_columns_names();
         std::vector<std::string> expected = {"name", "id", "info"};
-        assert(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
+        REQUIRE(std::equal(compositeKeyColumnsNames.begin(), compositeKeyColumnsNames.end(), expected.begin()));
     }
     {
         auto table = make_table("t",
@@ -302,13 +310,11 @@ void testCompositeKeyColumnsNames() {
                                 make_column("name", &User::name),
                                 make_column("info", &User::info));
         auto compositeKeyColumnsNames = table.composite_key_columns_names();
-        assert(compositeKeyColumnsNames.empty());
+        REQUIRE(compositeKeyColumnsNames.empty());
     }
 }
 
-void testNot() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Not operator", "select"){
     struct Object {
         int id = 0;
     };
@@ -321,13 +327,11 @@ void testNot() {
     storage.replace(Object{2});
     
     auto rows = storage.select(&Object::id, where(not is_equal(&Object::id, 1)));
-    assert(rows.size() == 1);
-    assert(rows.front() == 2);
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == 2);
 }
 
-void testBetween() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Between operator", "select"){
     struct Object {
         int id = 0;
     };
@@ -345,12 +349,10 @@ void testBetween() {
     
     auto allObjects = storage.get_all<Object>();
     auto rows = storage.select(&Object::id, where(between(&Object::id, 1, 3)));
-    assert(rows.size() == 3);
+    REQUIRE(rows.size() == 3);
 }
 
-void testLike() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Like operator", "select"){
     struct User {
         int id = 0;
         std::string name;
@@ -367,15 +369,17 @@ void testLike() {
     storage.insert(User{0, "Index"});
     
     auto whereCondition = where(like(&User::name, "S%"));
-    auto users = storage.get_all<User>(whereCondition);
-    assert(users.size() == 2);
-    
-    auto rows = storage.select(&User::id, whereCondition);
-    assert(rows.size() == 2);
+    {
+        auto users = storage.get_all<User>(whereCondition);
+        REQUIRE(users.size() == 2);
+    }
+    {
+        auto rows = storage.select(&User::id, whereCondition);
+        REQUIRE(rows.size() == 2);
+    }
 }
 
-void testExists() {
-    cout << __func__ << endl;
+TEST_CASE("Exists", "select"){
     struct User {
         int id = 0;
         std::string name;
@@ -409,10 +413,10 @@ void testExists() {
     storage.replace(Visit{5, 2, 100000});
     
     auto rows = storage.select(&User::id, where(exists(select(&Visit::id, where(c(&Visit::time) == 200000 and eq(&Visit::userId, &User::id))))));
-    assert(!rows.empty() == 1);
+    REQUIRE(!rows.empty() == 1);
 }
 
-void testIsNull() {
+TEST_CASE("Is null", "count"){
     struct User {
         int id = 0;
         std::unique_ptr<std::string> name;
@@ -427,12 +431,12 @@ void testIsNull() {
     storage.replace(User{2});
     storage.replace(User{3, std::make_unique<std::string>("Leonard")});
     
-    assert(storage.count<User>() == 3);
-    assert(storage.count<User>(where(is_null(&User::name))) == 1);
-    assert(storage.count<User>(where(is_not_null(&User::name))) == 2);
+    REQUIRE(storage.count<User>() == 3);
+    REQUIRE(storage.count<User>(where(is_null(&User::name))) == 1);
+    REQUIRE(storage.count<User>(where(is_not_null(&User::name))) == 2);
 }
 
-void testIterateBlob() {
+TEST_CASE("Iterate blob", "iterate"){
     struct Test {
         int64_t id;
         std::vector<char> key;
@@ -459,24 +463,25 @@ void testIterateBlob() {
         cout << db.dump(obj) << endl;
     } //  test that view_t and iterator_t compile
     
-    auto keysCount = db.count<Test>(where(c(&Test::key) == key));
-    auto keysCountRows = db.select(count<Test>(), where(c(&Test::key) == key));
-    assert(keysCountRows.size() == 1);
-    assert(keysCountRows.front() == 1);
-    assert(keysCount == keysCountRows.front());
-    assert(db.get_all<Test>(where(c(&Test::key) == key)).size() == 1);
-    
-    int iterationsCount = 0;
-    for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
-        cout << w.id << endl;
-        ++iterationsCount;
+    {
+        auto keysCount = db.count<Test>(where(c(&Test::key) == key));
+        auto keysCountRows = db.select(count<Test>(), where(c(&Test::key) == key));
+        REQUIRE(keysCountRows.size() == 1);
+        REQUIRE(keysCountRows.front() == 1);
+        REQUIRE(keysCount == keysCountRows.front());
+        REQUIRE(db.get_all<Test>(where(c(&Test::key) == key)).size() == 1);
     }
-    assert(iterationsCount == 1);
+    {
+        int iterationsCount = 0;
+        for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
+            cout << w.id << endl;
+            ++iterationsCount;
+        }
+        REQUIRE(iterationsCount == 1);
+    }
 }
 
-void testCast() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Cast", "select"){
     struct Student {
         int id;
         float scoreFloat;
@@ -494,76 +499,72 @@ void testCast() {
     
     {
         auto rows = storage.select(columns(cast<int>(&Student::scoreFloat), cast<int>(&Student::scoreString)));
-        assert(rows.size() == 1);
+        REQUIRE(rows.size() == 1);
         auto &row = rows.front();
-        assert(std::get<0>(row) == 10);
-        assert(std::get<1>(row) == 14);
+        REQUIRE(std::get<0>(row) == 10);
+        REQUIRE(std::get<1>(row) == 14);
     }
     {
         auto rows = storage.select(cast<std::string>(5));
-        assert(rows.size() == 1);
+        REQUIRE(rows.size() == 1);
         auto &row = rows.front();
-        assert(row == "5");
+        REQUIRE(row == "5");
     }
 }
 
-void testSimpleQuery() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Simple query", "select"){
     auto storage = make_storage("");
     {
         //  SELECT 1
         auto one = storage.select(1);
-        assert(one.size() == 1);
-        assert(one.front() == 1);
+        REQUIRE(one.size() == 1);
+        REQUIRE(one.front() == 1);
     }
     {
         //  SELECT 'ototo'
         auto ototo = storage.select("ototo");
-        assert(ototo.size() == 1);
-        assert(ototo.front() == "ototo");
+        REQUIRE(ototo.size() == 1);
+        REQUIRE(ototo.front() == "ototo");
     }
     {
         //  SELECT 1 + 1
         auto two = storage.select(c(1) + 1);
-        assert(two.size() == 1);
-        assert(two.front() == 2);
+        REQUIRE(two.size() == 1);
+        REQUIRE(two.front() == 2);
         
         auto twoAgain = storage.select(add(1, 1));
-        assert(two == twoAgain);
+        REQUIRE(two == twoAgain);
     }
     {
         //  SELECT 10 / 5, 2 * 4
         auto math = storage.select(columns(sqlite_orm::div(10, 5), mul(2, 4)));
-        assert(math.size() == 1);
-        assert(math.front() == std::make_tuple(2, 8));
+        REQUIRE(math.size() == 1);
+        REQUIRE(math.front() == std::make_tuple(2, 8));
     }
     {
         //  SELECT 1, 2
         auto twoRows = storage.select(columns(1, 2));
-        assert(twoRows.size() == 1);
-        assert(std::get<0>(twoRows.front()) == 1);
-        assert(std::get<1>(twoRows.front()) == 2);
+        REQUIRE(twoRows.size() == 1);
+        REQUIRE(std::get<0>(twoRows.front()) == 1);
+        REQUIRE(std::get<1>(twoRows.front()) == 2);
     }
     {
         //  SELECT 1, 2
         //  UNION ALL
         //  SELECT 3, 4;
         auto twoRowsUnion = storage.select(union_all(select(columns(1, 2)), select(columns(3, 4))));
-        assert(twoRowsUnion.size() == 2);
-        assert(twoRowsUnion[0] == std::make_tuple(1, 2));
-        assert(twoRowsUnion[1] == std::make_tuple(3, 4));
+        REQUIRE(twoRowsUnion.size() == 2);
+        REQUIRE(twoRowsUnion[0] == std::make_tuple(1, 2));
+        REQUIRE(twoRowsUnion[1] == std::make_tuple(3, 4));
     }
 }
 
-void testThreadsafe() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Threadsafe", "threadsafe"){
+    //  this code just shows this value on CI
     cout << "threadsafe = " << threadsafe() << endl;
 }
 
-void testIn() {
-    cout << __func__ << endl;
+TEST_CASE("In", "get_all"){
     {
         struct User {
             int id;
@@ -579,7 +580,7 @@ void testIn() {
         
         {
             auto rows = storage.get_all<User>(where(in(&User::id, {1, 2, 3})));
-            assert(rows.size() == 3);
+            REQUIRE(rows.size() == 3);
         }
         {
             std::vector<int> inArgument;
@@ -587,7 +588,7 @@ void testIn() {
             inArgument.push_back(2);
             inArgument.push_back(3);
             auto rows = storage.get_all<User>(where(in(&User::id, inArgument)));
-            assert(rows.size() == 3);
+            REQUIRE(rows.size() == 3);
         }
     }
     {
@@ -605,18 +606,22 @@ void testIn() {
         storage.replace(Letter{2, "B"});
         storage.replace(Letter{3, "C"});
         
-        auto letters = storage.get_all<Letter>(where(in(&Letter::id, {1, 2, 3})));
-        assert(letters.size() == 3);
-        auto rows = storage.select(columns(&Letter::name), where(in(&Letter::id, {1, 2, 3})));
-        assert(rows.size() == 3);
-        auto rows2 = storage.select(&Letter::name, where(in(&Letter::id, {1, 2, 3})));
-        assert(rows2.size() == 3);
+        {
+            auto letters = storage.get_all<Letter>(where(in(&Letter::id, {1, 2, 3})));
+            REQUIRE(letters.size() == 3);
+        }
+        {
+            auto rows = storage.select(columns(&Letter::name), where(in(&Letter::id, {1, 2, 3})));
+            REQUIRE(rows.size() == 3);
+        }
+        {
+            auto rows2 = storage.select(&Letter::name, where(in(&Letter::id, {1, 2, 3})));
+            REQUIRE(rows2.size() == 3);
+        }
     }
 }
 
-void testDifferentGettersAndSetters() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Different getters and setters"){
     struct User {
         int id;
         std::string name;
@@ -670,120 +675,118 @@ void testDifferentGettersAndSetters() {
     storage0.sync_schema();
     storage0.remove_all<User>();
     
-    assert(storage0.count<User>() == 0);
-    assert(storage1.count<User>() == 0);
-    assert(storage2.count<User>() == 0);
+    REQUIRE(storage0.count<User>() == 0);
+    REQUIRE(storage1.count<User>() == 0);
+    REQUIRE(storage2.count<User>() == 0);
     
     storage0.replace(User{ 1, "Da buzz" });
     
-    assert(storage0.count<User>() == 1);
-    assert(storage1.count<User>() == 1);
-    assert(storage2.count<User>() == 1);
+    REQUIRE(storage0.count<User>() == 1);
+    REQUIRE(storage1.count<User>() == 1);
+    REQUIRE(storage2.count<User>() == 1);
     
     {
         auto ids = storage0.select(&User::id);
-        assert(ids.size() == 1);
-        assert(ids.front() == 1);
+        REQUIRE(ids.size() == 1);
+        REQUIRE(ids.front() == 1);
         auto ids2 = storage1.select(&User::getIdByValConst);
-        assert(ids == ids2);
+        REQUIRE(ids == ids2);
         auto ids3 = storage1.select(&User::setIdByVal);
-        assert(ids3 == ids2);
+        REQUIRE(ids3 == ids2);
         auto ids4 = storage2.select(&User::getConstIdByRefConst);
-        assert(ids4 == ids3);
+        REQUIRE(ids4 == ids3);
         auto ids5 = storage2.select(&User::setIdByRef);
-        assert(ids5 == ids4);
+        REQUIRE(ids5 == ids4);
     }
     {
         auto ids = storage0.select(&User::id, where(is_equal(&User::name, "Da buzz")));
-        assert(ids.size() == 1);
-        assert(ids.front() == 1);
+        REQUIRE(ids.size() == 1);
+        REQUIRE(ids.front() == 1);
         auto ids2 = storage1.select(&User::getIdByValConst, where(is_equal(&User::setNameByConstRef, "Da buzz")));
-        assert(ids == ids2);
+        REQUIRE(ids == ids2);
         auto ids3 = storage1.select(&User::setIdByVal, where(is_equal(&User::getNameByVal, "Da buzz")));
-        assert(ids3 == ids2);
+        REQUIRE(ids3 == ids2);
         auto ids4 = storage2.select(&User::getConstIdByRefConst, where(is_equal(&User::getConstNameByRefConst, "Da buzz")));
-        assert(ids4 == ids3);
+        REQUIRE(ids4 == ids3);
         auto ids5 = storage2.select(&User::setIdByRef, where(is_equal(&User::setNameByRef, "Da buzz")));
-        assert(ids5 == ids4);
+        REQUIRE(ids5 == ids4);
     }
     {
         auto ids = storage0.select(columns(&User::id), where(is_equal(&User::name, "Da buzz")));
-        assert(ids.size() == 1);
-        assert(std::get<0>(ids.front()) == 1);
+        REQUIRE(ids.size() == 1);
+        REQUIRE(std::get<0>(ids.front()) == 1);
         auto ids2 = storage1.select(columns(&User::getIdByValConst), where(is_equal(&User::setNameByConstRef, "Da buzz")));
-        assert(ids == ids2);
+        REQUIRE(ids == ids2);
         auto ids3 = storage1.select(columns(&User::setIdByVal), where(is_equal(&User::getNameByVal, "Da buzz")));
-        assert(ids3 == ids2);
+        REQUIRE(ids3 == ids2);
         auto ids4 = storage2.select(columns(&User::getConstIdByRefConst), where(is_equal(&User::getConstNameByRefConst, "Da buzz")));
-        assert(ids4 == ids3);
+        REQUIRE(ids4 == ids3);
         auto ids5 = storage2.select(columns(&User::setIdByRef), where(is_equal(&User::setNameByRef, "Da buzz")));
-        assert(ids5 == ids4);
+        REQUIRE(ids5 == ids4);
     }
     {
         auto avgValue = storage0.avg(&User::id);
-        assert(avgValue == storage1.avg(&User::getIdByValConst));
-        assert(avgValue == storage1.avg(&User::setIdByVal));
-        assert(avgValue == storage2.avg(&User::getConstIdByRefConst));
-        assert(avgValue == storage2.avg(&User::setIdByRef));
+        REQUIRE(avgValue == storage1.avg(&User::getIdByValConst));
+        REQUIRE(avgValue == storage1.avg(&User::setIdByVal));
+        REQUIRE(avgValue == storage2.avg(&User::getConstIdByRefConst));
+        REQUIRE(avgValue == storage2.avg(&User::setIdByRef));
     }
     {
         auto count = storage0.count(&User::id);
-        assert(count == storage1.count(&User::getIdByValConst));
-        assert(count == storage1.count(&User::setIdByVal));
-        assert(count == storage2.count(&User::getConstIdByRefConst));
-        assert(count == storage2.count(&User::setIdByRef));
+        REQUIRE(count == storage1.count(&User::getIdByValConst));
+        REQUIRE(count == storage1.count(&User::setIdByVal));
+        REQUIRE(count == storage2.count(&User::getConstIdByRefConst));
+        REQUIRE(count == storage2.count(&User::setIdByRef));
     }
     {
         auto groupConcat = storage0.group_concat(&User::id);
-        assert(groupConcat == storage1.group_concat(&User::getIdByValConst));
-        assert(groupConcat == storage1.group_concat(&User::setIdByVal));
-        assert(groupConcat == storage2.group_concat(&User::getConstIdByRefConst));
-        assert(groupConcat == storage2.group_concat(&User::setIdByRef));
+        REQUIRE(groupConcat == storage1.group_concat(&User::getIdByValConst));
+        REQUIRE(groupConcat == storage1.group_concat(&User::setIdByVal));
+        REQUIRE(groupConcat == storage2.group_concat(&User::getConstIdByRefConst));
+        REQUIRE(groupConcat == storage2.group_concat(&User::setIdByRef));
     }
     {
         auto arg = "ototo";
         auto groupConcat = storage0.group_concat(&User::id, arg);
-        assert(groupConcat == storage1.group_concat(&User::getIdByValConst, arg));
-        assert(groupConcat == storage1.group_concat(&User::setIdByVal, arg));
-        assert(groupConcat == storage2.group_concat(&User::getConstIdByRefConst, arg));
-        assert(groupConcat == storage2.group_concat(&User::setIdByRef, arg));
+        REQUIRE(groupConcat == storage1.group_concat(&User::getIdByValConst, arg));
+        REQUIRE(groupConcat == storage1.group_concat(&User::setIdByVal, arg));
+        REQUIRE(groupConcat == storage2.group_concat(&User::getConstIdByRefConst, arg));
+        REQUIRE(groupConcat == storage2.group_concat(&User::setIdByRef, arg));
     }
     {
         auto max = storage0.max(&User::id);
-        assert(max);
-        assert(*max == *storage1.max(&User::getIdByValConst));
-        assert(*max == *storage1.max(&User::setIdByVal));
-        assert(*max == *storage2.max(&User::getConstIdByRefConst));
-        assert(*max == *storage2.max(&User::setIdByRef));
+        REQUIRE(max);
+        REQUIRE(*max == *storage1.max(&User::getIdByValConst));
+        REQUIRE(*max == *storage1.max(&User::setIdByVal));
+        REQUIRE(*max == *storage2.max(&User::getConstIdByRefConst));
+        REQUIRE(*max == *storage2.max(&User::setIdByRef));
     }
     {
         auto min = storage0.min(&User::id);
-        assert(min);
-        assert(*min == *storage1.min(&User::getIdByValConst));
-        assert(*min == *storage1.min(&User::setIdByVal));
-        assert(*min == *storage2.min(&User::getConstIdByRefConst));
-        assert(*min == *storage2.min(&User::setIdByRef));
+        REQUIRE(min);
+        REQUIRE(*min == *storage1.min(&User::getIdByValConst));
+        REQUIRE(*min == *storage1.min(&User::setIdByVal));
+        REQUIRE(*min == *storage2.min(&User::getConstIdByRefConst));
+        REQUIRE(*min == *storage2.min(&User::setIdByRef));
     }
     {
         auto sum = storage0.sum(&User::id);
-        assert(sum);
-        assert(*sum == *storage1.sum(&User::getIdByValConst));
-        assert(*sum == *storage1.sum(&User::setIdByVal));
-        assert(*sum == *storage2.sum(&User::getConstIdByRefConst));
-        assert(*sum == *storage2.sum(&User::setIdByRef));
+        REQUIRE(sum);
+        REQUIRE(*sum == *storage1.sum(&User::getIdByValConst));
+        REQUIRE(*sum == *storage1.sum(&User::setIdByVal));
+        REQUIRE(*sum == *storage2.sum(&User::getConstIdByRefConst));
+        REQUIRE(*sum == *storage2.sum(&User::setIdByRef));
     }
     {
         auto total = storage0.total(&User::id);
-        assert(total == storage1.total(&User::getIdByValConst));
-        assert(total == storage1.total(&User::setIdByVal));
-        assert(total == storage2.total(&User::getConstIdByRefConst));
-        assert(total == storage2.total(&User::setIdByRef));
+        REQUIRE(total == storage1.total(&User::getIdByValConst));
+        REQUIRE(total == storage1.total(&User::setIdByVal));
+        REQUIRE(total == storage2.total(&User::getConstIdByRefConst));
+        REQUIRE(total == storage2.total(&User::setIdByRef));
     }
 }
 
-void testExplicitColumns() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Explicit colums"){
     struct Object {
         int id;
     };
@@ -811,8 +814,8 @@ void testExplicitColumns() {
                                                   make_column("used_id", &Token::usedId),
                                                   foreign_key(&Token::usedId).references(column<User>(&User::id))));
     storage.sync_schema();
-    assert(storage.table_exists("users"));
-    assert(storage.table_exists("tokens"));
+    REQUIRE(storage.table_exists("users"));
+    REQUIRE(storage.table_exists("tokens"));
     
     storage.remove_all<Token>();
     storage.remove_all<User>();
@@ -820,49 +823,62 @@ void testExplicitColumns() {
     auto brunoId = storage.insert(User{0, "Bruno"});
     auto zeddId = storage.insert(User{0, "Zedd"});
     
-    assert(storage.count<User>() == 2);
+    REQUIRE(storage.count<User>() == 2);
+    
     {
         auto w = where(is_equal(&User::name, "Bruno"));
-        auto rows = storage.select(column<User>(&User::id), w);
-        assert(rows.size() == 1);
-        assert(rows.front() == brunoId);
         
-        auto rows2 = storage.select(columns(column<User>(&User::id)), w);
-        assert(rows2.size() == 1);
-        assert(std::get<0>(rows2.front()) == brunoId);
+        {
+            auto rows = storage.select(column<User>(&User::id), w);
+            REQUIRE(rows.size() == 1);
+            REQUIRE(rows.front() == brunoId);
+        }
         
-        auto rows3 = storage.select(columns(column<User>(&Object::id)), w);
-        assert(rows3 == rows2);
+        {
+            auto rows2 = storage.select(columns(column<User>(&User::id)), w);
+            REQUIRE(rows2.size() == 1);
+            REQUIRE(std::get<0>(rows2.front()) == brunoId);
+            
+            auto rows3 = storage.select(columns(column<User>(&Object::id)), w);
+            REQUIRE(rows3 == rows2);
+        }
     }
+    
     {
         auto rows = storage.select(column<User>(&User::id), where(is_equal(&User::name, "Zedd")));
-        assert(rows.size() == 1);
-        assert(rows.front() == zeddId);
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == zeddId);
     }
     
-    auto abcId = storage.insert(Token(0, "abc", brunoId));
     {
-        auto w = where(is_equal(&Token::token, "abc"));
-        auto rows = storage.select(column<Token>(&Token::id), w);
-        assert(rows.size() == 1);
-        assert(rows.front() == abcId);
+        auto abcId = storage.insert(Token(0, "abc", brunoId));
         
-        auto rows2 = storage.select(columns(column<Token>(&Token::id), &Token::usedId), w);
-        assert(rows2.size() == 1);
-        assert(std::get<0>(rows2.front()) == abcId);
-        assert(std::get<1>(rows2.front()) == brunoId);
+        auto w = where(is_equal(&Token::token, "abc"));
+        {
+            auto rows = storage.select(column<Token>(&Token::id), w);
+            REQUIRE(rows.size() == 1);
+            REQUIRE(rows.front() == abcId);
+        }
+        
+        {
+            auto rows2 = storage.select(columns(column<Token>(&Token::id), &Token::usedId), w);
+            REQUIRE(rows2.size() == 1);
+            REQUIRE(std::get<0>(rows2.front()) == abcId);
+            REQUIRE(std::get<1>(rows2.front()) == brunoId);
+        }
     }
     
-    auto joinedRows = storage.select(columns(&User::name, &Token::token),
-                                     join<Token>(on(is_equal(&Token::usedId, column<User>(&User::id)))));
-    assert(joinedRows.size() == 1);
-    assert(std::get<0>(joinedRows.front()) == "Bruno");
-    assert(std::get<1>(joinedRows.front()) == "abc");
+    {
+        auto joinedRows = storage.select(columns(&User::name, &Token::token),
+                                         join<Token>(on(is_equal(&Token::usedId, column<User>(&User::id)))));
+        REQUIRE(joinedRows.size() == 1);
+        REQUIRE(std::get<0>(joinedRows.front()) == "Bruno");
+        REQUIRE(std::get<1>(joinedRows.front()) == "abc");
+    }
 }
 
-void testJoinIteratorConstructorCompilationError() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Join iterator ctor compilation error") {
+    //  TODO: move to static tests
     struct Tag {
         int objectId;
         std::string text;
@@ -882,9 +898,7 @@ void testJoinIteratorConstructorCompilationError() {
                    limit(offs, lim));
 }
 
-void testLimits() {
-    cout << __func__ << endl;
-    
+TEST_CASE("limits"){
     auto storage2 = make_storage("limits.sqlite");
     auto storage = storage2;
     storage.sync_schema();
@@ -894,90 +908,88 @@ void testLimits() {
         auto newLength = length - 10;
         storage.limit.length(newLength);
         length = storage.limit.length();
-        assert(length == newLength);
+        REQUIRE(length == newLength);
     }
     {
         auto sqlLength = storage.limit.sql_length();
         auto newSqlLength = sqlLength - 10;
         storage.limit.sql_length(newSqlLength);
         sqlLength = storage.limit.sql_length();
-        assert(sqlLength == newSqlLength);
+        REQUIRE(sqlLength == newSqlLength);
     }
     {
         auto column = storage.limit.column();
         auto newColumn = column - 10;
         storage.limit.column(newColumn);
         column = storage.limit.column();
-        assert(column == newColumn);
+        REQUIRE(column == newColumn);
     }
     {
         auto exprDepth = storage.limit.expr_depth();
         auto newExprDepth = exprDepth - 10;
         storage.limit.expr_depth(newExprDepth);
         exprDepth = storage.limit.expr_depth();
-        assert(exprDepth == newExprDepth);
+        REQUIRE(exprDepth == newExprDepth);
     }
     {
         auto compoundSelect = storage.limit.compound_select();
         auto newCompoundSelect = compoundSelect - 10;
         storage.limit.compound_select(newCompoundSelect);
         compoundSelect = storage.limit.compound_select();
-        assert(compoundSelect == newCompoundSelect);
+        REQUIRE(compoundSelect == newCompoundSelect);
     }
     {
         auto vdbeOp = storage.limit.vdbe_op();
         auto newVdbe_op = vdbeOp - 10;
         storage.limit.vdbe_op(newVdbe_op);
         vdbeOp = storage.limit.vdbe_op();
-        assert(vdbeOp == newVdbe_op);
+        REQUIRE(vdbeOp == newVdbe_op);
     }
     {
         auto functionArg = storage.limit.function_arg();
         auto newFunctionArg = functionArg - 10;
         storage.limit.function_arg(newFunctionArg);
         functionArg = storage.limit.function_arg();
-        assert(functionArg == newFunctionArg);
+        REQUIRE(functionArg == newFunctionArg);
     }
     {
         auto attached = storage.limit.attached();
         auto newAttached = attached - 1;
         storage.limit.attached(newAttached);
         attached = storage.limit.attached();
-        assert(attached == newAttached);
+        REQUIRE(attached == newAttached);
     }
     {
         auto likePatternLength = storage.limit.like_pattern_length();
         auto newLikePatternLength = likePatternLength - 10;
         storage.limit.like_pattern_length(newLikePatternLength);
         likePatternLength = storage.limit.like_pattern_length();
-        assert(likePatternLength == newLikePatternLength);
+        REQUIRE(likePatternLength == newLikePatternLength);
     }
     {
         auto variableNumber = storage.limit.variable_number();
         auto newVariableNumber = variableNumber - 10;
         storage.limit.variable_number(newVariableNumber);
         variableNumber = storage.limit.variable_number();
-        assert(variableNumber == newVariableNumber);
+        REQUIRE(variableNumber == newVariableNumber);
     }
     {
         auto triggerDepth = storage.limit.trigger_depth();
         auto newTriggerDepth = triggerDepth - 10;
         storage.limit.trigger_depth(newTriggerDepth);
         triggerDepth = storage.limit.trigger_depth();
-        assert(triggerDepth == newTriggerDepth);
+        REQUIRE(triggerDepth == newTriggerDepth);
     }
     {
         auto workerThreads = storage.limit.worker_threads();
         auto newWorkerThreads = workerThreads + 1;
         storage.limit.worker_threads(newWorkerThreads);
         workerThreads = storage.limit.worker_threads();
-        assert(workerThreads == newWorkerThreads);
+        REQUIRE(workerThreads == newWorkerThreads);
     }
 }
 
-void testExplicitInsert() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Explicit insert"){
     struct User {
         int id;
         std::string name;
@@ -1019,133 +1031,129 @@ void testExplicitInsert() {
     
     auto storage = make_storage("explicitinsert.sqlite",
                                 make_table("users",
-                                           make_column("id",
-                                                       &User::id,
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &User::name),
-                                           make_column("age",
-                                                       &User::age),
-                                           make_column("email",
-                                                       &User::email,
-                                                       default_value("dummy@email.com"))),
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("age", &User::age),
+                                           make_column("email", &User::email, default_value("dummy@email.com"))),
                                 make_table("visits",
-                                           make_column("id",
-                                                       &Visit::setId,
-                                                       &Visit::id,
-                                                       primary_key()),
-                                           make_column("created_at",
-                                                       &Visit::createdAt,
-                                                       &Visit::setCreatedAt,
-                                                       default_value(10)),
-                                           make_column("used_id",
-                                                       &Visit::usedId,
-                                                       &Visit::setUsedId)));
+                                           make_column("id", &Visit::setId, &Visit::id, primary_key()),
+                                           make_column("created_at", &Visit::createdAt, &Visit::setCreatedAt, default_value(10)),
+                                           make_column("used_id", &Visit::usedId, &Visit::setUsedId)));
     
     storage.sync_schema();
     storage.remove_all<User>();
     storage.remove_all<Visit>();
     
     {
-        //  insert user without id and email
-        User user{};
-        user.name = "Juan";
-        user.age = 57;
-        auto id = storage.insert(user, columns(&User::name, &User::age));
-        assert(storage.get<User>(id).email == "dummy@email.com");
         
-        //  insert user without email but with id
-        User user2;
-        user2.id = 2;
-        user2.name = "Kevin";
-        user2.age = 27;
-        assert(user2.id == storage.insert(user2, columns(&User::id, &User::name, &User::age)));
-        assert(storage.get<User>(user2.id).email == "dummy@email.com");
+        {
+            User user{};
+            user.name = "Juan";
+            user.age = 57;
+            auto id = storage.insert(user, columns(&User::name, &User::age));
+            REQUIRE(storage.get<User>(id).email == "dummy@email.com");
+        }
         
-        //  insert user with both id and email
-        User user3;
-        user3.id = 3;
-        user3.name = "Sia";
-        user3.age = 42;
-        user3.email = "sia@gmail.com";
-        auto insertedId = storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email));
-        assert(user3.id == insertedId);
-        auto insertedUser3 = storage.get<User>(user3.id);
-        assert(insertedUser3.email == user3.email);
-        assert(insertedUser3.age == user3.age);
-        assert(insertedUser3.name == user3.name);
+        {
+            User user2;
+            user2.id = 2;
+            user2.name = "Kevin";
+            user2.age = 27;
+            REQUIRE(user2.id == storage.insert(user2, columns(&User::id, &User::name, &User::age)));
+            REQUIRE(storage.get<User>(user2.id).email == "dummy@email.com");
+        }
         
-        //  insert without required columns and expect exception
-        User user4;
-        user4.name = "Egor";
-        try {
-            storage.insert(user4, columns(&User::name));
-            throw std::runtime_error("Must not fire");
-        } catch (const std::system_error&) {
-            //        cout << e.what() << endl;
+        {
+            User user3;
+            user3.id = 3;
+            user3.name = "Sia";
+            user3.age = 42;
+            user3.email = "sia@gmail.com";
+            auto insertedId = storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email));
+            REQUIRE(user3.id == insertedId);
+            auto insertedUser3 = storage.get<User>(user3.id);
+            REQUIRE(insertedUser3.email == user3.email);
+            REQUIRE(insertedUser3.age == user3.age);
+            REQUIRE(insertedUser3.name == user3.name);
+        }
+        
+        {
+            User user4;
+            user4.name = "Egor";
+            try {
+                storage.insert(user4, columns(&User::name));
+                REQUIRE(false);
+//                throw std::runtime_error("Must not fire");
+            } catch (const std::system_error&) {
+                //        cout << e.what() << endl;
+            }
         }
     }
     {
-        //  insert visit without id and createdAt
-        Visit visit;
-        visit.setUsedId(1);
-        visit.setId(storage.insert(visit, columns(&Visit::usedId)));
-        {
-            auto visitFromStorage = storage.get<Visit>(visit.id());
-            assert(visitFromStorage.createdAt() == 10);
-            assert(visitFromStorage.usedId() == visit.usedId());
-            storage.remove<Visit>(visitFromStorage.usedId());
-        }
         
-        visit.setId(storage.insert(visit, columns(&Visit::setUsedId)));
         {
-            auto visitFromStorage = storage.get<Visit>(visit.id());
-            assert(visitFromStorage.createdAt() == 10);
-            assert(visitFromStorage.usedId() == visit.usedId());
-            storage.remove<Visit>(visitFromStorage.usedId());
-        }
-        
-        //  insert visit with id
-        Visit visit2;
-        visit2.setId(2);
-        visit2.setUsedId(1);
-        {
-            auto insertedId = storage.insert(visit2, columns(&Visit::id, &Visit::usedId));
-            assert(visit2.id() == insertedId);
-            auto visitFromStorage = storage.get<Visit>(visit2.id());
-            assert(visitFromStorage.usedId() == visit2.usedId());
-            storage.remove<Visit>(visit2.id());
-        }
-        {
-            auto insertedId = storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId));
-            assert(visit2.id() == insertedId);
-            auto visitFromStorage = storage.get<Visit>(visit2.id());
-            assert(visitFromStorage.usedId() == visit2.usedId());
-            storage.remove<Visit>(visit2.id());
-        }
-        
-        //  insert without required columns and expect exception
-        Visit visit3;
-        visit3.setId(10);
-        try {
-            storage.insert(visit3, columns(&Visit::id));
-            throw std::runtime_error("Must not fire");
-        } catch (const std::system_error&) {
-            //        cout << e.what() << endl;
-        }
-        
-        try {
-            storage.insert(visit3, columns(&Visit::setId));
-            throw std::runtime_error("Must not fire");
-        } catch (const std::system_error&) {
-            //        cout << e.what() << endl;
+            Visit visit;
+            
+            {
+                visit.setUsedId(1);
+                visit.setId(storage.insert(visit, columns(&Visit::usedId)));
+                
+                auto visitFromStorage = storage.get<Visit>(visit.id());
+                REQUIRE(visitFromStorage.createdAt() == 10);
+                REQUIRE(visitFromStorage.usedId() == visit.usedId());
+                storage.remove<Visit>(visitFromStorage.usedId());
+            }
+            
+            {
+                visit.setId(storage.insert(visit, columns(&Visit::setUsedId)));
+                auto visitFromStorage = storage.get<Visit>(visit.id());
+                REQUIRE(visitFromStorage.createdAt() == 10);
+                REQUIRE(visitFromStorage.usedId() == visit.usedId());
+                storage.remove<Visit>(visitFromStorage.usedId());
+            }
+            
+            {
+                Visit visit2;
+                visit2.setId(2);
+                visit2.setUsedId(1);
+                {
+                    auto insertedId = storage.insert(visit2, columns(&Visit::id, &Visit::usedId));
+                    REQUIRE(visit2.id() == insertedId);
+                    auto visitFromStorage = storage.get<Visit>(visit2.id());
+                    REQUIRE(visitFromStorage.usedId() == visit2.usedId());
+                    storage.remove<Visit>(visit2.id());
+                }
+                {
+                    auto insertedId = storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId));
+                    REQUIRE(visit2.id() == insertedId);
+                    auto visitFromStorage = storage.get<Visit>(visit2.id());
+                    REQUIRE(visitFromStorage.usedId() == visit2.usedId());
+                    storage.remove<Visit>(visit2.id());
+                }
+            }
+            
+            {
+                Visit visit3;
+                visit3.setId(10);
+                try {
+                    storage.insert(visit3, columns(&Visit::id));
+                    REQUIRE(false);
+                } catch (const std::system_error&) {
+                    //        cout << e.what() << endl;
+                }
+                
+                try {
+                    storage.insert(visit3, columns(&Visit::setId));
+                    REQUIRE(false);
+                } catch (const std::system_error&) {
+                    //        cout << e.what() << endl;
+                }
+            }
         }
     }
 }
 
-void testCustomCollate() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Custom collate"){
     struct Item {
         int id;
         std::string name;
@@ -1167,8 +1175,8 @@ void testCustomCollate() {
         return 0;
     });
     auto rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
-    assert(rows.size() == 1);
-    assert(rows.front() == "Mercury");
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == "Mercury");
     
     rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                           order_by(&Item::name).collate("ototo"));
@@ -1189,12 +1197,10 @@ void testCustomCollate() {
     
     rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                           order_by(&Item::name).collate("alwaysequal"));
-    assert(rows.size() == static_cast<size_t>(storage.count<Item>()));
+    REQUIRE(rows.size() == static_cast<size_t>(storage.count<Item>()));
 }
 
-void testVacuum() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Vacuum"){
     struct Item {
         int id;
         std::string name;
@@ -1214,9 +1220,7 @@ void testVacuum() {
     storage.vacuum();
 }
 
-void testRemoveAll() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Remove all"){
     struct Object {
         int id;
         std::string name;
@@ -1231,16 +1235,14 @@ void testRemoveAll() {
     storage.replace(Object{ 1, "Ototo" });
     storage.replace(Object{ 2, "Contigo" });
     
-    assert(storage.count<Object>() == 2);
+    REQUIRE(storage.count<Object>() == 2);
     
     storage.remove_all<Object>(where(c(&Object::id) == 1));
     
-    assert(storage.count<Object>() == 1);
+    REQUIRE(storage.count<Object>() == 1);
 }
 
-void testEscapedIndexName() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Escaped index name"){
     struct User{
         std::string group;
     };
@@ -1251,9 +1253,7 @@ void testEscapedIndexName() {
     storage.sync_schema();
 }
 
-void testWhere() {
-    cout << __func__ << endl;
-    
+TEST_CASE("Where"){
     struct User{
         int id = 0;
         std::string name;
@@ -1269,75 +1269,18 @@ void testWhere() {
     storage.replace(User{ 2, "Nataly" });
     
     auto users = storage.get_all<User>();
-    assert(users.size() == 2);
+    REQUIRE(users.size() == 2);
     
     auto users2 = storage.get_all<User>(where(true));
-    assert(users2.size() == 2);
+    REQUIRE(users2.size() == 2);
     
     auto users3 = storage.get_all<User>(where(false));
-    assert(users3.size() == 0);
+    REQUIRE(users3.size() == 0);
     
     auto users4 = storage.get_all<User>(where(true and c(&User::id) == 1));
-    assert(users4.size() == 1);
-    assert(users4.front().id == 1);
+    REQUIRE(users4.size() == 1);
+    REQUIRE(users4.front().id == 1);
     
     auto users5 = storage.get_all<User>(where(false and c(&User::id) == 1));
-    assert(users5.size() == 0);
-}
-
-int main(int, char **) {
-
-    cout << "version = " << make_storage("").libversion() << endl;
-    
-    testVacuum();
-    
-    testExplicitInsert();
-    
-    testCustomCollate();
-    
-    testLimits();
-    
-    testJoinIteratorConstructorCompilationError();
-    
-    testExplicitColumns();
-    
-    testDifferentGettersAndSetters();
-    
-    testThreadsafe();
-    
-    testIn();
-    
-    testEscapedIndexName();
-    
-    testSimpleQuery();
-    
-    testCast();
-    
-    testWhere();
-    
-    testIterateBlob();
-    
-    testIsNull();
-    
-    testRemoveAll();
-    
-    testExists();
-    
-    testLike();
-    
-    testBetween();
-    
-    testNot();
-    
-    testCompositeKeyColumnsNames();
-    
-    testSetNull();
-
-    testStorageCopy();
-    
-    testJoin();
-    
-    testUniquePtrInUpdate();
-    
-    testSimpleCase();
+    REQUIRE(users5.size() == 0);
 }
