@@ -44,6 +44,7 @@ matrix:
       language: cpp
       env:
         - SQLITE_ORM_OMITS_CODECVT: ON
+        - CPPFLAGS: "-I/usr/local/include"
       addons:
         homebrew:
           packages:
@@ -62,7 +63,7 @@ matrix:
             - ninja
           update: true
       env:
-        - CPPFLAGS: "-I/usr/local/opt/llvm/include"
+        - CPPFLAGS: "-I/usr/local/opt/llvm/include -I/usr/local/include"
         - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
         - CPATH: /usr/local/opt/llvm/include
         - LIBRARY_PATH: /usr/local/opt/llvm/lib
@@ -82,6 +83,7 @@ matrix:
             - ninja
           update: true
       env:
+        - CPPFLAGS: "-I/usr/local/include"
         - CC: gcc-6
         - CXX: g++-6
 
@@ -94,10 +96,12 @@ before_install:
 install:
   - |
     # Catch2 test framework
-    git clone --depth=1 --quiet https://github.com/catchorg/Catch2.git
-    cd Catch2
-    cmake -Bbuild -H. -DBUILD_TESTING=OFF
-    sudo env "PATH=$PATH" cmake --build ./build --target install
+    if [[ ${TRAVIS_OS_NAME} == "linux" ]]; then
+      git clone --depth=1 --quiet https://github.com/catchorg/Catch2.git
+      cd Catch2
+      cmake -Bbuild -H. -DBUILD_TESTING=OFF
+      sudo env "PATH=$PATH" cmake --build ./build --target install
+    fi
 
 # scripts to run before build
 before_script:
