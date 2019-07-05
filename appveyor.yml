@@ -3,10 +3,6 @@
 # build format
 version: "{build}"
 
-# scripts that run after cloning repository
-install:
-  - git submodule update --init --recursive
- 
 image:
   - Visual Studio 2017
   
