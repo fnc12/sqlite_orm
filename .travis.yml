@@ -82,7 +82,6 @@ matrix:
             - ninja
           update: true
       env:
-        - CPPFLAGS: "-I/usr/local/include"
         - CC: gcc-6
         - CXX: g++-6
 
