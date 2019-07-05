@@ -1,6 +1,16 @@
 # build format
 version: "{build}"
 
+skip_commits:
+  files:
+  - .git*
+  - .travis.yml
+  - _config.yml
+  - LICENSE
+  - '*.md'
+  - '*.png'
+  - '*.sh'
+
 # scripts that run after cloning repository
 install:
   - git submodule update --init --recursive
