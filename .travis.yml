@@ -44,7 +44,6 @@ matrix:
       language: cpp
       env:
         - SQLITE_ORM_OMITS_CODECVT: ON
-        - CPPFLAGS: "-I/usr/local/include"
       addons:
         homebrew:
           packages:
