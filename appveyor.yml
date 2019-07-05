@@ -33,7 +33,7 @@ install:
 before_build:
   - mkdir compile
   - cd compile
-  - cmake -DSqliteOrm_BuildTests=ON .. -G %generator%
+  - cmake -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 # build examples, and run tests (ie make & make test)
 build_script:
