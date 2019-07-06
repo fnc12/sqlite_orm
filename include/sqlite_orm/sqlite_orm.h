@@ -7877,10 +7877,9 @@ namespace sqlite_orm {
             template<class ...Args>
             void process_single_condition(std::stringstream &ss, const conditions::multi_order_by_t<Args...> &orderBy) {
                 std::vector<std::string> expressions;
-                using tuple_t = std::tuple<Args...>;
-                tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(orderBy.args, [&expressions, this](auto &v){
+                iterate_tuple(orderBy.args, [&expressions, this](auto &v){
                     auto expression = this->process_order_by(v);
-                    expressions.insert(expressions.begin(), expression);
+                    expressions.push_back(std::move(expression));
                 });
                 ss << static_cast<std::string>(orderBy) << " ";
                 for(size_t i = 0; i < expressions.size(); ++i) {
@@ -7895,8 +7894,7 @@ namespace sqlite_orm {
             template<class ...Args>
             void process_single_condition(std::stringstream &ss, const conditions::group_by_t<Args...> &groupBy) {
                 std::vector<std::string> expressions;
-                using tuple_t = std::tuple<Args...>;
-                tuple_helper::iterator<std::tuple_size<tuple_t>::value - 1, Args...>()(groupBy.args, [&expressions, this](auto &v){
+                iterate_tuple(groupBy.args, [&expressions, this](auto &v){
                     auto expression = this->string_from_expression(v, false, false);
                     expressions.push_back(expression);
                 });
