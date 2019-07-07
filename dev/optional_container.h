@@ -21,7 +21,7 @@ namespace sqlite_orm {
             using type = void;
             
             template<class L>
-            void apply(const L &l) const {
+            void apply(const L &) const {
                 //..
             }
         };

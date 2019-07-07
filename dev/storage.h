@@ -299,7 +299,7 @@ namespace sqlite_orm {
             }
             
             template<class T>
-            typename std::enable_if<is_bindable<T>::value, std::string>::type string_from_expression(const T &t, bool , bool escape) {
+            typename std::enable_if<is_bindable<T>::value, std::string>::type string_from_expression(const T &, bool , bool /*escape*/) {
                 return "?";
             }
             
@@ -348,11 +348,11 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            std::string string_from_expression(const std::string &t, bool /*noTableName*/, bool escape) {
+            std::string string_from_expression(const std::string &, bool /*noTableName*/, bool /*escape*/) {
                 return "?";
             }
             
-            std::string string_from_expression(const char *t, bool /*noTableName*/, bool escape) {
+            std::string string_from_expression(const char *, bool /*noTableName*/, bool /*escape*/) {
                 return "?";
             }
             
@@ -1159,29 +1159,35 @@ namespace sqlite_orm {
                     auto index = 1;
                     impl.table.for_each_column([&o, stmt, &index, db] (auto &c) {
                         if(!c.template has<constraints::primary_key_t<>>()) {
-                            using field_type = typename std::decay<decltype(c)>::type::field_type;
-                            const field_type *value = nullptr;
+                            using column_type = typename std::decay<decltype(c)>::type;
+                            using field_type = typename column_type::field_type;
                             if(c.member_pointer){
-                                value = &(o.*c.member_pointer);
+                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
+                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                }
                             }else{
-                                value = &((o).*(c.getter))();
-                            }
-                            if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)){
-                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                using getter_type = typename column_type::getter_type;
+                                field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
+                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                }
                             }
                         }
                     });
                     impl.table.for_each_column([&o, stmt, &index, db] (auto &c) {
                         if(c.template has<constraints::primary_key_t<>>()) {
+                            using column_type = typename std::decay<decltype(c)>::type;
                             using field_type = typename std::decay<decltype(c)>::type::field_type;
-                            const field_type *value = nullptr;
                             if(c.member_pointer){
-                                value = &(o.*c.member_pointer);
+                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
+                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                }
                             }else{
-                                value = &((o).*(c.getter))();
-                            }
-                            if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)){
-                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                using getter_type = typename column_type::getter_type;
+                                field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
+                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                }
                             }
                         }
                     });
@@ -2404,17 +2410,20 @@ namespace sqlite_orm {
                     auto index = 1;
                     for(auto it = from; it != to; ++it) {
                         auto &o = *it;
-                        impl.table.for_each_column([&o, &index, &stmt, db] (auto c) {
+                        impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
                             if(!c.template has<constraints::primary_key_t<>>()){
-                                typedef typename decltype(c)::field_type field_type;
-                                const field_type *value = nullptr;
+                                using column_type = typename std::decay<decltype(c)>::type;
+                                using field_type = typename column_type::field_type;
                                 if(c.member_pointer){
-                                    value = &(o.*c.member_pointer);
+                                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
+                                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                    }
                                 }else{
-                                    value = &((o).*(c.getter))();
-                                }
-                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)){
-                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                    using getter_type = typename column_type::getter_type;
+                                    field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
+                                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                                    }
                                 }
                             }
                         });
