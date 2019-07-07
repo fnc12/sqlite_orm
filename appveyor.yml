@@ -1,9 +1,20 @@
 # build format
 version: "{build}"
 
+skip_branch_with_pr: true
+skip_commits:
+  files:
+  - .git*
+  - .travis.yml
+  - _config.yml
+  - LICENSE
+  - '*.md'
+  - '*.png'
+  - '*.sh'
+
 image:
   - Visual Studio 2017
-  
+
 # configurations to add to build matrix
 # TODO: MinGW Makefiles and MSYS Makefiles
 configuration:
