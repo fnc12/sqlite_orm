@@ -13,7 +13,7 @@ TEST_CASE("Issue 343"){
     public:
         A() = default;
         
-        A(int id_) : id(id_) {}
+        A(int id_, std::string name_) : name(move(name_)), id(id_) {}
         
         int getId() const {
             return this->id;
@@ -22,16 +22,19 @@ TEST_CASE("Issue 343"){
         void setId(int id) {
             this->id = id;
         }
+        
+        std::string name;
     private:
         int id = 0;
     };
     
     auto storage = make_storage({},
                                 make_table("a",
-                                           make_column("role", &A::getId, &A::setId)));
+                                           make_column("role", &A::getId, &A::setId, primary_key()),
+                                           make_column("name", &A::name)));
     storage.sync_schema();
     
-    A object(1);
+    A object(1, "Ototo");
     storage.insert(object);
     
     storage.replace(object);
