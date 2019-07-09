@@ -10,7 +10,8 @@ else()
     add_subdirectory(third_party/sqlite)
 endif()
 
-add_executable(unit_tests tests.cpp)
+add_executable(unit_tests tests.cpp tests2.cpp tests3.cpp tests4.cpp tests4.cpp private_getters_tests.cpp pragma_tests.cpp explicit_columns.cpp core_functions_tests.cpp)
+
 
 if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
