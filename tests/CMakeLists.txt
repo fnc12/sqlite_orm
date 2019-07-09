@@ -11,6 +11,15 @@ else()
 endif()
 
 add_executable(unit_tests tests.cpp)
+add_executable(unit_tests tests2.cpp)
+add_executable(unit_tests tests3.cpp)
+add_executable(unit_tests tests4.cpp)
+add_executable(unit_tests tests4.cpp)
+add_executable(unit_tests private_getters_tests.cpp)
+add_executable(unit_tests pragma_tests.cpp)
+add_executable(unit_tests explicit_columns.cpp)
+add_executable(unit_tests core_functions_tests.cpp)
+
 
 if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
