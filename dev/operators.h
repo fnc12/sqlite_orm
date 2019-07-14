@@ -30,6 +30,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "||";
+            }
         };
         
         /**
@@ -40,6 +44,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "+";
+            }
         };
         
         /**
@@ -50,6 +58,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "-";
+            }
         };
         
         /**
@@ -60,6 +72,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "*";
+            }
         };
         
         /**
@@ -70,6 +86,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "/";
+            }
         };
         
         /**
@@ -80,17 +100,24 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "%";
+            }
         };
         
         /**
          *  Result of assign = operator
          */
         template<class L, class R>
-        struct assign_t {
-            L l;
-            R r;
+        struct assign_t : binary_operator<L, R> {
+            using super = binary_operator<L, R>;
             
-            assign_t(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
+            using super::super;
+            
+            operator std::string () const {
+                return "=";
+            }
         };
         
         /**

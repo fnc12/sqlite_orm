@@ -86,7 +86,6 @@ TEST_CASE("Auto vacuum"){
     
     auto storage = make_storage(filename);
     
-    
     storage.pragma.auto_vacuum(0);
     REQUIRE(storage.pragma.auto_vacuum() == 0);
     

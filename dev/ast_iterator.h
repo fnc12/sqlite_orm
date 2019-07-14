@@ -67,16 +67,6 @@ namespace sqlite_orm {
             }
         };
         
-        template<class L, class R>
-        struct ast_iterator<assign_t<L, R>, void> {
-            using node_type = assign_t<L, R>;
-            
-            template<class C>
-            void operator()(const node_type &assign, const C &l) const {
-                iterate_ast(assign.r, l);
-            }
-        };
-        
         template<class ...Args>
         struct ast_iterator<columns_t<Args...>, void> {
             using node_type = columns_t<Args...>;

@@ -430,7 +430,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " || " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -439,7 +439,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " + " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -448,7 +448,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " - " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -457,7 +457,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " * " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -466,7 +466,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " / " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -475,7 +475,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " % " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -1209,7 +1209,7 @@ namespace sqlite_orm {
                 ss << "UPDATE ";
                 std::set<std::pair<std::string, std::string>> tableNamesSet;
                 set.for_each([this, &tableNamesSet](auto &asgn) {
-                    auto tableName = this->parse_table_name(asgn.l);
+                    auto tableName = this->parse_table_name(asgn.lhs);
                     tableNamesSet.insert(tableName.begin(), tableName.end());
                 });
                 if(!tableNamesSet.empty()){
@@ -1219,9 +1219,9 @@ namespace sqlite_orm {
                         std::vector<std::string> setPairs;
                         set.for_each([this, &setPairs](auto &asgn){
                             std::stringstream sss;
-                            sss << this->string_from_expression(asgn.l, true, false);
-                            sss << " = ";
-                            sss << this->string_from_expression(asgn.r, false, false) << " ";
+                            sss << this->string_from_expression(asgn.lhs, true, false);
+                            sss << " " << static_cast<std::string>(asgn) << " ";
+                            sss << this->string_from_expression(asgn.rhs, false, false) << " ";
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();

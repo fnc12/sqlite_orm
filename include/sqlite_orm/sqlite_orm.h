@@ -958,6 +958,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "||";
+            }
         };
         
         /**
@@ -968,6 +972,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "+";
+            }
         };
         
         /**
@@ -978,6 +986,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "-";
+            }
         };
         
         /**
@@ -988,6 +1000,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "*";
+            }
         };
         
         /**
@@ -998,6 +1014,10 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "/";
+            }
         };
         
         /**
@@ -1008,17 +1028,24 @@ namespace sqlite_orm {
             using super = binary_operator<L, R>;
             
             using super::super;
+            
+            operator std::string () const {
+                return "%";
+            }
         };
         
         /**
          *  Result of assign = operator
          */
         template<class L, class R>
-        struct assign_t {
-            L l;
-            R r;
+        struct assign_t : binary_operator<L, R> {
+            using super = binary_operator<L, R>;
             
-            assign_t(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
+            using super::super;
+            
+            operator std::string () const {
+                return "=";
+            }
         };
         
         /**
@@ -6700,16 +6727,6 @@ namespace sqlite_orm {
             }
         };
         
-        template<class L, class R>
-        struct ast_iterator<assign_t<L, R>, void> {
-            using node_type = assign_t<L, R>;
-            
-            template<class C>
-            void operator()(const node_type &assign, const C &l) const {
-                iterate_ast(assign.r, l);
-            }
-        };
-        
         template<class ...Args>
         struct ast_iterator<columns_t<Args...>, void> {
             using node_type = columns_t<Args...>;
@@ -7397,7 +7414,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " || " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -7406,7 +7423,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " + " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -7415,7 +7432,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " - " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -7424,7 +7441,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " * " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -7433,7 +7450,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " / " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -7442,7 +7459,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
                 auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " % " << rhs << ") ";
+                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
                 return ss.str();
             }
             
@@ -8176,7 +8193,7 @@ namespace sqlite_orm {
                 ss << "UPDATE ";
                 std::set<std::pair<std::string, std::string>> tableNamesSet;
                 set.for_each([this, &tableNamesSet](auto &asgn) {
-                    auto tableName = this->parse_table_name(asgn.l);
+                    auto tableName = this->parse_table_name(asgn.lhs);
                     tableNamesSet.insert(tableName.begin(), tableName.end());
                 });
                 if(!tableNamesSet.empty()){
@@ -8186,9 +8203,9 @@ namespace sqlite_orm {
                         std::vector<std::string> setPairs;
                         set.for_each([this, &setPairs](auto &asgn){
                             std::stringstream sss;
-                            sss << this->string_from_expression(asgn.l, true, false);
-                            sss << " = ";
-                            sss << this->string_from_expression(asgn.r, false, false) << " ";
+                            sss << this->string_from_expression(asgn.lhs, true, false);
+                            sss << " " << static_cast<std::string>(asgn) << " ";
+                            sss << this->string_from_expression(asgn.rhs, false, false) << " ";
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();
