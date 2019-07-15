@@ -2,6 +2,9 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <tuple>
 #include <type_traits>
+#include <catch2/catch.hpp>
+
+using namespace sqlite_orm;
 
 struct User {
     int id;
@@ -39,9 +42,7 @@ struct Token : Object {
     
 };
 
-int main() {
-    using namespace sqlite_orm;
-    
+TEST_CASE("Column") {
     {
         using column_type = decltype(make_column("id", &User::id));
         static_assert(std::tuple_size<column_type::constraints_type>::value == 0, "Incorrect constraints_type size");
@@ -115,121 +116,123 @@ int main() {
         static_assert(std::is_member_pointer<field_type>::value, "Field type is not a member pointer");
         static_assert(!std::is_member_function_pointer<field_type>::value, "Field type is not a member pointer");
     }
-    {
-        struct User {
-            int id;
-            std::string name;
-            
-            int getIdByValConst() const {
-                return this->id;
-            }
-            
-            void setIdByVal(int id) {
-                this->id = id;
-            }
-            
-            std::string getNameByVal() {
-                return this->name;
-            }
-            
-            void setNameByConstRef(const std::string &name) {
-                this->name = name;
-            }
-            
-            const int& getConstIdByRefConst() const {
-                return this->id;
-            }
-            
-            void setIdByRef(int &id) {
-                this->id = id;
-            }
-            
-            const std::string& getConstNameByRefConst() const {
-                return this->name;
-            }
-            
-            void setNameByRef(std::string &name) {
-                this->name = std::move(name);
-            }
-        };
-        const std::string filename = "static_tests.sqlite";
-        auto storage0 = make_storage(filename,
-                                     make_table("users",
-                                                make_column("id", &User::id, primary_key()),
-                                                make_column("name", &User::name)));
-        auto storage1 = make_storage(filename,
-                                     make_table("users",
-                                                make_column("id", &User::getIdByValConst, &User::setIdByVal, primary_key()),
-                                                make_column("name", &User::setNameByConstRef, &User::getNameByVal)));
-        auto storage2 = make_storage(filename,
-                                     make_table("users",
-                                                make_column("id", &User::getConstIdByRefConst, &User::setIdByRef, primary_key()),
-                                                make_column("name", &User::getConstNameByRefConst, &User::setNameByRef)));
-        static_assert(std::is_same<decltype(storage0.max(&User::id))::element_type, int>::value, "Incorrect max value");
-        static_assert(std::is_same<decltype(storage1.max(&User::getIdByValConst))::element_type, int>::value, "Incorrect max value");
-        static_assert(std::is_same<decltype(storage1.max(&User::setIdByVal))::element_type, int>::value, "Incorrect max value");
-        static_assert(std::is_same<decltype(storage2.max(&User::getConstIdByRefConst))::element_type, int>::value, "Incorrect max value");
-        static_assert(std::is_same<decltype(storage2.max(&User::setIdByRef))::element_type, int>::value, "Incorrect max value");
+}
+
+TEST_CASE("Aggregate function return types") {
+    struct User {
+        int id;
+        std::string name;
         
-        static_assert(std::is_same<decltype(storage0.max(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect max value");
-        static_assert(std::is_same<decltype(storage1.max(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect max value");
-        static_assert(std::is_same<decltype(storage1.max(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect max value");
-        static_assert(std::is_same<decltype(storage2.max(&User::getConstIdByRefConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect max value");
-        static_assert(std::is_same<decltype(storage2.max(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect max value");
+        int getIdByValConst() const {
+            return this->id;
+        }
         
-        static_assert(std::is_same<decltype(storage0.min(&User::id))::element_type, int>::value, "Incorrect min value");
-        static_assert(std::is_same<decltype(storage1.min(&User::getIdByValConst))::element_type, int>::value, "Incorrect min value");
-        static_assert(std::is_same<decltype(storage1.min(&User::setIdByVal))::element_type, int>::value, "Incorrect min value");
-        static_assert(std::is_same<decltype(storage2.min(&User::getConstIdByRefConst))::element_type, int>::value, "Incorrect min value");
-        static_assert(std::is_same<decltype(storage2.min(&User::setIdByRef))::element_type, int>::value, "Incorrect min value");
+        void setIdByVal(int id) {
+            this->id = id;
+        }
         
-        static_assert(std::is_same<decltype(storage0.min(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect min value");
-        static_assert(std::is_same<decltype(storage1.min(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect min value");
-        static_assert(std::is_same<decltype(storage1.min(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect min value");
-        static_assert(std::is_same<decltype(storage2.min(&User::getConstIdByRefConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect min value");
-        static_assert(std::is_same<decltype(storage2.min(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect min value");
+        std::string getNameByVal() {
+            return this->name;
+        }
         
-        static_assert(std::is_same<decltype(storage0.sum(&User::id))::element_type, int>::value, "Incorrect sum value");
-        static_assert(std::is_same<decltype(storage1.sum(&User::getIdByValConst))::element_type, int>::value, "Incorrect sum value");
-        static_assert(std::is_same<decltype(storage1.sum(&User::setIdByVal))::element_type, int>::value, "Incorrect sum value");
-        static_assert(std::is_same<decltype(storage2.sum(&User::getConstIdByRefConst))::element_type, int>::value, "Incorrect sum value");
-        static_assert(std::is_same<decltype(storage2.sum(&User::setIdByRef))::element_type, int>::value, "Incorrect sum value");
+        void setNameByConstRef(const std::string &name) {
+            this->name = name;
+        }
         
-        static_assert(std::is_same<decltype(storage0.sum(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect sum value");
-        static_assert(std::is_same<decltype(storage1.sum(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect sum value");
-        static_assert(std::is_same<decltype(storage1.sum(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect sum value");
-        static_assert(std::is_same<decltype(storage2.sum(&User::getConstIdByRefConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect sum value");
-        static_assert(std::is_same<decltype(storage2.sum(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type, int>::value,
-                      "Incorrect sum value");
+        const int& getConstIdByRefConst() const {
+            return this->id;
+        }
         
-    }
-    {
-        auto unionValue = union_(select(&User::id), select(&Token::id));
-        static_assert(internal::is_base_of_template<decltype(unionValue), internal::compound_operator>::value, "union must be base of compound_operator");
-        auto exceptValue = except(select(&User::id), select(&Token::id));
-        static_assert(internal::is_base_of_template<decltype(exceptValue), internal::compound_operator>::value, "except must be base of compound_operator");
-    }
+        void setIdByRef(int &id) {
+            this->id = id;
+        }
+        
+        const std::string& getConstNameByRefConst() const {
+            return this->name;
+        }
+        
+        void setNameByRef(std::string &name) {
+            this->name = std::move(name);
+        }
+    };
+    const std::string filename = "static_tests.sqlite";
+    auto storage0 = make_storage(filename,
+                                 make_table("users",
+                                            make_column("id", &User::id, primary_key()),
+                                            make_column("name", &User::name)));
+    auto storage1 = make_storage(filename,
+                                 make_table("users",
+                                            make_column("id", &User::getIdByValConst, &User::setIdByVal, primary_key()),
+                                            make_column("name", &User::setNameByConstRef, &User::getNameByVal)));
+    auto storage2 = make_storage(filename,
+                                 make_table("users",
+                                            make_column("id", &User::getConstIdByRefConst, &User::setIdByRef, primary_key()),
+                                            make_column("name", &User::getConstNameByRefConst, &User::setNameByRef)));
+    static_assert(std::is_same<decltype(storage0.max(&User::id))::element_type, int>::value, "Incorrect max value");
+    static_assert(std::is_same<decltype(storage1.max(&User::getIdByValConst))::element_type, int>::value, "Incorrect max value");
+    static_assert(std::is_same<decltype(storage1.max(&User::setIdByVal))::element_type, int>::value, "Incorrect max value");
+    static_assert(std::is_same<decltype(storage2.max(&User::getConstIdByRefConst))::element_type, int>::value, "Incorrect max value");
+    static_assert(std::is_same<decltype(storage2.max(&User::setIdByRef))::element_type, int>::value, "Incorrect max value");
     
+    static_assert(std::is_same<decltype(storage0.max(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect max value");
+    static_assert(std::is_same<decltype(storage1.max(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect max value");
+    static_assert(std::is_same<decltype(storage1.max(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect max value");
+    static_assert(std::is_same<decltype(storage2.max(&User::getConstIdByRefConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect max value");
+    static_assert(std::is_same<decltype(storage2.max(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect max value");
+    
+    static_assert(std::is_same<decltype(storage0.min(&User::id))::element_type, int>::value, "Incorrect min value");
+    static_assert(std::is_same<decltype(storage1.min(&User::getIdByValConst))::element_type, int>::value, "Incorrect min value");
+    static_assert(std::is_same<decltype(storage1.min(&User::setIdByVal))::element_type, int>::value, "Incorrect min value");
+    static_assert(std::is_same<decltype(storage2.min(&User::getConstIdByRefConst))::element_type, int>::value, "Incorrect min value");
+    static_assert(std::is_same<decltype(storage2.min(&User::setIdByRef))::element_type, int>::value, "Incorrect min value");
+    
+    static_assert(std::is_same<decltype(storage0.min(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect min value");
+    static_assert(std::is_same<decltype(storage1.min(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect min value");
+    static_assert(std::is_same<decltype(storage1.min(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect min value");
+    static_assert(std::is_same<decltype(storage2.min(&User::getConstIdByRefConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect min value");
+    static_assert(std::is_same<decltype(storage2.min(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect min value");
+    
+    static_assert(std::is_same<decltype(storage0.sum(&User::id))::element_type, int>::value, "Incorrect sum value");
+    static_assert(std::is_same<decltype(storage1.sum(&User::getIdByValConst))::element_type, int>::value, "Incorrect sum value");
+    static_assert(std::is_same<decltype(storage1.sum(&User::setIdByVal))::element_type, int>::value, "Incorrect sum value");
+    static_assert(std::is_same<decltype(storage2.sum(&User::getConstIdByRefConst))::element_type, int>::value, "Incorrect sum value");
+    static_assert(std::is_same<decltype(storage2.sum(&User::setIdByRef))::element_type, int>::value, "Incorrect sum value");
+    
+    static_assert(std::is_same<decltype(storage0.sum(&User::id, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect sum value");
+    static_assert(std::is_same<decltype(storage1.sum(&User::getIdByValConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect sum value");
+    static_assert(std::is_same<decltype(storage1.sum(&User::setIdByVal, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect sum value");
+    static_assert(std::is_same<decltype(storage2.sum(&User::getConstIdByRefConst, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect sum value");
+    static_assert(std::is_same<decltype(storage2.sum(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type, int>::value,
+                  "Incorrect sum value");
+}
+
+TEST_CASE("Compound operators") {
+    auto unionValue = union_(select(&User::id), select(&Token::id));
+    static_assert(internal::is_base_of_template<decltype(unionValue), internal::compound_operator>::value, "union must be base of compound_operator");
+    auto exceptValue = except(select(&User::id), select(&Token::id));
+    static_assert(internal::is_base_of_template<decltype(exceptValue), internal::compound_operator>::value, "except must be base of compound_operator");
+}
+
+TEST_CASE("Select return types") {
     auto storage = make_storage("",
                                 make_table("users",
                                            make_column("id", &User::id)));
     //  this call is important - it tests compilation in inner storage_t::serialize_column_schema function
     storage.sync_schema();
-    
     {
         using SelectVectorInt = decltype(storage.select(&User::id));
         static_assert(std::is_same<SelectVectorInt, std::vector<int>>::value, "Incorrect select id vector type");
@@ -279,37 +282,37 @@ int main() {
         using VisitColumnTypes = storage_mapped_columns<decltype(storage2), Visit>::type;
         static_assert(std::is_same<VisitColumnTypes, std::tuple<int, std::string>>::value, "Incorrect storage_mapped_columns result");
     }
-    {
-        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(add(1, 2))>::type, double>::value, "Incorrect add result");
-        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(sub(2, 1))>::type, double>::value, "Incorrect sub result");
-        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(mul(2, 3))>::type, double>::value, "Incorrect mul result");
-        static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(sqlite_orm::div(2, 3))>::type, double>::value, "Incorrect div result");
-    }
-    {
-        static_assert(internal::is_bindable<bool>::value, "bool must be bindable");
-        static_assert(internal::is_bindable<int>::value, "int must be bindable");
-        static_assert(internal::is_bindable<long>::value, "long must be bindable");
-        static_assert(internal::is_bindable<float>::value, "float must be bindable");
-        static_assert(internal::is_bindable<double>::value, "double must be bindable");
-        static_assert(internal::is_bindable<std::string>::value, "string must be bindable");
-        static_assert(internal::is_bindable<std::nullptr_t>::value, "null must be bindable");
-        static_assert(internal::is_bindable<std::unique_ptr<int>>::value, "unique_ptr must be bindable");
-        static_assert(internal::is_bindable<std::shared_ptr<int>>::value, "shared_ptr must be bindable");
-        
-        static_assert(!internal::is_bindable<void>::value, "void cannot be bindable");
-        auto isEqual = is_equal(&User::id, 5);
-        static_assert(!internal::is_bindable<decltype(isEqual)>::value, "is_equal cannot be bindable");
-        auto notEqual = is_not_equal(&User::id, 10);
-        static_assert(!internal::is_bindable<decltype(notEqual)>::value, "is_not_equal cannot be bindable");
-        auto lesserThan = lesser_than(&User::id, 10);
-        static_assert(!internal::is_bindable<decltype(lesserThan)>::value, "lesser_than cannot be bindable");
-        auto lesserOrEqual = lesser_or_equal(&User::id, 5);
-        static_assert(!internal::is_bindable<decltype(lesserOrEqual)>::value, "lesser_or_equal cannot be bindable");
-        auto greaterThan = greater_than(&User::id, 5);
-        static_assert(!internal::is_bindable<decltype(greaterThan)>::value, "greater_than cannot be bindable");
-        auto greaterOrEqual = greater_or_equal(&User::id, 5);
-        static_assert(!internal::is_bindable<decltype(greaterOrEqual)>::value, "greater_or_equal cannot be bindable");
-    }
+}
+
+TEST_CASE("Arithmetic operators result type") {
+    static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(add(1, 2))>::type, double>::value, "Incorrect add result");
+    static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(sub(2, 1))>::type, double>::value, "Incorrect sub result");
+    static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(mul(2, 3))>::type, double>::value, "Incorrect mul result");
+    static_assert(std::is_same<internal::column_result_t<internal::storage_t<>, decltype(sqlite_orm::div(2, 3))>::type, double>::value, "Incorrect div result");
+}
+
+TEST_CASE("is_bindable") {
+    static_assert(internal::is_bindable<bool>::value, "bool must be bindable");
+    static_assert(internal::is_bindable<int>::value, "int must be bindable");
+    static_assert(internal::is_bindable<long>::value, "long must be bindable");
+    static_assert(internal::is_bindable<float>::value, "float must be bindable");
+    static_assert(internal::is_bindable<double>::value, "double must be bindable");
+    static_assert(internal::is_bindable<std::string>::value, "string must be bindable");
+    static_assert(internal::is_bindable<std::nullptr_t>::value, "null must be bindable");
+    static_assert(internal::is_bindable<std::unique_ptr<int>>::value, "unique_ptr must be bindable");
+    static_assert(internal::is_bindable<std::shared_ptr<int>>::value, "shared_ptr must be bindable");
     
-    return 0;
+    static_assert(!internal::is_bindable<void>::value, "void cannot be bindable");
+    auto isEqual = is_equal(&User::id, 5);
+    static_assert(!internal::is_bindable<decltype(isEqual)>::value, "is_equal cannot be bindable");
+    auto notEqual = is_not_equal(&User::id, 10);
+    static_assert(!internal::is_bindable<decltype(notEqual)>::value, "is_not_equal cannot be bindable");
+    auto lesserThan = lesser_than(&User::id, 10);
+    static_assert(!internal::is_bindable<decltype(lesserThan)>::value, "lesser_than cannot be bindable");
+    auto lesserOrEqual = lesser_or_equal(&User::id, 5);
+    static_assert(!internal::is_bindable<decltype(lesserOrEqual)>::value, "lesser_or_equal cannot be bindable");
+    auto greaterThan = greater_than(&User::id, 5);
+    static_assert(!internal::is_bindable<decltype(greaterThan)>::value, "greater_than cannot be bindable");
+    auto greaterOrEqual = greater_or_equal(&User::id, 5);
+    static_assert(!internal::is_bindable<decltype(greaterOrEqual)>::value, "greater_or_equal cannot be bindable");
 }
