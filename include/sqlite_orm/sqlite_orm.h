@@ -7395,15 +7395,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            template<class L, class R>
-            std::string string_from_expression(const conc_t<L, R> &f, bool noTableName, bool escape) {
-                std::stringstream ss;
-                auto lhs = this->string_from_expression(f.lhs, noTableName, escape);
-                auto rhs = this->string_from_expression(f.rhs, noTableName, escape);
-                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
-                return ss.str();
-            }
-            
             template<class L, class R, class ...Ds>
             std::string string_from_expression(const binary_operator<L, R, Ds...> &f, bool noTableName, bool escape) {
                 std::stringstream ss;
