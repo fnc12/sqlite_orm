@@ -1,11 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
-#include <iostream>  //  std::cout, std::endl
 
 using namespace sqlite_orm;
-
-using std::cout;
-using std::endl;
 
 TEST_CASE("substr"){
     struct Test {
