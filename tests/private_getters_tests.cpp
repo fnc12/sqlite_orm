@@ -4,9 +4,6 @@
 
 using namespace sqlite_orm;
 
-using std::cout;
-using std::endl;
-
 TEST_CASE("Issue 343"){
     
     class A {

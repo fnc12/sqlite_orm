@@ -356,46 +356,6 @@ TEST_CASE("Open forever"){
     REQUIRE(storage.count<User>() == 4);
 }
 
-//  after #18
-TEST_CASE("Composite key"){
-    struct Record
-    {
-        int year;
-        int month;
-        int amount;
-    };
-    
-    auto recordsTableName = "records";
-    auto storage = make_storage("",
-                                make_table(recordsTableName,
-                                           make_column("year", &Record::year),
-                                           make_column("month", &Record::month),
-                                           make_column("amount", &Record::amount),
-                                           primary_key(&Record::year, &Record::month)));
-    
-    storage.sync_schema();
-    REQUIRE(storage.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
-    
-    auto storage2 = make_storage("",
-                                 make_table(recordsTableName,
-                                            make_column("year", &Record::year),
-                                            make_column("month", &Record::month),
-                                            make_column("amount", &Record::amount),
-                                            primary_key(&Record::month, &Record::year)));
-    storage2.sync_schema();
-    REQUIRE(storage2.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
-    
-    auto storage3 = make_storage("",
-                                 make_table(recordsTableName,
-                                            make_column("year", &Record::year),
-                                            make_column("month", &Record::month),
-                                            make_column("amount", &Record::amount),
-                                            primary_key(&Record::amount, &Record::month, &Record::year)));
-    storage3.sync_schema();
-    REQUIRE(storage3.sync_schema()[recordsTableName] == sqlite_orm::sync_schema_result::already_in_sync);
-    
-}
-
 //  appeared after #55
 TEST_CASE("Default value"){
     struct User {

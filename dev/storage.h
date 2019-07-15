@@ -1708,8 +1708,7 @@ namespace sqlite_orm {
                         statement_finalizer finalizer{stmt};
                         auto index = 1;
                         auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
-                        constexpr const auto idsCount = std::tuple_size<decltype(idsTuple)>::value;
-                        tuple_helper::iterator<idsCount - 1, Ids...>()(idsTuple, [stmt, &index, db](auto &v){
+                        iterate_tuple(idsTuple, [stmt, &index, db](auto &v){
                             using field_type = typename std::decay<decltype(v)>::type;
                             if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)){
                                 throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
@@ -1785,8 +1784,7 @@ namespace sqlite_orm {
                         statement_finalizer finalizer{stmt};
                         auto index = 1;
                         auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
-                        constexpr const auto idsCount = std::tuple_size<decltype(idsTuple)>::value;
-                        tuple_helper::iterator<idsCount - 1, Ids...>()(idsTuple, [stmt, &index, db](auto &v){
+                        iterate_tuple(idsTuple, [stmt, &index, db](auto &v){
                             using field_type = typename std::decay<decltype(v)>::type;
                             if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)){
                                 throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
