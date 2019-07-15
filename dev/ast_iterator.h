@@ -56,24 +56,14 @@ namespace sqlite_orm {
             }
         };
         
-        template<class T>
-        struct ast_iterator<T, typename std::enable_if<is_base_of_template<T, binary_operator>::value>::type> {
-            using node_type = T;
-            
-            template<class L>
-            void operator()(const node_type &binaryOperator, const L &l) const {
-                iterate_ast(binaryOperator.lhs, l);
-                iterate_ast(binaryOperator.rhs, l);
-            }
-        };
-        
-        template<class L, class R>
-        struct ast_iterator<assign_t<L, R>, void> {
-            using node_type = assign_t<L, R>;
+        template<class L, class R, class ...Ds>
+        struct ast_iterator<binary_operator<L, R, Ds...>, void> {
+            using node_type = binary_operator<L, R, Ds...>;
             
             template<class C>
-            void operator()(const node_type &assign, const C &l) const {
-                iterate_ast(assign.r, l);
+            void operator()(const node_type &binaryOperator, const C &l) const {
+                iterate_ast(binaryOperator.lhs, l);
+                iterate_ast(binaryOperator.rhs, l);
             }
         };
         

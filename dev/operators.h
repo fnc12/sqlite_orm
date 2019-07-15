@@ -11,8 +11,8 @@ namespace sqlite_orm {
          */
         struct arithmetic_t {};
         
-        template<class L, class R>
-        struct binary_operator {
+        template<class L, class R, class ...Ds>
+        struct binary_operator : Ds... {
             using left_type = L;
             using right_type = R;
             
@@ -22,76 +22,89 @@ namespace sqlite_orm {
             binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
         };
         
+        struct conc_string {
+            operator std::string () const {
+                return "||";
+            }
+        };
+        
         /**
          *  Result of concatenation || operator
          */
         template<class L, class R>
-        struct conc_t : binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
+        using conc_t = binary_operator<L, R, conc_string>;
+        
+        struct add_string {
+            operator std::string () const {
+                return "+";
+            }
         };
         
         /**
          *  Result of addition + operator
          */
         template<class L, class R>
-        struct add_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
+        using add_t = binary_operator<L, R, add_string, arithmetic_t>;
+        
+        struct sub_string {
+            operator std::string () const {
+                return "-";
+            }
         };
         
         /**
          *  Result of substitute - operator
          */
         template<class L, class R>
-        struct sub_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
+        using sub_t = binary_operator<L, R, sub_string, arithmetic_t>;
+        
+        struct mul_string {
+            operator std::string () const {
+                return "*";
+            }
         };
         
         /**
          *  Result of multiply * operator
          */
         template<class L, class R>
-        struct mul_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
+        using mul_t = binary_operator<L, R, mul_string, arithmetic_t>;
+        
+        struct div_string {
+            operator std::string () const {
+                return "/";
+            }
         };
         
         /**
          *  Result of divide / operator
          */
         template<class L, class R>
-        struct div_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
+        using div_t = binary_operator<L, R, div_string, arithmetic_t>;
+        
+        struct mod_string {
+            operator std::string () const {
+                return "%";
+            }
         };
         
         /**
          *  Result of mod % operator
          */
         template<class L, class R>
-        struct mod_t : arithmetic_t, binary_operator<L, R> {
-            using super = binary_operator<L, R>;
-            
-            using super::super;
+        using mod_t = binary_operator<L, R, mod_string, arithmetic_t>;
+        
+        struct assign_string {
+            operator std::string () const {
+                return "=";
+            }
         };
         
         /**
          *  Result of assign = operator
          */
         template<class L, class R>
-        struct assign_t {
-            L l;
-            R r;
-            
-            assign_t(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
-        };
+        using assign_t = binary_operator<L, R, assign_string>;
         
         /**
          *  Assign operator traits. Common case
@@ -135,7 +148,7 @@ namespace sqlite_orm {
     }
     
     /**
-     *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT name + '@gmail.com' FROM users
+     *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT name || '@gmail.com' FROM users
      */
     template<class L, class R>
     internal::conc_t<L, R> conc(L l, R r) {
