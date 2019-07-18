@@ -28,7 +28,7 @@ struct UserVisit {
 int main() {
     using namespace sqlite_orm;
     
-    auto storage = make_storage("",
+    auto storage = make_storage({},
                                 make_table("users",
                                            make_column("id", &User::id),
                                            make_column("first_name", &User::firstName),
