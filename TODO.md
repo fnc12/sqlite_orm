@@ -13,7 +13,6 @@
 * CREATE VIEW and other view operations https://sqlite.org/lang_createview.html
 * triggers
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
-* `FULL OUTER JOIN`
 * `WINDOW`
 * `UPSERT` https://www.sqlite.org/lang_UPSERT.html
 * `CHECK` constraint
