@@ -7141,7 +7141,7 @@ namespace sqlite_orm {
                 using columns_type_t = typename std::decay<decltype(fk)>::type::columns_type;
                 constexpr const size_t columnsCount = std::tuple_size<columns_type_t>::value;
                 columnNames.reserve(columnsCount);
-                tuple_helper::iterator<columnsCount - 1, Cs...>()(fk.columns, [&columnNames, this](auto &v){
+                iterate_tuple(fk.columns, [&columnNames, this](auto &v){
                     columnNames.push_back(this->impl.column_name(v));
                 });
                 ss << "FOREIGN KEY( ";
@@ -7163,7 +7163,7 @@ namespace sqlite_orm {
                     auto refTableName = this->impl.template find_table_name<first_reference_mapped_type>();
                     ss << refTableName << " ";
                 }
-                tuple_helper::iterator<referencesCount - 1, Rs...>()(fk.references, [&referencesNames, this](auto &v){
+                iterate_tuple(fk.references, [&referencesNames, this](auto &v){
                     referencesNames.push_back(this->impl.column_name(v));
                 });
                 ss << "( ";
@@ -9392,7 +9392,7 @@ namespace sqlite_orm {
                 using indexed_type = typename internal::table_type<head_t>::type;
                 ss << "INDEX IF NOT EXISTS '" << impl->table.name << "' ON '" << this->impl.template find_table_name<indexed_type>() << "' ( ";
                 std::vector<std::string> columnNames;
-                tuple_helper::iterator<std::tuple_size<columns_type>::value - 1, Cols...>()(impl->table.columns, [&columnNames, this](auto &v){
+                iterate_tuple(impl->table.columns, [&columnNames, this](auto &v){
                     columnNames.push_back(this->impl.column_name(v));
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
