@@ -6200,10 +6200,10 @@ namespace sqlite_orm {
             this->set_pragma("auto_vacuum", value);
         }
         
-//    protected:
+    protected:
         friend struct storage_base;
         
-//    public:
+    public:
         int _synchronous = -1;
         signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
         get_or_create_connection_t getOrCreateConnection;
@@ -6381,7 +6381,7 @@ namespace sqlite_orm {
                 this->set(SQLITE_LIMIT_WORKER_THREADS, newValue);
             }
             
-//        protected:
+        protected:
             get_or_create_connection_t getOrCreateConnection;
             
             friend struct storage_base;

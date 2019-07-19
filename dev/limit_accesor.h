@@ -110,7 +110,7 @@ namespace sqlite_orm {
                 this->set(SQLITE_LIMIT_WORKER_THREADS, newValue);
             }
             
-//        protected:
+        protected:
             get_or_create_connection_t getOrCreateConnection;
             
             friend struct storage_base;
