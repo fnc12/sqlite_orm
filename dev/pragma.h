@@ -2,6 +2,7 @@
 
 #include <string>   //  std::string
 #include <sqlite3.h>
+#include <functional>   //  std::function
 
 #include "error_code.h"
 #include "row_extractor.h"
@@ -9,11 +10,17 @@
 
 namespace sqlite_orm {
     
-    template<class S>
+    namespace internal {
+        struct database_connection;
+        struct storage_base;
+    }
+    
     struct pragma_t {
-        using storage_type = S;
+        using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
         
-        pragma_t(storage_type &storage_): storage(storage_) {}
+        pragma_t(get_or_create_connection_t getOrCreateConnection_):
+        getOrCreateConnection(std::move(getOrCreateConnection_))
+        {}
         
         sqlite_orm::journal_mode journal_mode() {
             return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
@@ -51,16 +58,17 @@ namespace sqlite_orm {
             this->set_pragma("auto_vacuum", value);
         }
         
-        friend storage_type;
+//    protected:
+        friend struct storage_base;
         
-    protected:
-        storage_type &storage;
+//    public:
         int _synchronous = -1;
         signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
+        get_or_create_connection_t getOrCreateConnection;
         
         template<class T>
         T get_pragma(const std::string &name) {
-            auto connection = this->storage.get_or_create_connection();
+            auto connection = this->getOrCreateConnection();
             auto query = "PRAGMA " + name;
             T res;
             auto rc = sqlite3_exec(connection->get_db(),
@@ -87,7 +95,7 @@ namespace sqlite_orm {
         void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
             std::shared_ptr<internal::database_connection> connection;
             if(!db){
-                connection = this->storage.get_or_create_connection();
+                connection = this->getOrCreateConnection();
                 db = connection->get_db();
             }
             std::stringstream ss;
@@ -102,7 +110,7 @@ namespace sqlite_orm {
         void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
             std::shared_ptr<internal::database_connection> connection;
             if(!db){
-                connection = this->storage.get_or_create_connection();
+                connection = this->getOrCreateConnection();
                 db = connection->get_db();
             }
             std::stringstream ss;

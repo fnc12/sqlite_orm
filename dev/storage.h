@@ -51,66 +51,275 @@ namespace sqlite_orm {
     
     namespace internal {
         
-        /**
-         *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
-         */
-        template<class ...Ts>
-        struct storage_t {
-            using self = storage_t<Ts...>;
-            using impl_type = storage_impl<Ts...>;
+        struct storage_base {
+            using collating_function = std::function<int(int, const void*, int, const void*)>;
             
             std::function<void(sqlite3*)> on_open;
+            pragma_t pragma;
+            limit_accesor limit;
             
-            transaction_guard_t<self> transaction_guard() {
+            transaction_guard_t transaction_guard() {
                 this->begin_transaction();
-                return {*this};
+                auto commitFunc = std::bind(static_cast<void(storage_base::*)()>(&storage_base::commit), this);
+                auto rollbackFunc = std::bind(static_cast<void(storage_base::*)()>(&storage_base::rollback), this);
+                return {move(commitFunc), move(rollbackFunc)};
             }
             
-            template<class S>
-            friend struct limit_accesor;
+            void drop_index(const std::string &indexName) {
+                auto connection = this->get_or_create_connection();
+                std::stringstream ss;
+                ss << "DROP INDEX '" << indexName + "'";
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //  done..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                }
+            }
+            
+            void vacuum() {
+                auto connection = this->get_or_create_connection();
+                std::string query = "VACUUM";
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //  done..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                }
+            }
             
             /**
-             *  @param filename_ database filename.
+             *  Drops table with given name.
              */
-            storage_t(const std::string &filename_, impl_type impl_):
-            filename(filename_),
-            impl(std::move(impl_)),
-            inMemory(filename_.empty() || filename_ == ":memory:"),
-            pragma(*this),
-            limit(*this){
-                if(inMemory){
+            void drop_table(const std::string &tableName) {
+                auto connection = this->get_or_create_connection();
+                this->drop_table_internal(tableName, connection->get_db());
+            }
+            
+            /**
+             *  sqlite3_changes function.
+             */
+            int changes() {
+                auto connection = this->get_or_create_connection();
+                return sqlite3_changes(connection->get_db());
+            }
+            
+            /**
+             *  sqlite3_total_changes function.
+             */
+            int total_changes() {
+                auto connection = this->get_or_create_connection();
+                return sqlite3_total_changes(connection->get_db());
+            }
+            
+            int64 last_insert_rowid() {
+                auto connection = this->get_or_create_connection();
+                return sqlite3_last_insert_rowid(connection->get_db());
+            }
+            
+            int busy_timeout(int ms) {
+                auto connection = this->get_or_create_connection();
+                return sqlite3_busy_timeout(connection->get_db(), ms);
+            }
+            
+            /**
+             *  Returns libsqltie3 lib version, not sqlite_orm
+             */
+            std::string libversion() {
+                return sqlite3_libversion();
+            }
+            
+            bool transaction(std::function<bool()> f) {
+                this->begin_transaction();
+                auto db = this->currentTransaction->get_db();
+                auto shouldCommit = f();
+                if(shouldCommit){
+                    this->commit(db);
+                }else{
+                    this->rollback(db);
+                }
+                if(!this->inMemory && !this->isOpenedForever){
+                    this->currentTransaction = nullptr;
+                }
+                return shouldCommit;
+            }
+            
+            std::string current_timestamp() {
+                auto connection = this->get_or_create_connection();
+                return this->current_timestamp(connection->get_db());
+            }
+            
+#if SQLITE_VERSION_NUMBER >= 3007010
+            /**
+             * \fn db_release_memory
+             * \brief Releases freeable memory of database. It is function can/should be called periodically by application,
+             * if application has less memory usage constraint.
+             * \note sqlite3_db_release_memory added in 3.7.10 https://sqlite.org/changes.html
+             */
+            int db_release_memory() {
+                auto connection = this->get_or_create_connection();
+                return sqlite3_db_release_memory(connection->get_db());
+            }
+#endif
+            
+            /**
+             *  Returns existing permanent table names in database. Doesn't check storage itself - works only with actual database.
+             *  @return Returns list of tables in database.
+             */
+            std::vector<std::string> table_names() {
+                auto connection = this->get_or_create_connection();
+                std::vector<std::string> tableNames;
+                std::string sql = "SELECT name FROM sqlite_master WHERE type='table'";
+                using Data = std::vector<std::string>;
+                int res = sqlite3_exec(connection->get_db(), sql.c_str(),
+                                       [] (void *data, int argc, char **argv, char ** /*columnName*/) -> int {
+                                           auto& tableNames = *(Data*)data;
+                                           for(int i = 0; i < argc; i++) {
+                                               if(argv[i]){
+                                                   tableNames.push_back(argv[i]);
+                                               }
+                                           }
+                                           return 0;
+                                       }, &tableNames,nullptr);
+                
+                if(res != SQLITE_OK) {
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                }
+                return tableNames;
+            }
+            
+            void open_forever() {
+                this->isOpenedForever = true;
+                if(!this->currentTransaction){
                     this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
                     this->on_open_internal(this->currentTransaction->get_db());
                 }
             }
             
-            storage_t(const storage_t &other):
-            on_open(other.on_open),
-            filename(other.filename),
-            impl(other.impl),
-            currentTransaction(other.currentTransaction),
-            inMemory(other.inMemory),
-            collatingFunctions(other.collatingFunctions),
-            pragma(*this),
-            limit(*this)
-            {}
+            void create_collation(const std::string &name, collating_function f) {
+                collating_function *functionPointer = nullptr;
+                if(f){
+                    functionPointer = &(collatingFunctions[name] = f);
+                }else{
+                    collatingFunctions.erase(name);
+                }
+                
+                //  create collations if db is open
+                if(this->currentTransaction){
+                    auto db = this->currentTransaction->get_db();
+                    if(sqlite3_create_collation(db,
+                                                name.c_str(),
+                                                SQLITE_UTF8,
+                                                functionPointer,
+                                                f ? collate_callback : nullptr) != SQLITE_OK)
+                    {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }
+            }
+            
+            void begin_transaction() {
+                if(!this->inMemory){
+                    if(!this->isOpenedForever){
+                        if(this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::cannot_start_a_transaction_within_a_transaction));
+                        this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
+                        this->on_open_internal(this->currentTransaction->get_db());
+                    }
+                }
+                auto db = this->currentTransaction->get_db();
+                this->begin_transaction(db);
+            }
+            
+            void commit() {
+                if(!this->inMemory){
+                    if(!this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                }
+                auto db = this->currentTransaction->get_db();
+                this->commit(db);
+                if(!this->inMemory && !this->isOpenedForever){
+                    this->currentTransaction = nullptr;
+                }
+            }
+            
+            void rollback() {
+                if(!this->inMemory){
+                    if(!this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                }
+                auto db = this->currentTransaction->get_db();
+                this->rollback(db);
+                if(!this->inMemory && !this->isOpenedForever){
+                    this->currentTransaction = nullptr;
+                }
+            }
             
         protected:
-            using collating_function = std::function<int(int, const void*, int, const void*)>;
+            
+            storage_base(const std::string &filename_, int foreignKeysCount):
+            pragma(std::bind(&storage_base::get_or_create_connection, this)),
+            limit(std::bind(&storage_base::get_or_create_connection, this)),
+            filename(filename_),
+            inMemory(filename.empty() || filename == ":memory:"),
+            cachedForeignKeysCount(foreignKeysCount)
+            {}
+            
+            storage_base(const storage_base &other):
+            on_open(other.on_open),
+            pragma(std::bind(&storage_base::get_or_create_connection, this)),
+            limit(std::bind(&storage_base::get_or_create_connection, this)),
+            filename(other.filename),
+            inMemory(other.inMemory),
+            cachedForeignKeysCount(other.cachedForeignKeysCount)
+            {}
             
             std::string filename;
-            impl_type impl;
-            std::shared_ptr<internal::database_connection> currentTransaction;
             const bool inMemory;
             bool isOpenedForever = false;
+            std::shared_ptr<internal::database_connection> currentTransaction;
             std::map<std::string, collating_function> collatingFunctions;
+            const int cachedForeignKeysCount;
             
-            template<class T, class S, class ...Args>
-            friend struct view_t;
+#if SQLITE_VERSION_NUMBER >= 3006019
             
-            template<class V>
-            friend struct iterator_t;
+            void foreign_keys(sqlite3 *db, bool value) {
+                std::stringstream ss;
+                ss << "PRAGMA foreign_keys = " << value;
+                auto query = ss.str();
+                auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+            }
             
+            bool foreign_keys(sqlite3 *db) {
+                std::string query = "PRAGMA foreign_keys";
+                auto res = false;
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv,char **) -> int {
+                                           auto &res = *(bool*)data;
+                                           if(argc){
+                                               res = row_extractor<bool>().extract(argv[0]);
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+                return res;
+            }
+            
+#endif
             /**
              *  Check whether connection exists and returns it if yes or creates a new one
              *  and returns it.
@@ -142,6 +351,183 @@ namespace sqlite_orm {
                 }
                 return ss.str();
             }
+            
+            void on_open_internal(sqlite3 *db) {
+                
+#if SQLITE_VERSION_NUMBER >= 3006019
+                if(this->cachedForeignKeysCount){
+                    this->foreign_keys(db, true);
+                }
+#endif
+                if(this->pragma._synchronous != -1) {
+                    this->pragma.synchronous(this->pragma._synchronous);
+                }
+                
+                if(this->pragma._journal_mode != -1) {
+                    this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma._journal_mode), db);
+                }
+                
+                for(auto &p : this->collatingFunctions){
+                    if(sqlite3_create_collation(db,
+                                                p.first.c_str(),
+                                                SQLITE_UTF8,
+                                                &p.second,
+                                                collate_callback) != SQLITE_OK)
+                    {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }
+                
+                for(auto &p : this->limit.limits) {
+                    sqlite3_limit(db, p.first, p.second);
+                }
+                
+                if(this->on_open){
+                    this->on_open(db);
+                }
+            }
+            
+            void begin_transaction(sqlite3 *db) {
+                std::stringstream ss;
+                ss << "BEGIN TRANSACTION";
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //  done..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+            }
+            
+            void commit(sqlite3 *db) {
+                std::stringstream ss;
+                ss << "COMMIT";
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //  done..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+            }
+            
+            void rollback(sqlite3 *db) {
+                std::stringstream ss;
+                ss << "ROLLBACK";
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //  done..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+            }
+            
+            std::string current_timestamp(sqlite3 *db) {
+                std::string res;
+                std::stringstream ss;
+                ss << "SELECT CURRENT_TIMESTAMP";
+                auto query = ss.str();
+                auto rc = sqlite3_exec(db,
+                                       query.c_str(),
+                                       [](void *data, int argc, char **argv, char **) -> int {
+                                           auto &res = *(std::string*)data;
+                                           if(argc){
+                                               if(argv[0]){
+                                                   res = row_extractor<std::string>().extract(argv[0]);
+                                               }
+                                           }
+                                           return 0;
+                                       }, &res, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+                return res;
+            }
+            
+            void drop_table_internal(const std::string &tableName, sqlite3 *db) {
+                std::stringstream ss;
+                ss << "DROP TABLE '" << tableName + "'";
+                auto query = ss.str();
+                sqlite3_stmt *stmt;
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    statement_finalizer finalizer{stmt};
+                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                        //  done..
+                    }else{
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                    }
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
+                }
+            }
+            
+            static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {
+                auto &f = *(collating_function*)arg;
+                return f(leftLen, lhs, rightLen, rhs);
+            }
+            
+            //  returns foreign keys count in storage definition
+            template<class T>
+            static int foreign_keys_count(T &storageImpl) {
+                auto res = 0;
+                storageImpl.for_each([&res](auto impl){
+                    res += impl->foreign_keys_count();
+                });
+                return res;
+            }
+        };
+        
+        /**
+         *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
+         */
+        template<class ...Ts>
+        struct storage_t : storage_base {
+            using self = storage_t<Ts...>;
+            using impl_type = storage_impl<Ts...>;
+            using storage_base::serialize_column_schema;
+            
+            /**
+             *  @param filename database filename.
+             *  @param impl_ storage_impl head
+             */
+            storage_t(const std::string &filename, impl_type impl_):
+            storage_base{filename, foreign_keys_count(impl_)},
+            impl(std::move(impl_)){
+                if(inMemory){
+                    this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
+                    this->on_open_internal(this->currentTransaction->get_db());
+                }
+            }
+            
+            storage_t(const storage_t &other):
+            storage_base(other),
+            impl(other.impl)
+            {}
+            
+        protected:
+            impl_type impl;
+            
+            template<class T, class S, class ...Args>
+            friend struct view_t;
+            
+            template<class V>
+            friend struct iterator_t;
             
             template<class ...Cs>
             std::string serialize_column_schema(const constraints::primary_key_t<Cs...> &fk) {
@@ -316,7 +702,7 @@ namespace sqlite_orm {
                         ss << ", ";
                     }
                 }
-                ss << ") ";
+                ss << ")";
                 return ss.str();
             }
             
@@ -629,7 +1015,7 @@ namespace sqlite_orm {
                 c.else_expression.apply([&ss, this, noTableName](auto &el){
                     ss << "ELSE " << this->string_from_expression(el, noTableName) << " ";
                 });
-                ss << "END ";
+                ss << "END";
                 return ss.str();
             }
              
@@ -683,7 +1069,6 @@ namespace sqlite_orm {
                 auto leftString = this->string_from_expression(inCondition.l, noTableName);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " ";
                 ss << this->string_from_expression(inCondition.arg, noTableName);
-                ss << " ";
                 return ss.str();
             }
             
@@ -708,7 +1093,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << this->string_from_expression(l.a, noTableName) << " ";
                 ss << static_cast<std::string>(l) << " ";
-                ss << this->string_from_expression(l.t, noTableName) << " ";
+                ss << this->string_from_expression(l.t, noTableName);
                 return ss.str();
             }
             
@@ -719,7 +1104,7 @@ namespace sqlite_orm {
                 ss << expr << " " << static_cast<std::string>(bw) << " ";
                 ss << this->string_from_expression(bw.b1, noTableName);
                 ss << " AND ";
-                ss << this->string_from_expression(bw.b2, noTableName) << " ";
+                ss << this->string_from_expression(bw.b2, noTableName);
                 return ss.str();
             }
             
@@ -727,7 +1112,7 @@ namespace sqlite_orm {
             std::string string_from_expression(const conditions::exists_t<T> &e, bool noTableName) {
                 std::stringstream ss;
                 ss << static_cast<std::string>(e) << " ";
-                ss << this->string_from_expression(e.t, noTableName) << " ";
+                ss << this->string_from_expression(e.t, noTableName);
                 return ss.str();
             }
             
@@ -741,10 +1126,10 @@ namespace sqlite_orm {
                 }
                 switch(orderBy.asc_desc){
                     case 1:
-                        ss << "ASC ";
+                        ss << "ASC";
                         break;
                     case -1:
-                        ss << "DESC ";
+                        ss << "DESC";
                         break;
                 }
                 return ss.str();
@@ -752,12 +1137,12 @@ namespace sqlite_orm {
             
             template<class T>
             void process_join_constraint(std::stringstream &ss, const conditions::on_t<T> &t) {
-                ss << static_cast<std::string>(t) << " " << this->string_from_expression(t.arg, false) << " ";
+                ss << static_cast<std::string>(t) << " " << this->string_from_expression(t.arg, false);
             }
             
             template<class F, class O>
             void process_join_constraint(std::stringstream &ss, const conditions::using_t<F, O> &u) {
-                ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " ) ";
+                ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " )";
             }
             
             void process_single_condition(std::stringstream &ss, const conditions::limit_t &limt) {
@@ -771,19 +1156,18 @@ namespace sqlite_orm {
                 }else{
                     ss << limt.lim;
                 }
-                ss << " ";
             }
             
             template<class O>
             void process_single_condition(std::stringstream &ss, const conditions::cross_join_t<O> &c) {
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.template find_table_name<O>() << "' ";
+                ss << " '" << this->impl.template find_table_name<O>() << "'";
             }
             
             template<class O>
             void process_single_condition(std::stringstream &ss, const conditions::natural_join_t<O> &c) {
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.template find_table_name<O>() << "' ";
+                ss << " '" << this->impl.template find_table_name<O>() << "'";
             }
             
             template<class T, class O>
@@ -879,58 +1263,6 @@ namespace sqlite_orm {
                 });
             }
             
-            void on_open_internal(sqlite3 *db) {
-                
-#if SQLITE_VERSION_NUMBER >= 3006019
-                if(this->foreign_keys_count()){
-                    this->foreign_keys(db, true);
-                }
-#endif
-                if(this->pragma._synchronous != -1) {
-                    this->pragma.synchronous(this->pragma._synchronous);
-                }
-                
-                if(this->pragma._journal_mode != -1) {
-                    this->pragma.set_pragma("journal_mode", static_cast<journal_mode>(this->pragma._journal_mode), db);
-                }
-                
-                for(auto &p : this->collatingFunctions){
-                    if(sqlite3_create_collation(db,
-                                                p.first.c_str(),
-                                                SQLITE_UTF8,
-                                                &p.second,
-                                                collate_callback) != SQLITE_OK)
-                    {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
-                    }
-                }
-                
-                for(auto &p : this->limit.limits) {
-                    sqlite3_limit(db, p.first, p.second);
-                }
-                
-                if(this->on_open){
-                    this->on_open(db);
-                }
-                
-            }
-            
-#if SQLITE_VERSION_NUMBER >= 3006019
-            
-            //  returns foreign keys count in storage definition
-            int foreign_keys_count() {
-                auto res = 0;
-                this->impl.for_each([&res](auto impl){
-                    res += impl->foreign_keys_count();
-                });
-                return res;
-            }
-#endif
-            static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {
-                auto &f = *(collating_function*)arg;
-                return f(leftLen, lhs, rightLen, rhs);
-            }
-            
         public:
             
             template<class T, class ...Args>
@@ -939,28 +1271,6 @@ namespace sqlite_orm {
                 
                 auto connection = this->get_or_create_connection();
                 return {*this, connection, std::forward<Args>(args)...};
-            }
-            
-            void create_collation(const std::string &name, collating_function f) {
-                collating_function *functionPointer = nullptr;
-                if(f){
-                    functionPointer = &(collatingFunctions[name] = f);
-                }else{
-                    collatingFunctions.erase(name);
-                }
-                
-                //  create collations if db is open
-                if(this->currentTransaction){
-                    auto db = this->currentTransaction->get_db();
-                    if(sqlite3_create_collation(db,
-                                                name.c_str(),
-                                                SQLITE_UTF8,
-                                                functionPointer,
-                                                f ? collate_callback : nullptr) != SQLITE_OK)
-                    {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
-                    }
-                }
             }
             
             template<class O, class ...Args>
@@ -1772,7 +2082,7 @@ namespace sqlite_orm {
              */
             template<class F, class O, class ...Args,
             class Tuple = std::tuple<Args...>,
-            typename sfinae = typename std::enable_if<std::tuple_size<std::tuple<Args...>>::value >= 1>::type
+            typename sfinae = typename std::enable_if<std::tuple_size<Tuple>::value >= 1>::type
             >
             std::string group_concat(F O::*m, Args&& ...args) {
                 return this->group_concat_internal(m, {}, std::forward<Args>(args)...);
@@ -2238,7 +2548,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "INSERT INTO '" << impl.table.name << "' (";
                 std::vector<std::string> columnNames;
-                impl.table.for_each_column([&columnNames] (auto c) {
+                impl.table.for_each_column([&columnNames] (auto &c) {
                     if(!c.template has<constraints::primary_key_t<>>()) {
                         columnNames.emplace_back(c.name);
                     }
@@ -2309,102 +2619,6 @@ namespace sqlite_orm {
                 }else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
                 }
-            }
-            
-            void drop_index(const std::string &indexName) {
-                auto connection = this->get_or_create_connection();
-                std::stringstream ss;
-                ss << "DROP INDEX '" << indexName + "'";
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
-                }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                }
-            }
-            
-            void vacuum() {
-                auto connection = this->get_or_create_connection();
-                std::string query = "VACUUM";
-                sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(connection->get_db(), query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                    }
-                }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                }
-            }
-            
-        protected:
-            
-            void drop_table_internal(const std::string &tableName, sqlite3 *db) {
-                std::stringstream ss;
-                ss << "DROP TABLE '" << tableName + "'";
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
-                    }
-                }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
-                }
-            }
-            
-        public:
-            
-            /**
-             *  Drops table with given name.
-             */
-            void drop_table(const std::string &tableName) {
-                auto connection = this->get_or_create_connection();
-                this->drop_table_internal(tableName, connection->get_db());
-            }
-            
-            /**
-             *  sqlite3_changes function.
-             */
-            int changes() {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_changes(connection->get_db());
-            }
-            
-            /**
-             *  sqlite3_total_changes function.
-             */
-            int total_changes() {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_total_changes(connection->get_db());
-            }
-            
-            int64 last_insert_rowid() {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_last_insert_rowid(connection->get_db());
-            }
-            
-            int busy_timeout(int ms) {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_busy_timeout(connection->get_db(), ms);
-            }
-            
-            /**
-             *  Returns libsqltie3 lib version, not sqlite_orm
-             */
-            std::string libversion() {
-                return sqlite3_libversion();
             }
             
         protected:
@@ -2549,109 +2763,6 @@ namespace sqlite_orm {
                 return result;
             }
             
-            bool transaction(std::function<bool()> f) {
-                this->begin_transaction();
-                auto db = this->currentTransaction->get_db();
-                auto shouldCommit = f();
-                if(shouldCommit){
-                    this->impl.commit(db);
-                }else{
-                    this->impl.rollback(db);
-                }
-                if(!this->inMemory && !this->isOpenedForever){
-                    this->currentTransaction = nullptr;
-                }
-                return shouldCommit;
-            }
-            
-            void begin_transaction() {
-                if(!this->inMemory){
-                    if(!this->isOpenedForever){
-                        if(this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::cannot_start_a_transaction_within_a_transaction));
-                        this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
-                        this->on_open_internal(this->currentTransaction->get_db());
-                    }
-                }
-                auto db = this->currentTransaction->get_db();
-                this->impl.begin_transaction(db);
-            }
-            
-            void commit() {
-                if(!this->inMemory){
-                    if(!this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
-                }
-                auto db = this->currentTransaction->get_db();
-                this->impl.commit(db);
-                if(!this->inMemory && !this->isOpenedForever){
-                    this->currentTransaction = nullptr;
-                }
-            }
-            
-            void rollback() {
-                if(!this->inMemory){
-                    if(!this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
-                }
-                auto db = this->currentTransaction->get_db();
-                this->impl.rollback(db);
-                if(!this->inMemory && !this->isOpenedForever){
-                    this->currentTransaction = nullptr;
-                }
-            }
-            
-            std::string current_timestamp() {
-                auto connection = this->get_or_create_connection();
-                return this->impl.current_timestamp(connection->get_db());
-            }
-            
-        protected:
-            
-#if SQLITE_VERSION_NUMBER >= 3006019
-            
-            void foreign_keys(sqlite3 *db, bool value) {
-                std::stringstream ss;
-                ss << "PRAGMA foreign_keys = " << value;
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
-                }
-            }
-            
-            bool foreign_keys(sqlite3 *db) {
-                std::string query = "PRAGMA foreign_keys";
-                auto res = false;
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **) -> int {
-                                           auto &res = *(bool*)data;
-                                           if(argc){
-                                               res = row_extractor<bool>().extract(argv[0]);
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()));
-                }
-                return res;
-            }
-            
-#endif
-            
-        public:
-            
-#if SQLITE_VERSION_NUMBER >= 3007010
-            /**
-             * \fn db_release_memory
-             * \brief Releases freeable memory of database. It is function can/should be called periodically by application,
-             * if application has less memory usage constraint.
-             * \note sqlite3_db_release_memory added in 3.7.10 https://sqlite.org/changes.html
-             */
-            int db_release_memory() {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_db_release_memory(connection->get_db());
-            }
-#endif
-            
             /**
              *  Checks whether table exists in db. Doesn't check storage itself - works only with actual database.
              *  Note: table can be not mapped to a storage
@@ -2661,47 +2772,6 @@ namespace sqlite_orm {
                 auto connection = this->get_or_create_connection();
                 return this->impl.table_exists(tableName, connection->get_db());
             }
-            
-            /**
-             *  Returns existing permanent table names in database. Doesn't check storage itself - works only with actual database.
-             *  @return Returns list of tables in database.
-             */
-            std::vector<std::string> table_names() {
-                auto connection = this->get_or_create_connection();
-                std::vector<std::string> tableNames;
-                std::string sql = "SELECT name FROM sqlite_master WHERE type='table'";
-                using Data = std::vector<std::string>;
-                int res = sqlite3_exec(connection->get_db(), sql.c_str(),
-                                       [] (void *data, int argc, char **argv, char ** /*columnName*/) -> int {
-                                           auto& tableNames = *(Data*)data;
-                                           for(int i = 0; i < argc; i++) {
-                                               if(argv[i]){
-                                                   tableNames.push_back(argv[i]);
-                                               }
-                                           }
-                                           return 0;
-                                       }, &tableNames,nullptr);
-                
-                if(res != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
-                }
-                return tableNames;
-            }
-            
-            void open_forever() {
-                this->isOpenedForever = true;
-                if(!this->currentTransaction){
-                    this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
-                    this->on_open_internal(this->currentTransaction->get_db());
-                }
-            }
-            
-            using pragma_type = pragma_t<self>;
-            
-            friend pragma_type;
-        public:
-            pragma_type pragma;
-            limit_accesor<self> limit;
         };
         
         template<class T>
