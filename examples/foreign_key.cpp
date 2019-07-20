@@ -111,7 +111,7 @@ int main(int, char **argv) {
         
         //  Once all the records that refer to a row in the artist table have
         //  been deleted, it is possible to modify the artistid of the row.
-        storage.remove_all<Track>(where(in(&Track::trackName, {"That''s Amore", "Christmas Blues"})));
+        storage.remove_all<Track>(where(in(&Track::trackName, {"That's Amore", "Christmas Blues"})));
         storage.update_all(set(c(&Artist::artistId) = 4),
                            where(c(&Artist::artistName) == "Dean Martin"));
     }
