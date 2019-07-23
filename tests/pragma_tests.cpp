@@ -1,12 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <iostream> //  std::cout, std::endl
 #include <cstdio>   //  ::remove
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
-
-using std::cout;
-using std::endl;
 
 TEST_CASE("Journal mode"){
     auto filename = "journal_mode.sqlite";
