@@ -605,12 +605,3 @@ TEST_CASE("Sync schema"){
                        idsFromGetAll.end()));
     
 }
-
-TEST_CASE("Test better error reporting") {
-    auto storage = make_storage({});
-    try{
-        storage.drop_index("ototo");
-    }catch(std::system_error e){
-        cout << e.what() << endl;
-    }
-}
