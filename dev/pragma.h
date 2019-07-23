@@ -71,7 +71,8 @@ namespace sqlite_orm {
             auto connection = this->getOrCreateConnection();
             auto query = "PRAGMA " + name;
             T res;
-            auto rc = sqlite3_exec(connection->get_db(),
+            auto db = connection->get_db();
+            auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv, char **) -> int {
                                        auto &res = *(T*)data;
@@ -83,7 +84,7 @@ namespace sqlite_orm {
             if(rc == SQLITE_OK){
                 return res;
             }else{
-                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
             }
         }
         
@@ -103,7 +104,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
             }
         }
         
@@ -118,7 +119,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
             }
         }
     };
