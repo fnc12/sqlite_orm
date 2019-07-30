@@ -6019,7 +6019,6 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
 #include <cstddef>  //  std::ptrdiff_t
 #include <iterator> //  std::input_iterator_tag, std::iterator_traits, std::distance
-#include <system_error> //  std::system_error
 #include <functional>   //  std::function
 #include <sstream>  //  std::stringstream
 #include <map>  //  std::map
@@ -6034,8 +6033,6 @@ namespace sqlite_orm {
 // #include "database_connection.h"
 
 // #include "row_extractor.h"
-
-// #include "statement_finalizer.h"
 
 // #include "error_code.h"
 
@@ -6075,340 +6072,7 @@ namespace sqlite_orm {
 
 // #include "storage_impl.h"
 
-// #include "transaction_guard.h"
-
-
-#include <functional>   //  std::function
-
-namespace sqlite_orm {
-    
-    namespace internal {
-        
-        /**
-         *  Class used as a guard for a transaction. Calls `ROLLBACK` in destructor.
-         *  Has explicit `commit()` and `rollback()` functions. After explicit function is fired
-         *  guard won't do anything in d-tor. Also you can set `commit_on_destroy` to true to
-         *  make it call `COMMIT` on destroy.
-         */
-        struct transaction_guard_t {
-            /**
-             *  This is a public lever to tell a guard what it must do in its destructor
-             *  if `gotta_fire` is true
-             */
-            bool commit_on_destroy = false;
-            
-            transaction_guard_t(std::function<void()> commit_func_, std::function<void()> rollback_func_):
-            commit_func(std::move(commit_func_)),
-            rollback_func(std::move(rollback_func_))
-            {}
-            
-            ~transaction_guard_t() {
-                if(this->gotta_fire){
-                    if(!this->commit_on_destroy){
-                        this->rollback_func();
-                    }else{
-                        this->commit_func();
-                    }
-                }
-            }
-            
-            /**
-             *  Call `COMMIT` explicitly. After this call
-             *  guard will not call `COMMIT` or `ROLLBACK`
-             *  in its destructor.
-             */
-            void commit() {
-                this->commit_func();
-                this->gotta_fire = false;
-            }
-            
-            /**
-             *  Call `ROLLBACK` explicitly. After this call
-             *  guard will not call `COMMIT` or `ROLLBACK`
-             *  in its destructor.
-             */
-            void rollback() {
-                this->rollback_func();
-                this->gotta_fire = false;
-            }
-            
-        protected:
-            std::function<void()> commit_func;
-            std::function<void()> rollback_func;
-            bool gotta_fire = true;
-        };
-    }
-}
-
-// #include "pragma.h"
-
-
-#include <string>   //  std::string
-#include <sqlite3.h>
-#include <functional>   //  std::function
-
-// #include "error_code.h"
-
-// #include "row_extractor.h"
-
 // #include "journal_mode.h"
-
-
-namespace sqlite_orm {
-    
-    namespace internal {
-        struct database_connection;
-        struct storage_base;
-    }
-    
-    struct pragma_t {
-        using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
-        
-        pragma_t(get_or_create_connection_t getOrCreateConnection_):
-        getOrCreateConnection(std::move(getOrCreateConnection_))
-        {}
-        
-        sqlite_orm::journal_mode journal_mode() {
-            return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
-        }
-        
-        void journal_mode(sqlite_orm::journal_mode value) {
-            this->_journal_mode = -1;
-            this->set_pragma("journal_mode", value);
-            this->_journal_mode = static_cast<decltype(this->_journal_mode)>(value);
-        }
-        
-        int synchronous() {
-            return this->get_pragma<int>("synchronous");
-        }
-        
-        void synchronous(int value) {
-            this->_synchronous = -1;
-            this->set_pragma("synchronous", value);
-            this->_synchronous = value;
-        }
-        
-        int user_version() {
-            return this->get_pragma<int>("user_version");
-        }
-        
-        void user_version(int value) {
-            this->set_pragma("user_version", value);
-        }
-        
-        int auto_vacuum() {
-            return this->get_pragma<int>("auto_vacuum");
-        }
-        
-        void auto_vacuum(int value) {
-            this->set_pragma("auto_vacuum", value);
-        }
-        
-    protected:
-        friend struct storage_base;
-        
-    public:
-        int _synchronous = -1;
-        signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
-        get_or_create_connection_t getOrCreateConnection;
-        
-        template<class T>
-        T get_pragma(const std::string &name) {
-            auto connection = this->getOrCreateConnection();
-            auto query = "PRAGMA " + name;
-            T res;
-            auto db = connection->get_db();
-            auto rc = sqlite3_exec(db,
-                                   query.c_str(),
-                                   [](void *data, int argc, char **argv, char **) -> int {
-                                       auto &res = *(T*)data;
-                                       if(argc){
-                                           res = row_extractor<T>().extract(argv[0]);
-                                       }
-                                       return 0;
-                                   }, &res, nullptr);
-            if(rc == SQLITE_OK){
-                return res;
-            }else{
-                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-            }
-        }
-        
-        /**
-         *  Yevgeniy Zakharov: I wanted to refactored this function with statements and value bindings
-         *  but it turns out that bindings in pragma statements are not supported.
-         */
-        template<class T>
-        void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
-            std::shared_ptr<internal::database_connection> connection;
-            if(!db){
-                connection = this->getOrCreateConnection();
-                db = connection->get_db();
-            }
-            std::stringstream ss;
-            ss << "PRAGMA " << name << " = " << value;
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-            }
-        }
-        
-        void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
-            std::shared_ptr<internal::database_connection> connection;
-            if(!db){
-                connection = this->getOrCreateConnection();
-                db = connection->get_db();
-            }
-            std::stringstream ss;
-            ss << "PRAGMA " << name << " = " << internal::to_string(value);
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-            }
-        }
-    };
-}
-
-// #include "journal_mode.h"
-
-// #include "limit_accesor.h"
-
-
-#include <sqlite3.h>
-#include <map>  //  std::map
-
-namespace sqlite_orm {
-    
-    namespace internal {
-        
-        struct limit_accesor {
-            using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
-            
-            limit_accesor(get_or_create_connection_t getOrCreateConnection_):
-            getOrCreateConnection(std::move(getOrCreateConnection_))
-            {}
-            
-            int length() {
-                return this->get(SQLITE_LIMIT_LENGTH);
-            }
-            
-            void length(int newValue) {
-                this->set(SQLITE_LIMIT_LENGTH, newValue);
-            }
-            
-            int sql_length() {
-                return this->get(SQLITE_LIMIT_SQL_LENGTH);
-            }
-            
-            void sql_length(int newValue) {
-                this->set(SQLITE_LIMIT_SQL_LENGTH, newValue);
-            }
-            
-            int column() {
-                return this->get(SQLITE_LIMIT_COLUMN);
-            }
-            
-            void column(int newValue) {
-                this->set(SQLITE_LIMIT_COLUMN, newValue);
-            }
-            
-            int expr_depth() {
-                return this->get(SQLITE_LIMIT_EXPR_DEPTH);
-            }
-            
-            void expr_depth(int newValue) {
-                this->set(SQLITE_LIMIT_EXPR_DEPTH, newValue);
-            }
-            
-            int compound_select() {
-                return this->get(SQLITE_LIMIT_COMPOUND_SELECT);
-            }
-            
-            void compound_select(int newValue) {
-                this->set(SQLITE_LIMIT_COMPOUND_SELECT, newValue);
-            }
-            
-            int vdbe_op() {
-                return this->get(SQLITE_LIMIT_VDBE_OP);
-            }
-            
-            void vdbe_op(int newValue) {
-                this->set(SQLITE_LIMIT_VDBE_OP, newValue);
-            }
-            
-            int function_arg() {
-                return this->get(SQLITE_LIMIT_FUNCTION_ARG);
-            }
-            
-            void function_arg(int newValue) {
-                this->set(SQLITE_LIMIT_FUNCTION_ARG, newValue);
-            }
-            
-            int attached() {
-                return this->get(SQLITE_LIMIT_ATTACHED);
-            }
-            
-            void attached(int newValue) {
-                this->set(SQLITE_LIMIT_ATTACHED, newValue);
-            }
-            
-            int like_pattern_length() {
-                return this->get(SQLITE_LIMIT_LIKE_PATTERN_LENGTH);
-            }
-            
-            void like_pattern_length(int newValue) {
-                this->set(SQLITE_LIMIT_LIKE_PATTERN_LENGTH, newValue);
-            }
-            
-            int variable_number() {
-                return this->get(SQLITE_LIMIT_VARIABLE_NUMBER);
-            }
-            
-            void variable_number(int newValue) {
-                this->set(SQLITE_LIMIT_VARIABLE_NUMBER, newValue);
-            }
-            
-            int trigger_depth() {
-                return this->get(SQLITE_LIMIT_TRIGGER_DEPTH);
-            }
-            
-            void trigger_depth(int newValue) {
-                this->set(SQLITE_LIMIT_TRIGGER_DEPTH, newValue);
-            }
-            
-            int worker_threads() {
-                return this->get(SQLITE_LIMIT_WORKER_THREADS);
-            }
-            
-            void worker_threads(int newValue) {
-                this->set(SQLITE_LIMIT_WORKER_THREADS, newValue);
-            }
-            
-        protected:
-            get_or_create_connection_t getOrCreateConnection;
-            
-            friend struct storage_base;
-            
-            /**
-             *  Stores limit set between connections.
-             */
-            std::map<int, int> limits;
-            
-            int get(int id) {
-                auto connection = this->getOrCreateConnection();
-                return sqlite3_limit(connection->get_db(), id, -1);
-            }
-            
-            void set(int id, int newValue) {
-                this->limits[id] = newValue;
-                auto connection = this->getOrCreateConnection();
-                sqlite3_limit(connection->get_db(), id, newValue);
-            }
-        };
-    }
-}
 
 // #include "field_value_holder.h"
 
@@ -6602,6 +6266,12 @@ namespace sqlite_orm {
     namespace internal {
         
         /**
+         *  ast_iterator accepts an any expression and a callable object
+         *  which will be called for any node of provided expression.
+         *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
+         *  callable object will be called with 5, &User::id and 10.
+         *  ast_iterator is used mostly in finding literals to be bound to
+         *  a statement. To use it just call `iterate_ast(object, callable);`
          *  T is an ast element. E.g. where_t
          */
         template<class T, class SFINAE = void>
@@ -6617,6 +6287,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  Simplified API
+         */
         template<class T, class L>
         void iterate_ast(const T &t, const L &l) {
             ast_iterator<T> iterator;
@@ -6627,7 +6300,6 @@ namespace sqlite_orm {
         struct ast_iterator<conditions::where_t<C>, void> {
             using node_type = conditions::where_t<C>;
          
-             //  L is a callable type. Mostly is templated lambda
             template<class L>
             void operator()(const node_type &where, const L &l) const {
                 iterate_ast(where.c, l);
@@ -6662,9 +6334,7 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &cols, const L &l) const {
-                iterate_tuple(cols.columns, [&l](auto &col){
-                    iterate_ast(col, l);
-                });
+                iterate_ast(cols.columns, l);
             }
         };
         
@@ -6814,9 +6484,7 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &f, const L &l) const {
-                iterate_tuple(f.args, [&l](auto &v){
-                    iterate_ast(v, l);
-                });
+                iterate_ast(f.args, l);
             }
         };
         
@@ -6958,6 +6626,361 @@ namespace sqlite_orm {
 }
 
 // #include "ast_iterator.h"
+
+// #include "storage_base.h"
+
+
+#include <functional>   //  std::function, std::bind
+#include <sqlite3.h>
+#include <string>   //  std::string
+#include <sstream>  //  std::stringstream
+#include <utility>  //  std::move
+#include <system_error> //  std::system_error, std::error_code, std::make_error_code
+#include <vector>   //  std::vector
+#include <memory>   //  std::make_shared, std::shared_ptr
+#include <map>  //  std::map
+#include <type_traits>  //  std::decay
+
+// #include "pragma.h"
+
+
+#include <string>   //  std::string
+#include <sqlite3.h>
+#include <functional>   //  std::function
+
+// #include "error_code.h"
+
+// #include "row_extractor.h"
+
+// #include "journal_mode.h"
+
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        struct database_connection;
+        struct storage_base;
+    }
+    
+    struct pragma_t {
+        using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
+        
+        pragma_t(get_or_create_connection_t getOrCreateConnection_):
+        getOrCreateConnection(std::move(getOrCreateConnection_))
+        {}
+        
+        sqlite_orm::journal_mode journal_mode() {
+            return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
+        }
+        
+        void journal_mode(sqlite_orm::journal_mode value) {
+            this->_journal_mode = -1;
+            this->set_pragma("journal_mode", value);
+            this->_journal_mode = static_cast<decltype(this->_journal_mode)>(value);
+        }
+        
+        int synchronous() {
+            return this->get_pragma<int>("synchronous");
+        }
+        
+        void synchronous(int value) {
+            this->_synchronous = -1;
+            this->set_pragma("synchronous", value);
+            this->_synchronous = value;
+        }
+        
+        int user_version() {
+            return this->get_pragma<int>("user_version");
+        }
+        
+        void user_version(int value) {
+            this->set_pragma("user_version", value);
+        }
+        
+        int auto_vacuum() {
+            return this->get_pragma<int>("auto_vacuum");
+        }
+        
+        void auto_vacuum(int value) {
+            this->set_pragma("auto_vacuum", value);
+        }
+        
+    protected:
+        friend struct storage_base;
+        
+    public:
+        int _synchronous = -1;
+        signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
+        get_or_create_connection_t getOrCreateConnection;
+        
+        template<class T>
+        T get_pragma(const std::string &name) {
+            auto connection = this->getOrCreateConnection();
+            auto query = "PRAGMA " + name;
+            T res;
+            auto db = connection->get_db();
+            auto rc = sqlite3_exec(db,
+                                   query.c_str(),
+                                   [](void *data, int argc, char **argv, char **) -> int {
+                                       auto &res = *(T*)data;
+                                       if(argc){
+                                           res = row_extractor<T>().extract(argv[0]);
+                                       }
+                                       return 0;
+                                   }, &res, nullptr);
+            if(rc == SQLITE_OK){
+                return res;
+            }else{
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+            }
+        }
+        
+        /**
+         *  Yevgeniy Zakharov: I wanted to refactored this function with statements and value bindings
+         *  but it turns out that bindings in pragma statements are not supported.
+         */
+        template<class T>
+        void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
+            std::shared_ptr<internal::database_connection> connection;
+            if(!db){
+                connection = this->getOrCreateConnection();
+                db = connection->get_db();
+            }
+            std::stringstream ss;
+            ss << "PRAGMA " << name << " = " << value;
+            auto query = ss.str();
+            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+            if(rc != SQLITE_OK) {
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+            }
+        }
+        
+        void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
+            std::shared_ptr<internal::database_connection> connection;
+            if(!db){
+                connection = this->getOrCreateConnection();
+                db = connection->get_db();
+            }
+            std::stringstream ss;
+            ss << "PRAGMA " << name << " = " << internal::to_string(value);
+            auto query = ss.str();
+            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+            if(rc != SQLITE_OK) {
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+            }
+        }
+    };
+}
+
+// #include "limit_accesor.h"
+
+
+#include <sqlite3.h>
+#include <map>  //  std::map
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        struct limit_accesor {
+            using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
+            
+            limit_accesor(get_or_create_connection_t getOrCreateConnection_):
+            getOrCreateConnection(std::move(getOrCreateConnection_))
+            {}
+            
+            int length() {
+                return this->get(SQLITE_LIMIT_LENGTH);
+            }
+            
+            void length(int newValue) {
+                this->set(SQLITE_LIMIT_LENGTH, newValue);
+            }
+            
+            int sql_length() {
+                return this->get(SQLITE_LIMIT_SQL_LENGTH);
+            }
+            
+            void sql_length(int newValue) {
+                this->set(SQLITE_LIMIT_SQL_LENGTH, newValue);
+            }
+            
+            int column() {
+                return this->get(SQLITE_LIMIT_COLUMN);
+            }
+            
+            void column(int newValue) {
+                this->set(SQLITE_LIMIT_COLUMN, newValue);
+            }
+            
+            int expr_depth() {
+                return this->get(SQLITE_LIMIT_EXPR_DEPTH);
+            }
+            
+            void expr_depth(int newValue) {
+                this->set(SQLITE_LIMIT_EXPR_DEPTH, newValue);
+            }
+            
+            int compound_select() {
+                return this->get(SQLITE_LIMIT_COMPOUND_SELECT);
+            }
+            
+            void compound_select(int newValue) {
+                this->set(SQLITE_LIMIT_COMPOUND_SELECT, newValue);
+            }
+            
+            int vdbe_op() {
+                return this->get(SQLITE_LIMIT_VDBE_OP);
+            }
+            
+            void vdbe_op(int newValue) {
+                this->set(SQLITE_LIMIT_VDBE_OP, newValue);
+            }
+            
+            int function_arg() {
+                return this->get(SQLITE_LIMIT_FUNCTION_ARG);
+            }
+            
+            void function_arg(int newValue) {
+                this->set(SQLITE_LIMIT_FUNCTION_ARG, newValue);
+            }
+            
+            int attached() {
+                return this->get(SQLITE_LIMIT_ATTACHED);
+            }
+            
+            void attached(int newValue) {
+                this->set(SQLITE_LIMIT_ATTACHED, newValue);
+            }
+            
+            int like_pattern_length() {
+                return this->get(SQLITE_LIMIT_LIKE_PATTERN_LENGTH);
+            }
+            
+            void like_pattern_length(int newValue) {
+                this->set(SQLITE_LIMIT_LIKE_PATTERN_LENGTH, newValue);
+            }
+            
+            int variable_number() {
+                return this->get(SQLITE_LIMIT_VARIABLE_NUMBER);
+            }
+            
+            void variable_number(int newValue) {
+                this->set(SQLITE_LIMIT_VARIABLE_NUMBER, newValue);
+            }
+            
+            int trigger_depth() {
+                return this->get(SQLITE_LIMIT_TRIGGER_DEPTH);
+            }
+            
+            void trigger_depth(int newValue) {
+                this->set(SQLITE_LIMIT_TRIGGER_DEPTH, newValue);
+            }
+            
+            int worker_threads() {
+                return this->get(SQLITE_LIMIT_WORKER_THREADS);
+            }
+            
+            void worker_threads(int newValue) {
+                this->set(SQLITE_LIMIT_WORKER_THREADS, newValue);
+            }
+            
+        protected:
+            get_or_create_connection_t getOrCreateConnection;
+            
+            friend struct storage_base;
+            
+            /**
+             *  Stores limit set between connections.
+             */
+            std::map<int, int> limits;
+            
+            int get(int id) {
+                auto connection = this->getOrCreateConnection();
+                return sqlite3_limit(connection->get_db(), id, -1);
+            }
+            
+            void set(int id, int newValue) {
+                this->limits[id] = newValue;
+                auto connection = this->getOrCreateConnection();
+                sqlite3_limit(connection->get_db(), id, newValue);
+            }
+        };
+    }
+}
+
+// #include "transaction_guard.h"
+
+
+#include <functional>   //  std::function
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        /**
+         *  Class used as a guard for a transaction. Calls `ROLLBACK` in destructor.
+         *  Has explicit `commit()` and `rollback()` functions. After explicit function is fired
+         *  guard won't do anything in d-tor. Also you can set `commit_on_destroy` to true to
+         *  make it call `COMMIT` on destroy.
+         */
+        struct transaction_guard_t {
+            /**
+             *  This is a public lever to tell a guard what it must do in its destructor
+             *  if `gotta_fire` is true
+             */
+            bool commit_on_destroy = false;
+            
+            transaction_guard_t(std::function<void()> commit_func_, std::function<void()> rollback_func_):
+            commit_func(std::move(commit_func_)),
+            rollback_func(std::move(rollback_func_))
+            {}
+            
+            ~transaction_guard_t() {
+                if(this->gotta_fire){
+                    if(!this->commit_on_destroy){
+                        this->rollback_func();
+                    }else{
+                        this->commit_func();
+                    }
+                }
+            }
+            
+            /**
+             *  Call `COMMIT` explicitly. After this call
+             *  guard will not call `COMMIT` or `ROLLBACK`
+             *  in its destructor.
+             */
+            void commit() {
+                this->commit_func();
+                this->gotta_fire = false;
+            }
+            
+            /**
+             *  Call `ROLLBACK` explicitly. After this call
+             *  guard will not call `COMMIT` or `ROLLBACK`
+             *  in its destructor.
+             */
+            void rollback() {
+                this->rollback_func();
+                this->gotta_fire = false;
+            }
+            
+        protected:
+            std::function<void()> commit_func;
+            std::function<void()> rollback_func;
+            bool gotta_fire = true;
+        };
+    }
+}
+
+// #include "statement_finalizer.h"
+
+// #include "type_printer.h"
+
+// #include "tuple_helper.h"
+
+// #include "row_extractor.h"
 
 
 namespace sqlite_orm {
@@ -7148,7 +7171,9 @@ namespace sqlite_orm {
             void begin_transaction() {
                 if(!this->inMemory){
                     if(!this->isOpenedForever){
-                        if(this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::cannot_start_a_transaction_within_a_transaction));
+                        if(this->currentTransaction) {
+                            throw std::system_error(std::make_error_code(orm_error_code::cannot_start_a_transaction_within_a_transaction));
+                        }
                         this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
                         this->on_open_internal(this->currentTransaction->get_db());
                     }
@@ -7159,7 +7184,9 @@ namespace sqlite_orm {
             
             void commit() {
                 if(!this->inMemory){
-                    if(!this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                    if(!this->currentTransaction){
+                        throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                    }
                 }
                 auto db = this->currentTransaction->get_db();
                 this->commit(db);
@@ -7170,7 +7197,9 @@ namespace sqlite_orm {
             
             void rollback() {
                 if(!this->inMemory){
-                    if(!this->currentTransaction) throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                    if(!this->currentTransaction){
+                        throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                    }
                 }
                 auto db = this->currentTransaction->get_db();
                 this->rollback(db);
@@ -7408,6 +7437,13 @@ namespace sqlite_orm {
                 return res;
             }
         };
+    }
+}
+
+
+namespace sqlite_orm {
+    
+    namespace internal {
         
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage` function.
