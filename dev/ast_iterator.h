@@ -13,6 +13,12 @@ namespace sqlite_orm {
     namespace internal {
         
         /**
+         *  ast_iterator accepts an any expression and a callable object
+         *  which will be called for any node of provided expression.
+         *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
+         *  callable object will be called with 5, &User::id and 10.
+         *  ast_iterator is used mostly in finding literals to be bound to
+         *  a statement. To use it just call `iterate_ast(object, callable);`
          *  T is an ast element. E.g. where_t
          */
         template<class T, class SFINAE = void>
@@ -28,6 +34,9 @@ namespace sqlite_orm {
             }
         };
         
+        /**
+         *  Simplified API
+         */
         template<class T, class L>
         void iterate_ast(const T &t, const L &l) {
             ast_iterator<T> iterator;
@@ -38,7 +47,6 @@ namespace sqlite_orm {
         struct ast_iterator<conditions::where_t<C>, void> {
             using node_type = conditions::where_t<C>;
          
-             //  L is a callable type. Mostly is templated lambda
             template<class L>
             void operator()(const node_type &where, const L &l) const {
                 iterate_ast(where.c, l);
@@ -73,9 +81,7 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &cols, const L &l) const {
-                iterate_tuple(cols.columns, [&l](auto &col){
-                    iterate_ast(col, l);
-                });
+                iterate_ast(cols.columns, l);
             }
         };
         
@@ -225,9 +231,7 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &f, const L &l) const {
-                iterate_tuple(f.args, [&l](auto &v){
-                    iterate_ast(v, l);
-                });
+                iterate_ast(f.args, l);
             }
         };
         
