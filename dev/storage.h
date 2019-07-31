@@ -645,9 +645,9 @@ namespace sqlite_orm {
             template<class A, class T>
             std::string string_from_expression(const conditions::like_t<A, T> &l, bool noTableName) {
                 std::stringstream ss;
-                ss << this->string_from_expression(l.a, noTableName) << " ";
+                ss << this->string_from_expression(l.arg, noTableName) << " ";
                 ss << static_cast<std::string>(l) << " ";
-                ss << this->string_from_expression(l.t, noTableName);
+                ss << this->string_from_expression(l.pattern, noTableName);
                 return ss.str();
             }
             
@@ -1312,6 +1312,16 @@ namespace sqlite_orm {
                 res.insert(leftTableNames.begin(), leftTableNames.end());
                 auto rightTableNames = this->parse_table_name(c.r);
                 res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class A, class T>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::like_t<A, T> &l) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto argTableNames = this->parse_table_name(l.arg);
+                res.insert(argTableNames.begin(), argTableNames.end());
+                auto patternTableNames = this->parse_table_name(l.pattern);
+                res.insert(patternTableNames.begin(), patternTableNames.end());
                 return res;
             }
             

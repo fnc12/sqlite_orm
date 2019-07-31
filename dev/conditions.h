@@ -546,10 +546,13 @@ namespace sqlite_orm {
          */
         template<class A, class T>
         struct like_t : condition_t, like_string {
-            A a;
-            T t;
+            using arg_type = A;
+            using pattern_t = T;
             
-            like_t(A a_, T t_): a(std::move(a_)), t(std::move(t_)) {}
+            arg_type arg;
+            pattern_t pattern;
+            
+            like_t(arg_type arg_, pattern_t pattern_): arg(std::move(arg_)), pattern(std::move(pattern_)) {}
         };
         
         struct cross_join_string {

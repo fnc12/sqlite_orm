@@ -2102,10 +2102,13 @@ namespace sqlite_orm {
          */
         template<class A, class T>
         struct like_t : condition_t, like_string {
-            A a;
-            T t;
+            using arg_type = A;
+            using pattern_t = T;
             
-            like_t(A a_, T t_): a(std::move(a_)), t(std::move(t_)) {}
+            arg_type arg;
+            pattern_t pattern;
+            
+            like_t(arg_type arg_, pattern_t pattern_): arg(std::move(arg_)), pattern(std::move(pattern_)) {}
         };
         
         struct cross_join_string {
@@ -5168,6 +5171,11 @@ namespace sqlite_orm {
         struct column_result_t<St, simple_case_t<R, T, E, Args...>, void> {
             using type = R;
         };
+        
+        template<class St, class A, class T>
+        struct column_result_t<St, conditions::like_t<A, T>, void> {
+            using type = bool;
+        };
     }
 }
 #pragma once
@@ -6441,8 +6449,8 @@ namespace sqlite_orm {
             
             template<class L>
             void operator()(const node_type &lk, const L &l) const {
-                iterate_ast(lk.a, l);
-                iterate_ast(lk.t, l);
+                iterate_ast(lk.arg, l);
+                iterate_ast(lk.pattern, l);
             }
         };
         
@@ -8043,9 +8051,9 @@ namespace sqlite_orm {
             template<class A, class T>
             std::string string_from_expression(const conditions::like_t<A, T> &l, bool noTableName) {
                 std::stringstream ss;
-                ss << this->string_from_expression(l.a, noTableName) << " ";
+                ss << this->string_from_expression(l.arg, noTableName) << " ";
                 ss << static_cast<std::string>(l) << " ";
-                ss << this->string_from_expression(l.t, noTableName);
+                ss << this->string_from_expression(l.pattern, noTableName);
                 return ss.str();
             }
             
@@ -8710,6 +8718,16 @@ namespace sqlite_orm {
                 res.insert(leftTableNames.begin(), leftTableNames.end());
                 auto rightTableNames = this->parse_table_name(c.r);
                 res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class A, class T>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::like_t<A, T> &l) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto argTableNames = this->parse_table_name(l.arg);
+                res.insert(argTableNames.begin(), argTableNames.end());
+                auto patternTableNames = this->parse_table_name(l.pattern);
+                res.insert(patternTableNames.begin(), patternTableNames.end());
                 return res;
             }
             
