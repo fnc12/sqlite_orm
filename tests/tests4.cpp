@@ -2,6 +2,7 @@
 #include <iostream>
 #include <catch2/catch.hpp>
 #include <numeric>
+#include <algorithm>    //  std::count_if
 
 using namespace sqlite_orm;
 
@@ -339,33 +340,6 @@ TEST_CASE("Between operator", "select"){
     auto allObjects = storage.get_all<Object>();
     auto rows = storage.select(&Object::id, where(between(&Object::id, 1, 3)));
     REQUIRE(rows.size() == 3);
-}
-
-TEST_CASE("Like operator", "select"){
-    struct User {
-        int id = 0;
-        std::string name;
-    };
-    
-    auto storage = make_storage("",
-                                make_table("users",
-                                           make_column("id", &User::id, autoincrement(), primary_key()),
-                                           make_column("name", &User::name)));
-    storage.sync_schema();
-    
-    storage.insert(User{0, "Sia"});
-    storage.insert(User{0, "Stark"});
-    storage.insert(User{0, "Index"});
-    
-    auto whereCondition = where(like(&User::name, "S%"));
-    {
-        auto users = storage.get_all<User>(whereCondition);
-        REQUIRE(users.size() == 2);
-    }
-    {
-        auto rows = storage.select(&User::id, whereCondition);
-        REQUIRE(rows.size() == 2);
-    }
 }
 
 TEST_CASE("Exists", "select"){

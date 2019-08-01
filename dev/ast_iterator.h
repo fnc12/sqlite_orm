@@ -182,14 +182,17 @@ namespace sqlite_orm {
             }
         };
         
-        template<class A, class T>
-        struct ast_iterator<conditions::like_t<A, T>, void> {
-            using node_type = conditions::like_t<A, T>;
+        template<class A, class T, class E>
+        struct ast_iterator<conditions::like_t<A, T, E>, void> {
+            using node_type = conditions::like_t<A, T, E>;
             
             template<class L>
             void operator()(const node_type &lk, const L &l) const {
-                iterate_ast(lk.a, l);
-                iterate_ast(lk.t, l);
+                iterate_ast(lk.arg, l);
+                iterate_ast(lk.pattern, l);
+                lk.arg3.apply([&l](auto &value){
+                    iterate_ast(value, l);
+                });
             }
         };
         

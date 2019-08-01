@@ -1,9 +1,11 @@
 #pragma once
 
 #include <string>   //  std::string
+#include <type_traits>  //  std::enable_if, std::is_same
 
 #include "collate_argument.h"
 #include "constraints.h"
+#include "optional_container.h"
 
 namespace sqlite_orm {
     
@@ -544,12 +546,24 @@ namespace sqlite_orm {
         /**
          *  LIKE operator object.
          */
-        template<class A, class T>
+        template<class A, class T, class E>
         struct like_t : condition_t, like_string {
-            A a;
-            T t;
+            using arg_t = A;
+            using pattern_t = T;
+            using escape_t = E;
             
-            like_t(A a_, T t_): a(std::move(a_)), t(std::move(t_)) {}
+            arg_t arg;
+            pattern_t pattern;
+            internal::optional_container<escape_t> arg3;  //  not escape cause escape exists as a function here
+            
+            like_t(arg_t arg_, pattern_t pattern_, internal::optional_container<escape_t> escape):
+            arg(std::move(arg_)), pattern(std::move(pattern_)), arg3(std::move(escape)) {}
+            
+            template<class C>
+            like_t<A, T, C> escape(C c) const {
+                internal::optional_container<C> arg3{std::move(c)};
+                return {std::move(this->arg), std::move(this->pattern), std::move(arg3)};
+            }
         };
         
         struct cross_join_string {
@@ -1107,8 +1121,13 @@ namespace sqlite_orm {
     }
     
     template<class A, class T>
-    conditions::like_t<A, T> like(A a, T t) {
-        return {a, t};
+    conditions::like_t<A, T, void> like(A a, T t) {
+        return {std::move(a), std::move(t), {}};
+    }
+    
+    template<class A, class T, class E>
+    conditions::like_t<A, T, E> like(A a, T t, E e) {
+        return {std::move(a), std::move(t), {std::move(e)}};
     }
     
     template<class T>

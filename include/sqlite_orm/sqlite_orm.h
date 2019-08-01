@@ -1555,10 +1555,42 @@ namespace sqlite_orm {
 #pragma once
 
 #include <string>   //  std::string
+#include <type_traits>  //  std::enable_if, std::is_same
 
 // #include "collate_argument.h"
 
 // #include "constraints.h"
+
+// #include "optional_container.h"
+
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        template<class T>
+        struct optional_container {
+            using type = T;
+            
+            type field;
+            
+            template<class L>
+            void apply(const L &l) const {
+                l(this->field);
+            }
+        };
+        
+        template<>
+        struct optional_container<void>{
+            using type = void;
+            
+            template<class L>
+            void apply(const L &) const {
+                //..
+            }
+        };
+    }
+}
 
 
 namespace sqlite_orm {
@@ -2100,12 +2132,24 @@ namespace sqlite_orm {
         /**
          *  LIKE operator object.
          */
-        template<class A, class T>
+        template<class A, class T, class E>
         struct like_t : condition_t, like_string {
-            A a;
-            T t;
+            using arg_t = A;
+            using pattern_t = T;
+            using escape_t = E;
             
-            like_t(A a_, T t_): a(std::move(a_)), t(std::move(t_)) {}
+            arg_t arg;
+            pattern_t pattern;
+            internal::optional_container<escape_t> arg3;  //  not escape cause escape exists as a function here
+            
+            like_t(arg_t arg_, pattern_t pattern_, internal::optional_container<escape_t> escape):
+            arg(std::move(arg_)), pattern(std::move(pattern_)), arg3(std::move(escape)) {}
+            
+            template<class C>
+            like_t<A, T, C> escape(C c) const {
+                internal::optional_container<C> arg3{std::move(c)};
+                return {std::move(this->arg), std::move(this->pattern), std::move(arg3)};
+            }
         };
         
         struct cross_join_string {
@@ -2663,8 +2707,13 @@ namespace sqlite_orm {
     }
     
     template<class A, class T>
-    conditions::like_t<A, T> like(A a, T t) {
-        return {a, t};
+    conditions::like_t<A, T, void> like(A a, T t) {
+        return {std::move(a), std::move(t), {}};
+    }
+    
+    template<class A, class T, class E>
+    conditions::like_t<A, T, E> like(A a, T t, E e) {
+        return {std::move(a), std::move(t), {std::move(e)}};
     }
     
     template<class T>
@@ -3555,35 +3604,6 @@ namespace sqlite_orm {
 // #include "tuple_helper.h"
 
 // #include "optional_container.h"
-
-
-namespace sqlite_orm {
-    
-    namespace internal {
-        
-        template<class T>
-        struct optional_container {
-            using type = T;
-            
-            type field;
-            
-            template<class L>
-            void apply(const L &l) const {
-                l(this->field);
-            }
-        };
-        
-        template<>
-        struct optional_container<void>{
-            using type = void;
-            
-            template<class L>
-            void apply(const L &) const {
-                //..
-            }
-        };
-    }
-}
 
 
 namespace sqlite_orm {
@@ -5168,6 +5188,11 @@ namespace sqlite_orm {
         struct column_result_t<St, simple_case_t<R, T, E, Args...>, void> {
             using type = R;
         };
+        
+        template<class St, class A, class T, class E>
+        struct column_result_t<St, conditions::like_t<A, T, E>, void> {
+            using type = bool;
+        };
     }
 }
 #pragma once
@@ -6435,14 +6460,17 @@ namespace sqlite_orm {
             }
         };
         
-        template<class A, class T>
-        struct ast_iterator<conditions::like_t<A, T>, void> {
-            using node_type = conditions::like_t<A, T>;
+        template<class A, class T, class E>
+        struct ast_iterator<conditions::like_t<A, T, E>, void> {
+            using node_type = conditions::like_t<A, T, E>;
             
             template<class L>
             void operator()(const node_type &lk, const L &l) const {
-                iterate_ast(lk.a, l);
-                iterate_ast(lk.t, l);
+                iterate_ast(lk.arg, l);
+                iterate_ast(lk.pattern, l);
+                lk.arg3.apply([&l](auto &value){
+                    iterate_ast(value, l);
+                });
             }
         };
         
@@ -8040,12 +8068,15 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            template<class A, class T>
-            std::string string_from_expression(const conditions::like_t<A, T> &l, bool noTableName) {
+            template<class A, class T, class E>
+            std::string string_from_expression(const conditions::like_t<A, T, E> &l, bool noTableName) {
                 std::stringstream ss;
-                ss << this->string_from_expression(l.a, noTableName) << " ";
+                ss << this->string_from_expression(l.arg, noTableName) << " ";
                 ss << static_cast<std::string>(l) << " ";
-                ss << this->string_from_expression(l.t, noTableName);
+                ss << this->string_from_expression(l.pattern, noTableName);
+                l.arg3.apply([&ss, this, noTableName](auto &value){
+                    ss << " ESCAPE " << this->string_from_expression(value, noTableName);
+                });
                 return ss.str();
             }
             
@@ -8710,6 +8741,20 @@ namespace sqlite_orm {
                 res.insert(leftTableNames.begin(), leftTableNames.end());
                 auto rightTableNames = this->parse_table_name(c.r);
                 res.insert(rightTableNames.begin(), rightTableNames.end());
+                return res;
+            }
+            
+            template<class A, class T, class E>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::like_t<A, T, E> &l) {
+                std::set<std::pair<std::string, std::string>> res;
+                auto argTableNames = this->parse_table_name(l.arg);
+                res.insert(argTableNames.begin(), argTableNames.end());
+                auto patternTableNames = this->parse_table_name(l.pattern);
+                res.insert(patternTableNames.begin(), patternTableNames.end());
+                l.arg3.apply([&res, this](auto &value){
+                    auto escapeTableNames = this->parse_table_name(value);
+                    res.insert(escapeTableNames.begin(), escapeTableNames.end());
+                });
                 return res;
             }
             

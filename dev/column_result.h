@@ -233,5 +233,10 @@ namespace sqlite_orm {
         struct column_result_t<St, simple_case_t<R, T, E, Args...>, void> {
             using type = R;
         };
+        
+        template<class St, class A, class T, class E>
+        struct column_result_t<St, conditions::like_t<A, T, E>, void> {
+            using type = bool;
+        };
     }
 }
