@@ -57,4 +57,14 @@ TEST_CASE("Like operator"){
         REQUIRE(rows.size() == 1);
         REQUIRE(rows.front() == false);
     }
+    {
+        auto rows = storage.select(like("ototo", "ototo%").escape("%"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == true);
+    }
+    {
+        auto rows = storage.select(like("ototo", "ototo%", "%"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == true);
+    }
 }
