@@ -35,7 +35,6 @@ namespace sqlite_orm {
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
         incorrect_journal_mode_string,
-        incorrect_collate_string,
         invalid_collate_argument_enum,
     };
     
@@ -467,7 +466,7 @@ namespace sqlite_orm {
         
         /**
          *  PRIMARY KEY constraint class.
-         *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
+         *  Cs is parameter pack which contains columns (member pointers and/or function pointers). Can be empty when used withen `make_column` function.
          */
         template<class ...Cs>
         struct primary_key_t : primary_key_base {
@@ -1568,6 +1567,10 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        /**
+         *  This is a cute class which allows storing something or nothing
+         *  depending on template argument. Useful for optional class members
+         */
         template<class T>
         struct optional_container {
             using type = T;
@@ -1695,7 +1698,7 @@ namespace sqlite_orm {
             
             binary_condition() = default;
             
-            binary_condition(L l_, R r_): l(l_), r(r_) {}
+            binary_condition(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
         };
         
         struct and_condition_string {
@@ -6218,15 +6221,7 @@ namespace sqlite_orm {
             }
             
             value_type *operator->() {
-                if(!this->stmt) {
-                    throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
-                }
-                if(!this->current){
-                    std::unique_ptr<value_type> value;
-                    this->extract_value(value);
-                    this->current = move(value);
-                }
-                return &*this->current;
+                return &(this->operator*());
             }
             
             void operator++() {
@@ -6241,7 +6236,8 @@ namespace sqlite_orm {
                             *this->stmt = nullptr;
                         }break;
                         default:{
-                            throw std::system_error(std::error_code(sqlite3_errcode(this->view.connection->get_db()), get_sqlite_error_category()));
+                            auto db = this->view.connection->get_db();
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                         }
                     }
                 }
@@ -6675,6 +6671,7 @@ namespace sqlite_orm {
 #include <string>   //  std::string
 #include <sqlite3.h>
 #include <functional>   //  std::function
+#include <memory> // std::shared_ptr
 
 // #include "error_code.h"
 
@@ -6693,8 +6690,8 @@ namespace sqlite_orm {
     struct pragma_t {
         using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
         
-        pragma_t(get_or_create_connection_t getOrCreateConnection_):
-        getOrCreateConnection(std::move(getOrCreateConnection_))
+        pragma_t(get_or_create_connection_t get_or_create_connection_):
+        get_or_create_connection(std::move(get_or_create_connection_))
         {}
         
         sqlite_orm::journal_mode journal_mode() {
@@ -6739,11 +6736,11 @@ namespace sqlite_orm {
     public:
         int _synchronous = -1;
         signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
-        get_or_create_connection_t getOrCreateConnection;
+        get_or_create_connection_t get_or_create_connection;
         
         template<class T>
         T get_pragma(const std::string &name) {
-            auto connection = this->getOrCreateConnection();
+            auto connection = this->get_or_create_connection();
             auto query = "PRAGMA " + name;
             T res;
             auto db = connection->get_db();
@@ -6771,7 +6768,7 @@ namespace sqlite_orm {
         void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
             std::shared_ptr<internal::database_connection> connection;
             if(!db){
-                connection = this->getOrCreateConnection();
+                connection = this->get_or_create_connection();
                 db = connection->get_db();
             }
             std::stringstream ss;
@@ -6786,7 +6783,7 @@ namespace sqlite_orm {
         void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
             std::shared_ptr<internal::database_connection> connection;
             if(!db){
-                connection = this->getOrCreateConnection();
+                connection = this->get_or_create_connection();
                 db = connection->get_db();
             }
             std::stringstream ss;
@@ -6805,6 +6802,8 @@ namespace sqlite_orm {
 
 #include <sqlite3.h>
 #include <map>  //  std::map
+#include <functional>   //  std::function
+#include <memory>   //  std::shared_ptr
 
 namespace sqlite_orm {
     
@@ -7177,7 +7176,7 @@ namespace sqlite_orm {
             void create_collation(const std::string &name, collating_function f) {
                 collating_function *functionPointer = nullptr;
                 if(f){
-                    functionPointer = &(collatingFunctions[name] = f);
+                    functionPointer = &(collatingFunctions[name] = std::move(f));
                 }else{
                     collatingFunctions.erase(name);
                 }
@@ -8305,7 +8304,7 @@ namespace sqlite_orm {
                 ss << "WHERE ";
                 auto primaryKeyColumnNames = impl.table.primary_key_column_names();
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " =  ? ";
+                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ? ";
                     if(i < primaryKeyColumnNames.size() - 1) {
                         ss << "AND ";
                     }

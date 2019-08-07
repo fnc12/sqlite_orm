@@ -109,7 +109,7 @@ namespace sqlite_orm {
             
             binary_condition() = default;
             
-            binary_condition(L l_, R r_): l(l_), r(r_) {}
+            binary_condition(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
         };
         
         struct and_condition_string {

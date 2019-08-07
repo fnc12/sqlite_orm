@@ -93,15 +93,7 @@ namespace sqlite_orm {
             }
             
             value_type *operator->() {
-                if(!this->stmt) {
-                    throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
-                }
-                if(!this->current){
-                    std::unique_ptr<value_type> value;
-                    this->extract_value(value);
-                    this->current = move(value);
-                }
-                return &*this->current;
+                return &(this->operator*());
             }
             
             void operator++() {
@@ -116,7 +108,8 @@ namespace sqlite_orm {
                             *this->stmt = nullptr;
                         }break;
                         default:{
-                            throw std::system_error(std::error_code(sqlite3_errcode(this->view.connection->get_db()), get_sqlite_error_category()));
+                            auto db = this->view.connection->get_db();
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                         }
                     }
                 }

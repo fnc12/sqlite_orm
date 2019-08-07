@@ -879,7 +879,7 @@ namespace sqlite_orm {
                 ss << "WHERE ";
                 auto primaryKeyColumnNames = impl.table.primary_key_column_names();
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " =  ? ";
+                    ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ? ";
                     if(i < primaryKeyColumnNames.size() - 1) {
                         ss << "AND ";
                     }

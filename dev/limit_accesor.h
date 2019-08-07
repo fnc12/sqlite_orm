@@ -2,6 +2,8 @@
 
 #include <sqlite3.h>
 #include <map>  //  std::map
+#include <functional>   //  std::function
+#include <memory>   //  std::shared_ptr
 
 namespace sqlite_orm {
     

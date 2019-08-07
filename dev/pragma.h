@@ -3,6 +3,7 @@
 #include <string>   //  std::string
 #include <sqlite3.h>
 #include <functional>   //  std::function
+#include <memory> // std::shared_ptr
 
 #include "error_code.h"
 #include "row_extractor.h"
@@ -18,8 +19,8 @@ namespace sqlite_orm {
     struct pragma_t {
         using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
         
-        pragma_t(get_or_create_connection_t getOrCreateConnection_):
-        getOrCreateConnection(std::move(getOrCreateConnection_))
+        pragma_t(get_or_create_connection_t get_or_create_connection_):
+        get_or_create_connection(std::move(get_or_create_connection_))
         {}
         
         sqlite_orm::journal_mode journal_mode() {
@@ -64,11 +65,11 @@ namespace sqlite_orm {
     public:
         int _synchronous = -1;
         signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
-        get_or_create_connection_t getOrCreateConnection;
+        get_or_create_connection_t get_or_create_connection;
         
         template<class T>
         T get_pragma(const std::string &name) {
-            auto connection = this->getOrCreateConnection();
+            auto connection = this->get_or_create_connection();
             auto query = "PRAGMA " + name;
             T res;
             auto db = connection->get_db();
@@ -96,7 +97,7 @@ namespace sqlite_orm {
         void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
             std::shared_ptr<internal::database_connection> connection;
             if(!db){
-                connection = this->getOrCreateConnection();
+                connection = this->get_or_create_connection();
                 db = connection->get_db();
             }
             std::stringstream ss;
@@ -111,7 +112,7 @@ namespace sqlite_orm {
         void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
             std::shared_ptr<internal::database_connection> connection;
             if(!db){
-                connection = this->getOrCreateConnection();
+                connection = this->get_or_create_connection();
                 db = connection->get_db();
             }
             std::stringstream ss;
