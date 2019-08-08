@@ -185,7 +185,7 @@ namespace sqlite_orm {
             void create_collation(const std::string &name, collating_function f) {
                 collating_function *functionPointer = nullptr;
                 if(f){
-                    functionPointer = &(collatingFunctions[name] = f);
+                    functionPointer = &(collatingFunctions[name] = std::move(f));
                 }else{
                     collatingFunctions.erase(name);
                 }

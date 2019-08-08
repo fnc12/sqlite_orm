@@ -47,7 +47,7 @@ namespace sqlite_orm {
         
         /**
          *  PRIMARY KEY constraint class.
-         *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
+         *  Cs is parameter pack which contains columns (member pointers and/or function pointers). Can be empty when used withen `make_column` function.
          */
         template<class ...Cs>
         struct primary_key_t : primary_key_base {

@@ -1,11 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
-
-using std::cout;
-using std::endl;
 
 TEST_CASE("Explicit colums"){
     struct Object {

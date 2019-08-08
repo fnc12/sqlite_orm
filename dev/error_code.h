@@ -18,7 +18,6 @@ namespace sqlite_orm {
         cannot_start_a_transaction_within_a_transaction,
         no_active_transaction,
         incorrect_journal_mode_string,
-        incorrect_collate_string,
         invalid_collate_argument_enum,
     };
     

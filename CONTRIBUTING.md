@@ -11,14 +11,11 @@ for a successful pull request:
 
  1. All significant changes require a [github issue](https://github.com/fnc12/sqlite_orm/issues).  Trivial changes such as fixing a typo or a compiler warning do not.
 
- 1. All pull requests should contain a single commit per issue, or we will ask you to squash it.
  1. The pull request title must begin with the github issue identifier if it has an associated issue, for example:
 
         #9999 : an example pull request title
         
- 1. Commit messages must follow this pattern for code changes (deviations will not be merged):
-        
-        [summary of fix, one line if possible](fixes #issue number)
+ 1. Commit messages must be understandable in future by different developers and must be written in english language only:
      
 Instructions:
 
@@ -32,7 +29,6 @@ Instructions:
     * Verify that you follow current code style on sqlite_orm.
     * [*optional*] Verify that your change works on other platforms by adding a GitHub service hook to [Travis CI](http://docs.travis-ci.com/user/getting-started/#Step-one%3A-Sign-in) and [AppVeyor](http://www.appveyor.com/docs).  You can use this technique to run the sqlite_orm CI jobs in your account to check your changes before they are made public.  Every GitHub pull request into sqlite_orm will run the full CI build and test suite on your changes.
 
- 1. Squash your changes to a single commit.  This maintains clean change history.
  1. Commit and push changes to your branch (please use issue name and description as commit title, e.g. "make it perfect. (fixes #9999)").
  1. Use GitHub to create a pull request going from your branch to sqlite_orm:dev.  Ensure that the github issue number is at the beginning of the title of your pull request.
  1. Wait for other contributors or committers to review your new addition, and for a CI build to complete.
@@ -44,21 +40,13 @@ See our detailed instructions on the [CMake README](/build/cmake/README.md).
 
 ## If you want to review open issues... ##
 
- 1. Review the [GitHub Pull Request Backlog](https://github.com/fnc12/sqlite_orm/pulls).  Code reviews are open to all.
+ 1. Review the [GitHub Pull Request Backlog](https://github.com/fnc12/sqlite_orm/pulls).  Code reviews are opened to all.
 
 ## If you discovered a defect... ##
 
  1. Check to see if the issue is already in the [github issues](https://github.com/fnc12/sqlite_orm/issues).
- 1. If not, create a issue describing the change you're proposing in the github issues page.
+ 1. If not please create an issue describing the change you're proposing in the github issues page.
  1. Contribute your code changes using the GitHub pull request method:
-
-## Contributing via Patch ##
-
-To create a patch from changes in your local directory:
-
-    git diff > ../sqlite_orm-NNNN.patch
-
-then wait for contributors or committers to review your changes, and then for a committer to apply your patch.  This is not the preferred way to submit changes and incurs additional overhead for committers who must then create a pull request for you.
 
 ## GitHub recipes for Pull Requests ##
 
@@ -66,7 +54,7 @@ Sometimes commmitters may ask you to take actions in your pull requests.  Here a
 
 ### Squash your changes ###
 
-If you have not submitted a pull request yet, or if you have not yet rebased your existing pull request, you can squash all your commits down to a single commit.  This makes life easier for the committers.  If your pull request on GitHub has more than one commit, you should do this.
+If you have commits with adding code which is removed in a different commit within the same PR then please squash all commits to remove unnecessary add commits.
 
 1. Use the command ``git log`` to identify how many commits you made since you began.
 2. Use the command ``git rebase -i HEAD~N`` where N is the number of commits.

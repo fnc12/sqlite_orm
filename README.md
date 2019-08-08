@@ -92,7 +92,7 @@ auto storage = make_storage("db.sqlite",
 
 Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like `primary_key`, `autoincrement`, `default_value` or `unique`(order isn't important; `not_null` is deduced from type automatically).
 
-More details about making storage can be found in [tutorial](https://github.com/fnc12/sqlite_orm/wiki/Making-storage).
+More details about making storage can be found in [tutorial](https://github.com/fnc12/sqlite_orm/wiki/Making-a-storage).
 
 If your datamodel classes have private or protected members to map to sqlite then you can make a storage with setter and getter functions. More info in the [example](https://github.com/fnc12/sqlite_orm/blob/master/examples/private_class_members.cpp).
 
@@ -113,7 +113,7 @@ secondUser.id = insertedId;
 
 ```
 
-Note: if we need to insert new user with specified id call `storage.replace(user);` instead of `insert`.
+Note: if we need to insert a new user with specified id call `storage.replace(user);` instead of `insert`.
 
 Next let's get our user by id.
 
