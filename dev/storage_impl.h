@@ -186,7 +186,7 @@ namespace sqlite_orm {
              *  `column_name` has SFINAE check for type equality but `column_name_simple` has not.
              */
             template<class O, class F>
-            std::string column_name_simple(F O::*m) {
+            std::string column_name_simple(F O::*m) const {
                 return this->table.find_column_name(m);
             }
             
@@ -194,7 +194,7 @@ namespace sqlite_orm {
              *  Same thing as above for getter.
              */
             template<class T, typename std::enable_if<is_getter<T>::value>::type>
-            std::string column_name_simple(T g) {
+            std::string column_name_simple(T g) const {
                 return this->table.find_column_name(g);
             }
             
@@ -202,7 +202,7 @@ namespace sqlite_orm {
              *  Same thing as above for setter.
              */
             template<class T, typename std::enable_if<is_setter<T>::value>::type>
-            std::string column_name_simple(T s) {
+            std::string column_name_simple(T s) const {
                 return this->table.find_column_name(s);
             }
             
@@ -211,7 +211,7 @@ namespace sqlite_orm {
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(F O::*m, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(m);
             }
             
@@ -219,7 +219,7 @@ namespace sqlite_orm {
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(m);
             }
             
@@ -228,7 +228,7 @@ namespace sqlite_orm {
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(const F& (O::*g)() const, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(const F& (O::*g)() const, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(g);
             }
             
@@ -236,7 +236,7 @@ namespace sqlite_orm {
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(const F& (O::*g)() const, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(const F& (O::*g)() const, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(g);
             }
             
@@ -245,7 +245,7 @@ namespace sqlite_orm {
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(void (O::*s)(F), typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(void (O::*s)(F), typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(s);
             }
             
@@ -253,17 +253,17 @@ namespace sqlite_orm {
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(void (O::*s)(F), typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(void (O::*s)(F), typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(s);
             }
             
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<std::is_same<T, HH>::value>::type * = nullptr) {
+            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<std::is_same<T, HH>::value>::type * = nullptr) const {
                 return this->column_name_simple(c.field);
             }
             
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<!std::is_same<T, HH>::value>::type * = nullptr) {
+            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<!std::is_same<T, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(c);
             }
             

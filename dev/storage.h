@@ -45,6 +45,12 @@
 
 namespace sqlite_orm {
     
+    namespace conditions {
+        
+        template<class S>
+        struct dynamic_order_by_t;;
+    }
+    
     namespace internal {
         
         /**
@@ -79,6 +85,9 @@ namespace sqlite_orm {
             
             template<class T, class S, class ...Args>
             friend struct view_t;
+            
+            template<class S>
+            friend struct conditions::dynamic_order_by_t;
             
             template<class V>
             friend struct iterator_t;
@@ -285,7 +294,7 @@ namespace sqlite_orm {
             }
             
             template<class F, class O>
-            std::string string_from_expression(F O::*m, bool noTableName) {
+            std::string string_from_expression(F O::*m, bool noTableName) const {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << this->impl.template find_table_name<O>() << "'.";
@@ -673,6 +682,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            using storage_base::process_order_by;
+            
             template<class O>
             std::string process_order_by(const conditions::order_by_t<O> &orderBy) {
                 std::stringstream ss;
@@ -788,6 +799,11 @@ namespace sqlite_orm {
                     }
                 }
                 ss << " ";
+            }
+            
+            template<class S>
+            void process_single_condition(std::stringstream &ss, const conditions::dynamic_order_by_t<S> &orderBy) {
+                ss << this->storage_base::process_order_by(orderBy) << " ";
             }
             
             template<class ...Args>

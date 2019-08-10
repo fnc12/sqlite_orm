@@ -1,5 +1,4 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;

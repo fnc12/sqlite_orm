@@ -1,11 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
-
-using std::cout;
-using std::endl;
 
 TEST_CASE("Multi order by"){
     struct Singer {
@@ -31,7 +27,6 @@ TEST_CASE("Multi order by"){
     {
         //  test double ORDER BY
         auto singers = storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc().collate_nocase(), order_by(&Singer::gender).desc()));
-        //        cout << "singers count = " << singers.size() << endl;
         auto expectedIds = {1, 2, 3, 5, 6, 4};
         REQUIRE(expectedIds.size() == singers.size());
         auto it = expectedIds.begin();
@@ -138,7 +133,6 @@ TEST_CASE("Issue 87"){
 
 #ifndef SQLITE_ORM_OMITS_CODECVT
 TEST_CASE("Wide string"){
-    cout << __func__ << endl;
     
     struct Alphabet {
         int id;
@@ -523,7 +517,6 @@ TEST_CASE("Foreign key 2"){
 }
 
 TEST_CASE("Foreign key"){
-    cout << __func__ << endl;
     
     struct Location {
         int id;

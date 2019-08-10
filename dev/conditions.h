@@ -2,6 +2,7 @@
 
 #include <string>   //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same
+#include <vector>   //  std::vector
 
 #include "collate_argument.h"
 #include "constraints.h"
@@ -500,6 +501,49 @@ namespace sqlite_orm {
             args_type args;
             
             multi_order_by_t(args_type &&args_) : args(std::move(args_)) {}
+        };
+        
+        /**
+         *  S - storage class
+         */
+        template<class S>
+        struct dynamic_order_by_t : order_by_string {
+            using storage_type = S;
+            
+            struct entry_t : order_by_base {
+                std::string name;
+                
+                entry_t(decltype(name) name_, int asc_desc, std::string collate_argument) :
+                order_by_base{asc_desc, move(collate_argument)},
+                name(move(name_))
+                {}
+            };
+            
+            using const_iterator = typename std::vector<entry_t>::const_iterator;
+            
+            dynamic_order_by_t(const storage_type &storage_): storage(storage_) {}
+            
+            template<class O>
+            void push_back(order_by_t<O> order_by) {
+                auto columnName = this->storage.string_from_expression(order_by.o, true);
+                entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
+            }
+            
+            const_iterator begin() const {
+                return this->entries.begin();
+            }
+            
+            const_iterator end() const {
+                return this->entries.end();
+            }
+            
+            void clear() {
+                this->entries.clear();
+            }
+            
+        protected:
+            std::vector<entry_t> entries;
+            const storage_type &storage;
         };
         
         struct group_by_string {
@@ -1108,6 +1152,11 @@ namespace sqlite_orm {
     template<class ...Args>
     conditions::multi_order_by_t<Args...> multi_order_by(Args&& ...args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+    
+    template<class S>
+    conditions::dynamic_order_by_t<S> dynamic_order_by(const S &storage) {
+        return {storage};
     }
     
     template<class ...Args>

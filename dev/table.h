@@ -147,7 +147,7 @@ namespace sqlite_orm {
             class F,
             class O,
             typename = typename std::enable_if<std::is_member_pointer<F O::*>::value && !std::is_member_function_pointer<F O::*>::value>::type>
-            std::string find_column_name(F O::*m) {
+            std::string find_column_name(F O::*m) const {
                 std::string res;
                 this->template for_each_column_with_field_type<F>([&res, m](auto c) {
                     if(c.member_pointer == m) {
@@ -162,7 +162,7 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class G>
-            std::string find_column_name(G getter, typename std::enable_if<is_getter<G>::value>::type * = nullptr) {
+            std::string find_column_name(G getter, typename std::enable_if<is_getter<G>::value>::type * = nullptr) const {
                 std::string res;
                 using field_type = typename getter_traits<G>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, getter](auto c) {
@@ -178,7 +178,7 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class S>
-            std::string find_column_name(S setter, typename std::enable_if<is_setter<S>::value>::type * = nullptr) {
+            std::string find_column_name(S setter, typename std::enable_if<is_setter<S>::value>::type * = nullptr) const {
                 std::string res;
                 using field_type = typename setter_traits<S>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, setter](auto c) {
@@ -224,7 +224,7 @@ namespace sqlite_orm {
             }
             
             template<class F, class L>
-            void for_each_column_with_field_type(const L &l) {
+            void for_each_column_with_field_type(const L &l) const {
                 iterate_tuple(this->columns, [&l](auto &column){
                     using column_type = typename std::decay<decltype(column)>::type;
                     static_if<std::is_same<F, typename column_type::field_type>{}>(l)(column);

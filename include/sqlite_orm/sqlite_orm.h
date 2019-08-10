@@ -1556,6 +1556,7 @@ namespace sqlite_orm {
 
 #include <string>   //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same
+#include <vector>   //  std::vector
 
 // #include "collate_argument.h"
 
@@ -2086,6 +2087,49 @@ namespace sqlite_orm {
             args_type args;
             
             multi_order_by_t(args_type &&args_) : args(std::move(args_)) {}
+        };
+        
+        /**
+         *  S - storage class
+         */
+        template<class S>
+        struct dynamic_order_by_t : order_by_string {
+            using storage_type = S;
+            
+            struct entry_t : order_by_base {
+                std::string name;
+                
+                entry_t(decltype(name) name_, int asc_desc, std::string collate_argument) :
+                order_by_base{asc_desc, move(collate_argument)},
+                name(move(name_))
+                {}
+            };
+            
+            using const_iterator = typename std::vector<entry_t>::const_iterator;
+            
+            dynamic_order_by_t(const storage_type &storage_): storage(storage_) {}
+            
+            template<class O>
+            void push_back(order_by_t<O> order_by) {
+                auto columnName = this->storage.string_from_expression(order_by.o, true);
+                entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
+            }
+            
+            const_iterator begin() const {
+                return this->entries.begin();
+            }
+            
+            const_iterator end() const {
+                return this->entries.end();
+            }
+            
+            void clear() {
+                this->entries.clear();
+            }
+            
+        protected:
+            std::vector<entry_t> entries;
+            const storage_type &storage;
         };
         
         struct group_by_string {
@@ -2694,6 +2738,11 @@ namespace sqlite_orm {
     template<class ...Args>
     conditions::multi_order_by_t<Args...> multi_order_by(Args&& ...args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+    
+    template<class S>
+    conditions::dynamic_order_by_t<S> dynamic_order_by(const S &storage) {
+        return {storage};
     }
     
     template<class ...Args>
@@ -5352,7 +5401,7 @@ namespace sqlite_orm {
             class F,
             class O,
             typename = typename std::enable_if<std::is_member_pointer<F O::*>::value && !std::is_member_function_pointer<F O::*>::value>::type>
-            std::string find_column_name(F O::*m) {
+            std::string find_column_name(F O::*m) const {
                 std::string res;
                 this->template for_each_column_with_field_type<F>([&res, m](auto c) {
                     if(c.member_pointer == m) {
@@ -5367,7 +5416,7 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class G>
-            std::string find_column_name(G getter, typename std::enable_if<is_getter<G>::value>::type * = nullptr) {
+            std::string find_column_name(G getter, typename std::enable_if<is_getter<G>::value>::type * = nullptr) const {
                 std::string res;
                 using field_type = typename getter_traits<G>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, getter](auto c) {
@@ -5383,7 +5432,7 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class S>
-            std::string find_column_name(S setter, typename std::enable_if<is_setter<S>::value>::type * = nullptr) {
+            std::string find_column_name(S setter, typename std::enable_if<is_setter<S>::value>::type * = nullptr) const {
                 std::string res;
                 using field_type = typename setter_traits<S>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, setter](auto c) {
@@ -5429,7 +5478,7 @@ namespace sqlite_orm {
             }
             
             template<class F, class L>
-            void for_each_column_with_field_type(const L &l) {
+            void for_each_column_with_field_type(const L &l) const {
                 iterate_tuple(this->columns, [&l](auto &column){
                     using column_type = typename std::decay<decltype(column)>::type;
                     static_if<std::is_same<F, typename column_type::field_type>{}>(l)(column);
@@ -5733,7 +5782,7 @@ namespace sqlite_orm {
              *  `column_name` has SFINAE check for type equality but `column_name_simple` has not.
              */
             template<class O, class F>
-            std::string column_name_simple(F O::*m) {
+            std::string column_name_simple(F O::*m) const {
                 return this->table.find_column_name(m);
             }
             
@@ -5741,7 +5790,7 @@ namespace sqlite_orm {
              *  Same thing as above for getter.
              */
             template<class T, typename std::enable_if<is_getter<T>::value>::type>
-            std::string column_name_simple(T g) {
+            std::string column_name_simple(T g) const {
                 return this->table.find_column_name(g);
             }
             
@@ -5749,7 +5798,7 @@ namespace sqlite_orm {
              *  Same thing as above for setter.
              */
             template<class T, typename std::enable_if<is_setter<T>::value>::type>
-            std::string column_name_simple(T s) {
+            std::string column_name_simple(T s) const {
                 return this->table.find_column_name(s);
             }
             
@@ -5758,7 +5807,7 @@ namespace sqlite_orm {
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(F O::*m, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(m);
             }
             
@@ -5766,7 +5815,7 @@ namespace sqlite_orm {
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(m);
             }
             
@@ -5775,7 +5824,7 @@ namespace sqlite_orm {
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(const F& (O::*g)() const, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(const F& (O::*g)() const, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(g);
             }
             
@@ -5783,7 +5832,7 @@ namespace sqlite_orm {
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(const F& (O::*g)() const, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(const F& (O::*g)() const, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(g);
             }
             
@@ -5792,7 +5841,7 @@ namespace sqlite_orm {
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(void (O::*s)(F), typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(void (O::*s)(F), typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(s);
             }
             
@@ -5800,17 +5849,17 @@ namespace sqlite_orm {
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(void (O::*s)(F), typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+            std::string column_name(void (O::*s)(F), typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(s);
             }
             
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<std::is_same<T, HH>::value>::type * = nullptr) {
+            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<std::is_same<T, HH>::value>::type * = nullptr) const {
                 return this->column_name_simple(c.field);
             }
             
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<!std::is_same<T, HH>::value>::type * = nullptr) {
+            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<!std::is_same<T, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(c);
             }
             
@@ -7450,6 +7499,41 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class S>
+            std::string process_order_by(const conditions::dynamic_order_by_t<S> &orderBy) {
+                std::vector<std::string> expressions;
+                for(auto &entry : orderBy){
+                    std::string entryString;
+                    {
+                        std::stringstream ss;
+                        ss << entry.name << " ";
+                        if(!entry._collate_argument.empty()){
+                            ss << "COLLATE " << entry._collate_argument << " ";
+                        }
+                        switch(entry.asc_desc){
+                            case 1:
+                                ss << "ASC";
+                                break;
+                            case -1:
+                                ss << "DESC";
+                                break;
+                        }
+                        entryString = ss.str();
+                    }
+                    expressions.push_back(move(entryString));
+                };
+                std::stringstream ss;
+                ss << static_cast<std::string>(orderBy) << " ";
+                for(size_t i = 0; i < expressions.size(); ++i) {
+                    ss << expressions[i];
+                    if(i < expressions.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << " ";
+                return ss.str();
+            }
+            
             static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {
                 auto &f = *(collating_function*)arg;
                 return f(leftLen, lhs, rightLen, rhs);
@@ -7470,6 +7554,12 @@ namespace sqlite_orm {
 
 
 namespace sqlite_orm {
+    
+    namespace conditions {
+        
+        template<class S>
+        struct dynamic_order_by_t;;
+    }
     
     namespace internal {
         
@@ -7505,6 +7595,9 @@ namespace sqlite_orm {
             
             template<class T, class S, class ...Args>
             friend struct view_t;
+            
+            template<class S>
+            friend struct conditions::dynamic_order_by_t;
             
             template<class V>
             friend struct iterator_t;
@@ -7711,7 +7804,7 @@ namespace sqlite_orm {
             }
             
             template<class F, class O>
-            std::string string_from_expression(F O::*m, bool noTableName) {
+            std::string string_from_expression(F O::*m, bool noTableName) const {
                 std::stringstream ss;
                 if(!noTableName){
                     ss << "'" << this->impl.template find_table_name<O>() << "'.";
@@ -8099,6 +8192,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            using storage_base::process_order_by;
+            
             template<class O>
             std::string process_order_by(const conditions::order_by_t<O> &orderBy) {
                 std::stringstream ss;
@@ -8214,6 +8309,11 @@ namespace sqlite_orm {
                     }
                 }
                 ss << " ";
+            }
+            
+            template<class S>
+            void process_single_condition(std::stringstream &ss, const conditions::dynamic_order_by_t<S> &orderBy) {
+                ss << this->storage_base::process_order_by(orderBy) << " ";
             }
             
             template<class ...Args>
