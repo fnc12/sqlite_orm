@@ -458,6 +458,41 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class S>
+            std::string process_order_by(const conditions::dynamic_order_by_t<S> &orderBy) const {
+                std::vector<std::string> expressions;
+                for(auto &entry : orderBy){
+                    std::string entryString;
+                    {
+                        std::stringstream ss;
+                        ss << entry.name << " ";
+                        if(!entry._collate_argument.empty()){
+                            ss << "COLLATE " << entry._collate_argument << " ";
+                        }
+                        switch(entry.asc_desc){
+                            case 1:
+                                ss << "ASC";
+                                break;
+                            case -1:
+                                ss << "DESC";
+                                break;
+                        }
+                        entryString = ss.str();
+                    }
+                    expressions.push_back(move(entryString));
+                };
+                std::stringstream ss;
+                ss << static_cast<std::string>(orderBy) << " ";
+                for(size_t i = 0; i < expressions.size(); ++i) {
+                    ss << expressions[i];
+                    if(i < expressions.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << " ";
+                return ss.str();
+            }
+            
             static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {
                 auto &f = *(collating_function*)arg;
                 return f(leftLen, lhs, rightLen, rhs);
