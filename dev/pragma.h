@@ -2,6 +2,8 @@
 
 #include <string>   //  std::string
 #include <sqlite3.h>
+#include <functional>   //  std::function
+#include <memory> // std::shared_ptr
 
 #include "error_code.h"
 #include "row_extractor.h"
@@ -9,11 +11,17 @@
 
 namespace sqlite_orm {
     
-    template<class S>
+    namespace internal {
+        struct database_connection;
+        struct storage_base;
+    }
+    
     struct pragma_t {
-        using storage_type = S;
+        using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
         
-        pragma_t(storage_type &storage_): storage(storage_) {}
+        pragma_t(get_or_create_connection_t get_or_create_connection_):
+        get_or_create_connection(std::move(get_or_create_connection_))
+        {}
         
         sqlite_orm::journal_mode journal_mode() {
             return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
@@ -51,19 +59,21 @@ namespace sqlite_orm {
             this->set_pragma("auto_vacuum", value);
         }
         
-        friend storage_type;
-        
     protected:
-        storage_type &storage;
+        friend struct storage_base;
+        
+    public:
         int _synchronous = -1;
-        char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
+        signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
+        get_or_create_connection_t get_or_create_connection;
         
         template<class T>
         T get_pragma(const std::string &name) {
-            auto connection = this->storage.get_or_create_connection();
+            auto connection = this->get_or_create_connection();
             auto query = "PRAGMA " + name;
             T res;
-            auto rc = sqlite3_exec(connection->get_db(),
+            auto db = connection->get_db();
+            auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv, char **) -> int {
                                        auto &res = *(T*)data;
@@ -75,7 +85,7 @@ namespace sqlite_orm {
             if(rc == SQLITE_OK){
                 return res;
             }else{
-                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
             }
         }
         
@@ -87,22 +97,22 @@ namespace sqlite_orm {
         void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
             std::shared_ptr<internal::database_connection> connection;
             if(!db){
-                connection = this->storage.get_or_create_connection();
+                connection = this->get_or_create_connection();
                 db = connection->get_db();
             }
             std::stringstream ss;
-            ss << "PRAGMA " << name << " = " << this->storage.string_from_expression(value);
+            ss << "PRAGMA " << name << " = " << value;
             auto query = ss.str();
             auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
             }
         }
         
         void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
             std::shared_ptr<internal::database_connection> connection;
             if(!db){
-                connection = this->storage.get_or_create_connection();
+                connection = this->get_or_create_connection();
                 db = connection->get_db();
             }
             std::stringstream ss;
@@ -110,7 +120,7 @@ namespace sqlite_orm {
             auto query = ss.str();
             auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()));
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
             }
         }
     };

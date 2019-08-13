@@ -50,86 +50,8 @@ namespace sqlite_orm {
         };
         
         template<class St, class T>
-        struct column_result_t<St, core_functions::length_t<T>, void> {
-            using type = int;
-        };
-        
-#if SQLITE_VERSION_NUMBER >= 3007016
-        
-        template<class St, class ...Args>
-        struct column_result_t<St, core_functions::char_t_<Args...>, void> {
-            using type = std::string;
-        };
-#endif
-        
-        template<class St>
-        struct column_result_t<St, core_functions::random_t, void> {
-            using type = int;
-        };
-        
-        template<class St>
-        struct column_result_t<St, core_functions::changes_t, void> {
-            using type = int;
-        };
-        
-        template<class St, class T>
-        struct column_result_t<St, core_functions::abs_t<T>, void> {
-            using type = std::unique_ptr<double>;
-        };
-        
-        template<class St, class T>
-        struct column_result_t<St, core_functions::lower_t<T>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class T>
-        struct column_result_t<St, core_functions::upper_t<T>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class X>
-        struct column_result_t<St, core_functions::trim_single_t<X>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class X, class Y>
-        struct column_result_t<St, core_functions::trim_double_t<X, Y>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class X>
-        struct column_result_t<St, core_functions::ltrim_single_t<X>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class X, class Y>
-        struct column_result_t<St, core_functions::ltrim_double_t<X, Y>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class X>
-        struct column_result_t<St, core_functions::rtrim_single_t<X>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class X, class Y>
-        struct column_result_t<St, core_functions::rtrim_double_t<X, Y>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class T, class ...Args>
-        struct column_result_t<St, core_functions::date_t<T, Args...>, void> {
-            using type = std::string;
-        };
-        
-        template<class St, class T, class ...Args>
-        struct column_result_t<St, core_functions::julianday_t<T, Args...>, void> {
-            using type = double;
-        };
-        
-        template<class St, class T, class ...Args>
-        struct column_result_t<St, core_functions::datetime_t<T, Args...>, void> {
-            using type = std::string;
+        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, core_functions::core_function_t>::value>::type> {
+            using type = typename T::return_type;
         };
         
         template<class St, class T>
@@ -305,6 +227,16 @@ namespace sqlite_orm {
         template<class St, class T, class E>
         struct column_result_t<St, conditions::cast_t<T, E>, void> {
             using type = T;
+        };
+        
+        template<class St, class R, class T, class E, class ...Args>
+        struct column_result_t<St, simple_case_t<R, T, E, Args...>, void> {
+            using type = R;
+        };
+        
+        template<class St, class A, class T, class E>
+        struct column_result_t<St, conditions::like_t<A, T, E>, void> {
+            using type = bool;
         };
     }
 }

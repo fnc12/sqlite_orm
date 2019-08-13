@@ -19,7 +19,7 @@ struct Foo {
     int baz;
 };
 
-int main(int argc, char** argv) {
+int main(int, char**) {
 
     using namespace sqlite_orm;
     auto storage = make_storage("collate.sqlite",
@@ -34,21 +34,9 @@ int main(int argc, char** argv) {
     storage.remove_all<User>();
     storage.remove_all<Foo>();
 
-    storage.insert(User{
-        0,
-        "Lil Kim",
-        time(nullptr),
-    });
-    storage.insert(User{
-        0,
-        "lil kim",
-        time(nullptr),
-    });
-    storage.insert(User{
-        0,
-        "Nicki Minaj",
-        time(nullptr),
-    });
+    storage.insert(User{ 0, "Lil Kim", time(nullptr) });
+    storage.insert(User{ 0, "lil kim", time(nullptr) });
+    storage.insert(User{ 0, "Nicki Minaj", time(nullptr) });
 
     //  SELECT COUNT(*) FROM users WHERE name = 'lil kim'
     auto preciseLilKimsCount = storage.count<User>(where(is_equal(&User::name, "lil kim")));
@@ -61,14 +49,8 @@ int main(int argc, char** argv) {
     //  SELECT COUNT(*) FROM users
     cout << "total users count = " << storage.count<User>() << endl;
 
-    storage.insert(Foo{
-        "Touch",
-        10,
-    });
-    storage.insert(Foo{
-        "touch",
-        20,
-    });
+    storage.insert(Foo{ "Touch", 10 });
+    storage.insert(Foo{ "touch", 20 });
 
     cout << "foo count = " << storage.count<Foo>(where(c(&Foo::text) == "touch")) << endl;
 

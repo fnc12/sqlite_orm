@@ -1,40 +1,17 @@
 #pragma once
 
 #include <string>   //  std::string
+#include <utility>  //  std::declval
+#include <tuple>    //  std::tuple, std::get, std::tuple_size
+
+#include "is_base_of_template.h"
+#include "tuple_helper.h"
+#include "optional_container.h"
 
 namespace sqlite_orm {
     
     namespace internal {
-
-/*
- * This is because of bug in MSVC, for more information, please visit
- * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
- */
-#if defined(_MSC_VER)
-       template <template <typename...> class Base, typename Derived>
-       struct is_base_of_template_impl {
-               template<typename... Ts>
-               static constexpr std::true_type test(const Base<Ts...>*);
-
-               static constexpr std::false_type test(...);
-
-               using type = decltype(test(std::declval<Derived*>()));
-       };
-
-       template <typename Derived, template <typename...> class Base>
-       using is_base_of_template = typename is_base_of_template_impl<Base, Derived>::type;
-
-#else
-        template <template <typename...> class C, typename...Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>*);
         
-        template <template <typename...> class C>
-        std::false_type is_base_of_template_impl(...);
-        
-        template <typename T, template <typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
-
-#endif
         /**
          *  DISCTINCT generic container.
          */
@@ -61,35 +38,12 @@ namespace sqlite_orm {
         
         template<class ...Args>
         struct columns_t {
+            using columns_type = std::tuple<Args...>;
+            
+            columns_type columns;
             bool distinct = false;
             
-            template<class L>
-            void for_each(L) const {
-                //..
-            }
-            
-            int count() const {
-                return 0;
-            }
-        };
-        
-        template<class T, class ...Args>
-        struct columns_t<T, Args...> : public columns_t<Args...> {
-            T m;
-            
-            columns_t(decltype(m) m_, Args&& ...args): super(std::forward<Args>(args)...), m(m_) {}
-            
-            template<class L>
-            void for_each(L l) const {
-                l(this->m);
-                this->super::for_each(l);
-            }
-            
-            int count() const {
-                return 1 + this->super::count();
-            }
-        private:
-            using super = columns_t<Args...>;
+            static constexpr const int count = std::tuple_size<columns_type>::value;
         };
         
         template<class ...Args>
@@ -165,21 +119,9 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  UNION object type.
-         */
-        template<class L, class R>
-        struct union_t : public compound_operator<L, R> {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
-            
+        struct union_base {
             bool all = false;
             
-            union_t(left_type l, right_type r, decltype(all) all_): super(std::move(l), std::move(r)), all(all_) {}
-            
-            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
-
             operator std::string() const {
                 if(!this->all){
                     return "UNION";
@@ -187,6 +129,19 @@ namespace sqlite_orm {
                     return "UNION ALL";
                 }
             }
+        };
+        
+        /**
+         *  UNION object type.
+         */
+        template<class L, class R>
+        struct union_t : public compound_operator<L, R>, union_base {
+            using left_type = typename compound_operator<L, R>::left_type;
+            using right_type = typename compound_operator<L, R>::right_type;
+            
+            union_t(left_type l, right_type r, decltype(all) all): compound_operator<L, R>(std::move(l), std::move(r)), union_base{all} {}
+            
+            union_t(left_type l, right_type r): union_t(std::move(l), std::move(r), false) {}
         };
         
         /**
@@ -225,7 +180,7 @@ namespace sqlite_orm {
          *  Generic way to get DISTINCT value from any type.
          */
         template<class T>
-        bool get_distinct(const T &t) {
+        bool get_distinct(const T &) {
             return false;
         }
         
@@ -238,16 +193,86 @@ namespace sqlite_orm {
         struct asterisk_t {
             using type = T;
         };
+        
+        template<class T>
+        struct then_t {
+            using expression_type = T;
+            
+            expression_type expression;
+        };
+        
+        template<class R, class T, class E, class ...Args>
+        struct simple_case_t {
+            using return_type = R;
+            using case_expression_type = T;
+            using args_type = std::tuple<Args...>;
+            using else_expression_type = E;
+            
+            optional_container<case_expression_type> case_expression;
+            args_type args;
+            optional_container<else_expression_type> else_expression;
+        };
+        
+        /**
+         *  T is a case expression type
+         *  E is else type (void is ELSE is omitted)
+         *  Args... is a pack of WHEN expressions
+         */
+        template<class R, class T, class E, class ...Args>
+        struct simple_case_builder {
+            using return_type = R;
+            using case_expression_type = T;
+            using args_type = std::tuple<Args...>;
+            using else_expression_type = E;
+            
+            optional_container<case_expression_type> case_expression;
+            args_type args;
+            optional_container<else_expression_type> else_expression;
+            
+            template<class W, class Th>
+            simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
+                using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
+                result_args_type result_args;
+                move_tuple<std::tuple_size<args_type>::value>(result_args, this->args);
+                std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
+                std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
+                return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
+            }
+            
+            simple_case_t<R, T, E, Args...> end() {
+                return {std::move(this->case_expression), std::move(args), std::move(this->else_expression)};
+            }
+            
+            template<class El>
+            simple_case_builder<R, T, El, Args...> else_(El el) {
+                return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
+            }
+        };
+    }
+    
+    template<class T>
+    internal::then_t<T> then(T t) {
+        return {std::move(t)};
+    }
+    
+    template<class R, class T>
+    internal::simple_case_builder<R, T, void> case_(T t) {
+        return {{std::move(t)}};
+    }
+    
+    template<class R>
+    internal::simple_case_builder<R, void, void> case_() {
+        return {};
     }
     
     template<class T>
     internal::distinct_t<T> distinct(T t) {
-        return {t};
+        return {std::move(t)};
     }
     
     template<class T>
     internal::all_t<T> all(T t) {
-        return {t};
+        return {std::move(t)};
     }
     
     template<class ...Args>
@@ -267,7 +292,7 @@ namespace sqlite_orm {
     
     template<class ...Args>
     internal::columns_t<Args...> columns(Args&& ...args) {
-        return {std::forward<Args>(args)...};
+        return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
     
     /**

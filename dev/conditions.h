@@ -1,9 +1,12 @@
 #pragma once
 
 #include <string>   //  std::string
+#include <type_traits>  //  std::enable_if, std::is_same
+#include <vector>   //  std::vector
 
 #include "collate_argument.h"
 #include "constraints.h"
+#include "optional_container.h"
 
 namespace sqlite_orm {
     
@@ -63,17 +66,8 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  Collated something with custom collate function
-         */
-        template<class T>
-        struct named_collate {
-            T expr;
+        struct named_collate_base {
             std::string name;
-            
-            named_collate() = default;
-            
-            named_collate(T expr_, std::string name_): expr(expr_), name(std::move(name_)) {}
             
             operator std::string () const {
                 return "COLLATE " + this->name;
@@ -81,53 +75,29 @@ namespace sqlite_orm {
         };
         
         /**
-         *  Result of not operator
+         *  Collated something with custom collate function
          */
-        template<class C>
-        struct negated_condition_t : public condition_t {
-            C c;
+        template<class T>
+        struct named_collate : named_collate_base {
+            T expr;
             
-            negated_condition_t() = default;
-            
-            negated_condition_t(C c_): c(c_) {}
-            
+            named_collate(T expr_, std::string name_): named_collate_base{std::move(name_)}, expr(std::move(expr_)) {}
+        };
+        
+        struct negated_condition_string {
             operator std::string () const {
                 return "NOT";
             }
         };
         
         /**
-         *  Result of and operator
+         *  Result of not operator
          */
-        template<class L, class R>
-        struct and_condition_t : public condition_t {
-            L l;
-            R r;
+        template<class C>
+        struct negated_condition_t : condition_t, negated_condition_string {
+            C c;
             
-            and_condition_t() = default;
-            
-            and_condition_t(L l_, R r_): l(l_), r(r_) {}
-            
-            operator std::string () const {
-                return "AND";
-            }
-        };
-        
-        /**
-         *  Result of or operator
-         */
-        template<class L, class R>
-        struct or_condition_t : public condition_t {
-            L l;
-            R r;
-            
-            or_condition_t() = default;
-            
-            or_condition_t(L l_, R r_): l(l_), r(r_) {}
-            
-            operator std::string () const {
-                return "OR";
-            }
+            negated_condition_t(C c_): c(std::move(c_)) {}
         };
         
         /**
@@ -140,21 +110,55 @@ namespace sqlite_orm {
             
             binary_condition() = default;
             
-            binary_condition(L l_, R r_): l(l_), r(r_) {}
+            binary_condition(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
+        };
+        
+        struct and_condition_string {
+            operator std::string () const {
+                return "AND";
+            }
+        };
+        
+        /**
+         *  Result of and operator
+         */
+        template<class L, class R>
+        struct and_condition_t : binary_condition<L, R>, and_condition_string {
+            using super = binary_condition<L, R>;
+            
+            using super::super;
+        };
+        
+        struct or_condition_string {
+            operator std::string () const {
+                return "OR";
+            }
+        };
+        
+        /**
+         *  Result of or operator
+         */
+        template<class L, class R>
+        struct or_condition_t : binary_condition<L, R>, or_condition_string {
+            using super = binary_condition<L, R>;
+            
+            using super::super;
+        };
+        
+        struct is_equal_string {
+            operator std::string () const {
+                return "=";
+            }
         };
         
         /**
          *  = and == operators object
          */
         template<class L, class R>
-        struct is_equal_t : public binary_condition<L, R> {
+        struct is_equal_t : binary_condition<L, R>, is_equal_string {
             using self = is_equal_t<L, R>;
             
             using binary_condition<L, R>::binary_condition;
-            
-            operator std::string () const {
-                return "=";
-            }
             
             negated_condition_t<self> operator!() const {
                 return {*this};
@@ -178,18 +182,20 @@ namespace sqlite_orm {
             
         };
         
+        struct is_not_equal_string {
+            operator std::string () const {
+                return "!=";
+            }
+        };
+        
         /**
          *  != operator object
          */
         template<class L, class R>
-        struct is_not_equal_t : public binary_condition<L, R> {
+        struct is_not_equal_t : binary_condition<L, R>, is_not_equal_string {
             using self = is_not_equal_t<L, R>;
             
             using binary_condition<L, R>::binary_condition;
-            
-            operator std::string () const {
-                return "!=";
-            }
             
             negated_condition_t<self> operator!() const {
                 return {*this};
@@ -205,6 +211,12 @@ namespace sqlite_orm {
             
             collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
+            }
+        };
+        
+        struct greater_than_string {
+            operator std::string () const {
+                return ">";
             }
         };
         
@@ -212,14 +224,10 @@ namespace sqlite_orm {
          *  > operator object.
          */
         template<class L, class R>
-        struct greater_than_t : public binary_condition<L, R> {
+        struct greater_than_t : binary_condition<L, R>, greater_than_string {
             using self = greater_than_t<L, R>;
             
             using binary_condition<L, R>::binary_condition;
-            
-            operator std::string () const {
-                return ">";
-            }
             
             negated_condition_t<self> operator!() const {
                 return {*this};
@@ -235,6 +243,12 @@ namespace sqlite_orm {
             
             collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
+            }
+        };
+        
+        struct greater_or_equal_string {
+            operator std::string () const {
+                return ">=";
             }
         };
         
@@ -242,14 +256,10 @@ namespace sqlite_orm {
          *  >= operator object.
          */
         template<class L, class R>
-        struct greater_or_equal_t : public binary_condition<L, R> {
+        struct greater_or_equal_t : binary_condition<L, R>, greater_or_equal_string {
             using self = greater_or_equal_t<L, R>;
             
             using binary_condition<L, R>::binary_condition;
-            
-            operator std::string () const {
-                return ">=";
-            }
             
             negated_condition_t<self> operator!() const {
                 return {*this};
@@ -265,6 +275,12 @@ namespace sqlite_orm {
             
             collate_t<self> collate_rtrim() const {
                 return {*this, internal::collate_argument::rtrim};
+            }
+        };
+        
+        struct lesser_than_string {
+            operator std::string () const {
+                return "<";
             }
         };
         
@@ -272,14 +288,10 @@ namespace sqlite_orm {
          *  < operator object.
          */
         template<class L, class R>
-        struct lesser_than_t : public binary_condition<L, R> {
+        struct lesser_than_t : binary_condition<L, R>, lesser_than_string {
             using self = lesser_than_t<L, R>;
             
             using binary_condition<L, R>::binary_condition;
-            
-            operator std::string () const {
-                return "<";
-            }
             
             negated_condition_t<self> operator!() const {
                 return {*this};
@@ -298,18 +310,20 @@ namespace sqlite_orm {
             }
         };
         
+        struct lesser_or_equal_string {
+            operator std::string () const {
+                return "<=";
+            }
+        };
+        
         /**
          *  <= operator object.
          */
         template<class L, class R>
-        struct lesser_or_equal_t : public binary_condition<L, R> {
+        struct lesser_or_equal_t : binary_condition<L, R>, lesser_or_equal_string {
             using self = lesser_or_equal_t<L, R>;
             
             using binary_condition<L, R>::binary_condition;
-            
-            operator std::string () const {
-                return "<=";
-            }
             
             negated_condition_t<lesser_or_equal_t<L, R>> operator!() const {
                 return {*this};
@@ -328,24 +342,8 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  IN operator object.
-         */
-        template<class L, class A>
-        struct in_t : public condition_t {
-            using self = in_t<L, A>;
-            
-            L l;    //  left expression
-            A arg;       //  in arg
+        struct in_base {
             bool negative = false;  //  used in not_in
-            
-            in_t() = default;
-            
-            in_t(L l_, A arg_, bool negative_): l(l_), arg(std::move(arg_)), negative(negative_) {}
-            
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
             
             operator std::string () const {
                 if(!this->negative){
@@ -357,19 +355,47 @@ namespace sqlite_orm {
         };
         
         /**
-         *  IS NULL operator object.
+         *  IN operator object.
          */
-        template<class T>
-        struct is_null_t {
-            using self = is_null_t<T>;
-            T t;
+        template<class L, class A>
+        struct in_t : condition_t, in_base {
+            using self = in_t<L, A>;
+            
+            L l;    //  left expression
+            A arg;       //  in arg
+            
+            in_t(L l_, A arg_, bool negative): in_base{negative}, l(l_), arg(std::move(arg_)) {}
             
             negated_condition_t<self> operator!() const {
                 return {*this};
             }
-            
+        };
+        
+        struct is_null_string {
             operator std::string () const {
                 return "IS NULL";
+            }
+        };
+        
+        /**
+         *  IS NULL operator object.
+         */
+        template<class T>
+        struct is_null_t : is_null_string {
+            using self = is_null_t<T>;
+            
+            T t;
+            
+            is_null_t(T t_) : t(std::move(t_)) {}
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
+            }
+        };
+        
+        struct is_not_null_string {
+            operator std::string () const {
+                return "IS NOT NULL";
             }
         };
         
@@ -377,29 +403,43 @@ namespace sqlite_orm {
          *  IS NOT NULL operator object.
          */
         template<class T>
-        struct is_not_null_t {
+        struct is_not_null_t : is_not_null_string {
             using self = is_not_null_t<T>;
             
             T t;
             
+            is_not_null_t(T t_) : t(std::move(t_)) {}
+            
             negated_condition_t<self> operator!() const {
                 return {*this};
             }
-            
+        };
+        
+        struct where_string {
             operator std::string () const {
-                return "IS NOT NULL";
+                return "WHERE";
             }
         };
         
         /**
          *  WHERE argument holder.
+         *  C is conditions type. Can be any condition like: is_equal_t, is_null_t, exists_t etc
          */
         template<class C>
-        struct where_t {
+        struct where_t : where_string {
             C c;
             
-            operator std::string () const {
-                return "WHERE";
+            where_t(C c_) : c(std::move(c_)) {}
+        };
+        
+        struct order_by_base {
+            int asc_desc = 0;   //  1: asc, -1: desc
+            std::string _collate_argument;
+        };
+        
+        struct order_by_string {
+            operator std::string() const {
+                return "ORDER BY";
             }
         };
         
@@ -407,20 +447,12 @@ namespace sqlite_orm {
          *  ORDER BY argument holder.
          */
         template<class O>
-        struct order_by_t {
+        struct order_by_t : order_by_base, order_by_string {
             using self = order_by_t<O>;
             
             O o;
-            int asc_desc = 0;   //  1: asc, -1: desc
-            std::string _collate_argument;
             
-            order_by_t(): o() {}
-            
-            order_by_t(O o_): o(o_) {}
-            
-            operator std::string() const {
-                return "ORDER BY";
-            }
+            order_by_t(O o_): o(std::move(o_)) {}
             
             self asc() {
                 auto res = *this;
@@ -463,11 +495,60 @@ namespace sqlite_orm {
          *  ORDER BY pack holder.
          */
         template<class ...Args>
-        struct multi_order_by_t {
-            std::tuple<Args...> args;
+        struct multi_order_by_t : order_by_string {
+            using args_type = std::tuple<Args...>;
             
+            args_type args;
+            
+            multi_order_by_t(args_type &&args_) : args(std::move(args_)) {}
+        };
+        
+        /**
+         *  S - storage class
+         */
+        template<class S>
+        struct dynamic_order_by_t : order_by_string {
+            using storage_type = S;
+            
+            struct entry_t : order_by_base {
+                std::string name;
+                
+                entry_t(decltype(name) name_, int asc_desc, std::string collate_argument) :
+                order_by_base{asc_desc, move(collate_argument)},
+                name(move(name_))
+                {}
+            };
+            
+            using const_iterator = typename std::vector<entry_t>::const_iterator;
+            
+            dynamic_order_by_t(const storage_type &storage_): storage(storage_) {}
+            
+            template<class O>
+            void push_back(order_by_t<O> order_by) {
+                auto columnName = this->storage.string_from_expression(order_by.o, true);
+                entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
+            }
+            
+            const_iterator begin() const {
+                return this->entries.begin();
+            }
+            
+            const_iterator end() const {
+                return this->entries.end();
+            }
+            
+            void clear() {
+                this->entries.clear();
+            }
+            
+        protected:
+            std::vector<entry_t> entries;
+            const storage_type &storage;
+        };
+        
+        struct group_by_string {
             operator std::string() const {
-                return static_cast<std::string>(order_by_t<void*>());
+                return "GROUP BY";
             }
         };
         
@@ -475,11 +556,16 @@ namespace sqlite_orm {
          *  GROUP BY pack holder.
          */
         template<class ...Args>
-        struct group_by_t {
-            std::tuple<Args...> args;
+        struct group_by_t : group_by_string {
+            using args_type = std::tuple<Args...>;
+            args_type args;
             
+            group_by_t(args_type &&args_): args(std::move(args_)) {}
+        };
+        
+        struct between_string {
             operator std::string() const {
-                return "GROUP BY";
+                return "BETWEEN";
             }
         };
         
@@ -487,34 +573,46 @@ namespace sqlite_orm {
          *  BETWEEN operator object.
          */
         template<class A, class T>
-        struct between_t : public condition_t {
+        struct between_t : condition_t, between_string {
             A expr;
             T b1;
             T b2;
             
-            between_t() = default;
-            
-            between_t(A expr_, T b1_, T b2_): expr(expr_), b1(b1_), b2(b2_) {}
-            
+            between_t(A expr_, T b1_, T b2_): expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
+        };
+        
+        struct like_string {
             operator std::string() const {
-                return "BETWEEN";
+                return "LIKE";
             }
         };
         
         /**
          *  LIKE operator object.
          */
-        template<class A, class T>
-        struct like_t : public condition_t {
-            A a;
-            T t;
+        template<class A, class T, class E>
+        struct like_t : condition_t, like_string {
+            using arg_t = A;
+            using pattern_t = T;
+            using escape_t = E;
             
-            like_t() = default;
+            arg_t arg;
+            pattern_t pattern;
+            internal::optional_container<escape_t> arg3;  //  not escape cause escape exists as a function here
             
-            like_t(A a_, T t_): a(a_), t(t_) {}
+            like_t(arg_t arg_, pattern_t pattern_, internal::optional_container<escape_t> escape):
+            arg(std::move(arg_)), pattern(std::move(pattern_)), arg3(std::move(escape)) {}
             
+            template<class C>
+            like_t<A, T, C> escape(C c) const {
+                internal::optional_container<C> arg3{std::move(c)};
+                return {std::move(this->arg), std::move(this->pattern), std::move(arg3)};
+            }
+        };
+        
+        struct cross_join_string {
             operator std::string() const {
-                return "LIKE";
+                return "CROSS JOIN";
             }
         };
         
@@ -523,11 +621,13 @@ namespace sqlite_orm {
          *  T is joined type which represents any mapped table.
          */
         template<class T>
-        struct cross_join_t {
+        struct cross_join_t : cross_join_string {
             using type = T;
-            
+        };
+        
+        struct natural_join_string {
             operator std::string() const {
-                return "CROSS JOIN";
+                return "NATURAL JOIN";
             }
         };
         
@@ -536,11 +636,13 @@ namespace sqlite_orm {
          *  T is joined type which represents any mapped table.
          */
         template<class T>
-        struct natural_join_t {
+        struct natural_join_t : natural_join_string {
             using type = T;
-            
+        };
+        
+        struct left_join_string {
             operator std::string() const {
-                return "NATURAL JOIN";
+                return "LEFT JOIN";
             }
         };
         
@@ -550,14 +652,18 @@ namespace sqlite_orm {
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct left_join_t {
+        struct left_join_t : left_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
+            left_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+        };
+        
+        struct join_string {
             operator std::string() const {
-                return "LEFT JOIN";
+                return "JOIN";
             }
         };
         
@@ -567,14 +673,18 @@ namespace sqlite_orm {
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct join_t {
+        struct join_t : join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
+            join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+        };
+        
+        struct left_outer_join_string {
             operator std::string() const {
-                return "JOIN";
+                return "LEFT OUTER JOIN";
             }
         };
         
@@ -584,14 +694,18 @@ namespace sqlite_orm {
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct left_outer_join_t {
+        struct left_outer_join_t : left_outer_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
+            left_outer_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+        };
+        
+        struct on_string {
             operator std::string() const {
-                return "LEFT OUTER JOIN";
+                return "ON";
             }
         };
         
@@ -600,14 +714,12 @@ namespace sqlite_orm {
          *  T is on type argument.
          */
         template<class T>
-        struct on_t {
-            using type = T;
+        struct on_t : on_string {
+            using arg_type = T;
             
-            type t;
+            arg_type arg;
             
-            operator std::string() const {
-                return "ON";
-            }
+            on_t(arg_type arg_) : arg(std::move(arg_)) {}
         };
         
         /**
@@ -615,10 +727,16 @@ namespace sqlite_orm {
          */
         template<class F, class O>
         struct using_t {
-            F O::*column;
+            F O::*column = nullptr;
             
             operator std::string() const {
                 return "USING";
+            }
+        };
+        
+        struct inner_join_string {
+            operator std::string() const {
+                return "INNER JOIN";
             }
         };
         
@@ -628,34 +746,38 @@ namespace sqlite_orm {
          *  O is on(...) argument type.
          */
         template<class T, class O>
-        struct inner_join_t {
+        struct inner_join_t : inner_join_string {
             using type = T;
             using on_type = O;
             
             on_type constraint;
             
+            inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
+        };
+        
+        struct exists_string {
             operator std::string() const {
-                return "INNER JOIN";
+                return "EXISTS";
             }
         };
         
         template<class T>
-        struct exists_t : condition_t {
+        struct exists_t : condition_t, exists_string {
             using type = T;
             using self = exists_t<type>;
             
             type t;
             
-            exists_t() = default;
-            
             exists_t(T t_) : t(std::move(t_)) {}
-            
-            operator std::string() const {
-                return "EXISTS";
-            }
             
             negated_condition_t<self> operator!() const {
                 return {*this};
+            }
+        };
+        
+        struct having_string {
+            operator std::string() const {
+                return "HAVING";
             }
         };
         
@@ -664,26 +786,28 @@ namespace sqlite_orm {
          *  T is having argument type.
          */
         template<class T>
-        struct having_t {
+        struct having_t : having_string {
             using type = T;
             
             type t;
             
+            having_t(type t_) : t(std::move(t_)) {}
+        };
+    
+        struct cast_string {
             operator std::string() const {
-                return "HAVING";
+                return "CAST";
             }
         };
         
         template<class T, class E>
-        struct cast_t {
+        struct cast_t : cast_string {
             using to_type = T;
             using expression_type = E;
             
             expression_type expression;
             
-            operator std::string() const {
-                return "CAST";
-            }
+            cast_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
         
     }
@@ -1030,6 +1154,11 @@ namespace sqlite_orm {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
     
+    template<class S>
+    conditions::dynamic_order_by_t<S> dynamic_order_by(const S &storage) {
+        return {storage};
+    }
+    
     template<class ...Args>
     conditions::group_by_t<Args...> group_by(Args&& ...args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
@@ -1041,8 +1170,13 @@ namespace sqlite_orm {
     }
     
     template<class A, class T>
-    conditions::like_t<A, T> like(A a, T t) {
-        return {a, t};
+    conditions::like_t<A, T, void> like(A a, T t) {
+        return {std::move(a), std::move(t), {}};
+    }
+    
+    template<class A, class T, class E>
+    conditions::like_t<A, T, E> like(A a, T t, E e) {
+        return {std::move(a), std::move(t), {std::move(e)}};
     }
     
     template<class T>

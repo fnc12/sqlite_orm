@@ -20,10 +20,10 @@ struct Artist {
 struct Track {
     int trackId;
     std::string trackName;
-    std::shared_ptr<int> trackArtist;    //  must map to &Artist::artistId
+    std::unique_ptr<int> trackArtist;    //  must map to &Artist::artistId
 };
 
-int main(int argc, char **argv) {
+int main(int, char **argv) {
     cout << "path = " << argv[0] << endl;
     
     using namespace sqlite_orm;
@@ -48,16 +48,16 @@ int main(int argc, char **argv) {
         storage.replace(Artist{ 1, "Dean Martin" });
         storage.replace(Artist{ 2, "Frank Sinatra" });
         
-        storage.replace(Track{ 11, "That's Amore", std::make_shared<int>(1) });
-        storage.replace(Track{ 12, "Christmas Blues", std::make_shared<int>(1) });
-        storage.replace(Track{ 13, "My Way", std::make_shared<int>(2) });
+        storage.replace(Track{ 11, "That's Amore", std::make_unique<int>(1) });
+        storage.replace(Track{ 12, "Christmas Blues", std::make_unique<int>(1) });
+        storage.replace(Track{ 13, "My Way", std::make_unique<int>(2) });
         
         try{
             //  This fails because value inserted into the trackartist column (3)
             //  does not correspond to row in the artist table.
-            storage.replace(Track{ 14, "Mr. Bojangles", std::make_shared<int>(3) });
+            storage.replace(Track{ 14, "Mr. Bojangles", std::make_unique<int>(3) });
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
@@ -71,7 +71,7 @@ int main(int argc, char **argv) {
         try{
             storage.update_all(set(assign(&Track::trackArtist, 3)), where(is_equal(&Track::trackName, "Mr. Bojangles")));
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
@@ -84,14 +84,14 @@ int main(int argc, char **argv) {
         //  Now that "Sammy Davis Jr." (artistid = 3) has been added to the database,
         //  it is possible to INSERT new tracks using this artist without violating
         //  the foreign key constraint:
-        storage.replace(Track{ 15, "Boogie Woogie", std::make_shared<int>(3) });
+        storage.replace(Track{ 15, "Boogie Woogie", std::make_unique<int>(3) });
         
         try{
             //  Attempting to delete the artist record for "Frank Sinatra" fails, since
             //  the track table contains a row that refer to it.
             storage.remove_all<Artist>(where(is_equal(&Artist::artistName, "Frank Sinatra")));
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
@@ -105,13 +105,13 @@ int main(int argc, char **argv) {
             //  exists records in the track table that refer to it.
             storage.update_all(set(assign(&Artist::artistId, 4)), where(is_equal(&Artist::artistName, "Dean Martin")));
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         
         //  Once all the records that refer to a row in the artist table have
         //  been deleted, it is possible to modify the artistid of the row.
-        storage.remove_all<Track>(where(in(&Track::trackName, {"That''s Amore", "Christmas Blues"})));
+        storage.remove_all<Track>(where(in(&Track::trackName, {"That's Amore", "Christmas Blues"})));
         storage.update_all(set(c(&Artist::artistId) = 4),
                            where(c(&Artist::artistName) == "Dean Martin"));
     }
@@ -136,9 +136,9 @@ int main(int argc, char **argv) {
         storage.replace(Artist{ 1, "Dean Martin" });
         storage.replace(Artist{ 2, "Frank Sinatra" });
         
-        storage.replace(Track{ 11, "That's Amore", std::make_shared<int>(1) });
-        storage.replace(Track{ 12, "Christmas Blues", std::make_shared<int>(1) });
-        storage.replace(Track{ 13, "My Way", std::make_shared<int>(2) });
+        storage.replace(Track{ 11, "That's Amore", std::make_unique<int>(1) });
+        storage.replace(Track{ 12, "Christmas Blues", std::make_unique<int>(1) });
+        storage.replace(Track{ 13, "My Way", std::make_unique<int>(2) });
         
         //  Update the artistid column of the artist record for "Dean Martin".
         //  Normally, this would raise a constraint, as it would orphan the two
@@ -187,7 +187,7 @@ int main(int argc, char **argv) {
         
         storage.replace(Artist{ 3, "Sammy Davis Jr." });
         
-        storage.replace(Track{ 14, "Mr. Bojangles", std::make_shared<int>(3) });
+        storage.replace(Track{ 14, "Mr. Bojangles", std::make_unique<int>(3) });
         
         //  Deleting the row from the parent table causes the child key
         //  value of the dependent row to be set to integer value 0. However, this
@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
         try{
             storage.remove_all<Artist>(where(c(&Artist::artistName) == "Sammy Davis Jr."));
             assert(0);
-        }catch(std::system_error e) {
+        }catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
         

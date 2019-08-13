@@ -20,24 +20,14 @@ namespace sqlite_orm {
             }
         };
         
-        /**
-         *  PRIMARY KEY constraint class.
-         *  Cs is parameter pack which contains columns (member pointer and/or function pointers). Can be empty when used withen `make_column` function.
-         */
-        template<class ...Cs>
-        struct primary_key_t {
-            std::tuple<Cs...> columns;
+        struct primary_key_base {
             enum class order_by {
                 unspecified,
                 ascending,
                 descending,
             };
+            
             order_by asc_option = order_by::unspecified;
-            
-            primary_key_t(decltype(columns) c):columns(std::move(c)){}
-            
-            using field_type = void;    //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
             
             operator std::string() const {
                 std::string res = "PRIMARY KEY";
@@ -53,6 +43,22 @@ namespace sqlite_orm {
                 }
                 return res;
             }
+        };
+        
+        /**
+         *  PRIMARY KEY constraint class.
+         *  Cs is parameter pack which contains columns (member pointers and/or function pointers). Can be empty when used withen `make_column` function.
+         */
+        template<class ...Cs>
+        struct primary_key_t : primary_key_base {
+            using order_by = primary_key_base::order_by;
+            
+            std::tuple<Cs...> columns;
+            
+            primary_key_t(decltype(columns) c):columns(std::move(c)){}
+            
+            using field_type = void;    //  for column iteration. Better be deleted
+            using constraints_type = std::tuple<>;
             
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
@@ -146,17 +152,32 @@ namespace sqlite_orm {
             return os;
         }
         
+        struct on_update_delete_base {
+            const bool update;  //  true if update and false if delete
+            
+            operator std::string() const {
+                if(this->update){
+                    return "ON UPDATE";
+                }else{
+                    return "ON DELETE";
+                }
+            }
+        };
+        
         /**
          *  F - foreign key class
          */
         template<class F>
-        struct on_update_delete_t {
+        struct on_update_delete_t : on_update_delete_base {
             using foreign_key_type = F;
             
             const foreign_key_type &fk;
-            const bool update;  //  true if update and false if delete
             
-            on_update_delete_t(decltype(fk) fk_, decltype(update) update_, foreign_key_action action_) : fk(fk_), update(update_), _action(action_) {}
+            on_update_delete_t(decltype(fk) fk_, decltype(update) update, foreign_key_action action_) :
+            on_update_delete_base{update},
+            fk(fk_),
+            _action(action_)
+            {}
             
             foreign_key_action _action = foreign_key_action::none;
             
@@ -213,14 +234,6 @@ namespace sqlite_orm {
             operator bool() const {
                 return this->_action != decltype(this->_action)::none;
             }
-            
-            operator std::string() const {
-                if(this->update){
-                    return "ON UPDATE";
-                }else{
-                    return "ON DELETE";
-                }
-            }
         };
         
         template<class ...Cs, class ...Rs>
@@ -263,7 +276,7 @@ namespace sqlite_orm {
             using constraints_type = std::tuple<>;
             
             template<class L>
-            void for_each_column(L) {}
+            void for_each_column(const L &) {}
             
             template<class ...Opts>
             constexpr bool has_every() const  {
@@ -286,19 +299,18 @@ namespace sqlite_orm {
             
             template<class ...Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs ...references) {
-                using ret_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
-                return ret_type(std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...));
+                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...)};
             }
         };
 #endif
         
         struct collate_t {
-            internal::collate_argument argument;
+            internal::collate_argument argument = internal::collate_argument::binary;
             
             collate_t(internal::collate_argument argument_): argument(argument_) {}
             
             operator std::string() const {
-                std::string res = "COLLATE " + string_from_collate_argument(this->argument);
+                std::string res = "COLLATE " + this->string_from_collate_argument(this->argument);
                 return res;
             }
             
@@ -308,6 +320,7 @@ namespace sqlite_orm {
                     case decltype(argument)::nocase: return "NOCASE";
                     case decltype(argument)::rtrim: return "RTRIM";
                 }
+                throw std::system_error(std::make_error_code(orm_error_code::invalid_collate_argument_enum));
             }
         };
         
@@ -377,7 +390,7 @@ namespace sqlite_orm {
     
     template<class T>
     constraints::default_t<T> default_value(T t) {
-        return {t};
+        return {std::move(t)};
     }
     
     inline constraints::collate_t collate_nocase() {

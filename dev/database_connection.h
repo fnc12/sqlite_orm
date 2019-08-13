@@ -15,7 +15,7 @@ namespace sqlite_orm {
             database_connection(const std::string &filename) {
                 auto rc = sqlite3_open(filename.c_str(), &this->db);
                 if(rc != SQLITE_OK){
-                    throw std::system_error(std::error_code(sqlite3_errcode(this->db), get_sqlite_error_category()));
+                    throw std::system_error(std::error_code(sqlite3_errcode(this->db), get_sqlite_error_category()), sqlite3_errmsg(this->db));
                 }
             }
             

@@ -1,4 +1,6 @@
 cmake_minimum_required (VERSION 3.2)
+cmake_policy(SET CMP0057 NEW)
+
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -9,6 +11,8 @@ set(sqlite_orm_VERSION "1.3.0")
 set(PACKAGE_VERSION ${sqlite_orm_VERSION})
 
 project("sqlite_orm" VERSION ${PACKAGE_VERSION})
+
+set(CMAKE_VERBOSE_MAKEFILE ON)
 
 message(STATUS "Configuring ${CMAKE_PROJECT_NAME} ${sqlite_orm_VERSION}")
 

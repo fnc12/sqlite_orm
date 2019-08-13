@@ -13,7 +13,7 @@ struct MarvelHero {
     short points;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **argv) {
     cout << "path = " << argv[0] << endl;
     
     using namespace sqlite_orm;
@@ -212,6 +212,15 @@ int main(int argc, char **argv) {
     
     //  SELECT rtrim('totn6372', '0123456789');
     cout << "rtrim('totn6372', '0123456789') = *" << storage.select(rtrim("totn6372", "0123456789")).front() << "*" << endl;
+    
+    //  SELECT coalesce(10,20);
+    cout << "coalesce(10,20) = " << storage.select(coalesce<int>(10, 20)).front() << endl;
+    
+    //  SELECT substr('SQLite substr', 8);
+    cout << "substr('SQLite substr', 8) = " << storage.select(substr("SQLite substr", 8)).front() << endl;
+    
+    //  SELECT substr('SQLite substr', 1, 6);
+    cout << "substr('SQLite substr', 1, 6) = " << storage.select(substr("SQLite substr", 1, 6)).front() << endl;
     
     return 0;
 }

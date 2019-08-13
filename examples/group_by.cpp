@@ -17,7 +17,7 @@ struct Employee {
     double salary;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace sqlite_orm;
     
     auto storage = make_storage("group_by.sqlite",

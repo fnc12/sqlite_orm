@@ -14,7 +14,7 @@ struct User {
     std::vector<char> hash; //  binary format
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace sqlite_orm;
     auto storage = make_storage("blob.sqlite",
                                 make_table("users",

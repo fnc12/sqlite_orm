@@ -23,7 +23,7 @@ struct DetailedEmployee : public Employee {
     std::string birthDate;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace sqlite_orm;
     
     auto storage = make_storage("insert.sqlite",

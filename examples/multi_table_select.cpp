@@ -23,7 +23,7 @@ struct ReqDetail {
     double itemCost;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     
     using namespace sqlite_orm;
     auto storage = make_storage("multi_table_select.sqlite",

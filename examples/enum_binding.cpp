@@ -1,7 +1,9 @@
 
 #include <sqlite_orm/sqlite_orm.h>
+
 #include <iostream>
 #include <memory>
+#include <cassert>
 
 using std::cout;
 using std::endl;
@@ -30,6 +32,7 @@ std::string GenderToString(Gender gender) {
         case Gender::Female:return "female";
         case Gender::Male:return "male";
     }
+    throw std::domain_error("Invalid Gender enum");
 }
 
 /**
@@ -155,12 +158,14 @@ int main(int/* argc*/, char **/*argv*/) {
     //  get all male superheros (2 expected)
     auto males = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Male));
     cout << "males = " << males.size() << endl;
+    assert(males.size() == 2);
     for(auto &superHero : males) {
         cout << storage.dump(superHero) << endl;
     }
 
     //  get all female superheros (1 expected)
     auto females = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Female));
+    assert(females.size() == 1);
     cout << "females = " << females.size() << endl;
     for(auto &superHero : females) {
         cout << storage.dump(superHero) << endl;

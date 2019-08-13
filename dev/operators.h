@@ -11,107 +11,100 @@ namespace sqlite_orm {
          */
         struct arithmetic_t {};
         
+        template<class L, class R, class ...Ds>
+        struct binary_operator : Ds... {
+            using left_type = L;
+            using right_type = R;
+            
+            left_type lhs;
+            right_type rhs;
+            
+            binary_operator(left_type lhs_, right_type rhs_) : lhs(std::move(lhs_)), rhs(std::move(rhs_)) {}
+        };
+        
+        struct conc_string {
+            operator std::string () const {
+                return "||";
+            }
+        };
+        
         /**
          *  Result of concatenation || operator
          */
         template<class L, class R>
-        struct conc_t {
-            L l;
-            R r;
+        using conc_t = binary_operator<L, R, conc_string>;
+        
+        struct add_string {
+            operator std::string () const {
+                return "+";
+            }
         };
         
         /**
          *  Result of addition + operator
          */
         template<class L, class R>
-        struct add_t : arithmetic_t {
-            using left_type = L;
-            using right_type = R;
-            
-            left_type l;
-            right_type r;
-            
-            add_t() = default;
-            
-            add_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+        using add_t = binary_operator<L, R, add_string, arithmetic_t>;
+        
+        struct sub_string {
+            operator std::string () const {
+                return "-";
+            }
         };
         
         /**
-         *  Result of subscribe - operator
+         *  Result of substitute - operator
          */
         template<class L, class R>
-        struct sub_t : arithmetic_t {
-            using left_type = L;
-            using right_type = R;
-            
-            left_type l;
-            right_type r;
-            
-            sub_t() = default;
-            
-            sub_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+        using sub_t = binary_operator<L, R, sub_string, arithmetic_t>;
+        
+        struct mul_string {
+            operator std::string () const {
+                return "*";
+            }
         };
         
         /**
          *  Result of multiply * operator
          */
         template<class L, class R>
-        struct mul_t : arithmetic_t {
-            using left_type = L;
-            using right_type = R;
-            
-            left_type l;
-            right_type r;
-            
-            mul_t() = default;
-            
-            mul_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+        using mul_t = binary_operator<L, R, mul_string, arithmetic_t>;
+        
+        struct div_string {
+            operator std::string () const {
+                return "/";
+            }
         };
         
         /**
          *  Result of divide / operator
          */
         template<class L, class R>
-        struct div_t : arithmetic_t {
-            using left_type = L;
-            using right_type = R;
-            
-            left_type l;
-            right_type r;
-            
-            div_t() = default;
-            
-            div_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+        using div_t = binary_operator<L, R, div_string, arithmetic_t>;
+        
+        struct mod_string {
+            operator std::string () const {
+                return "%";
+            }
         };
         
         /**
          *  Result of mod % operator
          */
         template<class L, class R>
-        struct mod_t : arithmetic_t {
-            using left_type = L;
-            using right_type = R;
-            
-            left_type l;
-            right_type r;
-            
-            mod_t() = default;
-            
-            mod_t(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
+        using mod_t = binary_operator<L, R, mod_string, arithmetic_t>;
+        
+        struct assign_string {
+            operator std::string () const {
+                return "=";
+            }
         };
         
         /**
          *  Result of assign = operator
          */
         template<class L, class R>
-        struct assign_t {
-            L l;
-            R r;
-            
-            assign_t(){}
-            
-            assign_t(L l_, R r_): l(l_), r(r_) {}
-        };
+        using assign_t = binary_operator<L, R, assign_string>;
         
         /**
          *  Assign operator traits. Common case
@@ -132,11 +125,15 @@ namespace sqlite_orm {
         struct expression_t {
             T t;
             
-            expression_t(T t_): t(t_) {}
+            expression_t(T t_): t(std::move(t_)) {}
             
             template<class R>
             assign_t<T, R> operator=(R r) const {
-                return {this->t, r};
+                return {this->t, std::move(r)};
+            }
+            
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+                return {this->t, nullptr};
             }
         };
         
@@ -147,16 +144,15 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::expression_t<T> c(T t) {
-        using result_type = internal::expression_t<T>;
-        return result_type(t);
+        return {std::move(t)};
     }
     
     /**
-     *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT name + '@gmail.com' FROM users
+     *  Public interface for || concatenation operator. Example: `select(conc(&User::name, "@gmail.com"));` => SELECT name || '@gmail.com' FROM users
      */
     template<class L, class R>
     internal::conc_t<L, R> conc(L l, R r) {
-        return {l, r};
+        return {std::move(l), std::move(r)};
     }
     
     /**
@@ -164,7 +160,7 @@ namespace sqlite_orm {
      */
     template<class L, class R>
     internal::add_t<L, R> add(L l, R r) {
-        return {l, r};
+        return {std::move(l), std::move(r)};
     }
     
     /**
@@ -172,22 +168,22 @@ namespace sqlite_orm {
      */
     template<class L, class R>
     internal::sub_t<L, R> sub(L l, R r) {
-        return {l, r};
+        return {std::move(l), std::move(r)};
     }
     
     template<class L, class R>
     internal::mul_t<L, R> mul(L l, R r) {
-        return {l, r};
+        return {std::move(l), std::move(r)};
     }
     
     template<class L, class R>
     internal::div_t<L, R> div(L l, R r) {
-        return {l, r};
+        return {std::move(l), std::move(r)};
     }
     
     template<class L, class R>
     internal::mod_t<L, R> mod(L l, R r) {
-        return {l, r};
+        return {std::move(l), std::move(r)};
     }
     
     template<class L, class R>

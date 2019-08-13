@@ -12,7 +12,7 @@ struct MarvelHero {
     std::string abilities;
 };
 
-int main(int argc, char **argv) {
+int main(int, char **) {
     using namespace sqlite_orm;
     auto storage = make_storage("iteration.sqlite",
                                 make_table("marvel",
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     }
     
     std::vector<MarvelHero> heroesByAlgorithm;
-    heroesByAlgorithm.reserve(storage.count<MarvelHero>());
+    heroesByAlgorithm.reserve(static_cast<size_t>(storage.count<MarvelHero>()));
     {
         auto view = storage.iterate<MarvelHero>();
         std::copy(view.begin(),
