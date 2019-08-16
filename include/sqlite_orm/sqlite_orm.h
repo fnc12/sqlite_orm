@@ -6712,7 +6712,8 @@ namespace sqlite_orm {
 #include <vector>   //  std::vector
 #include <memory>   //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
-#include <type_traits>  //  std::decay
+#include <type_traits>  //  std::decay, std::is_same
+#include <algorithm>    //  std::iter_swap
 
 // #include "pragma.h"
 
@@ -7364,9 +7365,30 @@ namespace sqlite_orm {
                 using field_type = typename column_type::field_type;
                 using constraints_type = typename column_type::constraints_type;
                 ss << type_printer<field_type>().print() << " ";
-                tuple_helper::iterator<std::tuple_size<constraints_type>::value - 1, Op...>()(c.constraints, [&ss](auto &v){
-                    ss << static_cast<std::string>(v) << ' ';
-                });
+                {
+                    std::vector<std::string> constraintsStrings;
+                    constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
+                    constraintsStrings.reserve(constraintsCount);
+                    int primaryKeyIndex = -1;
+                    int autoincrementIndex = -1;
+                    int tupleIndex = 0;
+                    iterate_tuple(c.constraints, [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex](auto &v){
+                        using constraint_type = typename std::decay<decltype(v)>::type;
+                        constraintsStrings.push_back(static_cast<std::string>(v));
+                        if(is_primary_key<constraint_type>::value) {
+                            primaryKeyIndex = tupleIndex;
+                        }else if(std::is_same<constraints::autoincrement_t, constraint_type>::value){
+                            autoincrementIndex = tupleIndex;
+                        }
+                        ++tupleIndex;
+                    });
+                    if(primaryKeyIndex != -1 && autoincrementIndex != -1){
+                        iter_swap(constraintsStrings.begin() + primaryKeyIndex, constraintsStrings.begin() + autoincrementIndex);
+                    }
+                    for(auto &str : constraintsStrings) {
+                        ss << str << ' ';
+                    }
+                }
                 if(c.not_null()){
                     ss << "NOT NULL ";
                 }

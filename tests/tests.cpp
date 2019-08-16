@@ -227,7 +227,7 @@ TEST_CASE("Explicit insert"){
 //                throw std::runtime_error("Must not fire");
             } catch (const std::system_error&) {
                 //        cout << e.what() << endl;
-            }
+             }
         }
     }
     {
