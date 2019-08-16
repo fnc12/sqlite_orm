@@ -9,7 +9,7 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
-TEST_CASE("Case", "select"){
+TEST_CASE("Case"){
     
     struct User {
         int id = 0;
@@ -108,7 +108,7 @@ TEST_CASE("Case", "select"){
     
 }
 
-TEST_CASE("Unique ptr in update", "update"){
+TEST_CASE("Unique ptr in update"){
     
     struct User {
         int id = 0;
@@ -136,7 +136,7 @@ TEST_CASE("Unique ptr in update", "update"){
     }
 }
 
-TEST_CASE("Join", "get_all"){
+TEST_CASE("Join"){
     
     struct User {
         int id = 0;
@@ -194,7 +194,7 @@ TEST_CASE("Join", "get_all"){
     }
 }
 
-TEST_CASE("Storage copy", "on_open"){
+TEST_CASE("Storage copy"){
     int calledCount = 0;
     
     auto storage = make_storage({});
@@ -212,7 +212,7 @@ TEST_CASE("Storage copy", "on_open"){
     REQUIRE(calledCount == 2);
 }
 
-TEST_CASE("Set null", "update_all") {
+TEST_CASE("Set null") {
     
     struct User {
         int id = 0;
@@ -256,7 +256,7 @@ TEST_CASE("Set null", "update_all") {
     }
 }
 
-TEST_CASE("Composite key column names", "table"){
+TEST_CASE("Composite key column names"){
     
     struct User {
         int id = 0;
@@ -304,7 +304,7 @@ TEST_CASE("Composite key column names", "table"){
     }
 }
 
-TEST_CASE("Not operator", "select"){
+TEST_CASE("Not operator"){
     struct Object {
         int id = 0;
     };
@@ -321,7 +321,7 @@ TEST_CASE("Not operator", "select"){
     REQUIRE(rows.front() == 2);
 }
 
-TEST_CASE("Between operator", "select"){
+TEST_CASE("Between operator"){
     struct Object {
         int id = 0;
     };
@@ -342,7 +342,7 @@ TEST_CASE("Between operator", "select"){
     REQUIRE(rows.size() == 3);
 }
 
-TEST_CASE("Exists", "select"){
+TEST_CASE("Exists"){
     struct User {
         int id = 0;
         std::string name;
@@ -379,7 +379,7 @@ TEST_CASE("Exists", "select"){
     REQUIRE(!rows.empty() == 1);
 }
 
-TEST_CASE("Is null", "count"){
+TEST_CASE("Is null"){
     struct User {
         int id = 0;
         std::unique_ptr<std::string> name;
@@ -399,7 +399,7 @@ TEST_CASE("Is null", "count"){
     REQUIRE(storage.count<User>(where(is_not_null(&User::name))) == 2);
 }
 
-TEST_CASE("Iterate blob", "iterate"){
+TEST_CASE("Iterate blob"){
     struct Test {
         int64_t id;
         std::vector<char> key;
@@ -444,7 +444,7 @@ TEST_CASE("Iterate blob", "iterate"){
     }
 }
 
-TEST_CASE("Cast", "select"){
+TEST_CASE("Cast"){
     struct Student {
         int id;
         float scoreFloat;
@@ -475,7 +475,7 @@ TEST_CASE("Cast", "select"){
     }
 }
 
-TEST_CASE("Simple query", "select"){
+TEST_CASE("Simple query"){
     auto storage = make_storage("");
     {
         //  SELECT 1
@@ -522,12 +522,12 @@ TEST_CASE("Simple query", "select"){
     }
 }
 
-TEST_CASE("Threadsafe", "threadsafe"){
+TEST_CASE("Threadsafe"){
     //  this code just shows this value on CI
     cout << "threadsafe = " << threadsafe() << endl;
 }
 
-TEST_CASE("In", "get_all"){
+TEST_CASE("In"){
     {
         struct User {
             int id;
