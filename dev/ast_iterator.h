@@ -197,6 +197,17 @@ namespace sqlite_orm {
         };
         
         template<class A, class T>
+        struct ast_iterator<conditions::glob_t<A, T>, void> {
+            using node_type = conditions::glob_t<A, T>;
+            
+            template<class L>
+            void operator()(const node_type &lk, const L &l) const {
+                iterate_ast(lk.arg, l);
+                iterate_ast(lk.pattern, l);
+            }
+        };
+        
+        template<class A, class T>
         struct ast_iterator<conditions::between_t<A, T>, void> {
             using node_type = conditions::between_t<A, T>;
             

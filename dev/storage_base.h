@@ -342,7 +342,7 @@ namespace sqlite_orm {
                         }
                         ++tupleIndex;
                     });
-                    if(primaryKeyIndex != -1 && autoincrementIndex != -1){
+                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex){
                         iter_swap(constraintsStrings.begin() + primaryKeyIndex, constraintsStrings.begin() + autoincrementIndex);
                     }
                     for(auto &str : constraintsStrings) {

@@ -238,5 +238,15 @@ namespace sqlite_orm {
         struct column_result_t<St, conditions::like_t<A, T, E>, void> {
             using type = bool;
         };
+        
+        template<class St, class A, class T>
+        struct column_result_t<St, conditions::glob_t<A, T>, void> {
+            using type = bool;
+        };
+        
+        template<class St, class C>
+        struct column_result_t<St, conditions::negated_condition_t<C>, void> {
+            using type = bool;
+        };
     }
 }

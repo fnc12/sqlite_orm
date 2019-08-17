@@ -2181,6 +2181,7 @@ namespace sqlite_orm {
          */
         template<class A, class T, class E>
         struct like_t : condition_t, like_string {
+            using self = like_t<A, T, E>;
             using arg_t = A;
             using pattern_t = T;
             using escape_t = E;
@@ -2196,6 +2197,33 @@ namespace sqlite_orm {
             like_t<A, T, C> escape(C c) const {
                 internal::optional_container<C> arg3{std::move(c)};
                 return {std::move(this->arg), std::move(this->pattern), std::move(arg3)};
+            }
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
+            }
+        };
+        
+        struct glob_string {
+            operator std::string() const {
+                return "GLOB";
+            }
+        };
+        
+        template<class A, class T>
+        struct glob_t : condition_t, glob_string {
+            using self = glob_t<A, T>;
+            using arg_t = A;
+            using pattern_t = T;
+            
+            arg_t arg;
+            pattern_t pattern;
+            
+            glob_t(arg_t arg_, pattern_t pattern_):
+            arg(std::move(arg_)), pattern(std::move(pattern_)) {}
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
             }
         };
         
@@ -2761,6 +2789,11 @@ namespace sqlite_orm {
     template<class A, class T>
     conditions::like_t<A, T, void> like(A a, T t) {
         return {std::move(a), std::move(t), {}};
+    }
+    
+    template<class A, class T>
+    conditions::glob_t<A, T> glob(A a, T t) {
+        return {std::move(a), std::move(t)};
     }
     
     template<class A, class T, class E>
@@ -5245,6 +5278,16 @@ namespace sqlite_orm {
         struct column_result_t<St, conditions::like_t<A, T, E>, void> {
             using type = bool;
         };
+        
+        template<class St, class A, class T>
+        struct column_result_t<St, conditions::glob_t<A, T>, void> {
+            using type = bool;
+        };
+        
+        template<class St, class C>
+        struct column_result_t<St, conditions::negated_condition_t<C>, void> {
+            using type = bool;
+        };
     }
 }
 #pragma once
@@ -6520,6 +6563,17 @@ namespace sqlite_orm {
         };
         
         template<class A, class T>
+        struct ast_iterator<conditions::glob_t<A, T>, void> {
+            using node_type = conditions::glob_t<A, T>;
+            
+            template<class L>
+            void operator()(const node_type &lk, const L &l) const {
+                iterate_ast(lk.arg, l);
+                iterate_ast(lk.pattern, l);
+            }
+        };
+        
+        template<class A, class T>
         struct ast_iterator<conditions::between_t<A, T>, void> {
             using node_type = conditions::between_t<A, T>;
             
@@ -7382,7 +7436,7 @@ namespace sqlite_orm {
                         }
                         ++tupleIndex;
                     });
-                    if(primaryKeyIndex != -1 && autoincrementIndex != -1){
+                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex){
                         iter_swap(constraintsStrings.begin() + primaryKeyIndex, constraintsStrings.begin() + autoincrementIndex);
                     }
                     for(auto &str : constraintsStrings) {
@@ -8195,6 +8249,15 @@ namespace sqlite_orm {
             }
             
             template<class A, class T>
+            std::string string_from_expression(const conditions::glob_t<A, T> &l, bool noTableName) const {
+                std::stringstream ss;
+                ss << this->string_from_expression(l.arg, noTableName) << " ";
+                ss << static_cast<std::string>(l) << " ";
+                ss << this->string_from_expression(l.pattern, noTableName);
+                return ss.str();
+            }
+            
+            template<class A, class T>
             std::string string_from_expression(const conditions::between_t<A, T> &bw, bool noTableName) const {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr, noTableName);
@@ -8875,6 +8938,21 @@ namespace sqlite_orm {
                     res.insert(escapeTableNames.begin(), escapeTableNames.end());
                 });
                 return res;
+            }
+            
+            template<class A, class T>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::glob_t<A, T> &l) const {
+                std::set<std::pair<std::string, std::string>> res;
+                auto argTableNames = this->parse_table_name(l.arg);
+                res.insert(argTableNames.begin(), argTableNames.end());
+                auto patternTableNames = this->parse_table_name(l.pattern);
+                res.insert(patternTableNames.begin(), patternTableNames.end());
+                return res;
+            }
+            
+            template<class C>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::negated_condition_t<C> &c) const {
+                return this->parse_table_name(c.c);
             }
             
             template<class T, class E>

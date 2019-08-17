@@ -592,6 +592,7 @@ namespace sqlite_orm {
          */
         template<class A, class T, class E>
         struct like_t : condition_t, like_string {
+            using self = like_t<A, T, E>;
             using arg_t = A;
             using pattern_t = T;
             using escape_t = E;
@@ -607,6 +608,33 @@ namespace sqlite_orm {
             like_t<A, T, C> escape(C c) const {
                 internal::optional_container<C> arg3{std::move(c)};
                 return {std::move(this->arg), std::move(this->pattern), std::move(arg3)};
+            }
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
+            }
+        };
+        
+        struct glob_string {
+            operator std::string() const {
+                return "GLOB";
+            }
+        };
+        
+        template<class A, class T>
+        struct glob_t : condition_t, glob_string {
+            using self = glob_t<A, T>;
+            using arg_t = A;
+            using pattern_t = T;
+            
+            arg_t arg;
+            pattern_t pattern;
+            
+            glob_t(arg_t arg_, pattern_t pattern_):
+            arg(std::move(arg_)), pattern(std::move(pattern_)) {}
+            
+            negated_condition_t<self> operator!() const {
+                return {*this};
             }
         };
         
@@ -1172,6 +1200,11 @@ namespace sqlite_orm {
     template<class A, class T>
     conditions::like_t<A, T, void> like(A a, T t) {
         return {std::move(a), std::move(t), {}};
+    }
+    
+    template<class A, class T>
+    conditions::glob_t<A, T> glob(A a, T t) {
+        return {std::move(a), std::move(t)};
     }
     
     template<class A, class T, class E>
