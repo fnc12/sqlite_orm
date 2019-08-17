@@ -664,6 +664,15 @@ namespace sqlite_orm {
             }
             
             template<class A, class T>
+            std::string string_from_expression(const conditions::glob_t<A, T> &l, bool noTableName) const {
+                std::stringstream ss;
+                ss << this->string_from_expression(l.arg, noTableName) << " ";
+                ss << static_cast<std::string>(l) << " ";
+                ss << this->string_from_expression(l.pattern, noTableName);
+                return ss.str();
+            }
+            
+            template<class A, class T>
             std::string string_from_expression(const conditions::between_t<A, T> &bw, bool noTableName) const {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr, noTableName);
@@ -1344,6 +1353,21 @@ namespace sqlite_orm {
                     res.insert(escapeTableNames.begin(), escapeTableNames.end());
                 });
                 return res;
+            }
+            
+            template<class A, class T>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::glob_t<A, T> &l) const {
+                std::set<std::pair<std::string, std::string>> res;
+                auto argTableNames = this->parse_table_name(l.arg);
+                res.insert(argTableNames.begin(), argTableNames.end());
+                auto patternTableNames = this->parse_table_name(l.pattern);
+                res.insert(patternTableNames.begin(), patternTableNames.end());
+                return res;
+            }
+            
+            template<class C>
+            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::negated_condition_t<C> &c) const {
+                return this->parse_table_name(c.c);
             }
             
             template<class T, class E>

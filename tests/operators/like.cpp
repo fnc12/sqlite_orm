@@ -39,6 +39,11 @@ TEST_CASE("Like operator"){
         REQUIRE(rows.front() == true);
     }
     {
+        auto rows = storage.select(not like("ototo", "ot_to"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == false);
+    }
+    {
         auto rows = storage.select(like(&User::name, "S%a"));
         REQUIRE(rows.size() == 3);
         REQUIRE(count_if(rows.begin(), rows.end(), [](bool arg){
