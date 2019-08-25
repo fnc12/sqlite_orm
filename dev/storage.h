@@ -42,6 +42,7 @@
 #include "view.h"
 #include "ast_iterator.h"
 #include "storage_base.h"
+#include "prepared_statement.h"
 
 namespace sqlite_orm {
     
@@ -2380,6 +2381,50 @@ namespace sqlite_orm {
             bool table_exists(const std::string &tableName) {
                 auto connection = this->get_or_create_connection();
                 return this->impl.table_exists(tableName, connection->get_db());
+            }
+            
+            template<class T, class ...Args>
+            prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> sel) {
+                sel.highest_level = true;
+                auto connection = this->get_or_create_connection();
+                sqlite3_stmt *stmt;
+                auto db = connection->get_db();
+                auto query = this->string_from_expression(sel, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(sel), stmt};
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class T, class ...Args, class R = typename column_result_t<self, T>::type>
+            std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>> &statement) {
+                auto connection = this->get_or_create_connection();
+                auto stmt = statement.stmt;
+                auto index = 1;
+                auto db = connection->get_db();
+                iterate_ast(statement.t, [stmt, &index, db](auto &node){
+                    using node_type = typename std::decay<decltype(node)>::type;
+                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                    if(SQLITE_OK != binder(node)){
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    }
+                });
+                std::vector<R> res;
+                int stepRes;
+                do{
+                    stepRes = sqlite3_step(stmt);
+                    switch(stepRes){
+                        case SQLITE_ROW:{
+                            res.push_back(row_extractor<R>().extract(stmt, 0));
+                        }break;
+                        case SQLITE_DONE: break;
+                        default:{
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                        }
+                    }
+                }while(stepRes != SQLITE_DONE);
+                return res;
             }
         };
         
