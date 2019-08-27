@@ -13,6 +13,7 @@
 #include "error_code.h"
 #include "iterator.h"
 #include "ast_iterator.h"
+#include "prepared_statement.h"
 
 namespace sqlite_orm {
     
@@ -26,12 +27,12 @@ namespace sqlite_orm {
             
             storage_type &storage;
             std::shared_ptr<internal::database_connection> connection;
-            std::tuple<Args...> args;
+            get_all_t<T, Args...> args;
             
             view_t(storage_type &stor, decltype(connection) conn, Args&& ...args_):
             storage(stor),
             connection(std::move(conn)),
-            args(std::make_tuple(std::forward<Args>(args_)...)){}
+            args{std::make_tuple(std::forward<Args>(args_)...)}{}
             
             size_t size() {
                 return this->storage.template count<T>();
@@ -48,12 +49,11 @@ namespace sqlite_orm {
             iterator_t<self> begin() {
                 sqlite3_stmt *stmt = nullptr;
                 auto db = this->connection->get_db();
-                std::string query;
-                this->storage.template generate_select_asterisk<T>(&query, this->args);
+                auto query = this->storage.string_from_expression(this->args, false);
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK){
                     auto index = 1;
-                    iterate_ast(this->args, [&index, stmt, db](auto &node){
+                    iterate_ast(this->args.conditions, [&index, stmt, db](auto &node){
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                         if(SQLITE_OK != binder(node)){

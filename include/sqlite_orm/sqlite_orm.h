@@ -6742,6 +6742,8 @@ namespace sqlite_orm {
     }
 }
 
+// #include "prepared_statement.h"
+
 
 namespace sqlite_orm {
     
@@ -6755,12 +6757,12 @@ namespace sqlite_orm {
             
             storage_type &storage;
             std::shared_ptr<internal::database_connection> connection;
-            std::tuple<Args...> args;
+            get_all_t<T, Args...> args;
             
             view_t(storage_type &stor, decltype(connection) conn, Args&& ...args_):
             storage(stor),
             connection(std::move(conn)),
-            args(std::make_tuple(std::forward<Args>(args_)...)){}
+            args{std::make_tuple(std::forward<Args>(args_)...)}{}
             
             size_t size() {
                 return this->storage.template count<T>();
@@ -6777,12 +6779,11 @@ namespace sqlite_orm {
             iterator_t<self> begin() {
                 sqlite3_stmt *stmt = nullptr;
                 auto db = this->connection->get_db();
-                std::string query;
-                this->storage.template generate_select_asterisk<T>(&query, this->args);
+                auto query = this->storage.string_from_expression(this->args, false);
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK){
                     auto index = 1;
-                    iterate_ast(this->args, [&index, stmt, db](auto &node){
+                    iterate_ast(this->args.conditions, [&index, stmt, db](auto &node){
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                         if(SQLITE_OK != binder(node)){
@@ -8745,37 +8746,6 @@ namespace sqlite_orm {
             
         protected:
             
-            /**
-             *  O - mapped type
-             *  Args - conditions
-             *  @param query - result query string
-             */
-            template<class O, class ...Args>
-            void generate_select_asterisk(std::string *query, const std::tuple<Args...> &args) {
-                std::stringstream ss;
-                ss << "SELECT ";
-                auto &impl = this->get_impl<O>();
-                auto columnNames = impl.table.column_names();
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss
-                    << "'" << impl.table.name << "'."
-                    << "\""
-                    << columnNames[i]
-                    << "\""
-                    ;
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << " ";
-                    }
-                }
-                ss << "FROM '" << impl.table.name << "' ";
-                this->process_conditions(ss, args);
-                if(query){
-                    *query = ss.str();
-                }
-            }
-            
             template<class T>
             std::set<std::pair<std::string, std::string>> parse_table_name(const T &) const {
                 return {};
@@ -9069,16 +9039,15 @@ namespace sqlite_orm {
                 
                 auto connection = this->get_or_create_connection();
                 C res;
-                std::string query;
-                auto argsTuple = std::make_tuple<Args...>(std::forward<Args>(args)...);
+                auto getAll = sqlite_orm::get_all<O>(std::forward<Args>(args)...);
                 auto &impl = this->get_impl<O>();
-                this->generate_select_asterisk<O>(&query, argsTuple);
+                auto query = this->string_from_expression(getAll, false);
                 sqlite3_stmt *stmt;
                 auto db = connection->get_db();
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
-                    iterate_ast(argsTuple, [stmt, &index, db](auto &node){
+                    iterate_ast(getAll.conditions, [stmt, &index, db](auto &node){
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                         if(SQLITE_OK != binder(node)){
