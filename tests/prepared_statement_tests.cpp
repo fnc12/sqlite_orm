@@ -59,9 +59,9 @@ TEST_CASE("Prepared") {
             auto statement = storage.prepare(select(columns(&User::id, &User::name)));
             auto rows = storage.execute(statement);
             std::vector<std::tuple<int, std::string>> expected;
-            expected.push_back({1, "Team BS"});
-            expected.push_back({2, "Shy'm"});
-            expected.push_back({3, "Maître Gims"});
+            expected.push_back(std::make_tuple(1, "Team BS"));
+            expected.push_back(std::make_tuple(2, "Shy'm"));
+            expected.push_back(std::make_tuple(3, "Maître Gims"));
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
         {
