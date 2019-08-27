@@ -29,6 +29,7 @@ namespace sqlite_orm {
     
     template<class T, class ...Args>
     internal::get_all_t<T, Args...> get_all(Args ...args) {
-        return {std::forward<Args>(args)...};
+        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
     }
 }
