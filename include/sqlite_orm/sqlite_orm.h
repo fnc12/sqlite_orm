@@ -6401,12 +6401,30 @@ namespace sqlite_orm {
             
             conditions_type conditions;
         };
+        
+        template<class T, class ...Wargs>
+        struct update_all_t;
+        
+        template<class ...Args, class ...Wargs>
+        struct update_all_t<set_t<Args...>, Wargs...> {
+            using set_type = set_t<Args...>;
+            using conditions_type = std::tuple<Wargs...>;
+            
+            set_type set;
+            conditions_type conditions;
+        };
     }
     
     template<class T, class ...Args>
     internal::get_all_t<T, Args...> get_all(Args ...args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
+    }
+    
+    template<class ...Args, class ...Wargs>
+    internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs ...wh) {
+        std::tuple<Wargs...> conditions{std::forward<Wargs>(wh)...};
+        return {std::move(set), move(conditions)};
     }
 }
 
@@ -9037,52 +9055,8 @@ namespace sqlite_orm {
             template<class O, class C = std::vector<O>, class ...Args>
             C get_all(Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                C res;
-                auto getAll = sqlite_orm::get_all<O>(std::forward<Args>(args)...);
-                auto &impl = this->get_impl<O>();
-                auto query = this->string_from_expression(getAll, false);
-                sqlite3_stmt *stmt;
-                auto db = connection->get_db();
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    auto index = 1;
-                    iterate_ast(getAll.conditions, [stmt, &index, db](auto &node){
-                        using node_type = typename std::decay<decltype(node)>::type;
-                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                        if(SQLITE_OK != binder(node)){
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                        }
-                    });
-                    int stepRes;
-                    do{
-                        stepRes = sqlite3_step(stmt);
-                        switch(stepRes){
-                            case SQLITE_ROW:{
-                                O obj;
-                                auto index = 0;
-                                impl.table.for_each_column([&index, &obj, stmt] (auto &c) {
-                                    using field_type = typename std::decay<decltype(c)>::type::field_type;
-                                    auto value = row_extractor<field_type>().extract(stmt, index++);
-                                    if(c.member_pointer){
-                                        obj.*c.member_pointer = std::move(value);
-                                    }else{
-                                        ((obj).*(c.setter))(std::move(value));
-                                    }
-                                });
-                                res.push_back(std::move(obj));
-                            }break;
-                            case SQLITE_DONE: break;
-                            default:{
-                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                            }
-                        }
-                    }while(stepRes != SQLITE_DONE);
-                    return res;
-                }else{
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                }
+                auto statement = this->prepare(sqlite_orm::get_all<O>(std::forward<Args>(args)...));
+                return this->execute(statement);
             }
             
             /**

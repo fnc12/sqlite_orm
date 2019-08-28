@@ -25,11 +25,29 @@ namespace sqlite_orm {
             
             conditions_type conditions;
         };
+        
+        template<class T, class ...Wargs>
+        struct update_all_t;
+        
+        template<class ...Args, class ...Wargs>
+        struct update_all_t<set_t<Args...>, Wargs...> {
+            using set_type = set_t<Args...>;
+            using conditions_type = std::tuple<Wargs...>;
+            
+            set_type set;
+            conditions_type conditions;
+        };
     }
     
     template<class T, class ...Args>
     internal::get_all_t<T, Args...> get_all(Args ...args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
+    }
+    
+    template<class ...Args, class ...Wargs>
+    internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs ...wh) {
+        std::tuple<Wargs...> conditions{std::forward<Wargs>(wh)...};
+        return {std::move(set), move(conditions)};
     }
 }
