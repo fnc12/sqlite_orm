@@ -68,9 +68,8 @@ TEST_CASE("Prepared") {
             auto statement = storage.prepare(select(columns(&User::name, &User::id), where(is_equal(mod(&User::id, 2), 0)),
                                                     order_by(&User::name)));
             auto rows = storage.execute(statement);
-            std::vector<std::tuple<std::string, int>> expected = {
-                {"Shy'm", 2},
-            };
+            std::vector<std::tuple<std::string, int>> expected;
+            expected.push_back(std::make_tuple("Shy'm", 2));
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
     }
