@@ -572,6 +572,44 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            template<class ...Args, class ...Wargs>
+            std::string string_from_expression(const update_all_t<set_t<Args...>, Wargs...> &upd, bool /*noTableName*/) const {
+                std::stringstream ss;
+                ss << "UPDATE ";
+                std::set<std::pair<std::string, std::string>> tableNamesSet;
+                upd.set.for_each([this, &tableNamesSet](auto &asgn) {
+                    auto tableName = this->parse_table_name(asgn.lhs);
+                    tableNamesSet.insert(tableName.begin(), tableName.end());
+                });
+                if(!tableNamesSet.empty()){
+                    if(tableNamesSet.size() == 1){
+                        ss << " '" << tableNamesSet.begin()->first << "' ";
+                        ss << static_cast<std::string>(upd.set) << " ";
+                        std::vector<std::string> setPairs;
+                        upd.set.for_each([this, &setPairs](auto &asgn){
+                            std::stringstream sss;
+                            sss << this->string_from_expression(asgn.lhs, true);
+                            sss << " " << static_cast<std::string>(asgn) << " ";
+                            sss << this->string_from_expression(asgn.rhs, false) << " ";
+                            setPairs.push_back(sss.str());
+                        });
+                        auto setPairsCount = setPairs.size();
+                        for(size_t i = 0; i < setPairsCount; ++i) {
+                            ss << setPairs[i] << " ";
+                            if(i < setPairsCount - 1) {
+                                ss << ", ";
+                            }
+                        }
+                        this->process_conditions(ss, upd.conditions);
+                        return ss.str();
+                    }else{
+                        throw std::system_error(std::make_error_code(orm_error_code::too_many_tables_specified));
+                    }
+                }else{
+                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_set_fields_specified));
+                }
+            }
+            
             template<class T, class E>
             std::string string_from_expression(const conditions::cast_t<T, E> &c, bool noTableName) const {
                 std::stringstream ss;
@@ -2357,6 +2395,19 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class ...Args, class ...Wargs>
+            prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>> prepare(update_all_t<set_t<Args...>, Wargs...> upd) {
+                auto connection = this->get_or_create_connection();
+                sqlite3_stmt *stmt;
+                auto db = connection->get_db();
+                auto query = this->string_from_expression(upd, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(upd), stmt};
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
             template<class T, class ...Args, class R = typename column_result_t<self, T>::type>
             std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>> &statement) {
                 auto connection = this->get_or_create_connection();
@@ -2389,6 +2440,7 @@ namespace sqlite_orm {
             
             template<class T, class ...Args>
             std::vector<T> execute(const prepared_statement_t<get_all_t<T, Args...>> &statement) {
+                auto &impl = this->get_impl<T>();
                 auto connection = this->get_or_create_connection();
                 auto stmt = statement.stmt;
                 auto index = 1;
