@@ -54,7 +54,7 @@ namespace sqlite_orm {
             }
             
             template<class F>
-            void for_each(F) {
+            void for_each(F) const {
                 //..
             }
         };
@@ -71,7 +71,7 @@ namespace sqlite_orm {
             set_t(L l_, Args&& ...args) : super(std::forward<Args>(args)...), l(std::forward<L>(l_)) {}
             
             template<class F>
-            void for_each(F f) {
+            void for_each(F f) const {
                 f(l);
                 this->super::for_each(f);
             }

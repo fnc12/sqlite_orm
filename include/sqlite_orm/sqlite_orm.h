@@ -3737,7 +3737,7 @@ namespace sqlite_orm {
             }
             
             template<class F>
-            void for_each(F) {
+            void for_each(F) const {
                 //..
             }
         };
@@ -3754,7 +3754,7 @@ namespace sqlite_orm {
             set_t(L l_, Args&& ...args) : super(std::forward<Args>(args)...), l(std::forward<L>(l_)) {}
             
             template<class F>
-            void for_each(F f) {
+            void for_each(F f) const {
                 f(l);
                 this->super::for_each(f);
             }
@@ -10056,6 +10056,36 @@ namespace sqlite_orm {
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(upd), stmt};
                 }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class ...Args, class ...Wargs>
+            void execute(const prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>> &statement) {
+                auto connection = this->get_or_create_connection();
+                auto db = connection->get_db();
+                auto stmt = statement.stmt;
+                statement_finalizer finalizer{stmt};
+                auto index = 1;
+                statement.t.set.for_each([&index, stmt, db](auto &setArg){
+                    iterate_ast(setArg, [&index, stmt, db](auto &node){
+                        using node_type = typename std::decay<decltype(node)>::type;
+                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                        if(SQLITE_OK != binder(node)){
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                        }
+                    });
+                });
+                iterate_ast(statement.t.conditions, [stmt, &index, db](auto &node){
+                    using node_type = typename std::decay<decltype(node)>::type;
+                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                    if(SQLITE_OK != binder(node)){
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    }
+                });
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    //  done..
+                }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
             }

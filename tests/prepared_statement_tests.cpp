@@ -8,6 +8,12 @@ struct User {
     std::string name;
 };
 
+struct Visit {
+    int id = 0;
+    decltype(User::id) userId;
+    long time = 0;
+};
+
 bool operator==(const User &lhs, const User &rhs) {
     return lhs.id == rhs.id && lhs.name == rhs.name;
 }
@@ -24,11 +30,18 @@ TEST_CASE("Prepared") {
     auto storage = make_storage("prepared.sqlite",
                                 make_table("users",
                                            make_column("id", &User::id, primary_key(), autoincrement()),
-                                           make_column("name", &User::name)));
+                                           make_column("name", &User::name)),
+                                make_table("visits",
+                                           make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                           make_column("user_id", &Visit::userId),
+                                           make_column("time", &Visit::time),
+                                           foreign_key(&Visit::userId).references(&User::id)),
+                                make_index("user_id_index", &User::id));
     storage.on_open = [&openCount] (sqlite3 *){
         ++openCount;
     };
     storage.sync_schema();
+    storage.remove_all<User>();
     
     storage.replace(User{1, "Team BS"});
     storage.replace(User{2, "Shy'm"});
@@ -91,5 +104,15 @@ TEST_CASE("Prepared") {
             expected.push_back(User{2, "Shy'm"});
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
+    }
+    SECTION("update all") {
+        auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, "_")))));
+        storage.execute(statement);
+        auto names = storage.select(&User::name);
+        std::vector<decltype(User::name)> expected;
+        expected.push_back("Team BS_");
+        expected.push_back("Shy'm_");
+        expected.push_back("Maître Gims_");
+        REQUIRE_THAT(names, UnorderedEquals(expected));
     }
 }
