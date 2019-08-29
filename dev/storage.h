@@ -1081,72 +1081,8 @@ namespace sqlite_orm {
             
             template<class ...Args, class ...Wargs>
             void update_all(internal::set_t<Args...> set, Wargs ...wh) {
-                auto connection = this->get_or_create_connection();
-                
-                std::stringstream ss;
-                ss << "UPDATE ";
-                std::set<std::pair<std::string, std::string>> tableNamesSet;
-                set.for_each([this, &tableNamesSet](auto &asgn) {
-                    auto tableName = this->parse_table_name(asgn.lhs);
-                    tableNamesSet.insert(tableName.begin(), tableName.end());
-                });
-                if(!tableNamesSet.empty()){
-                    if(tableNamesSet.size() == 1){
-                        ss << " '" << tableNamesSet.begin()->first << "' ";
-                        ss << static_cast<std::string>(set) << " ";
-                        std::vector<std::string> setPairs;
-                        set.for_each([this, &setPairs](auto &asgn){
-                            std::stringstream sss;
-                            sss << this->string_from_expression(asgn.lhs, true);
-                            sss << " " << static_cast<std::string>(asgn) << " ";
-                            sss << this->string_from_expression(asgn.rhs, false) << " ";
-                            setPairs.push_back(sss.str());
-                        });
-                        auto setPairsCount = setPairs.size();
-                        for(size_t i = 0; i < setPairsCount; ++i) {
-                            ss << setPairs[i] << " ";
-                            if(i < setPairsCount - 1) {
-                                ss << ", ";
-                            }
-                        }
-                        auto whereArgsTuple = std::make_tuple(std::forward<Wargs>(wh)...);
-                        this->process_conditions(ss, whereArgsTuple);
-                        auto query = ss.str();
-                        sqlite3_stmt *stmt;
-                        auto db = connection->get_db();
-                        if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                            statement_finalizer finalizer{stmt};
-                            auto index = 1;
-                            set.for_each([&index, stmt, db](auto &setArg){
-                                iterate_ast(setArg, [&index, stmt, db](auto &node){
-                                    using node_type = typename std::decay<decltype(node)>::type;
-                                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                                    if(SQLITE_OK != binder(node)){
-                                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                                    }
-                                });
-                            });
-                            iterate_ast(whereArgsTuple, [stmt, &index, db](auto &node){
-                                using node_type = typename std::decay<decltype(node)>::type;
-                                conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                                if(SQLITE_OK != binder(node)){
-                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                                }
-                            });
-                            if (sqlite3_step(stmt) == SQLITE_DONE) {
-                                //  done..
-                            }else{
-                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                            }
-                        }else{
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                        }
-                    }else{
-                        throw std::system_error(std::make_error_code(orm_error_code::too_many_tables_specified));
-                    }
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_set_fields_specified));
-                }
+                auto statement = this->prepare(sqlite_orm::update_all(std::move(set), std::forward<Wargs>(wh)...));
+                this->execute(statement);
             }
             
         protected:
