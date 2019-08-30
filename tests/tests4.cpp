@@ -1,8 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
 #include <catch2/catch.hpp>
 #include <numeric>
 #include <algorithm>    //  std::count_if
+#include <iostream>
 
 using namespace sqlite_orm;
 
@@ -405,6 +405,12 @@ TEST_CASE("Iterate blob"){
         std::vector<char> key;
     };
     
+    struct TestComparator {
+        bool operator()(const Test &lhs, const Test &rhs) const {
+            return lhs.id == rhs.id && lhs.key == rhs.key;
+        }
+    };
+    
     auto db = make_storage("",
                            make_table("Test",
                                       make_column("key", &Test::key),
@@ -418,12 +424,13 @@ TEST_CASE("Iterate blob"){
     
     db.replace(v);
     
+    TestComparator testComparator;
     for(auto &obj : db.iterate<Test>()){
-        cout << db.dump(obj) << endl;
+        REQUIRE(testComparator(obj, v));
     } //  test that view_t and iterator_t compile
     
     for(const auto &obj : db.iterate<Test>()){
-        cout << db.dump(obj) << endl;
+        REQUIRE(testComparator(obj, v));
     } //  test that view_t and iterator_t compile
     
     {
@@ -437,7 +444,7 @@ TEST_CASE("Iterate blob"){
     {
         int iterationsCount = 0;
         for (auto& w : db.iterate<Test>(where(c(&Test::key) == key))) {
-            cout << w.id << endl;
+            REQUIRE(testComparator(w, v));
             ++iterationsCount;
         }
         REQUIRE(iterationsCount == 1);

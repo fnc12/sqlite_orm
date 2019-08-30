@@ -1,11 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <iostream>
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
-
-using std::cout;
-using std::endl;
 
 TEST_CASE("Empty storage"){
     auto storage = make_storage("empty.sqlite");
@@ -92,7 +88,7 @@ TEST_CASE("Select"){
     
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
-        cout << sqlite3_errmsg(db) << endl;
+//        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -109,7 +105,7 @@ TEST_CASE("Select"){
     sqlite3_bind_int(stmt, 4, 5);
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
-        cout << sqlite3_errmsg(db) << endl;
+//        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -126,7 +122,7 @@ TEST_CASE("Select"){
     sqlite3_bind_int(stmt, 4, 15);
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE){
-        cout << sqlite3_errmsg(db) << endl;
+//        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -145,7 +141,7 @@ TEST_CASE("Select"){
         sqlite3_bind_int64(stmt, 1, firstId);
         rc = sqlite3_step(stmt);
         if(rc != SQLITE_ROW){
-            cout << sqlite3_errmsg(db) << endl;
+//            cout << sqlite3_errmsg(db) << endl;
             throw std::runtime_error(sqlite3_errmsg(db));
         }
         REQUIRE(sqlite3_column_int(stmt, 0) == firstId);
@@ -400,7 +396,7 @@ TEST_CASE("Insert"){
         },
     };
     
-    cout << "inserting range" << endl;
+//    cout << "inserting range" << endl;
     auto countBefore = storage.count<Object>();
     storage.insert_range(initList.begin(),
                          initList.end());

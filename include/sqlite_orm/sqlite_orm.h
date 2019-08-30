@@ -8277,10 +8277,20 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class T, class ...Args>
+            std::string string_from_expression(const remove_all_t<T, Args...> &rem, bool /*noTableName*/) const {
+                auto &impl = this->get_impl<T>();
+                std::stringstream ss;
+                ss << "DELETE FROM '" << impl.table.name << "' ";
+                this->process_conditions(ss, rem.conditions);
+                return ss.str();
+            }
+            
             template<class T, class E>
             std::string string_from_expression(const conditions::cast_t<T, E> &c, bool noTableName) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ( " << this->string_from_expression(c.expression, noTableName) << " AS " << type_printer<T>().print() << ") ";
+                ss << static_cast<std::string>(c) << " (";
+                ss << this->string_from_expression(c.expression, noTableName) << " AS " << type_printer<T>().print() << ")";
                 return ss.str();
             }
             
@@ -8290,7 +8300,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << this->string_from_expression(op.left, noTableName) << " ";
                 ss << static_cast<std::string>(op) << " ";
-                ss << this->string_from_expression(op.right, noTableName) << " ";
+                ss << this->string_from_expression(op.right, noTableName);
                 return ss.str();
             }
             
@@ -8586,34 +8596,8 @@ namespace sqlite_orm {
             template<class O, class ...Args>
             void remove_all(Args&& ...args) {
                 this->assert_mapped_type<O>();
-                
-                auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<O>();
-                std::stringstream ss;
-                ss << "DELETE FROM '" << impl.table.name << "' ";
-                auto argsTuple = std::make_tuple(std::forward<Args>(args)...);
-                this->process_conditions(ss, argsTuple);
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                auto db = connection->get_db();
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    auto index = 1;
-                    iterate_ast(argsTuple, [stmt, &index, db](auto &node){
-                        using node_type = typename std::decay<decltype(node)>::type;
-                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                        if(SQLITE_OK != binder(node)){
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                        }
-                    });
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
-                    }
-                }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
-                }
+                auto statement = this->prepare(sqlite_orm::remove_all<O>(std::forward<Args>(args)...));
+                this->execute(statement);
             }
             
             /**
@@ -10021,6 +10005,27 @@ namespace sqlite_orm {
                     return {std::move(rem), stmt};
                 }else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class T, class ...Args>
+            void execute(const prepared_statement_t<remove_all_t<T, Args...>> &statement) {
+                auto connection = this->get_or_create_connection();
+                auto db = connection->get_db();
+                auto stmt = statement.stmt;
+                statement_finalizer finalizer{stmt};
+                auto index = 1;
+                iterate_ast(statement.t.conditions, [stmt, &index, db](auto &node){
+                    using node_type = typename std::decay<decltype(node)>::type;
+                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                    if(SQLITE_OK != binder(node)){
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    }
+                });
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    //  done..
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
             }
             
