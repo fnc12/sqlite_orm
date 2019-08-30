@@ -27,7 +27,9 @@ TEST_CASE("Prepared") {
     
     auto openCount = 0;
     
+    remove("prepared.sqlite");
     auto storage = make_storage("prepared.sqlite",
+                                make_index("user_id_index", &User::id),
                                 make_table("users",
                                            make_column("id", &User::id, primary_key(), autoincrement()),
                                            make_column("name", &User::name)),
@@ -35,8 +37,7 @@ TEST_CASE("Prepared") {
                                            make_column("id", &Visit::id, primary_key(), autoincrement()),
                                            make_column("user_id", &Visit::userId),
                                            make_column("time", &Visit::time),
-                                           foreign_key(&Visit::userId).references(&User::id)),
-                                make_index("user_id_index", &User::id));
+                                           foreign_key(&Visit::userId).references(&User::id)));
     storage.on_open = [&openCount] (sqlite3 *){
         ++openCount;
     };

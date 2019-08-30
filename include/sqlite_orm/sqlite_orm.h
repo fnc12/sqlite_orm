@@ -6413,6 +6413,21 @@ namespace sqlite_orm {
             set_type set;
             conditions_type conditions;
         };
+        
+        template<class T, class ...Args>
+        struct remove_all_t {
+            using type = T;
+            
+            using conditions_type = std::tuple<Args...>;
+            
+            conditions_type conditions;
+        };
+    }
+    
+    template<class T, class ...Args>
+    internal::remove_all_t<T, Args...> remove_all(Args ...args) {
+        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
     }
     
     template<class T, class ...Args>
@@ -8707,7 +8722,7 @@ namespace sqlite_orm {
                     impl.table.for_each_column([&o, stmt, &index, db] (auto &c) {
                         if(c.template has<constraints::primary_key_t<>>()) {
                             using column_type = typename std::decay<decltype(c)>::type;
-                            using field_type = typename std::decay<decltype(c)>::type::field_type;
+                            using field_type = typename column_type::field_type;
                             if(c.member_pointer){
                                 if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
                                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
@@ -9991,6 +10006,19 @@ namespace sqlite_orm {
                 auto query = this->string_from_expression(upd, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(upd), stmt};
+                }else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class T, class ...Args>
+            prepared_statement_t<remove_all_t<T, Args...>> prepare(remove_all_t<T, Args...> rem) {
+                auto connection = this->get_or_create_connection();
+                sqlite3_stmt *stmt;
+                auto db = connection->get_db();
+                auto query = this->string_from_expression(rem, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(rem), stmt};
                 }else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }

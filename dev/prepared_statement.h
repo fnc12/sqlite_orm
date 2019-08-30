@@ -37,6 +37,21 @@ namespace sqlite_orm {
             set_type set;
             conditions_type conditions;
         };
+        
+        template<class T, class ...Args>
+        struct remove_all_t {
+            using type = T;
+            
+            using conditions_type = std::tuple<Args...>;
+            
+            conditions_type conditions;
+        };
+    }
+    
+    template<class T, class ...Args>
+    internal::remove_all_t<T, Args...> remove_all(Args ...args) {
+        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
     }
     
     template<class T, class ...Args>
