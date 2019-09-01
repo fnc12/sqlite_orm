@@ -46,6 +46,21 @@ namespace sqlite_orm {
             
             conditions_type conditions;
         };
+        
+        template<class T, class ...Ids>
+        struct get_t {
+            using type = T;
+            
+            using ids_type = std::tuple<Ids...>;
+            
+            ids_type ids;
+        };
+    }
+    
+    template<class T, class ...Ids>
+    internal::get_t<T, Ids...> get(Ids ...ids) {
+        std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
+        return {move(idsTuple)};
     }
     
     template<class T, class ...Args>

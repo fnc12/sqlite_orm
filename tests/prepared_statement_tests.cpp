@@ -160,4 +160,30 @@ TEST_CASE("Prepared") {
         expected.push_back(3);
         REQUIRE_THAT(ids, UnorderedEquals(expected));
     }
+    SECTION("get") {
+        {
+            auto statement = storage.prepare(get<User>(1));
+            auto user = storage.execute(statement);
+            REQUIRE(user == User{1, "Team BS"});
+        }
+        {
+            auto statement = storage.prepare(get<User>(2));
+            auto user = storage.execute(statement);
+            REQUIRE(user == User{2, "Shy'm"});
+        }
+        {
+            auto statement = storage.prepare(get<User>(3));
+            auto user = storage.execute(statement);
+            REQUIRE(user == User{3, "Maître Gims"});
+        }
+        {
+            auto statement = storage.prepare(get<User>(4));
+            try {
+                auto user = storage.execute(statement);
+                REQUIRE(false);
+            } catch (const std::system_error &e) {
+                //..
+            }
+        }
+    }
 }

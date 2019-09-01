@@ -104,8 +104,6 @@ TEST_CASE("Case"){
                               order_by(&Track::name));
         verifyRows(rows);
     }
-    
-    
 }
 
 TEST_CASE("Unique ptr in update"){
