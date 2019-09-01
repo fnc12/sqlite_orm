@@ -55,6 +55,20 @@ namespace sqlite_orm {
             
             ids_type ids;
         };
+        
+        template<class T>
+        struct update_t {
+            using type = T;
+            
+            const type &obj;
+            
+            update_t(decltype(obj) obj_) : obj(obj_) {}
+        };
+    }
+    
+    template<class T>
+    internal::update_t<T> update(const T &obj) {
+        return {obj};
     }
     
     template<class T, class ...Ids>

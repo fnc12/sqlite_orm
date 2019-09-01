@@ -29,7 +29,7 @@ TEST_CASE("Prepared") {
     
     remove("prepared.sqlite");
     auto storage = make_storage("prepared.sqlite",
-//                                make_index("user_id_index", &User::id),
+                                make_index("user_id_index", &User::id),
                                 make_table("users",
                                            make_column("id", &User::id, primary_key(), autoincrement()),
                                            make_column("name", &User::name)),
@@ -185,5 +185,13 @@ TEST_CASE("Prepared") {
                 //..
             }
         }
+    }
+    SECTION("update") {
+        User user{2, "Stromae"};
+        auto statement = storage.prepare(update(user));
+        storage.execute(statement);
+        REQUIRE(storage.get<User>(2) == user);
+        auto names = storage.select(&User::name);
+        REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
     }
 }
