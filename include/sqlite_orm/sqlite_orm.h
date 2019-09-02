@@ -8727,7 +8727,7 @@ namespace sqlite_orm {
             template<class O, class ...Ids>
             void remove(Ids ...ids) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::remove<O>(std::forward<Args>(args)...));
+                auto statement = this->prepare(sqlite_orm::remove<O>(std::forward<Ids>(ids)...));
                 this->execute(statement);
             }
             
