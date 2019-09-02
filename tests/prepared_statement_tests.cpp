@@ -194,4 +194,30 @@ TEST_CASE("Prepared") {
         auto names = storage.select(&User::name);
         REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
     }
+    SECTION("remove") {
+        {
+            auto statement = storage.prepare(remove<User>(1));
+            storage.execute(statement);
+            REQUIRE(storage.get_pointer<User>(1) == nullptr);
+            REQUIRE(storage.get_pointer<User>(2) != nullptr);
+            REQUIRE(storage.get_pointer<User>(3) != nullptr);
+            REQUIRE(storage.count<User>() == 2);
+        }
+        {
+            auto statement = storage.prepare(remove<User>(2));
+            storage.execute(statement);
+            REQUIRE(storage.get_pointer<User>(1) == nullptr);
+            REQUIRE(storage.get_pointer<User>(2) == nullptr);
+            REQUIRE(storage.get_pointer<User>(3) != nullptr);
+            REQUIRE(storage.count<User>() == 1);
+        }
+        {
+            auto statement = storage.prepare(remove<User>(3));
+            storage.execute(statement);
+            REQUIRE(storage.get_pointer<User>(1) == nullptr);
+            REQUIRE(storage.get_pointer<User>(2) == nullptr);
+            REQUIRE(storage.get_pointer<User>(3) == nullptr);
+            REQUIRE(storage.count<User>() == 0);
+        }
+    }
 }

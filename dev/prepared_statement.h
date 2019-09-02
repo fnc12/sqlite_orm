@@ -64,6 +64,21 @@ namespace sqlite_orm {
             
             update_t(decltype(obj) obj_) : obj(obj_) {}
         };
+        
+        template<class T, class ...Ids>
+        struct remove_t {
+            using type = T;
+            
+            using ids_type = std::tuple<Ids...>;
+            
+            ids_type ids;
+        };
+    }
+    
+    template<class T, class ...Ids>
+    internal::remove_t<T, Ids...> remove(Ids ...ids) {
+        std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
+        return {move(idsTuple)};
     }
     
     template<class T>
