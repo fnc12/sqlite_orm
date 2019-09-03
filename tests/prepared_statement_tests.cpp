@@ -236,4 +236,25 @@ TEST_CASE("Prepared") {
         }
         REQUIRE(insertedId == 4);
     }
+    SECTION("replace") {
+        std::vector<User> expected;
+        User user;
+        SECTION("existing") {
+            user = {1, "Stromae"};
+            expected.push_back(User{1, "Stromae"});
+            expected.push_back(User{2, "Shy'm"});
+            expected.push_back(User{3, "Maître Gims"});
+        }
+        SECTION("new") {
+            user = {4, "Stromae"};
+            expected.push_back(User{1, "Team BS"});
+            expected.push_back(User{2, "Shy'm"});
+            expected.push_back(User{3, "Maître Gims"});
+            expected.push_back(User{4, "Stromae"});
+        }
+        auto statement = storage.prepare(replace(user));
+        storage.execute(statement);
+        auto rows = storage.get_all<User>();
+        REQUIRE_THAT(rows, UnorderedEquals(expected));
+    }
 }

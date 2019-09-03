@@ -82,6 +82,20 @@ namespace sqlite_orm {
             
             insert_t(decltype(obj) obj_) : obj(obj_) {}
         };
+        
+        template<class T>
+        struct replace_t {
+            using type = T;
+            
+            const type &obj;
+            
+            replace_t(decltype(obj) obj_) : obj(obj_) {}
+        };
+    }
+    
+    template<class T>
+    internal::replace_t<T> replace(const T &obj) {
+        return {obj};
     }
     
     template<class T>
