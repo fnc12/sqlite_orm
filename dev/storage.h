@@ -694,6 +694,55 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            template<class T>
+            std::string string_from_expression(const insert_t<T> &ins, bool /*noTableName*/) const {
+                auto &impl = this->get_impl<T>();
+                std::stringstream ss;
+                ss << "INSERT INTO '" << impl.table.name << "' ";
+                std::vector<std::string> columnNames;
+                auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
+                
+                impl.table.for_each_column([&impl, &columnNames, &compositeKeyColumnNames] (auto &c) {
+                    if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
+                        auto it = std::find(compositeKeyColumnNames.begin(),
+                                            compositeKeyColumnNames.end(),
+                                            c.name);
+                        if(it == compositeKeyColumnNames.end()){
+                            columnNames.emplace_back(c.name);
+                        }
+                    }
+                });
+                
+                auto columnNamesCount = columnNames.size();
+                if(columnNamesCount){
+                    ss << "( ";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "\"" << columnNames[i] << "\"";
+                        if(i < columnNamesCount - 1) {
+                            ss << ",";
+                        }else{
+                            ss << ")";
+                        }
+                        ss << " ";
+                    }
+                }else{
+                    ss << "DEFAULT ";
+                }
+                ss << "VALUES ";
+                if(columnNamesCount){
+                    ss << "( ";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "?";
+                        if(i < columnNamesCount - 1) {
+                            ss << ", ";
+                        }else{
+                            ss << ")";
+                        }
+                    }
+                }
+                return ss.str();
+            }
+            
             template<class T, class E>
             std::string string_from_expression(const conditions::cast_t<T, E> &c, bool noTableName) const {
                 std::stringstream ss;
@@ -1868,88 +1917,20 @@ namespace sqlite_orm {
             template<class O>
             int insert(const O &o) {
                 this->assert_mapped_type<O>();
-                
+                auto openedForever = this->isOpenedForever;
+                this->isOpenedForever = true;   //  to keep a connection without a transaction
+                auto tempTransactionIsCreatedHere = false;
+                if(!this->currentTransaction){
+                    this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
+                    this->on_open_internal(this->currentTransaction->get_db());
+                    tempTransactionIsCreatedHere = true;
+                }
                 auto connection = this->get_or_create_connection();
-                auto &impl = this->get_impl<O>();
-                int res = 0;
-                std::stringstream ss;
-                ss << "INSERT INTO '" << impl.table.name << "' ";
-                std::vector<std::string> columnNames;
-                auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
-                
-                impl.table.for_each_column([&impl, &columnNames, &compositeKeyColumnNames] (auto &c) {
-                    if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
-                        auto it = std::find(compositeKeyColumnNames.begin(),
-                                            compositeKeyColumnNames.end(),
-                                            c.name);
-                        if(it == compositeKeyColumnNames.end()){
-                            columnNames.emplace_back(c.name);
-                        }
-                    }
-                });
-                
-                auto columnNamesCount = columnNames.size();
-                if(columnNamesCount){
-                    ss << "( ";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "\"" << columnNames[i] << "\"";
-                        if(i < columnNamesCount - 1) {
-                            ss << ",";
-                        }else{
-                            ss << ")";
-                        }
-                        ss << " ";
-                    }
-                }else{
-                    ss << "DEFAULT ";
-                }
-                ss << "VALUES ";
-                if(columnNamesCount){
-                    ss << "( ";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss << ", ";
-                        }else{
-                            ss << ")";
-                        }
-                    }
-                }
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                auto db = connection->get_db();
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    auto index = 1;
-                    impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db] (auto &c) {
-                        if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()){
-                            auto it = std::find(compositeKeyColumnNames.begin(),
-                                                compositeKeyColumnNames.end(),
-                                                c.name);
-                            if(it == compositeKeyColumnNames.end()){
-                                using column_type = typename std::decay<decltype(c)>::type;
-                                using field_type = typename column_type::field_type;
-                                if(c.member_pointer){
-                                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
-                                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                                    }
-                                }else{
-                                    using getter_type = typename column_type::getter_type;
-                                    field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
-                                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
-                                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                                    }
-                                }
-                            }
-                        }
-                    });
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        res = int(sqlite3_last_insert_rowid(connection->get_db()));
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                    }
-                }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                auto statement = this->prepare(sqlite_orm::insert(o));
+                auto res = int(this->execute(statement));
+                this->isOpenedForever = openedForever;
+                if(tempTransactionIsCreatedHere){
+                    this->currentTransaction = {};
                 }
                 return res;
             }
@@ -2283,6 +2264,60 @@ namespace sqlite_orm {
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
+            }
+            
+            template<class T>
+            prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
+                auto connection = this->get_or_create_connection();
+                sqlite3_stmt *stmt;
+                auto db = connection->get_db();
+                auto query = this->string_from_expression(ins, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(ins), stmt};
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class T>
+            int64 execute(const prepared_statement_t<insert_t<T>> &statement) {
+                int64 res = 0;
+                auto connection = this->get_or_create_connection();
+                auto db = connection->get_db();
+                auto stmt = statement.stmt;
+                statement_finalizer finalizer{stmt};
+                auto index = 1;
+                auto &impl = this->get_impl<T>();
+                auto &o = statement.t.obj;
+                auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
+                impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db] (auto &c) {
+                    if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()){
+                        auto it = std::find(compositeKeyColumnNames.begin(),
+                                            compositeKeyColumnNames.end(),
+                                            c.name);
+                        if(it == compositeKeyColumnNames.end()){
+                            using column_type = typename std::decay<decltype(c)>::type;
+                            using field_type = typename column_type::field_type;
+                            if(c.member_pointer){
+                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
+                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                                }
+                            }else{
+                                using getter_type = typename column_type::getter_type;
+                                field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
+                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                                }
+                            }
+                        }
+                    }
+                });
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    res = sqlite3_last_insert_rowid(connection->get_db());
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+                return res;
             }
             
             template<class T, class ...Ids>

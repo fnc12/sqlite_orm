@@ -73,6 +73,20 @@ namespace sqlite_orm {
             
             ids_type ids;
         };
+        
+        template<class T>
+        struct insert_t {
+            using type = T;
+            
+            const type &obj;
+            
+            insert_t(decltype(obj) obj_) : obj(obj_) {}
+        };
+    }
+    
+    template<class T>
+    internal::insert_t<T> insert(const T &obj) {
+        return {obj};
     }
     
     template<class T, class ...Ids>

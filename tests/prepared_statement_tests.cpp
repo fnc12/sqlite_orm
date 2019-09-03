@@ -220,4 +220,20 @@ TEST_CASE("Prepared") {
             REQUIRE(storage.count<User>() == 0);
         }
     }
+    SECTION("insert") {
+        User user{0, "Stromae"};
+        auto guard = storage.transaction_guard();   //  TODO: remove
+        auto statement = storage.prepare(insert(user));
+        auto insertedId = storage.execute(statement);
+        {
+            auto rows = storage.get_all<User>();
+            std::vector<User> expected;
+            expected.push_back(User{1, "Team BS"});
+            expected.push_back(User{2, "Shy'm"});
+            expected.push_back(User{3, "Maître Gims"});
+            expected.push_back(User{4, user.name});
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+        REQUIRE(insertedId == 4);
+    }
 }
