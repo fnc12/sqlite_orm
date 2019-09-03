@@ -7,16 +7,12 @@
 #include <cassert>  //  assert
 #include <vector>   //  std::vector
 #include <string>   //  std::string
-#include <iostream> //  std::cout, std::endl
 #include <memory>   //  std::unique_ptr
 #include <cstdio>   //  remove
 #include <numeric>  //  std::iota
 #include <algorithm>    //  std::fill
 
 using namespace sqlite_orm;
-
-using std::cout;
-using std::endl;
 
 TEST_CASE("Join iterator ctor compilation error") {
     //  TODO: move to static tests
@@ -326,12 +322,12 @@ TEST_CASE("Custom collate"){
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
     } catch (const std::system_error& e) {
-        cout << e.what() << endl;
+//        cout << e.what() << endl;
     }
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
     } catch (const std::system_error& e) {
-        cout << e.what() << endl;
+//        cout << e.what() << endl;
     }
     rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                                              order_by(&Item::name).collate_rtrim());
