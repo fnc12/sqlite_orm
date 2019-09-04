@@ -481,7 +481,7 @@ namespace sqlite_orm {
             }
             
             template<class S>
-            std::string process_order_by(const conditions::dynamic_order_by_t<S> &orderBy) const {
+            std::string string_from_expression(const conditions::dynamic_order_by_t<S> &orderBy, bool /*noTableName*/) const {
                 std::vector<std::string> expressions;
                 for(auto &entry : orderBy){
                     std::string entryString;
