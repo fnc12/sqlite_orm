@@ -19,6 +19,7 @@
 #include "type_printer.h"
 #include "tuple_helper.h"
 #include "row_extractor.h"
+#include "connection_holder.h"
 
 namespace sqlite_orm {
     
@@ -35,42 +36,42 @@ namespace sqlite_orm {
                 this->begin_transaction();
                 auto commitFunc = std::bind(static_cast<void(storage_base::*)()>(&storage_base::commit), this);
                 auto rollbackFunc = std::bind(static_cast<void(storage_base::*)()>(&storage_base::rollback), this);
-                return {move(commitFunc), move(rollbackFunc)};
+                return {connection_ref{*this->connection}, move(commitFunc), move(rollbackFunc)};
             }
             
             void drop_index(const std::string &indexName) {
-                auto connection = this->get_or_create_connection();
+                connection_ref con{*this->connection};
+                auto db = con.get();
                 std::stringstream ss;
                 ss << "DROP INDEX '" << indexName + "'";
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                     }
                 }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
             }
             
             void vacuum() {
-                auto connection = this->get_or_create_connection();
+                connection_ref con{*this->connection};
+                auto db = con.get();
                 std::string query = "VACUUM";
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                     }
                 }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
             }
             
@@ -78,34 +79,34 @@ namespace sqlite_orm {
              *  Drops table with given name.
              */
             void drop_table(const std::string &tableName) {
-                auto connection = this->get_or_create_connection();
-                this->drop_table_internal(tableName, connection->get_db());
+                connection_ref con{*this->connection};
+                this->drop_table_internal(tableName, con.get());
             }
             
             /**
              *  sqlite3_changes function.
              */
             int changes() {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_changes(connection->get_db());
+                connection_ref con{*this->connection};
+                return sqlite3_changes(con.get());
             }
             
             /**
              *  sqlite3_total_changes function.
              */
             int total_changes() {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_total_changes(connection->get_db());
+                connection_ref con{*this->connection};
+                return sqlite3_total_changes(con.get());
             }
             
             int64 last_insert_rowid() {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_last_insert_rowid(connection->get_db());
+                connection_ref con{*this->connection};
+                return sqlite3_last_insert_rowid(con.get());
             }
             
             int busy_timeout(int ms) {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_busy_timeout(connection->get_db(), ms);
+                connection_ref con{*this->connection};
+                return sqlite3_busy_timeout(con.get(), ms);
             }
             
             /**
@@ -117,22 +118,20 @@ namespace sqlite_orm {
             
             bool transaction(std::function<bool()> f) {
                 this->begin_transaction();
-                auto db = this->currentTransaction->get_db();
+                connection_ref con{*this->connection};
+                auto db = con.get();
                 auto shouldCommit = f();
                 if(shouldCommit){
                     this->commit(db);
                 }else{
                     this->rollback(db);
                 }
-                if(!this->inMemory && !this->isOpenedForever){
-                    this->currentTransaction = nullptr;
-                }
                 return shouldCommit;
             }
             
             std::string current_timestamp() {
-                auto connection = this->get_or_create_connection();
-                return this->current_timestamp(connection->get_db());
+                connection_ref con{*this->connection};
+                return this->current_timestamp(con.get());
             }
             
 #if SQLITE_VERSION_NUMBER >= 3007010
@@ -143,8 +142,8 @@ namespace sqlite_orm {
              * \note sqlite3_db_release_memory added in 3.7.10 https://sqlite.org/changes.html
              */
             int db_release_memory() {
-                auto connection = this->get_or_create_connection();
-                return sqlite3_db_release_memory(connection->get_db());
+                connection_ref con{*this->connection};
+                return sqlite3_db_release_memory(con.get());
             }
 #endif
             
@@ -153,14 +152,14 @@ namespace sqlite_orm {
              *  @return Returns list of tables in database.
              */
             std::vector<std::string> table_names() {
-                auto connection = this->get_or_create_connection();
+                connection_ref con{*this->connection};
                 std::vector<std::string> tableNames;
                 std::string sql = "SELECT name FROM sqlite_master WHERE type='table'";
-                using Data = std::vector<std::string>;
-                auto db = connection->get_db();
+                using data_t = std::vector<std::string>;
+                auto db = con.get();
                 int res = sqlite3_exec(db, sql.c_str(),
                                        [] (void *data, int argc, char **argv, char ** /*columnName*/) -> int {
-                                           auto& tableNames = *(Data*)data;
+                                           auto& tableNames = *(data_t*)data;
                                            for(int i = 0; i < argc; i++) {
                                                if(argv[i]){
                                                    tableNames.push_back(argv[i]);
@@ -170,16 +169,16 @@ namespace sqlite_orm {
                                        }, &tableNames,nullptr);
                 
                 if(res != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
                 return tableNames;
             }
             
             void open_forever() {
                 this->isOpenedForever = true;
-                if(!this->currentTransaction){
-                    this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
-                    this->on_open_internal(this->currentTransaction->get_db());
+                this->connection->retain();
+                if(1 == this->connection->retain_count()){
+                    this->on_open_internal(this->connection->get());
                 }
             }
             
@@ -192,8 +191,8 @@ namespace sqlite_orm {
                 }
                 
                 //  create collations if db is open
-                if(this->currentTransaction){
-                    auto db = this->currentTransaction->get_db();
+                if(this->connection->retain_count() > 0){
+                    auto db = this->connection->get();
                     if(sqlite3_create_collation(db,
                                                 name.c_str(),
                                                 SQLITE_UTF8,
@@ -206,70 +205,78 @@ namespace sqlite_orm {
             }
             
             void begin_transaction() {
-                if(!this->inMemory){
-                    if(!this->isOpenedForever){
-                        if(this->currentTransaction) {
-                            throw std::system_error(std::make_error_code(orm_error_code::cannot_start_a_transaction_within_a_transaction));
-                        }
-                        this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
-                        this->on_open_internal(this->currentTransaction->get_db());
-                    }
+                this->connection->retain();
+                if(1 == this->connection->retain_count()){
+                    this->on_open_internal(this->connection->get());
                 }
-                auto db = this->currentTransaction->get_db();
+                auto db = this->connection->get();
                 this->begin_transaction(db);
             }
             
             void commit() {
-                if(!this->inMemory){
-                    if(!this->currentTransaction){
-                        throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
-                    }
-                }
-                auto db = this->currentTransaction->get_db();
+                auto db = this->connection->get();
                 this->commit(db);
-                if(!this->inMemory && !this->isOpenedForever){
-                    this->currentTransaction = nullptr;
+                this->connection->release();
+                if(this->connection->retain_count() < 0){
+                    throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
                 }
             }
             
             void rollback() {
-                if(!this->inMemory){
-                    if(!this->currentTransaction){
-                        throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
-                    }
-                }
-                auto db = this->currentTransaction->get_db();
+                auto db = this->connection->get();
                 this->rollback(db);
-                if(!this->inMemory && !this->isOpenedForever){
-                    this->currentTransaction = nullptr;
+                this->connection->release();
+                if(this->connection->retain_count() < 0){
+                    throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
                 }
             }
             
         protected:
             
             storage_base(const std::string &filename_, int foreignKeysCount):
-            pragma(std::bind(&storage_base::get_or_create_connection, this)),
-            limit(std::bind(&storage_base::get_or_create_connection, this)),
-            filename(filename_),
-            inMemory(filename.empty() || filename == ":memory:"),
+            pragma(std::bind(&storage_base::get_connection, this)),
+            limit(std::bind(&storage_base::get_connection, this)),
+            inMemory(filename_.empty() || filename_ == ":memory:"),
+            connection(std::make_unique<connection_holder>(filename_)),
             cachedForeignKeysCount(foreignKeysCount)
-            {}
+            {
+                if(this->inMemory){
+                    this->connection->retain();
+                    this->on_open_internal(this->connection->get());
+                }
+            }
             
             storage_base(const storage_base &other):
             on_open(other.on_open),
-            pragma(std::bind(&storage_base::get_or_create_connection, this)),
-            limit(std::bind(&storage_base::get_or_create_connection, this)),
-            filename(other.filename),
+            pragma(std::bind(&storage_base::get_connection, this)),
+            limit(std::bind(&storage_base::get_connection, this)),
             inMemory(other.inMemory),
+            connection(std::make_unique<connection_holder>(other.connection->filename)),
             cachedForeignKeysCount(other.cachedForeignKeysCount)
             {}
             
-            std::string filename;
+            ~storage_base() {
+                if(this->isOpenedForever) {
+                    this->connection->release();
+                }
+                if(this->inMemory){
+                    this->connection->release();
+                }
+            }
+            
             const bool inMemory;
             bool isOpenedForever = false;
-            std::shared_ptr<internal::database_connection> currentTransaction;
+            std::unique_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
+            
+            connection_ref get_connection() {
+                connection_ref res{*this->connection};
+                if(1 == this->connection->retain_count()){
+                    this->on_open_internal(this->connection->get());
+                }
+                return res;
+            }
             
 #if SQLITE_VERSION_NUMBER >= 3006019
             
@@ -306,16 +313,16 @@ namespace sqlite_orm {
              *  Check whether connection exists and returns it if yes or creates a new one
              *  and returns it.
              */
-            std::shared_ptr<internal::database_connection> get_or_create_connection() {
-                decltype(this->currentTransaction) connection;
-                if(!this->currentTransaction){
+            /*std::shared_ptr<internal::database_connection> get_or_create_connection() {
+                decltype(this->current_transaction) connection;
+                if(!this->current_transaction){
                     connection = std::make_shared<internal::database_connection>(this->filename);
                     this->on_open_internal(connection->get_db());
                 }else{
-                    connection = this->currentTransaction;
+                    connection = this->current_transaction;
                 }
                 return connection;
-            }
+            }*/
             
             template<class O, class T, class G, class S, class ...Op>
             std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {

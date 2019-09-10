@@ -69,12 +69,8 @@ namespace sqlite_orm {
              */
             storage_t(const std::string &filename, impl_type impl_):
             storage_base{filename, foreign_keys_count(impl_)},
-            impl(std::move(impl_)){
-                if(inMemory){
-                    this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
-                    this->on_open_internal(this->currentTransaction->get_db());
-                }
-            }
+            impl(std::move(impl_))
+            {}
             
             storage_t(const storage_t &other):
             storage_base(other),
@@ -1074,8 +1070,8 @@ namespace sqlite_orm {
             view_t<T, self, Args...> iterate(Args&& ...args) {
                 this->assert_mapped_type<T>();
                 
-                auto connection = this->get_or_create_connection();
-                return {*this, connection, std::forward<Args>(args)...};
+                auto con = this->get_connection();
+                return {*this, std::move(con), std::forward<Args>(args)...};
             }
             
             template<class O, class ...Args>
@@ -1435,7 +1431,7 @@ namespace sqlite_orm {
             std::unique_ptr<O> get_pointer(Ids ...ids) {
                 this->assert_mapped_type<O>();
                 
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 auto &impl = this->get_impl<O>();
                 std::unique_ptr<O> res;
                 std::stringstream ss;
@@ -1461,7 +1457,7 @@ namespace sqlite_orm {
                     }
                     auto query = ss.str();
                     sqlite3_stmt *stmt;
-                    auto db = connection->get_db();
+                    auto db = con.get();
                     if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                         statement_finalizer finalizer{stmt};
                         auto index = 1;
@@ -1689,9 +1685,9 @@ namespace sqlite_orm {
                 using select_type = select_t<T, Args...>;
                 select_type sel{std::move(m), std::make_tuple<Args...>(std::forward<Args>(args)...), true};
                 auto query = this->string_from_expression(sel, false);
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
@@ -1753,7 +1749,7 @@ namespace sqlite_orm {
                     return;
                 }
                 
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 auto &impl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "REPLACE INTO '" << impl.table.name << "' (";
@@ -1791,7 +1787,7 @@ namespace sqlite_orm {
                 }
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
@@ -1828,7 +1824,7 @@ namespace sqlite_orm {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 auto &impl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "INSERT INTO '" << impl.table.name << "' ";
@@ -1864,7 +1860,7 @@ namespace sqlite_orm {
                 }
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
@@ -1877,7 +1873,7 @@ namespace sqlite_orm {
                         }
                     });
                     if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        return int(sqlite3_last_insert_rowid(connection->get_db()));
+                        return int(sqlite3_last_insert_rowid(db));
                     }else{
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                     }
@@ -1894,21 +1890,21 @@ namespace sqlite_orm {
             template<class O>
             int insert(const O &o) {
                 this->assert_mapped_type<O>();
-                auto openedForever = this->isOpenedForever;
-                this->isOpenedForever = true;   //  to keep a connection without a transaction
-                auto tempTransactionIsCreatedHere = false;
-                if(!this->currentTransaction){
-                    this->currentTransaction = std::make_shared<internal::database_connection>(this->filename);
-                    this->on_open_internal(this->currentTransaction->get_db());
+//                auto openedForever = this->isOpenedForever;
+//                this->isOpenedForever = true;   //  to keep a connection without a transaction
+                /*auto tempTransactionIsCreatedHere = false;
+                if(!this->current_transaction){
+                    this->current_transaction = std::make_shared<internal::database_connection>(this->filename);
+                    this->on_open_internal(this->current_transaction->get_db());
                     tempTransactionIsCreatedHere = true;
-                }
-                auto connection = this->get_or_create_connection();
+                }*/
+//                auto connection = this->get_or_create_connection();
                 auto statement = this->prepare(sqlite_orm::insert(o));
                 auto res = int(this->execute(statement));
-                this->isOpenedForever = openedForever;
+                /*this->isOpenedForever = openedForever;
                 if(tempTransactionIsCreatedHere){
-                    this->currentTransaction = {};
-                }
+                    this->current_transaction = {};
+                }*/
                 return res;
             }
             
@@ -1920,7 +1916,7 @@ namespace sqlite_orm {
                     return;
                 }
                 
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 auto &impl = this->get_impl<O>();
                 
                 std::stringstream ss;
@@ -1965,7 +1961,7 @@ namespace sqlite_orm {
                 }
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
                     auto index = 1;
@@ -2116,9 +2112,9 @@ namespace sqlite_orm {
              *  table state after syncing a schema. `sync_schema_result` can be printed out on std::ostream with `operator<<`.
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                auto db = connection->get_db();
+                auto db = con.get();
                 this->impl.for_each([&result, db, preserve, this](auto impl){
                     auto res = this->sync_table(impl, db, preserve);
                     result.insert({impl->table.name, res});
@@ -2132,9 +2128,9 @@ namespace sqlite_orm {
              *  what will happen if you sync your schema.
              */
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                auto db = connection->get_db();
+                auto db = con.get();
                 this->impl.for_each([&result, db, preserve](auto impl){
                     result.insert({impl->table.name, impl->schema_status(db, preserve)});
                 });
@@ -2147,19 +2143,19 @@ namespace sqlite_orm {
              *  @return true if table with a given name exists in db, false otherwise.
              */
             bool table_exists(const std::string &tableName) {
-                auto connection = this->get_or_create_connection();
-                return this->impl.table_exists(tableName, connection->get_db());
+                auto con = this->get_connection();
+                return this->impl.table_exists(tableName, con.get());
             }
             
             template<class T, class ...Args>
             prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> sel) {
                 sel.highest_level = true;
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(sel, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(sel), stmt};
+                    return {std::move(sel), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2167,12 +2163,12 @@ namespace sqlite_orm {
             
             template<class T, class ...Args>
             prepared_statement_t<get_all_t<T, Args...>> prepare(get_all_t<T, Args...> get) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(get, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(get), stmt};
+                    return {std::move(get), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2180,12 +2176,12 @@ namespace sqlite_orm {
             
             template<class ...Args, class ...Wargs>
             prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>> prepare(update_all_t<set_t<Args...>, Wargs...> upd) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(upd, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(upd), stmt};
+                    return {std::move(upd), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2193,12 +2189,12 @@ namespace sqlite_orm {
             
             template<class T, class ...Args>
             prepared_statement_t<remove_all_t<T, Args...>> prepare(remove_all_t<T, Args...> rem) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(rem, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(rem), stmt};
+                    return {std::move(rem), stmt, std::move(con)};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2206,12 +2202,12 @@ namespace sqlite_orm {
             
             template<class T, class ...Ids>
             prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> g) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(g, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(g), stmt};
+                    return {std::move(g), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2219,12 +2215,12 @@ namespace sqlite_orm {
             
             template<class T>
             prepared_statement_t<update_t<T>> prepare(update_t<T> upd) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(upd, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(upd), stmt};
+                    return {std::move(upd), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2232,12 +2228,12 @@ namespace sqlite_orm {
             
             template<class T, class ...Ids>
             prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> rem) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(rem, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(rem), stmt};
+                    return {std::move(rem), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2245,12 +2241,12 @@ namespace sqlite_orm {
             
             template<class T>
             prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(ins, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(ins), stmt};
+                    return {std::move(ins), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2258,12 +2254,12 @@ namespace sqlite_orm {
             
             template<class T>
             prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
                 sqlite3_stmt *stmt;
-                auto db = connection->get_db();
+                auto db = con.get();
                 auto query = this->string_from_expression(rep, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(rep), stmt};
+                    return {std::move(rep), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2271,8 +2267,8 @@ namespace sqlite_orm {
             
             template<class T>
             void execute(const prepared_statement_t<replace_t<T>> &statement) {
-                auto connection = this->get_or_create_connection();
-                auto db = connection->get_db();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto stmt = statement.stmt;
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
@@ -2303,8 +2299,8 @@ namespace sqlite_orm {
             template<class T>
             int64 execute(const prepared_statement_t<insert_t<T>> &statement) {
                 int64 res = 0;
-                auto connection = this->get_or_create_connection();
-                auto db = connection->get_db();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto stmt = statement.stmt;
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
@@ -2334,7 +2330,7 @@ namespace sqlite_orm {
                     }
                 });
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
-                    res = sqlite3_last_insert_rowid(connection->get_db());
+                    res = sqlite3_last_insert_rowid(db);
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
@@ -2343,8 +2339,8 @@ namespace sqlite_orm {
             
             template<class T, class ...Ids>
             void execute(const prepared_statement_t<remove_t<T, Ids...>> &statement) {
-                auto connection = this->get_or_create_connection();
-                auto db = connection->get_db();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto stmt = statement.stmt;
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
@@ -2363,8 +2359,8 @@ namespace sqlite_orm {
             
             template<class T>
             void execute(const prepared_statement_t<update_t<T>> &statement) {
-                auto connection = this->get_or_create_connection();
-                auto db = connection->get_db();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto &impl = this->get_impl<T>();
                 auto stmt = statement.stmt;
                 statement_finalizer finalizer{stmt};
@@ -2414,8 +2410,8 @@ namespace sqlite_orm {
             template<class T, class ...Ids>
             T execute(const prepared_statement_t<get_t<T, Ids...>> &statement) {
                 auto &impl = this->get_impl<T>();
-                auto connection = this->get_or_create_connection();
-                auto db = connection->get_db();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto stmt = statement.stmt;
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
@@ -2453,8 +2449,8 @@ namespace sqlite_orm {
             
             template<class T, class ...Args>
             void execute(const prepared_statement_t<remove_all_t<T, Args...>> &statement) {
-                auto connection = this->get_or_create_connection();
-                auto db = connection->get_db();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto stmt = statement.stmt;
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
@@ -2468,14 +2464,14 @@ namespace sqlite_orm {
                 if (sqlite3_step(stmt) == SQLITE_DONE) {
                     //  done..
                 }else{
-                    throw std::system_error(std::error_code(sqlite3_errcode(connection->get_db()), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
             }
             
             template<class ...Args, class ...Wargs>
             void execute(const prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>> &statement) {
-                auto connection = this->get_or_create_connection();
-                auto db = connection->get_db();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto stmt = statement.stmt;
                 statement_finalizer finalizer{stmt};
                 auto index = 1;
@@ -2504,10 +2500,11 @@ namespace sqlite_orm {
             
             template<class T, class ...Args, class R = typename column_result_t<self, T>::type>
             std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>> &statement) {
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto stmt = statement.stmt;
+                statement_finalizer finalizer{stmt};
                 auto index = 1;
-                auto db = connection->get_db();
                 iterate_ast(statement.t, [stmt, &index, db](auto &node){
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
@@ -2535,10 +2532,11 @@ namespace sqlite_orm {
             template<class T, class ...Args>
             std::vector<T> execute(const prepared_statement_t<get_all_t<T, Args...>> &statement) {
                 auto &impl = this->get_impl<T>();
-                auto connection = this->get_or_create_connection();
+                auto con = this->get_connection();
+                auto db = con.get();
                 auto stmt = statement.stmt;
+                statement_finalizer finalizer{stmt};
                 auto index = 1;
-                auto db = connection->get_db();
                 iterate_ast(statement.t, [stmt, &index, db](auto &node){
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};

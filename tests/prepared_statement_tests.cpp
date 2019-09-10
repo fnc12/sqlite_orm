@@ -50,13 +50,13 @@ TEST_CASE("Prepared") {
     
     SECTION("select") {
         {
-            for(auto i = 0; i < 2; ++i) {
-                auto guard = storage.transaction_guard();
+//            for(auto i = 0; i < 2; ++i) {
+//                auto guard = storage.transaction_guard();
                 auto statement = storage.prepare(select(&User::id));
                 auto rows = storage.execute(statement);
-                guard.commit();
+//                guard.commit();
                 REQUIRE_THAT(rows, UnorderedEquals<int>({1, 2, 3}));
-            }
+//            }
         }
         {
             for(auto i = 0; i < 2; ++i) {

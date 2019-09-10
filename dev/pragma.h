@@ -8,16 +8,16 @@
 #include "error_code.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
+#include "connection_holder.h"
 
 namespace sqlite_orm {
     
     namespace internal {
-        struct database_connection;
         struct storage_base;
     }
     
     struct pragma_t {
-        using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
+        using get_or_create_connection_t = std::function<internal::connection_ref()>;
         
         pragma_t(get_or_create_connection_t get_or_create_connection_):
         get_or_create_connection(std::move(get_or_create_connection_))
@@ -72,7 +72,7 @@ namespace sqlite_orm {
             auto connection = this->get_or_create_connection();
             auto query = "PRAGMA " + name;
             T res;
-            auto db = connection->get_db();
+            auto db = connection.get();
             auto rc = sqlite3_exec(db,
                                    query.c_str(),
                                    [](void *data, int argc, char **argv, char **) -> int {
@@ -90,15 +90,14 @@ namespace sqlite_orm {
         }
         
         /**
-         *  Yevgeniy Zakharov: I wanted to refactored this function with statements and value bindings
+         *  Yevgeniy Zakharov: I wanted to refactore this function with statements and value bindings
          *  but it turns out that bindings in pragma statements are not supported.
          */
         template<class T>
         void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
-            std::shared_ptr<internal::database_connection> connection;
+            auto con = this->get_or_create_connection();
             if(!db){
-                connection = this->get_or_create_connection();
-                db = connection->get_db();
+                db = con.get();
             }
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << value;
@@ -110,10 +109,9 @@ namespace sqlite_orm {
         }
         
         void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
-            std::shared_ptr<internal::database_connection> connection;
+            auto con = this->get_or_create_connection();
             if(!db){
-                connection = this->get_or_create_connection();
-                db = connection->get_db();
+                db = con.get();
             }
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << internal::to_string(value);
