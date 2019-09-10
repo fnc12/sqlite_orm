@@ -308,22 +308,7 @@ namespace sqlite_orm {
                 return res;
             }
             
-#endif
-            /**
-             *  Check whether connection exists and returns it if yes or creates a new one
-             *  and returns it.
-             */
-            /*std::shared_ptr<internal::database_connection> get_or_create_connection() {
-                decltype(this->current_transaction) connection;
-                if(!this->current_transaction){
-                    connection = std::make_shared<internal::database_connection>(this->filename);
-                    this->on_open_internal(connection->get_db());
-                }else{
-                    connection = this->current_transaction;
-                }
-                return connection;
-            }*/
-            
+#endif            
             template<class O, class T, class G, class S, class ...Op>
             std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {
                 std::stringstream ss;

@@ -12,10 +12,10 @@ namespace sqlite_orm {
     namespace internal {
         
         struct limit_accesor {
-            using get_or_create_connection_t = std::function<connection_ref()>;
+            using get_connection_t = std::function<connection_ref()>;
             
-            limit_accesor(get_or_create_connection_t get_or_create_connection_):
-            get_or_create_connection(std::move(get_or_create_connection_))
+            limit_accesor(get_connection_t get_connection_):
+            get_connection(std::move(get_connection_))
             {}
             
             int length() {
@@ -115,7 +115,7 @@ namespace sqlite_orm {
             }
             
         protected:
-            get_or_create_connection_t get_or_create_connection;
+            get_connection_t get_connection;
             
             friend struct storage_base;
             
@@ -125,13 +125,13 @@ namespace sqlite_orm {
             std::map<int, int> limits;
             
             int get(int id) {
-                auto connection = this->get_or_create_connection();
+                auto connection = this->get_connection();
                 return sqlite3_limit(connection.get(), id, -1);
             }
             
             void set(int id, int newValue) {
                 this->limits[id] = newValue;
-                auto connection = this->get_or_create_connection();
+                auto connection = this->get_connection();
                 sqlite3_limit(connection.get(), id, newValue);
             }
         };

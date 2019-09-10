@@ -1858,22 +1858,8 @@ namespace sqlite_orm {
             template<class O>
             int insert(const O &o) {
                 this->assert_mapped_type<O>();
-//                auto openedForever = this->isOpenedForever;
-//                this->isOpenedForever = true;   //  to keep a connection without a transaction
-                /*auto tempTransactionIsCreatedHere = false;
-                if(!this->current_transaction){
-                    this->current_transaction = std::make_shared<internal::database_connection>(this->filename);
-                    this->on_open_internal(this->current_transaction->get_db());
-                    tempTransactionIsCreatedHere = true;
-                }*/
-//                auto connection = this->get_or_create_connection();
                 auto statement = this->prepare(sqlite_orm::insert(o));
-                auto res = int(this->execute(statement));
-                /*this->isOpenedForever = openedForever;
-                if(tempTransactionIsCreatedHere){
-                    this->current_transaction = {};
-                }*/
-                return res;
+                return int(this->execute(statement));
             }
             
             template<class It>

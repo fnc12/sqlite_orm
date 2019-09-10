@@ -7040,10 +7040,10 @@ namespace sqlite_orm {
     }
     
     struct pragma_t {
-        using get_or_create_connection_t = std::function<internal::connection_ref()>;
+        using get_connection_t = std::function<internal::connection_ref()>;
         
-        pragma_t(get_or_create_connection_t get_or_create_connection_):
-        get_or_create_connection(std::move(get_or_create_connection_))
+        pragma_t(get_connection_t get_connection_):
+        get_connection(std::move(get_connection_))
         {}
         
         sqlite_orm::journal_mode journal_mode() {
@@ -7088,17 +7088,15 @@ namespace sqlite_orm {
     public:
         int _synchronous = -1;
         signed char _journal_mode = -1; //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
-        get_or_create_connection_t get_or_create_connection;
+        get_connection_t get_connection;
         
         template<class T>
         T get_pragma(const std::string &name) {
-            auto connection = this->get_or_create_connection();
+            auto connection = this->get_connection();
             auto query = "PRAGMA " + name;
             T res;
             auto db = connection.get();
-            auto rc = sqlite3_exec(db,
-                                   query.c_str(),
-                                   [](void *data, int argc, char **argv, char **) -> int {
+            auto rc = sqlite3_exec(db, query.c_str(), [](void *data, int argc, char **argv, char **) -> int {
                                        auto &res = *(T*)data;
                                        if(argc){
                                            res = row_extractor<T>().extract(argv[0]);
@@ -7118,7 +7116,7 @@ namespace sqlite_orm {
          */
         template<class T>
         void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
-            auto con = this->get_or_create_connection();
+            auto con = this->get_connection();
             if(!db){
                 db = con.get();
             }
@@ -7132,7 +7130,7 @@ namespace sqlite_orm {
         }
         
         void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
-            auto con = this->get_or_create_connection();
+            auto con = this->get_connection();
             if(!db){
                 db = con.get();
             }
@@ -7163,10 +7161,10 @@ namespace sqlite_orm {
     namespace internal {
         
         struct limit_accesor {
-            using get_or_create_connection_t = std::function<connection_ref()>;
+            using get_connection_t = std::function<connection_ref()>;
             
-            limit_accesor(get_or_create_connection_t get_or_create_connection_):
-            get_or_create_connection(std::move(get_or_create_connection_))
+            limit_accesor(get_connection_t get_connection_):
+            get_connection(std::move(get_connection_))
             {}
             
             int length() {
@@ -7266,7 +7264,7 @@ namespace sqlite_orm {
             }
             
         protected:
-            get_or_create_connection_t get_or_create_connection;
+            get_connection_t get_connection;
             
             friend struct storage_base;
             
@@ -7276,13 +7274,13 @@ namespace sqlite_orm {
             std::map<int, int> limits;
             
             int get(int id) {
-                auto connection = this->get_or_create_connection();
+                auto connection = this->get_connection();
                 return sqlite3_limit(connection.get(), id, -1);
             }
             
             void set(int id, int newValue) {
                 this->limits[id] = newValue;
-                auto connection = this->get_or_create_connection();
+                auto connection = this->get_connection();
                 sqlite3_limit(connection.get(), id, newValue);
             }
         };
@@ -7657,22 +7655,7 @@ namespace sqlite_orm {
                 return res;
             }
             
-#endif
-            /**
-             *  Check whether connection exists and returns it if yes or creates a new one
-             *  and returns it.
-             */
-            /*std::shared_ptr<internal::database_connection> get_or_create_connection() {
-                decltype(this->current_transaction) connection;
-                if(!this->current_transaction){
-                    connection = std::make_shared<internal::database_connection>(this->filename);
-                    this->on_open_internal(connection->get_db());
-                }else{
-                    connection = this->current_transaction;
-                }
-                return connection;
-            }*/
-            
+#endif            
             template<class O, class T, class G, class S, class ...Op>
             std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {
                 std::stringstream ss;
@@ -9706,22 +9689,8 @@ namespace sqlite_orm {
             template<class O>
             int insert(const O &o) {
                 this->assert_mapped_type<O>();
-//                auto openedForever = this->isOpenedForever;
-//                this->isOpenedForever = true;   //  to keep a connection without a transaction
-                /*auto tempTransactionIsCreatedHere = false;
-                if(!this->current_transaction){
-                    this->current_transaction = std::make_shared<internal::database_connection>(this->filename);
-                    this->on_open_internal(this->current_transaction->get_db());
-                    tempTransactionIsCreatedHere = true;
-                }*/
-//                auto connection = this->get_or_create_connection();
                 auto statement = this->prepare(sqlite_orm::insert(o));
-                auto res = int(this->execute(statement));
-                /*this->isOpenedForever = openedForever;
-                if(tempTransactionIsCreatedHere){
-                    this->current_transaction = {};
-                }*/
-                return res;
+                return int(this->execute(statement));
             }
             
             template<class It>
