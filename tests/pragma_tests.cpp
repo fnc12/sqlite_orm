@@ -8,37 +8,45 @@ TEST_CASE("Journal mode"){
     auto filename = "journal_mode.sqlite";
     ::remove(filename);
     auto storage = make_storage(filename);
-    auto jm = storage.pragma.journal_mode();
+    auto storageCopy = storage;
+    decltype(storage) *stor = nullptr;
+    SECTION("Storage as is") {
+        stor = &storage;
+    };
+    SECTION("Storage copy") {
+        stor = &storageCopy;
+    }
+    auto jm = stor->pragma.journal_mode();
     REQUIRE(jm == decltype(jm)::DELETE);
     
     for(auto i = 0; i < 2; ++i){
         if(i == 0) {
-            storage.begin_transaction();
+            stor->begin_transaction();
         }
-        storage.pragma.journal_mode(journal_mode::MEMORY);
-        jm = storage.pragma.journal_mode();
+        stor->pragma.journal_mode(journal_mode::MEMORY);
+        jm = stor->pragma.journal_mode();
         REQUIRE(jm == decltype(jm)::MEMORY);
         
         if(i == 1) {    //  WAL cannot be set within a transaction
-            storage.pragma.journal_mode(journal_mode::WAL);
-            jm = storage.pragma.journal_mode();
+            stor->pragma.journal_mode(journal_mode::WAL);
+            jm = stor->pragma.journal_mode();
             REQUIRE(jm == decltype(jm)::WAL);
         }
         
-        storage.pragma.journal_mode(journal_mode::OFF);
-        jm = storage.pragma.journal_mode();
+        stor->pragma.journal_mode(journal_mode::OFF);
+        jm = stor->pragma.journal_mode();
         REQUIRE(jm == decltype(jm)::OFF);
         
-        storage.pragma.journal_mode(journal_mode::PERSIST);
-        jm = storage.pragma.journal_mode();
+        stor->pragma.journal_mode(journal_mode::PERSIST);
+        jm = stor->pragma.journal_mode();
         REQUIRE(jm == decltype(jm)::PERSIST);
         
-        storage.pragma.journal_mode(journal_mode::TRUNCATE);
-        jm = storage.pragma.journal_mode();
+        stor->pragma.journal_mode(journal_mode::TRUNCATE);
+        jm = stor->pragma.journal_mode();
         REQUIRE(jm == decltype(jm)::TRUNCATE);
         
         if(i == 0) {
-            storage.rollback();
+            stor->rollback();
         }
     }
 }

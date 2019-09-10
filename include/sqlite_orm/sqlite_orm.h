@@ -6396,7 +6396,7 @@ namespace sqlite_orm {
             filename(move(filename_))
             {}
             
-            sqlite3 *retain() {
+            void retain() {
                 ++this->_retain_count;
                 if(1 == this->_retain_count) {
                     auto rc = sqlite3_open(this->filename.c_str(), &this->db);
@@ -6404,7 +6404,6 @@ namespace sqlite_orm {
                         throw std::system_error(std::error_code(sqlite3_errcode(this->db), get_sqlite_error_category()), sqlite3_errmsg(this->db));
                     }
                 }
-                return this->db;
             }
             
             void release() {
