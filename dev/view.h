@@ -7,13 +7,13 @@
 #include <system_error> //  std::system_error
 #include <tuple>    //  std::tuple, std::make_tuple
 
-#include "database_connection.h"
 #include "row_extractor.h"
 #include "statement_finalizer.h"
 #include "error_code.h"
 #include "iterator.h"
 #include "ast_iterator.h"
 #include "prepared_statement.h"
+#include "connection_holder.h"
 
 namespace sqlite_orm {
     
@@ -26,7 +26,7 @@ namespace sqlite_orm {
             using self = view_t<T, S, Args...>;
             
             storage_type &storage;
-            std::shared_ptr<internal::database_connection> connection;
+            connection_ref connection;
             get_all_t<T, Args...> args;
             
             view_t(storage_type &stor, decltype(connection) conn, Args&& ...args_):
@@ -48,7 +48,7 @@ namespace sqlite_orm {
             
             iterator_t<self> begin() {
                 sqlite3_stmt *stmt = nullptr;
-                auto db = this->connection->get_db();
+                auto db = this->connection.get();
                 auto query = this->storage.string_from_expression(this->args, false);
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK){

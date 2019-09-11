@@ -108,7 +108,7 @@ namespace sqlite_orm {
                             *this->stmt = nullptr;
                         }break;
                         default:{
-                            auto db = this->view.connection->get_db();
+                            auto db = this->view.connection.get();
                             throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                         }
                     }

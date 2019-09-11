@@ -2,19 +2,25 @@
 
 #include <sqlite3.h>
 
+#include "connection_holder.h"
+
 namespace sqlite_orm {
     
     namespace internal {
         
         struct prepared_statement_base {
             sqlite3_stmt *stmt = nullptr;
+            connection_ref con;
         };
         
         template<class T>
         struct prepared_statement_t : prepared_statement_base {
             T t;
             
-            prepared_statement_t(T t_, sqlite3_stmt *stmt) : prepared_statement_base{stmt}, t(std::move(t_)) {}
+            prepared_statement_t(T t_, sqlite3_stmt *stmt, connection_ref con_) :
+            prepared_statement_base{stmt, std::move(con_)},
+            t(std::move(t_))
+            {}
         };
         
         template<class T, class ...Args>

@@ -5,15 +5,17 @@
 #include <functional>   //  std::function
 #include <memory>   //  std::shared_ptr
 
+#include "connection_holder.h"
+
 namespace sqlite_orm {
     
     namespace internal {
         
         struct limit_accesor {
-            using get_or_create_connection_t = std::function<std::shared_ptr<internal::database_connection>()>;
+            using get_connection_t = std::function<connection_ref()>;
             
-            limit_accesor(get_or_create_connection_t getOrCreateConnection_):
-            getOrCreateConnection(std::move(getOrCreateConnection_))
+            limit_accesor(get_connection_t get_connection_):
+            get_connection(std::move(get_connection_))
             {}
             
             int length() {
@@ -113,7 +115,7 @@ namespace sqlite_orm {
             }
             
         protected:
-            get_or_create_connection_t getOrCreateConnection;
+            get_connection_t get_connection;
             
             friend struct storage_base;
             
@@ -123,14 +125,14 @@ namespace sqlite_orm {
             std::map<int, int> limits;
             
             int get(int id) {
-                auto connection = this->getOrCreateConnection();
-                return sqlite3_limit(connection->get_db(), id, -1);
+                auto connection = this->get_connection();
+                return sqlite3_limit(connection.get(), id, -1);
             }
             
             void set(int id, int newValue) {
                 this->limits[id] = newValue;
-                auto connection = this->getOrCreateConnection();
-                sqlite3_limit(connection->get_db(), id, newValue);
+                auto connection = this->get_connection();
+                sqlite3_limit(connection.get(), id, newValue);
             }
         };
     }
