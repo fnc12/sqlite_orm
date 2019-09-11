@@ -161,6 +161,31 @@ TEST_CASE("Prepared") {
             }
         }
     }
+    SECTION("get pointer") {
+        {
+            auto statement = storage.prepare(get_pointer<User>(1));
+            auto user = storage.execute(statement);
+            REQUIRE(user);
+            REQUIRE(*user == User{1, "Team BS"});
+        }
+        {
+            auto statement = storage.prepare(get_pointer<User>(2));
+            auto user = storage.execute(statement);
+            REQUIRE(user);
+            REQUIRE(*user == User{2, "Shy'm"});
+        }
+        {
+            auto statement = storage.prepare(get_pointer<User>(3));
+            auto user = storage.execute(statement);
+            REQUIRE(user);
+            REQUIRE(*user == User{3, "Maître Gims"});
+        }
+        {
+            auto statement = storage.prepare(get_pointer<User>(4));
+            auto user = storage.execute(statement);
+            REQUIRE(!user);
+        }
+    }
     SECTION("update") {
         User user{2, "Stromae"};
         auto statement = storage.prepare(update(user));

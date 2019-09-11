@@ -11,6 +11,13 @@ namespace sqlite_orm {
         struct prepared_statement_base {
             sqlite3_stmt *stmt = nullptr;
             connection_ref con;
+            
+            ~prepared_statement_base() {
+                if(this->stmt){
+                    sqlite3_finalize(this->stmt);
+                    this->stmt = nullptr;
+                }
+            }
         };
         
         template<class T>
@@ -55,6 +62,15 @@ namespace sqlite_orm {
         
         template<class T, class ...Ids>
         struct get_t {
+            using type = T;
+            
+            using ids_type = std::tuple<Ids...>;
+            
+            ids_type ids;
+        };
+        
+        template<class T, class ...Ids>
+        struct get_pointer_t {
             using type = T;
             
             using ids_type = std::tuple<Ids...>;
@@ -122,6 +138,12 @@ namespace sqlite_orm {
     
     template<class T, class ...Ids>
     internal::get_t<T, Ids...> get(Ids ...ids) {
+        std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
+        return {move(idsTuple)};
+    }
+    
+    template<class T, class ...Ids>
+    internal::get_pointer_t<T, Ids...> get_pointer(Ids ...ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
         return {move(idsTuple)};
     }
