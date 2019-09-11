@@ -644,6 +644,35 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class T, class ...Ids>
+            std::string string_from_expression(const get_pointer_t<T, Ids...> &g, bool /*noTableName*/) const {
+                auto &impl = this->get_impl<T>();
+                std::stringstream ss;
+                ss << "SELECT ";
+                auto columnNames = impl.table.column_names();
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << "\"" << columnNames[i] << "\"";
+                    if(i < columnNames.size() - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                ss << "FROM '" << impl.table.name << "' WHERE ";
+                auto primaryKeyColumnNames = impl.table.primary_key_column_names();
+                if(!primaryKeyColumnNames.empty()){
+                    for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                        ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ? ";
+                        if(i < primaryKeyColumnNames.size() - 1) {
+                            ss << "AND ";
+                        }
+                        ss << ' ';
+                    }
+                    return ss.str();
+                }else{
+                    throw std::system_error(std::make_error_code(orm_error_code::table_has_no_primary_key_column));
+                }
+            }
+            
             template<class T>
             std::string string_from_expression(const update_t<T> &upd, bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
@@ -1430,73 +1459,8 @@ namespace sqlite_orm {
             template<class O, class ...Ids>
             std::unique_ptr<O> get_pointer(Ids ...ids) {
                 this->assert_mapped_type<O>();
-                
-                auto con = this->get_connection();
-                auto &impl = this->get_impl<O>();
-                std::unique_ptr<O> res;
-                std::stringstream ss;
-                ss << "SELECT ";
-                auto columnNames = impl.table.column_names();
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << " ";
-                    }
-                }
-                ss << "FROM '" << impl.table.name << "' WHERE ";
-                auto primaryKeyColumnNames = impl.table.primary_key_column_names();
-                if(primaryKeyColumnNames.size() && primaryKeyColumnNames.front().length()){
-                    for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                        ss << "\"" << primaryKeyColumnNames[i] << "\"" << " = ? ";
-                        if(i < primaryKeyColumnNames.size() - 1) {
-                            ss << "AND ";
-                        }
-                        ss << ' ';
-                    }
-                    auto query = ss.str();
-                    sqlite3_stmt *stmt;
-                    auto db = con.get();
-                    if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                        statement_finalizer finalizer{stmt};
-                        auto index = 1;
-                        auto idsTuple = std::make_tuple(std::forward<Ids>(ids)...);
-                        iterate_tuple(idsTuple, [stmt, &index, db](auto &v){
-                            using field_type = typename std::decay<decltype(v)>::type;
-                            if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)){
-                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                            }
-                        });
-                        auto stepRes = sqlite3_step(stmt);
-                        switch(stepRes){
-                            case SQLITE_ROW:{
-                                O res;
-                                index = 0;
-                                impl.table.for_each_column([&index, &res, stmt] (auto c) {
-                                    using field_type = typename decltype(c)::field_type;
-                                    auto value = row_extractor<field_type>().extract(stmt, index++);
-                                    if(c.member_pointer){
-                                        res.*c.member_pointer = std::move(value);
-                                    }else{
-                                        ((res).*(c.setter))(std::move(value));
-                                    }
-                                });
-                                return std::make_unique<O>(std::move(res));
-                            }break;
-                            case SQLITE_DONE:{
-                                return {};
-                            }break;
-                            default:{
-                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                            }
-                        }
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                    }
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::table_has_no_primary_key_column));
-                }
+                auto statement = this->prepare(sqlite_orm::get_pointer<O>(std::forward<Ids>(ids)...));
+                return this->execute(statement);
             }
 
             /**
@@ -2167,6 +2131,19 @@ namespace sqlite_orm {
                 }
             }
             
+            template<class T, class ...Ids>
+            prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> g) {
+                auto con = this->get_connection();
+                sqlite3_stmt *stmt;
+                auto db = con.get();
+                auto query = this->string_from_expression(g, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(g), stmt, con};
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
             template<class T>
             prepared_statement_t<update_t<T>> prepare(update_t<T> upd) {
                 auto con = this->get_connection();
@@ -2224,7 +2201,6 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 auto &o = statement.t.obj;
                 auto &impl = this->get_impl<T>();
@@ -2256,7 +2232,6 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 auto &impl = this->get_impl<T>();
                 auto &o = statement.t.obj;
@@ -2296,7 +2271,6 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v){
                     using field_type = typename std::decay<decltype(v)>::type;
@@ -2317,7 +2291,6 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto &impl = this->get_impl<T>();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 auto &o = statement.t.obj;
                 impl.table.for_each_column([&o, stmt, &index, db] (auto &c) {
@@ -2362,12 +2335,49 @@ namespace sqlite_orm {
             }
             
             template<class T, class ...Ids>
+            std::unique_ptr<T> execute(const prepared_statement_t<get_pointer_t<T, Ids...>> &statement) {
+                auto &impl = this->get_impl<T>();
+                auto con = this->get_connection();
+                auto db = con.get();
+                auto stmt = statement.stmt;
+                auto index = 1;
+                iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v){
+                    using field_type = typename std::decay<decltype(v)>::type;
+                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)){
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    }
+                });
+                auto stepRes = sqlite3_step(stmt);
+                switch(stepRes){
+                    case SQLITE_ROW:{
+                        T res;
+                        index = 0;
+                        impl.table.for_each_column([&index, &res, stmt] (auto c) {
+                            using field_type = typename decltype(c)::field_type;
+                            auto value = row_extractor<field_type>().extract(stmt, index++);
+                            if(c.member_pointer){
+                                res.*c.member_pointer = std::move(value);
+                            }else{
+                                ((res).*(c.setter))(std::move(value));
+                            }
+                        });
+                        return std::make_unique<T>(std::move(res));
+                    }break;
+                    case SQLITE_DONE:{
+                        return {};
+                    }break;
+                    default:{
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    }
+                }
+            }
+            
+            template<class T, class ...Ids>
             T execute(const prepared_statement_t<get_t<T, Ids...>> &statement) {
                 auto &impl = this->get_impl<T>();
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v){
                     using field_type = typename std::decay<decltype(v)>::type;
@@ -2406,7 +2416,6 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 iterate_ast(statement.t.conditions, [stmt, &index, db](auto &node){
                     using node_type = typename std::decay<decltype(node)>::type;
@@ -2427,7 +2436,6 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 statement.t.set.for_each([&index, stmt, db](auto &setArg){
                     iterate_ast(setArg, [&index, stmt, db](auto &node){
@@ -2457,7 +2465,6 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 iterate_ast(statement.t, [stmt, &index, db](auto &node){
                     using node_type = typename std::decay<decltype(node)>::type;
@@ -2489,7 +2496,6 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                statement_finalizer finalizer{stmt};
                 auto index = 1;
                 iterate_ast(statement.t, [stmt, &index, db](auto &node){
                     using node_type = typename std::decay<decltype(node)>::type;
