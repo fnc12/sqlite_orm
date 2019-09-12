@@ -6375,6 +6375,7 @@ namespace sqlite_orm {
 
 
 #include <sqlite3.h>
+#include <iterator> //  std::iterator_traits
 
 // #include "connection_holder.h"
 
@@ -6574,6 +6575,20 @@ namespace sqlite_orm {
             
             replace_t(decltype(obj) obj_) : obj(obj_) {}
         };
+        
+        template<class It>
+        struct insert_range_t {
+            using iterator_type = It;
+            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            
+            iterator_type from;
+            iterator_type to;
+        };
+    }
+    
+    template<class It>
+    internal::insert_range_t<It> insert_range(It from, It to) {
+        return {std::move(from), std::move(to)};
     }
     
     template<class T>
@@ -8648,6 +8663,56 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            template<class It>
+            std::string string_from_expression(const insert_range_t<It> &ins, bool noTableName) const {
+                using expression_type = typename std::decay<decltype(ins)>::type;
+                using object_type = typename expression_type::object_type;
+                auto &impl = this->get_impl<object_type>();
+                
+                std::stringstream ss;
+                ss << "INSERT INTO '" << impl.table.name << "' (";
+                std::vector<std::string> columnNames;
+                impl.table.for_each_column([&columnNames] (auto &c) {
+                    if(!c.template has<constraints::primary_key_t<>>()) {
+                        columnNames.emplace_back(c.name);
+                    }
+                });
+                
+                auto columnNamesCount = columnNames.size();
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss << "\"" << columnNames[i] << "\"";
+                    if(i < columnNamesCount - 1) {
+                        ss << ",";
+                    }else{
+                        ss << ")";
+                    }
+                    ss << " ";
+                }
+                ss << "VALUES ";
+                auto valuesString = [columnNamesCount]{
+                    std::stringstream ss;
+                    ss << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "?";
+                        if(i < columnNamesCount - 1) {
+                            ss << ", ";
+                        }else{
+                            ss << ")";
+                        }
+                    }
+                    return ss.str();
+                }();
+                auto valuesCount = static_cast<int>(std::distance(ins.from, ins.to));
+                for(auto i = 0; i < valuesCount; ++i) {
+                    ss << valuesString;
+                    if(i < valuesCount - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                return ss.str();
+            }
+            
             template<class T, class E>
             std::string string_from_expression(const conditions::cast_t<T, E> &c, bool noTableName) const {
                 std::stringstream ss;
@@ -10043,6 +10108,19 @@ namespace sqlite_orm {
                 auto query = this->string_from_expression(rep, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rep), stmt, con};
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class It>
+            prepared_statement_t<insert_range_t<It>> prepare(insert_range_t<It> ins) {
+                auto con = this->get_connection();
+                sqlite3_stmt *stmt;
+                auto db = con.get();
+                auto query = this->string_from_expression(ins, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(ins), stmt, con};
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
