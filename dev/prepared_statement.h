@@ -23,7 +23,9 @@ namespace sqlite_orm {
         
         template<class T>
         struct prepared_statement_t : prepared_statement_base {
-            T t;
+            using expression_type = T;
+            
+            expression_type t;
             
             prepared_statement_t(T t_, sqlite3_stmt *stmt, connection_ref con_) :
             prepared_statement_base{stmt, std::move(con_)},
