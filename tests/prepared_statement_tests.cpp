@@ -47,78 +47,128 @@ TEST_CASE("Prepared") {
         {
             for(auto i = 0; i < 2; ++i) {
                 auto statement = storage.prepare(select(&User::id));
-                auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals<int>({1, 2, 3}));
+                SECTION("nothing") {
+                    //..
+                }
+                SECTION("exeecute") {
+                    auto rows = storage.execute(statement);
+                    REQUIRE_THAT(rows, UnorderedEquals<int>({1, 2, 3}));
+                }
             }
         }
         {
             for(auto i = 0; i < 2; ++i) {
                 auto statement = storage.prepare(select(&User::name, order_by(&User::id)));
-                auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals<std::string>({"Team BS", "Shy'm", "Maître Gims"}));
+                SECTION("nothing") {
+                    //..
+                }
+                SECTION("exeecute") {
+                    auto rows = storage.execute(statement);
+                    REQUIRE_THAT(rows, UnorderedEquals<std::string>({"Team BS", "Shy'm", "Maître Gims"}));
+                }
             }
         }
         {
             auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5)));
-            auto rows = storage.execute(statement);
-            REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
+            }
         }
         {
             auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5 and like(&User::name, "T%"))));
-            auto rows = storage.execute(statement);
-            REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
+            }
         }
         {
             auto statement = storage.prepare(select(columns(&User::id, &User::name)));
-            auto rows = storage.execute(statement);
-            std::vector<std::tuple<int, std::string>> expected;
-            expected.push_back(std::make_tuple(1, "Team BS"));
-            expected.push_back(std::make_tuple(2, "Shy'm"));
-            expected.push_back(std::make_tuple(3, "Maître Gims"));
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto rows = storage.execute(statement);
+                std::vector<std::tuple<int, std::string>> expected;
+                expected.push_back(std::make_tuple(1, "Team BS"));
+                expected.push_back(std::make_tuple(2, "Shy'm"));
+                expected.push_back(std::make_tuple(3, "Maître Gims"));
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
         }
         {
             auto statement = storage.prepare(select(columns(&User::name, &User::id), where(is_equal(mod(&User::id, 2), 0)),
                                                     order_by(&User::name)));
-            auto rows = storage.execute(statement);
-            std::vector<std::tuple<std::string, int>> expected;
-            expected.push_back(std::make_tuple("Shy'm", 2));
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto rows = storage.execute(statement);
+                std::vector<std::tuple<std::string, int>> expected;
+                expected.push_back(std::make_tuple("Shy'm", 2));
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
         }
     }
     SECTION("get all") {
         {
             auto statement = storage.prepare(get_all<User>());
-            auto rows = storage.execute(statement);
-            std::vector<User> expected;
-            expected.push_back(User{1, "Team BS"});
-            expected.push_back(User{2, "Shy'm"});
-            expected.push_back(User{3, "Maître Gims"});
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto rows = storage.execute(statement);
+                std::vector<User> expected;
+                expected.push_back(User{1, "Team BS"});
+                expected.push_back(User{2, "Shy'm"});
+                expected.push_back(User{3, "Maître Gims"});
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
         }
         {
             auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 3))));
-            auto rows = storage.execute(statement);
-            std::vector<User> expected;
-            expected.push_back(User{1, "Team BS"});
-            expected.push_back(User{2, "Shy'm"});
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto rows = storage.execute(statement);
+                std::vector<User> expected;
+                expected.push_back(User{1, "Team BS"});
+                expected.push_back(User{2, "Shy'm"});
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
         }
     }
     SECTION("update all") {
         auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, "_")))));
-        storage.execute(statement);
-        auto names = storage.select(&User::name);
-        std::vector<decltype(User::name)> expected;
-        expected.push_back("Team BS_");
-        expected.push_back("Shy'm_");
-        expected.push_back("Maître Gims_");
-        REQUIRE_THAT(names, UnorderedEquals(expected));
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("exeecute") {
+            storage.execute(statement);
+            auto names = storage.select(&User::name);
+            std::vector<decltype(User::name)> expected;
+            expected.push_back("Team BS_");
+            expected.push_back("Shy'm_");
+            expected.push_back("Maître Gims_");
+            REQUIRE_THAT(names, UnorderedEquals(expected));
+        }
     }
     SECTION("remove all") {
         auto statement = storage.prepare(remove_all<User>());
-        storage.execute(statement);
-        REQUIRE(storage.count<User>() == 0);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("exeecute") {
+            storage.execute(statement);
+            REQUIRE(storage.count<User>() == 0);
+        }
     }
     SECTION("remove all 2") {
         SECTION("One condition") {
@@ -138,61 +188,106 @@ TEST_CASE("Prepared") {
     SECTION("get") {
         {
             auto statement = storage.prepare(get<User>(1));
-            auto user = storage.execute(statement);
-            REQUIRE(user == User{1, "Team BS"});
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto user = storage.execute(statement);
+                REQUIRE(user == User{1, "Team BS"});
+            }
         }
         {
             auto statement = storage.prepare(get<User>(2));
-            auto user = storage.execute(statement);
-            REQUIRE(user == User{2, "Shy'm"});
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto user = storage.execute(statement);
+                REQUIRE(user == User{2, "Shy'm"});
+            }
         }
         {
             auto statement = storage.prepare(get<User>(3));
-            auto user = storage.execute(statement);
-            REQUIRE(user == User{3, "Maître Gims"});
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto user = storage.execute(statement);
+                REQUIRE(user == User{3, "Maître Gims"});
+            }
         }
         {
             auto statement = storage.prepare(get<User>(4));
-            try {
-                auto user = storage.execute(statement);
-                REQUIRE(false);
-            } catch (const std::system_error &e) {
+            SECTION("nothing") {
                 //..
+            }
+            SECTION("exeecute") {
+                try {
+                    auto user = storage.execute(statement);
+                    REQUIRE(false);
+                } catch (const std::system_error &e) {
+                    //..
+                }
             }
         }
     }
     SECTION("get pointer") {
         {
             auto statement = storage.prepare(get_pointer<User>(1));
-            auto user = storage.execute(statement);
-            REQUIRE(user);
-            REQUIRE(*user == User{1, "Team BS"});
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto user = storage.execute(statement);
+                REQUIRE(user);
+                REQUIRE(*user == User{1, "Team BS"});
+            }
         }
         {
             auto statement = storage.prepare(get_pointer<User>(2));
-            auto user = storage.execute(statement);
-            REQUIRE(user);
-            REQUIRE(*user == User{2, "Shy'm"});
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto user = storage.execute(statement);
+                REQUIRE(user);
+                REQUIRE(*user == User{2, "Shy'm"});
+            }
         }
         {
             auto statement = storage.prepare(get_pointer<User>(3));
-            auto user = storage.execute(statement);
-            REQUIRE(user);
-            REQUIRE(*user == User{3, "Maître Gims"});
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto user = storage.execute(statement);
+                REQUIRE(user);
+                REQUIRE(*user == User{3, "Maître Gims"});
+            }
         }
         {
             auto statement = storage.prepare(get_pointer<User>(4));
-            auto user = storage.execute(statement);
-            REQUIRE(!user);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("exeecute") {
+                auto user = storage.execute(statement);
+                REQUIRE(!user);
+            }
         }
     }
     SECTION("update") {
         User user{2, "Stromae"};
         auto statement = storage.prepare(update(user));
-        storage.execute(statement);
-        REQUIRE(storage.get<User>(2) == user);
-        auto names = storage.select(&User::name);
-        REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("exeecute") {
+            storage.execute(statement);
+            REQUIRE(storage.get<User>(2) == user);
+            auto names = storage.select(&User::name);
+            REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
+        }
     }
     SECTION("remove") {
         {
@@ -223,17 +318,22 @@ TEST_CASE("Prepared") {
     SECTION("insert") {
         User user{0, "Stromae"};
         auto statement = storage.prepare(insert(user));
-        auto insertedId = storage.execute(statement);
-        {
-            auto rows = storage.get_all<User>();
-            std::vector<User> expected;
-            expected.push_back(User{1, "Team BS"});
-            expected.push_back(User{2, "Shy'm"});
-            expected.push_back(User{3, "Maître Gims"});
-            expected.push_back(User{4, user.name});
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        SECTION("nothing") {
+            //..
         }
-        REQUIRE(insertedId == 4);
+        SECTION("exeecute") {
+            auto insertedId = storage.execute(statement);
+            {
+                auto rows = storage.get_all<User>();
+                std::vector<User> expected;
+                expected.push_back(User{1, "Team BS"});
+                expected.push_back(User{2, "Shy'm"});
+                expected.push_back(User{3, "Maître Gims"});
+                expected.push_back(User{4, user.name});
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+            REQUIRE(insertedId == 4);
+        }
     }
     SECTION("replace") {
         std::vector<User> expected;
@@ -255,5 +355,41 @@ TEST_CASE("Prepared") {
         storage.execute(statement);
         auto rows = storage.get_all<User>();
         REQUIRE_THAT(rows, UnorderedEquals(expected));
+    }
+    SECTION("insert range") {
+        SECTION("empty") {
+            std::vector<User> users;
+            std::vector<User> expected;
+            expected.push_back(User{1, "Team BS"});
+            expected.push_back(User{2, "Shy'm"});
+            expected.push_back(User{3, "Maître Gims"});
+            SECTION("empty"){
+                try {
+                    auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+                    REQUIRE(false);
+                } catch (const std::system_error &e) {
+                    //..
+                }
+            }
+            SECTION("one") {
+                User user{4, "The Weeknd"};
+                users.push_back(user);
+                auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+                storage.execute(statement);
+                expected.push_back(user);
+            }
+            SECTION("two") {
+                User user1{4, "The Weeknd"};
+                User user2{5, "Eva"};
+                users.push_back(user1);
+                users.push_back(user2);
+                auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+                storage.execute(statement);
+                expected.push_back(user1);
+                expected.push_back(user2);
+            }
+            auto rows = storage.get_all<User>();
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
     }
 }

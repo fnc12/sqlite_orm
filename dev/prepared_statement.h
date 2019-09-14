@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <iterator> //  std::iterator_traits
 
 #include "connection_holder.h"
 
@@ -22,7 +23,9 @@ namespace sqlite_orm {
         
         template<class T>
         struct prepared_statement_t : prepared_statement_base {
-            T t;
+            using expression_type = T;
+            
+            expression_type t;
             
             prepared_statement_t(T t_, sqlite3_stmt *stmt, connection_ref con_) :
             prepared_statement_base{stmt, std::move(con_)},
@@ -113,6 +116,20 @@ namespace sqlite_orm {
             
             replace_t(decltype(obj) obj_) : obj(obj_) {}
         };
+        
+        template<class It>
+        struct insert_range_t {
+            using iterator_type = It;
+            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            
+            iterator_type from;
+            iterator_type to;
+        };
+    }
+    
+    template<class It>
+    internal::insert_range_t<It> insert_range(It from, It to) {
+        return {std::move(from), std::move(to)};
     }
     
     template<class T>
