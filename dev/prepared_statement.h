@@ -125,6 +125,20 @@ namespace sqlite_orm {
             iterator_type from;
             iterator_type to;
         };
+        
+        template<class It>
+        struct replace_range_t {
+            using iterator_type = It;
+            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            
+            iterator_type from;
+            iterator_type to;
+        };
+    }
+    
+    template<class It>
+    internal::replace_range_t<It> replace_range(It from, It to) {
+        return {std::move(from), std::move(to)};
     }
     
     template<class It>

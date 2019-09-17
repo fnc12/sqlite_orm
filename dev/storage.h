@@ -797,7 +797,49 @@ namespace sqlite_orm {
             }
             
             template<class It>
-            std::string string_from_expression(const insert_range_t<It> &ins, bool noTableName) const {
+            std::string string_from_expression(const replace_range_t<It> &rep, bool /*noTableName*/) const {
+                using expression_type = typename std::decay<decltype(rep)>::type;
+                using object_type = typename expression_type::object_type;
+                auto &impl = this->get_impl<object_type>();
+                std::stringstream ss;
+                ss << "REPLACE INTO '" << impl.table.name << "' (";
+                auto columnNames = impl.table.column_names();
+                auto columnNamesCount = columnNames.size();
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss << "\"" << columnNames[i] << "\"";
+                    if(i < columnNamesCount - 1) {
+                        ss << ", ";
+                    }else{
+                        ss << ") ";
+                    }
+                }
+                ss << "VALUES ";
+                auto valuesString = [columnNamesCount]{
+                    std::stringstream ss;
+                    ss << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "?";
+                        if(i < columnNamesCount - 1) {
+                            ss << ", ";
+                        }else{
+                            ss << ")";
+                        }
+                    }
+                    return ss.str();
+                }();
+                auto valuesCount = static_cast<int>(std::distance(rep.from, rep.to));
+                for(auto i = 0; i < valuesCount; ++i) {
+                    ss << valuesString;
+                    if(i < valuesCount - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                return ss.str();
+            }
+            
+            template<class It>
+            std::string string_from_expression(const insert_range_t<It> &ins, bool /*noTableName*/) const {
                 using expression_type = typename std::decay<decltype(ins)>::type;
                 using object_type = typename expression_type::object_type;
                 auto &impl = this->get_impl<object_type>();
@@ -1731,74 +1773,8 @@ namespace sqlite_orm {
                     return;
                 }
                 
-                auto con = this->get_connection();
-                auto &impl = this->get_impl<O>();
-                std::stringstream ss;
-                ss << "REPLACE INTO '" << impl.table.name << "' (";
-                auto columnNames = impl.table.column_names();
-                auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ", ";
-                    }else{
-                        ss << ") ";
-                    }
-                }
-                ss << "VALUES ";
-                auto valuesString = [columnNamesCount]{
-                    std::stringstream ss;
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss << ", ";
-                        }else{
-                            ss << ")";
-                        }
-                    }
-                    return ss.str();
-                }();
-                auto valuesCount = static_cast<int>(std::distance(from, to));
-                for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                auto db = con.get();
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    auto index = 1;
-                    for(auto it = from; it != to; ++it) {
-                        auto &o = *it;
-                        impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
-                            using column_type = typename std::decay<decltype(c)>::type;
-                            using field_type = typename column_type::field_type;
-                            if(c.member_pointer){
-                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
-                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                                }
-                            }else{
-                                using getter_type = typename column_type::getter_type;
-                                field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
-                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
-                                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                                }
-                            }
-                        });
-                    }
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        //..
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                    }
-                }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                }
+                auto statement = this->prepare(sqlite_orm::replace_range(from, to));
+                this->execute(statement);
             }
             
             template<class O, class ...Cols>
@@ -2179,6 +2155,54 @@ namespace sqlite_orm {
                 auto query = this->string_from_expression(ins, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(ins), stmt, con};
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class It>
+            prepared_statement_t<replace_range_t<It>> prepare(replace_range_t<It> rep) {
+                auto con = this->get_connection();
+                sqlite3_stmt *stmt;
+                auto db = con.get();
+                auto query = this->string_from_expression(rep, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(rep), stmt, con};
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class It>
+            void execute(const prepared_statement_t<replace_range_t<It>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_type::object_type;
+                auto &impl = this->get_impl<object_type>();
+                auto index = 1;
+                auto con = this->get_connection();
+                auto db = con.get();
+                auto stmt = statement.stmt;
+                for(auto it = statement.t.from; it != statement.t.to; ++it) {
+                    auto &o = *it;
+                    impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
+                        using column_type = typename std::decay<decltype(c)>::type;
+                        using field_type = typename column_type::field_type;
+                        if(c.member_pointer){
+                            if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
+                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                            }
+                        }else{
+                            using getter_type = typename column_type::getter_type;
+                            field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                            if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)){
+                                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                            }
+                        }
+                    });
+                }
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    //..
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
