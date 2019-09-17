@@ -357,39 +357,83 @@ TEST_CASE("Prepared") {
         REQUIRE_THAT(rows, UnorderedEquals(expected));
     }
     SECTION("insert range") {
+        std::vector<User> users;
+        std::vector<User> expected;
+        expected.push_back(User{1, "Team BS"});
+        expected.push_back(User{2, "Shy'm"});
+        expected.push_back(User{3, "Maître Gims"});
+        SECTION("empty"){
+            try {
+                auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+                REQUIRE(false);
+            } catch (const std::system_error &e) {
+                //..
+            }
+        }
+        SECTION("one") {
+            User user{4, "The Weeknd"};
+            users.push_back(user);
+            auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+            storage.execute(statement);
+            expected.push_back(user);
+        }
+        SECTION("two") {
+            User user1{4, "The Weeknd"};
+            User user2{5, "Eva"};
+            users.push_back(user1);
+            users.push_back(user2);
+            auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+            storage.execute(statement);
+            expected.push_back(user1);
+            expected.push_back(user2);
+        }
+        auto rows = storage.get_all<User>();
+        REQUIRE_THAT(rows, UnorderedEquals(expected));
+    }
+    SECTION("replace range") {
+        std::vector<User> users;
+        std::vector<User> expected;
         SECTION("empty") {
-            std::vector<User> users;
-            std::vector<User> expected;
             expected.push_back(User{1, "Team BS"});
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
-            SECTION("empty"){
-                try {
-                    auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-                    REQUIRE(false);
-                } catch (const std::system_error &e) {
-                    //..
-                }
+            try {
+                auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+                REQUIRE(false);
+            } catch (const std::system_error &e) {
+                //..
             }
-            SECTION("one") {
-                User user{4, "The Weeknd"};
-                users.push_back(user);
-                auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-                storage.execute(statement);
-                expected.push_back(user);
-            }
-            SECTION("two") {
-                User user1{4, "The Weeknd"};
-                User user2{5, "Eva"};
-                users.push_back(user1);
-                users.push_back(user2);
-                auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-                storage.execute(statement);
-                expected.push_back(user1);
-                expected.push_back(user2);
-            }
-            auto rows = storage.get_all<User>();
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
+        SECTION("one existing") {
+            User user{1, "Raye"};
+            expected.push_back(user);
+            expected.push_back(User{2, "Shy'm"});
+            expected.push_back(User{3, "Maître Gims"});
+            users.push_back(user);
+            auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+            storage.execute(statement);
+        }
+        SECTION("one existing and one new") {
+            User user{2, "Raye"};
+            User user2{4, "Bebe Rexha"};
+            expected.push_back(User{1, "Team BS"});
+            expected.push_back(user);
+            expected.push_back(User{3, "Maître Gims"});
+            expected.push_back(user2);
+            users.push_back(user);
+            users.push_back(user2);
+            auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+            storage.execute(statement);
+        }
+        SECTION("All existing") {
+            users.push_back(User{1, "Selena Gomez"});
+            users.push_back(User{2, "Polina"});
+            users.push_back(User{3, "Polina"});
+            expected = users;
+            auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+            storage.execute(statement);
+        }
+        auto rows = storage.get_all<User>();
+        REQUIRE_THAT(rows, UnorderedEquals(expected));
     }
 }
