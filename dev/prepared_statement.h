@@ -4,6 +4,7 @@
 #include <iterator> //  std::iterator_traits
 
 #include "connection_holder.h"
+#include "select_constraints.h"
 
 namespace sqlite_orm {
     
@@ -108,6 +109,17 @@ namespace sqlite_orm {
             insert_t(decltype(obj) obj_) : obj(obj_) {}
         };
         
+        template<class T, class ...Cols>
+        struct insert_explicit {
+            using type = T;
+            using columns_type = columns_t<Cols...>;
+            
+            const type &obj;
+            columns_type columns;
+            
+            insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
+        };
+        
         template<class T>
         struct replace_t {
             using type = T;
@@ -154,6 +166,11 @@ namespace sqlite_orm {
     template<class T>
     internal::insert_t<T> insert(const T &obj) {
         return {obj};
+    }
+    
+    template<class T, class ...Cols>
+    internal::insert_explicit<T, Cols...> insert(const T &obj, internal::columns_t<Cols...> cols) {
+        return {obj, std::move(cols)};
     }
     
     template<class T, class ...Ids>

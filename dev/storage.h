@@ -222,7 +222,7 @@ namespace sqlite_orm {
             }
             
             template<class O>
-            void assert_mapped_type() {
+            void assert_mapped_type() const {
                 using mapped_types_tuples = std::tuple<typename Ts::object_type...>;
                 static_assert(tuple_helper::has_type<O, mapped_types_tuples>::value, "type is not mapped to a storage");
             }
@@ -715,6 +715,47 @@ namespace sqlite_orm {
                     if(i < primaryKeyColumnNames.size() - 1) {
                         ss << "AND ";
                     }
+                }
+                return ss.str();
+            }
+            
+            template<class T, class ...Cols>
+            std::string string_from_expression(const insert_explicit<T, Cols...> &ins, bool /*noTableName*/) const {
+                constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
+                static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
+                this->assert_mapped_type<T>();
+                auto &impl = this->get_impl<T>();
+                std::stringstream ss;
+                ss << "INSERT INTO '" << impl.table.name << "' ";
+                std::vector<std::string> columnNames;
+                columnNames.reserve(colsCount);
+                iterate_tuple(ins.columns.columns, [&columnNames, this](auto &m){
+                    auto columnName = this->string_from_expression(m, true);
+                    if(!columnName.empty()){
+                        columnNames.push_back(columnName);
+                    }else{
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    }
+                });
+                ss << "(";
+                for(size_t i = 0; i < columnNames.size(); ++i){
+                    ss << columnNames[i];
+                    if(i < columnNames.size() - 1){
+                        ss << ",";
+                    }else{
+                        ss << ")";
+                    }
+                    ss << " ";
+                }
+                ss << "VALUES (";
+                for(size_t i = 0; i < columnNames.size(); ++i){
+                    ss << "?";
+                    if(i < columnNames.size() - 1){
+                        ss << ",";
+                    }else{
+                        ss << ")";
+                    }
+                    ss << " ";
                 }
                 return ss.str();
             }
@@ -1782,62 +1823,8 @@ namespace sqlite_orm {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
-                auto con = this->get_connection();
-                auto &impl = this->get_impl<O>();
-                std::stringstream ss;
-                ss << "INSERT INTO '" << impl.table.name << "' ";
-                std::vector<std::string> columnNames;
-                columnNames.reserve(colsCount);
-                iterate_tuple(cols.columns, [&columnNames, this](auto &m){
-                    auto columnName = this->string_from_expression(m, true);
-                    if(!columnName.empty()){
-                        columnNames.push_back(columnName);
-                    }else{
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                    }
-                });
-                ss << "(";
-                for(size_t i = 0; i < columnNames.size(); ++i){
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1){
-                        ss << ",";
-                    }else{
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                ss << "VALUES (";
-                for(size_t i = 0; i < columnNames.size(); ++i){
-                    ss << "?";
-                    if(i < columnNames.size() - 1){
-                        ss << ",";
-                    }else{
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                auto db = con.get();
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    auto index = 1;
-                    iterate_tuple(cols.columns, [&o, &index, &stmt, &impl, db] (auto &m) {
-                        using column_type = typename std::decay<decltype(m)>::type;
-                        using field_type = typename column_result_t<self, column_type>::type;
-                        const field_type *value = impl.table.template get_object_field_pointer<field_type>(o, m);
-                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)){
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                        }
-                    });
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
-                        return int(sqlite3_last_insert_rowid(db));
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                    }
-                }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
-                }
+                auto statement = this->prepare(sqlite_orm::insert(o, std::move(cols)));
+                return int(this->execute(statement));
             }
             
             /**
@@ -2168,6 +2155,42 @@ namespace sqlite_orm {
                 auto query = this->string_from_expression(rep, false);
                 if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rep), stmt, con};
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class T, class ...Cols>
+            prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
+                auto con = this->get_connection();
+                sqlite3_stmt *stmt;
+                auto db = con.get();
+                auto query = this->string_from_expression(ins, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(ins), stmt, con};
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+            
+            template<class T, class ...Cols>
+            int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>> &statement) {
+                auto index = 1;
+                auto con = this->get_connection();
+                auto db = con.get();
+                auto stmt = statement.stmt;
+                auto &impl = this->get_impl<T>();
+                auto &o = statement.t.obj;
+                iterate_tuple(statement.t.columns.columns, [&o, &index, &stmt, &impl, db] (auto &m) {
+                    using column_type = typename std::decay<decltype(m)>::type;
+                    using field_type = typename column_result_t<self, column_type>::type;
+                    const field_type *value = impl.table.template get_object_field_pointer<field_type>(o, m);
+                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)){
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    }
+                });
+                if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    return sqlite3_last_insert_rowid(db);
                 }else{
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                 }
