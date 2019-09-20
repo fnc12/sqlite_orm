@@ -25,6 +25,8 @@ bool operator!=(const User &lhs, const User &rhs) {
 TEST_CASE("Prepared") {
     using Catch::Matchers::UnorderedEquals;
     
+    const int defaultVisitTime = 50;
+    
     remove("prepared.sqlite");
     auto storage = make_storage("prepared.sqlite",
                                 make_index("user_id_index", &User::id),
@@ -34,7 +36,7 @@ TEST_CASE("Prepared") {
                                 make_table("visits",
                                            make_column("id", &Visit::id, primary_key(), autoincrement()),
                                            make_column("user_id", &Visit::userId),
-                                           make_column("time", &Visit::time),
+                                           make_column("time", &Visit::time, default_value(defaultVisitTime)),
                                            foreign_key(&Visit::userId).references(&User::id)));
     storage.sync_schema();
     storage.remove_all<User>();
@@ -435,5 +437,47 @@ TEST_CASE("Prepared") {
         }
         auto rows = storage.get_all<User>();
         REQUIRE_THAT(rows, UnorderedEquals(expected));
+    }
+    SECTION("insert explicit") {
+        SECTION("user two columns") {
+            User user{5, "Eminem"};
+            auto statement = storage.prepare(insert(user, columns(&User::id, &User::name)));
+            auto insertedId = storage.execute(statement);
+            REQUIRE(insertedId == user.id);
+        }
+        SECTION("user id column only") {
+            User user{4, "Eminem"};
+            auto statement = storage.prepare(insert(user, columns(&User::name)));
+            auto insertedId = storage.execute(statement);
+            REQUIRE(insertedId == user.id);
+        }
+        SECTION("visit") {
+            {
+                Visit visit{1, 1, 100000};
+                auto statement = storage.prepare(insert(visit, columns(&Visit::id, &Visit::userId, &Visit::time)));
+                auto insertedId = storage.execute(statement);
+                REQUIRE(insertedId == visit.id);
+            }
+            {
+                Visit visit{2, 1, defaultVisitTime + 1};    //  time must differ
+                auto statement = storage.prepare(insert(visit, columns(&Visit::id, &Visit::userId)));
+                auto insertedId = storage.execute(statement);
+                REQUIRE(insertedId == visit.id);
+                auto insertedVisit = storage.get<Visit>(insertedId);
+                REQUIRE(insertedVisit.id == visit.id);
+                REQUIRE(insertedVisit.userId == visit.userId);
+                REQUIRE(insertedVisit.time == defaultVisitTime);
+            }
+            {
+                Visit visit{-1, 2, defaultVisitTime + 2};
+                auto statement = storage.prepare(insert(visit, columns(&Visit::userId)));
+                auto insertedId = storage.execute(statement);
+                REQUIRE(insertedId == 3);
+                auto insertedVisit = storage.get<Visit>(insertedId);
+                REQUIRE(insertedVisit.id == 3);
+                REQUIRE(insertedVisit.userId == visit.userId);
+                REQUIRE(insertedVisit.time == defaultVisitTime);
+            }
+        }
     }
 }
