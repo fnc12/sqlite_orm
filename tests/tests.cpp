@@ -321,11 +321,13 @@ TEST_CASE("Custom collate"){
     storage.create_collation("ototo", {});
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
+        REQUIRE(false);
     } catch (const std::system_error& e) {
 //        cout << e.what() << endl;
     }
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
+        REQUIRE(false);
     } catch (const std::system_error& e) {
 //        cout << e.what() << endl;
     }
@@ -393,17 +395,19 @@ TEST_CASE("Escaped index name"){
 TEST_CASE("Where"){
     struct User{
         int id = 0;
+        int age = 0;
         std::string name;
     };
     
     auto storage = make_storage("",
                                 make_table("users",
                                            make_column("id", &User::id, primary_key()),
+                                           make_column("age", &User::age),
                                            make_column("name", &User::name)));
     storage.sync_schema();
     
-    storage.replace(User{ 1, "Jeremy" });
-    storage.replace(User{ 2, "Nataly" });
+    storage.replace(User{ 1, 4, "Jeremy" });
+    storage.replace(User{ 2, 18, "Nataly" });
     
     auto users = storage.get_all<User>();
     REQUIRE(users.size() == 2);
@@ -420,4 +424,7 @@ TEST_CASE("Where"){
     
     auto users5 = storage.get_all<User>(where(false and c(&User::id) == 1));
     REQUIRE(users5.size() == 0);
+    
+    auto users6 = storage.get_all<User>(where((false or c(&User::id) == 4) and (false or c(&User::age) == 18)));
+    REQUIRE(users6.empty());
 }
