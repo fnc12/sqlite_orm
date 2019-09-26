@@ -987,12 +987,21 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
+            template<class L, class R>
+            std::string string_from_expression(const conditions::is_equal_t<L, R> &c, bool noTableName) const {
+                auto leftString = this->string_from_expression(c.l, noTableName);
+                auto rightString = this->string_from_expression(c.r, noTableName);
+                std::stringstream ss;
+                ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+                return ss.str();
+            }
+            
             template<class C>
             typename std::enable_if<is_base_of_template<C, conditions::binary_condition>::value, std::string>::type string_from_expression(const C &c, bool noTableName) const {
                 auto leftString = this->string_from_expression(c.l, noTableName);
                 auto rightString = this->string_from_expression(c.r, noTableName);
                 std::stringstream ss;
-                ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+                ss << "(" << leftString << " " << static_cast<std::string>(c) << " " << rightString << ")";
                 return ss.str();
             }
             
