@@ -426,5 +426,5 @@ TEST_CASE("Where"){
     REQUIRE(users5.size() == 0);
     
     auto users6 = storage.get_all<User>(where((false or c(&User::id) == 4) and (false or c(&User::age) == 18)));
-//    REQUIRE(users6.empty());
+    REQUIRE(users6.empty());
 }
