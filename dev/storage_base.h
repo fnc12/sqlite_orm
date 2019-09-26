@@ -20,6 +20,7 @@
 #include "tuple_helper.h"
 #include "row_extractor.h"
 #include "connection_holder.h"
+#include "backup.h"
 
 namespace sqlite_orm {
     
@@ -273,6 +274,24 @@ namespace sqlite_orm {
                 }else{
                     throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
                 }
+            }
+            
+            backup_t make_backup_to(const std::string &filename) {
+                auto holder = std::make_unique<connection_holder>(filename);
+                return {connection_ref{*holder}, "main", this->get_connection(), "main", move(holder)};
+            }
+            
+            backup_t make_backup_to(storage_base &other) {
+                return {other.get_connection(), "main", this->get_connection(), "main", {}};
+            }
+            
+            backup_t make_backup_from(const std::string &filename) {
+                auto holder = std::make_unique<connection_holder>(filename);
+                return {this->get_connection(), "main", connection_ref{*holder}, "main", move(holder)};
+            }
+            
+            backup_t make_backup_from(storage_base &other) {
+                return {this->get_connection(), "main", other.get_connection(), "main", {}};
             }
             
         protected:
