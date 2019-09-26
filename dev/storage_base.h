@@ -233,47 +233,23 @@ namespace sqlite_orm {
             }
             
             void backup_to(const std::string &filename) {
-                database_connection other{filename};
-                auto con = this->get_connection();
-                if(auto pBackup = sqlite3_backup_init(other.get_db(), "main", con.get(), "main")){
-                    (void)sqlite3_backup_step(pBackup, -1);
-                    (void)sqlite3_backup_finish(pBackup);
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
-                }
+                auto backup = this->make_backup_to(filename);
+                backup.step(-1);
             }
             
             void backup_to(storage_base &other) {
-                auto other_connection = other.get_connection();
-                auto con = this->get_connection();
-                if(auto pBackup = sqlite3_backup_init(other_connection.get(), "main", con.get(), "main")){
-                    (void)sqlite3_backup_step(pBackup, -1);
-                    (void)sqlite3_backup_finish(pBackup);
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
-                }
+                auto backup = this->make_backup_to(other);
+                backup.step(-1);
             }
             
             void backup_from(const std::string &filename) {
-                database_connection other{filename};
-                auto con = this->get_connection();
-                if(auto pBackup = sqlite3_backup_init(con.get(), "main", other.get_db(), "main")){
-                    (void)sqlite3_backup_step(pBackup, -1);
-                    (void)sqlite3_backup_finish(pBackup);
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
-                }
+                auto backup = this->make_backup_from(filename);
+                backup.step(-1);
             }
             
             void backup_from(storage_base &other) {
-                auto other_connection = other.get_connection();
-                auto con = this->get_connection();
-                if(auto pBackup = sqlite3_backup_init(con.get(), "main", other_connection.get(), "main")){
-                    (void)sqlite3_backup_step(pBackup, -1);
-                    (void)sqlite3_backup_finish(pBackup);
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
-                }
+                auto backup = this->make_backup_from(other);
+                backup.step(-1);
             }
             
             backup_t make_backup_to(const std::string &filename) {

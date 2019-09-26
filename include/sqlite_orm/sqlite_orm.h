@@ -7454,6 +7454,12 @@ namespace sqlite_orm {
     
     namespace internal {
         
+        /**
+         *  A backup class. Don't construct it as is, call storage.make_backup_from or storage.make_backup_to instead.
+         *  An instance of this class represents a wrapper around sqlite3_backup pointer. Use this class
+         *  to have maximum control on a backup operation. In case you need a single backup in one line you
+         *  can skip creating a backup_t instance and just call storage.backup_from or storage.backup_to function.
+         */
         struct backup_t {
             backup_t(connection_ref to_,
                      const std::string &zDestName,
@@ -7486,14 +7492,23 @@ namespace sqlite_orm {
                 }
             }
             
+            /**
+             *  Calls sqlite3_backup_step with pages argument
+             */
             int step(int pages) {
                 return sqlite3_backup_step(this->handle, pages);
             }
             
+            /**
+             *  Returns sqlite3_backup_remaining result
+             */
             int remaining() const {
                 return sqlite3_backup_remaining(this->handle);
             }
             
+            /**
+             *  Returns sqlite3_backup_pagecount result
+             */
             int pagecount() const {
                 return sqlite3_backup_pagecount(this->handle);
             }
@@ -7719,47 +7734,23 @@ namespace sqlite_orm {
             }
             
             void backup_to(const std::string &filename) {
-                database_connection other{filename};
-                auto con = this->get_connection();
-                if(auto pBackup = sqlite3_backup_init(other.get_db(), "main", con.get(), "main")){
-                    (void)sqlite3_backup_step(pBackup, -1);
-                    (void)sqlite3_backup_finish(pBackup);
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
-                }
+                auto backup = this->make_backup_to(filename);
+                backup.step(-1);
             }
             
             void backup_to(storage_base &other) {
-                auto other_connection = other.get_connection();
-                auto con = this->get_connection();
-                if(auto pBackup = sqlite3_backup_init(other_connection.get(), "main", con.get(), "main")){
-                    (void)sqlite3_backup_step(pBackup, -1);
-                    (void)sqlite3_backup_finish(pBackup);
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
-                }
+                auto backup = this->make_backup_to(other);
+                backup.step(-1);
             }
             
             void backup_from(const std::string &filename) {
-                database_connection other{filename};
-                auto con = this->get_connection();
-                if(auto pBackup = sqlite3_backup_init(con.get(), "main", other.get_db(), "main")){
-                    (void)sqlite3_backup_step(pBackup, -1);
-                    (void)sqlite3_backup_finish(pBackup);
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
-                }
+                auto backup = this->make_backup_from(filename);
+                backup.step(-1);
             }
             
             void backup_from(storage_base &other) {
-                auto other_connection = other.get_connection();
-                auto con = this->get_connection();
-                if(auto pBackup = sqlite3_backup_init(con.get(), "main", other_connection.get(), "main")){
-                    (void)sqlite3_backup_step(pBackup, -1);
-                    (void)sqlite3_backup_finish(pBackup);
-                }else{
-                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
-                }
+                auto backup = this->make_backup_from(other);
+                backup.step(-1);
             }
             
             backup_t make_backup_to(const std::string &filename) {
