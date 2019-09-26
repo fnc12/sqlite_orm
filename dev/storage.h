@@ -16,7 +16,6 @@
 #include <algorithm>    //  std::find
 
 #include "alias.h"
-#include "database_connection.h"
 #include "row_extractor.h"
 #include "error_code.h"
 #include "type_printer.h"

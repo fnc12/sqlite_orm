@@ -36,6 +36,7 @@ namespace sqlite_orm {
         no_active_transaction,
         incorrect_journal_mode_string,
         invalid_collate_argument_enum,
+        failed_to_init_a_backup,
     };
     
 }
@@ -71,6 +72,8 @@ namespace sqlite_orm {
                     return "No active transaction";
                 case orm_error_code::invalid_collate_argument_enum:
                     return "Invalid collate_argument enum";
+                case orm_error_code::failed_to_init_a_backup:
+                    return "Failed to init a backup";
                 default:
                     return "unknown error";
             }
@@ -6150,8 +6153,6 @@ namespace sqlite_orm {
 
 // #include "alias.h"
 
-// #include "database_connection.h"
-
 // #include "row_extractor.h"
 
 // #include "error_code.h"
@@ -7437,6 +7438,90 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+// #include "backup.h"
+
+
+#include <sqlite3.h>
+#include <string>   //  std::string
+#include <memory>
+
+// #include "error_code.h"
+
+// #include "connection_holder.h"
+
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        /**
+         *  A backup class. Don't construct it as is, call storage.make_backup_from or storage.make_backup_to instead.
+         *  An instance of this class represents a wrapper around sqlite3_backup pointer. Use this class
+         *  to have maximum control on a backup operation. In case you need a single backup in one line you
+         *  can skip creating a backup_t instance and just call storage.backup_from or storage.backup_to function.
+         */
+        struct backup_t {
+            backup_t(connection_ref to_,
+                     const std::string &zDestName,
+                     connection_ref from_,
+                     const std::string &zSourceName,
+                     std::unique_ptr<connection_holder> holder_) :
+            handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
+            holder(move(holder_)),
+            to(to_),
+            from(from_)
+            {
+                if(!this->handle){
+                    throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
+                }
+            }
+            
+            backup_t(backup_t &&other) :
+            handle(other.handle),
+            holder(move(other.holder)),
+            to(other.to),
+            from(other.from)
+            {
+                other.handle = nullptr;
+            }
+            
+            ~backup_t() {
+                if(this->handle){
+                    (void)sqlite3_backup_finish(this->handle);
+                    this->handle = nullptr;
+                }
+            }
+            
+            /**
+             *  Calls sqlite3_backup_step with pages argument
+             */
+            int step(int pages) {
+                return sqlite3_backup_step(this->handle, pages);
+            }
+            
+            /**
+             *  Returns sqlite3_backup_remaining result
+             */
+            int remaining() const {
+                return sqlite3_backup_remaining(this->handle);
+            }
+            
+            /**
+             *  Returns sqlite3_backup_pagecount result
+             */
+            int pagecount() const {
+                return sqlite3_backup_pagecount(this->handle);
+            }
+            
+        protected:
+            sqlite3_backup *handle = nullptr;
+            std::unique_ptr<connection_holder> holder;
+            connection_ref to;
+            connection_ref from;
+        };
+    }
+}
+
 
 namespace sqlite_orm {
     
@@ -7453,11 +7538,11 @@ namespace sqlite_orm {
                 this->begin_transaction();
                 auto commitFunc = std::bind(static_cast<void(storage_base::*)()>(&storage_base::commit), this);
                 auto rollbackFunc = std::bind(static_cast<void(storage_base::*)()>(&storage_base::rollback), this);
-                return {connection_ref{*this->connection}, move(commitFunc), move(rollbackFunc)};
+                return {this->get_connection(), move(commitFunc), move(rollbackFunc)};
             }
             
             void drop_index(const std::string &indexName) {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 auto db = con.get();
                 std::stringstream ss;
                 ss << "DROP INDEX '" << indexName + "'";
@@ -7476,7 +7561,7 @@ namespace sqlite_orm {
             }
             
             void vacuum() {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 auto db = con.get();
                 std::string query = "VACUUM";
                 sqlite3_stmt *stmt;
@@ -7496,7 +7581,7 @@ namespace sqlite_orm {
              *  Drops table with given name.
              */
             void drop_table(const std::string &tableName) {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 this->drop_table_internal(tableName, con.get());
             }
             
@@ -7504,7 +7589,7 @@ namespace sqlite_orm {
              *  sqlite3_changes function.
              */
             int changes() {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 return sqlite3_changes(con.get());
             }
             
@@ -7512,17 +7597,17 @@ namespace sqlite_orm {
              *  sqlite3_total_changes function.
              */
             int total_changes() {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 return sqlite3_total_changes(con.get());
             }
             
             int64 last_insert_rowid() {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 return sqlite3_last_insert_rowid(con.get());
             }
             
             int busy_timeout(int ms) {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 return sqlite3_busy_timeout(con.get(), ms);
             }
             
@@ -7535,7 +7620,7 @@ namespace sqlite_orm {
             
             bool transaction(std::function<bool()> f) {
                 this->begin_transaction();
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 auto db = con.get();
                 auto shouldCommit = f();
                 if(shouldCommit){
@@ -7547,7 +7632,7 @@ namespace sqlite_orm {
             }
             
             std::string current_timestamp() {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 return this->current_timestamp(con.get());
             }
             
@@ -7559,7 +7644,7 @@ namespace sqlite_orm {
              * \note sqlite3_db_release_memory added in 3.7.10 https://sqlite.org/changes.html
              */
             int db_release_memory() {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 return sqlite3_db_release_memory(con.get());
             }
 #endif
@@ -7569,7 +7654,7 @@ namespace sqlite_orm {
              *  @return Returns list of tables in database.
              */
             std::vector<std::string> table_names() {
-                connection_ref con{*this->connection};
+                auto con = this->get_connection();
                 std::vector<std::string> tableNames;
                 std::string sql = "SELECT name FROM sqlite_master WHERE type='table'";
                 using data_t = std::vector<std::string>;
@@ -7646,6 +7731,44 @@ namespace sqlite_orm {
                 if(this->connection->retain_count() < 0){
                     throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
                 }
+            }
+            
+            void backup_to(const std::string &filename) {
+                auto backup = this->make_backup_to(filename);
+                backup.step(-1);
+            }
+            
+            void backup_to(storage_base &other) {
+                auto backup = this->make_backup_to(other);
+                backup.step(-1);
+            }
+            
+            void backup_from(const std::string &filename) {
+                auto backup = this->make_backup_from(filename);
+                backup.step(-1);
+            }
+            
+            void backup_from(storage_base &other) {
+                auto backup = this->make_backup_from(other);
+                backup.step(-1);
+            }
+            
+            backup_t make_backup_to(const std::string &filename) {
+                auto holder = std::make_unique<connection_holder>(filename);
+                return {connection_ref{*holder}, "main", this->get_connection(), "main", move(holder)};
+            }
+            
+            backup_t make_backup_to(storage_base &other) {
+                return {other.get_connection(), "main", this->get_connection(), "main", {}};
+            }
+            
+            backup_t make_backup_from(const std::string &filename) {
+                auto holder = std::make_unique<connection_holder>(filename);
+                return {this->get_connection(), "main", connection_ref{*holder}, "main", move(holder)};
+            }
+            
+            backup_t make_backup_from(storage_base &other) {
+                return {this->get_connection(), "main", other.get_connection(), "main", {}};
             }
             
         protected:

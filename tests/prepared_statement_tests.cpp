@@ -3,26 +3,29 @@
 
 using namespace sqlite_orm;
 
-struct User {
-    int id = 0;
-    std::string name;
-};
-
-struct Visit {
-    int id = 0;
-    decltype(User::id) userId;
-    long time = 0;
-};
-
-bool operator==(const User &lhs, const User &rhs) {
-    return lhs.id == rhs.id && lhs.name == rhs.name;
-}
-
-bool operator!=(const User &lhs, const User &rhs) {
-    return !(lhs == rhs);
+namespace PreparedStatementTests {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    
+    struct Visit {
+        int id = 0;
+        decltype(User::id) userId;
+        long time = 0;
+    };
+    
+    bool operator==(const User &lhs, const User &rhs) {
+        return lhs.id == rhs.id && lhs.name == rhs.name;
+    }
+    
+    bool operator!=(const User &lhs, const User &rhs) {
+        return !(lhs == rhs);
+    }
 }
 
 TEST_CASE("Prepared") {
+    using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
     
     const int defaultVisitTime = 50;

@@ -19,6 +19,7 @@ namespace sqlite_orm {
         no_active_transaction,
         incorrect_journal_mode_string,
         invalid_collate_argument_enum,
+        failed_to_init_a_backup,
     };
     
 }
@@ -54,6 +55,8 @@ namespace sqlite_orm {
                     return "No active transaction";
                 case orm_error_code::invalid_collate_argument_enum:
                     return "Invalid collate_argument enum";
+                case orm_error_code::failed_to_init_a_backup:
+                    return "Failed to init a backup";
                 default:
                     return "unknown error";
             }
