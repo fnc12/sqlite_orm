@@ -6377,6 +6377,7 @@ namespace sqlite_orm {
 
 #include <sqlite3.h>
 #include <iterator> //  std::iterator_traits
+#include <string>   //  std::string
 
 // #include "connection_holder.h"
 
@@ -6483,6 +6484,45 @@ namespace sqlite_orm {
                     this->stmt = nullptr;
                 }
             }
+            
+            std::string sql() const {
+                if(this->stmt){
+                    if(auto res = sqlite3_sql(this->stmt)){
+                        return res;
+                    }else{
+                        return {};
+                    }
+                }else{
+                    return {};
+                }
+            }
+            
+            std::string expanded_sql() const {
+                if(this->stmt){
+                    if(auto res = sqlite3_expanded_sql(this->stmt)){
+                        std::string result = res;
+                        sqlite3_free(res);
+                        return result;
+                    }else{
+                        return {};
+                    }
+                }else{
+                    return {};
+                }
+            }
+#if SQLITE_VERSION_NUMBER >= 3027000
+            std::string normalized_sql() const {
+                if(this->stmt){
+                    if(auto res = sqlite3_normalized_sql(this->stmt)){
+                        return res;
+                    }else{
+                        return {};
+                    }
+                }else{
+                    return {};
+                }
+            }
+#endif
         };
         
         template<class T>

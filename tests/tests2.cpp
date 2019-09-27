@@ -19,6 +19,9 @@ TEST_CASE("Remove"){
                                     make_table("objects",
                                                make_column("id", &Object::id, primary_key()),
                                                make_column("name", &Object::name)));
+        
+        auto version = storage.libversion();
+        
         storage.sync_schema();
         storage.remove_all<Object>();
         
