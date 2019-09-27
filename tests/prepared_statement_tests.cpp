@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
+#include <tuple>    //  std::ignore
 
 using namespace sqlite_orm;
 
@@ -21,6 +22,17 @@ namespace PreparedStatementTests {
     
     bool operator!=(const User &lhs, const User &rhs) {
         return !(lhs == rhs);
+    }
+    
+    void testSerializing(const internal::prepared_statement_base &statement) {
+        auto sql = statement.sql();
+        std::ignore = sql;
+        auto expanded = statement.expanded_sql();
+        std::ignore = expanded;
+#if SQLITE_VERSION_NUMBER >= 3027000
+        auto normalized = statement.normalized_sql();
+        std::ignore = normalized;
+#endif
     }
 }
 
@@ -52,6 +64,7 @@ TEST_CASE("Prepared") {
         {
             for(auto i = 0; i < 2; ++i) {
                 auto statement = storage.prepare(select(&User::id));
+                testSerializing(statement);
                 SECTION("nothing") {
                     //..
                 }
@@ -64,6 +77,7 @@ TEST_CASE("Prepared") {
         {
             for(auto i = 0; i < 2; ++i) {
                 auto statement = storage.prepare(select(&User::name, order_by(&User::id)));
+                testSerializing(statement);
                 SECTION("nothing") {
                     //..
                 }
@@ -75,6 +89,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5)));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -85,6 +100,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5 and like(&User::name, "T%"))));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -95,6 +111,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(select(columns(&User::id, &User::name)));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -110,6 +127,7 @@ TEST_CASE("Prepared") {
         {
             auto statement = storage.prepare(select(columns(&User::name, &User::id), where(is_equal(mod(&User::id, 2), 0)),
                                                     order_by(&User::name)));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -124,6 +142,7 @@ TEST_CASE("Prepared") {
     SECTION("get all") {
         {
             auto statement = storage.prepare(get_all<User>());
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -138,6 +157,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 3))));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -152,6 +172,7 @@ TEST_CASE("Prepared") {
     }
     SECTION("update all") {
         auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, "_")))));
+        testSerializing(statement);
         SECTION("nothing") {
             //..
         }
@@ -167,6 +188,7 @@ TEST_CASE("Prepared") {
     }
     SECTION("remove all") {
         auto statement = storage.prepare(remove_all<User>());
+        testSerializing(statement);
         SECTION("nothing") {
             //..
         }
@@ -178,10 +200,12 @@ TEST_CASE("Prepared") {
     SECTION("remove all 2") {
         SECTION("One condition") {
             auto statement = storage.prepare(remove_all<User>(where(is_equal(&User::id, 2))));
+            testSerializing(statement);
             storage.execute(statement);
         }
         SECTION("Two conditions") {
             auto statement = storage.prepare(remove_all<User>(where(is_equal(&User::name, "Shy'm") and lesser_than(&User::id, 10))));
+            testSerializing(statement);
             storage.execute(statement);
         }
         auto ids = storage.select(&User::id);
@@ -193,6 +217,7 @@ TEST_CASE("Prepared") {
     SECTION("get") {
         {
             auto statement = storage.prepare(get<User>(1));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -203,6 +228,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get<User>(2));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -213,6 +239,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get<User>(3));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -223,6 +250,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get<User>(4));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -239,6 +267,7 @@ TEST_CASE("Prepared") {
     SECTION("get pointer") {
         {
             auto statement = storage.prepare(get_pointer<User>(1));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -250,6 +279,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get_pointer<User>(2));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -261,6 +291,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get_pointer<User>(3));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -272,6 +303,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get_pointer<User>(4));
+            testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
@@ -284,6 +316,7 @@ TEST_CASE("Prepared") {
     SECTION("update") {
         User user{2, "Stromae"};
         auto statement = storage.prepare(update(user));
+        testSerializing(statement);
         SECTION("nothing") {
             //..
         }
@@ -297,6 +330,7 @@ TEST_CASE("Prepared") {
     SECTION("remove") {
         {
             auto statement = storage.prepare(remove<User>(1));
+            testSerializing(statement);
             storage.execute(statement);
             REQUIRE(storage.get_pointer<User>(1) == nullptr);
             REQUIRE(storage.get_pointer<User>(2) != nullptr);
@@ -305,6 +339,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(remove<User>(2));
+            testSerializing(statement);
             storage.execute(statement);
             REQUIRE(storage.get_pointer<User>(1) == nullptr);
             REQUIRE(storage.get_pointer<User>(2) == nullptr);
@@ -313,6 +348,7 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(remove<User>(3));
+            testSerializing(statement);
             storage.execute(statement);
             REQUIRE(storage.get_pointer<User>(1) == nullptr);
             REQUIRE(storage.get_pointer<User>(2) == nullptr);
@@ -323,6 +359,7 @@ TEST_CASE("Prepared") {
     SECTION("insert") {
         User user{0, "Stromae"};
         auto statement = storage.prepare(insert(user));
+        testSerializing(statement);
         SECTION("nothing") {
             //..
         }
