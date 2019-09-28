@@ -270,6 +270,10 @@ namespace sqlite_orm {
                 return {this->get_connection(), "main", other.get_connection(), "main", {}};
             }
             
+            const std::string &filename() const {
+                return this->connection->filename;
+            }
+            
         protected:
             
             storage_base(const std::string &filename_, int foreignKeysCount):
