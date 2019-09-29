@@ -68,7 +68,7 @@ TEST_CASE("Prepared") {
                 SECTION("nothing") {
                     //..
                 }
-                SECTION("exeecute") {
+                SECTION("execute") {
                     auto rows = storage.execute(statement);
                     REQUIRE_THAT(rows, UnorderedEquals<int>({1, 2, 3}));
                 }
@@ -81,7 +81,7 @@ TEST_CASE("Prepared") {
                 SECTION("nothing") {
                     //..
                 }
-                SECTION("exeecute") {
+                SECTION("execute") {
                     auto rows = storage.execute(statement);
                     REQUIRE_THAT(rows, UnorderedEquals<std::string>({"Team BS", "Shy'm", "Maître Gims"}));
                 }
@@ -93,7 +93,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
             }
@@ -104,7 +104,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
             }
@@ -115,7 +115,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto rows = storage.execute(statement);
                 std::vector<std::tuple<int, std::string>> expected;
                 expected.push_back(std::make_tuple(1, "Team BS"));
@@ -131,7 +131,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto rows = storage.execute(statement);
                 std::vector<std::tuple<std::string, int>> expected;
                 expected.push_back(std::make_tuple("Shy'm", 2));
@@ -146,7 +146,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto rows = storage.execute(statement);
                 std::vector<User> expected;
                 expected.push_back(User{1, "Team BS"});
@@ -161,7 +161,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto rows = storage.execute(statement);
                 std::vector<User> expected;
                 expected.push_back(User{1, "Team BS"});
@@ -176,7 +176,7 @@ TEST_CASE("Prepared") {
         SECTION("nothing") {
             //..
         }
-        SECTION("exeecute") {
+        SECTION("execute") {
             storage.execute(statement);
             auto names = storage.select(&User::name);
             std::vector<decltype(User::name)> expected;
@@ -192,7 +192,7 @@ TEST_CASE("Prepared") {
         SECTION("nothing") {
             //..
         }
-        SECTION("exeecute") {
+        SECTION("execute") {
             storage.execute(statement);
             REQUIRE(storage.count<User>() == 0);
         }
@@ -221,7 +221,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto user = storage.execute(statement);
                 REQUIRE(user == User{1, "Team BS"});
             }
@@ -232,7 +232,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto user = storage.execute(statement);
                 REQUIRE(user == User{2, "Shy'm"});
             }
@@ -243,7 +243,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto user = storage.execute(statement);
                 REQUIRE(user == User{3, "Maître Gims"});
             }
@@ -254,7 +254,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 try {
                     auto user = storage.execute(statement);
                     REQUIRE(false);
@@ -271,7 +271,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto user = storage.execute(statement);
                 REQUIRE(user);
                 REQUIRE(*user == User{1, "Team BS"});
@@ -283,7 +283,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto user = storage.execute(statement);
                 REQUIRE(user);
                 REQUIRE(*user == User{2, "Shy'm"});
@@ -295,7 +295,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto user = storage.execute(statement);
                 REQUIRE(user);
                 REQUIRE(*user == User{3, "Maître Gims"});
@@ -307,7 +307,7 @@ TEST_CASE("Prepared") {
             SECTION("nothing") {
                 //..
             }
-            SECTION("exeecute") {
+            SECTION("execute") {
                 auto user = storage.execute(statement);
                 REQUIRE(!user);
             }
@@ -315,16 +315,52 @@ TEST_CASE("Prepared") {
     }
     SECTION("update") {
         User user{2, "Stromae"};
-        auto statement = storage.prepare(update(user));
-        testSerializing(statement);
-        SECTION("nothing") {
-            //..
+        SECTION("by ref") {
+            auto statement = storage.prepare(update(user));
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                storage.execute(statement);
+                REQUIRE(storage.get<User>(2) == user);
+                {
+                    auto names = storage.select(&User::name);
+                    REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
+                    REQUIRE(find(names.begin(), names.end(), "Stromae") != names.end());
+                }
+                user.name = "Sia";
+                storage.execute(statement);
+                REQUIRE(storage.get<User>(2) == user);
+                {
+                    auto names = storage.select(&User::name);
+                    REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
+                    REQUIRE(find(names.begin(), names.end(), "Sia") != names.end());
+                }
+            }
         }
-        SECTION("exeecute") {
-            storage.execute(statement);
-            REQUIRE(storage.get<User>(2) == user);
-            auto names = storage.select(&User::name);
-            REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
+        SECTION("by val") {
+            auto statement = storage.prepare(update<by_val<User>>(user));
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                storage.execute(statement);
+                REQUIRE(storage.get<User>(2) == user);
+                {
+                    auto names = storage.select(&User::name);
+                    REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
+                    REQUIRE(find(names.begin(), names.end(), "Stromae") != names.end());
+                }
+                user.name = "Sia";
+                storage.execute(statement);
+                {
+                    auto names = storage.select(&User::name);
+                    REQUIRE(find(names.begin(), names.end(), "Sia") == names.end());
+                    REQUIRE(find(names.begin(), names.end(), "Stromae") != names.end());
+                }
+            }
         }
     }
     SECTION("remove") {
@@ -363,7 +399,7 @@ TEST_CASE("Prepared") {
         SECTION("nothing") {
             //..
         }
-        SECTION("exeecute") {
+        SECTION("execute") {
             auto insertedId = storage.execute(statement);
             {
                 auto rows = storage.get_all<User>();

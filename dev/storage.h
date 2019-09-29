@@ -672,8 +672,8 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T>
-            std::string string_from_expression(const update_t<T> &upd, bool /*noTableName*/) const {
+            template<class T, bool by_ref>
+            std::string string_from_expression(const update_t<T, by_ref> &upd, bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
                 ss << "UPDATE '" << impl.table.name << "' SET ";
@@ -2090,8 +2090,8 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T>
-            prepared_statement_t<update_t<T>> prepare(update_t<T> upd) {
+            template<class T, bool by_ref>
+            prepared_statement_t<update_t<T, by_ref>> prepare(update_t<T, by_ref> upd) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2189,6 +2189,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto &impl = this->get_impl<T>();
                 auto &o = statement.t.obj;
+                sqlite3_reset(stmt);
                 iterate_tuple(statement.t.columns.columns, [&o, &index, &stmt, &impl, db] (auto &m) {
                     using column_type = typename std::decay<decltype(m)>::type;
                     using field_type = typename column_result_t<self, column_type>::type;
@@ -2214,6 +2215,7 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
+                sqlite3_reset(stmt);
                 for(auto it = statement.t.from; it != statement.t.to; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
@@ -2249,6 +2251,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto &impl = this->get_impl<object_type>();
+                sqlite3_reset(stmt);
                 for(auto it = statement.t.from; it != statement.t.to; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
@@ -2284,6 +2287,7 @@ namespace sqlite_orm {
                 auto index = 1;
                 auto &o = statement.t.obj;
                 auto &impl = this->get_impl<T>();
+                sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
                     using column_type = typename std::decay<decltype(c)>::type;
                     using field_type = typename column_type::field_type;
@@ -2316,6 +2320,7 @@ namespace sqlite_orm {
                 auto &impl = this->get_impl<T>();
                 auto &o = statement.t.obj;
                 auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
+                sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db] (auto &c) {
                     if(impl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()){
                         auto it = std::find(compositeKeyColumnNames.begin(),
@@ -2352,6 +2357,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
+                sqlite3_reset(stmt);
                 iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v){
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)){
@@ -2365,20 +2371,22 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T>
-            void execute(const prepared_statement_t<update_t<T>> &statement) {
+            template<class T, bool by_ref>
+            void execute(const prepared_statement_t<update_t<T, by_ref>> &statement) {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto &impl = this->get_impl<T>();
                 auto stmt = statement.stmt;
                 auto index = 1;
                 auto &o = statement.t.obj;
+                sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, stmt, &index, db] (auto &c) {
                     if(!c.template has<constraints::primary_key_t<>>()) {
                         using column_type = typename std::decay<decltype(c)>::type;
                         using field_type = typename column_type::field_type;
                         if(c.member_pointer){
-                            if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)){
+                            auto bind_res = statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer);
+                            if(SQLITE_OK != bind_res){
                                 throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
                             }
                         }else{
@@ -2421,6 +2429,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
+                sqlite3_reset(stmt);
                 iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v){
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)){
@@ -2459,6 +2468,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
+                sqlite3_reset(stmt);
                 iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v){
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)){
@@ -2497,6 +2507,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
+                sqlite3_reset(stmt);
                 iterate_ast(statement.t.conditions, [stmt, &index, db](auto &node){
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
@@ -2517,6 +2528,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
+                sqlite3_reset(stmt);
                 statement.t.set.for_each([&index, stmt, db](auto &setArg){
                     iterate_ast(setArg, [&index, stmt, db](auto &node){
                         using node_type = typename std::decay<decltype(node)>::type;
@@ -2546,6 +2558,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
+                sqlite3_reset(stmt);
                 iterate_ast(statement.t, [stmt, &index, db](auto &node){
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
@@ -2577,6 +2590,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
+                sqlite3_reset(stmt);
                 iterate_ast(statement.t, [stmt, &index, db](auto &node){
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
