@@ -10594,18 +10594,18 @@ namespace sqlite_orm {
                 auto stepRes = sqlite3_step(stmt);
                 switch(stepRes){
                     case SQLITE_ROW:{
-                        T res;
+                        auto res = std::make_unique<T>();
                         index = 0;
                         impl.table.for_each_column([&index, &res, stmt] (auto c) {
                             using field_type = typename decltype(c)::field_type;
                             auto value = row_extractor<field_type>().extract(stmt, index++);
                             if(c.member_pointer){
-                                res.*c.member_pointer = std::move(value);
+                                (*res).*c.member_pointer = std::move(value);
                             }else{
-                                ((res).*(c.setter))(std::move(value));
+                                ((*res).*(c.setter))(std::move(value));
                             }
                         });
-                        return std::make_unique<T>(std::move(res));
+                        return res;
                     }break;
                     case SQLITE_DONE:{
                         return {};
