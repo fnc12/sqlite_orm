@@ -394,43 +394,121 @@ TEST_CASE("Prepared") {
     }
     SECTION("insert") {
         User user{0, "Stromae"};
-        auto statement = storage.prepare(insert(user));
-        testSerializing(statement);
-        SECTION("nothing") {
-            //..
-        }
-        SECTION("execute") {
-            auto insertedId = storage.execute(statement);
-            {
-                auto rows = storage.get_all<User>();
-                std::vector<User> expected;
-                expected.push_back(User{1, "Team BS"});
-                expected.push_back(User{2, "Shy'm"});
-                expected.push_back(User{3, "Maître Gims"});
-                expected.push_back(User{4, user.name});
-                REQUIRE_THAT(rows, UnorderedEquals(expected));
+        SECTION("by ref") {
+            auto statement = storage.prepare(insert(user));
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
             }
-            REQUIRE(insertedId == 4);
+            SECTION("execute") {
+                auto insertedId = storage.execute(statement);
+                {
+                    auto rows = storage.get_all<User>();
+                    std::vector<User> expected;
+                    expected.push_back(User{1, "Team BS"});
+                    expected.push_back(User{2, "Shy'm"});
+                    expected.push_back(User{3, "Maître Gims"});
+                    expected.push_back(User{4, "Stromae"});
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
+                REQUIRE(insertedId == 4);
+                user.name = "Sia";
+                insertedId = storage.execute(statement);
+                {
+                    auto rows = storage.get_all<User>();
+                    std::vector<User> expected;
+                    expected.push_back(User{1, "Team BS"});
+                    expected.push_back(User{2, "Shy'm"});
+                    expected.push_back(User{3, "Maître Gims"});
+                    expected.push_back(User{4, "Stromae"});
+                    expected.push_back(User{5, "Sia"});
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
+                REQUIRE(insertedId == 5);
+            }
+        }
+        SECTION("by val") {
+            auto statement = storage.prepare(insert<by_val<User>>(user));
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                auto insertedId = storage.execute(statement);
+                {
+                    auto rows = storage.get_all<User>();
+                    std::vector<User> expected;
+                    expected.push_back(User{1, "Team BS"});
+                    expected.push_back(User{2, "Shy'm"});
+                    expected.push_back(User{3, "Maître Gims"});
+                    expected.push_back(User{4, "Stromae"});
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
+                REQUIRE(insertedId == 4);
+                user.name = "Sia";
+                insertedId = storage.execute(statement);
+                {
+                    auto rows = storage.get_all<User>();
+                    std::vector<User> expected;
+                    expected.push_back(User{1, "Team BS"});
+                    expected.push_back(User{2, "Shy'm"});
+                    expected.push_back(User{3, "Maître Gims"});
+                    expected.push_back(User{4, "Stromae"});
+                    expected.push_back(User{5, "Stromae"});
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
+                REQUIRE(insertedId == 5);
+            }
         }
     }
     SECTION("replace") {
         std::vector<User> expected;
         User user;
-        SECTION("existing") {
+        SECTION("by ref existing") {
             user = {1, "Stromae"};
             expected.push_back(User{1, "Stromae"});
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
+            auto statement = storage.prepare(replace(user));
+            storage.execute(statement);
         }
-        SECTION("new") {
+        SECTION("by ref new") {
             user = {4, "Stromae"};
             expected.push_back(User{1, "Team BS"});
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
-            expected.push_back(User{4, "Stromae"});
+            expected.push_back(user);
+            auto statement = storage.prepare(replace(user));
+            storage.execute(statement);
+            auto rows = storage.get_all<User>();
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+            
+            user = {5, "LP"};
+            expected.push_back(user);
+            storage.execute(statement);
         }
-        auto statement = storage.prepare(replace(user));
-        storage.execute(statement);
+        SECTION("by val existing") {
+            user = {1, "Stromae"};
+            expected.push_back(User{1, "Stromae"});
+            expected.push_back(User{2, "Shy'm"});
+            expected.push_back(User{3, "Maître Gims"});
+            auto statement = storage.prepare(replace<by_val<User>>(user));
+            storage.execute(statement);
+        }
+        SECTION("by val new") {
+            user = {4, "Stromae"};
+            expected.push_back(User{1, "Team BS"});
+            expected.push_back(User{2, "Shy'm"});
+            expected.push_back(User{3, "Maître Gims"});
+            expected.push_back(user);
+            auto statement = storage.prepare(replace<by_val<User>>(user));
+            storage.execute(statement);
+            auto rows = storage.get_all<User>();
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+            
+            user = {5, "LP"};
+            storage.execute(statement);
+        }
         auto rows = storage.get_all<User>();
         REQUIRE_THAT(rows, UnorderedEquals(expected));
     }
@@ -517,9 +595,41 @@ TEST_CASE("Prepared") {
     SECTION("insert explicit") {
         SECTION("user two columns") {
             User user{5, "Eminem"};
-            auto statement = storage.prepare(insert(user, columns(&User::id, &User::name)));
-            auto insertedId = storage.execute(statement);
-            REQUIRE(insertedId == user.id);
+            SECTION("by ref") {
+                auto statement = storage.prepare(insert(user, columns(&User::id, &User::name)));
+                {
+                    auto insertedId = storage.execute(statement);
+                    REQUIRE(insertedId == user.id);
+                    REQUIRE(storage.count<User>(where(is_equal(&User::name, "Eminem"))) == 1);
+                }
+                {
+                    user.id = 6;
+                    user.name = "Nate Dogg";
+                    auto insertedId = storage.execute(statement);
+                    REQUIRE(insertedId == 6);
+                    REQUIRE(storage.count<User>(where(is_equal(&User::name, "Nate Dogg"))) == 1);
+                }
+            }
+            SECTION("by val") {
+                auto statement = storage.prepare(insert<by_val<User>>(user, columns(&User::id, &User::name)));
+                {
+                    auto insertedId = storage.execute(statement);
+                    REQUIRE(insertedId == user.id);
+                    REQUIRE(storage.count<User>(where(is_equal(&User::name, "Eminem"))) == 1);
+                }
+                {
+                    user.id = 6;
+                    user.name = "Nate Dogg";
+                    try{
+                        storage.execute(statement);
+                        REQUIRE(false);
+                    }catch(const std::system_error &e) {
+                        //..
+                    }catch(...){
+                        REQUIRE(false);
+                    }
+                }
+            }
         }
         SECTION("user id column only") {
             User user{4, "Eminem"};

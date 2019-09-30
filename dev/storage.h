@@ -718,8 +718,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            template<class T, class ...Cols>
-            std::string string_from_expression(const insert_explicit<T, Cols...> &ins, bool /*noTableName*/) const {
+            template<class T, bool by_ref, class ...Cols>
+            std::string string_from_expression(const insert_explicit<T, by_ref, Cols...> &ins, bool /*noTableName*/) const {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<T>();
@@ -759,8 +759,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            template<class T>
-            std::string string_from_expression(const insert_t<T> &ins, bool /*noTableName*/) const {
+            template<class T, bool by_ref>
+            std::string string_from_expression(const insert_t<T, by_ref> &ins, bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
                 ss << "INSERT INTO '" << impl.table.name << "' ";
@@ -808,8 +808,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
             
-            template<class T>
-            std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
+            template<class T, bool by_ref>
+            std::string string_from_expression(const replace_t<T, by_ref> &rep, bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
                 ss << "REPLACE INTO '" << impl.table.name << "' (";
@@ -2116,8 +2116,8 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T>
-            prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
+            template<class T, bool by_ref>
+            prepared_statement_t<insert_t<T, by_ref>> prepare(insert_t<T, by_ref> ins) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2129,8 +2129,8 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T>
-            prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
+            template<class T, bool by_ref>
+            prepared_statement_t<replace_t<T, by_ref>> prepare(replace_t<T, by_ref> rep) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2168,8 +2168,8 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T, class ...Cols>
-            prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
+            template<class T, bool by_ref, class ...Cols>
+            prepared_statement_t<insert_explicit<T, by_ref, Cols...>> prepare(insert_explicit<T, by_ref, Cols...> ins) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2181,8 +2181,8 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T, class ...Cols>
-            int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>> &statement) {
+            template<class T, bool by_ref, class ...Cols>
+            int64 execute(const prepared_statement_t<insert_explicit<T, by_ref, Cols...>> &statement) {
                 auto index = 1;
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -2279,8 +2279,8 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T>
-            void execute(const prepared_statement_t<replace_t<T>> &statement) {
+            template<class T, bool by_ref>
+            void execute(const prepared_statement_t<replace_t<T, by_ref>> &statement) {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
@@ -2310,8 +2310,8 @@ namespace sqlite_orm {
                 }
             }
             
-            template<class T>
-            int64 execute(const prepared_statement_t<insert_t<T>> &statement) {
+            template<class T, bool by_ref>
+            int64 execute(const prepared_statement_t<insert_t<T, by_ref>> &statement) {
                 int64 res = 0;
                 auto con = this->get_connection();
                 auto db = con.get();
