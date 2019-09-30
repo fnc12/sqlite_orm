@@ -3,13 +3,27 @@
 #include <sqlite3.h>
 #include <iterator> //  std::iterator_traits
 #include <string>   //  std::string
+#include <type_traits>  //  std::true_type, std::false_type
 
 #include "connection_holder.h"
 #include "select_constraints.h"
 
 namespace sqlite_orm {
     
+    template<class T>
+    struct by_val {
+        using type = T;
+        
+        type obj;
+    };
+    
     namespace internal {
+        
+        template<class T>
+        struct is_by_val : std::false_type {};
+        
+        template<class T>
+        struct is_by_val<by_val<T>> : std::true_type {};
         
         struct prepared_statement_base {
             sqlite3_stmt *stmt = nullptr;
@@ -122,13 +136,23 @@ namespace sqlite_orm {
             ids_type ids;
         };
         
+        template<class T, bool by_ref>
+        struct update_t;
+        
         template<class T>
-        struct update_t {
+        struct update_t<T, true>{
             using type = T;
             
             const type &obj;
             
             update_t(decltype(obj) obj_) : obj(obj_) {}
+        };
+        
+        template<class T>
+        struct update_t<T, false>{
+            using type = T;
+            
+            type obj;
         };
         
         template<class T, class ...Ids>
@@ -140,8 +164,11 @@ namespace sqlite_orm {
             ids_type ids;
         };
         
+        template<class T, bool by_ref>
+        struct insert_t;
+        
         template<class T>
-        struct insert_t {
+        struct insert_t<T, true> {
             using type = T;
             
             const type &obj;
@@ -149,8 +176,18 @@ namespace sqlite_orm {
             insert_t(decltype(obj) obj_) : obj(obj_) {}
         };
         
+        template<class T>
+        struct insert_t<T, false> {
+            using type = T;
+            
+            type obj;
+        };
+        
+        template<class T, bool by_ref, class ...Cols>
+        struct insert_explicit;
+        
         template<class T, class ...Cols>
-        struct insert_explicit {
+        struct insert_explicit<T, true, Cols...> {
             using type = T;
             using columns_type = columns_t<Cols...>;
             
@@ -160,13 +197,34 @@ namespace sqlite_orm {
             insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
         };
         
+        template<class T, class ...Cols>
+        struct insert_explicit<T, false, Cols...> {
+            using type = T;
+            using columns_type = columns_t<Cols...>;
+            
+            type obj;
+            columns_type columns;
+            
+            insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
+        };
+        
+        template<class T, bool by_ref>
+        struct replace_t;
+        
         template<class T>
-        struct replace_t {
+        struct replace_t<T, true> {
             using type = T;
             
             const type &obj;
             
             replace_t(decltype(obj) obj_) : obj(obj_) {}
+        };
+        
+        template<class T>
+        struct replace_t<T, false> {
+            using type = T;
+            
+            type obj;
         };
         
         template<class It>
@@ -199,18 +257,39 @@ namespace sqlite_orm {
     }
     
     template<class T>
-    internal::replace_t<T> replace(const T &obj) {
+    internal::replace_t<T, true> replace(const T &obj) {
+        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
+    }
+    
+    template<class B>
+    internal::replace_t<typename B::type, false> replace(typename B::type obj) {
+        static_assert(internal::is_by_val<B>::value, "by_val expected");
+        return {std::move(obj)};
     }
     
     template<class T>
-    internal::insert_t<T> insert(const T &obj) {
+    internal::insert_t<T, true> insert(const T &obj) {
+        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
     }
     
+    template<class B>
+    internal::insert_t<typename B::type, false> insert(typename B::type obj) {
+        static_assert(internal::is_by_val<B>::value, "by_val expected");
+        return {std::move(obj)};
+    }
+    
     template<class T, class ...Cols>
-    internal::insert_explicit<T, Cols...> insert(const T &obj, internal::columns_t<Cols...> cols) {
+    internal::insert_explicit<T, true, Cols...> insert(const T &obj, internal::columns_t<Cols...> cols) {
+        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj, std::move(cols)};
+    }
+    
+    template<class B, class ...Cols>
+    internal::insert_explicit<typename B::type, false, Cols...> insert(typename B::type obj, internal::columns_t<Cols...> cols) {
+        static_assert(internal::is_by_val<B>::value, "by_val expected");
+        return {std::move(obj), std::move(cols)};
     }
     
     template<class T, class ...Ids>
@@ -220,8 +299,15 @@ namespace sqlite_orm {
     }
     
     template<class T>
-    internal::update_t<T> update(const T &obj) {
+    internal::update_t<T, true> update(const T &obj) {
+        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
+    }
+    
+    template<class B>
+    internal::update_t<typename B::type, false> update(typename B::type obj) {
+        static_assert(internal::is_by_val<B>::value, "by_val expected");
+        return {std::move(obj)};
     }
     
     template<class T, class ...Ids>
