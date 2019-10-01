@@ -409,7 +409,19 @@ namespace sqlite_orm {
     }
     
     template<int N, class T, bool by_ref>
+    const auto &get(const internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        return statement.t.obj;
+    }
+    
+    template<int N, class T, bool by_ref>
     auto &get(internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return statement.t.obj;
+    }
+    
+    template<int N, class T, bool by_ref>
+    const auto &get(const internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return statement.t.obj;
     }
@@ -420,8 +432,20 @@ namespace sqlite_orm {
         return statement.t.obj;
     }
     
+    template<int N, class T, bool by_ref>
+    const auto &get(const internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        return statement.t.obj;
+    }
+    
     template<int N, class T, bool by_ref, class ...Cols>
     auto &get(internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return statement.t.obj;
+    }
+    
+    template<int N, class T, bool by_ref, class ...Cols>
+    const auto &get(const internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return statement.t.obj;
     }

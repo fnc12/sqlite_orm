@@ -318,6 +318,7 @@ TEST_CASE("Prepared") {
         SECTION("by ref") {
             auto statement = storage.prepare(update(user));
             REQUIRE(get<0>(statement) == user);
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
             REQUIRE(&get<0>(statement) == &user);
             testSerializing(statement);
             SECTION("nothing") {
@@ -422,6 +423,7 @@ TEST_CASE("Prepared") {
                 }
                 REQUIRE(insertedId == 4);
                 user.name = "Sia";
+                std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
                 REQUIRE(get<0>(statement) == user);
                 REQUIRE(&get<0>(statement) == &user);
                 insertedId = storage.execute(statement);
@@ -497,6 +499,7 @@ TEST_CASE("Prepared") {
             auto statement = storage.prepare(replace(user));
             storage.execute(statement);
             
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
             REQUIRE(user == get<0>(statement));
             REQUIRE(&user == &get<0>(statement));
         }
@@ -635,6 +638,7 @@ TEST_CASE("Prepared") {
             User user{5, "Eminem"};
             SECTION("by ref") {
                 auto statement = storage.prepare(insert(user, columns(&User::id, &User::name)));
+                std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
                 {
                     auto insertedId = storage.execute(statement);
                     REQUIRE(insertedId == user.id);
