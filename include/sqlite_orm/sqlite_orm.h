@@ -6709,98 +6709,184 @@ namespace sqlite_orm {
         };
     }
     
+    /**
+     *  Create a replace range statement
+     */
     template<class It>
     internal::replace_range_t<It> replace_range(It from, It to) {
         return {std::move(from), std::move(to)};
     }
     
+    /**
+     *  Create an insert range statement
+     */
     template<class It>
     internal::insert_range_t<It> insert_range(It from, It to) {
         return {std::move(from), std::move(to)};
     }
     
+    /**
+     *  Create a replace by reference statement
+     *  Usage: replace(myUserInstance);
+     */
     template<class T>
     internal::replace_t<T, true> replace(const T &obj) {
         static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
     }
     
+    /**
+     *  Create a replace by value statement
+     *  Usage: replace<by_val<User>>(myUserInstance);
+     */
     template<class B>
     internal::replace_t<typename B::type, false> replace(typename B::type obj) {
         static_assert(internal::is_by_val<B>::value, "by_val expected");
         return {std::move(obj)};
     }
     
+    /**
+     *  Create an insert by reference statement
+     *  Usage: insert(myUserInstance);
+     */
     template<class T>
     internal::insert_t<T, true> insert(const T &obj) {
         static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
     }
     
+    /**
+     *  Create an insert by value statement.
+     *  Usage: insert<by_val<User>>(myUserInstance);
+     */
     template<class B>
     internal::insert_t<typename B::type, false> insert(typename B::type obj) {
         static_assert(internal::is_by_val<B>::value, "by_val expected");
         return {std::move(obj)};
     }
     
+    /**
+     *  Create an explicit insert by reference statement.
+     *  Usage: insert(myUserInstance, columns(&User::id, &User::name));
+     */
     template<class T, class ...Cols>
     internal::insert_explicit<T, true, Cols...> insert(const T &obj, internal::columns_t<Cols...> cols) {
         static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj, std::move(cols)};
     }
     
+    /**
+     *  Create an explicit insert by value statement
+     *  Usage: insert<by_val<User>>(myUserInstance, s(&User::id, &User::name));
+     */
     template<class B, class ...Cols>
     internal::insert_explicit<typename B::type, false, Cols...> insert(typename B::type obj, internal::columns_t<Cols...> cols) {
         static_assert(internal::is_by_val<B>::value, "by_val expected");
         return {std::move(obj), std::move(cols)};
     }
     
+    /**
+     *  Create a remove statement
+     *  Usage: remove<User>(5);
+     */
     template<class T, class ...Ids>
     internal::remove_t<T, Ids...> remove(Ids ...ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
         return {move(idsTuple)};
     }
     
+    /**
+     *  Create an update by reference statement.
+     *  Usage: update(myUserInstance);
+     */
     template<class T>
     internal::update_t<T, true> update(const T &obj) {
         static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
     }
     
+    /**
+     *  Create an update by value statement.
+     *  Usage: update<by_val<User>>(myUserInstance);
+     */
     template<class B>
     internal::update_t<typename B::type, false> update(typename B::type obj) {
         static_assert(internal::is_by_val<B>::value, "by_val expected");
         return {std::move(obj)};
     }
     
+    /**
+     *  Create a get statement.
+     *  Usage: get<User>(5);
+     */
     template<class T, class ...Ids>
     internal::get_t<T, Ids...> get(Ids ...ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
         return {move(idsTuple)};
     }
     
+    /**
+     *  Create a get pointer statement.
+     *  Usage: get_pointer<User>(5);
+     */
     template<class T, class ...Ids>
     internal::get_pointer_t<T, Ids...> get_pointer(Ids ...ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
         return {move(idsTuple)};
     }
     
+    /**
+     *  Create a remove all statement.
+     *  Usage: remove_all<User>(...);
+     */
     template<class T, class ...Args>
     internal::remove_all_t<T, Args...> remove_all(Args ...args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
     
+    /**
+     *  Create a get all statement.
+     *  Usage: get_all<User>(...);
+     */
     template<class T, class ...Args>
     internal::get_all_t<T, Args...> get_all(Args ...args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
     
+    /**
+     *  Create an update all statement.
+     *  Usage: update_all(set(...), ...);
+     */
     template<class ...Args, class ...Wargs>
     internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs ...wh) {
         std::tuple<Wargs...> conditions{std::forward<Wargs>(wh)...};
         return {std::move(set), move(conditions)};
+    }
+    
+    template<int N, class T, bool by_ref>
+    auto &get(internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        return statement.t.obj;
+    }
+    
+    template<int N, class T, bool by_ref>
+    auto &get(internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return statement.t.obj;
+    }
+    
+    template<int N, class T, bool by_ref>
+    auto &get(internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        return statement.t.obj;
+    }
+    
+    template<int N, class T, bool by_ref, class ...Cols>
+    auto &get(internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return statement.t.obj;
     }
 }
 

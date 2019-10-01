@@ -317,6 +317,8 @@ TEST_CASE("Prepared") {
         User user{2, "Stromae"};
         SECTION("by ref") {
             auto statement = storage.prepare(update(user));
+            REQUIRE(get<0>(statement) == user);
+            REQUIRE(&get<0>(statement) == &user);
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -353,6 +355,8 @@ TEST_CASE("Prepared") {
                     REQUIRE(find(names.begin(), names.end(), "Shy'm") == names.end());
                     REQUIRE(find(names.begin(), names.end(), "Stromae") != names.end());
                 }
+                
+                //  try to change original user's name and perform the query. We expect that nothing will change
                 user.name = "Sia";
                 storage.execute(statement);
                 {
@@ -360,6 +364,11 @@ TEST_CASE("Prepared") {
                     REQUIRE(find(names.begin(), names.end(), "Sia") == names.end());
                     REQUIRE(find(names.begin(), names.end(), "Stromae") != names.end());
                 }
+                
+                //  now let's change statement's user's name. This time it musk work!
+                get<0>(statement).name = "Sia";
+                storage.execute(statement);
+                REQUIRE(storage.count<User>(where(is_equal(&User::name, "Sia"))) == 1);
             }
         }
     }
@@ -413,6 +422,8 @@ TEST_CASE("Prepared") {
                 }
                 REQUIRE(insertedId == 4);
                 user.name = "Sia";
+                REQUIRE(get<0>(statement) == user);
+                REQUIRE(&get<0>(statement) == &user);
                 insertedId = storage.execute(statement);
                 {
                     auto rows = storage.get_all<User>();
@@ -458,6 +469,20 @@ TEST_CASE("Prepared") {
                     REQUIRE_THAT(rows, UnorderedEquals(expected));
                 }
                 REQUIRE(insertedId == 5);
+                
+                get<0>(statement).name = "Sia";
+                insertedId = storage.execute(statement);
+                {
+                    auto rows = storage.get_all<User>();
+                    std::vector<User> expected;
+                    expected.push_back(User{1, "Team BS"});
+                    expected.push_back(User{2, "Shy'm"});
+                    expected.push_back(User{3, "Maître Gims"});
+                    expected.push_back(User{4, "Stromae"});
+                    expected.push_back(User{5, "Stromae"});
+                    expected.push_back(User{6, "Sia"});
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
             }
         }
     }
@@ -471,6 +496,9 @@ TEST_CASE("Prepared") {
             expected.push_back(User{3, "Maître Gims"});
             auto statement = storage.prepare(replace(user));
             storage.execute(statement);
+            
+            REQUIRE(user == get<0>(statement));
+            REQUIRE(&user == &get<0>(statement));
         }
         SECTION("by ref new") {
             user = {4, "Stromae"};
@@ -486,13 +514,22 @@ TEST_CASE("Prepared") {
             user = {5, "LP"};
             expected.push_back(user);
             storage.execute(statement);
+            
+            REQUIRE(user == get<0>(statement));
+            REQUIRE(&user == &get<0>(statement));
         }
         SECTION("by val existing") {
-            user = {1, "Stromae"};
+            SECTION("straight assign") {
+                user = {1, "Stromae"};
+            }
             expected.push_back(User{1, "Stromae"});
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
             auto statement = storage.prepare(replace<by_val<User>>(user));
+            REQUIRE(&user != &get<0>(statement));
+            SECTION("assign with get") {
+                get<0>(statement) = {1, "Stromae"};
+            }
             storage.execute(statement);
         }
         SECTION("by val new") {
@@ -502,6 +539,7 @@ TEST_CASE("Prepared") {
             expected.push_back(User{3, "Maître Gims"});
             expected.push_back(user);
             auto statement = storage.prepare(replace<by_val<User>>(user));
+            REQUIRE(&user != &get<0>(statement));
             storage.execute(statement);
             auto rows = storage.get_all<User>();
             REQUIRE_THAT(rows, UnorderedEquals(expected));
@@ -608,6 +646,7 @@ TEST_CASE("Prepared") {
                     auto insertedId = storage.execute(statement);
                     REQUIRE(insertedId == 6);
                     REQUIRE(storage.count<User>(where(is_equal(&User::name, "Nate Dogg"))) == 1);
+                    REQUIRE(&user == &get<0>(statement));
                 }
             }
             SECTION("by val") {
@@ -624,10 +663,16 @@ TEST_CASE("Prepared") {
                         storage.execute(statement);
                         REQUIRE(false);
                     }catch(const std::system_error &e) {
-                        //..
+                        REQUIRE(storage.count<User>(where(is_equal(&User::name, "Nate Dogg"))) == 0);
                     }catch(...){
                         REQUIRE(false);
                     }
+                    
+                    get<0>(statement) = user;
+                    auto insertedId = storage.execute(statement);
+                    REQUIRE(insertedId == user.id);
+                    REQUIRE(storage.count<User>(where(is_equal(&User::name, "Nate Dogg"))) == 1);
+                    REQUIRE(&user != &get<0>(statement));
                 }
             }
         }
