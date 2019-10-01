@@ -867,7 +867,7 @@ namespace sqlite_orm {
                     }
                     return ss.str();
                 }();
-                auto valuesCount = static_cast<int>(std::distance(rep.from, rep.to));
+                auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
                 for(auto i = 0; i < valuesCount; ++i) {
                     ss << valuesString;
                     if(i < valuesCount - 1) {
@@ -917,7 +917,7 @@ namespace sqlite_orm {
                     }
                     return ss.str();
                 }();
-                auto valuesCount = static_cast<int>(std::distance(ins.from, ins.to));
+                auto valuesCount = static_cast<int>(std::distance(ins.range.first, ins.range.second));
                 for(auto i = 0; i < valuesCount; ++i) {
                     ss << valuesString;
                     if(i < valuesCount - 1) {
@@ -2216,7 +2216,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 sqlite3_reset(stmt);
-                for(auto it = statement.t.from; it != statement.t.to; ++it) {
+                for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
                         using column_type = typename std::decay<decltype(c)>::type;
@@ -2252,7 +2252,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto &impl = this->get_impl<object_type>();
                 sqlite3_reset(stmt);
-                for(auto it = statement.t.from; it != statement.t.to; ++it) {
+                for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
                         if(!c.template has<constraints::primary_key_t<>>()){

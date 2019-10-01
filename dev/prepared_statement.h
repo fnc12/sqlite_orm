@@ -4,6 +4,7 @@
 #include <iterator> //  std::iterator_traits
 #include <string>   //  std::string
 #include <type_traits>  //  std::true_type, std::false_type
+#include <utility>  //  std::pair
 
 #include "connection_holder.h"
 #include "select_constraints.h"
@@ -232,8 +233,7 @@ namespace sqlite_orm {
             using iterator_type = It;
             using object_type = typename std::iterator_traits<iterator_type>::value_type;
             
-            iterator_type from;
-            iterator_type to;
+            std::pair<iterator_type, iterator_type> range;
         };
         
         template<class It>
@@ -241,8 +241,7 @@ namespace sqlite_orm {
             using iterator_type = It;
             using object_type = typename std::iterator_traits<iterator_type>::value_type;
             
-            iterator_type from;
-            iterator_type to;
+            std::pair<iterator_type, iterator_type> range;
         };
     }
     
@@ -251,7 +250,7 @@ namespace sqlite_orm {
      */
     template<class It>
     internal::replace_range_t<It> replace_range(It from, It to) {
-        return {std::move(from), std::move(to)};
+        return {{std::move(from), std::move(to)}};
     }
     
     /**
@@ -259,7 +258,7 @@ namespace sqlite_orm {
      */
     template<class It>
     internal::insert_range_t<It> insert_range(It from, It to) {
-        return {std::move(from), std::move(to)};
+        return {{std::move(from), std::move(to)}};
     }
     
     /**
@@ -448,5 +447,17 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return statement.t.obj;
+    }
+    
+    template<int N, class It>
+    auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for inesrt range statement");
+        return std::get<N>(statement.t.range);
+    }
+    
+    template<int N, class It>
+    const auto &get(const internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for inesrt range statement");
+        return std::get<N>(statement.t.range);
     }
 }

@@ -6379,6 +6379,7 @@ namespace sqlite_orm {
 #include <iterator> //  std::iterator_traits
 #include <string>   //  std::string
 #include <type_traits>  //  std::true_type, std::false_type
+#include <utility>  //  std::pair
 
 // #include "connection_holder.h"
 
@@ -6695,8 +6696,7 @@ namespace sqlite_orm {
             using iterator_type = It;
             using object_type = typename std::iterator_traits<iterator_type>::value_type;
             
-            iterator_type from;
-            iterator_type to;
+            std::pair<iterator_type, iterator_type> range;
         };
         
         template<class It>
@@ -6704,8 +6704,7 @@ namespace sqlite_orm {
             using iterator_type = It;
             using object_type = typename std::iterator_traits<iterator_type>::value_type;
             
-            iterator_type from;
-            iterator_type to;
+            std::pair<iterator_type, iterator_type> range;
         };
     }
     
@@ -6714,7 +6713,7 @@ namespace sqlite_orm {
      */
     template<class It>
     internal::replace_range_t<It> replace_range(It from, It to) {
-        return {std::move(from), std::move(to)};
+        return {{std::move(from), std::move(to)}};
     }
     
     /**
@@ -6722,7 +6721,7 @@ namespace sqlite_orm {
      */
     template<class It>
     internal::insert_range_t<It> insert_range(It from, It to) {
-        return {std::move(from), std::move(to)};
+        return {{std::move(from), std::move(to)}};
     }
     
     /**
@@ -6911,6 +6910,18 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return statement.t.obj;
+    }
+    
+    template<int N, class It>
+    auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for inesrt range statement");
+        return std::get<N>(statement.t.range);
+    }
+    
+    template<int N, class It>
+    const auto &get(const internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for inesrt range statement");
+        return std::get<N>(statement.t.range);
     }
 }
 
@@ -9132,7 +9143,7 @@ namespace sqlite_orm {
                     }
                     return ss.str();
                 }();
-                auto valuesCount = static_cast<int>(std::distance(rep.from, rep.to));
+                auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
                 for(auto i = 0; i < valuesCount; ++i) {
                     ss << valuesString;
                     if(i < valuesCount - 1) {
@@ -9182,7 +9193,7 @@ namespace sqlite_orm {
                     }
                     return ss.str();
                 }();
-                auto valuesCount = static_cast<int>(std::distance(ins.from, ins.to));
+                auto valuesCount = static_cast<int>(std::distance(ins.range.first, ins.range.second));
                 for(auto i = 0; i < valuesCount; ++i) {
                     ss << valuesString;
                     if(i < valuesCount - 1) {
@@ -10481,7 +10492,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 sqlite3_reset(stmt);
-                for(auto it = statement.t.from; it != statement.t.to; ++it) {
+                for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
                         using column_type = typename std::decay<decltype(c)>::type;
@@ -10517,7 +10528,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto &impl = this->get_impl<object_type>();
                 sqlite3_reset(stmt);
-                for(auto it = statement.t.from; it != statement.t.to; ++it) {
+                for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt, db] (auto &c) {
                         if(!c.template has<constraints::primary_key_t<>>()){
