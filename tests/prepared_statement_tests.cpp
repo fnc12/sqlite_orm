@@ -70,6 +70,9 @@ TEST_CASE("Prepared") {
     storage.replace(User{2, "Shy'm"});
     storage.replace(User{3, "Maître Gims"});
     
+    storage.replace(UserAndVisit{2, 1, "Glad you came"});
+    storage.replace(UserAndVisit{3, 1, "Shine on"});
+    
     SECTION("select") {
         {
             for(auto i = 0; i < 2; ++i) {
@@ -281,8 +284,6 @@ TEST_CASE("Prepared") {
         }
         {
             storage.replace(Visit{1, /*userId*/ 2, 1000});
-            storage.replace(UserAndVisit{2, 1, "Glad you came"});
-            storage.replace(UserAndVisit{3, 1, "Shine on"});
             auto statement = storage.prepare(get<UserAndVisit>(2, 1));
             std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
             std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
@@ -307,6 +308,8 @@ TEST_CASE("Prepared") {
     SECTION("get pointer") {
         {
             auto statement = storage.prepare(get_pointer<User>(1));
+            REQUIRE(get<0>(statement) == 1);
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -316,9 +319,16 @@ TEST_CASE("Prepared") {
                 REQUIRE(user);
                 REQUIRE(*user == User{1, "Team BS"});
             }
+            SECTION("reassign and execute") {
+                get<0>(statement) = 2;
+                auto user = storage.execute(statement);
+                REQUIRE(user);
+                REQUIRE(*user == User{2, "Shy'm"});
+            }
         }
         {
             auto statement = storage.prepare(get_pointer<User>(2));
+            REQUIRE(get<0>(statement) == 2);
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -351,6 +361,30 @@ TEST_CASE("Prepared") {
                 auto user = storage.execute(statement);
                 REQUIRE(!user);
             }
+        }
+        {
+            storage.replace(Visit{1, /*userId*/ 2, 1000});
+            auto statement = storage.prepare(get_pointer<UserAndVisit>(2, 1));
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
+            REQUIRE(get<0>(statement) == 2);
+            REQUIRE(get<1>(statement) == 1);
+            {
+                auto userAndVisit = storage.execute(statement);
+                REQUIRE(userAndVisit);
+                REQUIRE(userAndVisit->userId == 2);
+                REQUIRE(userAndVisit->visitId == 1);
+                REQUIRE(userAndVisit->description == "Glad you came");
+            }
+            {
+                get<0>(statement) = 3;
+                auto userAndVisit = storage.execute(statement);
+                REQUIRE(userAndVisit);
+                REQUIRE(userAndVisit->userId == 3);
+                REQUIRE(userAndVisit->visitId == 1);
+                REQUIRE(userAndVisit->description == "Shine on");
+            }
+            
         }
     }
     SECTION("update") {
