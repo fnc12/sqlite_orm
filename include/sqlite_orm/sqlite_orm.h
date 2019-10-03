@@ -6955,6 +6955,16 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
         return std::get<N>(statement.t.ids);
     }
+    
+    template<int N, class T, class ...Ids>
+    auto &get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
+    
+    template<int N, class T, class ...Ids>
+    const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
 }
 
 

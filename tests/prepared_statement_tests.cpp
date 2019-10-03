@@ -450,6 +450,8 @@ TEST_CASE("Prepared") {
     SECTION("remove") {
         {
             auto statement = storage.prepare(remove<User>(1));
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            REQUIRE(get<0>(statement) == 1);
             testSerializing(statement);
             storage.execute(statement);
             REQUIRE(storage.get_pointer<User>(1) == nullptr);
@@ -459,16 +461,15 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(remove<User>(2));
+            REQUIRE(get<0>(statement) == 2);
             testSerializing(statement);
             storage.execute(statement);
             REQUIRE(storage.get_pointer<User>(1) == nullptr);
             REQUIRE(storage.get_pointer<User>(2) == nullptr);
             REQUIRE(storage.get_pointer<User>(3) != nullptr);
             REQUIRE(storage.count<User>() == 1);
-        }
-        {
-            auto statement = storage.prepare(remove<User>(3));
-            testSerializing(statement);
+            
+            get<0>(statement) = 3;
             storage.execute(statement);
             REQUIRE(storage.get_pointer<User>(1) == nullptr);
             REQUIRE(storage.get_pointer<User>(2) == nullptr);
