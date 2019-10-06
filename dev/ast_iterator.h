@@ -150,7 +150,17 @@ namespace sqlite_orm {
                 iterate_ast(get.conditions, l);
             }
         };
-        
+
+        template<class T, class ...Args>
+        struct ast_iterator<get_all_pointer_t<T, Args...>, void> {
+            using node_type = get_all_pointer_t<T, Args...>;
+
+            template<class L>
+            void operator()(const node_type &get, const L &l) const {
+                iterate_ast(get.conditions, l);
+            }
+        };
+
         template<class ...Args>
         struct ast_iterator<std::tuple<Args...>, void> {
             using node_type = std::tuple<Args...>;

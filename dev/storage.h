@@ -566,6 +566,30 @@ namespace sqlite_orm {
                 this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
+
+            template<class T, class ...Args>
+            std::string string_from_expression(const get_all_pointer_t<T, Args...> &get, bool /*noTableName*/) const {
+                std::stringstream ss;
+                ss << "SELECT ";
+                auto &impl = this->get_impl<T>();
+                auto columnNames = impl.table.column_names();
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss
+                            << "\"" << impl.table.name << "\"."
+                            << "\""
+                            << columnNames[i]
+                            << "\""
+                            ;
+                    if(i < columnNames.size() - 1) {
+                        ss << ", ";
+                    }else{
+                        ss << " ";
+                    }
+                }
+                ss << "FROM '" << impl.table.name << "' ";
+                this->process_conditions(ss, get.conditions);
+                return ss.str();
+            }
             
             template<class ...Args, class ...Wargs>
             std::string string_from_expression(const update_all_t<set_t<Args...>, Wargs...> &upd, bool /*noTableName*/) const {
@@ -1577,7 +1601,19 @@ namespace sqlite_orm {
                 auto statement = this->prepare(sqlite_orm::get_all<O>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
-            
+
+            /**
+             *  Select * with no conditions routine.
+             *  O is an object type to be extracted. Must be specified explicitly.
+             *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
+             */
+            template<class O, class C = std::vector<std::unique_ptr<O>>, class ...Args>
+            C get_all_pointer(Args&& ...args) {
+                this->assert_mapped_type<O>();
+                auto statement = this->prepare(sqlite_orm::get_all_pointer<O>(std::forward<Args>(args)...));
+                return this->execute(statement);
+            }
+
             /**
              *  Select * by id routine.
              *  throws std::system_error(orm_error_code::not_found, orm_error_category) if object not found with given id.
@@ -2027,6 +2063,19 @@ namespace sqlite_orm {
             
             template<class T, class ...Args>
             prepared_statement_t<get_all_t<T, Args...>> prepare(get_all_t<T, Args...> get) {
+                auto con = this->get_connection();
+                sqlite3_stmt *stmt;
+                auto db = con.get();
+                auto query = this->string_from_expression(get, false);
+                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                    return {std::move(get), stmt, con};
+                }else{
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                }
+            }
+
+            template<class T, class ...Args>
+            prepared_statement_t<get_all_pointer_t<T, Args...>> prepare(get_all_pointer_t<T, Args...> get) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2613,6 +2662,48 @@ namespace sqlite_orm {
                                     obj.*c.member_pointer = std::move(value);
                                 }else{
                                     ((obj).*(c.setter))(std::move(value));
+                                }
+                            });
+                            res.push_back(std::move(obj));
+                        }break;
+                        case SQLITE_DONE: break;
+                        default:{
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                        }
+                    }
+                }while(stepRes != SQLITE_DONE);
+                return res;
+            }
+            template<class T, class ...Args>
+            std::vector<std::unique_ptr<T>> execute(const prepared_statement_t<get_all_pointer_t<T, Args...>> &statement) {
+                auto &impl = this->get_impl<T>();
+                auto con = this->get_connection();
+                auto db = con.get();
+                auto stmt = statement.stmt;
+                auto index = 1;
+                sqlite3_reset(stmt);
+                iterate_ast(statement.t, [stmt, &index, db](auto &node){
+                    using node_type = typename std::decay<decltype(node)>::type;
+                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                    if(SQLITE_OK != binder(node)){
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    }
+                });
+                std::vector<std::unique_ptr<T>> res;
+                int stepRes;
+                do{
+                    stepRes = sqlite3_step(stmt);
+                    switch(stepRes){
+                        case SQLITE_ROW:{
+                            auto obj = std::make_unique<T>();
+                            auto index = 0;
+                            impl.table.for_each_column([&index, &obj, stmt] (auto &c) {
+                                using field_type = typename std::decay<decltype(c)>::type::field_type;
+                                auto value = row_extractor<field_type>().extract(stmt, index++);
+                                if(c.member_pointer){
+                                    (*obj).*c.member_pointer = std::move(value);
+                                }else{
+                                    ((*obj).*(c.setter))(std::move(value));
                                 }
                             });
                             res.push_back(std::move(obj));
