@@ -96,6 +96,15 @@ namespace sqlite_orm {
             
             conditions_type conditions;
         };
+
+        template<class T, class ...Args>
+        struct get_all_pointer_t {
+            using type = T;
+
+            using conditions_type = std::tuple<Args...>;
+
+            conditions_type conditions;
+        };
         
         template<class T, class ...Wargs>
         struct update_all_t;
@@ -330,6 +339,12 @@ namespace sqlite_orm {
     
     template<class T, class ...Args>
     internal::get_all_t<T, Args...> get_all(Args ...args) {
+        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
+    }
+
+    template<class T, class ...Args>
+    internal::get_all_pointer_t<T, Args...> get_all_pointer(Args ...args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }

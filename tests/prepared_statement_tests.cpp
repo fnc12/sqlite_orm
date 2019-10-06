@@ -170,6 +170,42 @@ TEST_CASE("Prepared") {
             }
         }
     }
+    SECTION("get_all_pointer") {
+        {
+            auto statement = storage.prepare(get_all_pointer<User>());
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                auto rows = storage.execute(statement);
+                std::vector<User> expected;
+                expected.push_back(User{1, "Team BS"});
+                expected.push_back(User{2, "Shy'm"});
+                expected.push_back(User{3, "Maître Gims"});
+                REQUIRE(rows.size() == expected.size());
+                REQUIRE(*rows[0].get() == expected[0]);
+                REQUIRE(*rows[1].get() == expected[1]);
+                REQUIRE(*rows[2].get() == expected[2]);
+            }
+        }
+        {
+            auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, 3))));
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                auto rows = storage.execute(statement);
+                std::vector<User> expected;
+                expected.push_back(User{1, "Team BS"});
+                expected.push_back(User{2, "Shy'm"});
+                REQUIRE(rows.size() == expected.size());
+                REQUIRE(*rows[0].get() == expected[0]);
+                REQUIRE(*rows[1].get() == expected[1]);
+            }
+        }
+    }
     SECTION("update all") {
         auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, "_")))));
         testSerializing(statement);
