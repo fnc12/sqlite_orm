@@ -7300,6 +7300,7 @@ namespace sqlite_orm {
             limit(std::bind(&storage_base::get_or_create_connection, this)),
             filename(other.filename),
             inMemory(other.inMemory),
+            currentTransaction(inMemory ? other.currentTransaction : nullptr),
             cachedForeignKeysCount(other.cachedForeignKeysCount)
             {}
             
@@ -7588,7 +7589,7 @@ namespace sqlite_orm {
             storage_base(other),
             impl(other.impl)
             {}
-            
+
         protected:
             impl_type impl;
             
