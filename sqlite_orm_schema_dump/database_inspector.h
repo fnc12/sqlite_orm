@@ -1,6 +1,8 @@
 #ifndef DATABASE_INSPECTOR_H
 #define DATABASE_INSPECTOR_H
 
+#include <vector>
+#include <string>
 #include <mstch/mstch.hpp>
 #include <memory>
 #include <sqlite3.h>
@@ -13,7 +15,7 @@ public:
 
     DatabaseInspector(DbConnection connection);
 
-    Tables readTablesFromDb();
+    Tables readTablesFromDb(const std::vector<std::string> &tables);
     void readTableDetailsFromDb(Tables tables);
 
 private:

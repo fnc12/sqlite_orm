@@ -10,18 +10,35 @@ DatabaseConverter::DatabaseConverter(const std::string &templateDir, const std::
 void DatabaseConverter::writeAll(DatabaseConverter::Tables tables)
 {
     std::ofstream initCode(m_outputDir + "/initcode.cpp", std::ios_base::trunc);
-    writeInitCode(initCode, tables);
+    writeInitCode(initCode,*tables);
     for (const auto& tableNode : *tables) {
-        Table table = boost::get<mstch::map>(tableNode);
+        auto table = boost::get<mstch::map>(tableNode);
         std::string tableName = boost::get<std::string>(table["name"]);
-        std::ofstream header(m_outputDir + "/" + tableName + ".cpp", std::ios_base::trunc);
+        std::ofstream header(m_outputDir + "/" + tableName + ".hpp", std::ios_base::trunc);
         writeHeader(header, table);
+        std::ofstream impl(m_outputDir + "/" + tableName + ".cpp", std::ios_base::trunc);
+        writeImplementation(impl, table);
     }
 }
 
-void DatabaseConverter::writeInitCode(std::ostream &os, const DatabaseConverter::Tables &tables)
+void DatabaseConverter::writeInitCode(std::ostream &os, const mstch::node &tables)
 {
-    std::string initTmpltLoc = m_templateDir + "/init_code.mustache";
+    executeTemplate(os, tables, "init_code.mustache");
+}
+
+void DatabaseConverter::writeHeader(std::ostream &os, const mstch::node &table)
+{
+    executeTemplate(os, table, "header.mustache");
+}
+
+void DatabaseConverter::writeImplementation(std::ostream &os, const mstch::node &table)
+{
+    executeTemplate(os, table, "implementation.mustache");
+}
+
+void DatabaseConverter::executeTemplate(std::ostream &os, const mstch::node &data, const std::string &templateName)
+{
+    std::string initTmpltLoc = m_templateDir + "/" + templateName;
     std::ifstream initTmpltFile(initTmpltLoc);
     if(!(initTmpltFile && initTmpltFile.is_open())) {
         throw std::runtime_error("can not open init code template from " + initTmpltLoc);
@@ -29,10 +46,5 @@ void DatabaseConverter::writeInitCode(std::ostream &os, const DatabaseConverter:
     std::string initTmplt((std::istreambuf_iterator<char>(initTmpltFile)),
                      std::istreambuf_iterator<char>());
 
-    os << mstch::render(initTmplt, *tables);
-}
-
-void DatabaseConverter::writeHeader(std::ostream &os, const DatabaseConverter::Table &table)
-{
-
+    os << mstch::render(initTmplt, data);
 }
