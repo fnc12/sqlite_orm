@@ -56,6 +56,16 @@ endif()
 ucm_print_flags()
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
+if(BUILD_TESTING)
+    option(SqliteOrm_SysSqlite "Use system version of sqlite library" OFF)
+
+    if(SqliteOrm_SysSqlite)
+        message(FATAL_ERROR "WIP: please, disable the SqliteOrm_SysSqlite option.")
+    else()
+        add_subdirectory(tests/third_party/sqlite)
+    endif()
+endif()
+
 # Tests
 include(CTest)
 if(SqliteOrm_BuildTests AND BUILD_TESTING)
@@ -64,6 +74,7 @@ if(SqliteOrm_BuildTests AND BUILD_TESTING)
 endif()
 
 add_subdirectory(examples)
+add_subdirectory(sqlite_orm_schema_dump)
 
 install(TARGETS sqlite_orm EXPORT "${ProjectName}Targets"
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development

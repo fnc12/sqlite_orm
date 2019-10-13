@@ -2,14 +2,6 @@ cmake_minimum_required (VERSION 3.2)
 
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
-option(SqliteOrm_SysSqlite "Use system version of sqlite library" OFF)
-
-if(SqliteOrm_SysSqlite)
-    message(FATAL_ERROR "WIP: please, disable the SqliteOrm_SysSqlite option.")
-else()
-    add_subdirectory(third_party/sqlite)
-endif()
-
 add_executable(unit_tests tests.cpp tests2.cpp tests3.cpp tests4.cpp tests4.cpp private_getters_tests.cpp pragma_tests.cpp explicit_columns.cpp core_functions_tests.cpp composite_key.cpp static_tests.cpp operators.cpp like.cpp dynamic_order_by.cpp)
 
 

@@ -1,2 +1,3 @@
 .DS_store
 examples/simple_neural_network.cpp
+CMakeLists.txt.user
