@@ -3,15 +3,15 @@
 
 #include <vector>
 #include <string>
-#include <mstch/mstch.hpp>
 #include <memory>
 #include <sqlite3.h>
+#include <nlohmann/json.hpp>
 
 class DatabaseInspector
 {
 public:
     typedef std::shared_ptr<sqlite3> DbConnection;
-    typedef std::shared_ptr<mstch::array> Tables;
+    typedef std::shared_ptr<nlohmann::json> Tables;
 
     DatabaseInspector(DbConnection connection);
 

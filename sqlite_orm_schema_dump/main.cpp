@@ -35,6 +35,7 @@ void usage(const std::string& binary) {
 
 int main(int argc, char *argv[])
 {
+    bool doPrintUsage = true;
     try {
         bool useSql = false;
         std::vector<std::string> args;
@@ -71,6 +72,8 @@ int main(int argc, char *argv[])
             throw std::runtime_error("converting from a sql file is not yet implemented");
         }
 
+        doPrintUsage = false;
+
         sqlite3* dbHandle;
         if(SQLITE_OK != sqlite3_open_v2(src.c_str(), &dbHandle, SQLITE_OPEN_READONLY, nullptr)) {
             throw std::runtime_error("can not open database " + src + "\nError: " + sqlite3_errmsg(dbHandle));
@@ -83,7 +86,9 @@ int main(int argc, char *argv[])
         dc.writeAll(tablesCfg);
     } catch (const std::exception& ex) {
         std::cerr << "Error: " << ex.what() << std::endl;
-        usage(argv[0]);
+        if(doPrintUsage) {
+            usage(argv[0]);
+        }
         return 1;
     }
     return 0;

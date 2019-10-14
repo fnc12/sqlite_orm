@@ -1,8 +1,10 @@
-#ifndef _HEADER_INCL_GUARD_{{name}}
-#define _HEADER_INCL_GUARD_{{name}}
+#ifndef _HEADER_INCL_GUARD_{{upper(name)}}
+#define _HEADER_INCL_GUARD_{{upper(name)}}
 
 class {{name}} {
+public:{% for column in columns %}{% if column.type == "INTEGER" %}
+    void {{column.name}}(int value);
+    int {{column.name}}() const;
+{% endif %}{% endfor %}};
 
-};
-
-#endif // _HEADER_INCL_GUARD_{{name}}
+#endif // _HEADER_INCL_GUARD_{{upper(name)}}
