@@ -3,8 +3,8 @@
  */
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
-#include <vector>   //  std::vector
-#include <algorithm>    //  std::find_if, std::count
+#include <vector>  //  std::vector
+#include <algorithm>  //  std::find_if, std::count
 
 using namespace sqlite_orm;
 
@@ -16,7 +16,7 @@ TEST_CASE("Glob") {
         float salary = 0;
         int deptId = 0;
     };
-    
+
     auto storage = make_storage({},
                                 make_table("emp_master",
                                            make_column("emp_id", &Employee::id, primary_key(), autoincrement()),
@@ -25,7 +25,7 @@ TEST_CASE("Glob") {
                                            make_column("salary", &Employee::salary),
                                            make_column("dept_id", &Employee::deptId)));
     storage.sync_schema();
-    
+
     std::vector<Employee> employees = {
         Employee{1, "Honey", "Patel", 10100, 1},
         Employee{2, "Shweta", "Jariwala", 19300, 2},
@@ -38,34 +38,34 @@ TEST_CASE("Glob") {
         Employee{9, "Shwets", "Jariwala", 19400, 2},
     };
     storage.replace_range(employees.begin(), employees.end());
-    
+
     auto expectIds = [](const std::vector<Employee> &employees, const std::vector<decltype(Employee::id)> ids) {
-        for(auto expectedId : ids) {
-            REQUIRE(find_if(employees.begin(), employees.end(), [expectedId](auto &employee){
-                return employee.id == expectedId;
-            }) != employees.end());
+        for(auto expectedId: ids) {
+            REQUIRE(find_if(employees.begin(), employees.end(), [expectedId](auto &employee) {
+                        return employee.id == expectedId;
+                    }) != employees.end());
         }
         return false;
     };
     {
         auto employees = storage.get_all<Employee>(where(glob(&Employee::salary, "1*")));
         REQUIRE(employees.size() == 6);
-        expectIds(employees, { 1, 2, 5, 6, 7, 9 });
+        expectIds(employees, {1, 2, 5, 6, 7, 9});
     }
     {
         auto employees = storage.get_all<Employee>(where(glob(&Employee::firstName, "Shwet?")));
         REQUIRE(employees.size() == 3);
-        expectIds(employees, { 2, 5, 9 });
+        expectIds(employees, {2, 5, 9});
     }
     {
         auto employees = storage.get_all<Employee>(where(glob(&Employee::lastName, "[A-J]*")));
         REQUIRE(employees.size() == 3);
-        expectIds(employees, { 2, 3, 9 });
+        expectIds(employees, {2, 3, 9});
     }
     {
         auto employees = storage.get_all<Employee>(where(glob(&Employee::lastName, "[^A-J]*")));
         REQUIRE(employees.size() == 6);
-        expectIds(employees, { 1, 4, 5, 6, 7, 8 });
+        expectIds(employees, {1, 4, 5, 6, 7, 8});
     }
     {
         auto rows = storage.select(glob(&Employee::firstName, "S*"));

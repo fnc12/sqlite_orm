@@ -1,15 +1,15 @@
 #pragma once
 
-#include <string>   //  std::string
-#include <sqlite3.h>    
+#include <string>  //  std::string
+#include <sqlite3.h>
 #include <cstddef>  //  std::nullptr_t
-#include <system_error> //  std::system_error, std::error_code
+#include <system_error>  //  std::system_error, std::error_code
 #include <sstream>  //  std::stringstream
 #include <cstdlib>  //  std::atoi
 #include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference, std::false_type, std::true_type
 #include <utility>  //  std::pair, std::make_pair
-#include <vector>   //  std::vector
-#include <algorithm>    //  std::find_if
+#include <vector>  //  std::vector
+#include <algorithm>  //  std::find_if
 
 #include "error_code.h"
 #include "statement_finalizer.h"
@@ -23,163 +23,174 @@
 #include "field_value_holder.h"
 
 namespace sqlite_orm {
-    
+
     namespace internal {
-        
+
         struct storage_impl_base {
-            
+
             bool table_exists(const std::string &tableName, sqlite3 *db) {
                 auto res = false;
                 std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '" << "table" << "' AND name = '" << tableName << "'";
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '"
+                   << "table"
+                   << "' AND name = '" << tableName << "'";
                 auto query = ss.str();
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char ** /*azColName*/) -> int {
-                                           auto &res = *(bool*)data;
-                                           if(argc){
-                                               res = !!std::atoi(argv[0]);
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void *data, int argc, char **argv, char * * /*azColName*/) -> int {
+                        auto &res = *(bool *)data;
+                        if(argc) {
+                            res = !!std::atoi(argv[0]);
+                        }
+                        return 0;
+                    },
+                    &res,
+                    nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
                 }
                 return res;
             }
-            
+
             void rename_table(sqlite3 *db, const std::string &oldName, const std::string &newName) {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << oldName << " RENAME TO " << newName;
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    if(sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    } else {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
                     }
-                }else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                } else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
                 }
             }
-            
-            static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                               std::vector<table_info>& storageTableInfo,
-                                               std::vector<table_info>& dbTableInfo)
-            {
+
+            static bool get_remove_add_columns(std::vector<table_info *> &columnsToAdd,
+                                               std::vector<table_info> &storageTableInfo,
+                                               std::vector<table_info> &dbTableInfo) {
                 bool notEqual = false;
-                
+
                 //  iterate through storage columns
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size(); ++storageColumnInfoIndex) {
-                    
+                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+                    ++storageColumnInfoIndex) {
+
                     //  get storage's column info
                     auto &storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
                     auto &columnName = storageColumnInfo.name;
-                    
+
                     //  search for a column in db eith the same name
-                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(),
-                                                       dbTableInfo.end(),
-                                                       [&columnName](auto &ti){
-                                                           return ti.name == columnName;
-                                                       });
-                    if(dbColumnInfoIt != dbTableInfo.end()){
+                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto &ti) {
+                        return ti.name == columnName;
+                    });
+                    if(dbColumnInfoIt != dbTableInfo.end()) {
                         auto &dbColumnInfo = *dbColumnInfoIt;
                         auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
                         auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
                         if(dbColumnInfoType && storageColumnInfoType) {
-                            auto columnsAreEqual = dbColumnInfo.name == storageColumnInfo.name &&
-                            *dbColumnInfoType == *storageColumnInfoType &&
-                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                            (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
-                            dbColumnInfo.pk == storageColumnInfo.pk;
-                            if(!columnsAreEqual){
+                            auto columnsAreEqual =
+                                dbColumnInfo.name == storageColumnInfo.name &&
+                                *dbColumnInfoType == *storageColumnInfoType &&
+                                dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                                (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
+                                dbColumnInfo.pk == storageColumnInfo.pk;
+                            if(!columnsAreEqual) {
                                 notEqual = true;
                                 break;
                             }
                             dbTableInfo.erase(dbColumnInfoIt);
-                            storageTableInfo.erase(storageTableInfo.begin() + static_cast<ptrdiff_t>(storageColumnInfoIndex));
+                            storageTableInfo.erase(storageTableInfo.begin() +
+                                                   static_cast<ptrdiff_t>(storageColumnInfoIndex));
                             --storageColumnInfoIndex;
-                        }else{
-                            
+                        } else {
+
                             //  undefined type/types
                             notEqual = true;
                             break;
                         }
-                    }else{
+                    } else {
                         columnsToAdd.push_back(&storageColumnInfo);
                     }
                 }
                 return notEqual;
             }
-            
+
             std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
                 std::vector<table_info> res;
                 auto query = "PRAGMA table_info('" + tableName + "')";
-                auto rc = sqlite3_exec(db,
-                                       query.c_str(),
-                                       [](void *data, int argc, char **argv,char **) -> int {
-                                           auto &res = *(std::vector<table_info>*)data;
-                                           if(argc){
-                                               auto index = 0;
-                                               auto cid = std::atoi(argv[index++]);
-                                               std::string name = argv[index++];
-                                               std::string type = argv[index++];
-                                               bool notnull = !!std::atoi(argv[index++]);
-                                               std::string dflt_value = argv[index] ? argv[index] : "";
-                                               index++;
-                                               auto pk = std::atoi(argv[index++]);
-                                               res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
-                                           }
-                                           return 0;
-                                       }, &res, nullptr);
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void *data, int argc, char **argv, char **) -> int {
+                        auto &res = *(std::vector<table_info> *)data;
+                        if(argc) {
+                            auto index = 0;
+                            auto cid = std::atoi(argv[index++]);
+                            std::string name = argv[index++];
+                            std::string type = argv[index++];
+                            bool notnull = !!std::atoi(argv[index++]);
+                            std::string dflt_value = argv[index] ? argv[index] : "";
+                            index++;
+                            auto pk = std::atoi(argv[index++]);
+                            res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
+                        }
+                        return 0;
+                    },
+                    &res,
+                    nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
                 }
                 return res;
             }
-            
         };
-        
+
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
-        template<class ...Ts>
+        template<class... Ts>
         struct storage_impl;
-        
-        template<class H, class ...Ts>
+
+        template<class H, class... Ts>
         struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
             using table_type = H;
             using super = storage_impl<Ts...>;
-            
-            storage_impl(H h, Ts ...ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
-            
+
+            storage_impl(H h, Ts... ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
+
             table_type table;
-            
+
             template<class L>
             void for_each(const L &l) {
                 this->super::for_each(l);
                 l(this);
             }
-            
+
 #if SQLITE_VERSION_NUMBER >= 3006019
-            
+
             /**
              *  Returns foreign keys count in table definition
              */
             int foreign_keys_count() {
                 auto res = 0;
-                this->table.for_each_column_with_constraints([&res](auto &c){
+                this->table.for_each_column_with_constraints([&res](auto &c) {
                     if(internal::is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
                         ++res;
                     }
                 });
                 return res;
             }
-            
+
 #endif
-            
+
             /**
              *  Is used to get column name by member pointer to a base class.
              *  Main difference between `column_name` and `column_name_simple` is that
@@ -189,7 +200,7 @@ namespace sqlite_orm {
             std::string column_name_simple(F O::*m) const {
                 return this->table.find_column_name(m);
             }
-            
+
             /**
              *  Same thing as above for getter.
              */
@@ -197,7 +208,7 @@ namespace sqlite_orm {
             std::string column_name_simple(T g) const {
                 return this->table.find_column_name(g);
             }
-            
+
             /**
              *  Same thing as above for setter.
              */
@@ -205,106 +216,114 @@ namespace sqlite_orm {
             std::string column_name_simple(T s) const {
                 return this->table.find_column_name(s);
             }
-            
+
             /**
              *  Cute function used to find column name by its type and member pointer. Uses SFINAE to
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+            std::string column_name(F O::*m,
+                                    typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(m);
             }
-            
+
             /**
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+            std::string column_name(F O::*m,
+                                    typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(m);
             }
-            
+
             /**
              *  Cute function used to find column name by its type and getter pointer. Uses SFINAE to
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(const F& (O::*g)() const, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+            std::string column_name(const F &(O::*g)() const,
+                                    typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(g);
             }
-            
+
             /**
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(const F& (O::*g)() const, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+            std::string column_name(const F &(O::*g)() const,
+                                    typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(g);
             }
-            
+
             /**
              *  Cute function used to find column name by its type and setter pointer. Uses SFINAE to
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(void (O::*s)(F), typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+            std::string column_name(void (O::*s)(F),
+                                    typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.find_column_name(s);
             }
-            
+
             /**
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(void (O::*s)(F), typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+            std::string column_name(void (O::*s)(F),
+                                    typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(s);
             }
-            
+
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<std::is_same<T, HH>::value>::type * = nullptr) const {
+            std::string column_name(const column_pointer<T, F> &c,
+                                    typename std::enable_if<std::is_same<T, HH>::value>::type * = nullptr) const {
                 return this->column_name_simple(c.field);
             }
-            
+
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F> &c, typename std::enable_if<!std::is_same<T, HH>::value>::type * = nullptr) const {
+            std::string column_name(const column_pointer<T, F> &c,
+                                    typename std::enable_if<!std::is_same<T, HH>::value>::type * = nullptr) const {
                 return this->super::column_name(c);
             }
-            
+
             template<class O, class HH = typename H::object_type>
-            auto& get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+            auto &get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return *this;
             }
-            
+
             template<class O, class HH = typename H::object_type>
-            auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+            auto &get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::template get_impl<O>();
             }
-            
+
             template<class O, class HH = typename H::object_type>
             std::string find_table_name(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->table.name;
             }
-            
+
             template<class O, class HH = typename H::object_type>
             std::string find_table_name(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::template find_table_name<O>();
             }
-            
+
             template<class O, class HH = typename H::object_type>
             std::string dump(const O &o, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
                 return this->super::dump(o, nullptr);
             }
-            
+
             template<class O, class HH = typename H::object_type>
             std::string dump(const O &o, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
                 std::stringstream ss;
                 ss << "{ ";
                 using pair = std::pair<std::string, std::string>;
                 std::vector<pair> pairs;
-                this->table.for_each_column([&pairs, &o] (auto &c) {
+                this->table.for_each_column([&pairs, &o](auto &c) {
                     using column_type = typename std::decay<decltype(c)>::type;
                     using field_type = typename column_type::field_type;
                     pair p{c.name, ""};
-                    if(c.member_pointer){
+                    if(c.member_pointer) {
                         p.second = field_printer<field_type>()(o.*c.member_pointer);
-                    }else{
+                    } else {
                         using getter_type = typename column_type::getter_type;
                         field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
                         p.second = field_printer<field_type>()(valueHolder.value);
@@ -316,21 +335,21 @@ namespace sqlite_orm {
                     ss << p.first << " : '" << p.second << "'";
                     if(i < pairs.size() - 1) {
                         ss << ", ";
-                    }else{
+                    } else {
                         ss << " }";
                     }
                 }
                 return ss.str();
             }
-            
+
             void add_column(const table_info &ti, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name << " ";
                 ss << ti.type << " ";
-                if(ti.pk){
+                if(ti.pk) {
                     ss << "PRIMARY KEY ";
                 }
-                if(ti.notnull){
+                if(ti.notnull) {
                     ss << "NOT NULL ";
                 }
                 if(ti.dflt_value.length()) {
@@ -339,18 +358,20 @@ namespace sqlite_orm {
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
                 auto prepareResult = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
-                if (prepareResult == SQLITE_OK) {
+                if(prepareResult == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    if(sqlite3_step(stmt) == SQLITE_DONE) {
                         //..
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    } else {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
                     }
-                }else{
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                } else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
                 }
             }
-            
+
             /**
              *  Copies current table to another table with a given **name**.
              *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
@@ -358,7 +379,7 @@ namespace sqlite_orm {
             void copy_table(sqlite3 *db, const std::string &name) {
                 std::stringstream ss;
                 std::vector<std::string> columnNames;
-                this->table.for_each_column([&columnNames] (auto &c) {
+                this->table.for_each_column([&columnNames](auto &c) {
                     columnNames.emplace_back(c.name);
                 });
                 auto columnNamesCount = columnNames.size();
@@ -382,110 +403,113 @@ namespace sqlite_orm {
                 ss << "FROM '" << this->table.name << "' ";
                 auto query = ss.str();
                 sqlite3_stmt *stmt;
-                if (sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if (sqlite3_step(stmt) == SQLITE_DONE) {
+                    if(sqlite3_step(stmt) == SQLITE_DONE) {
                         //..
-                    }else{
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                    } else {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
                     }
-                }else{
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), sqlite3_errmsg(db));
+                } else {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
                 }
             }
-            
+
             sync_schema_result schema_status(sqlite3 *db, bool preserve) {
-                
+
                 auto res = sync_schema_result::already_in_sync;
-                
+
                 //  first let's see if table with such name exists..
                 auto gottaCreateTable = !this->table_exists(this->table.name, db);
-                if(!gottaCreateTable){
-                    
+                if(!gottaCreateTable) {
+
                     //  get table info provided in `make_table` call..
                     auto storageTableInfo = this->table.get_table_info();
-                    
+
                     //  now get current table info from db using `PRAGMA table_info` query..
                     auto dbTableInfo = this->get_table_info(this->table.name, db);
-                    
+
                     //  this vector will contain pointers to columns that gotta be added..
-                    std::vector<table_info*> columnsToAdd;
-                    
+                    std::vector<table_info *> columnsToAdd;
+
                     if(this->get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;
                     }
-                    
-                    if(!gottaCreateTable){  //  if all storage columns are equal to actual db columns but there are excess columns at the db..
-                        if(dbTableInfo.size() > 0){
-                            //extra table columns than storage columns
-                            if(!preserve){
+
+                    if(!gottaCreateTable) {  //  if all storage columns are equal to actual db columns but there are
+                                             //  excess columns at the db..
+                        if(dbTableInfo.size() > 0) {
+                            // extra table columns than storage columns
+                            if(!preserve) {
                                 gottaCreateTable = true;
-                            }else{
+                            } else {
                                 res = decltype(res)::old_columns_removed;
                             }
                         }
                     }
-                    if(gottaCreateTable){
+                    if(gottaCreateTable) {
                         res = decltype(res)::dropped_and_recreated;
-                    }else{
-                        if(columnsToAdd.size()){
-                            //extra storage columns than table columns
-                            for(auto columnPointer : columnsToAdd) {
-                                if(columnPointer->notnull && columnPointer->dflt_value.empty()){
+                    } else {
+                        if(columnsToAdd.size()) {
+                            // extra storage columns than table columns
+                            for(auto columnPointer: columnsToAdd) {
+                                if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                     gottaCreateTable = true;
                                     break;
                                 }
                             }
-                            if(!gottaCreateTable){
+                            if(!gottaCreateTable) {
                                 if(res == decltype(res)::old_columns_removed) {
                                     res = decltype(res)::new_columns_added_and_old_columns_removed;
-                                }else{
+                                } else {
                                     res = decltype(res)::new_columns_added;
                                 }
-                            }else{
+                            } else {
                                 res = decltype(res)::dropped_and_recreated;
                             }
-                        }else{
-                            if(res != decltype(res)::old_columns_removed){
+                        } else {
+                            if(res != decltype(res)::old_columns_removed) {
                                 res = decltype(res)::already_in_sync;
                             }
                         }
                     }
-                }else{
+                } else {
                     res = decltype(res)::new_table_created;
                 }
                 return res;
             }
-            
-        private:
+
+          private:
             using self = storage_impl<H, Ts...>;
         };
-        
+
         template<>
         struct storage_impl<> : storage_impl_base {
-            
+
             template<class O>
             std::string find_table_name() const {
                 return {};
             }
-            
+
             template<class L>
             void for_each(const L &) {}
-            
+
             int foreign_keys_count() {
                 return 0;
             }
-            
+
             template<class O>
             std::string dump(const O &, sqlite3 *, std::nullptr_t) {
                 throw std::system_error(std::make_error_code(orm_error_code::type_is_not_mapped_to_storage));
             }
         };
-        
+
         template<class T>
         struct is_storage_impl : std::false_type {};
-        
-        template<class ...Ts>
+
+        template<class... Ts>
         struct is_storage_impl<storage_impl<Ts...>> : std::true_type {};
     }
 }

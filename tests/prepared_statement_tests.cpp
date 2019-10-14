@@ -1,6 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
-#include <tuple>    //  std::ignore
+#include <tuple>  //  std::ignore
 
 using namespace sqlite_orm;
 
@@ -9,21 +9,21 @@ namespace PreparedStatementTests {
         int id = 0;
         std::string name;
     };
-    
+
     struct Visit {
         int id = 0;
         decltype(User::id) userId;
         long time = 0;
     };
-    
+
     bool operator==(const User &lhs, const User &rhs) {
         return lhs.id == rhs.id && lhs.name == rhs.name;
     }
-    
+
     bool operator!=(const User &lhs, const User &rhs) {
         return !(lhs == rhs);
     }
-    
+
     void testSerializing(const internal::prepared_statement_base &statement) {
         auto sql = statement.sql();
         std::ignore = sql;
@@ -39,9 +39,9 @@ namespace PreparedStatementTests {
 TEST_CASE("Prepared") {
     using namespace PreparedStatementTests;
     using Catch::Matchers::UnorderedEquals;
-    
+
     const int defaultVisitTime = 50;
-    
+
     remove("prepared.sqlite");
     auto storage = make_storage("prepared.sqlite",
                                 make_index("user_id_index", &User::id),
@@ -55,11 +55,11 @@ TEST_CASE("Prepared") {
                                            foreign_key(&Visit::userId).references(&User::id)));
     storage.sync_schema();
     storage.remove_all<User>();
-    
+
     storage.replace(User{1, "Team BS"});
     storage.replace(User{2, "Shy'm"});
     storage.replace(User{3, "Maître Gims"});
-    
+
     SECTION("select") {
         {
             for(auto i = 0; i < 2; ++i) {
@@ -99,7 +99,8 @@ TEST_CASE("Prepared") {
             }
         }
         {
-            auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5 and like(&User::name, "T%"))));
+            auto statement =
+                storage.prepare(select(&User::id, where(length(&User::name) > 5 and like(&User::name, "T%"))));
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -125,8 +126,8 @@ TEST_CASE("Prepared") {
             }
         }
         {
-            auto statement = storage.prepare(select(columns(&User::name, &User::id), where(is_equal(mod(&User::id, 2), 0)),
-                                                    order_by(&User::name)));
+            auto statement = storage.prepare(
+                select(columns(&User::name, &User::id), where(is_equal(mod(&User::id, 2), 0)), order_by(&User::name)));
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -240,7 +241,8 @@ TEST_CASE("Prepared") {
             storage.execute(statement);
         }
         SECTION("Two conditions") {
-            auto statement = storage.prepare(remove_all<User>(where(is_equal(&User::name, "Shy'm") and lesser_than(&User::id, 10))));
+            auto statement =
+                storage.prepare(remove_all<User>(where(is_equal(&User::name, "Shy'm") and lesser_than(&User::id, 10))));
             testSerializing(statement);
             storage.execute(statement);
         }
@@ -294,7 +296,7 @@ TEST_CASE("Prepared") {
                 try {
                     auto user = storage.execute(statement);
                     REQUIRE(false);
-                } catch (const std::system_error &e) {
+                } catch(const std::system_error &e) {
                     //..
                 }
             }
@@ -518,7 +520,7 @@ TEST_CASE("Prepared") {
             storage.execute(statement);
             auto rows = storage.get_all<User>();
             REQUIRE_THAT(rows, UnorderedEquals(expected));
-            
+
             user = {5, "LP"};
             expected.push_back(user);
             storage.execute(statement);
@@ -541,7 +543,7 @@ TEST_CASE("Prepared") {
             storage.execute(statement);
             auto rows = storage.get_all<User>();
             REQUIRE_THAT(rows, UnorderedEquals(expected));
-            
+
             user = {5, "LP"};
             storage.execute(statement);
         }
@@ -554,11 +556,11 @@ TEST_CASE("Prepared") {
         expected.push_back(User{1, "Team BS"});
         expected.push_back(User{2, "Shy'm"});
         expected.push_back(User{3, "Maître Gims"});
-        SECTION("empty"){
+        SECTION("empty") {
             try {
                 auto statement = storage.prepare(insert_range(users.begin(), users.end()));
                 REQUIRE(false);
-            } catch (const std::system_error &e) {
+            } catch(const std::system_error &e) {
                 //..
             }
         }
@@ -592,7 +594,7 @@ TEST_CASE("Prepared") {
             try {
                 auto statement = storage.prepare(replace_range(users.begin(), users.end()));
                 REQUIRE(false);
-            } catch (const std::system_error &e) {
+            } catch(const std::system_error &e) {
                 //..
             }
         }
@@ -656,12 +658,12 @@ TEST_CASE("Prepared") {
                 {
                     user.id = 6;
                     user.name = "Nate Dogg";
-                    try{
+                    try {
                         storage.execute(statement);
                         REQUIRE(false);
-                    }catch(const std::system_error &e) {
+                    } catch(const std::system_error &e) {
                         //..
-                    }catch(...){
+                    } catch(...) {
                         REQUIRE(false);
                     }
                 }
@@ -681,7 +683,7 @@ TEST_CASE("Prepared") {
                 REQUIRE(insertedId == visit.id);
             }
             {
-                Visit visit{2, 1, defaultVisitTime + 1};    //  time must differ
+                Visit visit{2, 1, defaultVisitTime + 1};  //  time must differ
                 auto statement = storage.prepare(insert(visit, columns(&Visit::id, &Visit::userId)));
                 auto insertedId = storage.execute(statement);
                 REQUIRE(insertedId == visit.id);

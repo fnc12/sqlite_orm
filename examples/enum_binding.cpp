@@ -28,9 +28,11 @@ struct SuperHero {
 
 //  also we need transform functions to make string from enum..
 std::string GenderToString(Gender gender) {
-    switch(gender){
-        case Gender::Female:return "female";
-        case Gender::Male:return "male";
+    switch(gender) {
+        case Gender::Female:
+            return "female";
+        case Gender::Male:
+            return "male";
     }
     throw std::domain_error("Invalid Gender enum");
 }
@@ -47,7 +49,7 @@ std::string GenderToString(Gender gender) {
 std::unique_ptr<Gender> GenderFromString(const std::string &s) {
     if(s == "female") {
         return std::make_unique<Gender>(Gender::Female);
-    }else if(s == "male") {
+    } else if(s == "male") {
         return std::make_unique<Gender>(Gender::Male);
     }
     return nullptr;
@@ -101,27 +103,27 @@ namespace sqlite_orm {
     /**
      *  This is a reverse operation: here we have to specify a way to transform string received from
      *  database to our Gender object. Here we call `GenderFromString` and throw `std::runtime_error` if it returns
-     *  nullptr. Every `row_extractor` specialization must have `extract(const char*)` and `extract(sqlite3_stmt *stmt, int columnIndex)`
-     *  functions which return a mapped type value.
+     *  nullptr. Every `row_extractor` specialization must have `extract(const char*)` and `extract(sqlite3_stmt *stmt,
+     * int columnIndex)` functions which return a mapped type value.
      */
     template<>
     struct row_extractor<Gender> {
         Gender extract(const char *row_value) {
-            if(auto gender = GenderFromString(row_value)){
+            if(auto gender = GenderFromString(row_value)) {
                 return *gender;
-            }else{
+            } else {
                 throw std::runtime_error("incorrect gender string (" + std::string(row_value) + ")");
             }
         }
 
         Gender extract(sqlite3_stmt *stmt, int columnIndex) {
             auto str = sqlite3_column_text(stmt, columnIndex);
-            return this->extract((const char*)str);
+            return this->extract((const char *)str);
         }
     };
 }
 
-int main(int/* argc*/, char **/*argv*/) {
+int main(int /* argc*/, char ** /*argv*/) {
     using namespace sqlite_orm;
     auto storage = make_storage("",
                                 make_table("superheros",
@@ -132,7 +134,7 @@ int main(int/* argc*/, char **/*argv*/) {
     storage.remove_all<SuperHero>();
 
     //  insert Batman (male)
-    storage.insert(SuperHero{ -1, "Batman", Gender::Male });
+    storage.insert(SuperHero{-1, "Batman", Gender::Male});
 
     //  get Batman by name
     auto batman = storage.get_all<SuperHero>(where(c(&SuperHero::name) == "Batman")).front();
@@ -141,25 +143,25 @@ int main(int/* argc*/, char **/*argv*/) {
     cout << "batman = " << storage.dump(batman) << endl;
 
     //  insert Wonder woman
-    storage.insert(SuperHero{ -1, "Wonder woman", Gender::Female });
+    storage.insert(SuperHero{-1, "Wonder woman", Gender::Female});
 
     //  get all superheros
     auto allSuperHeros = storage.get_all<SuperHero>();
 
     //  print all superheros
     cout << "allSuperHeros = " << allSuperHeros.size() << endl;
-    for(auto &superHero : allSuperHeros) {
+    for(auto &superHero: allSuperHeros) {
         cout << storage.dump(superHero) << endl;
     }
 
     //  insert a second male (Superman)
-    storage.insert(SuperHero{ -1, "Superman", Gender::Male});
+    storage.insert(SuperHero{-1, "Superman", Gender::Male});
 
     //  get all male superheros (2 expected)
     auto males = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Male));
     cout << "males = " << males.size() << endl;
     assert(males.size() == 2);
-    for(auto &superHero : males) {
+    for(auto &superHero: males) {
         cout << storage.dump(superHero) << endl;
     }
 
@@ -167,7 +169,7 @@ int main(int/* argc*/, char **/*argv*/) {
     auto females = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Female));
     assert(females.size() == 1);
     cout << "females = " << females.size() << endl;
-    for(auto &superHero : females) {
+    for(auto &superHero: females) {
         cout << storage.dump(superHero) << endl;
     }
 
