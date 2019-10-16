@@ -25,7 +25,7 @@ struct DetailedEmployee : public Employee {
 
 int main(int, char **) {
     using namespace sqlite_orm;
-    
+
     auto storage = make_storage("insert.sqlite",
                                 make_table("COMPANY",
                                            make_column("ID", &Employee::id, primary_key()),
@@ -35,18 +35,18 @@ int main(int, char **) {
                                            make_column("SALARY", &Employee::salary)));
     storage.sync_schema();
     storage.remove_all<Employee>();
-    
-    Employee paul {
+
+    Employee paul{
         -1,
         "Paul",
         32,
         "California",
         20000.00,
     };
-    
+
     //  insert returns inserted id
     paul.id = storage.insert(paul);
-    
+
     storage.insert(Employee{
         -1,
         "Allen",
@@ -54,16 +54,16 @@ int main(int, char **) {
         "Texas",
         15000.00,
     });
-    
+
     DetailedEmployee teddy;
     teddy.name = "Teddy";
     teddy.age = 23;
     teddy.address = "Norway";
     teddy.salary = 20000.00;
-    
+
     //  to insert subclass object as a superclass you have to specify type explicitly
     teddy.id = storage.insert<Employee>(teddy);
-    
+
     std::vector<Employee> otherEmployees;
     otherEmployees.push_back(Employee{
         -1,
@@ -89,13 +89,13 @@ int main(int, char **) {
     //  transaction is optional. It is used here to optimize sqlite usage - every insert opens
     //  and closes database. So triple insert will open and close the db three times.
     //  Transaction openes and closes the db only once.
-    storage.transaction([&]{
-        for(auto &employee : otherEmployees) {
+    storage.transaction([&] {
+        for(auto &employee: otherEmployees) {
             storage.insert(employee);
         }
-        return true;    //  commit
+        return true;  //  commit
     });
-    
+
     Employee james{
         -1,
         "James",
@@ -104,11 +104,11 @@ int main(int, char **) {
         10000.00,
     };
     james.id = storage.insert(james);
-    
+
     cout << "---------------------" << endl;
-    for(auto &employee : storage.iterate<Employee>()){
+    for(auto &employee: storage.iterate<Employee>()) {
         cout << storage.dump(employee) << endl;
     }
-    
+
     return 0;
 }

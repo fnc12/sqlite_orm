@@ -11,7 +11,7 @@ using std::endl;
 struct User {
     int id;
     std::string name;
-    std::vector<char> hash; //  binary format
+    std::vector<char> hash;  //  binary format
 };
 
 int main(int, char **) {
@@ -27,7 +27,7 @@ int main(int, char **) {
     User alex{
         0,
         "Alex",
-        { 0x10, 0x20, 0x30, 0x40 },
+        {0x10, 0x20, 0x30, 0x40},
     };
     alex.id = storage.insert(alex);
 

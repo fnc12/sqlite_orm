@@ -3,19 +3,17 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("substr"){
+TEST_CASE("substr") {
     struct Test {
         std::string text;
         int x = 0;
         int y = 0;
     };
-    auto storage = make_storage({},
-                                make_table("test",
-                                           make_column("text", &Test::text),
-                                           make_column("x", &Test::x),
-                                           make_column("y", &Test::y)));
+    auto storage = make_storage(
+        {},
+        make_table("test", make_column("text", &Test::text), make_column("x", &Test::x), make_column("y", &Test::y)));
     storage.sync_schema();
-    
+
     {
         auto rows = storage.select(substr("SQLite substr", 8));
         REQUIRE(rows.size() == 1);
@@ -34,7 +32,7 @@ TEST_CASE("substr"){
         REQUIRE(rows.front() == "SQLite");
     }
     {
-        
+
         storage.remove_all<Test>();
         storage.insert(Test{"SQLite substr", 1, 6});
         REQUIRE(storage.count<Test>() == 1);
@@ -44,16 +42,14 @@ TEST_CASE("substr"){
     }
 }
 
-TEST_CASE("zeroblob"){
+TEST_CASE("zeroblob") {
     struct Test {
         int value = 0;
     };
-    
-    auto storage = make_storage({},
-                                make_table("test",
-                                           make_column("value", &Test::value)));
+
+    auto storage = make_storage({}, make_table("test", make_column("value", &Test::value)));
     storage.sync_schema();
-    
+
     {
         auto rows = storage.select(zeroblob(10));
         REQUIRE(rows.size() == 1);
@@ -65,7 +61,7 @@ TEST_CASE("zeroblob"){
     }
     {
         storage.insert(Test{100});
-        
+
         auto rows = storage.select(zeroblob(&Test::value));
         REQUIRE(rows.size() == 1);
         auto &row = rows.front();
@@ -76,20 +72,18 @@ TEST_CASE("zeroblob"){
     }
 }
 
-TEST_CASE("julianday"){
+TEST_CASE("julianday") {
     struct Test {
         std::string text;
     };
-    
-    auto storage = make_storage({},
-                                make_table("test",
-                                           make_column("text", &Test::text)));
+
+    auto storage = make_storage({}, make_table("test", make_column("text", &Test::text)));
     storage.sync_schema();
-    auto singleTestCase = [&storage](const std::string &arg, double expected){
+    auto singleTestCase = [&storage](const std::string &arg, double expected) {
         {
             auto rows = storage.select(julianday(arg));
             REQUIRE(rows.size() == 1);
-            REQUIRE((rows.front() - expected) < 0.001); //  too much precision
+            REQUIRE((rows.front() - expected) < 0.001);  //  too much precision
         }
         {
             storage.insert(Test{arg});
@@ -104,14 +98,14 @@ TEST_CASE("julianday"){
     singleTestCase("2016-10-18 16:45:30", 2457680.19826389);
 }
 
-TEST_CASE("datetime"){
+TEST_CASE("datetime") {
     auto storage = make_storage({});
     auto rows = storage.select(datetime("now"));
     REQUIRE(rows.size() == 1);
     REQUIRE(!rows.front().empty());
 }
 
-TEST_CASE("date"){
+TEST_CASE("date") {
     auto storage = make_storage({});
     auto rows = storage.select(date("now", "start of month", "+1 month", "-1 day"));
     REQUIRE(rows.size() == 1);
@@ -119,73 +113,72 @@ TEST_CASE("date"){
 }
 
 #if SQLITE_VERSION_NUMBER >= 3007016
-TEST_CASE("char"){
+TEST_CASE("char") {
     auto storage = make_storage({});
-    auto rows = storage.select(char_(67,72,65,82));
+    auto rows = storage.select(char_(67, 72, 65, 82));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "CHAR");
 }
 #endif
 
-TEST_CASE("rtrim"){
+TEST_CASE("rtrim") {
     auto storage = make_storage({});
     auto rows = storage.select(rtrim("ototo   "));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
-    
+
     rows = storage.select(rtrim("ototo   ", " "));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
 }
 
-TEST_CASE("ltrim"){
+TEST_CASE("ltrim") {
     auto storage = make_storage({});
     auto rows = storage.select(ltrim("  ototo"));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
-    
+
     rows = storage.select(ltrim("  ototo", " "));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
 }
 
-TEST_CASE("trim"){
+TEST_CASE("trim") {
     auto storage = make_storage({});
     auto rows = storage.select(trim("   ototo   "));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
-    
+
     rows = storage.select(trim("   ototo   ", " "));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
 }
 
-TEST_CASE("upper"){
+TEST_CASE("upper") {
     auto storage = make_storage({});
     auto rows = storage.select(upper("ototo"));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "OTOTO");
 }
 
-TEST_CASE("lower"){
+TEST_CASE("lower") {
     auto storage = make_storage({});
     auto rows = storage.select(lower("OTOTO"));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "ototo");
 }
 
-TEST_CASE("length"){
+TEST_CASE("length") {
     auto storage = make_storage({});
     auto rows = storage.select(length("ototo"));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == 5);
 }
 
-TEST_CASE("abs"){
+TEST_CASE("abs") {
     auto storage = make_storage({});
     auto rows = storage.select(sqlite_orm::abs(-10));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front());
     REQUIRE(*rows.front() == 10);
 }
-

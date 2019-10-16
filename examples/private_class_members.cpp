@@ -18,26 +18,26 @@ using std::endl;
 class Player {
     int id = 0;
     std::string name;
-    
-public:
-    Player(){}
-    
-    Player(std::string name_):name(std::move(name_)){}
-    
-    Player(int id_, std::string name_):id(id_),name(std::move(name_)){}
-    
+
+  public:
+    Player() {}
+
+    Player(std::string name_) : name(std::move(name_)) {}
+
+    Player(int id_, std::string name_) : id(id_), name(std::move(name_)) {}
+
     std::string getName() const {
         return this->name;
     }
-    
+
     void setName(std::string name) {
         this->name = std::move(name);
     }
-    
+
     int getId() const {
         return this->id;
     }
-    
+
     void setId(int id) {
         this->id = id;
     }
@@ -45,41 +45,43 @@ public:
 
 int main(int, char **) {
     using namespace sqlite_orm;
-    auto storage = make_storage("private.sqlite",
-                                make_table("players",
-                                           make_column("id",
-                                                       &Player::setId,  //  setter
-                                                       &Player::getId,  //  getter
-                                                       primary_key()),
-                                           make_column("name",
-                                                       &Player::getName,    //  BTW order doesn't matter: setter can be placed before getter or opposite.
-                                                       &Player::setName)));
+    auto storage = make_storage(
+        "private.sqlite",
+        make_table(
+            "players",
+            make_column("id",
+                        &Player::setId,  //  setter
+                        &Player::getId,  //  getter
+                        primary_key()),
+            make_column("name",
+                        &Player::getName,  //  BTW order doesn't matter: setter can be placed before getter or opposite.
+                        &Player::setName)));
     storage.sync_schema();
     storage.remove_all<Player>();
-    
+
     auto soloId = storage.insert(Player("Solo"));
-    
+
     auto playersCount = storage.count<Player>();
     cout << "players count = " << playersCount << endl;
     assert(playersCount == 1);
-    
+
     cout << "solo = " << storage.dump(storage.get<Player>(soloId)) << endl;
-    
+
     auto deadpoolId = storage.insert(Player("Deadpool"));
-    
+
     cout << "deadpool = " << storage.dump(storage.get<Player>(deadpoolId)) << endl;
-    
+
     playersCount = storage.count<Player>();
     cout << "players count = " << playersCount << endl;
     assert(playersCount == 2);
-    
+
     auto idsOnly = storage.select(&Player::getId);  //  or storage.select(&Player::setId);
     cout << "idsOnly count = " << idsOnly.size() << endl;
-    
+
     auto somePlayers = storage.get_all<Player>(where(lesser_than(length(&Player::getName), 5)));
     cout << "players with length(name) < 5 = " << somePlayers.size() << endl;
     assert(somePlayers.size() == 1);
-    for(auto &player : somePlayers) {
+    for(auto &player: somePlayers) {
         cout << storage.dump(player) << endl;
     }
 }
