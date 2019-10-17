@@ -301,6 +301,14 @@ namespace sqlite_orm {
             using tuple_type = std::tuple<Args...>;
             tuple_helper::iterator<std::tuple_size<tuple_type>::value - 1, Args...>()(t, l, false);
         }
+        
+        template<typename ... input_t>
+        using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
+        
+        template<class ...Args>
+        struct conc_tuple {
+            using type = tuple_cat_t<Args...>;
+        };
     }
 }
 #pragma once
@@ -1697,12 +1705,15 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct binary_condition : public condition_t {
-            L l;
-            R r;
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
             
             binary_condition() = default;
             
-            binary_condition(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
+            binary_condition(left_type l_, right_type r_): l(std::move(l_)), r(std::move(r_)) {}
         };
         
         struct and_condition_string {
@@ -2166,11 +2177,15 @@ namespace sqlite_orm {
          */
         template<class A, class T>
         struct between_t : condition_t, between_string {
-            A expr;
-            T b1;
-            T b2;
+            using expression_type = A;
+            using lower_type = T;
+            using upper_type = T;
             
-            between_t(A expr_, T b1_, T b2_): expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
+            expression_type expr;
+            lower_type b1;
+            upper_type b2;
+            
+            between_t(expression_type expr_, lower_type b1_, upper_type b2_): expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
         };
         
         struct like_string {
@@ -3087,7 +3102,7 @@ namespace sqlite_orm {
             
             static constexpr std::false_type test(...);
             
-            using type = decltype(test(std::declval<Derived*>()));
+            using type = decltype(test(std::declval<Derived *>()));
         };
         
         template <typename Derived, template <typename...> class Base>
@@ -3095,13 +3110,13 @@ namespace sqlite_orm {
         
 #else
         template <template <typename...> class C, typename...Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>*);
+        std::true_type is_base_of_template_impl(const C<Ts...> *);
         
         template <template <typename...> class C>
         std::false_type is_base_of_template_impl(...);
         
         template <typename T, template <typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
+        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T *>()));
         
 #endif
     }
@@ -6965,6 +6980,15 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
         return std::get<N>(statement.t.ids);
     }
+    
+    /*template<class T, class L>
+    void iterate_ast(const T &t, const L &l);*/
+    
+    /*template<int N, class T, class ...Args>
+    auto &get(internal::prepared_statement_t<internal::select_t<T, Args...>> &statement) {
+        auto i = 0;
+        iterate_ast(statement.t, )
+    }*/
 }
 
 
@@ -7206,6 +7230,26 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &neg, const L &l) const {
                 iterate_ast(neg.c, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::is_null_t<T>, void> {
+            using node_type = conditions::is_null_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &i, const L &l) const {
+                iterate_ast(i.t, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::is_not_null_t<T>, void> {
+            using node_type = conditions::is_not_null_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &i, const L &l) const {
+                iterate_ast(i.t, l);
             }
         };
         
@@ -10976,3 +11020,239 @@ __pragma(pop_macro("max"))
 # undef __RESTORE_MAX__
 # endif
 #endif // defined(_MSC_VER)
+#pragma once
+
+#include <tuple>    //  std::tuple
+#include <utility>  //  std::pair
+
+// #include "conditions.h"
+
+// #include "operators.h"
+
+// #include "select_constraints.h"
+
+// #include "prepared_statement.h"
+
+// #include "optional_container.h"
+
+// #include "core_functions.h"
+
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        template<class T, class SFINAE = void>
+        struct node_tuple {
+            using type = std::tuple<T>;
+        };
+        
+        template<>
+        struct node_tuple<void, void> {
+            using type = std::tuple<>;
+        };
+        
+        template<class C>
+        struct node_tuple<conditions::where_t<C>, void> {
+            using node_type = conditions::where_t<C>;
+            using type = typename node_tuple<C>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+            using node_type = T;
+            using left_type = typename node_type::left_type;
+            using right_type = typename node_type::right_type;
+            using left_node_tuple = typename node_tuple<left_type>::type;
+            using right_node_tuple = typename node_tuple<right_type>::type;
+            using type = typename conc_tuple<left_node_tuple, right_node_tuple>::type;
+        };
+        
+        template<class L, class R, class ...Ds>
+        struct node_tuple<binary_operator<L, R, Ds...>, void> {
+            using node_type = binary_operator<L, R, Ds...>;
+            using left_type = typename node_type::left_type;
+            using right_type = typename node_type::right_type;
+            using left_node_tuple = typename node_tuple<left_type>::type;
+            using right_node_tuple = typename node_tuple<right_type>::type;
+            using type = typename conc_tuple<left_node_tuple, right_node_tuple>::type;
+        };
+        
+        template<class ...Args>
+        struct node_tuple<columns_t<Args...>, void> {
+            using node_type = columns_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+        
+        template<class L, class A>
+        struct node_tuple<conditions::in_t<L, A>, void> {
+            using node_type = conditions::in_t<L, A>;
+            using left_tuple = typename node_tuple<L>::type;
+            using right_tuple = typename node_tuple<A>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+            using node_type = T;
+            using left_type = typename node_type::left_type;
+            using right_type = typename node_type::right_type;
+            using left_tuple = typename node_tuple<left_type>::type;
+            using right_tuple = typename node_tuple<right_type>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+        
+        template<class T, class ...Args>
+        struct node_tuple<select_t<T, Args...>, void> {
+            using node_type = select_t<T, Args...>;
+            using columns_tuple = typename node_tuple<T>::type;
+            using args_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<columns_tuple, args_tuple>::type;
+        };
+        
+        template<class T, class ...Args>
+        struct node_tuple<get_all_t<T, Args...>, void> {
+            using node_type = get_all_t<T, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<conditions::having_t<T>, void> {
+            using node_type = conditions::having_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+        
+        template<class T, class E>
+        struct node_tuple<conditions::cast_t<T, E>, void> {
+            using node_type = conditions::cast_t<T, E>;
+            using type = typename node_tuple<E>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<conditions::exists_t<T>, void> {
+            using node_type = conditions::exists_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<optional_container<T>, void> {
+            using node_type = optional_container<T>;
+            using type = typename node_tuple<T>::type;
+        };
+        
+        template<>
+        struct node_tuple<optional_container<void>, void> {
+            using node_type = optional_container<void>;
+            using type = std::tuple<>;
+        };
+        
+        template<class A, class T, class E>
+        struct node_tuple<conditions::like_t<A, T, E>, void> {
+            using node_type = conditions::like_t<A, T, E>;
+            using arg_tuple = typename node_tuple<A>::type;
+            using pattern_tuple = typename node_tuple<T>::type;
+            using escape_tuple = typename node_tuple<E>::type;
+            using type = typename conc_tuple<arg_tuple, pattern_tuple, escape_tuple>::type;
+        };
+        
+        template<class A, class T>
+        struct node_tuple<conditions::glob_t<A, T>, void> {
+            using node_type = conditions::glob_t<A, T>;
+            using arg_tuple = typename node_tuple<A>::type;
+            using pattern_tuple = typename node_tuple<T>::type;
+            using type = typename conc_tuple<arg_tuple, pattern_tuple>::type;
+        };
+        
+        template<class A, class T>
+        struct node_tuple<conditions::between_t<A, T>, void> {
+            using node_type = conditions::between_t<A, T>;
+            using expression_tuple = typename node_tuple<A>::type;
+            using lower_tuple = typename node_tuple<T>::type;
+            using upper_tuple = typename node_tuple<T>::type;
+            using type = typename conc_tuple<expression_tuple, lower_tuple, upper_tuple>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<conditions::named_collate<T>, void> {
+            using node_type = conditions::named_collate<T>;
+            using type = typename node_tuple<T>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<conditions::is_null_t<T>, void> {
+            using node_type = conditions::is_null_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<conditions::is_not_null_t<T>, void> {
+            using node_type = conditions::is_not_null_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+        
+        template<class C>
+        struct node_tuple<conditions::negated_condition_t<C>, void> {
+            using node_type = conditions::negated_condition_t<C>;
+            using type = typename node_tuple<C>::type;
+        };
+        
+        template<class R, class S, class ...Args>
+        struct node_tuple<core_functions::core_function_t<R, S, Args...>, void> {
+            using node_type = core_functions::core_function_t<R, S, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+        
+        template<class T, class O>
+        struct node_tuple<conditions::left_join_t<T, O>, void> {
+            using node_type = conditions::left_join_t<T, O>;
+            using type = typename node_tuple<O>::type;
+        };
+        
+        template<class T>
+        struct node_tuple<conditions::on_t<T>, void> {
+            using node_type = conditions::on_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+        
+        template<class T, class O>
+        struct node_tuple<conditions::join_t<T, O>, void> {
+            using node_type = conditions::join_t<T, O>;
+            using type = typename node_tuple<O>::type;
+        };
+        
+        template<class T, class O>
+        struct node_tuple<conditions::left_outer_join_t<T, O>, void> {
+            using node_type = conditions::left_outer_join_t<T, O>;
+            using type = typename node_tuple<O>::type;
+        };
+        
+        template<class T, class O>
+        struct node_tuple<conditions::inner_join_t<T, O>, void> {
+            using node_type = conditions::inner_join_t<T, O>;
+            using type = typename node_tuple<O>::type;
+        };
+        
+        template<class R, class T, class E, class ...Args>
+        struct node_tuple<simple_case_t<R, T, E, Args...>, void> {
+            using node_type = simple_case_t<R, T, E, Args...>;
+            using case_tuple = typename node_tuple<T>::type;
+            using args_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using else_tuple = typename node_tuple<E>::type;
+            using type = typename conc_tuple<case_tuple, args_tuple, else_tuple>::type;
+        };
+        
+        template<class L, class R>
+        struct node_tuple<std::pair<L, R>, void> {
+            using node_type = std::pair<L, R>;
+            using left_tuple = typename node_tuple<L>::type;
+            using right_tuple = typename node_tuple<R>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+        
+        template<class T, class E>
+        struct node_tuple<as_t<T, E>, void> {
+            using node_type = as_t<T, E>;
+            using type = typename node_tuple<E>::type;
+        };
+    }
+}

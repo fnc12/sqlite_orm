@@ -105,12 +105,15 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct binary_condition : public condition_t {
-            L l;
-            R r;
+            using left_type = L;
+            using right_type = R;
+            
+            left_type l;
+            right_type r;
             
             binary_condition() = default;
             
-            binary_condition(L l_, R r_): l(std::move(l_)), r(std::move(r_)) {}
+            binary_condition(left_type l_, right_type r_): l(std::move(l_)), r(std::move(r_)) {}
         };
         
         struct and_condition_string {
@@ -574,11 +577,15 @@ namespace sqlite_orm {
          */
         template<class A, class T>
         struct between_t : condition_t, between_string {
-            A expr;
-            T b1;
-            T b2;
+            using expression_type = A;
+            using lower_type = T;
+            using upper_type = T;
             
-            between_t(A expr_, T b1_, T b2_): expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
+            expression_type expr;
+            lower_type b1;
+            upper_type b2;
+            
+            between_t(expression_type expr_, lower_type b1_, upper_type b2_): expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
         };
         
         struct like_string {

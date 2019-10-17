@@ -250,6 +250,26 @@ namespace sqlite_orm {
             }
         };
         
+        template<class T>
+        struct ast_iterator<conditions::is_null_t<T>, void> {
+            using node_type = conditions::is_null_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &i, const L &l) const {
+                iterate_ast(i.t, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<conditions::is_not_null_t<T>, void> {
+            using node_type = conditions::is_not_null_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &i, const L &l) const {
+                iterate_ast(i.t, l);
+            }
+        };
+        
         template<class R, class S, class ...Args>
         struct ast_iterator<core_functions::core_function_t<R, S, Args...>, void> {
             using node_type = core_functions::core_function_t<R, S, Args...>;

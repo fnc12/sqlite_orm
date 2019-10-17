@@ -502,4 +502,13 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
         return std::get<N>(statement.t.ids);
     }
+    
+    /*template<class T, class L>
+    void iterate_ast(const T &t, const L &l);*/
+    
+    /*template<int N, class T, class ...Args>
+    auto &get(internal::prepared_statement_t<internal::select_t<T, Args...>> &statement) {
+        auto i = 0;
+        iterate_ast(statement.t, )
+    }*/
 }
