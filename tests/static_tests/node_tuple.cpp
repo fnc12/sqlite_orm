@@ -63,7 +63,7 @@ TEST_CASE("Node tuple") {
         using MulTuple = node_tuple<mul_t<double, decltype(&User::id)>>::type;
         static_assert(is_same<MulTuple, std::tuple<double, decltype(&User::id)>>::value, "mul_t");
 
-        using DivTuple = node_tuple<sqlite_orm::div_t<int, float>>::type;
+        using DivTuple = node_tuple<sqlite_orm::internal::div_t<int, float>>::type;
         static_assert(is_same<DivTuple, std::tuple<int, float>>::value, "div_t");
 
         using ModTuple = node_tuple<mod_t<decltype(&User::id), int>>::type;
