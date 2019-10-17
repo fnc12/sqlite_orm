@@ -1,7 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
-#include <memory>   //  std::unique_ptr, std::shared_ptr
-#include <string>   //  std::string
+#include <memory>  //  std::unique_ptr, std::shared_ptr
+#include <string>  //  std::string
 
 using namespace sqlite_orm;
 
@@ -18,7 +18,7 @@ TEST_CASE("is_bindable") {
     static_assert(internal::is_bindable<std::nullptr_t>::value, "null must be bindable");
     static_assert(internal::is_bindable<std::unique_ptr<int>>::value, "unique_ptr must be bindable");
     static_assert(internal::is_bindable<std::shared_ptr<int>>::value, "shared_ptr must be bindable");
-    
+
     static_assert(!internal::is_bindable<void>::value, "void cannot be bindable");
     auto isEqual = is_equal(&User::id, 5);
     static_assert(!internal::is_bindable<decltype(isEqual)>::value, "is_equal cannot be bindable");

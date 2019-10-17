@@ -82,11 +82,11 @@ namespace sqlite_orm {
             using tuple_type = std::tuple<Args...>;
             tuple_helper::iterator<std::tuple_size<tuple_type>::value - 1, Args...>()(t, l, false);
         }
-        
-        template<typename ... input_t>
+
+        template<typename... input_t>
         using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
-        
-        template<class ...Args>
+
+        template<class... Args>
         struct conc_tuple {
             using type = tuple_cat_t<Args...>;
         };
