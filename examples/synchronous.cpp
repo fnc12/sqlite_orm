@@ -2,8 +2,7 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <string>
 
-struct Query
-{
+struct Query {
     std::string src_ip;
     uint16_t src_port;
     uint16_t txn_id;
@@ -13,7 +12,7 @@ struct Query
     uint16_t type;
 };
 
-int main(int, char**) {
+int main(int, char **) {
 
     using namespace sqlite_orm;
 

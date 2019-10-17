@@ -1,6 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
-#include <cstdio>   //  remove
+#include <cstdio>  //  remove
 
 using namespace sqlite_orm;
 
@@ -9,7 +9,7 @@ namespace BackupTests {
         int id = 0;
         std::string name;
     };
-    
+
     bool operator==(const User &lhs, const User &rhs) {
         return lhs.id == rhs.id && lhs.name == rhs.name;
     }
@@ -19,11 +19,10 @@ TEST_CASE("backup") {
     using namespace BackupTests;
     using Catch::Matchers::UnorderedEquals;
     const std::string usersTableName = "users";
-    auto makeStorage = [&usersTableName](const std::string &filename){
-        return make_storage(filename,
-                            make_table(usersTableName,
-                                       make_column("id", &User::id, primary_key()),
-                                       make_column("name", &User::name)));
+    auto makeStorage = [&usersTableName](const std::string &filename) {
+        return make_storage(
+            filename,
+            make_table(usersTableName, make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
     };
     const std::string backupFilename = "backup.sqlite";
     SECTION("to") {
@@ -47,9 +46,9 @@ TEST_CASE("backup") {
         }
         SECTION("filename step 1") {
             auto backup = storage.make_backup_to(backupFilename);
-            do{
+            do {
                 backup.step(1);
-            }while(backup.remaining() > 0);
+            } while(backup.remaining() > 0);
         }
         SECTION("storage step -1") {
             auto backup = storage.make_backup_to(storage2);
@@ -57,9 +56,9 @@ TEST_CASE("backup") {
         }
         SECTION("storage step 1") {
             auto backup = storage.make_backup_to(storage2);
-            do{
+            do {
                 backup.step(1);
-            }while(backup.remaining() > 0);
+            } while(backup.remaining() > 0);
         }
         REQUIRE(storage2.table_exists(usersTableName));
         auto rowsFromBackup = storage2.get_all<User>();
@@ -83,9 +82,9 @@ TEST_CASE("backup") {
         }
         SECTION("filename step 1") {
             auto backup = storage2.make_backup_from(backupFilename);
-            do{
+            do {
                 backup.step(1);
-            }while(backup.remaining() > 0);
+            } while(backup.remaining() > 0);
         }
         SECTION("storage") {
             storage2.backup_from(storage);
@@ -96,9 +95,9 @@ TEST_CASE("backup") {
         }
         SECTION("storage step -1") {
             auto backup = storage2.make_backup_from(storage);
-            do{
+            do {
                 backup.step(1);
-            }while(backup.remaining() > 0);
+            } while(backup.remaining() > 0);
         }
         REQUIRE(storage2.table_exists(usersTableName));
         auto rowsFromBackup = storage2.get_all<User>();

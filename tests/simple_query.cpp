@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("Simple query"){
+TEST_CASE("Simple query") {
     auto storage = make_storage("");
     {
         //  SELECT 1
@@ -22,7 +22,7 @@ TEST_CASE("Simple query"){
         auto two = storage.select(c(1) + 1);
         REQUIRE(two.size() == 1);
         REQUIRE(two.front() == 2);
-        
+
         auto twoAgain = storage.select(add(1, 1));
         REQUIRE(two == twoAgain);
     }
