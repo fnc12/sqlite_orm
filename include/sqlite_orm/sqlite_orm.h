@@ -310,6 +310,14 @@ namespace sqlite_orm {
             using tuple_type = std::tuple<Args...>;
             tuple_helper::iterator<std::tuple_size<tuple_type>::value - 1, Args...>()(t, l, false);
         }
+
+        template<typename... input_t>
+        using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
+
+        template<class... Args>
+        struct conc_tuple {
+            using type = tuple_cat_t<Args...>;
+        };
     }
 }
 #pragma once
@@ -1716,12 +1724,15 @@ namespace sqlite_orm {
          */
         template<class L, class R>
         struct binary_condition : public condition_t {
-            L l;
-            R r;
+            using left_type = L;
+            using right_type = R;
+
+            left_type l;
+            right_type r;
 
             binary_condition() = default;
 
-            binary_condition(L l_, R r_) : l(std::move(l_)), r(std::move(r_)) {}
+            binary_condition(left_type l_, right_type r_) : l(std::move(l_)), r(std::move(r_)) {}
         };
 
         struct and_condition_string {
@@ -2185,11 +2196,16 @@ namespace sqlite_orm {
          */
         template<class A, class T>
         struct between_t : condition_t, between_string {
-            A expr;
-            T b1;
-            T b2;
+            using expression_type = A;
+            using lower_type = T;
+            using upper_type = T;
 
-            between_t(A expr_, T b1_, T b2_) : expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
+            expression_type expr;
+            lower_type b1;
+            upper_type b2;
+
+            between_t(expression_type expr_, lower_type b1_, upper_type b2_) :
+                expr(std::move(expr_)), b1(std::move(b1_)), b2(std::move(b2_)) {}
         };
 
         struct like_string {
@@ -3144,7 +3160,6 @@ namespace sqlite_orm {
 
         template<typename T, template<typename...> class C>
         using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T *>()));
-
 #endif
     }
 }
@@ -3330,7 +3345,7 @@ namespace sqlite_orm {
      *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
      */
     template<class T>
-    core_functions::core_function_t<int, core_functions::length_string, T> length(T &&t) {
+    core_functions::core_function_t<int, core_functions::length_string, T> length(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -3339,7 +3354,7 @@ namespace sqlite_orm {
      *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
      */
     template<class T>
-    core_functions::core_function_t<std::unique_ptr<double>, core_functions::abs_string, T> abs(T &&t) {
+    core_functions::core_function_t<std::unique_ptr<double>, core_functions::abs_string, T> abs(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -3348,7 +3363,7 @@ namespace sqlite_orm {
      *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::lower_string, T> lower(T &&t) {
+    core_functions::core_function_t<std::string, core_functions::lower_string, T> lower(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -3357,7 +3372,7 @@ namespace sqlite_orm {
      *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::upper_string, T> upper(T &&t) {
+    core_functions::core_function_t<std::string, core_functions::upper_string, T> upper(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -3373,7 +3388,7 @@ namespace sqlite_orm {
      *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::trim_string, T> trim(T &&t) {
+    core_functions::core_function_t<std::string, core_functions::trim_string, T> trim(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -3382,7 +3397,7 @@ namespace sqlite_orm {
      *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::trim_string, X, Y> trim(X &&x, Y &&y) {
+    core_functions::core_function_t<std::string, core_functions::trim_string, X, Y> trim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {std::move(args)};
     }
@@ -3391,7 +3406,7 @@ namespace sqlite_orm {
      *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::ltrim_string, X> ltrim(X &&x) {
+    core_functions::core_function_t<std::string, core_functions::ltrim_string, X> ltrim(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {std::move(args)};
     }
@@ -3400,7 +3415,7 @@ namespace sqlite_orm {
      *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::ltrim_string, X, Y> ltrim(X &&x, Y &&y) {
+    core_functions::core_function_t<std::string, core_functions::ltrim_string, X, Y> ltrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {std::move(args)};
     }
@@ -3409,7 +3424,7 @@ namespace sqlite_orm {
      *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::rtrim_string, X> rtrim(X &&x) {
+    core_functions::core_function_t<std::string, core_functions::rtrim_string, X> rtrim(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {std::move(args)};
     }
@@ -3418,7 +3433,7 @@ namespace sqlite_orm {
      *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::rtrim_string, X, Y> rtrim(X &&x, Y &&y) {
+    core_functions::core_function_t<std::string, core_functions::rtrim_string, X, Y> rtrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {std::move(args)};
     }
@@ -3429,7 +3444,7 @@ namespace sqlite_orm {
      *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::char_string, Args...> char_(Args &&... args) {
+    core_functions::core_function_t<std::string, core_functions::char_string, Args...> char_(Args ... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -3446,7 +3461,7 @@ namespace sqlite_orm {
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
     template<class R, class... Args>
-    core_functions::core_function_t<R, core_functions::coalesce_string, Args...> coalesce(Args &&... args) {
+    core_functions::core_function_t<R, core_functions::coalesce_string, Args...> coalesce(Args ... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -3454,7 +3469,7 @@ namespace sqlite_orm {
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args &&... args) {
+    core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args ... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -3463,7 +3478,7 @@ namespace sqlite_orm {
      *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::datetime_string, Args...> datetime(Args &&... args) {
+    core_functions::core_function_t<std::string, core_functions::datetime_string, Args...> datetime(Args ... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -3472,7 +3487,7 @@ namespace sqlite_orm {
      *  JULIANDAY(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args &&... args) {
+    core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args ... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -3481,7 +3496,7 @@ namespace sqlite_orm {
      *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
      */
     template<class N>
-    core_functions::core_function_t<std::vector<char>, core_functions::zeroblob_string, N> zeroblob(N &&n) {
+    core_functions::core_function_t<std::vector<char>, core_functions::zeroblob_string, N> zeroblob(N n) {
         std::tuple<N> args{std::forward<N>(n)};
         return {std::move(args)};
     }
@@ -3490,7 +3505,7 @@ namespace sqlite_orm {
      *  SUBSTR(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y> substr(X &&x, Y &&y) {
+    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y> substr(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {std::move(args)};
     }
@@ -3499,7 +3514,7 @@ namespace sqlite_orm {
      *  SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y, class Z>
-    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y, Z> substr(X &&x, Y &&y, Z &&z) {
+    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
         return {std::move(args)};
     }
@@ -6453,6 +6468,7 @@ namespace sqlite_orm {
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
 #include <type_traits>  //  std::true_type, std::false_type
+#include <utility>  //  std::pair
 
 // #include "connection_holder.h"
 
@@ -6770,8 +6786,7 @@ namespace sqlite_orm {
             using iterator_type = It;
             using object_type = typename std::iterator_traits<iterator_type>::value_type;
 
-            iterator_type from;
-            iterator_type to;
+            std::pair<iterator_type, iterator_type> range;
         };
 
         template<class It>
@@ -6779,51 +6794,80 @@ namespace sqlite_orm {
             using iterator_type = It;
             using object_type = typename std::iterator_traits<iterator_type>::value_type;
 
-            iterator_type from;
-            iterator_type to;
+            std::pair<iterator_type, iterator_type> range;
         };
     }
 
+    /**
+     *  Create a replace range statement
+     */
     template<class It>
     internal::replace_range_t<It> replace_range(It from, It to) {
-        return {std::move(from), std::move(to)};
+        return {{std::move(from), std::move(to)}};
     }
 
+    /**
+     *  Create an insert range statement
+     */
     template<class It>
     internal::insert_range_t<It> insert_range(It from, It to) {
-        return {std::move(from), std::move(to)};
+        return {{std::move(from), std::move(to)}};
     }
 
+    /**
+     *  Create a replace by reference statement
+     *  Usage: replace(myUserInstance);
+     */
     template<class T>
     internal::replace_t<T, true> replace(const T &obj) {
         static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
     }
 
+    /**
+     *  Create a replace by value statement
+     *  Usage: replace<by_val<User>>(myUserInstance);
+     */
     template<class B>
     internal::replace_t<typename B::type, false> replace(typename B::type obj) {
         static_assert(internal::is_by_val<B>::value, "by_val expected");
         return {std::move(obj)};
     }
 
+    /**
+     *  Create an insert by reference statement
+     *  Usage: insert(myUserInstance);
+     */
     template<class T>
     internal::insert_t<T, true> insert(const T &obj) {
         static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
     }
 
+    /**
+     *  Create an insert by value statement.
+     *  Usage: insert<by_val<User>>(myUserInstance);
+     */
     template<class B>
     internal::insert_t<typename B::type, false> insert(typename B::type obj) {
         static_assert(internal::is_by_val<B>::value, "by_val expected");
         return {std::move(obj)};
     }
 
+    /**
+     *  Create an explicit insert by reference statement.
+     *  Usage: insert(myUserInstance, columns(&User::id, &User::name));
+     */
     template<class T, class... Cols>
     internal::insert_explicit<T, true, Cols...> insert(const T &obj, internal::columns_t<Cols...> cols) {
         static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj, std::move(cols)};
     }
 
+    /**
+     *  Create an explicit insert by value statement
+     *  Usage: insert<by_val<User>>(myUserInstance, s(&User::id, &User::name));
+     */
     template<class B, class... Cols>
     internal::insert_explicit<typename B::type, false, Cols...> insert(typename B::type obj,
                                                                        internal::columns_t<Cols...> cols) {
@@ -6831,46 +6875,84 @@ namespace sqlite_orm {
         return {std::move(obj), std::move(cols)};
     }
 
+    /**
+     *  Create a remove statement
+     *  Usage: remove<User>(5);
+     */
     template<class T, class... Ids>
     internal::remove_t<T, Ids...> remove(Ids... ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
         return {move(idsTuple)};
     }
 
+    /**
+     *  Create an update by reference statement.
+     *  Usage: update(myUserInstance);
+     */
     template<class T>
     internal::update_t<T, true> update(const T &obj) {
         static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
         return {obj};
     }
 
+    /**
+     *  Create an update by value statement.
+     *  Usage: update<by_val<User>>(myUserInstance);
+     */
     template<class B>
     internal::update_t<typename B::type, false> update(typename B::type obj) {
         static_assert(internal::is_by_val<B>::value, "by_val expected");
         return {std::move(obj)};
     }
 
+    /**
+     *  Create a get statement.
+     *  Usage: get<User>(5);
+     */
     template<class T, class... Ids>
     internal::get_t<T, Ids...> get(Ids... ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
         return {move(idsTuple)};
     }
 
+    /**
+     *  Create a get pointer statement.
+     *  Usage: get_pointer<User>(5);
+     */
     template<class T, class... Ids>
     internal::get_pointer_t<T, Ids...> get_pointer(Ids... ids) {
         std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
         return {move(idsTuple)};
     }
 
+    /**
+     *  Create a remove all statement.
+     *  Usage: remove_all<User>(...);
+     */
     template<class T, class... Args>
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 
+    /**
+     *  Create a get all statement.
+     *  Usage: get_all<User>(...);
+     */
     template<class T, class... Args>
     internal::get_all_t<T, Args...> get_all(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
+    }
+
+    /**
+     *  Create an update all statement.
+     *  Usage: update_all(set(...), ...);
+     */
+    template<class... Args, class... Wargs>
+    internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs... wh) {
+        std::tuple<Wargs...> conditions{std::forward<Wargs>(wh)...};
+        return {std::move(set), move(conditions)};
     }
 
     template<class T, class... Args>
@@ -6879,10 +6961,106 @@ namespace sqlite_orm {
         return {move(conditions)};
     }
 
-    template<class... Args, class... Wargs>
-    internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs... wh) {
-        std::tuple<Wargs...> conditions{std::forward<Wargs>(wh)...};
-        return {std::move(set), move(conditions)};
+    template<int N, class T, bool by_ref>
+    auto &get(internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        return statement.t.obj;
+    }
+
+    template<int N, class T, bool by_ref>
+    const auto &get(const internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        return statement.t.obj;
+    }
+
+    template<int N, class T, bool by_ref>
+    auto &get(internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return statement.t.obj;
+    }
+
+    template<int N, class T, bool by_ref>
+    const auto &get(const internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return statement.t.obj;
+    }
+
+    template<int N, class T, bool by_ref>
+    auto &get(internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        return statement.t.obj;
+    }
+
+    template<int N, class T, bool by_ref>
+    const auto &get(const internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        return statement.t.obj;
+    }
+
+    template<int N, class T, bool by_ref, class... Cols>
+    auto &get(internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return statement.t.obj;
+    }
+
+    template<int N, class T, bool by_ref, class... Cols>
+    const auto &get(const internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return statement.t.obj;
+    }
+
+    template<int N, class It>
+    auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for insert range statement");
+        return std::get<N>(statement.t.range);
+    }
+
+    template<int N, class It>
+    const auto &get(const internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for insert range statement");
+        return std::get<N>(statement.t.range);
+    }
+
+    template<int N, class It>
+    auto &get(internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
+        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
+        return std::get<N>(statement.t.range);
+    }
+
+    template<int N, class It>
+    const auto &get(const internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
+        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
+        return std::get<N>(statement.t.range);
+    }
+
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
+
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
+
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
+
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
+
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
+
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
     }
 }
 
@@ -7137,6 +7315,26 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &neg, const L &l) const {
                 iterate_ast(neg.c, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<conditions::is_null_t<T>, void> {
+            using node_type = conditions::is_null_t<T>;
+
+            template<class L>
+            void operator()(const node_type &i, const L &l) const {
+                iterate_ast(i.t, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<conditions::is_not_null_t<T>, void> {
+            using node_type = conditions::is_not_null_t<T>;
+
+            template<class L>
+            void operator()(const node_type &i, const L &l) const {
+                iterate_ast(i.t, l);
             }
         };
 
@@ -9161,7 +9359,7 @@ namespace sqlite_orm {
                     }
                     return ss.str();
                 }();
-                auto valuesCount = static_cast<int>(std::distance(rep.from, rep.to));
+                auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
                 for(auto i = 0; i < valuesCount; ++i) {
                     ss << valuesString;
                     if(i < valuesCount - 1) {
@@ -9211,7 +9409,7 @@ namespace sqlite_orm {
                     }
                     return ss.str();
                 }();
-                auto valuesCount = static_cast<int>(std::distance(ins.from, ins.to));
+                auto valuesCount = static_cast<int>(std::distance(ins.range.first, ins.range.second));
                 for(auto i = 0; i < valuesCount; ++i) {
                     ss << valuesString;
                     if(i < valuesCount - 1) {
@@ -10586,7 +10784,7 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 sqlite3_reset(stmt);
-                for(auto it = statement.t.from; it != statement.t.to; ++it) {
+                for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt, db](auto &c) {
                         using column_type = typename std::decay<decltype(c)>::type;
@@ -10627,7 +10825,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto &impl = this->get_impl<object_type>();
                 sqlite3_reset(stmt);
-                for(auto it = statement.t.from; it != statement.t.to; ++it) {
+                for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto &o = *it;
                     impl.table.for_each_column([&o, &index, &stmt, db](auto &c) {
                         if(!c.template has<constraints::primary_key_t<>>()) {
@@ -11118,3 +11316,240 @@ __pragma(pop_macro("min"))
 #undef __RESTORE_MAX__
 #endif
 #endif  // defined(_MSC_VER)
+#pragma once
+
+#include <tuple>  //  std::tuple
+#include <utility>  //  std::pair
+
+// #include "conditions.h"
+
+// #include "operators.h"
+
+// #include "select_constraints.h"
+
+// #include "prepared_statement.h"
+
+// #include "optional_container.h"
+
+// #include "core_functions.h"
+
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<class T, class SFINAE = void>
+        struct node_tuple {
+            using type = std::tuple<T>;
+        };
+
+        template<>
+        struct node_tuple<void, void> {
+            using type = std::tuple<>;
+        };
+
+        template<class C>
+        struct node_tuple<conditions::where_t<C>, void> {
+            using node_type = conditions::where_t<C>;
+            using type = typename node_tuple<C>::type;
+        };
+
+        template<class T>
+        struct node_tuple<T,
+                          typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+            using node_type = T;
+            using left_type = typename node_type::left_type;
+            using right_type = typename node_type::right_type;
+            using left_node_tuple = typename node_tuple<left_type>::type;
+            using right_node_tuple = typename node_tuple<right_type>::type;
+            using type = typename conc_tuple<left_node_tuple, right_node_tuple>::type;
+        };
+
+        template<class L, class R, class... Ds>
+        struct node_tuple<binary_operator<L, R, Ds...>, void> {
+            using node_type = binary_operator<L, R, Ds...>;
+            using left_type = typename node_type::left_type;
+            using right_type = typename node_type::right_type;
+            using left_node_tuple = typename node_tuple<left_type>::type;
+            using right_node_tuple = typename node_tuple<right_type>::type;
+            using type = typename conc_tuple<left_node_tuple, right_node_tuple>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<columns_t<Args...>, void> {
+            using node_type = columns_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class L, class A>
+        struct node_tuple<conditions::in_t<L, A>, void> {
+            using node_type = conditions::in_t<L, A>;
+            using left_tuple = typename node_tuple<L>::type;
+            using right_tuple = typename node_tuple<A>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+
+        template<class T>
+        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+            using node_type = T;
+            using left_type = typename node_type::left_type;
+            using right_type = typename node_type::right_type;
+            using left_tuple = typename node_tuple<left_type>::type;
+            using right_tuple = typename node_tuple<right_type>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+
+        template<class T, class... Args>
+        struct node_tuple<select_t<T, Args...>, void> {
+            using node_type = select_t<T, Args...>;
+            using columns_tuple = typename node_tuple<T>::type;
+            using args_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<columns_tuple, args_tuple>::type;
+        };
+
+        template<class T, class... Args>
+        struct node_tuple<get_all_t<T, Args...>, void> {
+            using node_type = get_all_t<T, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::having_t<T>, void> {
+            using node_type = conditions::having_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class T, class E>
+        struct node_tuple<conditions::cast_t<T, E>, void> {
+            using node_type = conditions::cast_t<T, E>;
+            using type = typename node_tuple<E>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::exists_t<T>, void> {
+            using node_type = conditions::exists_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class T>
+        struct node_tuple<optional_container<T>, void> {
+            using node_type = optional_container<T>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<>
+        struct node_tuple<optional_container<void>, void> {
+            using node_type = optional_container<void>;
+            using type = std::tuple<>;
+        };
+
+        template<class A, class T, class E>
+        struct node_tuple<conditions::like_t<A, T, E>, void> {
+            using node_type = conditions::like_t<A, T, E>;
+            using arg_tuple = typename node_tuple<A>::type;
+            using pattern_tuple = typename node_tuple<T>::type;
+            using escape_tuple = typename node_tuple<E>::type;
+            using type = typename conc_tuple<arg_tuple, pattern_tuple, escape_tuple>::type;
+        };
+
+        template<class A, class T>
+        struct node_tuple<conditions::glob_t<A, T>, void> {
+            using node_type = conditions::glob_t<A, T>;
+            using arg_tuple = typename node_tuple<A>::type;
+            using pattern_tuple = typename node_tuple<T>::type;
+            using type = typename conc_tuple<arg_tuple, pattern_tuple>::type;
+        };
+
+        template<class A, class T>
+        struct node_tuple<conditions::between_t<A, T>, void> {
+            using node_type = conditions::between_t<A, T>;
+            using expression_tuple = typename node_tuple<A>::type;
+            using lower_tuple = typename node_tuple<T>::type;
+            using upper_tuple = typename node_tuple<T>::type;
+            using type = typename conc_tuple<expression_tuple, lower_tuple, upper_tuple>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::named_collate<T>, void> {
+            using node_type = conditions::named_collate<T>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::is_null_t<T>, void> {
+            using node_type = conditions::is_null_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::is_not_null_t<T>, void> {
+            using node_type = conditions::is_not_null_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class C>
+        struct node_tuple<conditions::negated_condition_t<C>, void> {
+            using node_type = conditions::negated_condition_t<C>;
+            using type = typename node_tuple<C>::type;
+        };
+
+        template<class R, class S, class... Args>
+        struct node_tuple<core_functions::core_function_t<R, S, Args...>, void> {
+            using node_type = core_functions::core_function_t<R, S, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class T, class O>
+        struct node_tuple<conditions::left_join_t<T, O>, void> {
+            using node_type = conditions::left_join_t<T, O>;
+            using type = typename node_tuple<O>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::on_t<T>, void> {
+            using node_type = conditions::on_t<T>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class T, class O>
+        struct node_tuple<conditions::join_t<T, O>, void> {
+            using node_type = conditions::join_t<T, O>;
+            using type = typename node_tuple<O>::type;
+        };
+
+        template<class T, class O>
+        struct node_tuple<conditions::left_outer_join_t<T, O>, void> {
+            using node_type = conditions::left_outer_join_t<T, O>;
+            using type = typename node_tuple<O>::type;
+        };
+
+        template<class T, class O>
+        struct node_tuple<conditions::inner_join_t<T, O>, void> {
+            using node_type = conditions::inner_join_t<T, O>;
+            using type = typename node_tuple<O>::type;
+        };
+
+        template<class R, class T, class E, class... Args>
+        struct node_tuple<simple_case_t<R, T, E, Args...>, void> {
+            using node_type = simple_case_t<R, T, E, Args...>;
+            using case_tuple = typename node_tuple<T>::type;
+            using args_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using else_tuple = typename node_tuple<E>::type;
+            using type = typename conc_tuple<case_tuple, args_tuple, else_tuple>::type;
+        };
+
+        template<class L, class R>
+        struct node_tuple<std::pair<L, R>, void> {
+            using node_type = std::pair<L, R>;
+            using left_tuple = typename node_tuple<L>::type;
+            using right_tuple = typename node_tuple<R>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+
+        template<class T, class E>
+        struct node_tuple<as_t<T, E>, void> {
+            using node_type = as_t<T, E>;
+            using type = typename node_tuple<E>::type;
+        };
+    }
+}

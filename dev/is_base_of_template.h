@@ -33,7 +33,6 @@ namespace sqlite_orm {
 
         template<typename T, template<typename...> class C>
         using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T *>()));
-
 #endif
     }
 }

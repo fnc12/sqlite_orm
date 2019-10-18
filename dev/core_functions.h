@@ -190,7 +190,7 @@ namespace sqlite_orm {
      *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
      */
     template<class T>
-    core_functions::core_function_t<int, core_functions::length_string, T> length(T &&t) {
+    core_functions::core_function_t<int, core_functions::length_string, T> length(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -199,7 +199,7 @@ namespace sqlite_orm {
      *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
      */
     template<class T>
-    core_functions::core_function_t<std::unique_ptr<double>, core_functions::abs_string, T> abs(T &&t) {
+    core_functions::core_function_t<std::unique_ptr<double>, core_functions::abs_string, T> abs(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -208,7 +208,7 @@ namespace sqlite_orm {
      *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::lower_string, T> lower(T &&t) {
+    core_functions::core_function_t<std::string, core_functions::lower_string, T> lower(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -217,7 +217,7 @@ namespace sqlite_orm {
      *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::upper_string, T> upper(T &&t) {
+    core_functions::core_function_t<std::string, core_functions::upper_string, T> upper(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -233,7 +233,7 @@ namespace sqlite_orm {
      *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::trim_string, T> trim(T &&t) {
+    core_functions::core_function_t<std::string, core_functions::trim_string, T> trim(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {std::move(args)};
     }
@@ -242,7 +242,7 @@ namespace sqlite_orm {
      *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::trim_string, X, Y> trim(X &&x, Y &&y) {
+    core_functions::core_function_t<std::string, core_functions::trim_string, X, Y> trim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {std::move(args)};
     }
@@ -251,7 +251,7 @@ namespace sqlite_orm {
      *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::ltrim_string, X> ltrim(X &&x) {
+    core_functions::core_function_t<std::string, core_functions::ltrim_string, X> ltrim(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {std::move(args)};
     }
@@ -260,7 +260,7 @@ namespace sqlite_orm {
      *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::ltrim_string, X, Y> ltrim(X &&x, Y &&y) {
+    core_functions::core_function_t<std::string, core_functions::ltrim_string, X, Y> ltrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {std::move(args)};
     }
@@ -269,7 +269,7 @@ namespace sqlite_orm {
      *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::rtrim_string, X> rtrim(X &&x) {
+    core_functions::core_function_t<std::string, core_functions::rtrim_string, X> rtrim(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {std::move(args)};
     }
@@ -278,7 +278,7 @@ namespace sqlite_orm {
      *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::rtrim_string, X, Y> rtrim(X &&x, Y &&y) {
+    core_functions::core_function_t<std::string, core_functions::rtrim_string, X, Y> rtrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {std::move(args)};
     }
@@ -289,7 +289,7 @@ namespace sqlite_orm {
      *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::char_string, Args...> char_(Args &&... args) {
+    core_functions::core_function_t<std::string, core_functions::char_string, Args...> char_(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -306,7 +306,7 @@ namespace sqlite_orm {
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
     template<class R, class... Args>
-    core_functions::core_function_t<R, core_functions::coalesce_string, Args...> coalesce(Args &&... args) {
+    core_functions::core_function_t<R, core_functions::coalesce_string, Args...> coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -314,7 +314,7 @@ namespace sqlite_orm {
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args &&... args) {
+    core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -323,7 +323,7 @@ namespace sqlite_orm {
      *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::datetime_string, Args...> datetime(Args &&... args) {
+    core_functions::core_function_t<std::string, core_functions::datetime_string, Args...> datetime(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -332,7 +332,7 @@ namespace sqlite_orm {
      *  JULIANDAY(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args &&... args) {
+    core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -341,7 +341,7 @@ namespace sqlite_orm {
      *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
      */
     template<class N>
-    core_functions::core_function_t<std::vector<char>, core_functions::zeroblob_string, N> zeroblob(N &&n) {
+    core_functions::core_function_t<std::vector<char>, core_functions::zeroblob_string, N> zeroblob(N n) {
         std::tuple<N> args{std::forward<N>(n)};
         return {std::move(args)};
     }
@@ -350,7 +350,7 @@ namespace sqlite_orm {
      *  SUBSTR(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y> substr(X &&x, Y &&y) {
+    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y> substr(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {std::move(args)};
     }
@@ -359,7 +359,7 @@ namespace sqlite_orm {
      *  SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y, class Z>
-    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y, Z> substr(X &&x, Y &&y, Z &&z) {
+    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
         return {std::move(args)};
     }
