@@ -8019,11 +8019,11 @@ namespace sqlite_orm {
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
                 connection(std::make_unique<connection_holder>(other.connection->filename)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
-                    if(this->inMemory) {
-                        this->connection->retain();
-                        this->on_open_internal(this->connection->get());
-                    }
+                if(this->inMemory) {
+                    this->connection->retain();
+                    this->on_open_internal(this->connection->get());
                 }
+            }
 
             ~storage_base() {
                 if(this->isOpenedForever) {
