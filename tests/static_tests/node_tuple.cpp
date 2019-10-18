@@ -366,8 +366,8 @@ static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
         using Fun = decltype(f);
         using Tuple = node_tuple<Fun>::type;
         using ArgType = std::tuple_element<0, Fun::args_type>::type;
-        static_assert(is_same<ArgType, decltype("hi")>::value, "upper arg[0]");
-        using Expected = std::tuple<decltype("hi")>;
+        static_assert(is_same<ArgType, const char *>::value, "upper arg[0]");
+        using Expected = std::tuple<const char *>;
         static_assert(is_same<Tuple, Expected>::value, "upper");
     }
     {  // changes
@@ -402,7 +402,7 @@ static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
         auto f = ltrim(&User::id, "see");
         using Fun = decltype(f);
         using Tuple = node_tuple<Fun>::type;
-        using Expected = std::tuple<decltype(&User::id), decltype("see")>;
+        using Expected = std::tuple<decltype(&User::id), const char *>;
         static_assert(is_same<Tuple, Expected>::value, "ltrim(2)");
     }
     {  // rtrim(1)
@@ -447,14 +447,14 @@ static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
         auto f = datetime("now");
         using Fun = decltype(f);
         using Tuple = node_tuple<Fun>::type;
-        using Expected = std::tuple<decltype("now")>;
+        using Expected = std::tuple<const char *>;
         static_assert(is_same<Tuple, Expected>::value, "datetime");
     }
     {  // julianday
         auto f = julianday("now");
         using Fun = decltype(f);
         using Tuple = node_tuple<Fun>::type;
-        using Expected = std::tuple<decltype("now")>;
+        using Expected = std::tuple<const char *>;
         static_assert(is_same<Tuple, Expected>::value, "julianday");
     }
     {  // zeroblob
