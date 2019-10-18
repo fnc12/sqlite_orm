@@ -191,9 +191,15 @@ TEST_CASE("Join") {
 }
 
 TEST_CASE("Storage copy") {
+    struct User {
+        int id = 0;
+    };
+
     int calledCount = 0;
 
-    auto storage = make_storage({});
+    auto storage = make_storage({}, make_table("users", make_column("id", &User::id)));
+    storage.sync_schema();
+    storage.remove_all<User>();
 
     storage.on_open = [&calledCount](sqlite3 *) {
         ++calledCount;
@@ -204,8 +210,12 @@ TEST_CASE("Storage copy") {
 
     auto storageCopy = storage;
     REQUIRE(storageCopy.on_open);
-    storageCopy.on_open(nullptr);
     REQUIRE(calledCount == 2);
+    storageCopy.on_open(nullptr);
+    REQUIRE(calledCount == 3);
+
+    storageCopy.sync_schema();
+    storageCopy.remove_all<User>();
 }
 
 TEST_CASE("Set null") {
