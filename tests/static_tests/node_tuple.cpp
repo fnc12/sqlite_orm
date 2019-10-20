@@ -138,13 +138,13 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "is_not_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<std::string>>::value, "");
         }
-        {
+        {   //  bool and int
             using Tuple = node_tuple<and_condition_t<bool, int>>::type;
             using Expected = std::tuple<bool, int>;
             static_assert(is_same<Tuple, Expected>::value, "and_condition_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<bool, int>>::value, "");
         }
-        {
+        {   //  bool or int
             using Tuple = node_tuple<or_condition_t<bool, int>>::type;
             using Expected = std::tuple<bool, int>;
             static_assert(is_same<Tuple, Expected>::value, "or_condition_t");

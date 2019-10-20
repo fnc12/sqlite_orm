@@ -7083,6 +7083,23 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
         return std::get<N>(statement.t.ids);
     }
+    
+    template<int N, class T, class... Args>
+    auto &get(internal::prepared_statement_t<internal::get_all_t<T, Args...>> &statement) {
+        using statement_type = typename std::decay<decltype(statement)>::type;
+        using conditions_type = typename statement_type::conditions_type;
+        using bind_tuple = typename internal::bindable_filter<conditions_type>::type;
+        using result_tupe = typename std::tuple_element<N, bind_tuple>::type;
+        result_tupe *result = nullptr;
+        auto index = 0;
+        internal::iterate_ast(statement.conditions, [result, &index](auto &node){
+            if(index == N) {
+                result = &node;
+            }
+            ++index;
+        });
+        return *result;
+    }
 }
 
 
