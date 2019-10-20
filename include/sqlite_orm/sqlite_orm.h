@@ -3444,7 +3444,7 @@ namespace sqlite_orm {
      *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::char_string, Args...> char_(Args ... args) {
+    core_functions::core_function_t<std::string, core_functions::char_string, Args...> char_(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -3461,7 +3461,7 @@ namespace sqlite_orm {
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
     template<class R, class... Args>
-    core_functions::core_function_t<R, core_functions::coalesce_string, Args...> coalesce(Args ... args) {
+    core_functions::core_function_t<R, core_functions::coalesce_string, Args...> coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -3469,7 +3469,7 @@ namespace sqlite_orm {
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args ... args) {
+    core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -3478,7 +3478,7 @@ namespace sqlite_orm {
      *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::datetime_string, Args...> datetime(Args ... args) {
+    core_functions::core_function_t<std::string, core_functions::datetime_string, Args...> datetime(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -3487,7 +3487,7 @@ namespace sqlite_orm {
      *  JULIANDAY(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args ... args) {
+    core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }
@@ -4422,6 +4422,27 @@ namespace sqlite_orm {
             int operator()(const T &) const {
                 return SQLITE_OK;
             }
+        };
+        
+        template<class T, class SFINAE = void>
+        struct bindable_filter_single;
+        
+        template<class T>
+        struct bindable_filter_single<T, typename std::enable_if<is_bindable<T>::value>::type> {
+            using type = std::tuple<T>;
+        };
+        
+        template<class T>
+        struct bindable_filter_single<T, typename std::enable_if<!is_bindable<T>::value>::type> {
+            using type = std::tuple<>;
+        };
+        
+        template<class T>
+        struct bindable_filter;
+        
+        template<class ...Args>
+        struct bindable_filter<std::tuple<Args...>> {
+            using type = typename conc_tuple<typename bindable_filter_single<Args>::type...>::type;
         };
     }
 }
