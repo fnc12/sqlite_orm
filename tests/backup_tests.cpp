@@ -13,6 +13,22 @@ namespace BackupTests {
     bool operator==(const User &lhs, const User &rhs) {
         return lhs.id == rhs.id && lhs.name == rhs.name;
     }
+    
+    struct MarvelHero {
+        int id;
+        std::string name;
+        std::string abilities;
+    };
+    
+    inline auto initStorageMarvel( const std::string& path ) {
+        using namespace sqlite_orm;
+        auto storage = make_storage(path,
+                                    make_table("marvel",
+                                               make_column("id", &MarvelHero::id, primary_key()),
+                                               make_column("name", &MarvelHero::name),
+                                               make_column("abilities", &MarvelHero::abilities)));
+        return storage;
+    }
 }
 
 TEST_CASE("backup") {
@@ -103,4 +119,37 @@ TEST_CASE("backup") {
         auto rowsFromBackup = storage2.get_all<User>();
         REQUIRE_THAT(rowsFromBackup, UnorderedEquals(storage.get_all<User>()));
     }
+}
+
+TEST_CASE("Backup crash") {
+    using namespace BackupTests;
+    using MarvelStorage = decltype( initStorageMarvel( "" ) );
+    
+    // --- Create a shared pointer to the MarvelStorage
+    std::string fp( "iteration.sqlite" );
+    std::shared_ptr< MarvelStorage > db = std::make_shared< MarvelStorage >( initStorageMarvel( fp ) );
+    auto storage{ *db };
+    
+    storage.sync_schema( );
+    storage.remove_all<MarvelHero>( );
+    
+    // --- Insert values
+    storage.insert(MarvelHero{-1, "Tony Stark", "Iron man, playboy, billionaire, philanthropist"});
+    storage.insert(MarvelHero{-1, "Thor", "Storm god"});
+    storage.insert(MarvelHero{-1, "Vision", "Min Stone"});
+    storage.insert(MarvelHero{-1, "Captain America", "Vibranium shield"});
+    storage.insert(MarvelHero{-1, "Hulk", "Strength"});
+    storage.insert(MarvelHero{-1, "Star Lord", "Humor"});
+    storage.insert(MarvelHero{-1, "Peter Parker", "Spiderman"});
+    storage.insert(MarvelHero{-1, "Clint Barton", "Hawkeye"});
+    storage.insert(MarvelHero{-1, "Natasha Romanoff", "Black widow"});
+    storage.insert(MarvelHero{-1, "Groot", "I am Groot!"});
+    REQUIRE( storage.count<MarvelHero>( ) == 10 );
+    
+    // --- Create backup file name and verify that the file does not exist
+    std::string backupFilename{ "backup.sqlite" };
+    
+    // --- Backup the current storage to the file
+    auto backup = storage.make_backup_to(backupFilename);
+    backup.step( -1 );
 }
