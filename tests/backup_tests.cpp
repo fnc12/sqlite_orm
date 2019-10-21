@@ -13,14 +13,14 @@ namespace BackupTests {
     bool operator==(const User &lhs, const User &rhs) {
         return lhs.id == rhs.id && lhs.name == rhs.name;
     }
-    
+
     struct MarvelHero {
         int id;
         std::string name;
         std::string abilities;
     };
-    
-    inline auto initStorageMarvel( const std::string& path ) {
+
+    inline auto initStorageMarvel(const std::string &path) {
         using namespace sqlite_orm;
         auto storage = make_storage(path,
                                     make_table("marvel",
@@ -123,16 +123,16 @@ TEST_CASE("backup") {
 
 TEST_CASE("Backup crash") {
     using namespace BackupTests;
-    using MarvelStorage = decltype( initStorageMarvel( "" ) );
-    
+    using MarvelStorage = decltype(initStorageMarvel(""));
+
     // --- Create a shared pointer to the MarvelStorage
-    std::string fp( "iteration.sqlite" );
-    std::shared_ptr< MarvelStorage > db = std::make_shared< MarvelStorage >( initStorageMarvel( fp ) );
-    auto storage{ *db };
-    
-    storage.sync_schema( );
-    storage.remove_all<MarvelHero>( );
-    
+    std::string fp("iteration.sqlite");
+    std::shared_ptr<MarvelStorage> db = std::make_shared<MarvelStorage>(initStorageMarvel(fp));
+    auto storage{*db};
+
+    storage.sync_schema();
+    storage.remove_all<MarvelHero>();
+
     // --- Insert values
     storage.insert(MarvelHero{-1, "Tony Stark", "Iron man, playboy, billionaire, philanthropist"});
     storage.insert(MarvelHero{-1, "Thor", "Storm god"});
@@ -144,12 +144,12 @@ TEST_CASE("Backup crash") {
     storage.insert(MarvelHero{-1, "Clint Barton", "Hawkeye"});
     storage.insert(MarvelHero{-1, "Natasha Romanoff", "Black widow"});
     storage.insert(MarvelHero{-1, "Groot", "I am Groot!"});
-    REQUIRE( storage.count<MarvelHero>( ) == 10 );
-    
+    REQUIRE(storage.count<MarvelHero>() == 10);
+
     // --- Create backup file name and verify that the file does not exist
-    std::string backupFilename{ "backup.sqlite" };
-    
+    std::string backupFilename{"backup.sqlite"};
+
     // --- Backup the current storage to the file
     auto backup = storage.make_backup_to(backupFilename);
-    backup.step( -1 );
+    backup.step(-1);
 }
