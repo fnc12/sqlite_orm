@@ -7083,23 +7083,6 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
         return std::get<N>(statement.t.ids);
     }
-    
-    template<int N, class T, class... Args>
-    auto &get(internal::prepared_statement_t<internal::get_all_t<T, Args...>> &statement) {
-        using statement_type = typename std::decay<decltype(statement)>::type;
-        using conditions_type = typename statement_type::conditions_type;
-        using bind_tuple = typename internal::bindable_filter<conditions_type>::type;
-        using result_tupe = typename std::tuple_element<N, bind_tuple>::type;
-        result_tupe *result = nullptr;
-        auto index = 0;
-        internal::iterate_ast(statement.conditions, [result, &index](auto &node){
-            if(index == N) {
-                result = &node;
-            }
-            ++index;
-        });
-        return *result;
-    }
 }
 
 
@@ -11594,5 +11577,41 @@ namespace sqlite_orm {
             using node_type = as_t<T, E>;
             using type = typename node_tuple<E>::type;
         };
+    }
+}
+#pragma once
+
+#include <type_traits>  //  std::is_same, std::decay
+
+// #include "prepared_statement.h"
+
+// #include "ast_iterator.h"
+
+// #include "static_magic.h"
+
+
+namespace sqlite_orm {
+    
+    template<int N, class T, class... Args>
+    const auto &get(internal::prepared_statement_t<internal::get_all_t<T, Args...>> &statement) {
+        using statement_type = typename std::decay<decltype(statement)>::type;
+        using expression_type = typename statement_type::expression_type;
+        using node_tuple = typename internal::node_tuple<expression_type>::type;
+        using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
+        using result_tupe = typename std::tuple_element<N, bind_tuple>::type;
+        const result_tupe *result = nullptr;
+        auto index = -1;
+        internal::iterate_ast(statement.t.conditions, [&result, &index](auto &node) {
+            using node_type = typename std::decay<decltype(node)>::type;
+            if(internal::is_bindable<node_type>::value){
+                ++index;
+            }
+            if(index == N) {
+                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node){
+                    result = &node;
+                })(result, node);
+            }
+        });
+        return *result;
     }
 }

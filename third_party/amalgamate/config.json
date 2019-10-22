@@ -38,7 +38,8 @@
 		"dev/storage_impl.h",
 		"dev/storage.h",
 		"dev/finish_macros.h",
-        "dev/node_tuple.h"
+        "dev/node_tuple.h",
+        "dev/get_prepared_statement.h"
 	],
 	"include_paths": ["dev"]
 }
