@@ -217,6 +217,7 @@ namespace sqlite_orm {
                     iterate_ast(value, l);
                 });
             }
+    
         };
 
         template<class A, class T>

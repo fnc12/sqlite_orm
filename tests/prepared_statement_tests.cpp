@@ -74,6 +74,62 @@ TEST_CASE("Prepared") {
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
     SECTION("select") {
+        {   //  one simple argument
+            auto statement = storage.prepare(select(10));
+            REQUIRE(get<0>(statement) == 10);
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<int>({10}));
+            }
+            get<0>(statement) = 20;
+            REQUIRE(get<0>(statement) == 20);
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<int>({20}));
+            }
+        }
+        {   //  two simple arguments
+            auto statement = storage.prepare(select(columns("ototo", 25)));
+            REQUIRE(get<0>(statement) == "ototo");
+            REQUIRE(get<1>(statement) == 25);
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE(rows.size() == 1);
+                auto &row = rows.front();
+                REQUIRE(get<0>(row) == "ototo");
+                REQUIRE(get<1>(row) == 25);
+            }
+            get<0>(statement) = "Rock";
+            get<1>(statement) = -15;
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE(rows.size() == 1);
+                auto &row = rows.front();
+                REQUIRE(get<0>(row) == "Rock");
+                REQUIRE(get<1>(row) == -15);
+            }
+        }
+        {   //  three columns, aggregate func and where
+            auto statement = storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(lesser_than(&User::id, 10))));
+            REQUIRE(get<0>(statement) == 5.0);
+            REQUIRE(get<1>(statement) == 10);
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE(rows.size() == 1);
+                auto &row = rows.front();
+                REQUIRE(get<0>(row) == 5.0);
+                REQUIRE(get<2>(row) == 3);
+            }
+            get<0>(statement) = 4;
+            get<1>(statement) = 2;
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE(rows.size() == 1);
+                auto &row = rows.front();
+                REQUIRE(get<0>(row) == 4.0);
+                REQUIRE(get<2>(row) == 1);
+            }
+        }
         {
             for(auto i = 0; i < 2; ++i) {
                 auto statement = storage.prepare(select(&User::id));
@@ -209,6 +265,32 @@ TEST_CASE("Prepared") {
             REQUIRE(get<0>(statement) == 2);
             REQUIRE(get<1>(statement) == "T%");
             REQUIRE(get<2>(statement) == "*S");
+        }
+        {
+            auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
+            std::vector<User> expected;
+            REQUIRE(get<0>(statement) == 2);
+            expected.push_back(User{1, "Team BS"});
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+            
+            get<0>(statement) = 3;
+            REQUIRE(get<0>(statement) == 3);
+            expected.push_back(User{2, "Shy'm"});
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+            
+            get<0>(statement) = 4;
+            REQUIRE(get<0>(statement) == 4);
+            expected.push_back(User{3, "Maître Gims"});
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
         }
     }
     SECTION("get_all_pointer") {
