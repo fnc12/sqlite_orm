@@ -597,12 +597,12 @@ TEST_CASE("Default datetime") {
     struct Induction {
         std::string time;
     };
-    
-    auto storage = make_storage({},
-                                make_table("induction",
-                                           make_column("timestamp", &Induction::time, default_value(datetime("now", "localtime")))));
+
+    auto storage = make_storage(
+        {},
+        make_table("induction",
+                   make_column("timestamp", &Induction::time, default_value(datetime("now", "localtime")))));
     storage.sync_schema();
-    
 }
 
 TEST_CASE("Transaction guard") {
@@ -612,10 +612,8 @@ TEST_CASE("Transaction guard") {
     };
 
     auto storage = make_storage(
-                                "test_transaction_guard.sqlite",
-                                make_table("objects",
-                                           make_column("id", &Object::id, primary_key()),
-                                           make_column("name", &Object::name)));
+        "test_transaction_guard.sqlite",
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
 
     storage.sync_schema();
     storage.remove_all<Object>();

@@ -3115,8 +3115,6 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
-#include <ostream>  //  std::ostream
-#include <sstream>  //  std::stringstream
 
 // #include "conditions.h"
 
@@ -3187,29 +3185,6 @@ namespace sqlite_orm {
 
             core_function_t(args_type &&args_) : args(std::move(args_)) {}
         };
-        
-        template<class R, class S, class... Args>
-        inline std::ostream &operator<<(std::ostream &os, const core_function_t<R, S, Args...> &func) {
-            os << static_cast<std::string>(func) << " ";
-            if(func.args_size) {
-                std::vector<std::string> args;
-                args.reserve(func.args_size);
-                internal::iterate_tuple(func.args, [&args](auto &arg){
-                    std::stringstream ss;
-                    ss << arg;
-                    args.push_back(ss.str());
-                });
-                os << "( ";
-                for(size_t i = 0; i < args.size(); ++i) {
-                    os << args[i];
-                    if(i < args.size() - 1){
-                        os << ", ";
-                    }
-                }
-                os << ") ";
-            }
-            return os;
-        }
 
         struct length_string {
             operator std::string() const {
@@ -7088,10 +7063,6 @@ namespace sqlite_orm {
     }
 }
 
-// #include "column.h"
-
-// #include "constraints.h"
-
 
 namespace sqlite_orm {
 
@@ -7452,26 +7423,6 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &a, const L &l) const {
                 iterate_ast(a.expression, l);
-            }
-        };
-        
-        template<class O, class T, class G, class S, class... Op>
-        struct ast_iterator<column_t<O, T, G, S, Op...>, void> {
-            using node_type = column_t<O, T, G, S, Op...>;
-            
-            template<class L>
-            void operator()(const node_type &c, const L &l) const {
-                iterate_ast(c.constraints, l);
-            }
-        };
-        
-        template<class T>
-        struct ast_iterator<constraints::default_t<T>, void> {
-            using node_type = constraints::default_t<T>;
-            
-            template<class L>
-            void operator()(const node_type &d, const L &l) const {
-                iterate_ast(d.value, l);
             }
         };
     }

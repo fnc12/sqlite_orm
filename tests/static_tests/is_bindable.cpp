@@ -49,14 +49,15 @@ TEST_CASE("is_bindable") {
         static_assert(!internal::is_bindable<decltype(func)>::value, "datetime cannot be bindable");
         bool trueCalled = false;
         bool falseCalled = false;
-        auto dummy = 5; //  for gcc compilation
-        internal::static_if<internal::is_bindable<decltype(func)>{}>([&trueCalled](int &){
-            trueCalled = true;
-        }, [&falseCalled](int &){
-            falseCalled = true;
-        })(dummy);
+        auto dummy = 5;  //  for gcc compilation
+        internal::static_if<internal::is_bindable<decltype(func)>{}>(
+            [&trueCalled](int &) {
+                trueCalled = true;
+            },
+            [&falseCalled](int &) {
+                falseCalled = true;
+            })(dummy);
         REQUIRE(!trueCalled);
         REQUIRE(falseCalled);
     }
-    
 }

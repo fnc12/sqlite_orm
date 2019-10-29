@@ -257,12 +257,6 @@ namespace sqlite_orm {
                     std::string dft;
                     using field_type = typename std::decay<decltype(col)>::type::field_type;
                     if(auto d = col.default_value()) {
-                        /*auto needQuotes = std::is_base_of<text_printer, type_printer<field_type>>::value;
-                        if(needQuotes) {
-                            dft = "'" + *d + "'";
-                        } else {
-                            dft = *d;
-                        }*/
                         dft = *d;
                     }
                     table_info i{
