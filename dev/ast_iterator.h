@@ -8,13 +8,15 @@
 #include "tuple_helper.h"
 #include "core_functions.h"
 #include "prepared_statement.h"
+#include "column.h"
+#include "constraints.h"
 
 namespace sqlite_orm {
 
     namespace internal {
 
         /**
-         *  ast_iterator accepts an any expression and a callable object
+         *  ast_iterator accepts any expression and a callable object
          *  which will be called for any node of provided expression.
          *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
          *  callable object will be called with 5, &User::id and 10.
@@ -368,6 +370,26 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &a, const L &l) const {
                 iterate_ast(a.expression, l);
+            }
+        };
+        
+        template<class O, class T, class G, class S, class... Op>
+        struct ast_iterator<column_t<O, T, G, S, Op...>, void> {
+            using node_type = column_t<O, T, G, S, Op...>;
+            
+            template<class L>
+            void operator()(const node_type &c, const L &l) const {
+                iterate_ast(c.constraints, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<constraints::default_t<T>, void> {
+            using node_type = constraints::default_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &d, const L &l) const {
+                iterate_ast(d.value, l);
             }
         };
     }

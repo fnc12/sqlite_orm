@@ -95,17 +95,7 @@ namespace sqlite_orm {
             value_type value;
 
             operator std::string() const {
-                std::stringstream ss;
-                ss << "DEFAULT ";
-                auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
-                if(needQuotes) {
-                    ss << "'";
-                }
-                ss << this->value;
-                if(needQuotes) {
-                    ss << "'";
-                }
-                return ss.str();
+                return "DEFAULT";
             }
         };
 

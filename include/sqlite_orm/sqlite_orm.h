@@ -534,17 +534,7 @@ namespace sqlite_orm {
             value_type value;
 
             operator std::string() const {
-                std::stringstream ss;
-                ss << "DEFAULT ";
-                auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
-                if(needQuotes) {
-                    ss << "'";
-                }
-                ss << this->value;
-                if(needQuotes) {
-                    ss << "'";
-                }
-                return ss.str();
+                return "DEFAULT";
             }
         };
 
@@ -918,11 +908,15 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
+//#include "statement_serializator.h"
 
 namespace sqlite_orm {
 
     namespace internal {
 
+        template<class T>
+        std::string serialize(const T &t);
+        
         /**
          *  This class is used in tuple interation to know whether tuple constains `default_value_t`
          *  constraint class and what it's value if it is
@@ -936,9 +930,11 @@ namespace sqlite_orm {
 
             template<class T>
             std::unique_ptr<std::string> operator()(const constraints::default_t<T> &t) {
-                std::stringstream ss;
+                /*std::stringstream ss;
                 ss << t.value;
-                return std::make_unique<std::string>(ss.str());
+                return std::make_unique<std::string>(ss.str());*/
+//                return std::make_unique<std::string>(" ");
+                return std::make_unique<std::string>(serialize(t.value));
             }
         };
 
@@ -3119,6 +3115,8 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
+#include <ostream>  //  std::ostream
+#include <sstream>  //  std::stringstream
 
 // #include "conditions.h"
 
@@ -3164,6 +3162,8 @@ namespace sqlite_orm {
     }
 }
 
+// #include "tuple_helper.h"
+
 
 namespace sqlite_orm {
 
@@ -3187,6 +3187,29 @@ namespace sqlite_orm {
 
             core_function_t(args_type &&args_) : args(std::move(args_)) {}
         };
+        
+        template<class R, class S, class... Args>
+        inline std::ostream &operator<<(std::ostream &os, const core_function_t<R, S, Args...> &func) {
+            os << static_cast<std::string>(func) << " ";
+            if(func.args_size) {
+                std::vector<std::string> args;
+                args.reserve(func.args_size);
+                internal::iterate_tuple(func.args, [&args](auto &arg){
+                    std::stringstream ss;
+                    ss << arg;
+                    args.push_back(ss.str());
+                });
+                os << "( ";
+                for(size_t i = 0; i < args.size(); ++i) {
+                    os << args[i];
+                    if(i < args.size() - 1){
+                        os << ", ";
+                    }
+                }
+                os << ") ";
+            }
+            return os;
+        }
 
         struct length_string {
             operator std::string() const {
@@ -5623,12 +5646,13 @@ namespace sqlite_orm {
                     std::string dft;
                     using field_type = typename std::decay<decltype(col)>::type::field_type;
                     if(auto d = col.default_value()) {
-                        auto needQuotes = std::is_base_of<text_printer, type_printer<field_type>>::value;
+                        /*auto needQuotes = std::is_base_of<text_printer, type_printer<field_type>>::value;
                         if(needQuotes) {
                             dft = "'" + *d + "'";
                         } else {
                             dft = *d;
-                        }
+                        }*/
+                        dft = *d;
                     }
                     table_info i{
                         -1,
@@ -7064,13 +7088,17 @@ namespace sqlite_orm {
     }
 }
 
+// #include "column.h"
+
+// #include "constraints.h"
+
 
 namespace sqlite_orm {
 
     namespace internal {
 
         /**
-         *  ast_iterator accepts an any expression and a callable object
+         *  ast_iterator accepts any expression and a callable object
          *  which will be called for any node of provided expression.
          *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
          *  callable object will be called with 5, &User::id and 10.
@@ -7426,6 +7454,26 @@ namespace sqlite_orm {
                 iterate_ast(a.expression, l);
             }
         };
+        
+        template<class O, class T, class G, class S, class... Op>
+        struct ast_iterator<column_t<O, T, G, S, Op...>, void> {
+            using node_type = column_t<O, T, G, S, Op...>;
+            
+            template<class L>
+            void operator()(const node_type &c, const L &l) const {
+                iterate_ast(c.constraints, l);
+            }
+        };
+        
+        template<class T>
+        struct ast_iterator<constraints::default_t<T>, void> {
+            using node_type = constraints::default_t<T>;
+            
+            template<class L>
+            void operator()(const node_type &d, const L &l) const {
+                iterate_ast(d.value, l);
+            }
+        };
     }
 }
 
@@ -7747,7 +7795,7 @@ namespace sqlite_orm {
             void trigger_depth(int newValue) {
                 this->set(SQLITE_LIMIT_TRIGGER_DEPTH, newValue);
             }
-            
+
 #if SQLITE_VERSION_NUMBER >= 3008007
             int worker_threads() {
                 return this->get(SQLITE_LIMIT_WORKER_THREADS);
@@ -7757,7 +7805,7 @@ namespace sqlite_orm {
                 this->set(SQLITE_LIMIT_WORKER_THREADS, newValue);
             }
 #endif
-            
+
           protected:
             get_connection_t get_connection;
 
@@ -8284,46 +8332,6 @@ namespace sqlite_orm {
             }
 
 #endif
-            template<class O, class T, class G, class S, class... Op>
-            std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {
-                std::stringstream ss;
-                ss << "'" << c.name << "' ";
-                using column_type = typename std::decay<decltype(c)>::type;
-                using field_type = typename column_type::field_type;
-                using constraints_type = typename column_type::constraints_type;
-                ss << type_printer<field_type>().print() << " ";
-                {
-                    std::vector<std::string> constraintsStrings;
-                    constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
-                    constraintsStrings.reserve(constraintsCount);
-                    int primaryKeyIndex = -1;
-                    int autoincrementIndex = -1;
-                    int tupleIndex = 0;
-                    iterate_tuple(c.constraints,
-                                  [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex](auto &v) {
-                                      using constraint_type = typename std::decay<decltype(v)>::type;
-                                      constraintsStrings.push_back(static_cast<std::string>(v));
-                                      if(is_primary_key<constraint_type>::value) {
-                                          primaryKeyIndex = tupleIndex;
-                                      } else if(std::is_same<constraints::autoincrement_t, constraint_type>::value) {
-                                          autoincrementIndex = tupleIndex;
-                                      }
-                                      ++tupleIndex;
-                                  });
-                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
-                        iter_swap(constraintsStrings.begin() + primaryKeyIndex,
-                                  constraintsStrings.begin() + autoincrementIndex);
-                    }
-                    for(auto &str: constraintsStrings) {
-                        ss << str << ' ';
-                    }
-                }
-                if(c.not_null()) {
-                    ss << "NOT NULL ";
-                }
-                return ss.str();
-            }
-
             void on_open_internal(sqlite3 *db) {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
@@ -8532,7 +8540,6 @@ namespace sqlite_orm {
         struct storage_t : storage_base {
             using self = storage_t<Ts...>;
             using impl_type = storage_impl<Ts...>;
-            using storage_base::serialize_column_schema;
 
             /**
              *  @param filename database filename.
@@ -8554,6 +8561,116 @@ namespace sqlite_orm {
 
             template<class V>
             friend struct iterator_t;
+            
+            /*template<class T>
+            std::string string_from_constraint(const T &constraint) const {
+                return static_cast<std::string>(constraint);
+            }*/
+            
+            /*template<class T>
+            std::string string_from_constraint(const constraints::default_t<T> &def) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(def) <<  " ";*/
+                /*static_if<is_bindable<T>{}>([&ss](auto &value){
+                    auto needQuotes = std::is_base_of<text_printer, type_printer<T>>::value;
+                    if(needQuotes) {
+                        ss << "'";
+                    }
+                    ss << value;
+                    if(needQuotes) {
+                        ss << "'";
+                    }
+                }, [&ss, this](auto &value){
+                    ss << this->string_from_expression(value, true);
+                })(def.value);*/
+//                ss << serialize(def.value);
+//                ss << this->string_from_constraint(def.value);
+//                ss << this->string_from_expression(def.value, true);
+//                return ss.str();
+//            }
+            
+            /*template<class R, class S, class... Args>
+            std::string string_from_constraint(const core_functions::core_function_t<R, S, Args...> &func) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(func) << " ";
+                if(func.args_size) {
+                    std::vector<std::string> args;
+                    args.reserve(func.args_size);
+                    internal::iterate_tuple(func.args, [&args, this](auto &arg){
+                        args.push_back(this->string_from_constraint(arg));
+                    });
+                    ss << "( ";
+                    for(size_t i = 0; i < args.size(); ++i) {
+                        ss << args[i];
+                        if(i < args.size() - 1){
+                            ss << ", ";
+                        }
+                    }
+                    ss << ") ";
+                }
+                return ss.str();
+            }*/
+            
+            /*template<class T>
+            std::string string_from_constraint(const T &t) const {
+                std::stringstream ss;
+                ss << t;
+                return ss.str();
+            }
+            
+            std::string string_from_constraint(const char *t) const {
+                std::stringstream ss;
+                ss << "\"" << t << "\"";
+                return ss.str();
+            }
+            
+            std::string string_from_constraint(const std::string &s) const {
+                std::stringstream ss;
+                ss << "\"" << s << "\"";
+                return ss.str();
+            }*/
+            
+            template<class O, class T, class G, class S, class... Op>
+            std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {
+                std::stringstream ss;
+                ss << "'" << c.name << "' ";
+                using column_type = typename std::decay<decltype(c)>::type;
+                using field_type = typename column_type::field_type;
+                using constraints_type = typename column_type::constraints_type;
+                ss << type_printer<field_type>().print() << " ";
+                {
+                    std::vector<std::string> constraintsStrings;
+                    constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
+                    constraintsStrings.reserve(constraintsCount);
+                    int primaryKeyIndex = -1;
+                    int autoincrementIndex = -1;
+                    int tupleIndex = 0;
+                    iterate_tuple(c.constraints,
+                                  [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex](auto &v) {
+                                      using constraint_type = typename std::decay<decltype(v)>::type;
+//                                      constraintsStrings.push_back(this->string_from_constraint(v));
+                                      constraintsStrings.push_back(serialize(v));
+//                                      constraintsStrings.push_back(this->string_from_expression(v, false));
+                                      if(is_primary_key<constraint_type>::value) {
+                                          primaryKeyIndex = tupleIndex;
+                                      } else if(std::is_same<constraints::autoincrement_t, constraint_type>::value) {
+                                          autoincrementIndex = tupleIndex;
+                                      }
+                                      ++tupleIndex;
+                                  });
+                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
+                        iter_swap(constraintsStrings.begin() + primaryKeyIndex,
+                                  constraintsStrings.begin() + autoincrementIndex);
+                    }
+                    for(auto &str: constraintsStrings) {
+                        ss << str << ' ';
+                    }
+                }
+                if(c.not_null()) {
+                    ss << "NOT NULL ";
+                }
+                return ss.str();
+            }
 
             template<class... Cs>
             std::string serialize_column_schema(const constraints::primary_key_t<Cs...> &fk) {
@@ -8649,6 +8766,15 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
+                    /*auto index = 1;
+                    iterate_ast(impl->table.columns, [&index, stmt, db](auto &node){
+                        using node_type = typename std::decay<decltype(node)>::type;
+                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                        if(SQLITE_OK != binder(node)) {
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                    sqlite3_errmsg(db));
+                        }
+                    });*/
                     if(sqlite3_step(stmt) == SQLITE_DONE) {
                         //  done..
                     } else {
@@ -8703,7 +8829,7 @@ namespace sqlite_orm {
 
             template<class T>
             typename std::enable_if<is_bindable<T>::value, std::string>::type string_from_expression(const T &,
-                                                                                                     bool) const {
+                                                                                                     bool /*noTableName*/) const {
                 return "?";
             }
 
@@ -11558,5 +11684,116 @@ namespace sqlite_orm {
             using node_type = as_t<T, E>;
             using type = typename node_tuple<E>::type;
         };
+    }
+}
+#pragma once
+
+#include <sstream>
+#include <string>   //  std::string
+
+// #include "core_functions.h"
+
+// #include "constraints.h"
+
+
+namespace sqlite_orm {
+    
+    namespace internal {
+        
+        template<class T, class SFINAE = void>
+        struct statement_serializator {
+            using statement_type = T;
+            
+            std::string operator()(const statement_type &t) const {
+                std::stringstream ss;
+                ss << t;
+                return ss.str();
+            }
+        };
+        
+        template<class T>
+        std::string serialize(const T &t) {
+            statement_serializator<T> serializator;
+            return serializator(t);
+        }
+        
+        template<class R, class S, class... Args>
+        struct statement_serializator<core_functions::core_function_t<R, S, Args...>, void> {
+            using statement_type = core_functions::core_function_t<R, S, Args...>;
+            
+            std::string operator()(const statement_type &c) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(c) << "(";
+                std::vector<std::string> args;
+                using args_type = typename std::decay<decltype(c)>::type::args_type;
+                args.reserve(std::tuple_size<args_type>::value);
+                iterate_tuple(c.args, [&args](auto &v) {
+                    args.push_back(serialize(v));
+                });
+                for(size_t i = 0; i < args.size(); ++i) {
+                    ss << args[i];
+                    if(i < args.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << ")";
+                return ss.str();
+            }
+        };
+        
+        template<>
+        struct statement_serializator<constraints::autoincrement_t, void> {
+            using statement_type = constraints::autoincrement_t;
+            
+            std::string operator()(const statement_type &c) const {
+                return static_cast<std::string>(c);
+            }
+        };
+        
+        template<class... Cs>
+        struct statement_serializator<constraints::primary_key_t<Cs...>, void> {
+            using statement_type = constraints::primary_key_t<Cs...>;
+            
+            std::string operator()(const statement_type &c) const {
+                return static_cast<std::string>(c);
+            }
+        };
+        
+        template<>
+        struct statement_serializator<constraints::unique_t, void> {
+            using statement_type = constraints::unique_t;
+            
+            std::string operator()(const statement_type &c) const {
+                return static_cast<std::string>(c);
+            }
+        };
+        
+        template<class T>
+        struct statement_serializator<constraints::default_t<T>, void> {
+            using statement_type = constraints::default_t<T>;
+            
+            std::string operator()(const statement_type &c) const {
+                return static_cast<std::string>(c) + " (" + serialize(c.value) + ")";
+            }
+        };
+        
+        template<>
+        struct statement_serializator<std::string, void> {
+            using statement_type = std::string;
+            
+            std::string operator()(const statement_type &c) const {
+                return "\"" + c + "\"";
+            }
+        };
+        
+        template<>
+        struct statement_serializator<const char *, void> {
+            using statement_type = const char *;
+            
+            std::string operator()(const char * c) const {
+                return std::string("'") + c + "'";
+            }
+        };
+        
     }
 }

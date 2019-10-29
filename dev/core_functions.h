@@ -5,10 +5,13 @@
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
+#include <ostream>  //  std::ostream
+#include <sstream>  //  std::stringstream
 
 #include "conditions.h"
 #include "operators.h"
 #include "is_base_of_template.h"
+#include "tuple_helper.h"
 
 namespace sqlite_orm {
 
@@ -32,6 +35,29 @@ namespace sqlite_orm {
 
             core_function_t(args_type &&args_) : args(std::move(args_)) {}
         };
+        
+        template<class R, class S, class... Args>
+        inline std::ostream &operator<<(std::ostream &os, const core_function_t<R, S, Args...> &func) {
+            os << static_cast<std::string>(func) << " ";
+            if(func.args_size) {
+                std::vector<std::string> args;
+                args.reserve(func.args_size);
+                internal::iterate_tuple(func.args, [&args](auto &arg){
+                    std::stringstream ss;
+                    ss << arg;
+                    args.push_back(ss.str());
+                });
+                os << "( ";
+                for(size_t i = 0; i < args.size(); ++i) {
+                    os << args[i];
+                    if(i < args.size() - 1){
+                        os << ", ";
+                    }
+                }
+                os << ") ";
+            }
+            return os;
+        }
 
         struct length_string {
             operator std::string() const {

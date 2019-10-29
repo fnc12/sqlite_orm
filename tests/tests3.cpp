@@ -371,7 +371,8 @@ TEST_CASE("Default value") {
 
     auto emailDefault = emailColumn.default_value();
     REQUIRE(emailDefault);
-    REQUIRE(*emailDefault == "example@email.com");
+    auto &emailDefaultString = *emailDefault;
+    REQUIRE(emailDefaultString == "'example@email.com'");
 }
 
 //  appeared after #54
@@ -592,6 +593,18 @@ TEST_CASE("Escape chars") {
     storage.remove<Employee>(10);
 }
 
+TEST_CASE("Default datetime") {
+    struct Induction {
+        std::string time;
+    };
+    
+    auto storage = make_storage({},
+                                make_table("induction",
+                                           make_column("timestamp", &Induction::time, default_value(datetime("now", "localtime")))));
+    storage.sync_schema();
+    
+}
+
 TEST_CASE("Transaction guard") {
     struct Object {
         int id;
@@ -599,8 +612,10 @@ TEST_CASE("Transaction guard") {
     };
 
     auto storage = make_storage(
-        "test_transaction_guard.sqlite",
-        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
+                                "test_transaction_guard.sqlite",
+                                make_table("objects",
+                                           make_column("id", &Object::id, primary_key()),
+                                           make_column("name", &Object::name)));
 
     storage.sync_schema();
     storage.remove_all<Object>();
