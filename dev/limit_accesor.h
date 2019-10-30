@@ -104,6 +104,7 @@ namespace sqlite_orm {
                 this->set(SQLITE_LIMIT_TRIGGER_DEPTH, newValue);
             }
 
+#if SQLITE_VERSION_NUMBER >= 3008007
             int worker_threads() {
                 return this->get(SQLITE_LIMIT_WORKER_THREADS);
             }
@@ -111,6 +112,7 @@ namespace sqlite_orm {
             void worker_threads(int newValue) {
                 this->set(SQLITE_LIMIT_WORKER_THREADS, newValue);
             }
+#endif
 
           protected:
             get_connection_t get_connection;

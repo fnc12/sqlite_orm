@@ -116,6 +116,7 @@ TEST_CASE("limits") {
         triggerDepth = storage.limit.trigger_depth();
         REQUIRE(triggerDepth == newTriggerDepth);
     }
+#if SQLITE_VERSION_NUMBER >= 3008007
     {
         auto workerThreads = storage.limit.worker_threads();
         auto newWorkerThreads = workerThreads + 1;
@@ -123,6 +124,7 @@ TEST_CASE("limits") {
         workerThreads = storage.limit.worker_threads();
         REQUIRE(workerThreads == newWorkerThreads);
     }
+#endif
 }
 
 TEST_CASE("Explicit insert") {
