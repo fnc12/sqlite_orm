@@ -4,7 +4,7 @@
 using namespace sqlite_orm;
 
 TEST_CASE("Foreign key") {
-    
+
     struct Location {
         int id;
         std::string place;
@@ -12,7 +12,7 @@ TEST_CASE("Foreign key") {
         std::string city;
         int distance;
     };
-    
+
     struct Visit {
         int id;
         std::unique_ptr<int> location;
@@ -20,7 +20,7 @@ TEST_CASE("Foreign key") {
         int visited_at;
         uint8_t mark;
     };
-    
+
     //  this case didn't compile on linux until `typedef constraints_type` was added to `foreign_key_t`
     auto storage = make_storage("test_fk.sqlite",
                                 make_table("location",
@@ -37,7 +37,7 @@ TEST_CASE("Foreign key") {
                                            make_column("mark", &Visit::mark),
                                            foreign_key(&Visit::location).references(&Location::id)));
     storage.sync_schema();
-    
+
     int fromDate = int(time(nullptr));
     int toDate = int(time(nullptr));
     int toDistance = 100;
@@ -52,61 +52,61 @@ TEST_CASE("Foreign key") {
 //  appeared after #57
 TEST_CASE("Foreign key 2") {
     class test1 {
-    public:
+      public:
         // Constructors
         test1(){};
-        
+
         // Variables
         int id;
         std::string val1;
         std::string val2;
     };
-    
+
     class test2 {
-    public:
+      public:
         // Constructors
         test2(){};
-        
+
         // Variables
         int id;
         int fk_id;
         std::string val1;
         std::string val2;
     };
-    
+
     auto table1 = make_table("test_1",
                              make_column("id", &test1::id, primary_key()),
                              make_column("val1", &test1::val1),
                              make_column("val2", &test1::val2));
-    
+
     auto table2 = make_table("test_2",
                              make_column("id", &test2::id, primary_key()),
                              make_column("fk_id", &test2::fk_id),
                              make_column("val1", &test2::val1),
                              make_column("val2", &test2::val2),
                              foreign_key(&test2::fk_id).references(&test1::id));
-    
+
     auto storage = make_storage("test.sqlite", table1, table2);
-    
+
     storage.sync_schema();
-    
+
     test1 t1;
     t1.val1 = "test";
     t1.val2 = "test";
     storage.insert(t1);
-    
+
     test1 t1_copy;
     t1_copy.val1 = "test";
     t1_copy.val2 = "test";
     storage.insert(t1_copy);
-    
+
     test2 t2;
     t2.fk_id = 1;
     t2.val1 = "test";
     t2.val2 = "test";
     storage.insert(t2);
-    
+
     t2.fk_id = 2;
-    
+
     storage.update(t2);
 }
