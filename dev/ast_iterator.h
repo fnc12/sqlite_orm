@@ -14,7 +14,7 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  ast_iterator accepts an any expression and a callable object
+         *  ast_iterator accepts any expression and a callable object
          *  which will be called for any node of provided expression.
          *  E.g. if we pass `where(is_equal(5, max(&User::id, 10))` then
          *  callable object will be called with 5, &User::id and 10.
