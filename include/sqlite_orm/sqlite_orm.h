@@ -11626,11 +11626,11 @@ namespace sqlite_orm {
                 return static_cast<std::string>(c);
             }
         };
-        
+
         template<>
         struct statement_serializator<constraints::collate_t, void> {
             using statement_type = constraints::collate_t;
-            
+
             std::string operator()(const statement_type &c) const {
                 return static_cast<std::string>(c);
             }
