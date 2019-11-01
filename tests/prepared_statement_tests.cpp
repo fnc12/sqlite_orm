@@ -33,8 +33,10 @@ namespace PreparedStatementTests {
     void testSerializing(const internal::prepared_statement_base &statement) {
         auto sql = statement.sql();
         std::ignore = sql;
+#if SQLITE_VERSION_NUMBER >= 3014000
         auto expanded = statement.expanded_sql();
         std::ignore = expanded;
+#endif
 #if SQLITE_VERSION_NUMBER >= 3027000
         auto normalized = statement.normalized_sql();
         std::ignore = normalized;
