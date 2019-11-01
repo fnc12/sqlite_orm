@@ -17,8 +17,8 @@ template<class... Args>
 struct is_tuple<std::tuple<Args...>> : std::true_type {};
 
 TEST_CASE("Node tuple") {
-    using internal::node_tuple;
     using internal::bindable_filter;
+    using internal::node_tuple;
     using std::is_same;
 
     struct User {
@@ -42,7 +42,7 @@ TEST_CASE("Node tuple") {
 
     {  //  binary_condition
         using namespace conditions;
-        {   //  5 < 6.0f
+        {  //  5 < 6.0f
             auto c = lesser_than(5, 6.0f);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -50,7 +50,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "lesser_than_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int, float>>::value, "");
         }
-        {   //  id < 10
+        {  //  id < 10
             auto c = lesser_than(&User::id, 10);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -58,7 +58,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "lesser_than_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int>>::value, "");
         }
-        {   //  5 <= 6.0f
+        {  //  5 <= 6.0f
             auto c = lesser_or_equal(5, 6.0f);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -66,7 +66,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "lesser_or_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int, float>>::value, "");
         }
-        {   //  id <= 10.0
+        {  //  id <= 10.0
             auto c = lesser_or_equal(&User::id, 10.0);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -74,7 +74,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "lesser_or_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<double>>::value, "");
         }
-        {   //  5 > 6.0f
+        {  //  5 > 6.0f
             auto c = greater_than(5, 6.0f);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -82,7 +82,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "greater_than_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int, float>>::value, "");
         }
-        {   //  id > 20
+        {  //  id > 20
             auto c = greater_than(&User::id, 20);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -90,7 +90,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "greater_than_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int>>::value, "");
         }
-        {   //  5 >= 6.0f
+        {  //  5 >= 6.0f
             auto c = greater_or_equal(5, 6.0f);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -98,7 +98,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "greater_or_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int, float>>::value, "");
         }
-        {   //  5 >= id
+        {  //  5 >= id
             auto c = greater_or_equal(5, &User::id);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -106,7 +106,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "greater_or_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int>>::value, "");
         }
-        {   //  5 == 6.0f
+        {  //  5 == 6.0f
             auto c = is_equal(5, 6.0f);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -114,7 +114,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "is_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int, float>>::value, "");
         }
-        {   //  "ototo" == name
+        {  //  "ototo" == name
             auto c = is_equal("ototo", &User::name);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -122,7 +122,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "is_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<const char *>>::value, "");
         }
-        {   //  5 != 6.0f
+        {  //  5 != 6.0f
             auto c = is_not_equal(5, 6.0f);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -130,7 +130,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "is_not_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<int, float>>::value, "");
         }
-        {   //  name != std::string("ototo")
+        {  //  name != std::string("ototo")
             auto c = is_not_equal(&User::name, std::string("ototo"));
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
@@ -138,13 +138,13 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<Tuple, Expected>::value, "is_not_equal_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<std::string>>::value, "");
         }
-        {   //  bool and int
+        {  //  bool and int
             using Tuple = node_tuple<and_condition_t<bool, int>>::type;
             using Expected = std::tuple<bool, int>;
             static_assert(is_same<Tuple, Expected>::value, "and_condition_t");
             static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<bool, int>>::value, "");
         }
-        {   //  bool or int
+        {  //  bool or int
             using Tuple = node_tuple<or_condition_t<bool, int>>::type;
             using Expected = std::tuple<bool, int>;
             static_assert(is_same<Tuple, Expected>::value, "or_condition_t");
@@ -651,18 +651,18 @@ static_assert(is_same<Tuple, Expected>::value, "left_join");
     using Tuple = node_tuple<A>::type;
     static_assert(is_same<Tuple, std::tuple<decltype(&User::name)>>::value, "");
 }
+{
+    auto statement = select(columns("ototo", 25));
+    using Statement = decltype(statement);
+    using Tuple = node_tuple<Statement>::type;
+    static_assert(std::tuple_size<Tuple>::value == 2, "");
     {
-        auto statement = select(columns("ototo", 25));
-        using Statement = decltype(statement);
-        using Tuple = node_tuple<Statement>::type;
-        static_assert(std::tuple_size<Tuple>::value == 2, "");
-        {
-            using Arg0 = std::tuple_element<0, Tuple>::type;
-            static_assert(is_same<Arg0, const char *>::value, "");
-        }
-        {
-            using Arg1 = std::tuple_element<1, Tuple>::type;
-            static_assert(is_same<Arg1, int>::value, "");
-        }
+        using Arg0 = std::tuple_element<0, Tuple>::type;
+        static_assert(is_same<Arg0, const char *>::value, "");
     }
+    {
+        using Arg1 = std::tuple_element<1, Tuple>::type;
+        static_assert(is_same<Arg1, int>::value, "");
+    }
+}
 }

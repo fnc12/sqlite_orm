@@ -9,11 +9,24 @@ TEST_CASE("bindable_filter") {
         int id = 0;
         std::string name;
     };
-    
+
     using internal::bindable_filter;
     using std::is_same;
     {
-        using Tuple = std::tuple<bool, char, unsigned char, signed char, short, int, unsigned int, long, unsigned long, long long, unsigned long long, float, double, long double>;
+        using Tuple = std::tuple<bool,
+                                 char,
+                                 unsigned char,
+                                 signed char,
+                                 short,
+                                 int,
+                                 unsigned int,
+                                 long,
+                                 unsigned long,
+                                 long long,
+                                 unsigned long long,
+                                 float,
+                                 double,
+                                 long double>;
         using Res = bindable_filter<Tuple>::type;
         static_assert(is_same<Res, Tuple>::value, "");
     }

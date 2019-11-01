@@ -76,7 +76,7 @@ TEST_CASE("Prepared") {
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
     SECTION("select") {
-        {   //  one simple argument
+        {  //  one simple argument
             auto statement = storage.prepare(select(10));
             REQUIRE(get<0>(statement) == 10);
             {
@@ -90,7 +90,7 @@ TEST_CASE("Prepared") {
                 REQUIRE_THAT(rows, UnorderedEquals<int>({20}));
             }
         }
-        {   //  two simple arguments
+        {  //  two simple arguments
             auto statement = storage.prepare(select(columns("ototo", 25)));
             REQUIRE(get<0>(statement) == "ototo");
             REQUIRE(get<1>(statement) == 25);
@@ -111,8 +111,9 @@ TEST_CASE("Prepared") {
                 REQUIRE(get<1>(row) == -15);
             }
         }
-        {   //  three columns, aggregate func and where
-            auto statement = storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(lesser_than(&User::id, 10))));
+        {  //  three columns, aggregate func and where
+            auto statement =
+                storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(lesser_than(&User::id, 10))));
             REQUIRE(get<0>(statement) == 5.0);
             REQUIRE(get<1>(statement) == 10);
             {
@@ -257,13 +258,14 @@ TEST_CASE("Prepared") {
             }
         }
         {
-            auto statement = storage.prepare(get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS"))));
+            auto statement = storage.prepare(
+                get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS"))));
             REQUIRE(get<0>(statement) == 1);
             REQUIRE(get<1>(statement) == "Team BS");
         }
         {
-            auto statement = storage.prepare(get_all<User>(where(lesser_or_equal(&User::id, 2)
-                                                                 and (like(&User::name, "T%") or glob(&User::name, "*S")))));
+            auto statement = storage.prepare(get_all<User>(
+                where(lesser_or_equal(&User::id, 2) and (like(&User::name, "T%") or glob(&User::name, "*S")))));
             REQUIRE(get<0>(statement) == 2);
             REQUIRE(get<1>(statement) == "T%");
             REQUIRE(get<2>(statement) == "*S");
@@ -277,7 +279,7 @@ TEST_CASE("Prepared") {
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
-            
+
             get<0>(statement) = 3;
             REQUIRE(get<0>(statement) == 3);
             expected.push_back(User{2, "Shy'm"});
@@ -285,7 +287,7 @@ TEST_CASE("Prepared") {
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
-            
+
             get<0>(statement) = 4;
             REQUIRE(get<0>(statement) == 4);
             expected.push_back(User{3, "Maître Gims"});
@@ -330,7 +332,7 @@ TEST_CASE("Prepared") {
                     static_assert(std::is_same<Arg1, int>::value, "");
                 }
             }
-            
+
             using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
             {
                 static_assert(std::tuple_size<BindTuple>::value == 1, "");
@@ -403,8 +405,8 @@ TEST_CASE("Prepared") {
                 expected.push_back("Maître Gims_123");
                 REQUIRE_THAT(names, UnorderedEquals(expected));
             }
-            auto statement = storage.prepare(update_all(set(c(&User::name) = c(&User::name) || "!"),
-                                                        where(like(&User::name, "T%"))));
+            auto statement = storage.prepare(
+                update_all(set(c(&User::name) = c(&User::name) || "!"), where(like(&User::name, "T%"))));
             REQUIRE(strcmp(get<0>(statement), "!") == 0);
             REQUIRE(strcmp(get<1>(statement), "T%") == 0);
             storage.execute(statement);
@@ -460,7 +462,7 @@ TEST_CASE("Prepared") {
             REQUIRE(get<0>(statement) == 1);
             storage.execute(statement);
             REQUIRE(storage.count<User>() == 1);
-            
+
             get<0>(statement) = 3;
             REQUIRE(get<0>(statement) == 3);
             storage.execute(statement);
@@ -481,7 +483,7 @@ TEST_CASE("Prepared") {
                 REQUIRE_THAT(ids, UnorderedEquals(expected));
             }
             get<0>(statement) = "Team BS";
-            get<1>(statement) = 20.0;   //  assign double to int
+            get<1>(statement) = 20.0;  //  assign double to int
             REQUIRE(strcmp(get<0>(statement), "Team BS") == 0);
             REQUIRE(get<1>(statement) == 20);
             storage.execute(statement);
@@ -543,7 +545,7 @@ TEST_CASE("Prepared") {
                         auto user = storage.execute(statement);
                         std::ignore = user;
                         REQUIRE(false);
-                    } catch (const std::system_error &e) {
+                    } catch(const std::system_error &e) {
                         REQUIRE(true);
                     }
                 }
@@ -738,7 +740,7 @@ TEST_CASE("Prepared") {
                 get<0>(statement).name = "Sia";
                 storage.execute(statement);
                 REQUIRE(storage.count<User>(where(is_equal(&User::name, "Sia"))) == 1);
-                
+
                 get<0>(statement) = {user.id, "Paris"};
                 storage.execute(statement);
                 REQUIRE(storage.count<User>(where(is_equal(&User::name, "Paris"))) == 1);

@@ -288,12 +288,12 @@ namespace sqlite_orm {
      *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
      */
     template<class... Args>
-    internal::set_t<Args...> set(Args ... args) {
+    internal::set_t<Args...> set(Args... args) {
         return {std::forward<Args>(args)...};
     }
 
     template<class... Args>
-    internal::columns_t<Args...> columns(Args ... args) {
+    internal::columns_t<Args...> columns(Args... args) {
         return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
 

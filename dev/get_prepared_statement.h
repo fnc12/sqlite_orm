@@ -7,7 +7,7 @@
 #include "static_magic.h"
 
 namespace sqlite_orm {
-    
+
     template<int N, class T>
     const auto &get(const internal::prepared_statement_t<T> &statement) {
         using statement_type = typename std::decay<decltype(statement)>::type;
@@ -19,18 +19,18 @@ namespace sqlite_orm {
         auto index = -1;
         internal::iterate_ast(statement.t, [&result, &index](auto &node) {
             using node_type = typename std::decay<decltype(node)>::type;
-            if(internal::is_bindable<node_type>::value){
+            if(internal::is_bindable<node_type>::value) {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node){
+                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node) {
                     result = const_cast<typename std::remove_reference<decltype(result)>::type>(&node);
                 })(result, node);
             }
         });
         return *result;
     }
-    
+
     template<int N, class T>
     auto &get(internal::prepared_statement_t<T> &statement) {
         using statement_type = typename std::decay<decltype(statement)>::type;
@@ -42,11 +42,11 @@ namespace sqlite_orm {
         auto index = -1;
         internal::iterate_ast(statement.t, [&result, &index](auto &node) {
             using node_type = typename std::decay<decltype(node)>::type;
-            if(internal::is_bindable<node_type>::value){
+            if(internal::is_bindable<node_type>::value) {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node){
+                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node) {
                     result = const_cast<typename std::remove_reference<decltype(result)>::type>(&node);
                 })(result, node);
             }
