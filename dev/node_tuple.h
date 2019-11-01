@@ -88,6 +88,26 @@ namespace sqlite_orm {
             using node_type = get_all_t<T, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
+        
+        template<class T, class... Args>
+        struct node_tuple<get_all_pointer_t<T, Args...>, void> {
+            using node_type = get_all_pointer_t<T, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+        
+        template<class... Args, class... Wargs>
+        struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> {
+            using node_type = update_all_t<set_t<Args...>, Wargs...>;
+            using set_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using conditions_tuple = typename conc_tuple<typename node_tuple<Wargs>::type...>::type;
+            using type = typename conc_tuple<set_tuple, conditions_tuple>::type;
+        };
+        
+        template<class T, class... Args>
+        struct node_tuple<remove_all_t<T, Args...>, void> {
+            using node_type = remove_all_t<T, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
 
         template<class T>
         struct node_tuple<conditions::having_t<T>, void> {

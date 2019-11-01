@@ -162,6 +162,39 @@ namespace sqlite_orm {
                 iterate_ast(get.conditions, l);
             }
         };
+        
+        template<class... Args, class... Wargs>
+        struct ast_iterator<update_all_t<set_t<Args...>, Wargs...>, void> {
+            using node_type = update_all_t<set_t<Args...>, Wargs...>;
+            
+            template<class L>
+            void operator()(const node_type &u, const L &l) const {
+                iterate_ast(u.set, l);
+                iterate_ast(u.conditions, l);
+            }
+        };
+        
+        template<class T, class... Args>
+        struct ast_iterator<remove_all_t<T, Args...>, void> {
+            using node_type = remove_all_t<T, Args...>;
+            
+            template<class L>
+            void operator()(const node_type &r, const L &l) const {
+                iterate_ast(r.conditions, l);
+            }
+        };
+        
+        template<class... Args>
+        struct ast_iterator<set_t<Args...>, void> {
+            using node_type = set_t<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &s, const L &l) const {
+                s.for_each([&l](auto &s){
+                    iterate_ast(s, l);
+                });
+            }
+        };
 
         template<class... Args>
         struct ast_iterator<std::tuple<Args...>, void> {

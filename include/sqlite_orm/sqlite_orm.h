@@ -3793,7 +3793,7 @@ namespace sqlite_orm {
             }
 
             template<class F>
-            void for_each(F) const {
+            void for_each(const F &) const {
                 //..
             }
         };
@@ -3811,7 +3811,7 @@ namespace sqlite_orm {
             set_t(L l_, Args &&... args) : super(std::forward<Args>(args)...), l(std::forward<L>(l_)) {}
 
             template<class F>
-            void for_each(F f) const {
+            void for_each(const F &f) const {
                 f(l);
                 this->super::for_each(f);
             }
@@ -7223,6 +7223,39 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &get, const L &l) const {
                 iterate_ast(get.conditions, l);
+            }
+        };
+        
+        template<class... Args, class... Wargs>
+        struct ast_iterator<update_all_t<set_t<Args...>, Wargs...>, void> {
+            using node_type = update_all_t<set_t<Args...>, Wargs...>;
+            
+            template<class L>
+            void operator()(const node_type &u, const L &l) const {
+                iterate_ast(u.set, l);
+                iterate_ast(u.conditions, l);
+            }
+        };
+        
+        template<class T, class... Args>
+        struct ast_iterator<remove_all_t<T, Args...>, void> {
+            using node_type = remove_all_t<T, Args...>;
+            
+            template<class L>
+            void operator()(const node_type &r, const L &l) const {
+                iterate_ast(r.conditions, l);
+            }
+        };
+        
+        template<class... Args>
+        struct ast_iterator<set_t<Args...>, void> {
+            using node_type = set_t<Args...>;
+            
+            template<class L>
+            void operator()(const node_type &s, const L &l) const {
+                s.for_each([&l](auto &s){
+                    iterate_ast(s, l);
+                });
             }
         };
 
@@ -11424,6 +11457,26 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct node_tuple<get_all_t<T, Args...>, void> {
             using node_type = get_all_t<T, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+        
+        template<class T, class... Args>
+        struct node_tuple<get_all_pointer_t<T, Args...>, void> {
+            using node_type = get_all_pointer_t<T, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+        
+        template<class... Args, class... Wargs>
+        struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> {
+            using node_type = update_all_t<set_t<Args...>, Wargs...>;
+            using set_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using conditions_tuple = typename conc_tuple<typename node_tuple<Wargs>::type...>::type;
+            using type = typename conc_tuple<set_tuple, conditions_tuple>::type;
+        };
+        
+        template<class T, class... Args>
+        struct node_tuple<remove_all_t<T, Args...>, void> {
+            using node_type = remove_all_t<T, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 
