@@ -76,6 +76,63 @@ TEST_CASE("Prepared") {
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
     SECTION("select") {
+        {  //  one simple argument
+            auto statement = storage.prepare(select(10));
+            REQUIRE(get<0>(statement) == 10);
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<int>({10}));
+            }
+            get<0>(statement) = 20;
+            REQUIRE(get<0>(statement) == 20);
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<int>({20}));
+            }
+        }
+        {  //  two simple arguments
+            auto statement = storage.prepare(select(columns("ototo", 25)));
+            REQUIRE(strcmp(get<0>(statement), "ototo") == 0);
+            REQUIRE(get<1>(statement) == 25);
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE(rows.size() == 1);
+                auto &row = rows.front();
+                REQUIRE(get<0>(row) == "ototo");
+                REQUIRE(get<1>(row) == 25);
+            }
+            get<0>(statement) = "Rock";
+            get<1>(statement) = -15;
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE(rows.size() == 1);
+                auto &row = rows.front();
+                REQUIRE(get<0>(row) == "Rock");
+                REQUIRE(get<1>(row) == -15);
+            }
+        }
+        {  //  three columns, aggregate func and where
+            auto statement =
+                storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(lesser_than(&User::id, 10))));
+            REQUIRE(get<0>(statement) == 5.0);
+            REQUIRE(get<1>(statement) == 10);
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE(rows.size() == 1);
+                auto &row = rows.front();
+                REQUIRE(get<0>(row) == 5.0);
+                REQUIRE(get<2>(row) == 3);
+            }
+            get<0>(statement) = 4;
+            get<1>(statement) = 2;
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE(rows.size() == 1);
+                auto &row = rows.front();
+                REQUIRE(get<0>(row) == 4.0);
+                REQUIRE(get<2>(row) == 1);
+            }
+        }
         {
             for(auto i = 0; i < 2; ++i) {
                 auto statement = storage.prepare(select(&User::id));
@@ -173,6 +230,21 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 3))));
+            {
+                using Statement = decltype(statement);
+                using ExpressionType = Statement::expression_type;
+                using NodeTuple = internal::node_tuple<ExpressionType>::type;
+                static_assert(std::tuple_size<NodeTuple>::value == 2, "");
+                {
+                    using Arg0 = std::tuple_element<0, NodeTuple>::type;
+                    static_assert(std::is_same<Arg0, decltype(&User::id)>::value, "");
+                }
+                {
+                    using Arg1 = std::tuple_element<1, NodeTuple>::type;
+                    static_assert(std::is_same<Arg1, int>::value, "");
+                }
+            }
+            REQUIRE(get<0>(statement) == 3);
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -182,6 +254,45 @@ TEST_CASE("Prepared") {
                 std::vector<User> expected;
                 expected.push_back(User{1, "Team BS"});
                 expected.push_back(User{2, "Shy'm"});
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+        }
+        {
+            auto statement = storage.prepare(
+                get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS"))));
+            REQUIRE(get<0>(statement) == 1);
+            REQUIRE(strcmp(get<1>(statement), "Team BS") == 0);
+        }
+        {
+            auto statement = storage.prepare(get_all<User>(
+                where(lesser_or_equal(&User::id, 2) and (like(&User::name, "T%") or glob(&User::name, "*S")))));
+            REQUIRE(get<0>(statement) == 2);
+            REQUIRE(strcmp(get<1>(statement), "T%") == 0);
+            REQUIRE(strcmp(get<2>(statement), "*S") == 0);
+        }
+        {
+            auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
+            std::vector<User> expected;
+            REQUIRE(get<0>(statement) == 2);
+            expected.push_back(User{1, "Team BS"});
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+
+            get<0>(statement) = 3;
+            REQUIRE(get<0>(statement) == 3);
+            expected.push_back(User{2, "Shy'm"});
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+
+            get<0>(statement) = 4;
+            REQUIRE(get<0>(statement) == 4);
+            expected.push_back(User{3, "Maître Gims"});
+            {
+                auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
         }
@@ -207,35 +318,119 @@ TEST_CASE("Prepared") {
         }
         {
             auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, 3))));
+            using Statement = decltype(statement);
+            using Expression = Statement::expression_type;
+            using NodeTuple = internal::node_tuple<Expression>::type;
+            {
+                static_assert(std::tuple_size<NodeTuple>::value == 2, "");
+                {
+                    using Arg0 = std::tuple_element<0, NodeTuple>::type;
+                    static_assert(std::is_same<Arg0, decltype(&User::id)>::value, "");
+                }
+                {
+                    using Arg1 = std::tuple_element<1, NodeTuple>::type;
+                    static_assert(std::is_same<Arg1, int>::value, "");
+                }
+            }
+
+            using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
+            {
+                static_assert(std::tuple_size<BindTuple>::value == 1, "");
+                {
+                    using Arg0 = std::tuple_element<0, BindTuple>::type;
+                    static_assert(std::is_same<Arg0, int>::value, "");
+                }
+            }
+            REQUIRE(get<0>(statement) == 3);
             testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
             SECTION("execute") {
-                auto rows = storage.execute(statement);
-                std::vector<User> expected;
-                expected.push_back(User{1, "Team BS"});
-                expected.push_back(User{2, "Shy'm"});
-                REQUIRE(rows.size() == expected.size());
-                REQUIRE(*rows[0].get() == expected[0]);
-                REQUIRE(*rows[1].get() == expected[1]);
+                {
+                    auto rows = storage.execute(statement);
+                    std::vector<User> expected;
+                    expected.push_back(User{1, "Team BS"});
+                    expected.push_back(User{2, "Shy'm"});
+                    REQUIRE(rows.size() == expected.size());
+                    REQUIRE(*rows[0].get() == expected[0]);
+                    REQUIRE(*rows[1].get() == expected[1]);
+                }
+                {
+                    get<0>(statement) = 2;
+                    REQUIRE(get<0>(statement) == 2);
+                    auto rows = storage.execute(statement);
+                    std::vector<User> expected;
+                    expected.push_back(User{1, "Team BS"});
+                    REQUIRE(rows.size() == expected.size());
+                    REQUIRE(*rows[0].get() == expected[0]);
+                }
             }
         }
     }
     SECTION("update all") {
         auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, "_")))));
+        using Statement = decltype(statement);
+        using Expression = Statement::expression_type;
+        using SetTuple = internal::node_tuple<Expression>::set_tuple;
+        using SetBind = internal::bindable_filter<SetTuple>::type;
+        static_assert(std::tuple_size<SetBind>::value == 1, "");
+        {
+            using Arg0 = std::tuple_element<0, SetBind>::type;
+            static_assert(std::is_same<Arg0, const char *>::value, "");
+        }
+        REQUIRE(strcmp(get<0>(statement), "_") == 0);
         testSerializing(statement);
         SECTION("nothing") {
             //..
         }
         SECTION("execute") {
             storage.execute(statement);
-            auto names = storage.select(&User::name);
-            std::vector<decltype(User::name)> expected;
-            expected.push_back("Team BS_");
-            expected.push_back("Shy'm_");
-            expected.push_back("Maître Gims_");
-            REQUIRE_THAT(names, UnorderedEquals(expected));
+            {
+                auto names = storage.select(&User::name);
+                std::vector<decltype(User::name)> expected;
+                expected.push_back("Team BS_");
+                expected.push_back("Shy'm_");
+                expected.push_back("Maître Gims_");
+                REQUIRE_THAT(names, UnorderedEquals(expected));
+            }
+            get<0>(statement) = "123";
+            storage.execute(statement);
+            REQUIRE(strcmp(get<0>(statement), "123") == 0);
+            {
+                auto names = storage.select(&User::name);
+                std::vector<decltype(User::name)> expected;
+                expected.push_back("Team BS_123");
+                expected.push_back("Shy'm_123");
+                expected.push_back("Maître Gims_123");
+                REQUIRE_THAT(names, UnorderedEquals(expected));
+            }
+            auto statement = storage.prepare(
+                update_all(set(c(&User::name) = c(&User::name) || "!"), where(like(&User::name, "T%"))));
+            REQUIRE(strcmp(get<0>(statement), "!") == 0);
+            REQUIRE(strcmp(get<1>(statement), "T%") == 0);
+            storage.execute(statement);
+            {
+                auto names = storage.select(&User::name);
+                std::vector<decltype(User::name)> expected;
+                expected.push_back("Team BS_123!");
+                expected.push_back("Shy'm_123");
+                expected.push_back("Maître Gims_123");
+                REQUIRE_THAT(names, UnorderedEquals(expected));
+            }
+            get<0>(statement) = "@";
+            get<1>(statement) = "Sh%";
+            REQUIRE(strcmp(get<0>(statement), "@") == 0);
+            REQUIRE(strcmp(get<1>(statement), "Sh%") == 0);
+            storage.execute(statement);
+            {
+                auto names = storage.select(&User::name);
+                std::vector<decltype(User::name)> expected;
+                expected.push_back("Team BS_123!");
+                expected.push_back("Shy'm_123@");
+                expected.push_back("Maître Gims_123");
+                REQUIRE_THAT(names, UnorderedEquals(expected));
+            }
         }
     }
     SECTION("remove all") {
@@ -252,20 +447,64 @@ TEST_CASE("Prepared") {
     SECTION("remove all 2") {
         SECTION("One condition") {
             auto statement = storage.prepare(remove_all<User>(where(is_equal(&User::id, 2))));
+            REQUIRE(get<0>(statement) == 2);
             testSerializing(statement);
             storage.execute(statement);
+            REQUIRE(storage.count<User>() == 2);
+            {
+                auto ids = storage.select(&User::id);
+                decltype(ids) expected;
+                expected.push_back(1);
+                expected.push_back(3);
+                REQUIRE_THAT(ids, UnorderedEquals(expected));
+            }
+            get<0>(statement) = 1;
+            REQUIRE(get<0>(statement) == 1);
+            storage.execute(statement);
+            REQUIRE(storage.count<User>() == 1);
+
+            get<0>(statement) = 3;
+            REQUIRE(get<0>(statement) == 3);
+            storage.execute(statement);
+            REQUIRE(storage.count<User>() == 0);
         }
         SECTION("Two conditions") {
             auto statement =
                 storage.prepare(remove_all<User>(where(is_equal(&User::name, "Shy'm") and lesser_than(&User::id, 10))));
+            REQUIRE(strcmp(get<0>(statement), "Shy'm") == 0);
+            REQUIRE(get<1>(statement) == 10);
             testSerializing(statement);
             storage.execute(statement);
+            {
+                auto ids = storage.select(&User::id);
+                decltype(ids) expected;
+                expected.push_back(1);
+                expected.push_back(3);
+                REQUIRE_THAT(ids, UnorderedEquals(expected));
+            }
+            get<0>(statement) = "Team BS";
+            get<1>(statement) = 20.0;  //  assign double to int
+            REQUIRE(strcmp(get<0>(statement), "Team BS") == 0);
+            REQUIRE(get<1>(statement) == 20);
+            storage.execute(statement);
+            {
+                auto ids = storage.select(&User::id);
+                decltype(ids) expected;
+                expected.push_back(3);
+                REQUIRE_THAT(ids, UnorderedEquals(expected));
+            }
+            get<0>(statement) = "C Bool";
+            get<1>(statement) = 30.0f;
+            REQUIRE(strcmp(get<0>(statement), "C Bool") == 0);
+            REQUIRE(get<1>(statement) == 30);
+            storage.execute(statement);
+            {
+                auto ids = storage.select(&User::id);
+                decltype(ids) expected;
+                expected.push_back(3);
+                REQUIRE_THAT(ids, UnorderedEquals(expected));
+            }
         }
-        auto ids = storage.select(&User::id);
-        decltype(ids) expected;
-        expected.push_back(1);
-        expected.push_back(3);
-        REQUIRE_THAT(ids, UnorderedEquals(expected));
     }
     SECTION("get") {
         {
@@ -276,24 +515,40 @@ TEST_CASE("Prepared") {
                 //..
             }
             SECTION("execute") {
-                auto user = storage.execute(statement);
-                REQUIRE(user == User{1, "Team BS"});
-            }
-            SECTION("reassign and execute") {
-                get<0>(statement) = 2;
-                auto user = storage.execute(statement);
-                REQUIRE(user == User{2, "Shy'm"});
+                {
+                    auto user = storage.execute(statement);
+                    REQUIRE(user == User{1, "Team BS"});
+                }
+                {
+                    get<0>(statement) = 2;
+                    REQUIRE(get<0>(statement) == 2);
+                    auto user = storage.execute(statement);
+                    REQUIRE(user == User{2, "Shy'm"});
+                }
             }
         }
         {
             auto statement = storage.prepare(get<User>(2));
+            REQUIRE(get<0>(statement) == 2);
             testSerializing(statement);
             SECTION("nothing") {
                 //..
             }
             SECTION("execute") {
-                auto user = storage.execute(statement);
-                REQUIRE(user == User{2, "Shy'm"});
+                {
+                    auto user = storage.execute(statement);
+                    REQUIRE(user == User{2, "Shy'm"});
+                }
+                {
+                    get<0>(statement) = 4;
+                    try {
+                        auto user = storage.execute(statement);
+                        std::ignore = user;
+                        REQUIRE(false);
+                    } catch(const std::system_error &e) {
+                        REQUIRE(true);
+                    }
+                }
             }
         }
         {
@@ -354,15 +609,18 @@ TEST_CASE("Prepared") {
                 //..
             }
             SECTION("execute") {
-                auto user = storage.execute(statement);
-                REQUIRE(user);
-                REQUIRE(*user == User{1, "Team BS"});
-            }
-            SECTION("reassign and execute") {
+                {
+                    auto user = storage.execute(statement);
+                    REQUIRE(user);
+                    REQUIRE(*user == User{1, "Team BS"});
+                }
                 get<0>(statement) = 2;
-                auto user = storage.execute(statement);
-                REQUIRE(user);
-                REQUIRE(*user == User{2, "Shy'm"});
+                REQUIRE(get<0>(statement) == 2);
+                {
+                    auto user = storage.execute(statement);
+                    REQUIRE(user);
+                    REQUIRE(*user == User{2, "Shy'm"});
+                }
             }
         }
         {
@@ -482,6 +740,10 @@ TEST_CASE("Prepared") {
                 get<0>(statement).name = "Sia";
                 storage.execute(statement);
                 REQUIRE(storage.count<User>(where(is_equal(&User::name, "Sia"))) == 1);
+
+                get<0>(statement) = {user.id, "Paris"};
+                storage.execute(statement);
+                REQUIRE(storage.count<User>(where(is_equal(&User::name, "Paris"))) == 1);
             }
         }
     }

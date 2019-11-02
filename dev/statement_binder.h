@@ -156,5 +156,26 @@ namespace sqlite_orm {
                 return SQLITE_OK;
             }
         };
+
+        template<class T, class SFINAE = void>
+        struct bindable_filter_single;
+
+        template<class T>
+        struct bindable_filter_single<T, typename std::enable_if<is_bindable<T>::value>::type> {
+            using type = std::tuple<T>;
+        };
+
+        template<class T>
+        struct bindable_filter_single<T, typename std::enable_if<!is_bindable<T>::value>::type> {
+            using type = std::tuple<>;
+        };
+
+        template<class T>
+        struct bindable_filter;
+
+        template<class... Args>
+        struct bindable_filter<std::tuple<Args...>> {
+            using type = typename conc_tuple<typename bindable_filter_single<Args>::type...>::type;
+        };
     }
 }
