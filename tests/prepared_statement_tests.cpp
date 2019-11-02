@@ -261,14 +261,14 @@ TEST_CASE("Prepared") {
             auto statement = storage.prepare(
                 get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS"))));
             REQUIRE(get<0>(statement) == 1);
-            REQUIRE(get<1>(statement) == "Team BS");
+            REQUIRE(strcmp(get<1>(statement), "Team BS") == 0);
         }
         {
             auto statement = storage.prepare(get_all<User>(
                 where(lesser_or_equal(&User::id, 2) and (like(&User::name, "T%") or glob(&User::name, "*S")))));
             REQUIRE(get<0>(statement) == 2);
-            REQUIRE(get<1>(statement) == "T%");
-            REQUIRE(get<2>(statement) == "*S");
+            REQUIRE(strcmp(get<1>(statement), "T%") == 0);
+            REQUIRE(strcmp(get<2>(statement), "*S") == 0);
         }
         {
             auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
