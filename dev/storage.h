@@ -875,8 +875,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const replace_t<T, by_ref> &rep, bool /*noTableName*/) const {
+            template<class T>
+            std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
                 ss << "REPLACE INTO '" << impl.table.name << "' (";
@@ -2266,8 +2266,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<replace_t<T, by_ref>> prepare(replace_t<T, by_ref> rep) {
+            template<class T>
+            prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2433,8 +2433,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            void execute(const prepared_statement_t<replace_t<T, by_ref>> &statement) {
+            template<class T>
+            void execute(const prepared_statement_t<replace_t<T>> &statement) {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;

@@ -218,22 +218,10 @@ namespace sqlite_orm {
             insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
         };
 
-        template<class T, bool by_ref>
-        struct replace_t;
-
         template<class T>
-        struct replace_t<T, true> {
+        struct replace_t {
             using type = T;
-
-            const type &obj;
-
-            replace_t(decltype(obj) obj_) : obj(obj_) {}
-        };
-
-        template<class T>
-        struct replace_t<T, false> {
-            using type = T;
-
+            
             type obj;
         };
 
@@ -275,18 +263,7 @@ namespace sqlite_orm {
      *  Usage: replace(myUserInstance);
      */
     template<class T>
-    internal::replace_t<T, true> replace(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create a replace by value statement
-     *  Usage: replace<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::replace_t<typename B::type, false> replace(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::replace_t<T> replace(T obj) {
         return {std::move(obj)};
     }
 
@@ -441,14 +418,14 @@ namespace sqlite_orm {
         return statement.t.obj;
     }
 
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
+    template<int N, class T>
+    auto &get(internal::prepared_statement_t<internal::replace_t<T>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return statement.t.obj;
     }
 
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
+    template<int N, class T>
+    const auto &get(const internal::prepared_statement_t<internal::replace_t<T>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return statement.t.obj;
     }
