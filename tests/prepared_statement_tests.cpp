@@ -92,7 +92,7 @@ TEST_CASE("Prepared") {
         }
         {  //  two simple arguments
             auto statement = storage.prepare(select(columns("ototo", 25)));
-            REQUIRE(get<0>(statement) == "ototo");
+            REQUIRE(strcmp(get<0>(statement), "ototo") == 0);
             REQUIRE(get<1>(statement) == 25);
             {
                 auto rows = storage.execute(statement);

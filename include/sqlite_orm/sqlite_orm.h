@@ -4027,12 +4027,12 @@ namespace sqlite_orm {
      *  Args must have `assign_t` type. E.g. set(assign(&User::id, 5)) or set(c(&User::id) = 5)
      */
     template<class... Args>
-    internal::set_t<Args...> set(Args ... args) {
+    internal::set_t<Args...> set(Args... args) {
         return {std::forward<Args>(args)...};
     }
 
     template<class... Args>
-    internal::columns_t<Args...> columns(Args ... args) {
+    internal::columns_t<Args...> columns(Args... args) {
         return {std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
 
@@ -4414,24 +4414,24 @@ namespace sqlite_orm {
                 return SQLITE_OK;
             }
         };
-        
+
         template<class T, class SFINAE = void>
         struct bindable_filter_single;
-        
+
         template<class T>
         struct bindable_filter_single<T, typename std::enable_if<is_bindable<T>::value>::type> {
             using type = std::tuple<T>;
         };
-        
+
         template<class T>
         struct bindable_filter_single<T, typename std::enable_if<!is_bindable<T>::value>::type> {
             using type = std::tuple<>;
         };
-        
+
         template<class T>
         struct bindable_filter;
-        
-        template<class ...Args>
+
+        template<class... Args>
         struct bindable_filter<std::tuple<Args...>> {
             using type = typename conc_tuple<typename bindable_filter_single<Args>::type...>::type;
         };
@@ -7227,35 +7227,35 @@ namespace sqlite_orm {
                 iterate_ast(get.conditions, l);
             }
         };
-        
+
         template<class... Args, class... Wargs>
         struct ast_iterator<update_all_t<set_t<Args...>, Wargs...>, void> {
             using node_type = update_all_t<set_t<Args...>, Wargs...>;
-            
+
             template<class L>
             void operator()(const node_type &u, const L &l) const {
                 iterate_ast(u.set, l);
                 iterate_ast(u.conditions, l);
             }
         };
-        
+
         template<class T, class... Args>
         struct ast_iterator<remove_all_t<T, Args...>, void> {
             using node_type = remove_all_t<T, Args...>;
-            
+
             template<class L>
             void operator()(const node_type &r, const L &l) const {
                 iterate_ast(r.conditions, l);
             }
         };
-        
+
         template<class... Args>
         struct ast_iterator<set_t<Args...>, void> {
             using node_type = set_t<Args...>;
-            
+
             template<class L>
             void operator()(const node_type &s, const L &l) const {
-                s.for_each([&l](auto &s){
+                s.for_each([&l](auto &s) {
                     iterate_ast(s, l);
                 });
             }
@@ -7315,7 +7315,6 @@ namespace sqlite_orm {
                     iterate_ast(value, l);
                 });
             }
-    
         };
 
         template<class A, class T>
@@ -11461,13 +11460,13 @@ namespace sqlite_orm {
             using node_type = get_all_t<T, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
-        
+
         template<class T, class... Args>
         struct node_tuple<get_all_pointer_t<T, Args...>, void> {
             using node_type = get_all_pointer_t<T, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
-        
+
         template<class... Args, class... Wargs>
         struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> {
             using node_type = update_all_t<set_t<Args...>, Wargs...>;
@@ -11475,7 +11474,7 @@ namespace sqlite_orm {
             using conditions_tuple = typename conc_tuple<typename node_tuple<Wargs>::type...>::type;
             using type = typename conc_tuple<set_tuple, conditions_tuple>::type;
         };
-        
+
         template<class T, class... Args>
         struct node_tuple<remove_all_t<T, Args...>, void> {
             using node_type = remove_all_t<T, Args...>;
@@ -11634,7 +11633,7 @@ namespace sqlite_orm {
 
 
 namespace sqlite_orm {
-    
+
     template<int N, class T>
     const auto &get(const internal::prepared_statement_t<T> &statement) {
         using statement_type = typename std::decay<decltype(statement)>::type;
@@ -11646,18 +11645,18 @@ namespace sqlite_orm {
         auto index = -1;
         internal::iterate_ast(statement.t, [&result, &index](auto &node) {
             using node_type = typename std::decay<decltype(node)>::type;
-            if(internal::is_bindable<node_type>::value){
+            if(internal::is_bindable<node_type>::value) {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node){
+                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node) {
                     result = const_cast<typename std::remove_reference<decltype(result)>::type>(&node);
                 })(result, node);
             }
         });
         return *result;
     }
-    
+
     template<int N, class T>
     auto &get(internal::prepared_statement_t<T> &statement) {
         using statement_type = typename std::decay<decltype(statement)>::type;
@@ -11669,11 +11668,11 @@ namespace sqlite_orm {
         auto index = -1;
         internal::iterate_ast(statement.t, [&result, &index](auto &node) {
             using node_type = typename std::decay<decltype(node)>::type;
-            if(internal::is_bindable<node_type>::value){
+            if(internal::is_bindable<node_type>::value) {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node){
+                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node) {
                     result = const_cast<typename std::remove_reference<decltype(result)>::type>(&node);
                 })(result, node);
             }
