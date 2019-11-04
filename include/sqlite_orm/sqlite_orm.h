@@ -6771,22 +6771,10 @@ namespace sqlite_orm {
             insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
         };
 
-        template<class T, bool by_ref>
-        struct replace_t;
-
         template<class T>
-        struct replace_t<T, true> {
+        struct replace_t {
             using type = T;
-
-            const type &obj;
-
-            replace_t(decltype(obj) obj_) : obj(obj_) {}
-        };
-
-        template<class T>
-        struct replace_t<T, false> {
-            using type = T;
-
+            
             type obj;
         };
 
@@ -6828,18 +6816,7 @@ namespace sqlite_orm {
      *  Usage: replace(myUserInstance);
      */
     template<class T>
-    internal::replace_t<T, true> replace(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create a replace by value statement
-     *  Usage: replace<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::replace_t<typename B::type, false> replace(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::replace_t<T> replace(T obj) {
         return {std::move(obj)};
     }
 
@@ -6994,14 +6971,14 @@ namespace sqlite_orm {
         return statement.t.obj;
     }
 
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
+    template<int N, class T>
+    auto &get(internal::prepared_statement_t<internal::replace_t<T>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return statement.t.obj;
     }
 
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
+    template<int N, class T>
+    const auto &get(const internal::prepared_statement_t<internal::replace_t<T>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return statement.t.obj;
     }
@@ -9348,8 +9325,8 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const replace_t<T, by_ref> &rep, bool /*noTableName*/) const {
+            template<class T>
+            std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
                 ss << "REPLACE INTO '" << impl.table.name << "' (";
@@ -10739,8 +10716,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<replace_t<T, by_ref>> prepare(replace_t<T, by_ref> rep) {
+            template<class T>
+            prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -10906,8 +10883,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            void execute(const prepared_statement_t<replace_t<T, by_ref>> &statement) {
+            template<class T>
+            void execute(const prepared_statement_t<replace_t<T>> &statement) {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
