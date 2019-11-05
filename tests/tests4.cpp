@@ -223,13 +223,6 @@ TEST_CASE("Set null") {
     struct User {
         int id = 0;
         std::unique_ptr<std::string> name;
-        
-        User() = default;
-        
-        User(const User &other):
-        id(other.id),
-        name(other.name ? std::make_unique<std::string>(*other.name) : std::unique_ptr<std::string>())
-        {}
     };
 
     auto storage = make_storage(

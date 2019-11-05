@@ -42,6 +42,7 @@
 #include "ast_iterator.h"
 #include "storage_base.h"
 #include "prepared_statement.h"
+#include "expression_object_type.h"
 
 namespace sqlite_orm {
 
@@ -877,7 +878,8 @@ namespace sqlite_orm {
 
             template<class T>
             std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
-                auto &impl = this->get_impl<T>();
+                using object_type = typename expression_object_type<replace_t<T>>::type;
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "REPLACE INTO '" << impl.table.name << "' (";
                 auto columnNames = impl.table.column_names();
@@ -1918,7 +1920,7 @@ namespace sqlite_orm {
             template<class O>
             void replace(const O &o) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::replace(o));
+                auto statement = this->prepare(sqlite_orm::replace(std::ref(o)));
                 this->execute(statement);
             }
 
@@ -2435,12 +2437,15 @@ namespace sqlite_orm {
 
             template<class T>
             void execute(const prepared_statement_t<replace_t<T>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
-                auto &o = statement.t.obj;
-                auto &impl = this->get_impl<T>();
+                auto &o = get_object(statement.t);
+                auto &impl = this->get_impl<object_type>();
                 sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, &index, &stmt, db](auto &c) {
                     using column_type = typename std::decay<decltype(c)>::type;
