@@ -83,19 +83,22 @@ namespace sqlite_orm {
     }
     
     template<typename ... T>
-	std::string get_error_message(sqlite3 *db, T&& ... args)
-	{
-		std::ostringstream stream;
-		using unpack = int[];
-		static_cast<void>(unpack{
-			0, (static_cast<void>(stream << args) , 0) ...
-		});
-    	stream << sqlite3_errmsg(db);
-		//in visual studio 2019:
-		//stream << ... << std::forward<T>(args);
-		return stream.str();
-	}
+    std::string get_error_message(sqlite3 *db, T&& ... args)
+    {
+            std::ostringstream stream;
+            using unpack = int[];
+            static_cast<void>(unpack{
+                0, (static_cast<void>(stream << args) , 0) ...
+        });
+        stream << sqlite3_errmsg(db);
+	return stream.str();
+    }
 
+    template<typename ... T>
+    [[noresult]] void throw_error(sqlite3 *db, T&& ... args)
+    {
+        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), get_error_message(db, std::forward<T>(args)...));
+    }
 }
 
 namespace std
