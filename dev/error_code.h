@@ -95,7 +95,7 @@ namespace sqlite_orm {
     }
 
     template<typename ... T>
-    [[noresult]] void throw_error(sqlite3 *db, T&& ... args)
+    [[noreturn]] void throw_error(sqlite3 *db, T&& ... args)
     {
         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), get_error_message(db, std::forward<T>(args)...));
     }
