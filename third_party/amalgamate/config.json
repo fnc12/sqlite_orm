@@ -37,7 +37,10 @@
 		"dev/table.h",
 		"dev/storage_impl.h",
 		"dev/storage.h",
-		"dev/finish_macros.h"
+		"dev/finish_macros.h",
+        "dev/node_tuple.h",
+        "dev/get_prepared_statement.h",
+        "dev/statement_serializator.h"
 	],
 	"include_paths": ["dev"]
 }

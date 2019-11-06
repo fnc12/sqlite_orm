@@ -1,12 +1,12 @@
 #pragma once
 
-#include <string>   //  std::string
+#include <string>  //  std::string
 #include <sqlite3.h>
-#include <system_error> //  std::error_code, std::system_error
+#include <system_error>  //  std::error_code, std::system_error
 
 #include "error_code.h"
 namespace sqlite_orm {
-    
+
     namespace internal {
 
         inline sqlite3 *open_db(std::string const&filename)
@@ -23,15 +23,15 @@ namespace sqlite_orm {
                db {open_db(filename) }
             {}
             
+
             ~database_connection() {
                 sqlite3_close(this->db);
             }
-            
-            sqlite3* get_db() {
+
+            sqlite3 *get_db() {
                 return this->db;
             }
-            
-        protected:
+        private:
             sqlite3 *db;
         };
     }

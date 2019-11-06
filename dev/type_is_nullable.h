@@ -1,10 +1,10 @@
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-#include <memory>   //  std::shared_ptr, std::unique_ptr
+#include <memory>  //  std::shared_ptr, std::unique_ptr
 
 namespace sqlite_orm {
-    
+
     /**
      *  This is class that tells `sqlite_orm` that type is nullable. Nullable types
      *  are mapped to sqlite database as `NULL` and not-nullable are mapped as `NOT NULL`.
@@ -18,7 +18,7 @@ namespace sqlite_orm {
             return true;
         }
     };
-    
+
     /**
      *  This is a specialization for std::shared_ptr. std::shared_ptr is nullable in sqlite_orm.
      */
@@ -28,7 +28,7 @@ namespace sqlite_orm {
             return static_cast<bool>(t);
         }
     };
-    
+
     /**
      *  This is a specialization for std::unique_ptr. std::unique_ptr is nullable too.
      */
@@ -38,5 +38,5 @@ namespace sqlite_orm {
             return static_cast<bool>(t);
         }
     };
-    
+
 }

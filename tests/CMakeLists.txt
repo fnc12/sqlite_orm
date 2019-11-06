@@ -10,7 +10,7 @@ else()
     add_subdirectory(third_party/sqlite)
 endif()
 
-add_executable(unit_tests tests.cpp tests2.cpp tests3.cpp tests4.cpp tests4.cpp private_getters_tests.cpp pragma_tests.cpp explicit_columns.cpp core_functions_tests.cpp composite_key.cpp static_tests.cpp operators.cpp like.cpp dynamic_order_by.cpp)
+add_executable(unit_tests tests.cpp tests2.cpp tests3.cpp tests4.cpp tests4.cpp private_getters_tests.cpp pragma_tests.cpp explicit_columns.cpp core_functions_tests.cpp composite_key.cpp static_tests.cpp operators.cpp operators/like.cpp operators/glob.cpp operators/in.cpp operators/cast.cpp dynamic_order_by.cpp prepared_statement_tests.cpp pragma_tests.cpp simple_query.cpp static_tests/is_bindable.cpp static_tests/arithmetic_operators_result_type.cpp static_tests/tuple_conc.cpp static_tests/node_tuple.cpp static_tests/bindable_filter.cpp constraints/default.cpp constraints/foreign_key.cpp)
 
 
 if(SQLITE_ORM_OMITS_CODECVT)

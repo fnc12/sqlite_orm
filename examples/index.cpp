@@ -26,22 +26,22 @@ auto storage = make_storage("index.sqlite",
                                        make_column("email", &Contract::email)));
 
 int main(int, char **) {
-    
+
     storage.sync_schema();
     storage.remove_all<Contract>();
-    
+
     storage.insert(Contract{
         "John",
         "Doe",
         "john.doe@sqlitetutorial.net",
     });
-    try{
+    try {
         storage.insert(Contract{
             "Johny",
             "Doe",
             "john.doe@sqlitetutorial.net",
         });
-    }catch(const std::system_error& e){
+    } catch(const std::system_error &e) {
         cout << e.what() << endl;
     }
     std::vector<Contract> moreContracts = {
@@ -56,13 +56,12 @@ int main(int, char **) {
             "lisa.smith@sqlitetutorial.net",
         },
     };
-    storage.insert_range(moreContracts.begin(),
-                         moreContracts.end());
-    
+    storage.insert_range(moreContracts.begin(), moreContracts.end());
+
     auto lisas = storage.get_all<Contract>(where(c(&Contract::email) == "lisa.smith@sqlitetutorial.net"));
-    
+
     storage.drop_index("idx_contacts_name");
     storage.drop_index("idx_contacts_email");
-    
+
     return 0;
 }
