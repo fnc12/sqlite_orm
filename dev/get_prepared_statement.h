@@ -5,8 +5,33 @@
 #include "prepared_statement.h"
 #include "ast_iterator.h"
 #include "static_magic.h"
+#include "expression_object_type.h"
 
 namespace sqlite_orm {
+    
+    template<int N, class T>
+    auto &get(internal::prepared_statement_t<internal::replace_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
+    template<int N, class T>
+    const auto &get(const internal::prepared_statement_t<internal::replace_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
+    template<int N, class T>
+    auto &get(internal::prepared_statement_t<internal::insert_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
+    template<int N, class T>
+    const auto &get(const internal::prepared_statement_t<internal::insert_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return internal::get_ref(statement.t.obj);
+    }
 
     template<int N, class T>
     const auto &get(const internal::prepared_statement_t<T> &statement) {
@@ -28,7 +53,7 @@ namespace sqlite_orm {
                 })(result, node);
             }
         });
-        return *result;
+        return internal::get_ref(*result);
     }
 
     template<int N, class T>
@@ -51,6 +76,6 @@ namespace sqlite_orm {
                 })(result, node);
             }
         });
-        return *result;
+        return internal::get_ref(*result);
     }
 }

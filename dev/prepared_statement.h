@@ -174,20 +174,8 @@ namespace sqlite_orm {
             ids_type ids;
         };
 
-        template<class T, bool by_ref>
-        struct insert_t;
-
         template<class T>
-        struct insert_t<T, true> {
-            using type = T;
-
-            const type &obj;
-
-            insert_t(decltype(obj) obj_) : obj(obj_) {}
-        };
-
-        template<class T>
-        struct insert_t<T, false> {
+        struct insert_t {
             using type = T;
 
             type obj;
@@ -272,18 +260,7 @@ namespace sqlite_orm {
      *  Usage: insert(myUserInstance);
      */
     template<class T>
-    internal::insert_t<T, true> insert(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create an insert by value statement.
-     *  Usage: insert<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::insert_t<typename B::type, false> insert(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::insert_t<T> insert(T obj) {
         return {std::move(obj)};
     }
 
@@ -403,30 +380,6 @@ namespace sqlite_orm {
     template<int N, class T, bool by_ref>
     const auto &get(const internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T>
-    auto &get(internal::prepared_statement_t<internal::replace_t<T>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T>
-    const auto &get(const internal::prepared_statement_t<internal::replace_t<T>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return statement.t.obj;
     }
 

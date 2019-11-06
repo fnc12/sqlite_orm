@@ -780,7 +780,7 @@ TEST_CASE("Prepared") {
     SECTION("insert") {
         User user{0, "Stromae"};
         SECTION("by ref") {
-            auto statement = storage.prepare(insert(user));
+            auto statement = storage.prepare(insert(std::ref(user)));
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -816,7 +816,7 @@ TEST_CASE("Prepared") {
             }
         }
         SECTION("by val") {
-            auto statement = storage.prepare(insert<by_val<User>>(user));
+            auto statement = storage.prepare(insert(user));
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -866,12 +866,12 @@ TEST_CASE("Prepared") {
     SECTION("replace") {
         std::vector<User> expected;
         User user;
-        /*SECTION("by ref existing") {
+        SECTION("by ref existing") {
             user = {1, "Stromae"};
             expected.push_back(User{1, "Stromae"});
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
-            auto statement = storage.prepare(replace(user));
+            auto statement = storage.prepare(replace(std::ref(user)));
             storage.execute(statement);
 
             std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
@@ -884,7 +884,7 @@ TEST_CASE("Prepared") {
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
             expected.push_back(user);
-            auto statement = storage.prepare(replace(user));
+            auto statement = storage.prepare(replace(std::ref(user)));
             storage.execute(statement);
             auto rows = storage.get_all<User>();
             REQUIRE_THAT(rows, UnorderedEquals(expected));
@@ -895,7 +895,7 @@ TEST_CASE("Prepared") {
 
             REQUIRE(user == get<0>(statement));
             REQUIRE(&user == &get<0>(statement));
-        }*/
+        }
         SECTION("by val existing") {
             SECTION("straight assign") {
                 user = {1, "Stromae"};

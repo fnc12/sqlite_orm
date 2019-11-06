@@ -829,9 +829,10 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const insert_t<T, by_ref> &ins, bool /*noTableName*/) const {
-                auto &impl = this->get_impl<T>();
+            template<class T>
+            std::string string_from_expression(const insert_t<T> &ins, bool /*noTableName*/) const {
+                using object_type = typename expression_object_type<replace_t<T>>::type;
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "INSERT INTO '" << impl.table.name << "' ";
                 std::vector<std::string> columnNames;
@@ -1953,7 +1954,7 @@ namespace sqlite_orm {
             template<class O>
             int insert(const O &o) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::insert(o));
+                auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
                 return int(this->execute(statement));
             }
 
@@ -2254,8 +2255,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<insert_t<T, by_ref>> prepare(insert_t<T, by_ref> ins) {
+            template<class T>
+            prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2472,15 +2473,18 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            int64 execute(const prepared_statement_t<insert_t<T, by_ref>> &statement) {
+            template<class T>
+            int64 execute(const prepared_statement_t<insert_t<T>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 int64 res = 0;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
-                auto &impl = this->get_impl<T>();
-                auto &o = statement.t.obj;
+                auto &impl = this->get_impl<object_type>();
+                auto &o = get_object(statement.t);
                 auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db](auto &c) {

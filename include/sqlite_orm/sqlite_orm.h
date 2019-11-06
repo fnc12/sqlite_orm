@@ -6727,20 +6727,8 @@ namespace sqlite_orm {
             ids_type ids;
         };
 
-        template<class T, bool by_ref>
-        struct insert_t;
-
         template<class T>
-        struct insert_t<T, true> {
-            using type = T;
-
-            const type &obj;
-
-            insert_t(decltype(obj) obj_) : obj(obj_) {}
-        };
-
-        template<class T>
-        struct insert_t<T, false> {
+        struct insert_t {
             using type = T;
 
             type obj;
@@ -6825,18 +6813,7 @@ namespace sqlite_orm {
      *  Usage: insert(myUserInstance);
      */
     template<class T>
-    internal::insert_t<T, true> insert(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create an insert by value statement.
-     *  Usage: insert<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::insert_t<typename B::type, false> insert(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::insert_t<T> insert(T obj) {
         return {std::move(obj)};
     }
 
@@ -6956,30 +6933,6 @@ namespace sqlite_orm {
     template<int N, class T, bool by_ref>
     const auto &get(const internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T>
-    auto &get(internal::prepared_statement_t<internal::replace_t<T>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T>
-    const auto &get(const internal::prepared_statement_t<internal::replace_t<T>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
         return statement.t.obj;
     }
 
@@ -8518,6 +8471,41 @@ namespace sqlite_orm {
         };
         
         template<class T>
+        struct expression_object_type<insert_t<T>> {
+            using type = typename std::decay<T>::type;
+        };
+        
+        template<class T>
+        struct expression_object_type<insert_t<std::reference_wrapper<T>>> {
+            using type = typename std::decay<T>::type;
+        };
+        
+        template<class T>
+        struct get_ref_t {
+            
+            template<class O>
+            auto &operator()(O &t) const {
+                return t;
+            }
+        };
+        
+        template<class T>
+        struct get_ref_t<std::reference_wrapper<T>> {
+            
+            template<class O>
+            auto &operator()(O &t) const {
+                return t.get();
+            }
+        };
+        
+        template<class T>
+        auto &get_ref(T &t) {
+            using arg_type = typename std::decay<T>::type;
+            get_ref_t<arg_type> g;
+            return g(t);
+        }
+        
+        template<class T>
         struct get_object_t;
         
         template<class T>
@@ -8525,7 +8513,8 @@ namespace sqlite_orm {
         
         template<class T>
         auto &get_object(T &t) {
-            get_object_t<T> obj;
+            using expression_type = typename std::decay<T>::type;
+            get_object_t<expression_type> obj;
             return obj(t);
         }
         
@@ -8535,35 +8524,17 @@ namespace sqlite_orm {
             
             template<class O>
             auto &operator()(O &e) const {
-                return e.obj;
+                return get_ref(e.obj);
             }
         };
         
         template<class T>
-        struct get_object_t<replace_t<const T>> {
-            using expression_type = replace_t<const T>;
+        struct get_object_t<insert_t<T>> {
+            using expression_type = insert_t<T>;
             
             template<class O>
             auto &operator()(O &e) const {
-                return e.obj;
-            }
-        };
-        
-        template<class T>
-        struct get_object_t<replace_t<std::reference_wrapper<T>>> {
-            using expression_type = replace_t<std::reference_wrapper<T>>;
-            
-            T &operator()(expression_type &e) const {
-                return e.obj.get();
-            }
-        };
-        
-        template<class T>
-        struct get_object_t<replace_t<std::reference_wrapper<const T>>> {
-            using expression_type = replace_t<std::reference_wrapper<const T>>;
-            
-            const T &operator()(const expression_type &e) const {
-                return e.obj.get();
+                return get_ref(e.obj);
             }
         };
     }
@@ -9355,9 +9326,10 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const insert_t<T, by_ref> &ins, bool /*noTableName*/) const {
-                auto &impl = this->get_impl<T>();
+            template<class T>
+            std::string string_from_expression(const insert_t<T> &ins, bool /*noTableName*/) const {
+                using object_type = typename expression_object_type<replace_t<T>>::type;
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "INSERT INTO '" << impl.table.name << "' ";
                 std::vector<std::string> columnNames;
@@ -10479,7 +10451,7 @@ namespace sqlite_orm {
             template<class O>
             int insert(const O &o) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::insert(o));
+                auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
                 return int(this->execute(statement));
             }
 
@@ -10780,8 +10752,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<insert_t<T, by_ref>> prepare(insert_t<T, by_ref> ins) {
+            template<class T>
+            prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -10998,15 +10970,18 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            int64 execute(const prepared_statement_t<insert_t<T, by_ref>> &statement) {
+            template<class T>
+            int64 execute(const prepared_statement_t<insert_t<T>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 int64 res = 0;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
-                auto &impl = this->get_impl<T>();
-                auto &o = statement.t.obj;
+                auto &impl = this->get_impl<object_type>();
+                auto &o = get_object(statement.t);
                 auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db](auto &c) {
@@ -11426,6 +11401,7 @@ __pragma(pop_macro("min"))
 
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
+#include <functional>   //  std::reference_wrapper
 
 // #include "conditions.h"
 
@@ -11452,6 +11428,11 @@ namespace sqlite_orm {
         template<>
         struct node_tuple<void, void> {
             using type = std::tuple<>;
+        };
+        
+        template<class T>
+        struct node_tuple<std::reference_wrapper<T>, void> {
+            using type = typename node_tuple<T>::type;
         };
 
         template<class C>
@@ -11689,8 +11670,34 @@ namespace sqlite_orm {
 
 // #include "static_magic.h"
 
+// #include "expression_object_type.h"
+
 
 namespace sqlite_orm {
+    
+    template<int N, class T>
+    auto &get(internal::prepared_statement_t<internal::replace_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
+    template<int N, class T>
+    const auto &get(const internal::prepared_statement_t<internal::replace_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
+    template<int N, class T>
+    auto &get(internal::prepared_statement_t<internal::insert_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
+    template<int N, class T>
+    const auto &get(const internal::prepared_statement_t<internal::insert_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
+        return internal::get_ref(statement.t.obj);
+    }
 
     template<int N, class T>
     const auto &get(const internal::prepared_statement_t<T> &statement) {
@@ -11712,7 +11719,7 @@ namespace sqlite_orm {
                 })(result, node);
             }
         });
-        return *result;
+        return internal::get_ref(*result);
     }
 
     template<int N, class T>
@@ -11735,7 +11742,7 @@ namespace sqlite_orm {
                 })(result, node);
             }
         });
-        return *result;
+        return internal::get_ref(*result);
     }
 }
 #pragma once

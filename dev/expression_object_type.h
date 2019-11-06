@@ -22,6 +22,41 @@ namespace sqlite_orm {
         };
         
         template<class T>
+        struct expression_object_type<insert_t<T>> {
+            using type = typename std::decay<T>::type;
+        };
+        
+        template<class T>
+        struct expression_object_type<insert_t<std::reference_wrapper<T>>> {
+            using type = typename std::decay<T>::type;
+        };
+        
+        template<class T>
+        struct get_ref_t {
+            
+            template<class O>
+            auto &operator()(O &t) const {
+                return t;
+            }
+        };
+        
+        template<class T>
+        struct get_ref_t<std::reference_wrapper<T>> {
+            
+            template<class O>
+            auto &operator()(O &t) const {
+                return t.get();
+            }
+        };
+        
+        template<class T>
+        auto &get_ref(T &t) {
+            using arg_type = typename std::decay<T>::type;
+            get_ref_t<arg_type> g;
+            return g(t);
+        }
+        
+        template<class T>
         struct get_object_t;
         
         template<class T>
@@ -29,7 +64,8 @@ namespace sqlite_orm {
         
         template<class T>
         auto &get_object(T &t) {
-            get_object_t<T> obj;
+            using expression_type = typename std::decay<T>::type;
+            get_object_t<expression_type> obj;
             return obj(t);
         }
         
@@ -39,35 +75,17 @@ namespace sqlite_orm {
             
             template<class O>
             auto &operator()(O &e) const {
-                return e.obj;
+                return get_ref(e.obj);
             }
         };
         
         template<class T>
-        struct get_object_t<replace_t<const T>> {
-            using expression_type = replace_t<const T>;
+        struct get_object_t<insert_t<T>> {
+            using expression_type = insert_t<T>;
             
             template<class O>
             auto &operator()(O &e) const {
-                return e.obj;
-            }
-        };
-        
-        template<class T>
-        struct get_object_t<replace_t<std::reference_wrapper<T>>> {
-            using expression_type = replace_t<std::reference_wrapper<T>>;
-            
-            T &operator()(expression_type &e) const {
-                return e.obj.get();
-            }
-        };
-        
-        template<class T>
-        struct get_object_t<replace_t<std::reference_wrapper<const T>>> {
-            using expression_type = replace_t<std::reference_wrapper<const T>>;
-            
-            const T &operator()(const expression_type &e) const {
-                return e.obj.get();
+                return get_ref(e.obj);
             }
         };
     }
