@@ -9,20 +9,16 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        inline sqlite3 *open_db(std::string const&filename)
-        {
-            sqlite3 *result {nullptr};
-            if(sqlite3_open(filename.c_str(), &result) != SQLITE_OK){
+        inline sqlite3 *open_db(std::string const &filename) {
+            sqlite3 *result{nullptr};
+            if(sqlite3_open(filename.c_str(), &result) != SQLITE_OK) {
                 throw_error(result, "opening '", filename, "'. ");
             }
             return result;
         }
-    	
+
         struct database_connection {
-            explicit database_connection(const std::string &filename):
-               db {open_db(filename) }
-            {}
-            
+            explicit database_connection(const std::string &filename) : db{open_db(filename)} {}
 
             ~database_connection() {
                 sqlite3_close(this->db);
@@ -31,7 +27,8 @@ namespace sqlite_orm {
             sqlite3 *get_db() {
                 return this->db;
             }
-        private:
+
+          private:
             sqlite3 *db;
         };
     }

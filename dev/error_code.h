@@ -82,23 +82,20 @@ namespace sqlite_orm {
         static sqlite_error_category res;
         return res;
     }
-    
-    template<typename ... T>
-    std::string get_error_message(sqlite3 *db, T&& ... args)
-    {
-            std::ostringstream stream;
-            using unpack = int[];
-            static_cast<void>(unpack{
-                0, (static_cast<void>(stream << args) , 0) ...
-        });
+
+    template<typename... T>
+    std::string get_error_message(sqlite3 *db, T &&... args) {
+        std::ostringstream stream;
+        using unpack = int[];
+        static_cast<void>(unpack{0, (static_cast<void>(stream << args), 0)...});
         stream << sqlite3_errmsg(db);
-	return stream.str();
+        return stream.str();
     }
 
-    template<typename ... T>
-    [[noreturn]] void throw_error(sqlite3 *db, T&& ... args)
-    {
-        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()), get_error_message(db, std::forward<T>(args)...));
+    template<typename... T>
+    [[noreturn]] void throw_error(sqlite3 *db, T &&... args) {
+        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                get_error_message(db, std::forward<T>(args)...));
     }
 }
 
