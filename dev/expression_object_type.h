@@ -6,10 +6,16 @@
 #include "prepared_statement.h"
 
 namespace sqlite_orm {
+    
     namespace internal {
         
-        template<class T>
+        template<class T, class SFINAE = void>
         struct expression_object_type;
+        
+        /*template<class T>
+        struct expression_object_type<T, typename std::enable_if<is_replace<T>::value>::type> {
+            using type = typename std::decay<typename T::type>::type;
+        };*/
         
         template<class T>
         struct expression_object_type<replace_t<T>> {
@@ -28,6 +34,16 @@ namespace sqlite_orm {
         
         template<class T>
         struct expression_object_type<insert_t<std::reference_wrapper<T>>> {
+            using type = typename std::decay<T>::type;
+        };
+        
+        template<class T, class... Cols>
+        struct expression_object_type<insert_explicit<T, Cols...>> {
+            using type = typename std::decay<T>::type;
+        };
+        
+        template<class T, class... Cols>
+        struct expression_object_type<insert_explicit<std::reference_wrapper<T>, Cols...>> {
             using type = typename std::decay<T>::type;
         };
         

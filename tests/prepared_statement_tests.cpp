@@ -1036,7 +1036,7 @@ TEST_CASE("Prepared") {
         SECTION("user two columns") {
             User user{5, "Eminem"};
             SECTION("by ref") {
-                auto statement = storage.prepare(insert(user, columns(&User::id, &User::name)));
+                auto statement = storage.prepare(insert(std::ref(user), columns(&User::id, &User::name)));
                 std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
                 {
                     auto insertedId = storage.execute(statement);
@@ -1053,7 +1053,7 @@ TEST_CASE("Prepared") {
                 }
             }
             SECTION("by val") {
-                auto statement = storage.prepare(insert<by_val<User>>(user, columns(&User::id, &User::name)));
+                auto statement = storage.prepare(insert(user, columns(&User::id, &User::name)));
                 {
                     auto insertedId = storage.execute(statement);
                     REQUIRE(insertedId == user.id);

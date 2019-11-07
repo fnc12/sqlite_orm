@@ -181,29 +181,13 @@ namespace sqlite_orm {
             type obj;
         };
 
-        template<class T, bool by_ref, class... Cols>
-        struct insert_explicit;
-
         template<class T, class... Cols>
-        struct insert_explicit<T, true, Cols...> {
-            using type = T;
-            using columns_type = columns_t<Cols...>;
-
-            const type &obj;
-            columns_type columns;
-
-            insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
-        };
-
-        template<class T, class... Cols>
-        struct insert_explicit<T, false, Cols...> {
+        struct insert_explicit {
             using type = T;
             using columns_type = columns_t<Cols...>;
 
             type obj;
             columns_type columns;
-
-            insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
         };
 
         template<class T>
@@ -212,6 +196,12 @@ namespace sqlite_orm {
             
             type obj;
         };
+        
+        template<class T>
+        struct is_replace : std::false_type {};
+        
+        template<class T>
+        struct is_replace<replace_t<T>> : std::true_type {};
 
         template<class It>
         struct insert_range_t {
@@ -269,19 +259,7 @@ namespace sqlite_orm {
      *  Usage: insert(myUserInstance, columns(&User::id, &User::name));
      */
     template<class T, class... Cols>
-    internal::insert_explicit<T, true, Cols...> insert(const T &obj, internal::columns_t<Cols...> cols) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj, std::move(cols)};
-    }
-
-    /**
-     *  Create an explicit insert by value statement
-     *  Usage: insert<by_val<User>>(myUserInstance, s(&User::id, &User::name));
-     */
-    template<class B, class... Cols>
-    internal::insert_explicit<typename B::type, false, Cols...> insert(typename B::type obj,
-                                                                       internal::columns_t<Cols...> cols) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::insert_explicit<T, Cols...> insert(T obj, internal::columns_t<Cols...> cols) {
         return {std::move(obj), std::move(cols)};
     }
 
@@ -380,18 +358,6 @@ namespace sqlite_orm {
     template<int N, class T, bool by_ref>
     const auto &get(const internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref, class... Cols>
-    auto &get(internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref, class... Cols>
-    const auto &get(const internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
         return statement.t.obj;
     }
 
