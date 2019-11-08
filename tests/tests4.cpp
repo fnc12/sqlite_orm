@@ -385,22 +385,16 @@ TEST_CASE("Is null") {
     struct User {
         int id = 0;
         std::unique_ptr<std::string> name;
-        
+
         User() = default;
-        
-        User(decltype(id) id_):
-        id(id_)
-        {}
-        
-        User(decltype(id) id_, decltype(name) name_):
-        id(id_),
-        name(move(name_))
-        {}
-        
-        User(const User &other):
-        id(other.id),
-        name(other.name ? std::make_unique<std::string>(*other.name) : std::unique_ptr<std::string>())
-        {}
+
+        User(decltype(id) id_) : id(id_) {}
+
+        User(decltype(id) id_, decltype(name) name_) : id(id_), name(move(name_)) {}
+
+        User(const User &other) :
+            id(other.id),
+            name(other.name ? std::make_unique<std::string>(*other.name) : std::unique_ptr<std::string>()) {}
     };
     auto storage = make_storage(
         "",
