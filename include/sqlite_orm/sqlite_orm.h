@@ -6712,12 +6712,6 @@ namespace sqlite_orm {
             type obj;
         };
 
-        template<class T>
-        struct is_replace : std::false_type {};
-
-        template<class T>
-        struct is_replace<replace_t<T>> : std::true_type {};
-
         template<class It>
         struct insert_range_t {
             using iterator_type = It;
@@ -8352,11 +8346,6 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct expression_object_type;
 
-        /*template<class T>
-        struct expression_object_type<T, typename std::enable_if<is_replace<T>::value>::type> {
-            using type = typename std::decay<typename T::type>::type;
-        };*/
-
         template<class T>
         struct expression_object_type<update_t<T>> {
             using type = typename std::decay<T>::type;
@@ -9777,7 +9766,7 @@ namespace sqlite_orm {
             template<class O>
             void update(const O &o) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::update(o));
+                auto statement = this->prepare(sqlite_orm::update(std::ref(o)));
                 this->execute(statement);
             }
 
@@ -10372,7 +10361,7 @@ namespace sqlite_orm {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::insert(o, std::move(cols)));
+                auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
                 return int(this->execute(statement));
             }
 

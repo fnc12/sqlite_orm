@@ -172,12 +172,6 @@ namespace sqlite_orm {
             type obj;
         };
 
-        template<class T>
-        struct is_replace : std::false_type {};
-
-        template<class T>
-        struct is_replace<replace_t<T>> : std::true_type {};
-
         template<class It>
         struct insert_range_t {
             using iterator_type = It;

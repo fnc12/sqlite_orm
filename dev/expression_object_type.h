@@ -12,11 +12,6 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct expression_object_type;
 
-        /*template<class T>
-        struct expression_object_type<T, typename std::enable_if<is_replace<T>::value>::type> {
-            using type = typename std::decay<typename T::type>::type;
-        };*/
-
         template<class T>
         struct expression_object_type<update_t<T>> {
             using type = typename std::decay<T>::type;
