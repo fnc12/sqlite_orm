@@ -10,6 +10,7 @@ namespace sqlite_orm {
 
     template<typename T>
     struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
+        using element_type = T;
         static std::shared_ptr<T> make(const T &v) {
             return std::make_shared<T>(v);
         }
@@ -17,8 +18,19 @@ namespace sqlite_orm {
 
     template<typename T>
     struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
+        using element_type = T;
         static std::unique_ptr<T> make(const T &v) {
             return std::make_unique<T>(v);
         }
     };
+    
+#ifdef SQLITE_ENABLE_OPTIONAL_SUPPORT
+    template<typename T>
+    struct is_std_ptr<std::optional<T>> : std::true_type {
+        using element_type = T;
+        static std::optional<T> make(const T& v) {
+            return std::make_optional<T>(v);
+        }
+  };
+#endif
 }

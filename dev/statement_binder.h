@@ -94,7 +94,7 @@ namespace sqlite_orm {
 
     template<class V>
     struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename V::element_type;
+        using value_type = typename is_std_ptr<V>::element_type;
 
         int bind(sqlite3_stmt *stmt, int index, const V &value) {
             if(value) {

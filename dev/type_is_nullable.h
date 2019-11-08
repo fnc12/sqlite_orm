@@ -2,6 +2,9 @@
 
 #include <type_traits>  //  std::false_type, std::true_type
 #include <memory>  //  std::shared_ptr, std::unique_ptr
+#ifdef SQLITE_ENABLE_OPTIONAL_SUPPORT
+#include <optional>
+#endif
 
 namespace sqlite_orm {
 
@@ -38,5 +41,14 @@ namespace sqlite_orm {
             return static_cast<bool>(t);
         }
     };
+    
+#ifdef SQLITE_OPTIONAL_SUPPORT
+    template<class T>
+    struct type_is_nullable<std::optional<T>> : public std::true_type {
+        bool operator()(const std::optional<T> &t) const {
+            return static_cast<bool>(t);
+        }
+    };
+#endif
 
 }
