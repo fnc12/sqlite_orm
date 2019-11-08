@@ -146,20 +146,8 @@ namespace sqlite_orm {
             ids_type ids;
         };
 
-        template<class T, bool by_ref>
-        struct update_t;
-
         template<class T>
-        struct update_t<T, true> {
-            using type = T;
-
-            const type &obj;
-
-            update_t(decltype(obj) obj_) : obj(obj_) {}
-        };
-
-        template<class T>
-        struct update_t<T, false> {
+        struct update_t {
             using type = T;
 
             type obj;
@@ -278,18 +266,7 @@ namespace sqlite_orm {
      *  Usage: update(myUserInstance);
      */
     template<class T>
-    internal::update_t<T, true> update(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create an update by value statement.
-     *  Usage: update<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::update_t<typename B::type, false> update(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::update_t<T> update(T obj) {
         return {std::move(obj)};
     }
 
@@ -347,18 +324,6 @@ namespace sqlite_orm {
     internal::get_all_pointer_t<T, Args...> get_all_pointer(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
-    }
-
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
     }
 
     template<int N, class It>

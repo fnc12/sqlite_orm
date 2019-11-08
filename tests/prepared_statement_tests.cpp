@@ -686,7 +686,7 @@ TEST_CASE("Prepared") {
     SECTION("update") {
         User user{2, "Stromae"};
         SECTION("by ref") {
-            auto statement = storage.prepare(update(user));
+            auto statement = storage.prepare(update(std::ref(user)));
             REQUIRE(get<0>(statement) == user);
             std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
             REQUIRE(&get<0>(statement) == &user);
@@ -713,7 +713,7 @@ TEST_CASE("Prepared") {
             }
         }
         SECTION("by val") {
-            auto statement = storage.prepare(update<by_val<User>>(user));
+            auto statement = storage.prepare(update(user));
             testSerializing(statement);
             SECTION("nothing") {
                 //..

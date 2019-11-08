@@ -738,9 +738,11 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const update_t<T, by_ref> &upd, bool /*noTableName*/) const {
-                auto &impl = this->get_impl<T>();
+            template<class T>
+            std::string string_from_expression(const update_t<T> &upd, bool /*noTableName*/) const {
+                using expression_type = typename std::decay<decltype(upd)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "UPDATE '" << impl.table.name << "' SET ";
                 std::vector<std::string> setColumnNames;
@@ -2232,8 +2234,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<update_t<T, by_ref>> prepare(update_t<T, by_ref> upd) {
+            template<class T>
+            prepared_statement_t<update_t<T>> prepare(update_t<T> upd) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2551,14 +2553,17 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            void execute(const prepared_statement_t<update_t<T, by_ref>> &statement) {
+            template<class T>
+            void execute(const prepared_statement_t<update_t<T>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 auto con = this->get_connection();
                 auto db = con.get();
-                auto &impl = this->get_impl<T>();
+                auto &impl = this->get_impl<object_type>();
                 auto stmt = statement.stmt;
                 auto index = 1;
-                auto &o = statement.t.obj;
+                auto &o = get_object(statement.t);
                 sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, stmt, &index, db](auto &c) {
                     if(!c.template has<constraints::primary_key_t<>>()) {

@@ -6715,20 +6715,8 @@ namespace sqlite_orm {
             ids_type ids;
         };
 
-        template<class T, bool by_ref>
-        struct update_t;
-
         template<class T>
-        struct update_t<T, true> {
-            using type = T;
-
-            const type &obj;
-
-            update_t(decltype(obj) obj_) : obj(obj_) {}
-        };
-
-        template<class T>
-        struct update_t<T, false> {
+        struct update_t {
             using type = T;
 
             type obj;
@@ -6847,18 +6835,7 @@ namespace sqlite_orm {
      *  Usage: update(myUserInstance);
      */
     template<class T>
-    internal::update_t<T, true> update(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create an update by value statement.
-     *  Usage: update<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::update_t<typename B::type, false> update(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::update_t<T> update(T obj) {
         return {std::move(obj)};
     }
 
@@ -6916,18 +6893,6 @@ namespace sqlite_orm {
     internal::get_all_pointer_t<T, Args...> get_all_pointer(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
-    }
-
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
     }
 
     template<int N, class It>
@@ -8449,6 +8414,16 @@ namespace sqlite_orm {
         };*/
         
         template<class T>
+        struct expression_object_type<update_t<T>> {
+            using type = typename std::decay<T>::type;
+        };
+        
+        template<class T>
+        struct expression_object_type<update_t<std::reference_wrapper<T>>> {
+            using type = typename std::decay<T>::type;
+        };
+        
+        template<class T>
         struct expression_object_type<replace_t<T>> {
             using type = typename std::decay<T>::type;
         };
@@ -8529,6 +8504,16 @@ namespace sqlite_orm {
         template<class T>
         struct get_object_t<insert_t<T>> {
             using expression_type = insert_t<T>;
+            
+            template<class O>
+            auto &operator()(O &e) const {
+                return get_ref(e.obj);
+            }
+        };
+        
+        template<class T>
+        struct get_object_t<update_t<T>> {
+            using expression_type = update_t<T>;
             
             template<class O>
             auto &operator()(O &e) const {
@@ -9233,9 +9218,11 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const update_t<T, by_ref> &upd, bool /*noTableName*/) const {
-                auto &impl = this->get_impl<T>();
+            template<class T>
+            std::string string_from_expression(const update_t<T> &upd, bool /*noTableName*/) const {
+                using expression_type = typename std::decay<decltype(upd)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "UPDATE '" << impl.table.name << "' SET ";
                 std::vector<std::string> setColumnNames;
@@ -10727,8 +10714,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<update_t<T, by_ref>> prepare(update_t<T, by_ref> upd) {
+            template<class T>
+            prepared_statement_t<update_t<T>> prepare(update_t<T> upd) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -11046,14 +11033,17 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            void execute(const prepared_statement_t<update_t<T, by_ref>> &statement) {
+            template<class T>
+            void execute(const prepared_statement_t<update_t<T>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 auto con = this->get_connection();
                 auto db = con.get();
-                auto &impl = this->get_impl<T>();
+                auto &impl = this->get_impl<object_type>();
                 auto stmt = statement.stmt;
                 auto index = 1;
-                auto &o = statement.t.obj;
+                auto &o = get_object(statement.t);
                 sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, stmt, &index, db](auto &c) {
                     if(!c.template has<constraints::primary_key_t<>>()) {
@@ -11680,6 +11670,18 @@ namespace sqlite_orm {
 
 
 namespace sqlite_orm {
+    
+    template<int N, class T>
+    auto &get(internal::prepared_statement_t<internal::update_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
+    template<int N, class T>
+    const auto &get(const internal::prepared_statement_t<internal::update_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        return internal::get_ref(statement.t.obj);
+    }
     
     template<int N, class T, class... Cols>
     auto &get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>> &statement) {

@@ -9,6 +9,18 @@
 
 namespace sqlite_orm {
     
+    template<int N, class T>
+    auto &get(internal::prepared_statement_t<internal::update_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
+    template<int N, class T>
+    const auto &get(const internal::prepared_statement_t<internal::update_t<T>> &statement) {
+        static_assert(N == 0, "get<> works only with 0 argument for update statement");
+        return internal::get_ref(statement.t.obj);
+    }
+    
     template<int N, class T, class... Cols>
     auto &get(internal::prepared_statement_t<internal::insert_explicit<T, Cols...>> &statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
