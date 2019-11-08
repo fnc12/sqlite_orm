@@ -41,7 +41,7 @@ namespace sqlite_orm {
             return static_cast<bool>(t);
         }
     };
-    
+
 #ifdef SQLITE_OPTIONAL_SUPPORT
     template<class T>
     struct type_is_nullable<std::optional<T>> : public std::true_type {

@@ -23,14 +23,14 @@ namespace sqlite_orm {
             return std::make_unique<T>(v);
         }
     };
-    
+
 #ifdef SQLITE_ENABLE_OPTIONAL_SUPPORT
     template<typename T>
     struct is_std_ptr<std::optional<T>> : std::true_type {
         using element_type = T;
-        static std::optional<T> make(const T& v) {
+        static std::optional<T> make(const T &v) {
             return std::make_optional<T>(v);
         }
-  };
+    };
 #endif
 }
