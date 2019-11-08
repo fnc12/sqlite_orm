@@ -11,20 +11,7 @@
 
 namespace sqlite_orm {
 
-    template<class T>
-    struct by_val {
-        using type = T;
-
-        type obj;
-    };
-
     namespace internal {
-
-        template<class T>
-        struct is_by_val : std::false_type {};
-
-        template<class T>
-        struct is_by_val<by_val<T>> : std::true_type {};
 
         struct prepared_statement_base {
             sqlite3_stmt *stmt = nullptr;
