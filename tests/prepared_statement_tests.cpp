@@ -686,7 +686,7 @@ TEST_CASE("Prepared") {
     SECTION("update") {
         User user{2, "Stromae"};
         SECTION("by ref") {
-            auto statement = storage.prepare(update(user));
+            auto statement = storage.prepare(update(std::ref(user)));
             REQUIRE(get<0>(statement) == user);
             std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
             REQUIRE(&get<0>(statement) == &user);
@@ -713,7 +713,7 @@ TEST_CASE("Prepared") {
             }
         }
         SECTION("by val") {
-            auto statement = storage.prepare(update<by_val<User>>(user));
+            auto statement = storage.prepare(update(user));
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -780,7 +780,7 @@ TEST_CASE("Prepared") {
     SECTION("insert") {
         User user{0, "Stromae"};
         SECTION("by ref") {
-            auto statement = storage.prepare(insert(user));
+            auto statement = storage.prepare(insert(std::ref(user)));
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -816,7 +816,7 @@ TEST_CASE("Prepared") {
             }
         }
         SECTION("by val") {
-            auto statement = storage.prepare(insert<by_val<User>>(user));
+            auto statement = storage.prepare(insert(user));
             testSerializing(statement);
             SECTION("nothing") {
                 //..
@@ -871,7 +871,7 @@ TEST_CASE("Prepared") {
             expected.push_back(User{1, "Stromae"});
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
-            auto statement = storage.prepare(replace(user));
+            auto statement = storage.prepare(replace(std::ref(user)));
             storage.execute(statement);
 
             std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
@@ -884,7 +884,7 @@ TEST_CASE("Prepared") {
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
             expected.push_back(user);
-            auto statement = storage.prepare(replace(user));
+            auto statement = storage.prepare(replace(std::ref(user)));
             storage.execute(statement);
             auto rows = storage.get_all<User>();
             REQUIRE_THAT(rows, UnorderedEquals(expected));
@@ -903,7 +903,7 @@ TEST_CASE("Prepared") {
             expected.push_back(User{1, "Stromae"});
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
-            auto statement = storage.prepare(replace<by_val<User>>(user));
+            auto statement = storage.prepare(replace(user));
             REQUIRE(&user != &get<0>(statement));
             SECTION("assign with get") {
                 get<0>(statement) = {1, "Stromae"};
@@ -916,7 +916,7 @@ TEST_CASE("Prepared") {
             expected.push_back(User{2, "Shy'm"});
             expected.push_back(User{3, "Maître Gims"});
             expected.push_back(user);
-            auto statement = storage.prepare(replace<by_val<User>>(user));
+            auto statement = storage.prepare(replace(user));
             REQUIRE(&user != &get<0>(statement));
             storage.execute(statement);
             auto rows = storage.get_all<User>();
@@ -1036,7 +1036,7 @@ TEST_CASE("Prepared") {
         SECTION("user two columns") {
             User user{5, "Eminem"};
             SECTION("by ref") {
-                auto statement = storage.prepare(insert(user, columns(&User::id, &User::name)));
+                auto statement = storage.prepare(insert(std::ref(user), columns(&User::id, &User::name)));
                 std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
                 {
                     auto insertedId = storage.execute(statement);
@@ -1053,7 +1053,7 @@ TEST_CASE("Prepared") {
                 }
             }
             SECTION("by val") {
-                auto statement = storage.prepare(insert<by_val<User>>(user, columns(&User::id, &User::name)));
+                auto statement = storage.prepare(insert(user, columns(&User::id, &User::name)));
                 {
                     auto insertedId = storage.execute(statement);
                     REQUIRE(insertedId == user.id);

@@ -42,6 +42,7 @@
 #include "ast_iterator.h"
 #include "storage_base.h"
 #include "prepared_statement.h"
+#include "expression_object_type.h"
 
 namespace sqlite_orm {
 
@@ -737,9 +738,11 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const update_t<T, by_ref> &upd, bool /*noTableName*/) const {
-                auto &impl = this->get_impl<T>();
+            template<class T>
+            std::string string_from_expression(const update_t<T> &upd, bool /*noTableName*/) const {
+                using expression_type = typename std::decay<decltype(upd)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "UPDATE '" << impl.table.name << "' SET ";
                 std::vector<std::string> setColumnNames;
@@ -786,13 +789,14 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T, bool by_ref, class... Cols>
-            std::string string_from_expression(const insert_explicit<T, by_ref, Cols...> &ins,
-                                               bool /*noTableName*/) const {
+            template<class T, class... Cols>
+            std::string string_from_expression(const insert_explicit<T, Cols...> &ins, bool /*noTableName*/) const {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
-                this->assert_mapped_type<T>();
-                auto &impl = this->get_impl<T>();
+                using expression_type = typename std::decay<decltype(ins)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                this->assert_mapped_type<object_type>();
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "INSERT INTO '" << impl.table.name << "' ";
                 std::vector<std::string> columnNames;
@@ -828,9 +832,12 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const insert_t<T, by_ref> &ins, bool /*noTableName*/) const {
-                auto &impl = this->get_impl<T>();
+            template<class T>
+            std::string string_from_expression(const insert_t<T> &ins, bool /*noTableName*/) const {
+                using expression_type = typename std::decay<decltype(ins)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                this->assert_mapped_type<object_type>();
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "INSERT INTO '" << impl.table.name << "' ";
                 std::vector<std::string> columnNames;
@@ -875,9 +882,12 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T, bool by_ref>
-            std::string string_from_expression(const replace_t<T, by_ref> &rep, bool /*noTableName*/) const {
-                auto &impl = this->get_impl<T>();
+            template<class T>
+            std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
+                using expression_type = typename std::decay<decltype(rep)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                this->assert_mapped_type<object_type>();
+                auto &impl = this->get_impl<object_type>();
                 std::stringstream ss;
                 ss << "REPLACE INTO '" << impl.table.name << "' (";
                 auto columnNames = impl.table.column_names();
@@ -1344,7 +1354,7 @@ namespace sqlite_orm {
             template<class O>
             void update(const O &o) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::update(o));
+                auto statement = this->prepare(sqlite_orm::update(std::ref(o)));
                 this->execute(statement);
             }
 
@@ -1918,7 +1928,7 @@ namespace sqlite_orm {
             template<class O>
             void replace(const O &o) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::replace(o));
+                auto statement = this->prepare(sqlite_orm::replace(std::ref(o)));
                 this->execute(statement);
             }
 
@@ -1939,7 +1949,7 @@ namespace sqlite_orm {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::insert(o, std::move(cols)));
+                auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
                 return int(this->execute(statement));
             }
 
@@ -1951,7 +1961,7 @@ namespace sqlite_orm {
             template<class O>
             int insert(const O &o) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::insert(o));
+                auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
                 return int(this->execute(statement));
             }
 
@@ -2224,8 +2234,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<update_t<T, by_ref>> prepare(update_t<T, by_ref> upd) {
+            template<class T>
+            prepared_statement_t<update_t<T>> prepare(update_t<T> upd) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2252,8 +2262,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<insert_t<T, by_ref>> prepare(insert_t<T, by_ref> ins) {
+            template<class T>
+            prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2266,8 +2276,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            prepared_statement_t<replace_t<T, by_ref>> prepare(replace_t<T, by_ref> rep) {
+            template<class T>
+            prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2308,8 +2318,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref, class... Cols>
-            prepared_statement_t<insert_explicit<T, by_ref, Cols...>> prepare(insert_explicit<T, by_ref, Cols...> ins) {
+            template<class T, class... Cols>
+            prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -2322,13 +2332,16 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref, class... Cols>
-            int64 execute(const prepared_statement_t<insert_explicit<T, by_ref, Cols...>> &statement) {
+            template<class T, class... Cols>
+            int64 execute(const prepared_statement_t<insert_explicit<T, Cols...>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 auto index = 1;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
-                auto &impl = this->get_impl<T>();
+                auto &impl = this->get_impl<object_type>();
                 auto &o = statement.t.obj;
                 sqlite3_reset(stmt);
                 iterate_tuple(statement.t.columns.columns, [&o, &index, &stmt, &impl, db](auto &m) {
@@ -2433,14 +2446,17 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            void execute(const prepared_statement_t<replace_t<T, by_ref>> &statement) {
+            template<class T>
+            void execute(const prepared_statement_t<replace_t<T>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
-                auto &o = statement.t.obj;
-                auto &impl = this->get_impl<T>();
+                auto &o = get_object(statement.t);
+                auto &impl = this->get_impl<object_type>();
                 sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, &index, &stmt, db](auto &c) {
                     using column_type = typename std::decay<decltype(c)>::type;
@@ -2467,15 +2483,18 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            int64 execute(const prepared_statement_t<insert_t<T, by_ref>> &statement) {
+            template<class T>
+            int64 execute(const prepared_statement_t<insert_t<T>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 int64 res = 0;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto index = 1;
-                auto &impl = this->get_impl<T>();
-                auto &o = statement.t.obj;
+                auto &impl = this->get_impl<object_type>();
+                auto &o = get_object(statement.t);
                 auto compositeKeyColumnNames = impl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, &index, &stmt, &impl, &compositeKeyColumnNames, db](auto &c) {
@@ -2534,14 +2553,17 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, bool by_ref>
-            void execute(const prepared_statement_t<update_t<T, by_ref>> &statement) {
+            template<class T>
+            void execute(const prepared_statement_t<update_t<T>> &statement) {
+                using statement_type = typename std::decay<decltype(statement)>::type;
+                using expression_type = typename statement_type::expression_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 auto con = this->get_connection();
                 auto db = con.get();
-                auto &impl = this->get_impl<T>();
+                auto &impl = this->get_impl<object_type>();
                 auto stmt = statement.stmt;
                 auto index = 1;
-                auto &o = statement.t.obj;
+                auto &o = get_object(statement.t);
                 sqlite3_reset(stmt);
                 impl.table.for_each_column([&o, stmt, &index, db](auto &c) {
                     if(!c.template has<constraints::primary_key_t<>>()) {

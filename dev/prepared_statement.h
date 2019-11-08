@@ -11,20 +11,7 @@
 
 namespace sqlite_orm {
 
-    template<class T>
-    struct by_val {
-        using type = T;
-
-        type obj;
-    };
-
     namespace internal {
-
-        template<class T>
-        struct is_by_val : std::false_type {};
-
-        template<class T>
-        struct is_by_val<by_val<T>> : std::true_type {};
 
         struct prepared_statement_base {
             sqlite3_stmt *stmt = nullptr;
@@ -146,20 +133,8 @@ namespace sqlite_orm {
             ids_type ids;
         };
 
-        template<class T, bool by_ref>
-        struct update_t;
-
         template<class T>
-        struct update_t<T, true> {
-            using type = T;
-
-            const type &obj;
-
-            update_t(decltype(obj) obj_) : obj(obj_) {}
-        };
-
-        template<class T>
-        struct update_t<T, false> {
+        struct update_t {
             using type = T;
 
             type obj;
@@ -174,64 +149,24 @@ namespace sqlite_orm {
             ids_type ids;
         };
 
-        template<class T, bool by_ref>
-        struct insert_t;
-
         template<class T>
-        struct insert_t<T, true> {
-            using type = T;
-
-            const type &obj;
-
-            insert_t(decltype(obj) obj_) : obj(obj_) {}
-        };
-
-        template<class T>
-        struct insert_t<T, false> {
+        struct insert_t {
             using type = T;
 
             type obj;
         };
 
-        template<class T, bool by_ref, class... Cols>
-        struct insert_explicit;
-
         template<class T, class... Cols>
-        struct insert_explicit<T, true, Cols...> {
-            using type = T;
-            using columns_type = columns_t<Cols...>;
-
-            const type &obj;
-            columns_type columns;
-
-            insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
-        };
-
-        template<class T, class... Cols>
-        struct insert_explicit<T, false, Cols...> {
+        struct insert_explicit {
             using type = T;
             using columns_type = columns_t<Cols...>;
 
             type obj;
             columns_type columns;
-
-            insert_explicit(decltype(obj) obj_, decltype(columns) columns_) : obj(obj_), columns(std::move(columns_)) {}
-        };
-
-        template<class T, bool by_ref>
-        struct replace_t;
-
-        template<class T>
-        struct replace_t<T, true> {
-            using type = T;
-
-            const type &obj;
-
-            replace_t(decltype(obj) obj_) : obj(obj_) {}
         };
 
         template<class T>
-        struct replace_t<T, false> {
+        struct replace_t {
             using type = T;
 
             type obj;
@@ -275,18 +210,7 @@ namespace sqlite_orm {
      *  Usage: replace(myUserInstance);
      */
     template<class T>
-    internal::replace_t<T, true> replace(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create a replace by value statement
-     *  Usage: replace<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::replace_t<typename B::type, false> replace(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::replace_t<T> replace(T obj) {
         return {std::move(obj)};
     }
 
@@ -295,18 +219,7 @@ namespace sqlite_orm {
      *  Usage: insert(myUserInstance);
      */
     template<class T>
-    internal::insert_t<T, true> insert(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create an insert by value statement.
-     *  Usage: insert<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::insert_t<typename B::type, false> insert(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::insert_t<T> insert(T obj) {
         return {std::move(obj)};
     }
 
@@ -315,19 +228,7 @@ namespace sqlite_orm {
      *  Usage: insert(myUserInstance, columns(&User::id, &User::name));
      */
     template<class T, class... Cols>
-    internal::insert_explicit<T, true, Cols...> insert(const T &obj, internal::columns_t<Cols...> cols) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj, std::move(cols)};
-    }
-
-    /**
-     *  Create an explicit insert by value statement
-     *  Usage: insert<by_val<User>>(myUserInstance, s(&User::id, &User::name));
-     */
-    template<class B, class... Cols>
-    internal::insert_explicit<typename B::type, false, Cols...> insert(typename B::type obj,
-                                                                       internal::columns_t<Cols...> cols) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::insert_explicit<T, Cols...> insert(T obj, internal::columns_t<Cols...> cols) {
         return {std::move(obj), std::move(cols)};
     }
 
@@ -346,18 +247,7 @@ namespace sqlite_orm {
      *  Usage: update(myUserInstance);
      */
     template<class T>
-    internal::update_t<T, true> update(const T &obj) {
-        static_assert(!internal::is_by_val<T>::value, "by_val is not allowed here");
-        return {obj};
-    }
-
-    /**
-     *  Create an update by value statement.
-     *  Usage: update<by_val<User>>(myUserInstance);
-     */
-    template<class B>
-    internal::update_t<typename B::type, false> update(typename B::type obj) {
-        static_assert(internal::is_by_val<B>::value, "by_val expected");
+    internal::update_t<T> update(T obj) {
         return {std::move(obj)};
     }
 
@@ -415,54 +305,6 @@ namespace sqlite_orm {
     internal::get_all_pointer_t<T, Args...> get_all_pointer(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
-    }
-
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::update_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::insert_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    auto &get(internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref>
-    const auto &get(const internal::prepared_statement_t<internal::replace_t<T, by_ref>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref, class... Cols>
-    auto &get(internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
-    }
-
-    template<int N, class T, bool by_ref, class... Cols>
-    const auto &get(const internal::prepared_statement_t<internal::insert_explicit<T, by_ref, Cols...>> &statement) {
-        static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return statement.t.obj;
     }
 
     template<int N, class It>
