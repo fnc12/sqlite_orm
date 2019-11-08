@@ -1114,4 +1114,155 @@ TEST_CASE("Prepared") {
             }
         }
     }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    SECTION("get_all_optional") {
+        {
+            auto statement = storage.prepare(get_all_optional<User>());
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                auto rows = storage.execute(statement);
+                const std::vector<User> expected = {{1, "Team BS"}, {2, "Shy'm"}, {3, "Maître Gims"}};
+                REQUIRE(rows.size() == expected.size());
+                REQUIRE(*rows[0] == expected[0]);
+                REQUIRE(*rows[1] == expected[1]);
+                REQUIRE(*rows[2] == expected[2]);
+            }
+        }
+        {
+            auto statement = storage.prepare(get_all_optional<User>(where(lesser_than(&User::id, 3))));
+            using Statement = decltype(statement);
+            using Expression = Statement::expression_type;
+            using NodeTuple = internal::node_tuple<Expression>::type;
+            {
+                static_assert(std::tuple_size<NodeTuple>::value == 2, "");
+                {
+                    using Arg0 = std::tuple_element<0, NodeTuple>::type;
+                    static_assert(std::is_same<Arg0, decltype(&User::id)>::value, "");
+                }
+                {
+                    using Arg1 = std::tuple_element<1, NodeTuple>::type;
+                    static_assert(std::is_same<Arg1, int>::value, "");
+                }
+            }
+
+            using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
+            {
+                static_assert(std::tuple_size<BindTuple>::value == 1, "");
+                {
+                    using Arg0 = std::tuple_element<0, BindTuple>::type;
+                    static_assert(std::is_same<Arg0, int>::value, "");
+                }
+            }
+            REQUIRE(get<0>(statement) == 3);
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                {
+                    auto rows = storage.execute(statement);
+                    const std::vector<User> expected = {{1, "Team BS"}, {2, "Shy'm"}};
+                    REQUIRE(rows.size() == expected.size());
+                    REQUIRE(*rows[0] == expected[0]);
+                    REQUIRE(*rows[1] == expected[1]);
+                }
+                {
+                    get<0>(statement) = 2;
+                    REQUIRE(get<0>(statement) == 2);
+                    auto rows = storage.execute(statement);
+                    const std::vector<User> expected = {{1, "Team BS"}};
+                    REQUIRE(rows.size() == expected.size());
+                    REQUIRE(*rows[0] == expected[0]);
+                }
+            }
+        }
+    }
+    SECTION("get optional") {
+        {
+            auto statement = storage.prepare(get_optional<User>(1));
+            REQUIRE(get<0>(statement) == 1);
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                {
+                    auto user = storage.execute(statement);
+                    REQUIRE(user.has_value());
+                    REQUIRE(*user == User{1, "Team BS"});
+                }
+                get<0>(statement) = 2;
+                REQUIRE(get<0>(statement) == 2);
+                {
+                    auto user = storage.execute(statement);
+                    REQUIRE(user.has_value());
+                    REQUIRE(*user == User{2, "Shy'm"});
+                }
+            }
+        }
+        {
+            auto statement = storage.prepare(get_optional<User>(2));
+            REQUIRE(get<0>(statement) == 2);
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                auto user = storage.execute(statement);
+                REQUIRE(user.has_value());
+                REQUIRE(*user == User{2, "Shy'm"});
+            }
+        }
+        {
+            auto statement = storage.prepare(get_optional<User>(3));
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                auto user = storage.execute(statement);
+                REQUIRE(user.has_value());
+                REQUIRE(*user == User{3, "Maître Gims"});
+            }
+        }
+        {
+            auto statement = storage.prepare(get_optional<User>(4));
+            testSerializing(statement);
+            SECTION("nothing") {
+                //..
+            }
+            SECTION("execute") {
+                auto user = storage.execute(statement);
+                REQUIRE(!user.has_value());
+            }
+        }
+        {
+            storage.replace(Visit{1, /*userId*/ 2, 1000});
+            auto statement = storage.prepare(get_optional<UserAndVisit>(2, 1));
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
+            REQUIRE(get<0>(statement) == 2);
+            REQUIRE(get<1>(statement) == 1);
+            {
+                auto userAndVisit = storage.execute(statement);
+                REQUIRE(userAndVisit.has_value());
+                REQUIRE(userAndVisit->userId == 2);
+                REQUIRE(userAndVisit->visitId == 1);
+                REQUIRE(userAndVisit->description == "Glad you came");
+            }
+            {
+                get<0>(statement) = 3;
+                auto userAndVisit = storage.execute(statement);
+                REQUIRE(userAndVisit.has_value());
+                REQUIRE(userAndVisit->userId == 3);
+                REQUIRE(userAndVisit->visitId == 1);
+                REQUIRE(userAndVisit->description == "Shine on");
+            }
+        }
+    }
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }

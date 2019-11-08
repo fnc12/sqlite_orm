@@ -94,6 +94,17 @@ namespace sqlite_orm {
             conditions_type conditions;
         };
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T, class... Args>
+        struct get_all_optional_t {
+            using type = T;
+
+            using conditions_type = std::tuple<Args...>;
+
+            conditions_type conditions;
+        };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
         template<class T, class... Wargs>
         struct update_all_t;
 
@@ -132,6 +143,17 @@ namespace sqlite_orm {
 
             ids_type ids;
         };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T, class... Ids>
+        struct get_optional_t {
+            using type = T;
+
+            using ids_type = std::tuple<Ids...>;
+
+            ids_type ids;
+        };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class T>
         struct update_t {
@@ -271,6 +293,18 @@ namespace sqlite_orm {
         return {move(idsTuple)};
     }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    /**
+     *  Create a get optional statement.
+     *  Usage: get_optional<User>(5);
+     */
+    template<class T, class... Ids>
+    internal::get_optional_t<T, Ids...> get_optional(Ids... ids) {
+        std::tuple<Ids...> idsTuple{std::forward<Ids>(ids)...};
+        return {move(idsTuple)};
+    }
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
     /**
      *  Create a remove all statement.
      *  Usage: remove_all<User>(...);
@@ -306,6 +340,14 @@ namespace sqlite_orm {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T, class... Args>
+    internal::get_all_optional_t<T, Args...> get_all_optional(Args... args) {
+        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
+    }
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<int N, class It>
     auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
@@ -350,6 +392,18 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
         return std::get<N>(statement.t.ids);
     }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
+
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> &statement) {
+        return std::get<N>(statement.t.ids);
+    }
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<int N, class T, class... Ids>
     auto &get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
