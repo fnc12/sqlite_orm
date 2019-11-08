@@ -2,7 +2,7 @@
 
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
-#include <functional>   //  std::reference_wrapper
+#include <functional>  //  std::reference_wrapper
 
 #include "conditions.h"
 #include "operators.h"
@@ -24,7 +24,7 @@ namespace sqlite_orm {
         struct node_tuple<void, void> {
             using type = std::tuple<>;
         };
-        
+
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
             using type = typename node_tuple<T>::type;

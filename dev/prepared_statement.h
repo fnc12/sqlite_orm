@@ -168,13 +168,13 @@ namespace sqlite_orm {
         template<class T>
         struct replace_t {
             using type = T;
-            
+
             type obj;
         };
-        
+
         template<class T>
         struct is_replace : std::false_type {};
-        
+
         template<class T>
         struct is_replace<replace_t<T>> : std::true_type {};
 
