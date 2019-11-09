@@ -52,7 +52,7 @@ TEST_CASE("Prepared get all") {
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
     }
-    {   //  by var
+    {  //  by var
         auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 3))));
         {
             using Statement = decltype(statement);
@@ -81,7 +81,7 @@ TEST_CASE("Prepared get all") {
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
     }
-    {   //  by ref
+    {  //  by ref
         auto id = 3;
         auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, std::ref(id)))));
         {
@@ -123,17 +123,17 @@ TEST_CASE("Prepared get all") {
             }
         }
     }
-    {   //  by val
+    {  //  by val
         auto statement =
             storage.prepare(get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS"))));
         REQUIRE(get<0>(statement) == 1);
         REQUIRE(strcmp(get<1>(statement), "Team BS") == 0);
     }
-    {   //  by ref
+    {  //  by ref
         auto id = 1;
         std::string name = "Team BS";
-        auto statement =
-        storage.prepare(get_all<User>(where(lesser_or_equal(&User::id, std::ref(id)) and is_equal(&User::name, std::ref(name)))));
+        auto statement = storage.prepare(
+            get_all<User>(where(lesser_or_equal(&User::id, std::ref(id)) and is_equal(&User::name, std::ref(name)))));
         REQUIRE(get<0>(statement) == 1);
         REQUIRE(&get<0>(statement) == &id);
         REQUIRE(get<1>(statement) == "Team BS");
@@ -147,7 +147,7 @@ TEST_CASE("Prepared get all") {
         REQUIRE(strcmp(get<2>(statement), "*S") == 0);
     }
     {
-        {   //  by val
+        {  //  by val
             auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
             std::vector<User> expected;
             REQUIRE(get<0>(statement) == 2);
@@ -156,7 +156,7 @@ TEST_CASE("Prepared get all") {
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
-            
+
             get<0>(statement) = 3;
             REQUIRE(get<0>(statement) == 3);
             expected.push_back(User{2, "Shy'm"});
@@ -164,7 +164,7 @@ TEST_CASE("Prepared get all") {
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
-            
+
             get<0>(statement) = 4;
             REQUIRE(get<0>(statement) == 4);
             expected.push_back(User{3, "Maître Gims"});
@@ -172,7 +172,7 @@ TEST_CASE("Prepared get all") {
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals(expected));
             }
-            {   //  by ref
+            {  //  by ref
                 auto id = 2;
                 auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, std::ref(id)))));
                 std::vector<User> expected;
@@ -183,7 +183,7 @@ TEST_CASE("Prepared get all") {
                     auto rows = storage.execute(statement);
                     REQUIRE_THAT(rows, UnorderedEquals(expected));
                 }
-                
+
                 id = 3;
                 REQUIRE(get<0>(statement) == 3);
                 REQUIRE(&get<0>(statement) == &id);
@@ -192,7 +192,7 @@ TEST_CASE("Prepared get all") {
                     auto rows = storage.execute(statement);
                     REQUIRE_THAT(rows, UnorderedEquals(expected));
                 }
-                
+
                 id = 4;
                 REQUIRE(get<0>(statement) == 4);
                 REQUIRE(&get<0>(statement) == &id);

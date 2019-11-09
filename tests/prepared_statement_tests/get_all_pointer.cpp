@@ -55,7 +55,7 @@ TEST_CASE("Prepared get all pointer") {
             REQUIRE(*rows[2].get() == expected[2]);
         }
     }
-    {   //  by val
+    {  //  by val
         auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, 3))));
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
@@ -106,7 +106,7 @@ TEST_CASE("Prepared get all pointer") {
             }
         }
     }
-    {   //  by ref
+    {  //  by ref
         auto id = 3;
         auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, std::ref(id)))));
         using Statement = decltype(statement);
@@ -123,7 +123,7 @@ TEST_CASE("Prepared get all pointer") {
                 static_assert(std::is_same<Arg1, int>::value, "");
             }
         }
-        
+
         using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
         {
             static_assert(std::tuple_size<BindTuple>::value == 1, "");

@@ -37,7 +37,7 @@ TEST_CASE("Prepared remove") {
     storage.replace(UserAndVisit{2, 1, "Glad you came"});
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
-    SECTION("by val"){
+    SECTION("by val") {
         {
             auto statement = storage.prepare(remove<User>(1));
             std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
@@ -58,7 +58,7 @@ TEST_CASE("Prepared remove") {
             REQUIRE(storage.get_pointer<User>(2) == nullptr);
             REQUIRE(storage.get_pointer<User>(3) != nullptr);
             REQUIRE(storage.count<User>() == 1);
-            
+
             get<0>(statement) = 3;
             storage.execute(statement);
             REQUIRE(storage.get_pointer<User>(1) == nullptr);
@@ -77,7 +77,7 @@ TEST_CASE("Prepared remove") {
         REQUIRE(storage.get_pointer<User>(1) == nullptr);
         REQUIRE(storage.get_pointer<User>(2) != nullptr);
         REQUIRE(storage.get_pointer<User>(3) != nullptr);
-        
+
         id = 2;
         REQUIRE(get<0>(statement) == id);
         REQUIRE(&get<0>(statement) == &id);
@@ -85,7 +85,7 @@ TEST_CASE("Prepared remove") {
         REQUIRE(storage.get_pointer<User>(1) == nullptr);
         REQUIRE(storage.get_pointer<User>(2) == nullptr);
         REQUIRE(storage.get_pointer<User>(3) != nullptr);
-        
+
         get<0>(statement) = 3;
         REQUIRE(id == 3);
         REQUIRE(get<0>(statement) == 3);

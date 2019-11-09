@@ -37,7 +37,7 @@ TEST_CASE("Prepared update all") {
     storage.replace(UserAndVisit{2, 1, "Glad you came"});
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
-    {   //  by val
+    {  //  by val
         auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, "_")))));
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
@@ -74,8 +74,8 @@ TEST_CASE("Prepared update all") {
                 expected.push_back("Maître Gims_123");
                 REQUIRE_THAT(names, UnorderedEquals(expected));
             }
-            auto statement =
-            storage.prepare(update_all(set(c(&User::name) = c(&User::name) || "!"), where(like(&User::name, "T%"))));
+            auto statement = storage.prepare(
+                update_all(set(c(&User::name) = c(&User::name) || "!"), where(like(&User::name, "T%"))));
             REQUIRE(strcmp(get<0>(statement), "!") == 0);
             REQUIRE(strcmp(get<1>(statement), "T%") == 0);
             storage.execute(statement);
@@ -102,7 +102,7 @@ TEST_CASE("Prepared update all") {
             }
         }
     }
-    {   //  by ref
+    {  //  by ref
         std::string str = "_";
         auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, std::ref(str))))));
         using Statement = decltype(statement);
@@ -144,8 +144,8 @@ TEST_CASE("Prepared update all") {
             }
             std::string name = "!";
             std::string pattern = "T%";
-            auto statement =
-            storage.prepare(update_all(set(c(&User::name) = c(&User::name) || std::ref(name)), where(like(&User::name, std::ref(pattern)))));
+            auto statement = storage.prepare(update_all(set(c(&User::name) = c(&User::name) || std::ref(name)),
+                                                        where(like(&User::name, std::ref(pattern)))));
             REQUIRE(get<0>(statement) == "!");
             REQUIRE(&get<0>(statement) == &name);
             REQUIRE(get<1>(statement) == "T%");

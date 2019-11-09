@@ -2,7 +2,7 @@
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay
 #include <tuple>  //  std::tuple
-#include <functional>   //  std::reference_wrapper
+#include <functional>  //  std::reference_wrapper
 
 #include "core_functions.h"
 #include "aggregate_functions.h"
@@ -223,7 +223,7 @@ namespace sqlite_orm {
         struct column_result_t<St, const char *, void> {
             using type = std::string;
         };
-        
+
         template<class St>
         struct column_result_t<St, std::string, void> {
             using type = std::string;
@@ -261,7 +261,7 @@ namespace sqlite_orm {
         struct column_result_t<St, conditions::negated_condition_t<C>, void> {
             using type = bool;
         };
-        
+
         template<class St, class T>
         struct column_result_t<St, std::reference_wrapper<T>, void> : column_result_t<St, T, void> {};
     }
