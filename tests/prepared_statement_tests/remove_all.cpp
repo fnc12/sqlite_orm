@@ -50,63 +50,133 @@ TEST_CASE("Prepared remove all") {
     }
     SECTION("With conditions") {
         SECTION("1") {
-            auto statement = storage.prepare(remove_all<User>(where(is_equal(&User::id, 2))));
-            REQUIRE(get<0>(statement) == 2);
-            testSerializing(statement);
-            storage.execute(statement);
-            REQUIRE(storage.count<User>() == 2);
-            {
-                auto ids = storage.select(&User::id);
-                decltype(ids) expected;
-                expected.push_back(1);
-                expected.push_back(3);
-                REQUIRE_THAT(ids, UnorderedEquals(expected));
+            SECTION("by val") {
+                auto statement = storage.prepare(remove_all<User>(where(is_equal(&User::id, 2))));
+                REQUIRE(get<0>(statement) == 2);
+                testSerializing(statement);
+                storage.execute(statement);
+                REQUIRE(storage.count<User>() == 2);
+                {
+                    auto ids = storage.select(&User::id);
+                    decltype(ids) expected;
+                    expected.push_back(1);
+                    expected.push_back(3);
+                    REQUIRE_THAT(ids, UnorderedEquals(expected));
+                }
+                get<0>(statement) = 1;
+                REQUIRE(get<0>(statement) == 1);
+                storage.execute(statement);
+                REQUIRE(storage.count<User>() == 1);
+                
+                get<0>(statement) = 3;
+                REQUIRE(get<0>(statement) == 3);
+                storage.execute(statement);
+                REQUIRE(storage.count<User>() == 0);
             }
-            get<0>(statement) = 1;
-            REQUIRE(get<0>(statement) == 1);
-            storage.execute(statement);
-            REQUIRE(storage.count<User>() == 1);
-
-            get<0>(statement) = 3;
-            REQUIRE(get<0>(statement) == 3);
-            storage.execute(statement);
-            REQUIRE(storage.count<User>() == 0);
+            SECTION("by ref") {
+                auto id = 2;
+                auto statement = storage.prepare(remove_all<User>(where(is_equal(&User::id, std::ref(id)))));
+                REQUIRE(get<0>(statement) == 2);
+                REQUIRE(&get<0>(statement) == &id);
+                testSerializing(statement);
+                storage.execute(statement);
+                REQUIRE(storage.count<User>() == 2);
+                {
+                    auto ids = storage.select(&User::id);
+                    decltype(ids) expected;
+                    expected.push_back(1);
+                    expected.push_back(3);
+                    REQUIRE_THAT(ids, UnorderedEquals(expected));
+                }
+                id = 1;
+                REQUIRE(get<0>(statement) == 1);
+                storage.execute(statement);
+                REQUIRE(storage.count<User>() == 1);
+                
+                id = 3;
+                REQUIRE(get<0>(statement) == 3);
+                storage.execute(statement);
+                REQUIRE(storage.count<User>() == 0);
+            }
         }
         SECTION("2") {
-            auto statement =
+            SECTION("by val") {
+                auto statement =
                 storage.prepare(remove_all<User>(where(is_equal(&User::name, "Shy'm") and lesser_than(&User::id, 10))));
-            REQUIRE(strcmp(get<0>(statement), "Shy'm") == 0);
-            REQUIRE(get<1>(statement) == 10);
-            testSerializing(statement);
-            storage.execute(statement);
-            {
-                auto ids = storage.select(&User::id);
-                decltype(ids) expected;
-                expected.push_back(1);
-                expected.push_back(3);
-                REQUIRE_THAT(ids, UnorderedEquals(expected));
+                REQUIRE(strcmp(get<0>(statement), "Shy'm") == 0);
+                REQUIRE(get<1>(statement) == 10);
+                testSerializing(statement);
+                storage.execute(statement);
+                {
+                    auto ids = storage.select(&User::id);
+                    decltype(ids) expected;
+                    expected.push_back(1);
+                    expected.push_back(3);
+                    REQUIRE_THAT(ids, UnorderedEquals(expected));
+                }
+                get<0>(statement) = "Team BS";
+                get<1>(statement) = 20.0;  //  assign double to int
+                REQUIRE(strcmp(get<0>(statement), "Team BS") == 0);
+                REQUIRE(get<1>(statement) == 20);
+                storage.execute(statement);
+                {
+                    auto ids = storage.select(&User::id);
+                    decltype(ids) expected;
+                    expected.push_back(3);
+                    REQUIRE_THAT(ids, UnorderedEquals(expected));
+                }
+                get<0>(statement) = "C Bool";
+                get<1>(statement) = 30.0f;
+                REQUIRE(strcmp(get<0>(statement), "C Bool") == 0);
+                REQUIRE(get<1>(statement) == 30);
+                storage.execute(statement);
+                {
+                    auto ids = storage.select(&User::id);
+                    decltype(ids) expected;
+                    expected.push_back(3);
+                    REQUIRE_THAT(ids, UnorderedEquals(expected));
+                }
             }
-            get<0>(statement) = "Team BS";
-            get<1>(statement) = 20.0;  //  assign double to int
-            REQUIRE(strcmp(get<0>(statement), "Team BS") == 0);
-            REQUIRE(get<1>(statement) == 20);
-            storage.execute(statement);
-            {
-                auto ids = storage.select(&User::id);
-                decltype(ids) expected;
-                expected.push_back(3);
-                REQUIRE_THAT(ids, UnorderedEquals(expected));
-            }
-            get<0>(statement) = "C Bool";
-            get<1>(statement) = 30.0f;
-            REQUIRE(strcmp(get<0>(statement), "C Bool") == 0);
-            REQUIRE(get<1>(statement) == 30);
-            storage.execute(statement);
-            {
-                auto ids = storage.select(&User::id);
-                decltype(ids) expected;
-                expected.push_back(3);
-                REQUIRE_THAT(ids, UnorderedEquals(expected));
+            SECTION("by ref") {
+                std::string name = "Shy'm";
+                auto id = 10;
+                auto statement =
+                storage.prepare(remove_all<User>(where(is_equal(&User::name, std::ref(name)) and lesser_than(&User::id, std::ref(id)))));
+                REQUIRE(get<0>(statement) == "Shy'm");
+                REQUIRE(&get<0>(statement) == &name);
+                REQUIRE(get<1>(statement) == 10);
+                REQUIRE(&get<1>(statement) == &id);
+                testSerializing(statement);
+                storage.execute(statement);
+                {
+                    auto ids = storage.select(&User::id);
+                    decltype(ids) expected;
+                    expected.push_back(1);
+                    expected.push_back(3);
+                    REQUIRE_THAT(ids, UnorderedEquals(expected));
+                }
+                name = "Team BS";
+                id = 20.0;  //  assign double to int
+                REQUIRE(get<0>(statement) == "Team BS");
+                REQUIRE(get<1>(statement) == 20);
+                storage.execute(statement);
+                {
+                    auto ids = storage.select(&User::id);
+                    decltype(ids) expected;
+                    expected.push_back(3);
+                    REQUIRE_THAT(ids, UnorderedEquals(expected));
+                }
+                name = "C Bool";
+                id = 30.0f;
+                REQUIRE(get<0>(statement) == "C Bool");
+                REQUIRE(get<1>(statement) == 30);
+                storage.execute(statement);
+                {
+                    auto ids = storage.select(&User::id);
+                    decltype(ids) expected;
+                    expected.push_back(3);
+                    REQUIRE_THAT(ids, UnorderedEquals(expected));
+                }
             }
         }
     }
