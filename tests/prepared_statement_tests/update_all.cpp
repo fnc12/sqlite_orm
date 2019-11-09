@@ -1,0 +1,103 @@
+#include <sqlite_orm/sqlite_orm.h>
+#include <catch2/catch.hpp>
+
+#include "prepared_common.h"
+
+using namespace sqlite_orm;
+
+TEST_CASE("Prepared update all") {
+    using namespace PreparedStatementTests;
+    using Catch::Matchers::UnorderedEquals;
+
+    const int defaultVisitTime = 50;
+
+    auto filename = "prepared.sqlite";
+    remove(filename);
+    auto storage = make_storage(filename,
+                                make_index("user_id_index", &User::id),
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key(), autoincrement()),
+                                           make_column("name", &User::name)),
+                                make_table("visits",
+                                           make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                           make_column("user_id", &Visit::userId),
+                                           make_column("time", &Visit::time, default_value(defaultVisitTime)),
+                                           foreign_key(&Visit::userId).references(&User::id)),
+                                make_table("users_and_visits",
+                                           make_column("user_id", &UserAndVisit::userId),
+                                           make_column("visit_id", &UserAndVisit::visitId),
+                                           make_column("description", &UserAndVisit::description),
+                                           primary_key(&UserAndVisit::userId, &UserAndVisit::visitId)));
+    storage.sync_schema();
+
+    storage.replace(User{1, "Team BS"});
+    storage.replace(User{2, "Shy'm"});
+    storage.replace(User{3, "Maître Gims"});
+
+    storage.replace(UserAndVisit{2, 1, "Glad you came"});
+    storage.replace(UserAndVisit{3, 1, "Shine on"});
+
+    auto statement = storage.prepare(update_all(set(assign(&User::name, conc(&User::name, "_")))));
+    using Statement = decltype(statement);
+    using Expression = Statement::expression_type;
+    using SetTuple = internal::node_tuple<Expression>::set_tuple;
+    using SetBind = internal::bindable_filter<SetTuple>::type;
+    static_assert(std::tuple_size<SetBind>::value == 1, "");
+    {
+        using Arg0 = std::tuple_element<0, SetBind>::type;
+        static_assert(std::is_same<Arg0, const char *>::value, "");
+    }
+    REQUIRE(strcmp(get<0>(statement), "_") == 0);
+    testSerializing(statement);
+    SECTION("nothing") {
+        //..
+    }
+    SECTION("execute") {
+        storage.execute(statement);
+        {
+            auto names = storage.select(&User::name);
+            std::vector<decltype(User::name)> expected;
+            expected.push_back("Team BS_");
+            expected.push_back("Shy'm_");
+            expected.push_back("Maître Gims_");
+            REQUIRE_THAT(names, UnorderedEquals(expected));
+        }
+        get<0>(statement) = "123";
+        storage.execute(statement);
+        REQUIRE(strcmp(get<0>(statement), "123") == 0);
+        {
+            auto names = storage.select(&User::name);
+            std::vector<decltype(User::name)> expected;
+            expected.push_back("Team BS_123");
+            expected.push_back("Shy'm_123");
+            expected.push_back("Maître Gims_123");
+            REQUIRE_THAT(names, UnorderedEquals(expected));
+        }
+        auto statement =
+            storage.prepare(update_all(set(c(&User::name) = c(&User::name) || "!"), where(like(&User::name, "T%"))));
+        REQUIRE(strcmp(get<0>(statement), "!") == 0);
+        REQUIRE(strcmp(get<1>(statement), "T%") == 0);
+        storage.execute(statement);
+        {
+            auto names = storage.select(&User::name);
+            std::vector<decltype(User::name)> expected;
+            expected.push_back("Team BS_123!");
+            expected.push_back("Shy'm_123");
+            expected.push_back("Maître Gims_123");
+            REQUIRE_THAT(names, UnorderedEquals(expected));
+        }
+        get<0>(statement) = "@";
+        get<1>(statement) = "Sh%";
+        REQUIRE(strcmp(get<0>(statement), "@") == 0);
+        REQUIRE(strcmp(get<1>(statement), "Sh%") == 0);
+        storage.execute(statement);
+        {
+            auto names = storage.select(&User::name);
+            std::vector<decltype(User::name)> expected;
+            expected.push_back("Team BS_123!");
+            expected.push_back("Shy'm_123@");
+            expected.push_back("Maître Gims_123");
+            REQUIRE_THAT(names, UnorderedEquals(expected));
+        }
+    }
+}
