@@ -1513,65 +1513,14 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
 #include <memory>  //  std::shared_ptr, std::unique_ptr
-
-// #include "is_std_ptr.h"
-
-
-namespace sqlite_orm {
-
-    /**
-     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
-     */
-    template<typename T>
-    struct is_std_ptr : std::false_type {};
-
-    template<typename T>
-    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
-        using container_type = typename std::shared_ptr<T>;
-        using element_type = T;
-
-        static std::shared_ptr<T> make(const T &v) {
-            return std::make_shared<T>(v);
-        }
-        static bool isEmpty(const std::shared_ptr<T> &v) {
-            return static_cast<bool>(v);
-        }
-    };
-
-    template<typename T>
-    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
-        using container_type = typename std::unique_ptr<T>;
-        using element_type = T;
-
-        static std::unique_ptr<T> make(const T &v) {
-            return std::make_unique<T>(v);
-        }
-        static bool isEmpty(const std::unique_ptr<T> &v) {
-            return static_cast<bool>(v);
-        }
-    };
-
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<typename T>
-    struct is_std_ptr<std::optional<T>> : std::true_type {
-        using container_type = typename std::optional<T>;
-        using element_type = T;
-
-        static std::optional<T> make(const T &v) {
-            return std::make_optional<T>(v);
-        }
-        static bool isEmpty(const std::optional<T> &v) {
-            return v.has_value();
-        }
-    };
+#include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-}
 
 namespace sqlite_orm {
 
@@ -1579,7 +1528,7 @@ namespace sqlite_orm {
      *  Is used to print members mapped to objects in storage_t::dump member function.
      *  Other developers can create own specialization to map custom types
      */
-    template<class T, typename Enable = void>
+    template<class T>
     struct field_printer {
         std::string operator()(const T &t) const {
             std::stringstream stream;
@@ -1651,17 +1600,39 @@ namespace sqlite_orm {
     };
 
     template<class T>
-    struct field_printer<T, std::enable_if_t<is_std_ptr<T>::value>> {
-        using container_type = typename is_std_ptr<T>::container_type;
-
-        std::string operator()(const container_type &t) const {
-            if(is_std_ptr<T>::isEmpty(t)) {
+    struct field_printer<std::shared_ptr<T>> {
+        std::string operator()(const std::shared_ptr<T> &t) const {
+            if(t) {
                 return field_printer<T>()(*t);
             } else {
                 return field_printer<std::nullptr_t>()(nullptr);
             }
         }
     };
+
+    template<class T>
+    struct field_printer<std::unique_ptr<T>> {
+        std::string operator()(const std::unique_ptr<T> &t) const {
+            if(t) {
+                return field_printer<T>()(*t);
+            } else {
+                return field_printer<std::nullptr_t>()(nullptr);
+            }
+        }
+    };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct field_printer<std::optional<T>> {
+        std::string operator()(const std::optional<T> &t) const {
+            if(t.has_value()) {
+                return field_printer<T>()(*t);
+            } else {
+                return field_printer<std::nullptr_t>()(nullptr);
+            }
+        }
+    };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
 #pragma once
 
@@ -4333,6 +4304,57 @@ namespace sqlite_orm {
 #include <utility>  //  std::declval
 
 // #include "is_std_ptr.h"
+
+
+namespace sqlite_orm {
+
+    /**
+     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
+     */
+    template<typename T>
+    struct is_std_ptr : std::false_type {};
+
+    template<typename T>
+    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
+        using container_type = typename std::shared_ptr<T>;
+        using element_type = T;
+
+        static std::shared_ptr<T> make(const T &v) {
+            return std::make_shared<T>(v);
+        }
+        static bool isEmpty(const std::shared_ptr<T> &v) {
+            return static_cast<bool>(v);
+        }
+    };
+
+    template<typename T>
+    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
+        using container_type = typename std::unique_ptr<T>;
+        using element_type = T;
+
+        static std::unique_ptr<T> make(const T &v) {
+            return std::make_unique<T>(v);
+        }
+        static bool isEmpty(const std::unique_ptr<T> &v) {
+            return static_cast<bool>(v);
+        }
+    };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<typename T>
+    struct is_std_ptr<std::optional<T>> : std::true_type {
+        using container_type = typename std::optional<T>;
+        using element_type = T;
+
+        static std::optional<T> make(const T &v) {
+            return std::make_optional<T>(v);
+        }
+        static bool isEmpty(const std::optional<T> &v) {
+            return v.has_value();
+        }
+    };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+}
 
 
 namespace sqlite_orm {
