@@ -1,18 +1,20 @@
 #pragma once
 
+#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 
+#include "is_std_ptr.h"
 namespace sqlite_orm {
 
     /**
      *  Is used to print members mapped to objects in storage_t::dump member function.
      *  Other developers can create own specialization to map custom types
      */
-    template<class T>
+    template<class T, typename Enable = void>
     struct field_printer {
         std::string operator()(const T &t) const {
             std::stringstream stream;
@@ -84,20 +86,11 @@ namespace sqlite_orm {
     };
 
     template<class T>
-    struct field_printer<std::shared_ptr<T>> {
-        std::string operator()(const std::shared_ptr<T> &t) const {
-            if(t) {
-                return field_printer<T>()(*t);
-            } else {
-                return field_printer<std::nullptr_t>()(nullptr);
-            }
-        }
-    };
+    struct field_printer<T, std::enable_if_t<is_std_ptr<T>::value>> {
+        using container_type = typename is_std_ptr<T>::container_type;
 
-    template<class T>
-    struct field_printer<std::unique_ptr<T>> {
-        std::string operator()(const std::unique_ptr<T> &t) const {
-            if(t) {
+        std::string operator()(const container_type &t) const {
+            if(is_std_ptr<T>::isEmpty(t)) {
                 return field_printer<T>()(*t);
             } else {
                 return field_printer<std::nullptr_t>()(nullptr);

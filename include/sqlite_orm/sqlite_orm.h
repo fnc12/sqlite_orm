@@ -346,6 +346,9 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 namespace sqlite_orm {
 
@@ -440,6 +443,11 @@ namespace sqlite_orm {
 
     template<class T>
     struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct type_printer<std::optional<T>> : public type_printer<T> {};
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
     struct type_printer<std::vector<char>> : public blob_printer {};
@@ -883,6 +891,9 @@ namespace sqlite_orm {
 
 #include <type_traits>  //  std::false_type, std::true_type
 #include <memory>  //  std::shared_ptr, std::unique_ptr
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 namespace sqlite_orm {
 
@@ -919,6 +930,18 @@ namespace sqlite_orm {
             return static_cast<bool>(t);
         }
     };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    /**
+     *  This is a specialization for std::optional. std::optional is nullable.
+     */
+    template<class T>
+    struct type_is_nullable<std::optional<T>> : public std::true_type {
+        bool operator()(const std::optional<T> &t) const {
+            return t.has_value();
+        }
+    };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 }
 #pragma once
@@ -1490,11 +1513,65 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
 #include <memory>  //  std::shared_ptr, std::unique_ptr
+
+// #include "is_std_ptr.h"
+
+
+namespace sqlite_orm {
+
+    /**
+     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
+     */
+    template<typename T>
+    struct is_std_ptr : std::false_type {};
+
+    template<typename T>
+    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
+        using container_type = typename std::shared_ptr<T>;
+        using element_type = T;
+
+        static std::shared_ptr<T> make(const T &v) {
+            return std::make_shared<T>(v);
+        }
+        static bool isEmpty(const std::shared_ptr<T> &v) {
+            return static_cast<bool>(v);
+        }
+    };
+
+    template<typename T>
+    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
+        using container_type = typename std::unique_ptr<T>;
+        using element_type = T;
+
+        static std::unique_ptr<T> make(const T &v) {
+            return std::make_unique<T>(v);
+        }
+        static bool isEmpty(const std::unique_ptr<T> &v) {
+            return static_cast<bool>(v);
+        }
+    };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<typename T>
+    struct is_std_ptr<std::optional<T>> : std::true_type {
+        using container_type = typename std::optional<T>;
+        using element_type = T;
+
+        static std::optional<T> make(const T &v) {
+            return std::make_optional<T>(v);
+        }
+        static bool isEmpty(const std::optional<T> &v) {
+            return v.has_value();
+        }
+    };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+}
 
 namespace sqlite_orm {
 
@@ -1502,7 +1579,7 @@ namespace sqlite_orm {
      *  Is used to print members mapped to objects in storage_t::dump member function.
      *  Other developers can create own specialization to map custom types
      */
-    template<class T>
+    template<class T, typename Enable = void>
     struct field_printer {
         std::string operator()(const T &t) const {
             std::stringstream stream;
@@ -1574,20 +1651,11 @@ namespace sqlite_orm {
     };
 
     template<class T>
-    struct field_printer<std::shared_ptr<T>> {
-        std::string operator()(const std::shared_ptr<T> &t) const {
-            if(t) {
-                return field_printer<T>()(*t);
-            } else {
-                return field_printer<std::nullptr_t>()(nullptr);
-            }
-        }
-    };
+    struct field_printer<T, std::enable_if_t<is_std_ptr<T>::value>> {
+        using container_type = typename is_std_ptr<T>::container_type;
 
-    template<class T>
-    struct field_printer<std::unique_ptr<T>> {
-        std::string operator()(const std::unique_ptr<T> &t) const {
-            if(t) {
+        std::string operator()(const container_type &t) const {
+            if(is_std_ptr<T>::isEmpty(t)) {
                 return field_printer<T>()(*t);
             } else {
                 return field_printer<std::nullptr_t>()(nullptr);
@@ -4254,30 +4322,6 @@ namespace sqlite_orm {
 }
 #pragma once
 
-namespace sqlite_orm {
-
-    /**
-     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
-     */
-    template<typename T>
-    struct is_std_ptr : std::false_type {};
-
-    template<typename T>
-    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
-        static std::shared_ptr<T> make(const T &v) {
-            return std::make_shared<T>(v);
-        }
-    };
-
-    template<typename T>
-    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
-        static std::unique_ptr<T> make(const T &v) {
-            return std::make_unique<T>(v);
-        }
-    };
-}
-#pragma once
-
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
 #include <string>  //  std::string, std::wstring
@@ -4373,7 +4417,7 @@ namespace sqlite_orm {
 
     template<class V>
     struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename V::element_type;
+        using value_type = typename is_std_ptr<V>::element_type;
 
         int bind(sqlite3_stmt *stmt, int index, const V &value) {
             if(value) {
@@ -4679,7 +4723,7 @@ namespace sqlite_orm {
 
     template<class V>
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename V::element_type;
+        using value_type = typename is_std_ptr<V>::element_type;
 
         V extract(const char *row_value) {
             if(row_value) {

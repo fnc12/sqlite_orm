@@ -26,7 +26,6 @@
 		"dev/table_info.h",
 		"dev/statement_finalizer.h",
 		"dev/arithmetic_tag.h",
-		"dev/is_std_ptr.h",
 		"dev/statement_binder.h",
 		"dev/row_extractor.h",
 		"dev/sync_schema_result.h",

@@ -3,6 +3,9 @@
 #include <numeric>
 #include <algorithm>  //  std::count_if
 #include <iostream>
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 using namespace sqlite_orm;
 
@@ -132,6 +135,41 @@ TEST_CASE("Unique ptr in update") {
         REQUIRE(storage.count<User>(where(is_not_null(&User::name))) == 0);
     }
 }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+TEST_CASE("Optional in update") {
+
+    struct User {
+        int id = 0;
+        std::optional<int> carYear;  // will be empty if user takes the bus.
+    };
+
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("car_year", &User::carYear)));
+    storage.sync_schema();
+
+    storage.insert(User{});
+    storage.insert(User{});
+    storage.insert(User{});
+    storage.insert(User{0, 2006});
+
+    REQUIRE(storage.count<User>(where(is_not_null(&User::carYear))) == 1);
+
+    {
+        storage.update_all(set(assign(&User::carYear, std::optional<int>{})));
+        REQUIRE(storage.count<User>(where(is_not_null(&User::carYear))) == 0);
+    }
+    {
+        storage.update_all(set(assign(&User::carYear, 1994)));
+        REQUIRE(storage.count<User>(where(is_null(&User::carYear))) == 0);
+    }
+    {
+        storage.update_all(set(assign(&User::carYear, nullptr)));
+        REQUIRE(storage.count<User>(where(is_not_null(&User::carYear))) == 0);
+    }
+}
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 TEST_CASE("Join") {
 
@@ -623,3 +661,36 @@ TEST_CASE("Different getters and setters") {
         REQUIRE(total == storage2.total(&User::setIdByRef));
     }
 }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+TEST_CASE("Dump") {
+
+    struct User {
+        int id = 0;
+        std::optional<int> carYear;  // will be empty if user takes the bus.
+    };
+
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("car_year", &User::carYear)));
+    storage.sync_schema();
+
+    auto userId_1 = storage.insert(User{0, {}});
+    auto userId_2 = storage.insert(User{0, 2006});
+
+    REQUIRE(storage.count<User>(where(is_not_null(&User::carYear))) == 1);
+
+    auto rows = storage.select(&User::carYear, where(is_equal(&User::id, userId_1)));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(!rows.front().has_value());
+
+    auto allUsers = storage.get_all<User>();
+    REQUIRE(allUsers.size() == 2);
+
+    const std::string dumpUser1 = storage.dump(allUsers[0]);
+    REQUIRE(dumpUser1 == std::string{"{ id : '1', car_year : 'null' }"});
+
+    const std::string dumpUser2 = storage.dump(allUsers[1]);
+    REQUIRE(dumpUser2 == std::string{"{ id : '2', car_year : '2006' }"});
+}
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED

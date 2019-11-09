@@ -1,5 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 using namespace sqlite_orm;
 
@@ -468,6 +471,11 @@ TEST_CASE("Type parsing") {
     REQUIRE(type_is_nullable<std::string>::value == false);
     REQUIRE(type_is_nullable<std::unique_ptr<int>>::value == true);
     REQUIRE(type_is_nullable<std::unique_ptr<std::string>>::value == true);
-    REQUIRE(type_is_nullable<std::unique_ptr<int>>::value == true);
-    REQUIRE(type_is_nullable<std::unique_ptr<std::string>>::value == true);
+    REQUIRE(type_is_nullable<std::shared_ptr<int>>::value == true);
+    REQUIRE(type_is_nullable<std::shared_ptr<std::string>>::value == true);
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    REQUIRE(type_is_nullable<std::optional<int>>::value == true);
+    REQUIRE(type_is_nullable<std::optional<std::string>>::value == true);
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
