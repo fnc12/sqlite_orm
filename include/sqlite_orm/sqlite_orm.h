@@ -6910,16 +6910,6 @@ namespace sqlite_orm {
     const auto &get(const internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
         return std::get<N>(statement.t.ids);
     }
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
 }
 
 
@@ -11081,7 +11071,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto index = 1;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v) {
+                iterate_ast(statement.t.ids, [stmt, &index, db](auto &v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -11093,8 +11083,8 @@ namespace sqlite_orm {
                     case SQLITE_ROW: {
                         auto res = std::make_unique<T>();
                         index = 0;
-                        impl.table.for_each_column([&index, &res, stmt](auto c) {
-                            using field_type = typename decltype(c)::field_type;
+                        impl.table.for_each_column([&index, &res, stmt](auto &c) {
+                            using field_type = typename std::decay<decltype(c)>::type::field_type;
                             auto value = row_extractor<field_type>().extract(stmt, index++);
                             if(c.member_pointer) {
                                 (*res).*c.member_pointer = std::move(value);
@@ -11647,6 +11637,16 @@ namespace sqlite_orm {
 
 
 namespace sqlite_orm {
+    
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+    
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
     
     template<int N, class T, class... Ids>
     auto &get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {

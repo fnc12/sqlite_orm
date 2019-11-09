@@ -119,4 +119,23 @@ TEST_CASE("Prepared get pointer") {
             REQUIRE(userAndVisit->description == "Shine on");
         }
     }
+    {
+        auto id = 1;
+        auto statement = storage.prepare(get_pointer<User>(std::ref(id)));
+        REQUIRE(get<0>(statement) == id);
+        REQUIRE(&get<0>(statement) == &id);
+        {
+            auto user = storage.execute(statement);
+            REQUIRE(user);
+            REQUIRE(*user == User{1, "Team BS"});
+        }
+        id = 2;
+        REQUIRE(get<0>(statement) == id);
+        REQUIRE(&get<0>(statement) == &id);
+        {
+            auto user = storage.execute(statement);
+            REQUIRE(user);
+            REQUIRE(*user == User{2, "Shy'm"});
+        }
+    }
 }
