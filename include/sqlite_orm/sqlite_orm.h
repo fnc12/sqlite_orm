@@ -6900,16 +6900,6 @@ namespace sqlite_orm {
         static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
         return std::get<N>(statement.t.range);
     }
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
 }
 
 
@@ -11112,7 +11102,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto index = 1;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v) {
+                iterate_ast(statement.t.ids, [stmt, &index, db](auto &v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -11637,6 +11627,16 @@ namespace sqlite_orm {
 
 
 namespace sqlite_orm {
+    
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+    
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
     
     template<int N, class T, class... Ids>
     auto &get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {

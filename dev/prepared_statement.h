@@ -330,14 +330,4 @@ namespace sqlite_orm {
         static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
         return std::get<N>(statement.t.range);
     }
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
 }
