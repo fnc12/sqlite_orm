@@ -52,7 +52,7 @@ TEST_CASE("Prepared get all") {
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
     }
-    {
+    {   //  by var
         auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 3))));
         {
             using Statement = decltype(statement);
@@ -81,11 +81,63 @@ TEST_CASE("Prepared get all") {
             REQUIRE_THAT(rows, UnorderedEquals(expected));
         }
     }
-    {
+    {   //  by ref
+        auto id = 3;
+        auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, std::ref(id)))));
+        {
+            using Statement = decltype(statement);
+            using ExpressionType = Statement::expression_type;
+            using NodeTuple = internal::node_tuple<ExpressionType>::type;
+            static_assert(std::tuple_size<NodeTuple>::value == 2, "");
+            {
+                using Arg0 = std::tuple_element<0, NodeTuple>::type;
+                static_assert(std::is_same<Arg0, decltype(&User::id)>::value, "");
+            }
+            {
+                using Arg1 = std::tuple_element<1, NodeTuple>::type;
+                static_assert(std::is_same<Arg1, int>::value, "");
+            }
+        }
+        REQUIRE(get<0>(statement) == id);
+        REQUIRE(&get<0>(statement) == &id);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            {
+                auto rows = storage.execute(statement);
+                std::vector<User> expected;
+                expected.push_back(User{1, "Team BS"});
+                expected.push_back(User{2, "Shy'm"});
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+            id = 2;
+            REQUIRE(get<0>(statement) == 2);
+            REQUIRE(&get<0>(statement) == &id);
+            {
+                auto rows = storage.execute(statement);
+                std::vector<User> expected;
+                expected.push_back(User{1, "Team BS"});
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+        }
+    }
+    {   //  by val
         auto statement =
             storage.prepare(get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS"))));
         REQUIRE(get<0>(statement) == 1);
         REQUIRE(strcmp(get<1>(statement), "Team BS") == 0);
+    }
+    {   //  by ref
+        auto id = 1;
+        std::string name = "Team BS";
+        auto statement =
+        storage.prepare(get_all<User>(where(lesser_or_equal(&User::id, std::ref(id)) and is_equal(&User::name, std::ref(name)))));
+        REQUIRE(get<0>(statement) == 1);
+        REQUIRE(&get<0>(statement) == &id);
+        REQUIRE(get<1>(statement) == "Team BS");
+        REQUIRE(&get<1>(statement) == &name);
     }
     {
         auto statement = storage.prepare(get_all<User>(
@@ -95,29 +147,61 @@ TEST_CASE("Prepared get all") {
         REQUIRE(strcmp(get<2>(statement), "*S") == 0);
     }
     {
-        auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
-        std::vector<User> expected;
-        REQUIRE(get<0>(statement) == 2);
-        expected.push_back(User{1, "Team BS"});
-        {
-            auto rows = storage.execute(statement);
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
-        }
-
-        get<0>(statement) = 3;
-        REQUIRE(get<0>(statement) == 3);
-        expected.push_back(User{2, "Shy'm"});
-        {
-            auto rows = storage.execute(statement);
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
-        }
-
-        get<0>(statement) = 4;
-        REQUIRE(get<0>(statement) == 4);
-        expected.push_back(User{3, "Maître Gims"});
-        {
-            auto rows = storage.execute(statement);
-            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        {   //  by val
+            auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
+            std::vector<User> expected;
+            REQUIRE(get<0>(statement) == 2);
+            expected.push_back(User{1, "Team BS"});
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+            
+            get<0>(statement) = 3;
+            REQUIRE(get<0>(statement) == 3);
+            expected.push_back(User{2, "Shy'm"});
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+            
+            get<0>(statement) = 4;
+            REQUIRE(get<0>(statement) == 4);
+            expected.push_back(User{3, "Maître Gims"});
+            {
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+            {   //  by ref
+                auto id = 2;
+                auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, std::ref(id)))));
+                std::vector<User> expected;
+                REQUIRE(get<0>(statement) == 2);
+                REQUIRE(&get<0>(statement) == &id);
+                expected.push_back(User{1, "Team BS"});
+                {
+                    auto rows = storage.execute(statement);
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
+                
+                id = 3;
+                REQUIRE(get<0>(statement) == 3);
+                REQUIRE(&get<0>(statement) == &id);
+                expected.push_back(User{2, "Shy'm"});
+                {
+                    auto rows = storage.execute(statement);
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
+                
+                id = 4;
+                REQUIRE(get<0>(statement) == 4);
+                REQUIRE(&get<0>(statement) == &id);
+                expected.push_back(User{3, "Maître Gims"});
+                {
+                    auto rows = storage.execute(statement);
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
+            }
         }
     }
 }
