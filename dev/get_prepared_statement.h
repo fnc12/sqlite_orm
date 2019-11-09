@@ -8,6 +8,16 @@
 #include "expression_object_type.h"
 
 namespace sqlite_orm {
+    
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+    
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
 
     template<int N, class T>
     auto &get(internal::prepared_statement_t<internal::update_t<T>> &statement) {

@@ -37,28 +37,59 @@ TEST_CASE("Prepared remove") {
     storage.replace(UserAndVisit{2, 1, "Glad you came"});
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
-    {
-        auto statement = storage.prepare(remove<User>(1));
-        std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
-        REQUIRE(get<0>(statement) == 1);
+    SECTION("by val"){
+        {
+            auto statement = storage.prepare(remove<User>(1));
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            REQUIRE(get<0>(statement) == 1);
+            testSerializing(statement);
+            storage.execute(statement);
+            REQUIRE(storage.get_pointer<User>(1) == nullptr);
+            REQUIRE(storage.get_pointer<User>(2) != nullptr);
+            REQUIRE(storage.get_pointer<User>(3) != nullptr);
+            REQUIRE(storage.count<User>() == 2);
+        }
+        {
+            auto statement = storage.prepare(remove<User>(2));
+            REQUIRE(get<0>(statement) == 2);
+            testSerializing(statement);
+            storage.execute(statement);
+            REQUIRE(storage.get_pointer<User>(1) == nullptr);
+            REQUIRE(storage.get_pointer<User>(2) == nullptr);
+            REQUIRE(storage.get_pointer<User>(3) != nullptr);
+            REQUIRE(storage.count<User>() == 1);
+            
+            get<0>(statement) = 3;
+            storage.execute(statement);
+            REQUIRE(storage.get_pointer<User>(1) == nullptr);
+            REQUIRE(storage.get_pointer<User>(2) == nullptr);
+            REQUIRE(storage.get_pointer<User>(3) == nullptr);
+            REQUIRE(storage.count<User>() == 0);
+        }
+    }
+    SECTION("be ref") {
+        auto id = 1;
+        auto statement = storage.prepare(remove<User>(std::ref(id)));
+        REQUIRE(get<0>(statement) == id);
+        REQUIRE(&get<0>(statement) == &id);
         testSerializing(statement);
         storage.execute(statement);
         REQUIRE(storage.get_pointer<User>(1) == nullptr);
         REQUIRE(storage.get_pointer<User>(2) != nullptr);
         REQUIRE(storage.get_pointer<User>(3) != nullptr);
-        REQUIRE(storage.count<User>() == 2);
-    }
-    {
-        auto statement = storage.prepare(remove<User>(2));
-        REQUIRE(get<0>(statement) == 2);
-        testSerializing(statement);
+        
+        id = 2;
+        REQUIRE(get<0>(statement) == id);
+        REQUIRE(&get<0>(statement) == &id);
         storage.execute(statement);
         REQUIRE(storage.get_pointer<User>(1) == nullptr);
         REQUIRE(storage.get_pointer<User>(2) == nullptr);
         REQUIRE(storage.get_pointer<User>(3) != nullptr);
-        REQUIRE(storage.count<User>() == 1);
-
+        
         get<0>(statement) = 3;
+        REQUIRE(id == 3);
+        REQUIRE(get<0>(statement) == 3);
+        REQUIRE(&get<0>(statement) == &id);
         storage.execute(statement);
         REQUIRE(storage.get_pointer<User>(1) == nullptr);
         REQUIRE(storage.get_pointer<User>(2) == nullptr);
