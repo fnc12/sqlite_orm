@@ -4983,6 +4983,7 @@ namespace sqlite_orm {
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay
 #include <tuple>  //  std::tuple
+#include <functional>   //  std::reference_wrapper
 
 // #include "core_functions.h"
 
@@ -5349,6 +5350,11 @@ namespace sqlite_orm {
         struct column_result_t<St, const char *, void> {
             using type = std::string;
         };
+        
+        template<class St>
+        struct column_result_t<St, std::string, void> {
+            using type = std::string;
+        };
 
         template<class St, class T, class E>
         struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, typename std::decay<E>::type, void> {};
@@ -5382,6 +5388,9 @@ namespace sqlite_orm {
         struct column_result_t<St, conditions::negated_condition_t<C>, void> {
             using type = bool;
         };
+        
+        template<class St, class T>
+        struct column_result_t<St, std::reference_wrapper<T>, void> : column_result_t<St, T, void> {};
     }
 }
 #pragma once
@@ -6875,30 +6884,6 @@ namespace sqlite_orm {
     internal::get_all_pointer_t<T, Args...> get_all_pointer(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
-    }
-
-    template<int N, class It>
-    auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for insert range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    const auto &get(const internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for insert range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    auto &get(internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    const auto &get(const internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
-        return std::get<N>(statement.t.range);
     }
 }
 
@@ -8712,6 +8697,11 @@ namespace sqlite_orm {
             string_from_expression(const T &, bool /*noTableName*/) const {
                 return "?";
             }
+            
+            template<class T>
+            std::string string_from_expression(std::reference_wrapper<T> ref, bool noTableName) const {
+                return this->string_from_expression(ref.get(), noTableName);
+            }
 
             std::string string_from_expression(std::nullptr_t, bool /*noTableName*/) const {
                 return "?";
@@ -8943,6 +8933,11 @@ namespace sqlite_orm {
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
+            }
+            
+            template<class T>
+            std::vector<std::string> get_column_names(std::reference_wrapper<T> r) const {
+                return this->get_column_names(r.get());
             }
 
             template<class T>
@@ -11627,6 +11622,26 @@ namespace sqlite_orm {
 
 
 namespace sqlite_orm {
+    
+    template<int N, class It>
+    auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        return std::get<N>(statement.t.range);
+    }
+    
+    template<int N, class It>
+    const auto &get(const internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        return std::get<N>(statement.t.range);
+    }
+    
+    template<int N, class It>
+    auto &get(internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
+        return std::get<N>(statement.t.range);
+    }
+    
+    template<int N, class It>
+    const auto &get(const internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
+        return std::get<N>(statement.t.range);
+    }
     
     template<int N, class T, class... Ids>
     auto &get(internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {

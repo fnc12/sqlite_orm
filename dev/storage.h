@@ -275,6 +275,11 @@ namespace sqlite_orm {
             string_from_expression(const T &, bool /*noTableName*/) const {
                 return "?";
             }
+            
+            template<class T>
+            std::string string_from_expression(std::reference_wrapper<T> ref, bool noTableName) const {
+                return this->string_from_expression(ref.get(), noTableName);
+            }
 
             std::string string_from_expression(std::nullptr_t, bool /*noTableName*/) const {
                 return "?";
@@ -506,6 +511,11 @@ namespace sqlite_orm {
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
+            }
+            
+            template<class T>
+            std::vector<std::string> get_column_names(std::reference_wrapper<T> r) const {
+                return this->get_column_names(r.get());
             }
 
             template<class T>
