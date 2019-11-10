@@ -627,14 +627,14 @@ namespace sqlite_orm {
 
             template<class T, class... Args>
             std::string string_from_expression(const get_all_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = string_from_expression_impl_get_all<T>(noTableName);
+                std::stringstream ss = this->string_from_expression_impl_get_all<T>(noTableName);
                 this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
 
             template<class T, class... Args>
             std::string string_from_expression(const get_all_pointer_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = string_from_expression_impl_get_all<T>(noTableName);
+                std::stringstream ss = this->string_from_expression_impl_get_all<T>(noTableName);
                 this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
@@ -642,7 +642,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Args>
             std::string string_from_expression(const get_all_optional_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = string_from_expression_impl_get_all<T>(noTableName);
+                std::stringstream ss = this->string_from_expression_impl_get_all<T>(noTableName);
                 this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
@@ -729,18 +729,18 @@ namespace sqlite_orm {
 
             template<class T, class... Ids>
             std::string string_from_expression(const get_t<T, Ids...> &g, bool noTableName) const {
-                return string_from_expression_impl_get<T>(noTableName);
+                return this->string_from_expression_impl_get<T>(noTableName);
             }
 
             template<class T, class... Ids>
             std::string string_from_expression(const get_pointer_t<T, Ids...> &g, bool noTableName) const {
-                return string_from_expression_impl_get<T>(noTableName);
+                return this->string_from_expression_impl_get<T>(noTableName);
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Ids>
             std::string string_from_expression(const get_optional_t<T, Ids...> &g, bool noTableName) const {
-                return string_from_expression_impl_get<T>(noTableName);
+                return this->string_from_expression_impl_get<T>(noTableName);
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
