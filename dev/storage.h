@@ -864,7 +864,7 @@ namespace sqlite_orm {
 
                 auto columnNamesCount = columnNames.size();
                 if(columnNamesCount) {
-                    ss << "( ";
+                    ss << "(";
                     for(size_t i = 0; i < columnNamesCount; ++i) {
                         ss << "\"" << columnNames[i] << "\"";
                         if(i < columnNamesCount - 1) {
@@ -879,7 +879,7 @@ namespace sqlite_orm {
                 }
                 ss << "VALUES ";
                 if(columnNamesCount) {
-                    ss << "( ";
+                    ss << "(";
                     for(size_t i = 0; i < columnNamesCount; ++i) {
                         ss << "?";
                         if(i < columnNamesCount - 1) {
