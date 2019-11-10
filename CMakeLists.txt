@@ -57,6 +57,7 @@ if (MSVC)
 	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")	
 	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")	
 	add_compile_options(/EHsc)
+	add_compile_options(/Zc:__cplusplus)
 
 	if ("${CMAKE_GENERATOR}" MATCHES "(Win64|x64)")
 		message(STATUS "Add /bigobj flag to compiler")
