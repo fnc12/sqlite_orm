@@ -1,5 +1,5 @@
 /**
- *  There are two member function in storage_t class which you need to use to operate with
+ *  There are two member functions in storage_t class which you need to use to operate with
  *  prepared statements: storage_t::prepare and storage_t::execute.
  *  Also if you need to rebind arguments just use get<N>(statement) = ... syntax
  *  just like you do with std::tuple.
@@ -120,7 +120,7 @@ int main() {
         cout << storage.dump(speciality) << endl;
     }
     {
-        //  let's insert (replace) 5 visits. We create two vectors with 2 and 3 visits respectively
+        //  let's insert (replace) 5 visits. We create two vectors with 2 visits each
         std::vector<Visit> visits;
         visits.push_back({210, "Julia Nayer", "2013-10-15"});
         visits.push_back({214, "TJ Olson", "2013-10-14"});
