@@ -10389,6 +10389,19 @@ namespace sqlite_orm {
                 return std::shared_ptr<O>(get_pointer<O>(std::forward<Ids>(ids)...));
             }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+            /**
+             *  The same as `get` function but doesn't throw an exception if noting found but
+             * returns an empty std::optional. throws std::system_error in case of db error.
+             */
+            template<class O, class... Ids>
+            std::optional<O> get_optional(Ids... ids) {
+                this->assert_mapped_type<O>();
+                auto statement = this->prepare(sqlite_orm::get_optional<O>(std::forward<Ids>(ids)...));
+                return this->execute(statement);
+            }
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
             /**
              *  SELECT COUNT(*) https://www.sqlite.org/lang_aggfunc.html#count
              *  @return Number of O object in table.

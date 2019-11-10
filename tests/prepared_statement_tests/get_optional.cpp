@@ -120,5 +120,11 @@ TEST_CASE("Prepared get optional") {
             REQUIRE(userAndVisit->description == "Shine on");
         }
     }
+    {
+        // Testing the direct access to storage_t::get_optional()
+        auto user = storage.get_optional<User>(2);
+        REQUIRE(user.has_value());
+        REQUIRE(*user == User{2, "Shy'm"});
+    }
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
