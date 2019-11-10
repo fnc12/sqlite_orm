@@ -389,7 +389,6 @@ TEST_CASE("Insert") {
         },
     };
 
-    //    cout << "inserting range" << endl;
     auto countBefore = storage.count<Object>();
     storage.insert_range(initList.begin(), initList.end());
     REQUIRE(storage.count<Object>() == countBefore + static_cast<int>(initList.size()));
