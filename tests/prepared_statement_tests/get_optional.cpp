@@ -121,6 +121,25 @@ TEST_CASE("Prepared get optional") {
         }
     }
     {
+        auto id = 1;
+        auto statement = storage.prepare(get_optional<User>(std::ref(id)));
+        REQUIRE(get<0>(statement) == id);
+        REQUIRE(&get<0>(statement) == &id);
+        {
+            auto user = storage.execute(statement);
+            REQUIRE(user.has_value());
+            REQUIRE(*user == User{1, "Team BS"});
+        }
+        id = 2;
+        REQUIRE(get<0>(statement) == id);
+        REQUIRE(&get<0>(statement) == &id);
+        {
+            auto user = storage.execute(statement);
+            REQUIRE(user.has_value());
+            REQUIRE(*user == User{2, "Shy'm"});
+        }
+    }
+    {
         // Testing the direct access to storage_t::get_optional()
         auto user = storage.get_optional<User>(2);
         REQUIRE(user.has_value());

@@ -5042,6 +5042,7 @@ namespace sqlite_orm {
 
 #include <type_traits>  //  std::enable_if, std::is_same, std::decay
 #include <tuple>  //  std::tuple
+#include <functional>  //  std::reference_wrapper
 
 // #include "core_functions.h"
 
@@ -5409,6 +5410,11 @@ namespace sqlite_orm {
             using type = std::string;
         };
 
+        template<class St>
+        struct column_result_t<St, std::string, void> {
+            using type = std::string;
+        };
+
         template<class St, class T, class E>
         struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, typename std::decay<E>::type, void> {};
 
@@ -5441,6 +5447,9 @@ namespace sqlite_orm {
         struct column_result_t<St, conditions::negated_condition_t<C>, void> {
             using type = bool;
         };
+
+        template<class St, class T>
+        struct column_result_t<St, std::reference_wrapper<T>, void> : column_result_t<St, T, void> {};
     }
 }
 #pragma once
@@ -6536,6 +6545,7 @@ namespace sqlite_orm {
 
 
 #include <vector>  //  std::vector
+#include <functional>  //  std::reference_wrapper
 
 // #include "conditions.h"
 
@@ -6974,78 +6984,16 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    /**
+     *  Create a get all optional statement.
+     *  Usage: get_all_optional<User>(...);
+     */
     template<class T, class... Args>
     internal::get_all_optional_t<T, Args...> get_all_optional(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-    template<int N, class It>
-    auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for insert range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    const auto &get(const internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for insert range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    auto &get(internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    const auto &get(const internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
 }
 
 
@@ -7067,7 +7015,7 @@ namespace sqlite_orm {
             using node_type = T;
 
             /**
-             *  L is a callable type. Mostly is templated lambda
+             *  L is a callable type. Mostly is a templated lambda
              */
             template<class L>
             void operator()(const T &t, const L &l) const {
@@ -7083,6 +7031,16 @@ namespace sqlite_orm {
             ast_iterator<T> iterator;
             iterator(t, l);
         }
+
+        template<class T>
+        struct ast_iterator<std::reference_wrapper<T>, void> {
+            using node_type = std::reference_wrapper<T>;
+
+            template<class L>
+            void operator()(const node_type &r, const L &l) const {
+                iterate_ast(r.get(), l);
+            }
+        };
 
         template<class C>
         struct ast_iterator<conditions::where_t<C>, void> {
@@ -8861,6 +8819,11 @@ namespace sqlite_orm {
                 return "?";
             }
 
+            template<class T>
+            std::string string_from_expression(std::reference_wrapper<T> ref, bool noTableName) const {
+                return this->string_from_expression(ref.get(), noTableName);
+            }
+
             std::string string_from_expression(std::nullptr_t, bool /*noTableName*/) const {
                 return "?";
             }
@@ -9091,6 +9054,11 @@ namespace sqlite_orm {
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
+            }
+
+            template<class T>
+            std::vector<std::string> get_column_names(std::reference_wrapper<T> r) const {
+                return this->get_column_names(r.get());
             }
 
             template<class T>
@@ -11161,7 +11129,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto index = 1;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v) {
+                iterate_ast(statement.t.ids, [stmt, &index, db](auto &v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -11247,7 +11215,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto index = 1;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v) {
+                iterate_ast(statement.t.ids, [stmt, &index, db](auto &v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -11259,8 +11227,8 @@ namespace sqlite_orm {
                     case SQLITE_ROW: {
                         auto res = std::make_unique<T>();
                         index = 0;
-                        impl.table.for_each_column([&index, &res, stmt](auto c) {
-                            using field_type = typename decltype(c)::field_type;
+                        impl.table.for_each_column([&index, &res, stmt](auto &c) {
+                            using field_type = typename std::decay<decltype(c)>::type::field_type;
                             auto value = row_extractor<field_type>().extract(stmt, index++);
                             if(c.member_pointer) {
                                 (*res).*c.member_pointer = std::move(value);
@@ -11289,7 +11257,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto index = 1;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v) {
+                iterate_ast(statement.t.ids, [stmt, &index, db](auto &v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -11301,8 +11269,8 @@ namespace sqlite_orm {
                     case SQLITE_ROW: {
                         auto res = std::make_optional<T>();
                         index = 0;
-                        impl.table.for_each_column([&index, &res, stmt](auto c) {
-                            using field_type = typename decltype(c)::field_type;
+                        impl.table.for_each_column([&index, &res, stmt](auto &c) {
+                            using field_type = typename std::decay<decltype(c)>::type::field_type;
                             auto value = row_extractor<field_type>().extract(stmt, index++);
                             if(c.member_pointer) {
                                 (*res).*c.member_pointer = std::move(value);
@@ -11331,7 +11299,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto index = 1;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.t.ids, [stmt, &index, db](auto &v) {
+                iterate_ast(statement.t.ids, [stmt, &index, db](auto &v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -11914,6 +11882,68 @@ namespace sqlite_orm {
 
 
 namespace sqlite_orm {
+
+    template<int N, class It>
+    auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        return std::get<N>(statement.t.range);
+    }
+
+    template<int N, class It>
+    const auto &get(const internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
+        return std::get<N>(statement.t.range);
+    }
+
+    template<int N, class It>
+    auto &get(internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
+        return std::get<N>(statement.t.range);
+    }
+
+    template<int N, class It>
+    const auto &get(const internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
+        return std::get<N>(statement.t.range);
+    }
+
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<int N, class T, class... Ids>
+    auto &get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
+
+    template<int N, class T, class... Ids>
+    const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
+        return internal::get_ref(std::get<N>(statement.t.ids));
+    }
 
     template<int N, class T>
     auto &get(internal::prepared_statement_t<internal::update_t<T>> &statement) {

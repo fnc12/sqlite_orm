@@ -342,76 +342,14 @@ namespace sqlite_orm {
     }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    /**
+     *  Create a get all optional statement.
+     *  Usage: get_all_optional<User>(...);
+     */
     template<class T, class... Args>
     internal::get_all_optional_t<T, Args...> get_all_optional(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-    template<int N, class It>
-    auto &get(internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for insert range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    const auto &get(const internal::prepared_statement_t<internal::insert_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for insert range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    auto &get(internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class It>
-    const auto &get(const internal::prepared_statement_t<internal::replace_range_t<It>> &statement) {
-        static_assert(N == 0 || N == 1, "get<> works only with [0; 1] argument for replace range statement");
-        return std::get<N>(statement.t.range);
-    }
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_pointer_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::get_optional_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-    template<int N, class T, class... Ids>
-    auto &get(internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
-
-    template<int N, class T, class... Ids>
-    const auto &get(const internal::prepared_statement_t<internal::remove_t<T, Ids...>> &statement) {
-        return std::get<N>(statement.t.ids);
-    }
 }
