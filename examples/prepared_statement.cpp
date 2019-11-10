@@ -53,29 +53,29 @@ int main() {
     {
         //  first we create a statement object for replace query with a doctor object
         auto replaceStatement = storage.prepare(replace(Doctor{210, "Dr. John Linga", "MD"}));
-        
+
         cout << "replaceStatement = " << replaceStatement.sql() << endl;
-        
+
         //  next we execute our statement
         storage.execute(replaceStatement);
-        
+
         //  now 'doctors' table has one row [210, 'Dr. John Linga', 'MD']
         //  Next we shall reuse the statement to replace another doctor
         //  replaceStatement contains a doctor inside it which can be obtained
         //  with get<0>(statement) function
-        
+
         get<0>(replaceStatement) = {211, "Dr. Peter Hall", "MBBS"};
         storage.execute(replaceStatement);
-        
+
         //  now 'doctors' table has two rows.
         //  Next we shall reuse the statement again with member assignment
-        
-        auto &doctor = get<0>(replaceStatement);    //  doctor is Doctor &
+
+        auto &doctor = get<0>(replaceStatement);  //  doctor is Doctor &
         doctor.doctor_id = 212;
         doctor.doctor_name = "Dr. Ke Gee";
         doctor.degree = "MD";
         storage.execute(replaceStatement);
-        
+
         //  now 'doctors' table has three rows.
     }
     {
@@ -85,24 +85,24 @@ int main() {
         auto replaceStatementByRef = storage.prepare(replace(std::ref(doctorToReplace)));
         cout << "replaceStatementByRef = " << replaceStatementByRef.sql() << endl;
         storage.execute(replaceStatementByRef);
-        
+
         //  now 'doctors' table has four rows.
         //  next we shall change doctorToReplace object and then execute our statement.
         //  Statement will be affected cause it stores a reference to the doctor
         doctorToReplace.doctor_id = 214;
         doctorToReplace.doctor_name = "Mosby";
         doctorToReplace.degree = "MBBS";
-        
+
         storage.execute(replaceStatementByRef);
-        
+
         //  and now 'doctors' table has five rows
     }
-    
+
     cout << "Doctors count = " << storage.count<Doctor>() << endl;
-    for(auto &doctor : storage.iterate<Doctor>()) {
+    for(auto &doctor: storage.iterate<Doctor>()) {
         cout << storage.dump(doctor) << endl;
     }
-    
+
     {
         auto insertStatement = storage.prepare(insert(Speciality{1, "CARDIO", 211}));
         cout << "insertStatement = " << insertStatement.sql() << endl;
@@ -114,9 +114,9 @@ int main() {
         get<0>(insertStatement) = {4, "GYNO", 210};
         storage.execute(insertStatement);
     }
-    
+
     cout << "Specialities count = " << storage.count<Speciality>() << endl;
-    for(auto &speciality : storage.iterate<Speciality>()) {
+    for(auto &speciality: storage.iterate<Speciality>()) {
         cout << storage.dump(speciality) << endl;
     }
     {
@@ -124,30 +124,30 @@ int main() {
         std::vector<Visit> visits;
         visits.push_back({210, "Julia Nayer", "2013-10-15"});
         visits.push_back({214, "TJ Olson", "2013-10-14"});
-        
+
         //  let's make a statement
         auto replaceRangeStatement = storage.prepare(replace_range(visits.begin(), visits.end()));
         cout << "replaceRangeStatement = " << replaceRangeStatement.sql() << endl;
-        
+
         //  replace two objects
         storage.execute(replaceRangeStatement);
-        
+
         std::vector<Visit> visits2;
         visits2.push_back({215, "John Seo", "2013-10-15"});
         visits2.push_back({212, "James Marlow", "2013-10-16"});
-        
+
         //  reassign iterators to point to other visits. Beware that if end - begin
         //  will have different distance then you'll get a runtime error cause statement is
         //  already compiled with a fixed amount of arguments to bind
         get<0>(replaceRangeStatement) = visits2.begin();
         get<1>(replaceRangeStatement) = visits2.end();
-        
+
         storage.execute(replaceRangeStatement);
-        
+
         storage.replace(Visit{212, "Jason Mallin", "2013-10-12"});
     }
     cout << "Visits count = " << storage.count<Visit>() << endl;
-    for(auto &visit : storage.iterate<Visit>()) {
+    for(auto &visit: storage.iterate<Visit>()) {
         cout << storage.dump(visit) << endl;
     }
     {
@@ -159,11 +159,11 @@ int main() {
         {
             auto rows = storage.execute(selectStatement);
             cout << "rows count = " << rows.size() << endl;
-            for(auto &id : rows) {
+            for(auto &id: rows) {
                 cout << id << endl;
             }
         }
-        
+
         //  same statement, other bound values
         //  SELECT doctor_id
         //  FROM visits
@@ -172,7 +172,7 @@ int main() {
             get<0>(selectStatement) = 11;
             auto rows = storage.execute(selectStatement);
             cout << "rows count = " << rows.size() << endl;
-            for(auto &id : rows) {
+            for(auto &id: rows) {
                 cout << id << endl;
             }
         }
@@ -181,12 +181,13 @@ int main() {
         //  SELECT rowid, 'Doctor ' || doctor_name
         //  FROM doctors
         //  WHERE degree LIKE '%S'
-        auto selectStatement = storage.prepare(select(columns(rowid(), "Doctor " || c(&Doctor::doctor_name)), where(like(&Doctor::degree, "%S"))));
+        auto selectStatement = storage.prepare(
+            select(columns(rowid(), "Doctor " || c(&Doctor::doctor_name)), where(like(&Doctor::degree, "%S"))));
         cout << "selectStatement = " << selectStatement.sql() << endl;
         {
             auto rows = storage.execute(selectStatement);
             cout << "rows count = " << rows.size() << endl;
-            for(auto &row : rows) {
+            for(auto &row: rows) {
                 cout << get<0>(row) << '\t' << get<1>(row) << endl;
             }
         }
@@ -198,11 +199,11 @@ int main() {
         {
             auto rows = storage.execute(selectStatement);
             cout << "rows count = " << rows.size() << endl;
-            for(auto &row : rows) {
+            for(auto &row: rows) {
                 cout << get<0>(row) << '\t' << get<1>(row) << endl;
             }
         }
     }
-    
+
     return 0;
 }
