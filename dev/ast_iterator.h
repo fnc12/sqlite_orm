@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>  //  std::vector
+#include <functional>  //  std::reference_wrapper
 
 #include "conditions.h"
 #include "select_constraints.h"
@@ -27,7 +28,7 @@ namespace sqlite_orm {
             using node_type = T;
 
             /**
-             *  L is a callable type. Mostly is templated lambda
+             *  L is a callable type. Mostly is a templated lambda
              */
             template<class L>
             void operator()(const T &t, const L &l) const {
@@ -43,6 +44,16 @@ namespace sqlite_orm {
             ast_iterator<T> iterator;
             iterator(t, l);
         }
+
+        template<class T>
+        struct ast_iterator<std::reference_wrapper<T>, void> {
+            using node_type = std::reference_wrapper<T>;
+
+            template<class L>
+            void operator()(const node_type &r, const L &l) const {
+                iterate_ast(r.get(), l);
+            }
+        };
 
         template<class C>
         struct ast_iterator<conditions::where_t<C>, void> {
