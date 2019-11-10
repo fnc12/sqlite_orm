@@ -5,6 +5,9 @@
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
 #include <memory>  //  std::shared_ptr, std::unique_ptr
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 namespace sqlite_orm {
 
@@ -104,4 +107,17 @@ namespace sqlite_orm {
             }
         }
     };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct field_printer<std::optional<T>> {
+        std::string operator()(const std::optional<T> &t) const {
+            if(t.has_value()) {
+                return field_printer<T>()(*t);
+            } else {
+                return field_printer<std::nullptr_t>()(nullptr);
+            }
+        }
+    };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }

@@ -2,6 +2,9 @@
 #include <catch2/catch.hpp>
 #include <memory>  //  std::unique_ptr, std::shared_ptr
 #include <string>  //  std::string
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  //  std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 using namespace sqlite_orm;
 
@@ -18,6 +21,10 @@ TEST_CASE("is_bindable") {
     static_assert(internal::is_bindable<std::nullptr_t>::value, "null must be bindable");
     static_assert(internal::is_bindable<std::unique_ptr<int>>::value, "unique_ptr must be bindable");
     static_assert(internal::is_bindable<std::shared_ptr<int>>::value, "shared_ptr must be bindable");
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    static_assert(internal::is_bindable<std::optional<int>>::value, "optional must be bindable");
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     static_assert(!internal::is_bindable<void>::value, "void cannot be bindable");
     {

@@ -14,3 +14,8 @@ __pragma(push_macro("min"))
 #endif  // defined(_MSC_VER)
 
 #include <ciso646>  //  due to #166
+
+#if __cplusplus >= 201703L  // use of C++17 or higher
+// Enables use of std::optional in SQLITE_ORM.
+#define SQLITE_ORM_OPTIONAL_SUPPORTED
+#endif

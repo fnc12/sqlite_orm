@@ -24,6 +24,14 @@ configuration:
 platform:
   - x86
   - x64
+  
+environment:
+  matrix:
+   # using c++14
+   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+   
+   # using C++17 (for std::optional support)
+   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
 init:
   - echo %APPVEYOR_BUILD_WORKER_IMAGE% - %configuration% - %PLATFORM%
@@ -42,9 +50,9 @@ install:
 before_build:
   - mkdir compile
   - cd compile
-  - cmake -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+  - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
 
 # build examples, and run tests (ie make & make test)
 build_script:
   - cmake --build . --config %configuration%
-  - ctest --output-on-failure --build-config %configuration%
+  - ctest --verbose --output-on-failure --build-config %configuration%

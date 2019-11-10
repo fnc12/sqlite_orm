@@ -157,7 +157,7 @@ namespace sqlite_orm {
 
     template<class V>
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename V::element_type;
+        using value_type = typename is_std_ptr<V>::element_type;
 
         V extract(const char *row_value) {
             if(row_value) {

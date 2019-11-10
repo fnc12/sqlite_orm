@@ -174,6 +174,18 @@ namespace sqlite_orm {
             }
         };
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T, class... Args>
+        struct ast_iterator<get_all_optional_t<T, Args...>, void> {
+            using node_type = get_all_optional_t<T, Args...>;
+
+            template<class L>
+            void operator()(const node_type &get, const L &l) const {
+                iterate_ast(get.conditions, l);
+            }
+        };
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
         template<class... Args, class... Wargs>
         struct ast_iterator<update_all_t<set_t<Args...>, Wargs...>, void> {
             using node_type = update_all_t<set_t<Args...>, Wargs...>;
