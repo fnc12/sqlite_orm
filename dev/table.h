@@ -150,7 +150,7 @@ namespace sqlite_orm {
                                                         !std::is_member_function_pointer<F O::*>::value>::type>
             std::string find_column_name(F O::*m) const {
                 std::string res;
-                this->template for_each_column_with_field_type<F>([&res, m](auto c) {
+                this->template for_each_column_with_field_type<F>([&res, m](auto &c) {
                     if(c.member_pointer == m) {
                         res = c.name;
                     }
@@ -167,7 +167,7 @@ namespace sqlite_orm {
                                          typename std::enable_if<is_getter<G>::value>::type * = nullptr) const {
                 std::string res;
                 using field_type = typename getter_traits<G>::field_type;
-                this->template for_each_column_with_field_type<field_type>([&res, getter](auto c) {
+                this->template for_each_column_with_field_type<field_type>([&res, getter](auto &c) {
                     if(compare_any(c.getter, getter)) {
                         res = c.name;
                     }
@@ -184,7 +184,7 @@ namespace sqlite_orm {
                                          typename std::enable_if<is_setter<S>::value>::type * = nullptr) const {
                 std::string res;
                 using field_type = typename setter_traits<S>::field_type;
-                this->template for_each_column_with_field_type<field_type>([&res, setter](auto c) {
+                this->template for_each_column_with_field_type<field_type>([&res, setter](auto &c) {
                     if(compare_any(c.setter, setter)) {
                         res = c.name;
                     }
