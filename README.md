@@ -193,6 +193,26 @@ for(auto &user : storage.iterate<User>()) {
 
 CRUD functions `get`, `get_pointer`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::system_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `date_time.cpp` example in `examples` folder.
 
+# Prepared statements
+
+Prepared statements are strongly typed.
+
+```c++
+//  SELECT doctor_id
+//  FROM visits
+//  WHERE LENGTH(patient_name) > 8
+auto selectStatement = storage.prepare(select(&Visit::doctor_id, where(length(&Visit::patient_name) > 8)));
+cout << "selectStatement = " << selectStatement.sql() << endl;
+auto rows = storage.execute(selectStatement); //  rows is std::vector<decltype(Visit::doctor_id)>
+
+//  SELECT doctor_id
+//  FROM visits
+//  WHERE LENGTH(patient_name) > 11
+get<0>(selectStatement) = 11;
+auto rows2 = storage.execute(selectStatement);
+```
+`get<N>(statement)` function call allows you to access fields to bind them to your statement.
+
 # Aggregate Functions
 
 ```c++
