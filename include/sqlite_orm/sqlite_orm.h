@@ -27,7 +27,7 @@ __pragma(push_macro("min"))
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
 
-namespace sqlite_orm {
+        namespace sqlite_orm {
 
     enum class orm_error_code {
         not_found = 1,
@@ -43,7 +43,6 @@ namespace sqlite_orm {
         invalid_collate_argument_enum,
         failed_to_init_a_backup,
     };
-
 }
 
 namespace sqlite_orm {
@@ -221,7 +220,6 @@ namespace sqlite_orm {
 
 // #include "static_magic.h"
 
-
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
 
 namespace sqlite_orm {
@@ -252,7 +250,6 @@ namespace sqlite_orm {
     }
 
 }
-
 
 namespace sqlite_orm {
 
@@ -952,7 +949,6 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -1190,7 +1186,6 @@ namespace sqlite_orm {
 // #include "default_value_extractor.h"
 
 // #include "constraints.h"
-
 
 namespace sqlite_orm {
 
@@ -1646,7 +1641,6 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -1678,7 +1672,6 @@ namespace sqlite_orm {
         };
     }
 }
-
 
 namespace sqlite_orm {
 
@@ -3057,7 +3050,6 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -3177,7 +3169,6 @@ namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
-
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
 
 namespace sqlite_orm {
@@ -3214,7 +3205,6 @@ namespace sqlite_orm {
 #endif
     }
 }
-
 
 namespace sqlite_orm {
 
@@ -3621,22 +3611,42 @@ namespace sqlite_orm {
 
     namespace aggregate_functions {
 
-        template<class T>
-        struct avg_t {
-            T t;
-
+        struct avg_string {
             operator std::string() const {
                 return "AVG";
             }
         };
 
+        /**
+         *  Result of avg(...) call.
+         *  T is an argument type
+         */
         template<class T>
-        struct count_t {
-            T t;
+        struct avg_t : avg_string {
+            using arg_type = T;
 
+            arg_type arg;
+
+            avg_t(arg_type arg_) : arg(std::move(arg_)) {}
+        };
+
+        struct count_string {
             operator std::string() const {
                 return "COUNT";
             }
+        };
+
+        /**
+         *  Result of count(...) call.
+         *  T is an argument type
+         */
+        template<class T>
+        struct count_t : count_string {
+            using arg_type = T;
+
+            arg_type arg;
+
+            count_t(arg_type arg_) : arg(std::move(arg_)) {}
         };
 
         /**
@@ -3645,124 +3655,226 @@ namespace sqlite_orm {
          *  T can be omitted with void.
          */
         template<class T>
-        struct count_asterisk_t {
+        struct count_asterisk_t : count_string {
             using type = T;
-
-            operator std::string() const {
-                return "COUNT";
-            }
         };
 
-        struct count_asterisk_without_type {
-            operator std::string() const {
-                return "COUNT";
-            }
-        };
+        /**
+         *  The same thing as count<T>() but without T arg.
+         *  Is used in cases like this:
+         *    SELECT cust_code, cust_name, cust_city, grade
+         *    FROM customer
+         *    WHERE grade=2 AND EXISTS
+         *        (SELECT COUNT(*)
+         *        FROM customer
+         *        WHERE grade=2
+         *        GROUP BY grade
+         *        HAVING COUNT(*)>2);
+         *  `c++`
+         *  auto rows =
+         *      storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
+         *          where(is_equal(&Customer::grade, 2)
+         *              and exists(select(count<Customer>(),
+         *                  where(is_equal(&Customer::grade, 2)),
+         *          group_by(&Customer::grade),
+         *          having(greater_than(count(), 2))))));
+         */
+        struct count_asterisk_without_type : count_string {};
 
-        template<class T>
-        struct sum_t {
-            T t;
-
+        struct sum_string {
             operator std::string() const {
                 return "SUM";
             }
         };
 
+        /**
+         *  Result of sum(...) call.
+         *  T is an argument type
+         */
         template<class T>
-        struct total_t {
-            T t;
+        struct sum_t : sum_string {
+            using arg_type = T;
 
+            arg_type arg;
+
+            sum_t(arg_type arg_) : arg(std::move(arg_)) {}
+        };
+
+        struct total_string {
             operator std::string() const {
                 return "TOTAL";
             }
         };
 
+        /**
+         *  Result of total(...) call.
+         *  T is an argument type
+         */
         template<class T>
-        struct max_t {
-            T t;
+        struct total_t : total_string {
+            using arg_type = T;
 
+            arg_type arg;
+
+            total_t(arg_type arg_) : arg(std::move(arg_)) {}
+        };
+
+        struct max_string {
             operator std::string() const {
                 return "MAX";
             }
         };
 
+        /**
+         *  Result of max(...) call.
+         *  T is an argument type
+         */
         template<class T>
-        struct min_t {
-            T t;
+        struct max_t : max_string {
+            using arg_type = T;
 
+            arg_type arg;
+
+            max_t(arg_type arg_) : arg(std::move(arg_)) {}
+        };
+
+        struct min_string {
             operator std::string() const {
                 return "MIN";
             }
         };
 
+        /**
+         *  Result of min(...) call.
+         *  T is an argument type
+         */
         template<class T>
-        struct group_concat_single_t {
-            T t;
+        struct min_t : min_string {
+            using arg_type = T;
 
+            arg_type arg;
+
+            min_t(arg_type arg_) : arg(std::move(arg_)) {}
+        };
+
+        struct group_concat_string {
             operator std::string() const {
                 return "GROUP_CONCAT";
             }
         };
 
+        /**
+         *  Result of group_concat(X) call.
+         *  T is an argument type
+         */
         template<class T>
-        struct group_concat_double_t {
-            T t;
+        struct group_concat_single_t : group_concat_string {
+            using arg_type = T;
+
+            arg_type arg;
+
+            group_concat_single_t(arg_type arg_) : arg(std::move(arg_)) {}
+        };
+
+        struct group_concat_double_base : group_concat_string {
             std::string y;
 
-            operator std::string() const {
-                return "GROUP_CONCAT";
-            }
+            group_concat_double_base(std::string y_) : y(move(y_)) {}
         };
 
+        /**
+         *  Result of group_concat(X, Y) call.
+         *  T is an argument type
+         */
+        template<class T>
+        struct group_concat_double_t : group_concat_double_base {
+            using arg_type = T;
+
+            arg_type arg;
+
+            group_concat_double_t(arg_type arg_, std::string y) :
+                group_concat_double_base(move(y)), arg(std::move(arg_)) {}
+        };
     }
 
+    /**
+     *  AVG(X) aggregate function.
+     */
     template<class T>
     aggregate_functions::avg_t<T> avg(T t) {
-        return {t};
+        return {std::move(t)};
     }
 
+    /**
+     *  COUNT(X) aggregate function.
+     */
     template<class T>
     aggregate_functions::count_t<T> count(T t) {
-        return {t};
+        return {std::move(t)};
     }
 
+    /**
+     *  COUNT(*) without FROM function.
+     */
     inline aggregate_functions::count_asterisk_without_type count() {
         return {};
     }
 
+    /**
+     *  COUNT(*) with FROM function. Specified type T will be serializeed as
+     *  a from argument.
+     */
     template<class T>
     aggregate_functions::count_asterisk_t<T> count() {
         return {};
     }
 
+    /**
+     *  SUM(X) aggregate function.
+     */
     template<class T>
     aggregate_functions::sum_t<T> sum(T t) {
-        return {t};
+        return {std::move(t)};
     }
 
+    /**
+     *  MAX(X) aggregate function.
+     */
     template<class T>
     aggregate_functions::max_t<T> max(T t) {
-        return {t};
+        return {std::move(t)};
     }
 
+    /**
+     *  MIN(X) aggregate function.
+     */
     template<class T>
     aggregate_functions::min_t<T> min(T t) {
-        return {t};
+        return {std::move(t)};
     }
 
+    /**
+     *  TOTAL(X) aggregate function.
+     */
     template<class T>
     aggregate_functions::total_t<T> total(T t) {
-        return {t};
+        return {std::move(t)};
     }
 
+    /**
+     *  GROUP_CONCAT(X) aggregate function.
+     */
     template<class T>
     aggregate_functions::group_concat_single_t<T> group_concat(T t) {
-        return {t};
+        return {std::move(t)};
     }
 
+    /**
+     *  GROUP_CONCAT(X, Y) aggregate function.
+     */
     template<class T, class Y>
     aggregate_functions::group_concat_double_t<T> group_concat(T t, Y y) {
-        return {t, y};
+        return {std::move(t), std::move(y)};
     }
 }
 #pragma once
@@ -3805,7 +3917,6 @@ namespace sqlite_orm {
 // #include "tuple_helper.h"
 
 // #include "optional_container.h"
-
 
 namespace sqlite_orm {
 
@@ -4198,7 +4309,6 @@ namespace sqlite_orm {
 
 // #include "column.h"
 
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -4305,7 +4415,6 @@ namespace sqlite_orm {
 
 // #include "is_std_ptr.h"
 
-
 namespace sqlite_orm {
 
     /**
@@ -4343,7 +4452,6 @@ namespace sqlite_orm {
     };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
-
 
 namespace sqlite_orm {
 
@@ -4531,7 +4639,6 @@ namespace sqlite_orm {
 
 // #include "journal_mode.h"
 
-
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
@@ -4591,7 +4698,6 @@ namespace sqlite_orm {
 }
 
 // #include "error_code.h"
-
 
 namespace sqlite_orm {
 
@@ -4949,7 +5055,6 @@ namespace sqlite_orm {
 
 // #include "alias.h"
 
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -5197,7 +5302,6 @@ namespace sqlite_orm {
         }
     }
 }
-
 
 namespace sqlite_orm {
 
@@ -5475,7 +5579,6 @@ namespace sqlite_orm {
 // #include "type_printer.h"
 
 // #include "column.h"
-
 
 namespace sqlite_orm {
 
@@ -5793,11 +5896,9 @@ namespace sqlite_orm {
 
 // #include "field_value_holder.h"
 
-
 #include <type_traits>  //  std::enable_if
 
 // #include "column.h"
-
 
 namespace sqlite_orm {
     namespace internal {
@@ -5820,7 +5921,6 @@ namespace sqlite_orm {
         };
     }
 }
-
 
 namespace sqlite_orm {
 
@@ -6382,7 +6482,6 @@ namespace sqlite_orm {
 
 // #include "view.h"
 
-
 #include <memory>  //  std::shared_ptr
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
@@ -6398,7 +6497,6 @@ namespace sqlite_orm {
 
 // #include "iterator.h"
 
-
 #include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <sqlite3.h>
 #include <type_traits>  //  std::decay
@@ -6413,7 +6511,6 @@ namespace sqlite_orm {
 // #include "statement_finalizer.h"
 
 // #include "error_code.h"
-
 
 namespace sqlite_orm {
 
@@ -6543,7 +6640,6 @@ namespace sqlite_orm {
 
 // #include "ast_iterator.h"
 
-
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 
@@ -6559,7 +6655,6 @@ namespace sqlite_orm {
 
 // #include "prepared_statement.h"
 
-
 #include <sqlite3.h>
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
@@ -6568,13 +6663,11 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
-
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <system_error>  //  std::system_error
 
 // #include "error_code.h"
-
 
 namespace sqlite_orm {
 
@@ -6649,7 +6742,6 @@ namespace sqlite_orm {
 }
 
 // #include "select_constraints.h"
-
 
 namespace sqlite_orm {
 
@@ -6995,7 +7087,6 @@ namespace sqlite_orm {
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
-
 
 namespace sqlite_orm {
 
@@ -7420,7 +7511,6 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -7479,7 +7569,6 @@ namespace sqlite_orm {
 
 // #include "storage_base.h"
 
-
 #include <functional>  //  std::function, std::bind
 #include <sqlite3.h>
 #include <string>  //  std::string
@@ -7494,7 +7583,6 @@ namespace sqlite_orm {
 
 // #include "pragma.h"
 
-
 #include <string>  //  std::string
 #include <sqlite3.h>
 #include <functional>  //  std::function
@@ -7507,7 +7595,6 @@ namespace sqlite_orm {
 // #include "journal_mode.h"
 
 // #include "connection_holder.h"
-
 
 namespace sqlite_orm {
 
@@ -7629,14 +7716,12 @@ namespace sqlite_orm {
 
 // #include "limit_accesor.h"
 
-
 #include <sqlite3.h>
 #include <map>  //  std::map
 #include <functional>  //  std::function
 #include <memory>  //  std::shared_ptr
 
 // #include "connection_holder.h"
-
 
 namespace sqlite_orm {
 
@@ -7771,11 +7856,9 @@ namespace sqlite_orm {
 
 // #include "transaction_guard.h"
 
-
 #include <functional>  //  std::function
 
 // #include "connection_holder.h"
-
 
 namespace sqlite_orm {
 
@@ -7851,7 +7934,6 @@ namespace sqlite_orm {
 
 // #include "backup.h"
 
-
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <memory>
@@ -7859,7 +7941,6 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "connection_holder.h"
-
 
 namespace sqlite_orm {
 
@@ -7925,7 +8006,6 @@ namespace sqlite_orm {
         };
     }
 }
-
 
 namespace sqlite_orm {
 
@@ -8462,12 +8542,10 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
-
 #include <type_traits>  //  std::decay
 #include <functional>  //  std::reference_wrapper
 
 // #include "prepared_statement.h"
-
 
 namespace sqlite_orm {
 
@@ -8585,7 +8663,6 @@ namespace sqlite_orm {
         };
     }
 }
-
 
 namespace sqlite_orm {
 
@@ -8934,7 +9011,7 @@ namespace sqlite_orm {
             std::string string_from_expression(const aggregate_functions::group_concat_double_t<T> &f,
                                                bool noTableName) const {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
+                auto expr = this->string_from_expression(f.arg, noTableName);
                 auto expr2 = this->string_from_expression(f.y, noTableName);
                 ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ")";
                 return ss.str();
@@ -8944,7 +9021,7 @@ namespace sqlite_orm {
             std::string string_from_expression(const aggregate_functions::group_concat_single_t<T> &f,
                                                bool noTableName) const {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
+                auto expr = this->string_from_expression(f.arg, noTableName);
                 ss << static_cast<std::string>(f) << "(" << expr << ")";
                 return ss.str();
             }
@@ -8961,7 +9038,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const aggregate_functions::min_t<T> &f, bool noTableName) const {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
+                auto expr = this->string_from_expression(f.arg, noTableName);
                 ss << static_cast<std::string>(f) << "(" << expr << ")";
                 return ss.str();
             }
@@ -8969,7 +9046,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const aggregate_functions::max_t<T> &f, bool noTableName) const {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
+                auto expr = this->string_from_expression(f.arg, noTableName);
                 ss << static_cast<std::string>(f) << "(" << expr << ")";
                 return ss.str();
             }
@@ -8977,7 +9054,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const aggregate_functions::total_t<T> &f, bool noTableName) const {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
+                auto expr = this->string_from_expression(f.arg, noTableName);
                 ss << static_cast<std::string>(f) << "(" << expr << ")";
                 return ss.str();
             }
@@ -8985,7 +9062,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const aggregate_functions::sum_t<T> &f, bool noTableName) const {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
+                auto expr = this->string_from_expression(f.arg, noTableName);
                 ss << static_cast<std::string>(f) << "(" << expr << ")";
                 return ss.str();
             }
@@ -9006,7 +9083,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const aggregate_functions::count_t<T> &f, bool noTableName) const {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
+                auto expr = this->string_from_expression(f.arg, noTableName);
                 ss << static_cast<std::string>(f) << "(" << expr << ")";
                 return ss.str();
             }
@@ -9014,7 +9091,7 @@ namespace sqlite_orm {
             template<class T>
             std::string string_from_expression(const aggregate_functions::avg_t<T> &a, bool noTableName) const {
                 std::stringstream ss;
-                auto expr = this->string_from_expression(a.t, noTableName);
+                auto expr = this->string_from_expression(a.arg, noTableName);
                 ss << static_cast<std::string>(a) << "(" << expr << ") ";
                 return ss.str();
             }
@@ -9924,31 +10001,31 @@ namespace sqlite_orm {
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::min_t<T> &f) const {
-                return this->parse_table_name(f.t);
+                return this->parse_table_name(f.arg);
             }
 
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::max_t<T> &f) const {
-                return this->parse_table_name(f.t);
+                return this->parse_table_name(f.arg);
             }
 
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::sum_t<T> &f) const {
-                return this->parse_table_name(f.t);
+                return this->parse_table_name(f.arg);
             }
 
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::total_t<T> &f) const {
-                return this->parse_table_name(f.t);
+                return this->parse_table_name(f.arg);
             }
 
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::group_concat_double_t<T> &f) const {
-                auto res = this->parse_table_name(f.t);
+                auto res = this->parse_table_name(f.arg);
                 auto secondSet = this->parse_table_name(f.y);
                 res.insert(secondSet.begin(), secondSet.end());
                 return res;
@@ -9957,19 +10034,19 @@ namespace sqlite_orm {
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::group_concat_single_t<T> &f) const {
-                return this->parse_table_name(f.t);
+                return this->parse_table_name(f.arg);
             }
 
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::count_t<T> &f) const {
-                return this->parse_table_name(f.t);
+                return this->parse_table_name(f.arg);
             }
 
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::avg_t<T> &a) const {
-                return this->parse_table_name(a.t);
+                return this->parse_table_name(a.arg);
             }
 
             template<class R, class S, class... Args>
@@ -11603,20 +11680,19 @@ __pragma(pop_macro("min"))
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
 
-// #include "conditions.h"
+    // #include "conditions.h"
 
-// #include "operators.h"
+    // #include "operators.h"
 
-// #include "select_constraints.h"
+    // #include "select_constraints.h"
 
-// #include "prepared_statement.h"
+    // #include "prepared_statement.h"
 
-// #include "optional_container.h"
+    // #include "optional_container.h"
 
-// #include "core_functions.h"
+    // #include "core_functions.h"
 
-
-namespace sqlite_orm {
+    namespace sqlite_orm {
 
     namespace internal {
 
@@ -11880,7 +11956,6 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
-
 namespace sqlite_orm {
 
     template<int N, class It>
@@ -12047,7 +12122,6 @@ namespace sqlite_orm {
 // #include "core_functions.h"
 
 // #include "constraints.h"
-
 
 namespace sqlite_orm {
 
