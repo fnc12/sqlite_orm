@@ -618,7 +618,7 @@ Two `INNER JOIN`s in one query:
 auto innerJoinRows2 = storage.select(columns(&Track::trackId, &Track::name, &Album::title, &Artist::name),
                                      inner_join<Album>(on(c(&Album::albumId) == &Track::albumId)),
                                      inner_join<Artist>(on(c(&Artist::artistId) == &Album::artistId)));
-//  innerJoinRows2 is std::vector<std::tuple<decltype(&Track::trackId), decltype(&Track::name), decltype(&Album::title), decltype(&Artist::name)>>
+//  innerJoinRows2 is std::vector<std::tuple<decltype(Track::trackId), decltype(Track::name), decltype(Album::title), decltype(Artist::name)>>
 ```
 
 More join examples can be found in [examples folder](https://github.com/fnc12/sqlite_orm/blob/master/examples/left_and_inner_join.cpp).
