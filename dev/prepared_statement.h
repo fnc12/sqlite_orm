@@ -311,6 +311,8 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
+                      "a single query cannot contain > 1 wheres blocks");
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
@@ -321,6 +323,8 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::get_all_t<T, Args...> get_all(Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
+                      "a single query cannot contain > 1 wheres blocks");
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
@@ -331,6 +335,8 @@ namespace sqlite_orm {
      */
     template<class... Args, class... Wargs>
     internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs... wh) {
+        static_assert(internal::count_tuple<std::tuple<Wargs...>, conditions::is_where>::value <= 1,
+                      "a single query cannot contain > 1 wheres blocks");
         std::tuple<Wargs...> conditions{std::forward<Wargs>(wh)...};
         return {std::move(set), move(conditions)};
     }

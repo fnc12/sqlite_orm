@@ -90,5 +90,18 @@ namespace sqlite_orm {
         struct conc_tuple {
             using type = tuple_cat_t<Args...>;
         };
+
+        template<class T, template<class> class C>
+        struct count_tuple;
+
+        template<template<class> class C>
+        struct count_tuple<std::tuple<>, C> {
+            static constexpr const int value = 0;
+        };
+
+        template<class H, class... Args, template<class> class C>
+        struct count_tuple<std::tuple<H, Args...>, C> {
+            static constexpr const int value = C<H>::value + count_tuple<std::tuple<Args...>, C>::value;
+        };
     }
 }
