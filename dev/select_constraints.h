@@ -304,7 +304,7 @@ namespace sqlite_orm {
      */
     template<class T, class F>
     internal::column_pointer<T, F> column(F f) {
-        return {f};
+        return {std::move(f)};
     }
 
     /**
@@ -312,6 +312,8 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::select_t<T, Args...> select(T t, Args... args) {
+        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
+                      "a single query cannot contain > 1 wheres blocks");
         return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
     }
 
