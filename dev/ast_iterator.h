@@ -213,9 +213,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type &s, const L &l) const {
-                s.for_each([&l](auto &s) {
-                    iterate_ast(s, l);
-                });
+                iterate_ast(s.assigns, l);
             }
         };
 

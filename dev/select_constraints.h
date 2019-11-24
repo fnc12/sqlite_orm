@@ -46,36 +46,19 @@ namespace sqlite_orm {
             static constexpr const int count = std::tuple_size<columns_type>::value;
         };
 
-        template<class... Args>
-        struct set_t {
-
+        struct set_string {
             operator std::string() const {
                 return "SET";
             }
-
-            template<class F>
-            void for_each(const F &) const {
-                //..
-            }
         };
 
-        template<class L, class... Args>
-        struct set_t<L, Args...> : public set_t<Args...> {
-            static_assert(is_assign_t<typename std::remove_reference<L>::type>::value,
-                          "set_t argument must be assign_t");
+        template<class... Args>
+        struct set_t : set_string {
+            using assigns_type = std::tuple<Args...>;
 
-            L l;
+            assigns_type assigns;
 
-            using super = set_t<Args...>;
-            using self = set_t<L, Args...>;
-
-            set_t(L l_, Args &&... args) : super(std::forward<Args>(args)...), l(std::forward<L>(l_)) {}
-
-            template<class F>
-            void for_each(const F &f) const {
-                f(l);
-                this->super::for_each(f);
-            }
+            set_t(assigns_type assigns_) : assigns(move(assigns_)) {}
         };
 
         /**
@@ -289,7 +272,11 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::set_t<Args...> set(Args... args) {
-        return {std::forward<Args>(args)...};
+        using arg_tuple = std::tuple<Args...>;
+        static_assert(std::tuple_size<arg_tuple>::value ==
+                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
+                      "set function accepts assign operators only");
+        return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     template<class... Args>
