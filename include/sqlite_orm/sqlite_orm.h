@@ -3981,36 +3981,19 @@ namespace sqlite_orm {
             static constexpr const int count = std::tuple_size<columns_type>::value;
         };
 
-        template<class... Args>
-        struct set_t {
-
+        struct set_string {
             operator std::string() const {
                 return "SET";
             }
-
-            template<class F>
-            void for_each(const F &) const {
-                //..
-            }
         };
 
-        template<class L, class... Args>
-        struct set_t<L, Args...> : public set_t<Args...> {
-            static_assert(is_assign_t<typename std::remove_reference<L>::type>::value,
-                          "set_t argument must be assign_t");
+        template<class... Args>
+        struct set_t : set_string {
+            using assigns_type = std::tuple<Args...>;
 
-            L l;
+            assigns_type assigns;
 
-            using super = set_t<Args...>;
-            using self = set_t<L, Args...>;
-
-            set_t(L l_, Args &&... args) : super(std::forward<Args>(args)...), l(std::forward<L>(l_)) {}
-
-            template<class F>
-            void for_each(const F &f) const {
-                f(l);
-                this->super::for_each(f);
-            }
+            set_t(assigns_type assigns_) : assigns(move(assigns_)) {}
         };
 
         /**
@@ -4224,7 +4207,11 @@ namespace sqlite_orm {
      */
     template<class... Args>
     internal::set_t<Args...> set(Args... args) {
-        return {std::forward<Args>(args)...};
+        using arg_tuple = std::tuple<Args...>;
+        static_assert(std::tuple_size<arg_tuple>::value ==
+                          internal::count_tuple<arg_tuple, internal::is_assign_t>::value,
+                      "set function accepts assign operators only");
+        return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     template<class... Args>
@@ -7324,9 +7311,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type &s, const L &l) const {
-                s.for_each([&l](auto &s) {
-                    iterate_ast(s, l);
-                });
+                iterate_ast(s.assigns, l);
             }
         };
 
@@ -9303,7 +9288,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE ";
                 std::set<std::pair<std::string, std::string>> tableNamesSet;
-                upd.set.for_each([this, &tableNamesSet](auto &asgn) {
+                iterate_tuple(upd.set.assigns, [this, &tableNamesSet](auto &asgn) {
                     auto tableName = this->parse_table_name(asgn.lhs);
                     tableNamesSet.insert(tableName.begin(), tableName.end());
                 });
@@ -9312,7 +9297,7 @@ namespace sqlite_orm {
                         ss << " '" << tableNamesSet.begin()->first << "' ";
                         ss << static_cast<std::string>(upd.set) << " ";
                         std::vector<std::string> setPairs;
-                        upd.set.for_each([this, &setPairs](auto &asgn) {
+                        iterate_tuple(upd.set.assigns, [this, &setPairs](auto &asgn) {
                             std::stringstream sss;
                             sss << this->string_from_expression(asgn.lhs, true);
                             sss << " " << static_cast<std::string>(asgn) << " ";
@@ -11473,7 +11458,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto index = 1;
                 sqlite3_reset(stmt);
-                statement.t.set.for_each([&index, stmt, db](auto &setArg) {
+                iterate_tuple(statement.t.set.assigns, [&index, stmt, db](auto &setArg) {
                     iterate_ast(setArg, [&index, stmt, db](auto &node) {
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};

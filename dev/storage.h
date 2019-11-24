@@ -654,7 +654,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE ";
                 std::set<std::pair<std::string, std::string>> tableNamesSet;
-                upd.set.for_each([this, &tableNamesSet](auto &asgn) {
+                iterate_tuple(upd.set.assigns, [this, &tableNamesSet](auto &asgn) {
                     auto tableName = this->parse_table_name(asgn.lhs);
                     tableNamesSet.insert(tableName.begin(), tableName.end());
                 });
@@ -663,7 +663,7 @@ namespace sqlite_orm {
                         ss << " '" << tableNamesSet.begin()->first << "' ";
                         ss << static_cast<std::string>(upd.set) << " ";
                         std::vector<std::string> setPairs;
-                        upd.set.for_each([this, &setPairs](auto &asgn) {
+                        iterate_tuple(upd.set.assigns, [this, &setPairs](auto &asgn) {
                             std::stringstream sss;
                             sss << this->string_from_expression(asgn.lhs, true);
                             sss << " " << static_cast<std::string>(asgn) << " ";
@@ -2824,7 +2824,7 @@ namespace sqlite_orm {
                 auto stmt = statement.stmt;
                 auto index = 1;
                 sqlite3_reset(stmt);
-                statement.t.set.for_each([&index, stmt, db](auto &setArg) {
+                iterate_tuple(statement.t.set.assigns, [&index, stmt, db](auto &setArg) {
                     iterate_ast(setArg, [&index, stmt, db](auto &node) {
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
