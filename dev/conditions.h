@@ -41,7 +41,7 @@ namespace sqlite_orm {
                 return "LIMIT";
             }
         };
-        
+
         template<class T>
         using is_limit = std::is_same<limit_t, T>;
 
@@ -560,16 +560,16 @@ namespace sqlite_orm {
             std::vector<entry_t> entries;
             const storage_type &storage;
         };
-        
+
         template<class T>
         struct is_order_by : std::false_type {};
-        
+
         template<class O>
         struct is_order_by<order_by_t<O>> : std::true_type {};
-        
+
         template<class... Args>
         struct is_order_by<multi_order_by_t<Args...>> : std::true_type {};
-        
+
         template<class S>
         struct is_order_by<dynamic_order_by_t<S>> : std::true_type {};
 
@@ -589,10 +589,10 @@ namespace sqlite_orm {
 
             group_by_t(args_type &&args_) : args(std::move(args_)) {}
         };
-        
+
         template<class T>
         struct is_group_by : std::false_type {};
-        
+
         template<class... Args>
         struct is_group_by<group_by_t<Args...>> : std::true_type {};
 

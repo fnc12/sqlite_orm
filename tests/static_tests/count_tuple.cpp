@@ -37,7 +37,8 @@ TEST_CASE("count_tuple") {
         static_assert(count_tuple<T, conditions::is_limit>::value == 1, "");
     }
     {
-        auto t = std::make_tuple(where(is_null(&User::name)), order_by(&User::id), multi_order_by(order_by(&User::name)));
+        auto t =
+            std::make_tuple(where(is_null(&User::name)), order_by(&User::id), multi_order_by(order_by(&User::name)));
         using T = decltype(t);
         static_assert(count_tuple<T, conditions::is_where>::value == 1, "");
         static_assert(count_tuple<T, conditions::is_group_by>::value == 0, "");

@@ -233,7 +233,7 @@ namespace sqlite_orm {
                 return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
             }
         };
-        
+
         template<class T>
         void validate_conditions() {
             static_assert(count_tuple<T, conditions::is_where>::value <= 1,
