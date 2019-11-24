@@ -27,7 +27,7 @@ __pragma(push_macro("min"))
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
 
-        namespace sqlite_orm {
+namespace sqlite_orm {
 
     enum class orm_error_code {
         not_found = 1,
@@ -43,6 +43,7 @@ __pragma(push_macro("min"))
         invalid_collate_argument_enum,
         failed_to_init_a_backup,
     };
+
 }
 
 namespace sqlite_orm {
@@ -220,6 +221,7 @@ namespace sqlite_orm {
 
 // #include "static_magic.h"
 
+
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
 
 namespace sqlite_orm {
@@ -250,6 +252,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -962,6 +965,7 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1199,6 +1203,7 @@ namespace sqlite_orm {
 // #include "default_value_extractor.h"
 
 // #include "constraints.h"
+
 
 namespace sqlite_orm {
 
@@ -1655,6 +1660,7 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1686,6 +1692,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -1719,6 +1726,9 @@ namespace sqlite_orm {
                 return "LIMIT";
             }
         };
+        
+        template<class T>
+        using is_limit = std::is_same<limit_t, T>;
 
         /**
          *  Stores OFFSET only info
@@ -2235,6 +2245,18 @@ namespace sqlite_orm {
             std::vector<entry_t> entries;
             const storage_type &storage;
         };
+        
+        template<class T>
+        struct is_order_by : std::false_type {};
+        
+        template<class O>
+        struct is_order_by<order_by_t<O>> : std::true_type {};
+        
+        template<class... Args>
+        struct is_order_by<multi_order_by_t<Args...>> : std::true_type {};
+        
+        template<class S>
+        struct is_order_by<dynamic_order_by_t<S>> : std::true_type {};
 
         struct group_by_string {
             operator std::string() const {
@@ -2252,6 +2274,12 @@ namespace sqlite_orm {
 
             group_by_t(args_type &&args_) : args(std::move(args_)) {}
         };
+        
+        template<class T>
+        struct is_group_by : std::false_type {};
+        
+        template<class... Args>
+        struct is_group_by<group_by_t<Args...>> : std::true_type {};
 
         struct between_string {
             operator std::string() const {
@@ -3075,6 +3103,7 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -3194,6 +3223,7 @@ namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
+
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
 
 namespace sqlite_orm {
@@ -3230,6 +3260,7 @@ namespace sqlite_orm {
 #endif
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -3943,6 +3974,7 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -4168,6 +4200,18 @@ namespace sqlite_orm {
                 return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
             }
         };
+        
+        template<class T>
+        void validate_conditions() {
+            static_assert(count_tuple<T, conditions::is_where>::value <= 1,
+                          "a single query cannot contain > 1 WHERE blocks");
+            static_assert(count_tuple<T, conditions::is_group_by>::value <= 1,
+                          "a single query cannot contain > 1 GROUP BY blocks");
+            static_assert(count_tuple<T, conditions::is_order_by>::value <= 1,
+                          "a single query cannot contain > 1 ORDER BY blocks");
+            static_assert(count_tuple<T, conditions::is_limit>::value <= 1,
+                          "a single query cannot contain > 1 LIMIT blocks");
+        }
     }
 
     template<class T>
@@ -4234,9 +4278,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::select_t<T, Args...> select(T t, Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        return {std::move(t), std::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**
@@ -4322,6 +4366,7 @@ namespace sqlite_orm {
 // #include "select_constraints.h"
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
 
@@ -4429,6 +4474,7 @@ namespace sqlite_orm {
 
 // #include "is_std_ptr.h"
 
+
 namespace sqlite_orm {
 
     /**
@@ -4466,6 +4512,7 @@ namespace sqlite_orm {
     };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
+
 
 namespace sqlite_orm {
 
@@ -4653,6 +4700,7 @@ namespace sqlite_orm {
 
 // #include "journal_mode.h"
 
+
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
@@ -4712,6 +4760,7 @@ namespace sqlite_orm {
 }
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -5069,6 +5118,7 @@ namespace sqlite_orm {
 
 // #include "alias.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -5316,6 +5366,7 @@ namespace sqlite_orm {
         }
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -5593,6 +5644,7 @@ namespace sqlite_orm {
 // #include "type_printer.h"
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
 
@@ -5910,9 +5962,11 @@ namespace sqlite_orm {
 
 // #include "field_value_holder.h"
 
+
 #include <type_traits>  //  std::enable_if
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -5935,6 +5989,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -6496,6 +6551,7 @@ namespace sqlite_orm {
 
 // #include "view.h"
 
+
 #include <memory>  //  std::shared_ptr
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
@@ -6511,6 +6567,7 @@ namespace sqlite_orm {
 
 // #include "iterator.h"
 
+
 #include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <sqlite3.h>
 #include <type_traits>  //  std::decay
@@ -6525,6 +6582,7 @@ namespace sqlite_orm {
 // #include "statement_finalizer.h"
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -6654,6 +6712,7 @@ namespace sqlite_orm {
 
 // #include "ast_iterator.h"
 
+
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 
@@ -6669,6 +6728,7 @@ namespace sqlite_orm {
 
 // #include "prepared_statement.h"
 
+
 #include <sqlite3.h>
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
@@ -6677,11 +6737,13 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <system_error>  //  std::system_error
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -6756,6 +6818,7 @@ namespace sqlite_orm {
 }
 
 // #include "select_constraints.h"
+
 
 namespace sqlite_orm {
 
@@ -7059,9 +7122,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 
@@ -7071,9 +7134,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::get_all_t<T, Args...> get_all(Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 
@@ -7083,9 +7146,9 @@ namespace sqlite_orm {
      */
     template<class... Args, class... Wargs>
     internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs... wh) {
-        static_assert(internal::count_tuple<std::tuple<Wargs...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        std::tuple<Wargs...> conditions{std::forward<Wargs>(wh)...};
+        using args_tuple = std::tuple<Wargs...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Wargs>(wh)...};
         return {std::move(set), move(conditions)};
     }
 
@@ -7107,6 +7170,7 @@ namespace sqlite_orm {
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
+
 
 namespace sqlite_orm {
 
@@ -7529,6 +7593,7 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -7587,6 +7652,7 @@ namespace sqlite_orm {
 
 // #include "storage_base.h"
 
+
 #include <functional>  //  std::function, std::bind
 #include <sqlite3.h>
 #include <string>  //  std::string
@@ -7601,6 +7667,7 @@ namespace sqlite_orm {
 
 // #include "pragma.h"
 
+
 #include <string>  //  std::string
 #include <sqlite3.h>
 #include <functional>  //  std::function
@@ -7613,6 +7680,7 @@ namespace sqlite_orm {
 // #include "journal_mode.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -7734,12 +7802,14 @@ namespace sqlite_orm {
 
 // #include "limit_accesor.h"
 
+
 #include <sqlite3.h>
 #include <map>  //  std::map
 #include <functional>  //  std::function
 #include <memory>  //  std::shared_ptr
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -7874,9 +7944,11 @@ namespace sqlite_orm {
 
 // #include "transaction_guard.h"
 
+
 #include <functional>  //  std::function
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -7952,6 +8024,7 @@ namespace sqlite_orm {
 
 // #include "backup.h"
 
+
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <memory>
@@ -7959,6 +8032,7 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -8024,6 +8098,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -8560,10 +8635,12 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
+
 #include <type_traits>  //  std::decay
 #include <functional>  //  std::reference_wrapper
 
 // #include "prepared_statement.h"
+
 
 namespace sqlite_orm {
 
@@ -8681,6 +8758,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -11698,19 +11776,20 @@ __pragma(pop_macro("min"))
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
 
-    // #include "conditions.h"
+// #include "conditions.h"
 
-    // #include "operators.h"
+// #include "operators.h"
 
-    // #include "select_constraints.h"
+// #include "select_constraints.h"
 
-    // #include "prepared_statement.h"
+// #include "prepared_statement.h"
 
-    // #include "optional_container.h"
+// #include "optional_container.h"
 
-    // #include "core_functions.h"
+// #include "core_functions.h"
 
-    namespace sqlite_orm {
+
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -11974,6 +12053,7 @@ __pragma(pop_macro("min"))
 
 // #include "expression_object_type.h"
 
+
 namespace sqlite_orm {
 
     template<int N, class It>
@@ -12140,6 +12220,7 @@ namespace sqlite_orm {
 // #include "core_functions.h"
 
 // #include "constraints.h"
+
 
 namespace sqlite_orm {
 
