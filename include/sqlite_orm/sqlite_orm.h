@@ -1720,6 +1720,9 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        using is_limit = std::is_same<limit_t, T>;
+
         /**
          *  Stores OFFSET only info
          */
@@ -2236,6 +2239,18 @@ namespace sqlite_orm {
             const storage_type &storage;
         };
 
+        template<class T>
+        struct is_order_by : std::false_type {};
+
+        template<class O>
+        struct is_order_by<order_by_t<O>> : std::true_type {};
+
+        template<class... Args>
+        struct is_order_by<multi_order_by_t<Args...>> : std::true_type {};
+
+        template<class S>
+        struct is_order_by<dynamic_order_by_t<S>> : std::true_type {};
+
         struct group_by_string {
             operator std::string() const {
                 return "GROUP BY";
@@ -2252,6 +2267,12 @@ namespace sqlite_orm {
 
             group_by_t(args_type &&args_) : args(std::move(args_)) {}
         };
+
+        template<class T>
+        struct is_group_by : std::false_type {};
+
+        template<class... Args>
+        struct is_group_by<group_by_t<Args...>> : std::true_type {};
 
         struct between_string {
             operator std::string() const {
@@ -4168,6 +4189,18 @@ namespace sqlite_orm {
                 return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
             }
         };
+
+        template<class T>
+        void validate_conditions() {
+            static_assert(count_tuple<T, conditions::is_where>::value <= 1,
+                          "a single query cannot contain > 1 WHERE blocks");
+            static_assert(count_tuple<T, conditions::is_group_by>::value <= 1,
+                          "a single query cannot contain > 1 GROUP BY blocks");
+            static_assert(count_tuple<T, conditions::is_order_by>::value <= 1,
+                          "a single query cannot contain > 1 ORDER BY blocks");
+            static_assert(count_tuple<T, conditions::is_limit>::value <= 1,
+                          "a single query cannot contain > 1 LIMIT blocks");
+        }
     }
 
     template<class T>
@@ -4234,9 +4267,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::select_t<T, Args...> select(T t, Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        return {std::move(t), std::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**
@@ -7059,9 +7092,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 
@@ -7071,9 +7104,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::get_all_t<T, Args...> get_all(Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 
@@ -7083,9 +7116,9 @@ namespace sqlite_orm {
      */
     template<class... Args, class... Wargs>
     internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs... wh) {
-        static_assert(internal::count_tuple<std::tuple<Wargs...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        std::tuple<Wargs...> conditions{std::forward<Wargs>(wh)...};
+        using args_tuple = std::tuple<Wargs...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Wargs>(wh)...};
         return {std::move(set), move(conditions)};
     }
 

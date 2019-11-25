@@ -233,6 +233,18 @@ namespace sqlite_orm {
                 return {{std::move(this->case_expression)}, std::move(args), {std::move(el)}};
             }
         };
+
+        template<class T>
+        void validate_conditions() {
+            static_assert(count_tuple<T, conditions::is_where>::value <= 1,
+                          "a single query cannot contain > 1 WHERE blocks");
+            static_assert(count_tuple<T, conditions::is_group_by>::value <= 1,
+                          "a single query cannot contain > 1 GROUP BY blocks");
+            static_assert(count_tuple<T, conditions::is_order_by>::value <= 1,
+                          "a single query cannot contain > 1 ORDER BY blocks");
+            static_assert(count_tuple<T, conditions::is_limit>::value <= 1,
+                          "a single query cannot contain > 1 LIMIT blocks");
+        }
     }
 
     template<class T>
@@ -299,9 +311,9 @@ namespace sqlite_orm {
      */
     template<class T, class... Args>
     internal::select_t<T, Args...> select(T t, Args... args) {
-        static_assert(internal::count_tuple<std::tuple<Args...>, conditions::is_where>::value <= 1,
-                      "a single query cannot contain > 1 wheres blocks");
-        return {std::move(t), std::make_tuple<Args...>(std::forward<Args>(args)...)};
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        return {std::move(t), std::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**
