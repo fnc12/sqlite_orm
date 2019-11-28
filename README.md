@@ -202,7 +202,7 @@ Prepared statements are strongly typed.
 //  FROM visits
 //  WHERE LENGTH(patient_name) > 8
 auto selectStatement = storage.prepare(select(&Visit::doctor_id, where(length(&Visit::patient_name) > 8)));
-cout << "selectStatement = " << selectStatement.sql() << endl;
+cout << "selectStatement = " << selectStatement.sql() << endl;  //  prints "SELECT doctor_id FROM ..."
 auto rows = storage.execute(selectStatement); //  rows is std::vector<decltype(Visit::doctor_id)>
 
 //  SELECT doctor_id

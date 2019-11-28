@@ -120,7 +120,6 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct remove_all_t {
             using type = T;
-
             using conditions_type = std::tuple<Args...>;
 
             conditions_type conditions;
@@ -129,7 +128,6 @@ namespace sqlite_orm {
         template<class T, class... Ids>
         struct get_t {
             using type = T;
-
             using ids_type = std::tuple<Ids...>;
 
             ids_type ids;
@@ -138,7 +136,6 @@ namespace sqlite_orm {
         template<class T, class... Ids>
         struct get_pointer_t {
             using type = T;
-
             using ids_type = std::tuple<Ids...>;
 
             ids_type ids;
@@ -148,7 +145,6 @@ namespace sqlite_orm {
         template<class T, class... Ids>
         struct get_optional_t {
             using type = T;
-
             using ids_type = std::tuple<Ids...>;
 
             ids_type ids;
@@ -165,7 +161,6 @@ namespace sqlite_orm {
         template<class T, class... Ids>
         struct remove_t {
             using type = T;
-
             using ids_type = std::tuple<Ids...>;
 
             ids_type ids;

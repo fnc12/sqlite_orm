@@ -697,7 +697,7 @@ namespace sqlite_orm {
             }
 
             // Common code for statements with conditions: get_t, get_pointer_t, get_optional_t.
-            template<class T, class... Ids>
+            template<class T>
             std::string string_from_expression_impl_get(bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
@@ -728,18 +728,18 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            std::string string_from_expression(const get_t<T, Ids...> &g, bool noTableName) const {
+            std::string string_from_expression(const get_t<T, Ids...> &, bool noTableName) const {
                 return this->string_from_expression_impl_get<T>(noTableName);
             }
 
             template<class T, class... Ids>
-            std::string string_from_expression(const get_pointer_t<T, Ids...> &g, bool noTableName) const {
+            std::string string_from_expression(const get_pointer_t<T, Ids...> &, bool noTableName) const {
                 return this->string_from_expression_impl_get<T>(noTableName);
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Ids>
-            std::string string_from_expression(const get_optional_t<T, Ids...> &g, bool noTableName) const {
+            std::string string_from_expression(const get_optional_t<T, Ids...> &, bool noTableName) const {
                 return this->string_from_expression_impl_get<T>(noTableName);
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -780,7 +780,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            std::string string_from_expression(const remove_t<T, Ids...> &rem, bool /*noTableName*/) const {
+            std::string string_from_expression(const remove_t<T, Ids...> &, bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << impl.table.name << "' ";

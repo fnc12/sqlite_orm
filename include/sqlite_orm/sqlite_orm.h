@@ -27,7 +27,7 @@ __pragma(push_macro("min"))
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
 
-        namespace sqlite_orm {
+namespace sqlite_orm {
 
     enum class orm_error_code {
         not_found = 1,
@@ -43,6 +43,7 @@ __pragma(push_macro("min"))
         invalid_collate_argument_enum,
         failed_to_init_a_backup,
     };
+
 }
 
 namespace sqlite_orm {
@@ -220,6 +221,7 @@ namespace sqlite_orm {
 
 // #include "static_magic.h"
 
+
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
 
 namespace sqlite_orm {
@@ -230,17 +232,17 @@ namespace sqlite_orm {
 
         template<typename T, typename F>
         auto static_if(std::true_type, T t, F) {
-            return t;
+            return std::move(t);
         }
 
         template<typename T, typename F>
         auto static_if(std::false_type, T, F f) {
-            return f;
+            return std::move(f);
         }
 
         template<bool B, typename T, typename F>
         auto static_if(T t, F f) {
-            return static_if(std::integral_constant<bool, B>{}, t, f);
+            return static_if(std::integral_constant<bool, B>{}, std::move(t), std::move(f));
         }
 
         template<bool B, typename T>
@@ -250,6 +252,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -365,7 +368,7 @@ namespace sqlite_orm {
     /**
      *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
      */
-    template<class T>
+    template<class T, typename Enable = void>
     struct type_printer;
 
     struct integer_printer {
@@ -398,69 +401,69 @@ namespace sqlite_orm {
 
     // Note unsigned/signed char and simple char used for storing integer values, not char values.
     template<>
-    struct type_printer<unsigned char> : public integer_printer {};
+    struct type_printer<unsigned char, void> : public integer_printer {};
 
     template<>
-    struct type_printer<signed char> : public integer_printer {};
+    struct type_printer<signed char, void> : public integer_printer {};
 
     template<>
-    struct type_printer<char> : public integer_printer {};
+    struct type_printer<char, void> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned short int> : public integer_printer {};
+    struct type_printer<unsigned short int, void> : public integer_printer {};
 
     template<>
-    struct type_printer<short> : public integer_printer {};
+    struct type_printer<short, void> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned int> : public integer_printer {};
+    struct type_printer<unsigned int, void> : public integer_printer {};
 
     template<>
-    struct type_printer<int> : public integer_printer {};
+    struct type_printer<int, void> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned long> : public integer_printer {};
+    struct type_printer<unsigned long, void> : public integer_printer {};
 
     template<>
-    struct type_printer<long> : public integer_printer {};
+    struct type_printer<long, void> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned long long> : public integer_printer {};
+    struct type_printer<unsigned long long, void> : public integer_printer {};
 
     template<>
-    struct type_printer<long long> : public integer_printer {};
+    struct type_printer<long long, void> : public integer_printer {};
 
     template<>
-    struct type_printer<bool> : public integer_printer {};
+    struct type_printer<bool, void> : public integer_printer {};
 
     template<>
-    struct type_printer<std::string> : public text_printer {};
+    struct type_printer<std::string, void> : public text_printer {};
 
     template<>
-    struct type_printer<std::wstring> : public text_printer {};
+    struct type_printer<std::wstring, void> : public text_printer {};
 
     template<>
-    struct type_printer<const char *> : public text_printer {};
+    struct type_printer<const char *, void> : public text_printer {};
 
     template<>
-    struct type_printer<float> : public real_printer {};
+    struct type_printer<float, void> : public real_printer {};
 
     template<>
-    struct type_printer<double> : public real_printer {};
+    struct type_printer<double, void> : public real_printer {};
 
     template<class T>
-    struct type_printer<std::shared_ptr<T>> : public type_printer<T> {};
+    struct type_printer<std::shared_ptr<T>, void> : public type_printer<T> {};
 
     template<class T>
-    struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
+    struct type_printer<std::unique_ptr<T>, void> : public type_printer<T> {};
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct type_printer<std::optional<T>> : public type_printer<T> {};
+    struct type_printer<std::optional<T>, void> : public type_printer<T> {};
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
-    struct type_printer<std::vector<char>> : public blob_printer {};
+    struct type_printer<std::vector<char>, void> : public blob_printer {};
 }
 #pragma once
 
@@ -962,6 +965,7 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1199,6 +1203,7 @@ namespace sqlite_orm {
 // #include "default_value_extractor.h"
 
 // #include "constraints.h"
+
 
 namespace sqlite_orm {
 
@@ -1655,6 +1660,7 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1686,6 +1692,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -2537,6 +2544,12 @@ namespace sqlite_orm {
 
             having_t(type t_) : t(std::move(t_)) {}
         };
+        
+        template<class T>
+        struct is_having : std::false_type {};
+        
+        template<class T>
+        struct is_having<having_t<T>> : std::true_type {};
 
         struct cast_string {
             operator std::string() const {
@@ -2544,6 +2557,12 @@ namespace sqlite_orm {
             }
         };
 
+        /**
+         *  CAST holder.
+         *  T is a type to cast to
+         *  E is an expression type
+         *  Example: cast<std::string>(&User::id)
+         */
         template<class T, class E>
         struct cast_t : cast_string {
             using to_type = T;
@@ -3096,6 +3115,7 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -3215,6 +3235,7 @@ namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
+
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
 
 namespace sqlite_orm {
@@ -3251,6 +3272,7 @@ namespace sqlite_orm {
 #endif
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -3964,6 +3986,7 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -4314,47 +4337,12 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <string>  //  std::string
-#include <sqlite3.h>
-#include <system_error>  //  std::error_code, std::system_error
-
-// #include "error_code.h"
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        inline sqlite3 *open_db(std::string const &filename) {
-            sqlite3 *result{nullptr};
-            if(sqlite3_open(filename.c_str(), &result) != SQLITE_OK) {
-                throw_error(result, "opening '", filename, "'. ");
-            }
-            return result;
-        }
-
-        struct database_connection {
-            explicit database_connection(const std::string &filename) : db{open_db(filename)} {}
-
-            ~database_connection() {
-                sqlite3_close(this->db);
-            }
-
-            sqlite3 *get_db() {
-                return this->db;
-            }
-
-          private:
-            sqlite3 *db;
-        };
-    }
-}
-#pragma once
-
 #include <type_traits>  //  std::enable_if, std::is_member_pointer
 
 // #include "select_constraints.h"
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
 
@@ -4462,6 +4450,7 @@ namespace sqlite_orm {
 
 // #include "is_std_ptr.h"
 
+
 namespace sqlite_orm {
 
     /**
@@ -4499,6 +4488,7 @@ namespace sqlite_orm {
     };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
+
 
 namespace sqlite_orm {
 
@@ -4686,6 +4676,7 @@ namespace sqlite_orm {
 
 // #include "journal_mode.h"
 
+
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
@@ -4745,6 +4736,7 @@ namespace sqlite_orm {
 }
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -5102,6 +5094,7 @@ namespace sqlite_orm {
 
 // #include "alias.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -5349,6 +5342,7 @@ namespace sqlite_orm {
         }
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -5626,6 +5620,7 @@ namespace sqlite_orm {
 // #include "type_printer.h"
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
 
@@ -5943,9 +5938,11 @@ namespace sqlite_orm {
 
 // #include "field_value_holder.h"
 
+
 #include <type_traits>  //  std::enable_if
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -5968,6 +5965,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -6529,6 +6527,7 @@ namespace sqlite_orm {
 
 // #include "view.h"
 
+
 #include <memory>  //  std::shared_ptr
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
@@ -6544,6 +6543,7 @@ namespace sqlite_orm {
 
 // #include "iterator.h"
 
+
 #include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <sqlite3.h>
 #include <type_traits>  //  std::decay
@@ -6558,6 +6558,7 @@ namespace sqlite_orm {
 // #include "statement_finalizer.h"
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -6687,6 +6688,7 @@ namespace sqlite_orm {
 
 // #include "ast_iterator.h"
 
+
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 
@@ -6702,6 +6704,7 @@ namespace sqlite_orm {
 
 // #include "prepared_statement.h"
 
+
 #include <sqlite3.h>
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
@@ -6710,11 +6713,13 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <system_error>  //  std::system_error
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -6789,6 +6794,7 @@ namespace sqlite_orm {
 }
 
 // #include "select_constraints.h"
+
 
 namespace sqlite_orm {
 
@@ -6901,7 +6907,6 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct remove_all_t {
             using type = T;
-
             using conditions_type = std::tuple<Args...>;
 
             conditions_type conditions;
@@ -6910,7 +6915,6 @@ namespace sqlite_orm {
         template<class T, class... Ids>
         struct get_t {
             using type = T;
-
             using ids_type = std::tuple<Ids...>;
 
             ids_type ids;
@@ -6919,7 +6923,6 @@ namespace sqlite_orm {
         template<class T, class... Ids>
         struct get_pointer_t {
             using type = T;
-
             using ids_type = std::tuple<Ids...>;
 
             ids_type ids;
@@ -6929,7 +6932,6 @@ namespace sqlite_orm {
         template<class T, class... Ids>
         struct get_optional_t {
             using type = T;
-
             using ids_type = std::tuple<Ids...>;
 
             ids_type ids;
@@ -6946,7 +6948,6 @@ namespace sqlite_orm {
         template<class T, class... Ids>
         struct remove_t {
             using type = T;
-
             using ids_type = std::tuple<Ids...>;
 
             ids_type ids;
@@ -7140,6 +7141,7 @@ namespace sqlite_orm {
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
+
 
 namespace sqlite_orm {
 
@@ -7562,6 +7564,7 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -7620,6 +7623,7 @@ namespace sqlite_orm {
 
 // #include "storage_base.h"
 
+
 #include <functional>  //  std::function, std::bind
 #include <sqlite3.h>
 #include <string>  //  std::string
@@ -7634,6 +7638,7 @@ namespace sqlite_orm {
 
 // #include "pragma.h"
 
+
 #include <string>  //  std::string
 #include <sqlite3.h>
 #include <functional>  //  std::function
@@ -7646,6 +7651,7 @@ namespace sqlite_orm {
 // #include "journal_mode.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -7767,12 +7773,14 @@ namespace sqlite_orm {
 
 // #include "limit_accesor.h"
 
+
 #include <sqlite3.h>
 #include <map>  //  std::map
 #include <functional>  //  std::function
 #include <memory>  //  std::shared_ptr
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -7907,9 +7915,11 @@ namespace sqlite_orm {
 
 // #include "transaction_guard.h"
 
+
 #include <functional>  //  std::function
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -7985,6 +7995,7 @@ namespace sqlite_orm {
 
 // #include "backup.h"
 
+
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <memory>
@@ -7992,6 +8003,7 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -8057,6 +8069,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -8593,10 +8606,12 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
+
 #include <type_traits>  //  std::decay
 #include <functional>  //  std::reference_wrapper
 
 // #include "prepared_statement.h"
+
 
 namespace sqlite_orm {
 
@@ -8714,6 +8729,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -9364,7 +9380,7 @@ namespace sqlite_orm {
             }
 
             // Common code for statements with conditions: get_t, get_pointer_t, get_optional_t.
-            template<class T, class... Ids>
+            template<class T>
             std::string string_from_expression_impl_get(bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
@@ -9395,18 +9411,18 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            std::string string_from_expression(const get_t<T, Ids...> &g, bool noTableName) const {
+            std::string string_from_expression(const get_t<T, Ids...> &, bool noTableName) const {
                 return this->string_from_expression_impl_get<T>(noTableName);
             }
 
             template<class T, class... Ids>
-            std::string string_from_expression(const get_pointer_t<T, Ids...> &g, bool noTableName) const {
+            std::string string_from_expression(const get_pointer_t<T, Ids...> &, bool noTableName) const {
                 return this->string_from_expression_impl_get<T>(noTableName);
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Ids>
-            std::string string_from_expression(const get_optional_t<T, Ids...> &g, bool noTableName) const {
+            std::string string_from_expression(const get_optional_t<T, Ids...> &, bool noTableName) const {
                 return this->string_from_expression_impl_get<T>(noTableName);
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -9447,7 +9463,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            std::string string_from_expression(const remove_t<T, Ids...> &rem, bool /*noTableName*/) const {
+            std::string string_from_expression(const remove_t<T, Ids...> &, bool /*noTableName*/) const {
                 auto &impl = this->get_impl<T>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << impl.table.name << "' ";
@@ -11731,19 +11747,20 @@ __pragma(pop_macro("min"))
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
 
-    // #include "conditions.h"
+// #include "conditions.h"
 
-    // #include "operators.h"
+// #include "operators.h"
 
-    // #include "select_constraints.h"
+// #include "select_constraints.h"
 
-    // #include "prepared_statement.h"
+// #include "prepared_statement.h"
 
-    // #include "optional_container.h"
+// #include "optional_container.h"
 
-    // #include "core_functions.h"
+// #include "core_functions.h"
 
-    namespace sqlite_orm {
+
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -12007,6 +12024,7 @@ __pragma(pop_macro("min"))
 
 // #include "expression_object_type.h"
 
+
 namespace sqlite_orm {
 
     template<int N, class It>
@@ -12173,6 +12191,7 @@ namespace sqlite_orm {
 // #include "core_functions.h"
 
 // #include "constraints.h"
+
 
 namespace sqlite_orm {
 
