@@ -859,10 +859,10 @@ namespace sqlite_orm {
 
             having_t(type t_) : t(std::move(t_)) {}
         };
-        
+
         template<class T>
         struct is_having : std::false_type {};
-        
+
         template<class T>
         struct is_having<having_t<T>> : std::true_type {};
 
