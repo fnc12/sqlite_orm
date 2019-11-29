@@ -12,7 +12,7 @@ namespace sqlite_orm {
     /**
      *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
      */
-    template<class T>
+    template<class T, typename Enable = void>
     struct type_printer;
 
     struct integer_printer {
@@ -45,67 +45,67 @@ namespace sqlite_orm {
 
     // Note unsigned/signed char and simple char used for storing integer values, not char values.
     template<>
-    struct type_printer<unsigned char> : public integer_printer {};
+    struct type_printer<unsigned char, void> : public integer_printer {};
 
     template<>
-    struct type_printer<signed char> : public integer_printer {};
+    struct type_printer<signed char, void> : public integer_printer {};
 
     template<>
-    struct type_printer<char> : public integer_printer {};
+    struct type_printer<char, void> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned short int> : public integer_printer {};
+    struct type_printer<unsigned short int, void> : public integer_printer {};
 
     template<>
-    struct type_printer<short> : public integer_printer {};
+    struct type_printer<short, void> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned int> : public integer_printer {};
+    struct type_printer<unsigned int, void> : public integer_printer {};
 
     template<>
-    struct type_printer<int> : public integer_printer {};
+    struct type_printer<int, void> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned long> : public integer_printer {};
+    struct type_printer<unsigned long, void> : public integer_printer {};
 
     template<>
-    struct type_printer<long> : public integer_printer {};
+    struct type_printer<long, void> : public integer_printer {};
 
     template<>
-    struct type_printer<unsigned long long> : public integer_printer {};
+    struct type_printer<unsigned long long, void> : public integer_printer {};
 
     template<>
-    struct type_printer<long long> : public integer_printer {};
+    struct type_printer<long long, void> : public integer_printer {};
 
     template<>
-    struct type_printer<bool> : public integer_printer {};
+    struct type_printer<bool, void> : public integer_printer {};
 
     template<>
-    struct type_printer<std::string> : public text_printer {};
+    struct type_printer<std::string, void> : public text_printer {};
 
     template<>
-    struct type_printer<std::wstring> : public text_printer {};
+    struct type_printer<std::wstring, void> : public text_printer {};
 
     template<>
-    struct type_printer<const char *> : public text_printer {};
+    struct type_printer<const char *, void> : public text_printer {};
 
     template<>
-    struct type_printer<float> : public real_printer {};
+    struct type_printer<float, void> : public real_printer {};
 
     template<>
-    struct type_printer<double> : public real_printer {};
+    struct type_printer<double, void> : public real_printer {};
 
     template<class T>
-    struct type_printer<std::shared_ptr<T>> : public type_printer<T> {};
+    struct type_printer<std::shared_ptr<T>, void> : public type_printer<T> {};
 
     template<class T>
-    struct type_printer<std::unique_ptr<T>> : public type_printer<T> {};
+    struct type_printer<std::unique_ptr<T>, void> : public type_printer<T> {};
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct type_printer<std::optional<T>> : public type_printer<T> {};
+    struct type_printer<std::optional<T>, void> : public type_printer<T> {};
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
-    struct type_printer<std::vector<char>> : public blob_printer {};
+    struct type_printer<std::vector<char>, void> : public blob_printer {};
 }

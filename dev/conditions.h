@@ -860,12 +860,24 @@ namespace sqlite_orm {
             having_t(type t_) : t(std::move(t_)) {}
         };
 
+        template<class T>
+        struct is_having : std::false_type {};
+
+        template<class T>
+        struct is_having<having_t<T>> : std::true_type {};
+
         struct cast_string {
             operator std::string() const {
                 return "CAST";
             }
         };
 
+        /**
+         *  CAST holder.
+         *  T is a type to cast to
+         *  E is an expression type
+         *  Example: cast<std::string>(&User::id)
+         */
         template<class T, class E>
         struct cast_t : cast_string {
             using to_type = T;
