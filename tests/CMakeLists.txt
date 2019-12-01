@@ -53,8 +53,7 @@ add_executable(unit_tests \
     static_tests/bindable_filter.cpp \
     static_tests/count_tuple.cpp \
     constraints/default.cpp \
-    constraints/foreign_key.cpp\
-    )
+    constraints/foreign_key.cpp)
 
 
 if(SQLITE_ORM_OMITS_CODECVT)
