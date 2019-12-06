@@ -744,6 +744,7 @@ To manage in memory database just provide `:memory:` or `""` instead as filename
 |Custom types binding|yes|no|yes|yes|
 |Doesn't use macros and/or external codegen scripts|yes|yes|no|no|
 |Aggregate functions|yes|yes|no|yes|
+|Prepared statements|yes|yes|no|no|
 
 # Notes
 
