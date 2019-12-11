@@ -51,7 +51,7 @@ namespace sqlite_orm {
                 }
             }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3027000
+#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
             std::string normalized_sql() const {
                 if(this->stmt) {
                     if(auto res = sqlite3_normalized_sql(this->stmt)) {
@@ -223,8 +223,11 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create a replace by reference statement
-     *  Usage: replace(myUserInstance);
+     *  Create a replace statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.replace(myUserInstance);
+     *  Parameter obj is accepted by value. Is you want to accept it by ref
+     *  the use std::ref function: storage.replace(std::ref(myUserInstance));
      */
     template<class T>
     internal::replace_t<T> replace(T obj) {
@@ -232,8 +235,11 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create an insert by reference statement
-     *  Usage: insert(myUserInstance);
+     *  Create an insert statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.insert(myUserInstance);
+     *  Parameter obj is accepted by value. Is you want to accept it by ref
+     *  the use std::ref function: storage.insert(std::ref(myUserInstance));
      */
     template<class T>
     internal::insert_t<T> insert(T obj) {
@@ -241,8 +247,12 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create an explicit insert by reference statement.
-     *  Usage: insert(myUserInstance, columns(&User::id, &User::name));
+     *  Create an explicit insert statement.
+     *  T is an object type mapped to a storage.
+     *  Cols is columns types aparameter pack. Must contain member pointers
+     *  Usage: storage.insert(myUserInstance, columns(&User::id, &User::name));
+     *  Parameter obj is accepted by value. Is you want to accept it by ref
+     *  the use std::ref function: storage.insert(std::ref(myUserInstance), columns(&User::id, &User::name));
      */
     template<class T, class... Cols>
     internal::insert_explicit<T, Cols...> insert(T obj, internal::columns_t<Cols...> cols) {
@@ -251,6 +261,7 @@ namespace sqlite_orm {
 
     /**
      *  Create a remove statement
+     *  T is an object type mapped to a storage.
      *  Usage: remove<User>(5);
      */
     template<class T, class... Ids>
@@ -260,8 +271,11 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create an update by reference statement.
-     *  Usage: update(myUserInstance);
+     *  Create an update statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.update(myUserInstance);
+     *  Parameter obj is accepted by value. Is you want to accept it by ref
+     *  the use std::ref function: storage.update(std::ref(myUserInstance));
      */
     template<class T>
     internal::update_t<T> update(T obj) {
@@ -270,6 +284,7 @@ namespace sqlite_orm {
 
     /**
      *  Create a get statement.
+     *  T is an object type mapped to a storage.
      *  Usage: get<User>(5);
      */
     template<class T, class... Ids>
@@ -280,6 +295,7 @@ namespace sqlite_orm {
 
     /**
      *  Create a get pointer statement.
+     *  T is an object type mapped to a storage.
      *  Usage: get_pointer<User>(5);
      */
     template<class T, class... Ids>
@@ -291,6 +307,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get optional statement.
+     *  T is an object type mapped to a storage.
      *  Usage: get_optional<User>(5);
      */
     template<class T, class... Ids>
@@ -302,7 +319,8 @@ namespace sqlite_orm {
 
     /**
      *  Create a remove all statement.
-     *  Usage: remove_all<User>(...);
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.remove_all<User>(...);
      */
     template<class T, class... Args>
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
@@ -314,7 +332,8 @@ namespace sqlite_orm {
 
     /**
      *  Create a get all statement.
-     *  Usage: get_all<User>(...);
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.get_all<User>(...);
      */
     template<class T, class... Args>
     internal::get_all_t<T, Args...> get_all(Args... args) {
@@ -326,7 +345,7 @@ namespace sqlite_orm {
 
     /**
      *  Create an update all statement.
-     *  Usage: update_all(set(...), ...);
+     *  Usage: storage.update_all(set(...), ...);
      */
     template<class... Args, class... Wargs>
     internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs... wh) {
@@ -336,6 +355,11 @@ namespace sqlite_orm {
         return {std::move(set), move(conditions)};
     }
 
+    /**
+     *  Create a get all pointer statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.get_all_pointer<User>(...);
+     */
     template<class T, class... Args>
     internal::get_all_pointer_t<T, Args...> get_all_pointer(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
@@ -345,7 +369,8 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get all optional statement.
-     *  Usage: get_all_optional<User>(...);
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.get_all_optional<User>(...);
      */
     template<class T, class... Args>
     internal::get_all_optional_t<T, Args...> get_all_optional(Args... args) {

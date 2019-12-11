@@ -439,7 +439,7 @@ namespace sqlite_orm {
                     }
 
                     if(!gottaCreateTable) {  //  if all storage columns are equal to actual db columns but there are
-                                             //  excess columns at the db..
+                        //  excess columns at the db..
                         if(dbTableInfo.size() > 0) {
                             // extra table columns than storage columns
                             if(!preserve) {

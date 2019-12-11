@@ -37,7 +37,7 @@ namespace PreparedStatementTests {
         auto expanded = statement.expanded_sql();
         std::ignore = expanded;
 #endif
-#if SQLITE_VERSION_NUMBER >= 3027000
+#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
         auto normalized = statement.normalized_sql();
         std::ignore = normalized;
 #endif

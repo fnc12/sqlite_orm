@@ -65,7 +65,7 @@ int main(int, char **) {
 
     //  now let's select id, name and salary..
     auto idsNamesSalarys = storage.select(columns(&Employee::id, &Employee::name, &Employee::salary));
-    //  decltype(idsNamesSalarys) = std::vector<std::tuple<int, std::string, std::unique_ptr<double>>>
+    //  decltype(idsNamesSalarys) = vector<tuple<int, string, unique_ptr<double>>>
     for(auto &tpl: idsNamesSalarys) {
         cout << "id = " << std::get<0>(tpl) << ", name = " << std::get<1>(tpl) << ", salary = ";
         if(std::get<2>(tpl)) {
@@ -81,7 +81,7 @@ int main(int, char **) {
     auto allEmployeesTuples = storage.select(asterisk<Employee>());
     cout << "allEmployeesTuples count = " << allEmployeesTuples.size() << endl;
     for(auto &row: allEmployeesTuples) {  //  row is std::tuple<int, std::string, int, std::unique_ptr<std::string>,
-                                          //  std::unique_ptr<double>>
+        //  std::unique_ptr<double>>
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t';
         if(auto &value = std::get<3>(row)) {
             cout << *value;
