@@ -193,21 +193,6 @@ namespace sqlite_orm {
             }
 
             /**
-             *  @return vector of column names that have constraints provided as template arguments (not_null,
-             * autoincrement).
-             */
-            template<class... Op>
-            std::vector<std::string> column_names_with() {
-                std::vector<std::string> res;
-                iterate_tuple(this->columns, [&res](auto &column) {
-                    if(column.template has_every<Op...>()) {
-                        res.emplace_back(column.name);
-                    }
-                });
-                return res;
-            }
-
-            /**
              *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise
              * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
              * iterate columns with table constraints use for_each_column_with_constraints instead. L is lambda type. Do
@@ -218,7 +203,7 @@ namespace sqlite_orm {
             void for_each_column(const L &l) const {
                 iterate_tuple(this->columns, [&l](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<internal::is_column<column_type>{}>(l)(column);
+                    static_if<is_column<column_type>{}>(l)(column);
                 });
             }
 

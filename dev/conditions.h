@@ -1220,56 +1220,107 @@ namespace sqlite_orm {
         return {std::move(c)};
     }
 
+    /**
+     * ORDER BY column
+     * Example: storage.select(&User::name, order_by(&User::id))
+     */
     template<class O>
     conditions::order_by_t<O> order_by(O o) {
         return {std::move(o)};
     }
 
+    /**
+     * ORDER BY column1, column2
+     * Example: storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc(), order_by(&Singer::gender).desc())
+     */
     template<class... Args>
     conditions::multi_order_by_t<Args...> multi_order_by(Args &&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
+    /**
+     * ORDER BY column1, column2
+     * Difference from `multi_order_by` is that `dynamic_order_by` can be changed at runtime using `push_back` member
+     * function Example: auto orderBy = dynamic_order_by(storage); if(someCondition) { orderBy.push_back(&User::id); }
+     * else { orderBy.push_back(&User::name); orderBy.push_back(&User::birthDate);
+     *  }
+     */
     template<class S>
     conditions::dynamic_order_by_t<S> dynamic_order_by(const S &storage) {
         return {storage};
     }
 
+    /**
+     *  GROUP BY column.
+     *  Example: storage.get_all<Employee>(group_by(&Employee::name))
+     */
     template<class... Args>
     conditions::group_by_t<Args...> group_by(Args &&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
+    /**
+     *  X BETWEEN Y AND Z
+     *  Example: storage.select(between(&User::id, 10, 20))
+     */
     template<class A, class T>
     conditions::between_t<A, T> between(A expr, T b1, T b2) {
         return {std::move(expr), std::move(b1), std::move(b2)};
     }
 
+    /**
+     *  X LIKE Y
+     *  Example: storage.select(like(&User::name, "T%"))
+     */
     template<class A, class T>
     conditions::like_t<A, T, void> like(A a, T t) {
         return {std::move(a), std::move(t), {}};
     }
 
+    /**
+     *  X GLOB Y
+     *  Example: storage.select(glob(&User::name, "*S"))
+     */
     template<class A, class T>
     conditions::glob_t<A, T> glob(A a, T t) {
         return {std::move(a), std::move(t)};
     }
 
+    /**
+     *  X LIKE Y ESCAPE Z
+     *  Example: storage.select(like(&User::name, "T%", "%"))
+     */
     template<class A, class T, class E>
     conditions::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
     }
 
+    /**
+     *  EXISTS(condition).
+     *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
+         where(exists(select(asterisk<Customer>(),
+         where(is_equal(&Customer::grade, 3) and
+         is_equal(&Agent::code, &Customer::agentCode))))),
+         order_by(&Agent::comission));
+     */
     template<class T>
     conditions::exists_t<T> exists(T t) {
         return {std::move(t)};
     }
 
+    /**
+     *  HAVING(expression).
+     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
+     */
     template<class T>
     conditions::having_t<T> having(T t) {
         return {std::move(t)};
     }
 
+    /**
+     *  CAST(X AS type).
+     *  Example: cast<std::string>(&User::id)
+     */
     template<class T, class E>
     conditions::cast_t<T, E> cast(E e) {
         return {std::move(e)};

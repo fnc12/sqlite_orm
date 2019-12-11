@@ -28,18 +28,22 @@ int main(int, char **argv) {
     storage.remove_all<MarvelHero>();
 
     //  insert values..
-    storage.insert(MarvelHero{-1, "Tony Stark", "Iron man, playboy, billionaire, philanthropist", 5});
-    storage.insert(MarvelHero{-1, "Thor", "Storm god", -10});
-    storage.insert(MarvelHero{-1, "Vision", "Min Stone", 4});
-    storage.insert(MarvelHero{-1, "Captain America", "Vibranium shield", -3});
-    storage.insert(MarvelHero{-1, "Hulk", "Strength", -15});
-    storage.insert(MarvelHero{-1, "Star Lord", "Humor", 19});
-    storage.insert(MarvelHero{-1, "Peter Parker", "Spiderman", 16});
-    storage.insert(MarvelHero{-1, "Clint Barton", "Hawkeye", -11});
-    storage.insert(MarvelHero{-1, "Natasha Romanoff", "Black widow", 8});
-    storage.insert(MarvelHero{-1, "Groot", "I am Groot!", 2});
+    storage.transaction([&storage] {
+        storage.insert(MarvelHero{-1, "Tony Stark", "Iron man, playboy, billionaire, philanthropist", 5});
+        storage.insert(MarvelHero{-1, "Thor", "Storm god", -10});
+        storage.insert(MarvelHero{-1, "Vision", "Min Stone", 4});
+        storage.insert(MarvelHero{-1, "Captain America", "Vibranium shield", -3});
+        storage.insert(MarvelHero{-1, "Hulk", "Strength", -15});
+        storage.insert(MarvelHero{-1, "Star Lord", "Humor", 19});
+        storage.insert(MarvelHero{-1, "Peter Parker", "Spiderman", 16});
+        storage.insert(MarvelHero{-1, "Clint Barton", "Hawkeye", -11});
+        storage.insert(MarvelHero{-1, "Natasha Romanoff", "Black widow", 8});
+        storage.insert(MarvelHero{-1, "Groot", "I am Groot!", 2});
+        return true;
+    });
 
-    //  SELECT LENGTH(name) FROM marvel
+    //  SELECT LENGTH(name)
+    //  FROM marvel
     auto nameLengths = storage.select(length(&MarvelHero::name));  //  nameLengths is std::vector<int>
     cout << "nameLengths.size = " << nameLengths.size() << endl;
     for(auto &len: nameLengths) {
@@ -47,7 +51,8 @@ int main(int, char **argv) {
     }
     cout << endl;
 
-    //  SELECT name, LENGTH(name) FROM marvel
+    //  SELECT name, LENGTH(name)
+    //  FROM marvel
     auto namesWithLengths = storage.select(
         columns(&MarvelHero::name,
                 length(&MarvelHero::name)));  //  namesWithLengths is std::vector<std::tuple<std::string, int>>
@@ -56,7 +61,9 @@ int main(int, char **argv) {
         cout << "LENGTH(" << std::get<0>(row) << ") = " << std::get<1>(row) << endl;
     }
 
-    //  SELECT name FROM marvel WHERE LENGTH(name) > 5
+    //  SELECT name
+    //  FROM marvel
+    //  WHERE LENGTH(name) > 5
     auto namesWithLengthGreaterThan5 =
         storage.select(&MarvelHero::name, where(length(&MarvelHero::name) > 5));  //  std::vector<std::string>
     cout << "namesWithLengthGreaterThan5.size = " << namesWithLengthGreaterThan5.size() << endl;
@@ -72,7 +79,8 @@ int main(int, char **argv) {
     auto customTwo = storage.select(columns(length(1990), length(storage.current_timestamp())));
     cout << "customTwo = {" << std::get<0>(customTwo.front()) << ", " << std::get<1>(customTwo.front()) << "}" << endl;
 
-    //  SELECT ABS(points) FROM marvel
+    //  SELECT ABS(points)
+    //  FROM marvel
     auto absPoints = storage.select(abs(&MarvelHero::points));  //  std::vector<std::unique_ptr<int>>
     cout << "absPoints: ";
     for(auto &value: absPoints) {
@@ -85,7 +93,9 @@ int main(int, char **argv) {
     }
     cout << endl;
 
-    //  SELECT name FROM marvel WHERE ABS(points) < 5
+    //  SELECT name
+    //  FROM marvel
+    //  WHERE ABS(points) < 5
     auto namesByAbs = storage.select(&MarvelHero::name, where(abs(&MarvelHero::points) < 5));
     cout << "namesByAbs.size = " << namesByAbs.size() << endl;
     for(auto &name: namesByAbs) {
@@ -93,12 +103,14 @@ int main(int, char **argv) {
     }
     cout << endl;
 
-    //  SELECT length(abs(points)) FROM marvel
+    //  SELECT length(abs(points))
+    //  FROM marvel
     auto twoFunctions = storage.select(length(abs(&MarvelHero::points)));
     cout << "twoFunctions.size = " << twoFunctions.size() << endl;
     cout << endl;
 
-    //  SELECT LOWER(name) FROM marvel
+    //  SELECT LOWER(name)
+    //  FROM marvel
     auto lowerNames = storage.select(lower(&MarvelHero::name));
     cout << "lowerNames.size = " << lowerNames.size() << endl;
     for(auto &name: lowerNames) {
@@ -106,7 +118,8 @@ int main(int, char **argv) {
     }
     cout << endl;
 
-    //  SELECT UPPER(abilities) FROM marvel
+    //  SELECT UPPER(abilities)
+    //  FROM marvel
     auto upperAbilities = storage.select(upper(&MarvelHero::abilities));
     cout << "upperAbilities.size = " << upperAbilities.size() << endl;
     for(auto &abilities: upperAbilities) {
@@ -178,20 +191,33 @@ int main(int, char **argv) {
     cout << "ltrim('   TechOnTheNet.com    is great!') = *"
          << storage.select(ltrim("   TechOnTheNet.com    is great!")).front() << "*" << endl;
 
-    //  SELECT ltrim('000123', '0');
-    cout << "ltrim('000123', '0') = " << storage.select(ltrim("000123", "0")).front() << endl;
+    {  //  core functions can be use within prepared statements as well!
 
-    //  SELECT ltrim('123123totn', '123');
-    cout << "ltrim('123123totn', '123') = " << storage.select(ltrim("123123totn", "123")).front() << endl;
+        auto lTrimStatement = storage.prepare(select(ltrim("000123", "0")));
 
-    //  SELECT ltrim('123123totn123', '123');
-    cout << "ltrim('123123totn123', '123') = " << storage.select(ltrim("123123totn123", "123")).front() << endl;
+        //  SELECT ltrim('000123', '0');
+        cout << "ltrim('000123', '0') = " << storage.execute(lTrimStatement).front() << endl;
 
-    //  SELECT ltrim('xyxzyyyTOTN', 'xyz');
-    cout << "ltrim('xyxzyyyTOTN', 'xyz') = " << storage.select(ltrim("xyxzyyyTOTN", "xyz")).front() << endl;
+        //  SELECT ltrim('123123totn', '123');
+        get<0>(lTrimStatement) = "123123totn";
+        get<1>(lTrimStatement) = "123";
+        cout << "ltrim('123123totn', '123') = " << storage.execute(lTrimStatement).front() << endl;
 
-    //  SELECT ltrim('6372totn', '0123456789');
-    cout << "ltrim('6372totn', '0123456789') = " << storage.select(ltrim("6372totn", "0123456789")).front() << endl;
+        //  SELECT ltrim('123123totn123', '123');
+        get<0>(lTrimStatement) = "123123totn123";
+        get<1>(lTrimStatement) = "123";
+        cout << "ltrim('123123totn123', '123') = " << storage.execute(lTrimStatement).front() << endl;
+
+        //  SELECT ltrim('xyxzyyyTOTN', 'xyz');
+        get<0>(lTrimStatement) = "xyxzyyyTOTN";
+        get<1>(lTrimStatement) = "xyz";
+        cout << "ltrim('xyxzyyyTOTN', 'xyz') = " << storage.execute(lTrimStatement).front() << endl;
+
+        //  SELECT ltrim('6372totn', '0123456789');
+        get<0>(lTrimStatement) = "6372totn";
+        get<1>(lTrimStatement) = "0123456789";
+        cout << "ltrim('6372totn', '0123456789') = " << storage.execute(lTrimStatement).front() << endl;
+    }
 
     //  https://www.techonthenet.com/sqlite/functions/rtrim.php
 

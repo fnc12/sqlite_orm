@@ -2898,56 +2898,107 @@ namespace sqlite_orm {
         return {std::move(c)};
     }
 
+    /**
+     * ORDER BY column
+     * Example: storage.select(&User::name, order_by(&User::id))
+     */
     template<class O>
     conditions::order_by_t<O> order_by(O o) {
         return {std::move(o)};
     }
 
+    /**
+     * ORDER BY column1, column2
+     * Example: storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc(), order_by(&Singer::gender).desc())
+     */
     template<class... Args>
     conditions::multi_order_by_t<Args...> multi_order_by(Args &&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
+    /**
+     * ORDER BY column1, column2
+     * Difference from `multi_order_by` is that `dynamic_order_by` can be changed at runtime using `push_back` member
+     * function Example: auto orderBy = dynamic_order_by(storage); if(someCondition) { orderBy.push_back(&User::id); }
+     * else { orderBy.push_back(&User::name); orderBy.push_back(&User::birthDate);
+     *  }
+     */
     template<class S>
     conditions::dynamic_order_by_t<S> dynamic_order_by(const S &storage) {
         return {storage};
     }
 
+    /**
+     *  GROUP BY column.
+     *  Example: storage.get_all<Employee>(group_by(&Employee::name))
+     */
     template<class... Args>
     conditions::group_by_t<Args...> group_by(Args &&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
+    /**
+     *  X BETWEEN Y AND Z
+     *  Example: storage.select(between(&User::id, 10, 20))
+     */
     template<class A, class T>
     conditions::between_t<A, T> between(A expr, T b1, T b2) {
         return {std::move(expr), std::move(b1), std::move(b2)};
     }
 
+    /**
+     *  X LIKE Y
+     *  Example: storage.select(like(&User::name, "T%"))
+     */
     template<class A, class T>
     conditions::like_t<A, T, void> like(A a, T t) {
         return {std::move(a), std::move(t), {}};
     }
 
+    /**
+     *  X GLOB Y
+     *  Example: storage.select(glob(&User::name, "*S"))
+     */
     template<class A, class T>
     conditions::glob_t<A, T> glob(A a, T t) {
         return {std::move(a), std::move(t)};
     }
 
+    /**
+     *  X LIKE Y ESCAPE Z
+     *  Example: storage.select(like(&User::name, "T%", "%"))
+     */
     template<class A, class T, class E>
     conditions::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
     }
 
+    /**
+     *  EXISTS(condition).
+     *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
+         where(exists(select(asterisk<Customer>(),
+         where(is_equal(&Customer::grade, 3) and
+         is_equal(&Agent::code, &Customer::agentCode))))),
+         order_by(&Agent::comission));
+     */
     template<class T>
     conditions::exists_t<T> exists(T t) {
         return {std::move(t)};
     }
 
+    /**
+     *  HAVING(expression).
+     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
+     */
     template<class T>
     conditions::having_t<T> having(T t) {
         return {std::move(t)};
     }
 
+    /**
+     *  CAST(X AS type).
+     *  Example: cast<std::string>(&User::id)
+     */
     template<class T, class E>
     conditions::cast_t<T, E> cast(E e) {
         return {std::move(e)};
@@ -5781,21 +5832,6 @@ namespace sqlite_orm {
             }
 
             /**
-             *  @return vector of column names that have constraints provided as template arguments (not_null,
-             * autoincrement).
-             */
-            template<class... Op>
-            std::vector<std::string> column_names_with() {
-                std::vector<std::string> res;
-                iterate_tuple(this->columns, [&res](auto &column) {
-                    if(column.template has_every<Op...>()) {
-                        res.emplace_back(column.name);
-                    }
-                });
-                return res;
-            }
-
-            /**
              *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise
              * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
              * iterate columns with table constraints use for_each_column_with_constraints instead. L is lambda type. Do
@@ -5806,7 +5842,7 @@ namespace sqlite_orm {
             void for_each_column(const L &l) const {
                 iterate_tuple(this->columns, [&l](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<internal::is_column<column_type>{}>(l)(column);
+                    static_if<is_column<column_type>{}>(l)(column);
                 });
             }
 
@@ -6808,7 +6844,7 @@ namespace sqlite_orm {
                 }
             }
 #endif
-#if SQLITE_VERSION_NUMBER >= 3027000
+#if SQLITE_VERSION_NUMBER >= 3026000 and defined(SQLITE_ENABLE_NORMALIZE)
             std::string normalized_sql() const {
                 if(this->stmt) {
                     if(auto res = sqlite3_normalized_sql(this->stmt)) {
@@ -6980,8 +7016,11 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create a replace by reference statement
-     *  Usage: replace(myUserInstance);
+     *  Create a replace statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.replace(myUserInstance);
+     *  Parameter obj is accepted by value. Is you want to accept it by ref
+     *  the use std::ref function: storage.replace(std::ref(myUserInstance));
      */
     template<class T>
     internal::replace_t<T> replace(T obj) {
@@ -6989,8 +7028,11 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create an insert by reference statement
-     *  Usage: insert(myUserInstance);
+     *  Create an insert statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.insert(myUserInstance);
+     *  Parameter obj is accepted by value. Is you want to accept it by ref
+     *  the use std::ref function: storage.insert(std::ref(myUserInstance));
      */
     template<class T>
     internal::insert_t<T> insert(T obj) {
@@ -6998,8 +7040,12 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create an explicit insert by reference statement.
-     *  Usage: insert(myUserInstance, columns(&User::id, &User::name));
+     *  Create an explicit insert statement.
+     *  T is an object type mapped to a storage.
+     *  Cols is columns types aparameter pack. Must contain member pointers
+     *  Usage: storage.insert(myUserInstance, columns(&User::id, &User::name));
+     *  Parameter obj is accepted by value. Is you want to accept it by ref
+     *  the use std::ref function: storage.insert(std::ref(myUserInstance), columns(&User::id, &User::name));
      */
     template<class T, class... Cols>
     internal::insert_explicit<T, Cols...> insert(T obj, internal::columns_t<Cols...> cols) {
@@ -7008,6 +7054,7 @@ namespace sqlite_orm {
 
     /**
      *  Create a remove statement
+     *  T is an object type mapped to a storage.
      *  Usage: remove<User>(5);
      */
     template<class T, class... Ids>
@@ -7017,8 +7064,11 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Create an update by reference statement.
-     *  Usage: update(myUserInstance);
+     *  Create an update statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.update(myUserInstance);
+     *  Parameter obj is accepted by value. Is you want to accept it by ref
+     *  the use std::ref function: storage.update(std::ref(myUserInstance));
      */
     template<class T>
     internal::update_t<T> update(T obj) {
@@ -7027,6 +7077,7 @@ namespace sqlite_orm {
 
     /**
      *  Create a get statement.
+     *  T is an object type mapped to a storage.
      *  Usage: get<User>(5);
      */
     template<class T, class... Ids>
@@ -7037,6 +7088,7 @@ namespace sqlite_orm {
 
     /**
      *  Create a get pointer statement.
+     *  T is an object type mapped to a storage.
      *  Usage: get_pointer<User>(5);
      */
     template<class T, class... Ids>
@@ -7048,6 +7100,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get optional statement.
+     *  T is an object type mapped to a storage.
      *  Usage: get_optional<User>(5);
      */
     template<class T, class... Ids>
@@ -7059,7 +7112,8 @@ namespace sqlite_orm {
 
     /**
      *  Create a remove all statement.
-     *  Usage: remove_all<User>(...);
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.remove_all<User>(...);
      */
     template<class T, class... Args>
     internal::remove_all_t<T, Args...> remove_all(Args... args) {
@@ -7071,7 +7125,8 @@ namespace sqlite_orm {
 
     /**
      *  Create a get all statement.
-     *  Usage: get_all<User>(...);
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.get_all<User>(...);
      */
     template<class T, class... Args>
     internal::get_all_t<T, Args...> get_all(Args... args) {
@@ -7083,7 +7138,7 @@ namespace sqlite_orm {
 
     /**
      *  Create an update all statement.
-     *  Usage: update_all(set(...), ...);
+     *  Usage: storage.update_all(set(...), ...);
      */
     template<class... Args, class... Wargs>
     internal::update_all_t<internal::set_t<Args...>, Wargs...> update_all(internal::set_t<Args...> set, Wargs... wh) {
@@ -7093,6 +7148,11 @@ namespace sqlite_orm {
         return {std::move(set), move(conditions)};
     }
 
+    /**
+     *  Create a get all pointer statement.
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.get_all_pointer<User>(...);
+     */
     template<class T, class... Args>
     internal::get_all_pointer_t<T, Args...> get_all_pointer(Args... args) {
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
@@ -7102,7 +7162,8 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Create a get all optional statement.
-     *  Usage: get_all_optional<User>(...);
+     *  T is an object type mapped to a storage.
+     *  Usage: storage.get_all_optional<User>(...);
      */
     template<class T, class... Args>
     internal::get_all_optional_t<T, Args...> get_all_optional(Args... args) {

@@ -37,7 +37,9 @@ int main(int, char **) {
     storage.insert(User{0, "lil kim", time(nullptr)});
     storage.insert(User{0, "Nicki Minaj", time(nullptr)});
 
-    //  SELECT COUNT(*) FROM users WHERE name = 'lil kim'
+    //  SELECT COUNT(*)
+    //  FROM users
+    //  WHERE name = 'lil kim'
     auto preciseLilKimsCount = storage.count<User>(where(is_equal(&User::name, "lil kim")));
     cout << "preciseLilKimsCount = " << preciseLilKimsCount << endl;
 
