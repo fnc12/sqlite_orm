@@ -1241,8 +1241,13 @@ namespace sqlite_orm {
     /**
      * ORDER BY column1, column2
      * Difference from `multi_order_by` is that `dynamic_order_by` can be changed at runtime using `push_back` member
-     * function Example: auto orderBy = dynamic_order_by(storage); if(someCondition) { orderBy.push_back(&User::id); }
-     * else { orderBy.push_back(&User::name); orderBy.push_back(&User::birthDate);
+     * function Example:
+     *  auto orderBy = dynamic_order_by(storage);
+     *  if(someCondition) {
+     *      orderBy.push_back(&User::id);
+     *  } else {
+     *      orderBy.push_back(&User::name);
+     *      orderBy.push_back(&User::birthDate);
      *  }
      */
     template<class S>
