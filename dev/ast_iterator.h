@@ -424,5 +424,41 @@ namespace sqlite_orm {
                 iterate_ast(a.expression, l);
             }
         };
+
+        template<class T, bool OI>
+        struct ast_iterator<conditions::limit_t<T, false, OI, void>, void> {
+            using node_type = conditions::limit_t<T, false, OI, void>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.lim, l);
+            }
+        };
+
+        template<class T, class O>
+        struct ast_iterator<conditions::limit_t<T, true, false, O>, void> {
+            using node_type = conditions::limit_t<T, true, false, O>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.lim, l);
+                a.off.apply([&l](auto &value) {
+                    iterate_ast(value, l);
+                });
+            }
+        };
+
+        template<class T, class O>
+        struct ast_iterator<conditions::limit_t<T, true, true, O>, void> {
+            using node_type = conditions::limit_t<T, true, true, O>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                a.off.apply([&l](auto &value) {
+                    iterate_ast(value, l);
+                });
+                iterate_ast(a.lim, l);
+            }
+        };
     }
 }

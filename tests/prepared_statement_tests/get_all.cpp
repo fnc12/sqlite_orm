@@ -124,10 +124,11 @@ TEST_CASE("Prepared get all") {
         }
     }
     {  //  by val
-        auto statement =
-            storage.prepare(get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS"))));
+        auto statement = storage.prepare(
+            get_all<User>(where(lesser_or_equal(&User::id, 1) and is_equal(&User::name, "Team BS")), limit(10)));
         REQUIRE(get<0>(statement) == 1);
         REQUIRE(strcmp(get<1>(statement), "Team BS") == 0);
+        REQUIRE(get<2>(statement) == 10);
     }
     {  //  by ref
         auto id = 1;
@@ -140,11 +141,13 @@ TEST_CASE("Prepared get all") {
         REQUIRE(&get<1>(statement) == &name);
     }
     {
-        auto statement = storage.prepare(get_all<User>(
-            where(lesser_or_equal(&User::id, 2) and (like(&User::name, "T%") or glob(&User::name, "*S")))));
+        auto statement = storage.prepare(
+            get_all<User>(where(lesser_or_equal(&User::id, 2) and (like(&User::name, "T%") or glob(&User::name, "*S"))),
+                          limit(20.0f)));
         REQUIRE(get<0>(statement) == 2);
         REQUIRE(strcmp(get<1>(statement), "T%") == 0);
         REQUIRE(strcmp(get<2>(statement), "*S") == 0);
+        REQUIRE(get<3>(statement) == 20.0f);
     }
     {
         {  //  by val

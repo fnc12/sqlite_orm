@@ -32,6 +32,22 @@ TEST_CASE("Join iterator ctor compilation error") {
                    group_by(&Tag::text),
                    order_by(count(&Tag::text)).desc(),
                    limit(offs, lim));
+    {
+        auto statement = storage.prepare(select(columns(&Tag::text, count(&Tag::text)),
+                                                group_by(&Tag::text),
+                                                order_by(count(&Tag::text)).desc(),
+                                                limit(offs, lim)));
+        REQUIRE(get<0>(statement) == offs);
+        REQUIRE(get<1>(statement) == lim);
+    }
+    {
+        auto statement = storage.prepare(select(columns(&Tag::text, count(&Tag::text)),
+                                                group_by(&Tag::text),
+                                                order_by(count(&Tag::text)).desc(),
+                                                limit(lim, offset(offs))));
+        REQUIRE(get<0>(statement) == lim);
+        REQUIRE(get<1>(statement) == offs);
+    }
 }
 
 TEST_CASE("limits") {
