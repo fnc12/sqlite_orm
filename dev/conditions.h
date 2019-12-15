@@ -26,38 +26,37 @@ namespace sqlite_orm {
         /**
          *  Stores LIMIT/OFFSET info
          */
-        template<class T, bool has_offset, bool offset_is_implicit>
+        template<class T, bool has_offset, bool offset_is_implicit, class O>
         struct limit_t : limit_string {
             T lim;
-            int off = 0;
+            internal::optional_container<O> off;
 
             limit_t() = default;
 
             limit_t(decltype(lim) lim_) : lim(std::move(lim_)) {}
 
-            limit_t(decltype(lim) lim_, decltype(off) off_) : lim(std::move(lim_)), off(off_) {}
+            limit_t(decltype(lim) lim_, decltype(off) off_) : lim(std::move(lim_)), off(std::move(off_)) {}
         };
 
         template<class T>
         struct is_limit : std::false_type {};
 
-        template<class T, bool has_offset, bool offset_is_implicit>
-        struct is_limit<limit_t<T, has_offset, offset_is_implicit>> : std::true_type {};
+        template<class T, bool has_offset, bool offset_is_implicit, class O>
+        struct is_limit<limit_t<T, has_offset, offset_is_implicit, O>> : std::true_type {};
 
         /**
          *  Stores OFFSET only info
          */
+        template<class T>
         struct offset_t {
-            int off = 0;
-
-            explicit offset_t(int off_) : off(off_) {}
+            T off;
         };
 
         template<class T>
         struct is_offset : std::false_type {};
 
-        template<>
-        struct is_offset<offset_t> : std::true_type {};
+        template<class T>
+        struct is_offset<offset_t<T>> : std::true_type {};
 
         /**
          *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
@@ -1090,24 +1089,25 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-    inline conditions::offset_t offset(int off) {
-        return conditions::offset_t{off};
+    template<class T>
+    conditions::offset_t<T> offset(T off) {
+        return {std::move(off)};
     }
 
     template<class T>
-    conditions::limit_t<T, false, false> limit(T lim) {
+    conditions::limit_t<T, false, false, void> limit(T lim) {
         return {std::move(lim)};
     }
 
-    template<class T>
-    typename std::enable_if<!conditions::is_offset<T>::value, conditions::limit_t<T, true, true>>::type limit(int off,
-                                                                                                              T lim) {
-        return {std::move(lim), off};
+    template<class T, class O>
+    typename std::enable_if<!conditions::is_offset<T>::value, conditions::limit_t<T, true, true, O>>::type
+    limit(O off, T lim) {
+        return {std::move(lim), {std::move(off)}};
     }
 
-    template<class T>
-    conditions::limit_t<T, true, false> limit(T lim, conditions::offset_t offt) {
-        return {std::move(lim), offt.off};
+    template<class T, class O>
+    conditions::limit_t<T, true, false, O> limit(T lim, conditions::offset_t<O> offt) {
+        return {std::move(lim), {std::move(offt.off)}};
     }
 
     template<class L,

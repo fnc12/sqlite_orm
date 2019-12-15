@@ -263,21 +263,21 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<conditions::limit_t<T, false, false>, void> {
-            using node_type = conditions::limit_t<T, false, false>;
+        struct node_tuple<conditions::limit_t<T, false, false, void>, void> {
+            using node_type = conditions::limit_t<T, false, false, void>;
             using type = typename node_tuple<T>::type;
         };
 
-        template<class T>
-        struct node_tuple<conditions::limit_t<T, true, false>, void> {
-            using node_type = conditions::limit_t<T, true, false>;
-            using type = typename conc_tuple<typename node_tuple<T>::type, int>::type;
+        template<class T, class O>
+        struct node_tuple<conditions::limit_t<T, true, false, O>, void> {
+            using node_type = conditions::limit_t<T, true, false, O>;
+            using type = typename conc_tuple<typename node_tuple<T>::type, typename node_tuple<O>::type>::type;
         };
 
-        template<class T>
-        struct node_tuple<conditions::limit_t<T, true, true>, void> {
-            using node_type = conditions::limit_t<T, true, true>;
-            using type = typename conc_tuple<int, typename node_tuple<T>::type>::type;
+        template<class T, class O>
+        struct node_tuple<conditions::limit_t<T, true, true, O>, void> {
+            using node_type = conditions::limit_t<T, true, true, O>;
+            using type = typename conc_tuple<typename node_tuple<O>::type, typename node_tuple<T>::type>::type;
         };
     }
 }

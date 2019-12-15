@@ -426,8 +426,8 @@ namespace sqlite_orm {
         };
 
         template<class T, bool OI>
-        struct ast_iterator<conditions::limit_t<T, false, OI>, void> {
-            using node_type = conditions::limit_t<T, false, OI>;
+        struct ast_iterator<conditions::limit_t<T, false, OI, void>, void> {
+            using node_type = conditions::limit_t<T, false, OI, void>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
@@ -435,24 +435,28 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct ast_iterator<conditions::limit_t<T, true, false>, void> {
-            using node_type = conditions::limit_t<T, true, false>;
+        template<class T, class O>
+        struct ast_iterator<conditions::limit_t<T, true, false, O>, void> {
+            using node_type = conditions::limit_t<T, true, false, O>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
                 iterate_ast(a.lim, l);
-                iterate_ast(a.off, l);
+                a.off.apply([&l](auto &value) {
+                    iterate_ast(value, l);
+                });
             }
         };
 
-        template<class T>
-        struct ast_iterator<conditions::limit_t<T, true, true>, void> {
-            using node_type = conditions::limit_t<T, true, true>;
+        template<class T, class O>
+        struct ast_iterator<conditions::limit_t<T, true, true, O>, void> {
+            using node_type = conditions::limit_t<T, true, true, O>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
-                iterate_ast(a.off, l);
+                a.off.apply([&l](auto &value) {
+                    iterate_ast(value, l);
+                });
                 iterate_ast(a.lim, l);
             }
         };

@@ -1203,14 +1203,21 @@ namespace sqlite_orm {
              *  HO - has offset
              *  OI - offset is implicit
              */
-            template<class T, bool HO, bool OI>
-            void process_single_condition(std::stringstream &ss, const conditions::limit_t<T, HO, OI> &limt) const {
+            template<class T, bool HO, bool OI, class O>
+            void process_single_condition(std::stringstream &ss, const conditions::limit_t<T, HO, OI, O> &limt) const {
                 ss << static_cast<std::string>(limt) << " ";
                 if(HO) {
                     if(OI) {
-                        ss << "?, " << this->string_from_expression(limt.lim, false);
+                        limt.off.apply([this, &ss](auto &value) {
+                            ss << this->string_from_expression(value, false);
+                        });
+                        ss << ", ";
+                        ss << this->string_from_expression(limt.lim, false);
                     } else {
-                        ss << this->string_from_expression(limt.lim, false) << " OFFSET ?";
+                        ss << this->string_from_expression(limt.lim, false) << " OFFSET ";
+                        limt.off.apply([this, &ss](auto &value) {
+                            ss << this->string_from_expression(value, false);
+                        });
                     }
                 } else {
                     ss << this->string_from_expression(limt.lim, false);
