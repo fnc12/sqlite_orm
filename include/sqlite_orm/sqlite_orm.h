@@ -1695,40 +1695,47 @@ namespace sqlite_orm {
 
     namespace conditions {
 
-        /**
-         *  Stores LIMIT/OFFSET info
-         */
-        struct limit_t {
-            int lim = 0;
-            bool has_offset = false;
-            bool offset_is_implicit = false;
-            int off = 0;
-
-            limit_t() = default;
-
-            limit_t(decltype(lim) lim_) : lim(lim_) {}
-
-            limit_t(decltype(lim) lim_,
-                    decltype(has_offset) has_offset_,
-                    decltype(offset_is_implicit) offset_is_implicit_,
-                    decltype(off) off_) :
-                lim(lim_),
-                has_offset(has_offset_), offset_is_implicit(offset_is_implicit_), off(off_) {}
-
+        struct limit_string {
             operator std::string() const {
                 return "LIMIT";
             }
         };
 
+        /**
+         *  Stores LIMIT/OFFSET info
+         */
+        template<class T, bool has_offset, bool offset_is_implicit>
+        struct limit_t : limit_string {
+            T lim;
+            int off = 0;
+
+            limit_t() = default;
+
+            limit_t(decltype(lim) lim_) : lim(std::move(lim_)) {}
+
+            limit_t(decltype(lim) lim_, decltype(off) off_) : lim(std::move(lim_)), off(off_) {}
+        };
+
         template<class T>
-        using is_limit = std::is_same<limit_t, T>;
+        struct is_limit : std::false_type {};
+
+        template<class T, bool has_offset, bool offset_is_implicit>
+        struct is_limit<limit_t<T, has_offset, offset_is_implicit>> : std::true_type {};
 
         /**
          *  Stores OFFSET only info
          */
         struct offset_t {
-            int off;
+            int off = 0;
+
+            explicit offset_t(int off_) : off(off_) {}
         };
+
+        template<class T>
+        struct is_offset : std::false_type {};
+
+        template<>
+        struct is_offset<offset_t> : std::true_type {};
 
         /**
          *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
@@ -2762,19 +2769,23 @@ namespace sqlite_orm {
     }
 
     inline conditions::offset_t offset(int off) {
-        return {off};
+        return conditions::offset_t{off};
     }
 
-    inline conditions::limit_t limit(int lim) {
-        return {lim};
+    template<class T>
+    conditions::limit_t<T, false, false> limit(T lim) {
+        return {std::move(lim)};
     }
 
-    inline conditions::limit_t limit(int off, int lim) {
-        return {lim, true, true, off};
+    template<class T>
+    typename std::enable_if<!conditions::is_offset<T>::value, conditions::limit_t<T, true, true>>::type limit(int off,
+                                                                                                              T lim) {
+        return {std::move(lim), off};
     }
 
-    inline conditions::limit_t limit(int lim, conditions::offset_t offt) {
-        return {lim, true, false, offt.off};
+    template<class T>
+    conditions::limit_t<T, true, false> limit(T lim, conditions::offset_t offt) {
+        return {std::move(lim), offt.off};
     }
 
     template<class L,
@@ -2919,8 +2930,13 @@ namespace sqlite_orm {
     /**
      * ORDER BY column1, column2
      * Difference from `multi_order_by` is that `dynamic_order_by` can be changed at runtime using `push_back` member
-     * function Example: auto orderBy = dynamic_order_by(storage); if(someCondition) { orderBy.push_back(&User::id); }
-     * else { orderBy.push_back(&User::name); orderBy.push_back(&User::birthDate);
+     * function Example:
+     *  auto orderBy = dynamic_order_by(storage);
+     *  if(someCondition) {
+     *      orderBy.push_back(&User::id);
+     *  } else {
+     *      orderBy.push_back(&User::name);
+     *      orderBy.push_back(&User::birthDate);
      *  }
      */
     template<class S>
@@ -7587,6 +7603,38 @@ namespace sqlite_orm {
                 iterate_ast(a.expression, l);
             }
         };
+
+        template<class T, bool OI>
+        struct ast_iterator<conditions::limit_t<T, false, OI>, void> {
+            using node_type = conditions::limit_t<T, false, OI>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.lim, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<conditions::limit_t<T, true, false>, void> {
+            using node_type = conditions::limit_t<T, true, false>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.lim, l);
+                iterate_ast(a.off, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<conditions::limit_t<T, true, true>, void> {
+            using node_type = conditions::limit_t<T, true, true>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.off, l);
+                iterate_ast(a.lim, l);
+            }
+        };
     }
 }
 
@@ -9898,16 +9946,21 @@ namespace sqlite_orm {
                 ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " )";
             }
 
-            void process_single_condition(std::stringstream &ss, const conditions::limit_t &limt) const {
+            /**
+             *  HO - has offset
+             *  OI - offset is implicit
+             */
+            template<class T, bool HO, bool OI>
+            void process_single_condition(std::stringstream &ss, const conditions::limit_t<T, HO, OI> &limt) const {
                 ss << static_cast<std::string>(limt) << " ";
-                if(limt.has_offset) {
-                    if(limt.offset_is_implicit) {
-                        ss << limt.off << ", " << limt.lim;
+                if(HO) {
+                    if(OI) {
+                        ss << "?, " << this->string_from_expression(limt.lim, false);
                     } else {
-                        ss << limt.lim << " OFFSET " << limt.off;
+                        ss << this->string_from_expression(limt.lim, false) << " OFFSET ?";
                     }
                 } else {
-                    ss << limt.lim;
+                    ss << this->string_from_expression(limt.lim, false);
                 }
             }
 
@@ -12024,6 +12077,24 @@ __pragma(pop_macro("min"))
         struct node_tuple<as_t<T, E>, void> {
             using node_type = as_t<T, E>;
             using type = typename node_tuple<E>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::limit_t<T, false, false>, void> {
+            using node_type = conditions::limit_t<T, false, false>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::limit_t<T, true, false>, void> {
+            using node_type = conditions::limit_t<T, true, false>;
+            using type = typename conc_tuple<typename node_tuple<T>::type, int>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::limit_t<T, true, true>, void> {
+            using node_type = conditions::limit_t<T, true, true>;
+            using type = typename conc_tuple<int, typename node_tuple<T>::type>::type;
         };
     }
 }

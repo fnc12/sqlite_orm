@@ -17,40 +17,47 @@ namespace sqlite_orm {
 
     namespace conditions {
 
-        /**
-         *  Stores LIMIT/OFFSET info
-         */
-        struct limit_t {
-            int lim = 0;
-            bool has_offset = false;
-            bool offset_is_implicit = false;
-            int off = 0;
-
-            limit_t() = default;
-
-            limit_t(decltype(lim) lim_) : lim(lim_) {}
-
-            limit_t(decltype(lim) lim_,
-                    decltype(has_offset) has_offset_,
-                    decltype(offset_is_implicit) offset_is_implicit_,
-                    decltype(off) off_) :
-                lim(lim_),
-                has_offset(has_offset_), offset_is_implicit(offset_is_implicit_), off(off_) {}
-
+        struct limit_string {
             operator std::string() const {
                 return "LIMIT";
             }
         };
 
+        /**
+         *  Stores LIMIT/OFFSET info
+         */
+        template<class T, bool has_offset, bool offset_is_implicit>
+        struct limit_t : limit_string {
+            T lim;
+            int off = 0;
+
+            limit_t() = default;
+
+            limit_t(decltype(lim) lim_) : lim(std::move(lim_)) {}
+
+            limit_t(decltype(lim) lim_, decltype(off) off_) : lim(std::move(lim_)), off(off_) {}
+        };
+
         template<class T>
-        using is_limit = std::is_same<limit_t, T>;
+        struct is_limit : std::false_type {};
+
+        template<class T, bool has_offset, bool offset_is_implicit>
+        struct is_limit<limit_t<T, has_offset, offset_is_implicit>> : std::true_type {};
 
         /**
          *  Stores OFFSET only info
          */
         struct offset_t {
-            int off;
+            int off = 0;
+
+            explicit offset_t(int off_) : off(off_) {}
         };
+
+        template<class T>
+        struct is_offset : std::false_type {};
+
+        template<>
+        struct is_offset<offset_t> : std::true_type {};
 
         /**
          *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
@@ -1084,19 +1091,23 @@ namespace sqlite_orm {
     }
 
     inline conditions::offset_t offset(int off) {
-        return {off};
+        return conditions::offset_t{off};
     }
 
-    inline conditions::limit_t limit(int lim) {
-        return {lim};
+    template<class T>
+    conditions::limit_t<T, false, false> limit(T lim) {
+        return {std::move(lim)};
     }
 
-    inline conditions::limit_t limit(int off, int lim) {
-        return {lim, true, true, off};
+    template<class T>
+    typename std::enable_if<!conditions::is_offset<T>::value, conditions::limit_t<T, true, true>>::type limit(int off,
+                                                                                                              T lim) {
+        return {std::move(lim), off};
     }
 
-    inline conditions::limit_t limit(int lim, conditions::offset_t offt) {
-        return {lim, true, false, offt.off};
+    template<class T>
+    conditions::limit_t<T, true, false> limit(T lim, conditions::offset_t offt) {
+        return {std::move(lim), offt.off};
     }
 
     template<class L,

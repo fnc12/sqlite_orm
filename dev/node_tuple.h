@@ -261,5 +261,23 @@ namespace sqlite_orm {
             using node_type = as_t<T, E>;
             using type = typename node_tuple<E>::type;
         };
+
+        template<class T>
+        struct node_tuple<conditions::limit_t<T, false, false>, void> {
+            using node_type = conditions::limit_t<T, false, false>;
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::limit_t<T, true, false>, void> {
+            using node_type = conditions::limit_t<T, true, false>;
+            using type = typename conc_tuple<typename node_tuple<T>::type, int>::type;
+        };
+
+        template<class T>
+        struct node_tuple<conditions::limit_t<T, true, true>, void> {
+            using node_type = conditions::limit_t<T, true, true>;
+            using type = typename conc_tuple<int, typename node_tuple<T>::type>::type;
+        };
     }
 }
