@@ -4530,17 +4530,6 @@ namespace sqlite_orm {
             return std::make_unique<T>(v);
         }
     };
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<typename T>
-    struct is_std_ptr<std::optional<T>> : std::true_type {
-        using element_type = T;
-
-        static std::optional<T> make(const T &v) {
-            return std::make_optional<T>(v);
-        }
-    };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
 
 namespace sqlite_orm {
@@ -4623,6 +4612,15 @@ namespace sqlite_orm {
         }
     };
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<>
+    struct statement_binder<std::nullopt_t, void> {
+        int bind(sqlite3_stmt *stmt, int index, const std::nullopt_t &) {
+            return sqlite3_bind_null(stmt, index);
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
     template<class V>
     struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
         using value_type = typename is_std_ptr<V>::element_type;
@@ -4653,6 +4651,21 @@ namespace sqlite_orm {
             }
         }
     };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct statement_binder<std::optional<T>, void> {
+        using value_type = T;
+
+        int bind(sqlite3_stmt *stmt, int index, const std::optional<T> &value) {
+            if(value) {
+                return statement_binder<value_type>().bind(stmt, index, *value);
+            } else {
+                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+            }
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     namespace internal {
 
@@ -4949,6 +4962,29 @@ namespace sqlite_orm {
         }
     };
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct row_extractor<std::optional<T>, void> {
+        using value_type = T;
+
+        std::optional<T> extract(const char *row_value) {
+            if(row_value) {
+                return std::make_optional(row_extractor<value_type>().extract(row_value));
+            } else {
+                return std::nullopt;
+            }
+        }
+
+        std::optional<T> extract(sqlite3_stmt *stmt, int columnIndex) {
+            auto type = sqlite3_column_type(stmt, columnIndex);
+            if(type != SQLITE_NULL) {
+                return std::make_optional(row_extractor<value_type>().extract(stmt, columnIndex));
+            } else {
+                return std::nullopt;
+            }
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Specialization for std::vector<char>.
      */

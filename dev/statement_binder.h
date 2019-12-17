@@ -92,6 +92,15 @@ namespace sqlite_orm {
         }
     };
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<>
+    struct statement_binder<std::nullopt_t, void> {
+        int bind(sqlite3_stmt *stmt, int index, const std::nullopt_t &) {
+            return sqlite3_bind_null(stmt, index);
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
     template<class V>
     struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
         using value_type = typename is_std_ptr<V>::element_type;
@@ -122,6 +131,21 @@ namespace sqlite_orm {
             }
         }
     };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct statement_binder<std::optional<T>, void> {
+        using value_type = T;
+
+        int bind(sqlite3_stmt *stmt, int index, const std::optional<T> &value) {
+            if(value) {
+                return statement_binder<value_type>().bind(stmt, index, *value);
+            } else {
+                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+            }
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     namespace internal {
 
