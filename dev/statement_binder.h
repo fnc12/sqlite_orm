@@ -141,7 +141,7 @@ namespace sqlite_orm {
             if(value) {
                 return statement_binder<value_type>().bind(stmt, index, *value);
             } else {
-                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+                return statement_binder<std::nullopt_t>().bind(stmt, index, std::nullopt);
             }
         }
     };
