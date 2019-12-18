@@ -177,6 +177,29 @@ namespace sqlite_orm {
         }
     };
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    struct row_extractor<std::optional<T>, void> {
+        using value_type = T;
+
+        std::optional<T> extract(const char *row_value) {
+            if(row_value) {
+                return std::make_optional(row_extractor<value_type>().extract(row_value));
+            } else {
+                return std::nullopt;
+            }
+        }
+
+        std::optional<T> extract(sqlite3_stmt *stmt, int columnIndex) {
+            auto type = sqlite3_column_type(stmt, columnIndex);
+            if(type != SQLITE_NULL) {
+                return std::make_optional(row_extractor<value_type>().extract(stmt, columnIndex));
+            } else {
+                return std::nullopt;
+            }
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  Specialization for std::vector<char>.
      */

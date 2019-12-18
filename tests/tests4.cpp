@@ -658,6 +658,7 @@ TEST_CASE("Dump") {
 
     auto userId_1 = storage.insert(User{0, {}});
     auto userId_2 = storage.insert(User{0, 2006});
+    std::ignore = userId_2;
 
     REQUIRE(storage.count<User>(where(is_not_null(&User::carYear))) == 1);
 
