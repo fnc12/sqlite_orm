@@ -21,12 +21,10 @@
 		"dev/aggregate_functions.h",
 		"dev/typed_comparator.h",
 		"dev/select_constraints.h",
-		"dev/database_connection.h",
 		"dev/table_type.h",
 		"dev/table_info.h",
 		"dev/statement_finalizer.h",
 		"dev/arithmetic_tag.h",
-		"dev/is_std_ptr.h",
 		"dev/statement_binder.h",
 		"dev/row_extractor.h",
 		"dev/sync_schema_result.h",
@@ -37,7 +35,10 @@
 		"dev/table.h",
 		"dev/storage_impl.h",
 		"dev/storage.h",
-		"dev/finish_macros.h"
+		"dev/finish_macros.h",
+        "dev/node_tuple.h",
+        "dev/get_prepared_statement.h",
+        "dev/statement_serializator.h"
 	],
 	"include_paths": ["dev"]
 }

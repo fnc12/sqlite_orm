@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>   //  std::string
+#include <string>  //  std::string
 
 namespace sqlite_orm {
-    
+
     struct table_info {
         int cid;
         std::string name;
@@ -12,5 +12,5 @@ namespace sqlite_orm {
         std::string dflt_value;
         int pk;
     };
-    
+
 }

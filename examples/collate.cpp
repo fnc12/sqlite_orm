@@ -19,26 +19,27 @@ struct Foo {
     int baz;
 };
 
-int main(int, char**) {
+int main(int, char **) {
 
     using namespace sqlite_orm;
-    auto storage = make_storage("collate.sqlite",
-                                make_table("users",
-                                           make_column("id", &User::id, primary_key()),
-                                           make_column("name", &User::name),
-                                           make_column("created_at", &User::createdAt)),
-                                make_table("foo",
-                                           make_column("text", &Foo::text, collate_nocase()),
-                                           make_column("baz", &Foo::baz)));
+    auto storage = make_storage(
+        "collate.sqlite",
+        make_table("users",
+                   make_column("id", &User::id, primary_key()),
+                   make_column("name", &User::name),
+                   make_column("created_at", &User::createdAt)),
+        make_table("foo", make_column("text", &Foo::text, collate_nocase()), make_column("baz", &Foo::baz)));
     storage.sync_schema();
     storage.remove_all<User>();
     storage.remove_all<Foo>();
 
-    storage.insert(User{ 0, "Lil Kim", time(nullptr) });
-    storage.insert(User{ 0, "lil kim", time(nullptr) });
-    storage.insert(User{ 0, "Nicki Minaj", time(nullptr) });
+    storage.insert(User{0, "Lil Kim", time(nullptr)});
+    storage.insert(User{0, "lil kim", time(nullptr)});
+    storage.insert(User{0, "Nicki Minaj", time(nullptr)});
 
-    //  SELECT COUNT(*) FROM users WHERE name = 'lil kim'
+    //  SELECT COUNT(*)
+    //  FROM users
+    //  WHERE name = 'lil kim'
     auto preciseLilKimsCount = storage.count<User>(where(is_equal(&User::name, "lil kim")));
     cout << "preciseLilKimsCount = " << preciseLilKimsCount << endl;
 
@@ -49,8 +50,8 @@ int main(int, char**) {
     //  SELECT COUNT(*) FROM users
     cout << "total users count = " << storage.count<User>() << endl;
 
-    storage.insert(Foo{ "Touch", 10 });
-    storage.insert(Foo{ "touch", 20 });
+    storage.insert(Foo{"Touch", 10});
+    storage.insert(Foo{"touch", 20});
 
     cout << "foo count = " << storage.count<Foo>(where(c(&Foo::text) == "touch")) << endl;
 

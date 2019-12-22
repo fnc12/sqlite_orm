@@ -24,6 +24,7 @@ SQLite ORM light header only library for modern C++
 * **Built with modern C++14 features (no macros and external scripts)**
 * **CRUD support**
 * **Pure select query support**
+* **Prepared statements support**
 * **UNION, EXCEPT and INTERSECT support**
 * **STL compatible**
 * **Custom types binding support**
@@ -191,6 +192,26 @@ for(auto &user : storage.iterate<User>()) {
 `iterate` member function returns adapter object that has `begin` and `end` member functions returning iterators that fetch object on dereference operator call.
 
 CRUD functions `get`, `get_pointer`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::system_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `date_time.cpp` example in `examples` folder.
+
+# Prepared statements
+
+Prepared statements are strongly typed.
+
+```c++
+//  SELECT doctor_id
+//  FROM visits
+//  WHERE LENGTH(patient_name) > 8
+auto selectStatement = storage.prepare(select(&Visit::doctor_id, where(length(&Visit::patient_name) > 8)));
+cout << "selectStatement = " << selectStatement.sql() << endl;  //  prints "SELECT doctor_id FROM ..."
+auto rows = storage.execute(selectStatement); //  rows is std::vector<decltype(Visit::doctor_id)>
+
+//  SELECT doctor_id
+//  FROM visits
+//  WHERE LENGTH(patient_name) > 11
+get<0>(selectStatement) = 11;
+auto rows2 = storage.execute(selectStatement);
+```
+`get<N>(statement)` function call allows you to access fields to bind them to your statement.
 
 # Aggregate Functions
 
@@ -597,7 +618,7 @@ Two `INNER JOIN`s in one query:
 auto innerJoinRows2 = storage.select(columns(&Track::trackId, &Track::name, &Album::title, &Artist::name),
                                      inner_join<Album>(on(c(&Album::albumId) == &Track::albumId)),
                                      inner_join<Artist>(on(c(&Artist::artistId) == &Album::artistId)));
-//  innerJoinRows2 is std::vector<std::tuple<decltype(&Track::trackId), decltype(&Track::name), decltype(&Album::title), decltype(&Artist::name)>>
+//  innerJoinRows2 is std::vector<std::tuple<decltype(Track::trackId), decltype(Track::name), decltype(Album::title), decltype(Artist::name)>>
 ```
 
 More join examples can be found in [examples folder](https://github.com/fnc12/sqlite_orm/blob/master/examples/left_and_inner_join.cpp).
@@ -723,6 +744,7 @@ To manage in memory database just provide `:memory:` or `""` instead as filename
 |Custom types binding|yes|no|yes|yes|
 |Doesn't use macros and/or external codegen scripts|yes|yes|no|no|
 |Aggregate functions|yes|yes|no|yes|
+|Prepared statements|yes|yes|no|no|
 
 # Notes
 

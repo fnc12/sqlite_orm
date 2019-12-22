@@ -1,8 +1,19 @@
 cmake_minimum_required (VERSION 3.2)
 cmake_policy(SET CMP0057 NEW)
 
-set(CMAKE_CXX_STANDARD 14)
+# Handling C++ standard version to use
+option(SQLITE_ORM_ENABLE_CXX_17 "Enable C++ 17" OFF)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(SQLITE_ORM_ENABLE_CXX_17)
+	set(CMAKE_CXX_STANDARD 17)
+	message(STATUS "SQLITE_ORM: Build with C++17 features")
+else()
+	# fallback to C++14 if there is no special instruction
+	set(CMAKE_CXX_STANDARD 14)
+	message(STATUS "SQLITE_ORM: Build with C++14 features")
+endif()
+set(CMAKE_CXX_EXTENSIONS OFF)
+
 
 # PACKAGE_VERSION is used by cpack scripts currently
 # Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
@@ -46,6 +57,7 @@ if (MSVC)
 	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")	
 	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")	
 	add_compile_options(/EHsc)
+	add_compile_options(/Zc:__cplusplus)
 
 	if ("${CMAKE_GENERATOR}" MATCHES "(Win64|x64)")
 		message(STATUS "Add /bigobj flag to compiler")

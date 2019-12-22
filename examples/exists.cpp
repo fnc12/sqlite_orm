@@ -43,7 +43,7 @@ struct Order {
 
 int main(int, char **) {
     using namespace sqlite_orm;
-    
+
     auto storage = make_storage("exists.sqlite",
                                 make_table("customer",
                                            make_column("CUST_CODE", &Customer::code, primary_key()),
@@ -76,7 +76,7 @@ int main(int, char **) {
     storage.remove_all<Order>();
     storage.remove_all<Agent>();
     storage.remove_all<Customer>();
-    
+
     storage.replace(Agent{"A007", "Ramasundar", "Bangalore", 0.15, "077-25814763", ""});
     storage.replace(Agent{"A003", "Alex", "London", 0.13, "075-12458969", ""});
     storage.replace(Agent{"A008", "Alford", "New York", 0.12, "044-25874365", ""});
@@ -89,33 +89,288 @@ int main(int, char **) {
     storage.replace(Agent{"A006", "McDen", "London", 0.15, "078-22255588", ""});
     storage.replace(Agent{"A004", "Ivan", "Torento", 0.15, "008-22544166", ""});
     storage.replace(Agent{"A009", "Benjamin", "Hampshair", 0.11, "008-22536178", ""});
-    
-    storage.replace(Customer{"C00013", "Holmes", "London", "London", "UK", 2, 6000.00, 5000.00, 7000.00, 4000.00, "BBBBBBB", "A003"});
-    storage.replace(Customer{"C00001", "Micheal", "New York", "New York", "USA", 2, 3000.00, 5000.00, 2000.00, 6000.00, "CCCCCCC", "A008"});
-    storage.replace(Customer{"C00020", "Albert", "New York", "New York", "USA", 3, 5000.00, 7000.00, 6000.00, 6000.00, "BBBBSBB", "A008"});
-    storage.replace(Customer{"C00025", "Ravindran", "Bangalore", "Bangalore", "India", 2, 5000.00, 7000.00, 4000.00, 8000.00, "AVAVAVA", "A011"});
-    storage.replace(Customer{"C00024", "Cook", "London", "London", "UK", 2, 4000.00, 9000.00, 7000.00, 6000.00, "FSDDSDF", "A006"});
-    storage.replace(Customer{"C00015", "Stuart", "London", "London", "UK", 1, 6000.00, 8000.00, 3000.00, 11000.00, "GFSGERS", "A003"});
-    storage.replace(Customer{"C00002", "Bolt", "New York", "New York", "USA", 3, 5000.00, 7000.00, 9000.00, 3000.00, "DDNRDRH", "A008"});
-    storage.replace(Customer{"C00018", "Fleming", "Brisban", "Brisban", "Australia", 2, 7000.00, 7000.00, 9000.00, 5000.00, "NHBGVFC", "A005"});
-    storage.replace(Customer{"C00021", "Jacks", "Brisban", "Brisban", "Australia", 1, 7000.00, 7000.00, 7000.00, 7000.00, "WERTGDF", "A005"});
-    storage.replace(Customer{"C00019", "Yearannaidu", "Chennai", "Chennai", "India", 1, 8000.00, 7000.00, 7000.00, 8000.00, "ZZZZBFV", "A010"});
-    storage.replace(Customer{"C00005", "Sasikant", "Mumbai", "Mumbai", "India", 1, 7000.00, 11000.00, 7000.00, 11000.00, "147-25896312", "A002"});
-    storage.replace(Customer{"C00007", "Ramanathan", "Chennai", "Chennai", "India", 1, 7000.00, 11000.00, 9000.00, 9000.00, "GHRDWSD", "A010"});
-    storage.replace(Customer{"C00022", "Avinash", "Mumbai", "Mumbai", "India", 2, 7000.00, 11000.00, 9000.00, 9000.00, "113-12345678", "A002"});
-    storage.replace(Customer{"C00004", "Winston", "Brisban", "Brisban", "Australia", 1, 5000.00, 8000.00, 7000.00, 6000.00, "AAAAAAA", "A005"});
-    storage.replace(Customer{"C00023", "Karl", "London", "London", "UK", 0, 4000.00, 6000.00, 7000.00, 3000.00, "AAAABAA", "A006"});
-    storage.replace(Customer{"C00006", "Shilton", "Torento", "Torento", "Canada", 1, 10000.00, 7000.00, 6000.00, 11000.00, "DDDDDDD", "A004"});
-    storage.replace(Customer{"C00010", "Charles", "Hampshair", "Hampshair", "UK", 3, 6000.00, 4000.00, 5000.00, 5000.00, "MMMMMMM", "A009"});
-    storage.replace(Customer{"C00017", "Srinivas", "Bangalore", "Bangalore", "India", 2, 8000.00, 4000.00, 3000.00, 9000.00, "AAAAAAB", "A007"});
-    storage.replace(Customer{"C00012", "Steven", "San Jose", "San Jose", "USA", 1, 5000.00, 7000.00, 9000.00, 3000.00, "KRFYGJK", "A012"});
-    storage.replace(Customer{"C00008", "Karolina", "Torento", "Torento", "Canada", 1, 7000.00, 7000.00, 9000.00, 5000.00, "HJKORED", "A004"});
-    storage.replace(Customer{"C00003", "Martin", "Torento", "Torento", "Canada", 2, 8000.00, 7000.00, 7000.00, 8000.00, "MJYURFD", "A004"});
-    storage.replace(Customer{"C00009", "Ramesh", "Mumbai", "Mumbai", "India", 3, 8000.00, 7000.00, 3000.00, 12000.00, "Phone No", "A002"});
-    storage.replace(Customer{"C00014", "Rangarappa", "Bangalore", "Bangalore", "India", 2, 8000.00, 11000.00, 7000.00, 12000.00, "AAAATGF", "A001"});
-    storage.replace(Customer{"C00016", "Venkatpati", "Bangalore", "Bangalore", "India", 2, 8000.00, 11000.00, 7000.00, 12000.00, "JRTVFDD", "A007"});
-    storage.replace(Customer{"C00011", "Sundariya", "Chennai", "Chennai", "India", 3, 7000.00, 11000.00, 7000.00, 11000.00, "PPHGRTS", "A010"});
-    
+
+    storage.replace(Customer{"C00013",
+                             "Holmes",
+                             "London",
+                             "London",
+                             "UK",
+                             2,
+                             6000.00,
+                             5000.00,
+                             7000.00,
+                             4000.00,
+                             "BBBBBBB",
+                             "A003"});
+    storage.replace(Customer{"C00001",
+                             "Micheal",
+                             "New York",
+                             "New York",
+                             "USA",
+                             2,
+                             3000.00,
+                             5000.00,
+                             2000.00,
+                             6000.00,
+                             "CCCCCCC",
+                             "A008"});
+    storage.replace(Customer{"C00020",
+                             "Albert",
+                             "New York",
+                             "New York",
+                             "USA",
+                             3,
+                             5000.00,
+                             7000.00,
+                             6000.00,
+                             6000.00,
+                             "BBBBSBB",
+                             "A008"});
+    storage.replace(Customer{"C00025",
+                             "Ravindran",
+                             "Bangalore",
+                             "Bangalore",
+                             "India",
+                             2,
+                             5000.00,
+                             7000.00,
+                             4000.00,
+                             8000.00,
+                             "AVAVAVA",
+                             "A011"});
+    storage.replace(
+        Customer{"C00024", "Cook", "London", "London", "UK", 2, 4000.00, 9000.00, 7000.00, 6000.00, "FSDDSDF", "A006"});
+    storage.replace(Customer{"C00015",
+                             "Stuart",
+                             "London",
+                             "London",
+                             "UK",
+                             1,
+                             6000.00,
+                             8000.00,
+                             3000.00,
+                             11000.00,
+                             "GFSGERS",
+                             "A003"});
+    storage.replace(Customer{"C00002",
+                             "Bolt",
+                             "New York",
+                             "New York",
+                             "USA",
+                             3,
+                             5000.00,
+                             7000.00,
+                             9000.00,
+                             3000.00,
+                             "DDNRDRH",
+                             "A008"});
+    storage.replace(Customer{"C00018",
+                             "Fleming",
+                             "Brisban",
+                             "Brisban",
+                             "Australia",
+                             2,
+                             7000.00,
+                             7000.00,
+                             9000.00,
+                             5000.00,
+                             "NHBGVFC",
+                             "A005"});
+    storage.replace(Customer{"C00021",
+                             "Jacks",
+                             "Brisban",
+                             "Brisban",
+                             "Australia",
+                             1,
+                             7000.00,
+                             7000.00,
+                             7000.00,
+                             7000.00,
+                             "WERTGDF",
+                             "A005"});
+    storage.replace(Customer{"C00019",
+                             "Yearannaidu",
+                             "Chennai",
+                             "Chennai",
+                             "India",
+                             1,
+                             8000.00,
+                             7000.00,
+                             7000.00,
+                             8000.00,
+                             "ZZZZBFV",
+                             "A010"});
+    storage.replace(Customer{"C00005",
+                             "Sasikant",
+                             "Mumbai",
+                             "Mumbai",
+                             "India",
+                             1,
+                             7000.00,
+                             11000.00,
+                             7000.00,
+                             11000.00,
+                             "147-25896312",
+                             "A002"});
+    storage.replace(Customer{"C00007",
+                             "Ramanathan",
+                             "Chennai",
+                             "Chennai",
+                             "India",
+                             1,
+                             7000.00,
+                             11000.00,
+                             9000.00,
+                             9000.00,
+                             "GHRDWSD",
+                             "A010"});
+    storage.replace(Customer{"C00022",
+                             "Avinash",
+                             "Mumbai",
+                             "Mumbai",
+                             "India",
+                             2,
+                             7000.00,
+                             11000.00,
+                             9000.00,
+                             9000.00,
+                             "113-12345678",
+                             "A002"});
+    storage.replace(Customer{"C00004",
+                             "Winston",
+                             "Brisban",
+                             "Brisban",
+                             "Australia",
+                             1,
+                             5000.00,
+                             8000.00,
+                             7000.00,
+                             6000.00,
+                             "AAAAAAA",
+                             "A005"});
+    storage.replace(
+        Customer{"C00023", "Karl", "London", "London", "UK", 0, 4000.00, 6000.00, 7000.00, 3000.00, "AAAABAA", "A006"});
+    storage.replace(Customer{"C00006",
+                             "Shilton",
+                             "Torento",
+                             "Torento",
+                             "Canada",
+                             1,
+                             10000.00,
+                             7000.00,
+                             6000.00,
+                             11000.00,
+                             "DDDDDDD",
+                             "A004"});
+    storage.replace(Customer{"C00010",
+                             "Charles",
+                             "Hampshair",
+                             "Hampshair",
+                             "UK",
+                             3,
+                             6000.00,
+                             4000.00,
+                             5000.00,
+                             5000.00,
+                             "MMMMMMM",
+                             "A009"});
+    storage.replace(Customer{"C00017",
+                             "Srinivas",
+                             "Bangalore",
+                             "Bangalore",
+                             "India",
+                             2,
+                             8000.00,
+                             4000.00,
+                             3000.00,
+                             9000.00,
+                             "AAAAAAB",
+                             "A007"});
+    storage.replace(Customer{"C00012",
+                             "Steven",
+                             "San Jose",
+                             "San Jose",
+                             "USA",
+                             1,
+                             5000.00,
+                             7000.00,
+                             9000.00,
+                             3000.00,
+                             "KRFYGJK",
+                             "A012"});
+    storage.replace(Customer{"C00008",
+                             "Karolina",
+                             "Torento",
+                             "Torento",
+                             "Canada",
+                             1,
+                             7000.00,
+                             7000.00,
+                             9000.00,
+                             5000.00,
+                             "HJKORED",
+                             "A004"});
+    storage.replace(Customer{"C00003",
+                             "Martin",
+                             "Torento",
+                             "Torento",
+                             "Canada",
+                             2,
+                             8000.00,
+                             7000.00,
+                             7000.00,
+                             8000.00,
+                             "MJYURFD",
+                             "A004"});
+    storage.replace(Customer{"C00009",
+                             "Ramesh",
+                             "Mumbai",
+                             "Mumbai",
+                             "India",
+                             3,
+                             8000.00,
+                             7000.00,
+                             3000.00,
+                             12000.00,
+                             "Phone No",
+                             "A002"});
+    storage.replace(Customer{"C00014",
+                             "Rangarappa",
+                             "Bangalore",
+                             "Bangalore",
+                             "India",
+                             2,
+                             8000.00,
+                             11000.00,
+                             7000.00,
+                             12000.00,
+                             "AAAATGF",
+                             "A001"});
+    storage.replace(Customer{"C00016",
+                             "Venkatpati",
+                             "Bangalore",
+                             "Bangalore",
+                             "India",
+                             2,
+                             8000.00,
+                             11000.00,
+                             7000.00,
+                             12000.00,
+                             "JRTVFDD",
+                             "A007"});
+    storage.replace(Customer{"C00011",
+                             "Sundariya",
+                             "Chennai",
+                             "Chennai",
+                             "India",
+                             3,
+                             7000.00,
+                             11000.00,
+                             7000.00,
+                             11000.00,
+                             "PPHGRTS",
+                             "A010"});
+
     storage.replace(Order{"200114", 3500, 2000, "15-AUG-08", "C00002", "A008"});
     storage.replace(Order{"200122", 2500, 400, "16-SEP-08", "C00003", "A004"});
     storage.replace(Order{"200118", 500, 100, "20-JUL-08", "C00023", "A006"});
@@ -150,7 +405,7 @@ int main(int, char **) {
     storage.replace(Order{"200112", 2000, 400, "30-MAY-08", "C00016", "A007"});
     storage.replace(Order{"200113", 4000, 600, "10-JUN-08", "C00022", "A002"});
     storage.replace(Order{"200102", 2000, 300, "25-MAY-08", "C00012", "A012"});
-    
+
     {
         //  SELECT agent_code,agent_name,working_area,commission
         //  FROM agents
@@ -161,12 +416,14 @@ int main(int, char **) {
         //  ORDER BY commission;
         auto rows = storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
                                    where(exists(select(asterisk<Customer>(),
-                                                       where(is_equal(&Customer::grade, 3) and is_equal(&Agent::code, &Customer::agentCode))))),
+                                                       where(is_equal(&Customer::grade, 3) and
+                                                             is_equal(&Agent::code, &Customer::agentCode))))),
                                    order_by(&Agent::comission));
         cout << "AGENT_CODE  AGENT_NAME                                WORKING_AREA  COMMISSION" << endl;
         cout << "----------  ----------------------------------------  ------------  ----------" << endl;
-        for(auto &row : rows) {
-            cout << std::get<0>(row) << '\t' <<  std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        for(auto &row: rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
+                 << endl;
         }
     }
     {
@@ -178,16 +435,17 @@ int main(int, char **) {
         //      WHERE grade=2
         //      GROUP BY grade
         //      HAVING COUNT(*)>2);
-        auto rows = storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
-                                   where(is_equal(&Customer::grade, 2)
-                                         and exists(select(count<Customer>(),
-                                                           where(is_equal(&Customer::grade, 2)),
-                                                           group_by(&Customer::grade),
-                                                           having(greater_than(count(), 2))))));
+        auto rows =
+            storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
+                           where(is_equal(&Customer::grade, 2) and exists(select(count<Customer>(),
+                                                                                 where(is_equal(&Customer::grade, 2)),
+                                                                                 group_by(&Customer::grade),
+                                                                                 having(greater_than(count(), 2))))));
         cout << "CUST_CODE   CUST_NAME   CUST_CITY                            GRADE" << endl;
         cout << "----------  ----------  -----------------------------------  ----------" << endl;
-        for(auto &row : rows) {
-            cout << std::get<0>(row) << '\t' <<  std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        for(auto &row: rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
+                 << endl;
         }
     }
     {
@@ -197,12 +455,13 @@ int main(int, char **) {
         //      (SELECT agent_code
         //      FROM customer
         //      WHERE payment_amt=1400);
-        auto rows = storage.select(columns(&Order::agentCode, &Order::num, &Order::amount, &Order::custCode),
-                                   where(not exists(select(&Customer::agentCode,
-                                                           where(is_equal(&Customer::paymentAmt, 1400))))));
+        auto rows = storage.select(
+            columns(&Order::agentCode, &Order::num, &Order::amount, &Order::custCode),
+            where(not exists(select(&Customer::agentCode, where(is_equal(&Customer::paymentAmt, 1400))))));
         cout << "AGENT_CODE  ORD_NUM     ORD_AMOUNT  CUST_CODE" << endl;
-        for(auto &row : rows) {
-            cout << std::get<0>(row) << '\t' <<  std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row) << endl;
+        for(auto &row: rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
+                 << endl;
         }
     }
     return 0;

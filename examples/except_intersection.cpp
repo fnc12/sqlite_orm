@@ -23,7 +23,7 @@ struct EmpMaster {
 
 int main() {
     using namespace sqlite_orm;
-    
+
     auto storage = make_storage("",
                                 make_table("dept_master",
                                            make_column("dept_id", &DeptMaster::deptId, autoincrement(), primary_key()),
@@ -61,10 +61,9 @@ int main() {
         //  EXCEPT
         //  SELECT dept_id
         //  FROM emp_master
-        auto rows = storage.select(except(select(&DeptMaster::deptId),
-                                          select(&EmpMaster::deptId)));
+        auto rows = storage.select(except(select(&DeptMaster::deptId), select(&EmpMaster::deptId)));
         cout << "rows count = " << rows.size() << endl;
-        for(auto id : rows) {
+        for(auto id: rows) {
             cout << id << endl;
         }
     }
@@ -74,13 +73,12 @@ int main() {
         //  INTERSECT
         //  SELECT dept_id
         //  FROM emp_master
-        auto rows = storage.select(intersect(select(&DeptMaster::deptId),
-                                             select(&EmpMaster::deptId)));
+        auto rows = storage.select(intersect(select(&DeptMaster::deptId), select(&EmpMaster::deptId)));
         cout << "rows count = " << rows.size() << endl;
-        for(auto id : rows) {
+        for(auto id: rows) {
             cout << id << endl;
         }
     }
-    
+
     return 0;
 }
