@@ -182,3 +182,22 @@ TEST_CASE("abs") {
     REQUIRE(rows.front());
     REQUIRE(*rows.front() == 10);
 }
+
+TEST_CASE("hex") {
+    auto storage = make_storage({});
+    {
+        auto rows = storage.select(hex(67));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == "3637");
+    }
+    {
+        auto rows = storage.select(hex("ä"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == "C3A4");
+    }
+    {
+        auto rows = storage.select(hex(nullptr));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == std::string());
+    }
+}
