@@ -3621,8 +3621,8 @@ namespace sqlite_orm {
     }
 
     /**
- *  HEX(X) function https://sqlite.org/lang_corefunc.html#hex
- */
+     *  HEX(X) function https://sqlite.org/lang_corefunc.html#hex
+     */
     template<class X>
     core_functions::core_function_t<std::string, core_functions::hex_string, X> hex(X x) {
         std::tuple<X> args{std::forward<X>(x)};
