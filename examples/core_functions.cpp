@@ -257,5 +257,8 @@ int main(int, char **argv) {
     //  SELECT substr('SQLite substr', 1, 6);
     cout << "substr('SQLite substr', 1, 6) = " << storage.select(substr("SQLite substr", 1, 6)).front() << endl;
 
+    //  SELECT hex(67);
+    cout << "hex(67) = " << storage.select(hex(67)).front() << endl;
+
     return 0;
 }

@@ -81,6 +81,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct hex_string {
+            operator std::string() const {
+                return "HEX";
+            }
+        };
+
 #if SQLITE_VERSION_NUMBER >= 3007016
 
         struct char_string {
@@ -280,6 +286,15 @@ namespace sqlite_orm {
     template<class X, class Y>
     core_functions::core_function_t<std::string, core_functions::rtrim_string, X, Y> rtrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {std::move(args)};
+    }
+
+    /**
+     *  HEX(X) function https://sqlite.org/lang_corefunc.html#hex
+     */
+    template<class X>
+    core_functions::core_function_t<std::string, core_functions::hex_string, X> hex(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
         return {std::move(args)};
     }
 
