@@ -260,5 +260,8 @@ int main(int, char **argv) {
     //  SELECT hex(67);
     cout << "hex(67) = " << storage.select(hex(67)).front() << endl;
 
+    //  SELECT quote('hi')
+    cout << "SELECT quote('hi') = " << storage.select(quote("hi")).front() << endl;
+
     return 0;
 }

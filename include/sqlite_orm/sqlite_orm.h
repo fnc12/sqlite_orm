@@ -3408,6 +3408,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct quote_string {
+            operator std::string() const {
+                return "QUOTE";
+            }
+        };
+
 #if SQLITE_VERSION_NUMBER >= 3007016
 
         struct char_string {
@@ -3519,7 +3525,7 @@ namespace sqlite_orm {
     template<class T>
     core_functions::core_function_t<int, core_functions::length_string, T> length(T t) {
         std::tuple<T> args{std::forward<T>(t)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3528,7 +3534,7 @@ namespace sqlite_orm {
     template<class T>
     core_functions::core_function_t<std::unique_ptr<double>, core_functions::abs_string, T> abs(T t) {
         std::tuple<T> args{std::forward<T>(t)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3537,7 +3543,7 @@ namespace sqlite_orm {
     template<class T>
     core_functions::core_function_t<std::string, core_functions::lower_string, T> lower(T t) {
         std::tuple<T> args{std::forward<T>(t)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3546,7 +3552,7 @@ namespace sqlite_orm {
     template<class T>
     core_functions::core_function_t<std::string, core_functions::upper_string, T> upper(T t) {
         std::tuple<T> args{std::forward<T>(t)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3562,7 +3568,7 @@ namespace sqlite_orm {
     template<class T>
     core_functions::core_function_t<std::string, core_functions::trim_string, T> trim(T t) {
         std::tuple<T> args{std::forward<T>(t)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3571,7 +3577,7 @@ namespace sqlite_orm {
     template<class X, class Y>
     core_functions::core_function_t<std::string, core_functions::trim_string, X, Y> trim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3580,7 +3586,7 @@ namespace sqlite_orm {
     template<class X>
     core_functions::core_function_t<std::string, core_functions::ltrim_string, X> ltrim(X x) {
         std::tuple<X> args{std::forward<X>(x)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3589,7 +3595,7 @@ namespace sqlite_orm {
     template<class X, class Y>
     core_functions::core_function_t<std::string, core_functions::ltrim_string, X, Y> ltrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3598,7 +3604,7 @@ namespace sqlite_orm {
     template<class X>
     core_functions::core_function_t<std::string, core_functions::rtrim_string, X> rtrim(X x) {
         std::tuple<X> args{std::forward<X>(x)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3607,7 +3613,7 @@ namespace sqlite_orm {
     template<class X, class Y>
     core_functions::core_function_t<std::string, core_functions::rtrim_string, X, Y> rtrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3616,7 +3622,16 @@ namespace sqlite_orm {
     template<class X>
     core_functions::core_function_t<std::string, core_functions::hex_string, X> hex(X x) {
         std::tuple<X> args{std::forward<X>(x)};
-        return {std::move(args)};
+        return {move(args)};
+    }
+
+    /**
+     *  QUOTE(X) function https://sqlite.org/lang_corefunc.html#quote
+     */
+    template<class X>
+    core_functions::core_function_t<std::string, core_functions::quote_string, X> quote(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
     }
 
 #if SQLITE_VERSION_NUMBER >= 3007016
