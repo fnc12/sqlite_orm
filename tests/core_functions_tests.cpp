@@ -268,3 +268,13 @@ TEST_CASE("quote") {
         REQUIRE_THAT(rows, UnorderedEquals(expected));
     }
 }
+
+TEST_CASE("randomblob") {
+    auto storage = make_storage({});
+    for(auto i = 0; i < 20; ++i) {
+        auto blobLength = i + 1;
+        auto rows = storage.select(randomblob(blobLength));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front().size() == size_t(blobLength));
+    }
+}
