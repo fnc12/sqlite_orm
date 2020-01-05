@@ -263,5 +263,8 @@ int main(int, char **argv) {
     //  SELECT quote('hi')
     cout << "SELECT quote('hi') = " << storage.select(quote("hi")).front() << endl;
 
+    //  SELECT hex(randomblob(10))
+    cout << "SELECT hex(randomblob(10)) = " << storage.select(hex(randomblob(10))).front() << endl;
+
     return 0;
 }

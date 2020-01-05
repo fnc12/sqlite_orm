@@ -3414,6 +3414,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct randomblob_string {
+            operator std::string() const {
+                return "RANDOMBLOB";
+            }
+        };
+
 #if SQLITE_VERSION_NUMBER >= 3007016
 
         struct char_string {
@@ -3630,6 +3636,15 @@ namespace sqlite_orm {
      */
     template<class X>
     core_functions::core_function_t<std::string, core_functions::quote_string, X> quote(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  RANDOMBLOB(X) function https://sqlite.org/lang_corefunc.html#randomblob
+     */
+    template<class X>
+    core_functions::core_function_t<std::vector<char>, core_functions::randomblob_string, X> randomblob(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
