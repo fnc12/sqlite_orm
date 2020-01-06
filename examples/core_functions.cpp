@@ -139,11 +139,12 @@ int main(int, char **argv) {
 
 #if SQLITE_VERSION_NUMBER >= 3007016
 
-    //  SELECT CHAR(67,72,65,82)
+    //  SELECT CHAR(67, 72, 65, 82)
     auto charString = storage.select(char_(67, 72, 65, 82)).front();
     cout << "SELECT CHAR(67,72,65,82) = *" << charString << "*" << endl;
 
-    //  SELECT LOWER(name) || '@marvel.com' FROM marvel
+    //  SELECT LOWER(name) || '@marvel.com'
+    //  FROM marvel
     auto emails = storage.select(lower(&MarvelHero::name) || c("@marvel.com"));
     cout << "emails.size = " << emails.size() << endl;
     for(auto &email: emails) {
@@ -265,6 +266,30 @@ int main(int, char **argv) {
 
     //  SELECT hex(randomblob(10))
     cout << "SELECT hex(randomblob(10)) = " << storage.select(hex(randomblob(10))).front() << endl;
+
+    //  SELECT instr('something about it', 't')
+    cout << "SELECT instr('something about it', 't') = " << storage.select(instr("something about it", "t")).front()
+         << endl;
+
+    {
+        cout << endl;
+        struct o_pos : alias_tag {
+            static const std::string &get() {
+                static const std::string res = "o_pos";
+                return res;
+            }
+        };
+
+        //  SELECT name, INSTR(abilities, 'o') o_pos
+        //  FROM marvel
+        //  WHERE o_pos > 0
+        auto rows = storage.select(columns(&MarvelHero::name, as<o_pos>(instr(&MarvelHero::abilities, "o"))),
+                                   where(greater_than(get<o_pos>(), 0)));
+        for(auto &row: rows) {
+            cout << get<0>(row) << '\t' << get<1>(row) << endl;
+        }
+        cout << endl;
+    }
 
     return 0;
 }
