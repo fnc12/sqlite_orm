@@ -278,3 +278,71 @@ TEST_CASE("randomblob") {
         REQUIRE(rows.front().size() == size_t(blobLength));
     }
 }
+
+TEST_CASE("instr") {
+    using Catch::Matchers::UnorderedEquals;
+
+    struct Employee {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+        std::string address;
+    };
+
+    struct sw : alias_tag {
+        static const std::string &get() {
+            static const std::string res = "sw";
+            return res;
+        }
+    };
+    auto storage = make_storage({},
+                                make_table("employees",
+                                           make_column("id", &Employee::id, primary_key()),
+                                           make_column("first_name", &Employee::firstName),
+                                           make_column("last_name", &Employee::lastName),
+                                           make_column("address", &Employee::address)));
+    storage.sync_schema();
+    {
+        auto rows = storage.select(instr("SQLite Tutorial", "Tutorial"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == 8);
+    }
+    {
+        auto rows = storage.select(instr("SQLite Tutorial", "I"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == 0);
+    }
+    Employee nancy{1, "Nancy", "Edwards", "825 8 Ave SW"};
+    Employee jane{2, "Jane", "Peacock", "1111 6 Ave SW"};
+    Employee margaret{3, "Margaret", "Park", "683 10 Street SW"};
+    Employee patrick{4, "Patrick", "Jane", "Sacramento Empty House"};
+    Employee teresa{5, "Terese", "Lisbon", "Secramento Middle of Nowhere"};
+    storage.replace(nancy);
+    storage.replace(jane);
+    storage.replace(margaret);
+    storage.replace(patrick);
+    storage.replace(teresa);
+    {
+        auto rows = storage.select(
+            columns(&Employee::lastName, &Employee::firstName, &Employee::address, instr(&Employee::address, "SW")));
+        std::vector<std::tuple<std::string, std::string, std::string, int>> expected;
+        expected.push_back(std::make_tuple(nancy.lastName, nancy.firstName, nancy.address, 11));
+        expected.push_back(std::make_tuple(jane.lastName, jane.firstName, jane.address, 12));
+        expected.push_back(std::make_tuple(margaret.lastName, margaret.firstName, margaret.address, 15));
+        expected.push_back(std::make_tuple(patrick.lastName, patrick.firstName, patrick.address, 0));
+        expected.push_back(std::make_tuple(teresa.lastName, teresa.firstName, teresa.address, 0));
+        REQUIRE_THAT(rows, UnorderedEquals(expected));
+    }
+    {
+        auto rows = storage.select(columns(&Employee::lastName,
+                                           &Employee::firstName,
+                                           &Employee::address,
+                                           as<sw>(instr(&Employee::address, "SW"))),
+                                   where(greater_than(get<sw>(), 0)));
+        std::vector<std::tuple<std::string, std::string, std::string, int>> expected;
+        expected.push_back(std::make_tuple(nancy.lastName, nancy.firstName, nancy.address, 11));
+        expected.push_back(std::make_tuple(jane.lastName, jane.firstName, jane.address, 12));
+        expected.push_back(std::make_tuple(margaret.lastName, margaret.firstName, margaret.address, 15));
+        REQUIRE_THAT(rows, UnorderedEquals(expected));
+    }
+}

@@ -3420,6 +3420,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct instr_string {
+            operator std::string() const {
+                return "INSTR";
+            }
+        };
+
 #if SQLITE_VERSION_NUMBER >= 3007016
 
         struct char_string {
@@ -3646,6 +3652,15 @@ namespace sqlite_orm {
     template<class X>
     core_functions::core_function_t<std::vector<char>, core_functions::randomblob_string, X> randomblob(X x) {
         std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  INSTR(X) function https://sqlite.org/lang_corefunc.html#instr
+     */
+    template<class X, class Y>
+    core_functions::core_function_t<int, core_functions::instr_string, X, Y> instr(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
 
