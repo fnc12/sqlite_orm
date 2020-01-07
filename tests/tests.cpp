@@ -50,7 +50,7 @@ TEST_CASE("Join iterator ctor compilation error") {
     }
 }
 
-TEST_CASE("limits") {
+TEST_CASE("Limits") {
     auto storage2 = make_storage("limits.sqlite");
     auto storage = storage2;
     storage.sync_schema();

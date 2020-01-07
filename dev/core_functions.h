@@ -133,6 +133,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct time_string {
+            operator std::string() const {
+                return "TIME";
+            }
+        };
+
         struct datetime_string {
             operator std::string() const {
                 return "DATETIME";
@@ -375,6 +381,15 @@ namespace sqlite_orm {
      */
     template<class... Args>
     core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args... args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {std::move(t)};
+    }
+
+    /**
+     *  TIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    template<class... Args>
+    core_functions::core_function_t<std::string, core_functions::time_string, Args...> time(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {std::move(t)};
     }

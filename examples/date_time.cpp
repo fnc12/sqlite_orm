@@ -69,8 +69,17 @@ int main() {
     auto julianDiff = storage.select(julianday("now") - julianday("1776-07-04")).front();
     cout << "SELECT julianday('now') - julianday('1776-07-04') = " << julianDiff << endl;
 
-    //  SELECT (julianday('now') - 2440587.5)*86400.0;
-    auto julianConverted = storage.select((julianday("now") - 2440587.5) * 86400.0);
+    //  SELECT (julianday('now') - 2440587.5) * 86400.0
+    auto julianConverted = storage.select((julianday("now") - 2440587.5) * 86400.0).front();
+    cout << "SELECT (julianday('now') - 2440587.5) * 86400.0 = " << julianConverted << endl;
+
+    //  SELECT time('12:00', 'localtime')
+    auto time12Local = storage.select(time("12:00", "localtime")).front();
+    cout << "SELECT time('12:00', 'localtime') = " << time12Local << endl;
+
+    //  SELECT time('12:00', 'utc')
+    auto time12utc = storage.select(time("12:00", "utc")).front();
+    cout << "SELECT time('12:00', 'utc') = " << time12utc << endl;
 
     return 0;
 }
