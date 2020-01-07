@@ -3703,7 +3703,7 @@ namespace sqlite_orm {
     template<class... Args>
     core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {std::move(t)};
+        return {move(t)};
     }
 
     /**
@@ -3712,7 +3712,7 @@ namespace sqlite_orm {
     template<class... Args>
     core_functions::core_function_t<std::string, core_functions::time_string, Args...> time(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {std::move(t)};
+        return {move(t)};
     }
 
     /**
@@ -3721,7 +3721,7 @@ namespace sqlite_orm {
     template<class... Args>
     core_functions::core_function_t<std::string, core_functions::datetime_string, Args...> datetime(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {std::move(t)};
+        return {move(t)};
     }
 
     /**
@@ -3730,7 +3730,7 @@ namespace sqlite_orm {
     template<class... Args>
     core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {std::move(t)};
+        return {move(t)};
     }
 
     /**
@@ -3739,7 +3739,7 @@ namespace sqlite_orm {
     template<class N>
     core_functions::core_function_t<std::vector<char>, core_functions::zeroblob_string, N> zeroblob(N n) {
         std::tuple<N> args{std::forward<N>(n)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3748,7 +3748,7 @@ namespace sqlite_orm {
     template<class X, class Y>
     core_functions::core_function_t<std::string, core_functions::substr_string, X, Y> substr(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     /**
@@ -3757,7 +3757,7 @@ namespace sqlite_orm {
     template<class X, class Y, class Z>
     core_functions::core_function_t<std::string, core_functions::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
-        return {std::move(args)};
+        return {move(args)};
     }
 
     template<class L,
