@@ -13,6 +13,13 @@ struct MarvelHero {
     short points;
 };
 
+struct Contact {
+    int id = 0;
+    std::string firstName;
+    std::string lastName;
+    std::string phone;
+};
+
 int main(int, char **argv) {
     cout << "path = " << argv[0] << endl;
 
@@ -22,7 +29,12 @@ int main(int, char **argv) {
                                            make_column("id", &MarvelHero::id, primary_key()),
                                            make_column("name", &MarvelHero::name),
                                            make_column("abilities", &MarvelHero::abilities),
-                                           make_column("points", &MarvelHero::points)));
+                                           make_column("points", &MarvelHero::points)),
+                                make_table("contacts",
+                                           make_column("contact_id", &Contact::id, primary_key()),
+                                           make_column("first_name", &Contact::firstName),
+                                           make_column("last_name", &Contact::lastName),
+                                           make_column("phone", &Contact::phone)));
     storage.sync_schema();
 
     storage.remove_all<MarvelHero>();
@@ -41,6 +53,11 @@ int main(int, char **argv) {
         storage.insert(MarvelHero{-1, "Groot", "I am Groot!", 2});
         return true;
     });
+
+    Contact john{0, "John", "Doe", "410-555-0168"};
+    Contact lily{0, "Lily", "Bush", "410-444-9862"};
+    john.id = storage.insert(john);
+    lily.id = storage.insert(lily);
 
     //  SELECT LENGTH(name)
     //  FROM marvel
@@ -289,6 +306,22 @@ int main(int, char **argv) {
             cout << get<0>(row) << '\t' << get<1>(row) << endl;
         }
         cout << endl;
+    }
+
+    //  SELECT REPLACE('AA B CC AAA','A','Z')
+    cout << "SELECT REPLACE('AA B CC AAA','A','Z') = " << storage.select(replace("AA B CC AAA", "A", "Z")).front()
+         << endl;
+
+    //  SELECT REPLACE('This is a cat','This','That')
+    cout << "SELECT REPLACE('This is a cat','This','That') = "
+         << storage.select(replace("This is a cat", "This", "That")).front() << endl;
+
+    //  UPDATE contacts
+    //  SET phone = REPLACE(phone, '410', '+1-410')
+    storage.update_all(set(c(&Contact::phone) = replace(&Contact::phone, "410", "+1-410")));
+    cout << "Contacts:" << endl;
+    for(auto &contact: storage.iterate<Contact>()) {
+        cout << storage.dump(contact) << endl;
     }
 
     return 0;

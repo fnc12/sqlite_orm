@@ -306,3 +306,61 @@ TEST_CASE("instr") {
         REQUIRE_THAT(rows, UnorderedEquals(expected));
     }
 }
+
+namespace replace_func_local {
+    struct Contact {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+        std::string phone;
+    };
+
+    bool operator==(const Contact &lhs, const Contact &rhs) {
+        return lhs.id == rhs.id && lhs.firstName == rhs.firstName && lhs.lastName == rhs.lastName &&
+               lhs.phone == rhs.phone;
+    }
+}
+
+TEST_CASE("replace func") {
+    using Catch::Matchers::UnorderedEquals;
+    using namespace replace_func_local;
+
+    auto storage = make_storage({},
+                                make_table("contacts",
+                                           make_column("contact_id", &Contact::id, primary_key()),
+                                           make_column("first_name", &Contact::firstName),
+                                           make_column("last_name", &Contact::lastName),
+                                           make_column("phone", &Contact::phone)));
+    storage.sync_schema();
+    {
+        auto rows = storage.select(replace("AA B CC AAA", "A", "Z"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == "ZZ B CC ZZZ");
+    }
+    {
+        auto rows = storage.select(replace("This is a cat", "This", "That"));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == "That is a cat");
+    }
+    Contact john{0, "John", "Doe", "410-555-0168"};
+    Contact lily{0, "Lily", "Bush", "410-444-9862"};
+    john.id = storage.insert(john);
+    lily.id = storage.insert(lily);
+    {
+        auto contacts = storage.get_all<Contact>();
+        std::vector<Contact> expected;
+        expected.push_back(john);
+        expected.push_back(lily);
+        REQUIRE_THAT(contacts, UnorderedEquals(expected));
+    }
+    storage.update_all(set(c(&Contact::phone) = replace(&Contact::phone, "410", "+1-410")));
+    {
+        auto contacts = storage.get_all<Contact>();
+        john.phone = "+1-410-555-0168";
+        lily.phone = "+1-410-444-9862";
+        std::vector<Contact> expected;
+        expected.push_back(john);
+        expected.push_back(lily);
+        REQUIRE_THAT(contacts, UnorderedEquals(expected));
+    }
+}

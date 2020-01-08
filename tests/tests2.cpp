@@ -254,7 +254,7 @@ TEST_CASE("Select") {
     REQUIRE(storage.get<Word>(firstId).currentWord == "ototo");
 }
 
-TEST_CASE("Replace") {
+TEST_CASE("Replace query") {
     struct Object {
         int id;
         std::string name;
