@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("Operators") {
+TEST_CASE("Arithmetic operators") {
     struct Object {
         std::string name;
         int nameLen;
@@ -26,7 +26,7 @@ TEST_CASE("Operators") {
     for(auto &name: names) {
         storage.insert(Object{name, int(name.length()), number});
     }
-    {
+    {  //  +
         auto rows = storage.select(c(&Object::nameLen) + 1000);
         for(size_t i = 0; i < rows.size(); ++i) {
             auto &row = rows[i];
@@ -34,7 +34,7 @@ TEST_CASE("Operators") {
             REQUIRE(int(row) == name.length() + 1000);
         }
     }
-    {
+    {  //  +
         auto rows = storage.select(columns(c(&Object::nameLen) + 1000));
         for(size_t i = 0; i < rows.size(); ++i) {
             auto &row = rows[i];
@@ -42,7 +42,7 @@ TEST_CASE("Operators") {
             REQUIRE(int(std::get<0>(row)) == name.length() + 1000);
         }
     }
-    {
+    {  //  ||
         std::string suffix = "ototo";
         auto rows = storage.select(c(&Object::name) || suffix);
         for(size_t i = 0; i < rows.size(); ++i) {
@@ -51,7 +51,7 @@ TEST_CASE("Operators") {
             REQUIRE(row == name + suffix);
         }
     }
-    {
+    {  //  ||
         std::string suffix = "ototo";
         auto rows = storage.select(columns(conc(&Object::name, suffix)));
         for(size_t i = 0; i < rows.size(); ++i) {
@@ -60,7 +60,7 @@ TEST_CASE("Operators") {
             REQUIRE(std::get<0>(row) == name + suffix);
         }
     }
-    {
+    {  //  different
         std::string suffix = "ototo";
         auto rows = storage.select(columns(conc(&Object::name, suffix),
                                            c(&Object::name) || suffix,
@@ -131,7 +131,7 @@ TEST_CASE("Operators") {
             REQUIRE(std::get<23>(row) == int(name.length()) / 2);
         }
     }
-    {
+    {  //  %
         auto rows = storage.select(columns(mod(&Object::nameLen, &Object::number),
                                            c(&Object::nameLen) % &Object::number,
                                            &Object::nameLen % c(&Object::number),

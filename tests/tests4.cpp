@@ -361,26 +361,6 @@ TEST_CASE("Not operator") {
     REQUIRE(rows.front() == 2);
 }
 
-TEST_CASE("Between operator") {
-    struct Object {
-        int id = 0;
-    };
-
-    auto storage =
-        make_storage("", make_table("objects", make_column("id", &Object::id, autoincrement(), primary_key())));
-    storage.sync_schema();
-
-    storage.insert(Object{});
-    storage.insert(Object{});
-    storage.insert(Object{});
-    storage.insert(Object{});
-    storage.insert(Object{});
-
-    auto allObjects = storage.get_all<Object>();
-    auto rows = storage.select(&Object::id, where(between(&Object::id, 1, 3)));
-    REQUIRE(rows.size() == 3);
-}
-
 TEST_CASE("Exists") {
     struct User {
         int id = 0;

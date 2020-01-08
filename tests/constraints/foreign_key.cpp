@@ -38,8 +38,8 @@ TEST_CASE("Foreign key") {
                                            foreign_key(&Visit::location).references(&Location::id)));
     storage.sync_schema();
 
-    int fromDate = int(time(nullptr));
-    int toDate = int(time(nullptr));
+    int fromDate = int(std::time(nullptr));
+    int toDate = int(std::time(nullptr));
     int toDistance = 100;
     auto id = 10;
     storage.select(columns(&Visit::mark, &Visit::visited_at, &Location::place),
