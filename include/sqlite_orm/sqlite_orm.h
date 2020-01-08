@@ -3426,6 +3426,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct replace_string {
+            operator std::string() const {
+                return "REPLACE";
+            }
+        };
+
 #if SQLITE_VERSION_NUMBER >= 3007016
 
         struct char_string {
@@ -3667,6 +3673,15 @@ namespace sqlite_orm {
     template<class X, class Y>
     core_functions::core_function_t<int, core_functions::instr_string, X, Y> instr(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
+
+    /**
+     *  REPLACE(X) function https://sqlite.org/lang_corefunc.html#replace
+     */
+    template<class X, class Y, class Z>
+    core_functions::core_function_t<std::string, core_functions::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
+        std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
         return {move(args)};
     }
 
