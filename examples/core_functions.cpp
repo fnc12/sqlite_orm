@@ -297,7 +297,7 @@ int main(int, char **argv) {
             }
         };
 
-        //  SELECT name, INSTR(abilities, 'o') o_pos
+        //  SELECT name, instr(abilities, 'o') o_pos
         //  FROM marvel
         //  WHERE o_pos > 0
         auto rows = storage.select(columns(&MarvelHero::name, as<o_pos>(instr(&MarvelHero::abilities, "o"))),
@@ -308,12 +308,12 @@ int main(int, char **argv) {
         cout << endl;
     }
 
-    //  SELECT REPLACE('AA B CC AAA','A','Z')
-    cout << "SELECT REPLACE('AA B CC AAA','A','Z') = " << storage.select(replace("AA B CC AAA", "A", "Z")).front()
+    //  SELECT replace('AA B CC AAA','A','Z')
+    cout << "SELECT replace('AA B CC AAA','A','Z') = " << storage.select(replace("AA B CC AAA", "A", "Z")).front()
          << endl;
 
-    //  SELECT REPLACE('This is a cat','This','That')
-    cout << "SELECT REPLACE('This is a cat','This','That') = "
+    //  SELECT replace('This is a cat','This','That')
+    cout << "SELECT replace('This is a cat','This','That') = "
          << storage.select(replace("This is a cat", "This", "That")).front() << endl;
 
     //  UPDATE contacts
@@ -323,6 +323,18 @@ int main(int, char **argv) {
     for(auto &contact: storage.iterate<Contact>()) {
         cout << storage.dump(contact) << endl;
     }
+
+    //  SELECT round(1929.236, 2)
+    cout << "SELECT round(1929.236, 2) = " << storage.select(round(1929.236, 2)).front() << endl;
+
+    //  SELECT round(1929.236, 1)
+    cout << "SELECT round(1929.236, 1) = " << storage.select(round(1929.236, 1)).front() << endl;
+
+    //  SELECT round(1929.236)
+    cout << "SELECT round(1929.236) = " << storage.select(round(1929.236)).front() << endl;
+
+    //  SELECT round(0.5)
+    cout << "SELECT round(0.5) = " << storage.select(round(0.5)).front() << endl;
 
     return 0;
 }
