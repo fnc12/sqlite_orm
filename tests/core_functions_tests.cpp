@@ -364,3 +364,32 @@ TEST_CASE("replace func") {
         REQUIRE_THAT(contacts, UnorderedEquals(expected));
     }
 }
+
+TEST_CASE("round") {
+    auto storage = make_storage({});
+    auto test = [&storage](auto input, double expected) {
+        auto rows = storage.select(round(input));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == expected);
+    };
+    auto test2 = [&storage](auto inputA, auto inputB, double expected) {
+        auto rows = storage.select(round(inputA, inputB));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front() == expected);
+    };
+    test(23.4, 23.0);
+    test(23.6, 24.0);
+    test2(23.6985, 2, 23.7);
+    test2(190.3985, 3, 190.399);
+    test2(99.9, 0, 100.0);
+    test2(23.3985, nullptr, 0);  //  maybe this is an error but noone cares AFAIK
+    test2(1304.67, -1, 1305.0);
+    test2(1929.236, 2, 1929.24);
+    test2(1929.236, 1, 1929.2);
+    test(1929.236, 1929);
+    test(0.5, 1);
+    test2(59.9, 0, 60.0);
+    test2(-59.9, 0, -60.0);
+    test2(-4.535, 2, -4.54);
+    test2(34.4158, -1, 34.0);
+}

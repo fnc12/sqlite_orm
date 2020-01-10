@@ -3432,6 +3432,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct round_string {
+            operator std::string() const {
+                return "ROUND";
+            }
+        };
+
 #if SQLITE_VERSION_NUMBER >= 3007016
 
         struct char_string {
@@ -3682,6 +3688,24 @@ namespace sqlite_orm {
     template<class X, class Y, class Z>
     core_functions::core_function_t<std::string, core_functions::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
+        return {move(args)};
+    }
+
+    /**
+     *  ROUND(X) function https://sqlite.org/lang_corefunc.html#round
+     */
+    template<class X>
+    core_functions::core_function_t<double, core_functions::round_string, X> round(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  ROUND(X, Y) function https://sqlite.org/lang_corefunc.html#round
+     */
+    template<class X, class Y>
+    core_functions::core_function_t<double, core_functions::round_string, X, Y> round(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
 
