@@ -25,7 +25,7 @@ namespace sqlite_orm {
 
         template<bool B, typename T>
         auto static_if(T t) {
-            return static_if(std::integral_constant<bool, B>{}, t, [](auto &&...) {});
+            return static_if(std::integral_constant<bool, B>{}, std::move(t), [](auto &&...) {});
         }
     }
 
