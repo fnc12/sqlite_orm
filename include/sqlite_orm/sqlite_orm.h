@@ -230,12 +230,12 @@ namespace sqlite_orm {
 
         template<typename T, typename F>
         auto static_if(std::true_type, T t, F) {
-            return std::move(t);
+            return t;
         }
 
         template<typename T, typename F>
         auto static_if(std::false_type, T, F f) {
-            return std::move(f);
+            return f;
         }
 
         template<bool B, typename T, typename F>
