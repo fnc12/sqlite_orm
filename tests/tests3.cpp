@@ -98,13 +98,13 @@ TEST_CASE("Row id") {
 
 TEST_CASE("Issue 87") {
     struct Data {
-        uint8_t mDefault; /**< 0=User or 1=Default*/
-        uint8_t mAppLang;  // en_GB
-        uint8_t mContentLang1;  // de_DE
-        uint8_t mContentLang2;  // en_GB
-        uint8_t mContentLang3;
-        uint8_t mContentLang4;
-        uint8_t mContentLang5;
+        uint8_t mDefault = 0; /**< 0=User or 1=Default*/
+        uint8_t mAppLang = 0;  // en_GB
+        uint8_t mContentLang1 = 0;  // de_DE
+        uint8_t mContentLang2 = 0;  // en_GB
+        uint8_t mContentLang3 = 0;
+        uint8_t mContentLang4 = 0;
+        uint8_t mContentLang5 = 0;
     };
 
     Data data;
