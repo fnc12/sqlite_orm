@@ -18,7 +18,7 @@ if(SQLITE_ORM_OMITS_CODECVT)
 	target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
 endif()
 
-target_compile_options(unit_tests PRIVATE -Wall -Wextra -pedantic -Werror)
+target_compile_options(unit_tests PRIVATE -Wall -pedantic -Werror)
 
 find_package(Catch2 REQUIRED)
 target_link_libraries(unit_tests PRIVATE sqlite_orm sqlite3 Catch2::Catch2)
