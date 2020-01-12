@@ -254,7 +254,7 @@ namespace sqlite_orm {
 
     template<class R, class T>
     internal::simple_case_builder<R, T, void> case_(T t) {
-        return {{std::move(t)}};
+        return {{std::move(t)}, {}, {}};
     }
 
     template<class R>
