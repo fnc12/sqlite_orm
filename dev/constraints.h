@@ -309,6 +309,17 @@ namespace sqlite_orm {
                 throw std::system_error(std::make_error_code(orm_error_code::invalid_collate_argument_enum));
             }
         };
+    
+    template<class T>
+    struct check_t {
+        using expression_type = T;
+        
+        expression_type expression;
+        
+        operator std::string() const {
+            return "CHECK";
+        }
+    };
 
         template<class T>
         struct is_constraint : std::false_type {};
@@ -330,6 +341,9 @@ namespace sqlite_orm {
 
         template<>
         struct is_constraint<collate_t> : std::true_type {};
+    
+    template<class T>
+    struct is_constraint<check_t<T>> : std::true_type {};
 
         template<class... Args>
         struct constraints_size;
@@ -390,6 +404,11 @@ namespace sqlite_orm {
     inline constraints::collate_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
     }
+
+template<class T>
+constraints::check_t<T> check(T t) {
+    return {std::move(t)};
+}
 
     namespace internal {
 

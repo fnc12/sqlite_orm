@@ -1,10 +1,11 @@
 #pragma once
 
-#include <sstream>
+#include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 
 #include "core_functions.h"
 #include "constraints.h"
+#include "conditions.h"
 
 namespace sqlite_orm {
 
@@ -113,6 +114,28 @@ namespace sqlite_orm {
                 return std::string("'") + c + "'";
             }
         };
+    
+    template<class T>
+    struct statement_serializator<constraints::check_t<T>, void> {
+        using statement_type = constraints::check_t<T>;
+        
+        std::string operator()(const statement_type &c) const {
+            return static_cast<std::string>(c) + " (" + serialize(c.expression) + ")";
+        }
+    };
+    
+    template<class T>
+    struct statement_serializator<T, typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+        using statement_type = T;
+        
+        std::string operator()(const statement_type &c) const {
+            auto leftString = serialize(c.l);
+            auto rightString = serialize(c.r);
+            std::stringstream ss;
+            ss << "(" << leftString << " " << static_cast<std::string>(c) << " " << rightString << ")";
+            return ss.str();
+        }
+    };
 
     }
 }
