@@ -418,6 +418,7 @@ TEST_CASE("Type parsing") {
     REQUIRE(*to_sqlite_type("UNSIGNED BIG INT") == sqlite_type::INTEGER);
     REQUIRE(*to_sqlite_type("INT2") == sqlite_type::INTEGER);
     REQUIRE(*to_sqlite_type("INT8") == sqlite_type::INTEGER);
+    REQUIRE(*to_sqlite_type("UNSIGNED INT(6)") == sqlite_type::INTEGER);
 
     //  text
     REQUIRE(*to_sqlite_type("TEXT") == sqlite_type::TEXT);
