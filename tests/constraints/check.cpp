@@ -20,7 +20,7 @@ TEST_CASE("check") {
                                                make_column("email", &Contact::email),
                                                make_column("phone", &Contact::phone),
                                                check(length(&Contact::phone) >= 10)));
-//        storage.sync_schema();
+        //        storage.sync_schema();
     }
     {
         struct Book {
@@ -35,6 +35,6 @@ TEST_CASE("check") {
                                                make_column("Book_name", &Book::name),
                                                make_column("Pub_name", &Book::pubName),
                                                make_column("PRICE", &Book::price, check(c(&Book::price) > 0))));
-        storage.sync_schema();
+        //        storage.sync_schema();
     }
 }
