@@ -1236,13 +1236,13 @@ namespace sqlite_orm {
             template<class O>
             void process_single_condition(std::stringstream &ss, const conditions::cross_join_t<O> &c) const {
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.template find_table_name<O>() << "'";
+                ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
             }
 
             template<class O>
             void process_single_condition(std::stringstream &ss, const conditions::natural_join_t<O> &c) const {
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.template find_table_name<O>() << "'";
+                ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
             }
 
             template<class T, class O>
@@ -1516,7 +1516,7 @@ namespace sqlite_orm {
 
             template<class T>
             std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &) const {
-                auto tableName = this->impl.template find_table_name<T>();
+                auto tableName = this->impl.find_table_name(typeid(T));
                 return {std::make_pair(std::move(tableName), "")};
             }
 

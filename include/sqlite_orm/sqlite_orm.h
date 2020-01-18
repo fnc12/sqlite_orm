@@ -6488,16 +6488,6 @@ namespace sqlite_orm {
                 }
             }
 
-            /*template<class O, class HH = typename H::object_type>
-            std::string find_table_name(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
-                return this->table.name;
-            }
-
-            template<class O, class HH = typename H::object_type>
-            std::string find_table_name(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
-                return this->super::template find_table_name<O>();
-            }*/
-
             template<class O, class HH = typename H::object_type>
             std::string dump(const O &o, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
                 return this->super::dump(o, nullptr);
@@ -6683,10 +6673,6 @@ namespace sqlite_orm {
             std::string find_table_name(std::type_index ti) const {
                 return {};
             }
-            /*template<class O>
-            std::string find_table_name() const {
-                return {};
-            }*/
 
             template<class L>
             void for_each(const L &) {}
@@ -10380,13 +10366,13 @@ namespace sqlite_orm {
             template<class O>
             void process_single_condition(std::stringstream &ss, const conditions::cross_join_t<O> &c) const {
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.template find_table_name<O>() << "'";
+                ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
             }
 
             template<class O>
             void process_single_condition(std::stringstream &ss, const conditions::natural_join_t<O> &c) const {
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.template find_table_name<O>() << "'";
+                ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
             }
 
             template<class T, class O>
@@ -10660,7 +10646,7 @@ namespace sqlite_orm {
 
             template<class T>
             std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &) const {
-                auto tableName = this->impl.template find_table_name<T>();
+                auto tableName = this->impl.find_table_name(typeid(T));
                 return {std::make_pair(std::move(tableName), "")};
             }
 
