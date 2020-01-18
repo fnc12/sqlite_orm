@@ -14,6 +14,7 @@
 #include "table_info.h"
 #include "type_printer.h"
 #include "column.h"
+#include "member_pointer_info.h"
 
 namespace sqlite_orm {
 
@@ -150,10 +151,17 @@ namespace sqlite_orm {
                                                         !std::is_member_function_pointer<F O::*>::value>::type>
             std::string find_column_name(F O::*m) const {
                 std::string res;
-                this->template for_each_column_with_field_type<F>([&res, m](auto &c) {
-                    if(c.member_pointer == m) {
-                        res = c.name;
-                    }
+                iterate_tuple(this->columns, [&res, m](auto &column) {
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    static_if<is_column<column_type>{}>([&res, m](auto &column) {
+                        if(column.member_pointer) {
+                            member_pointer_info memberInfo{m};
+                            member_pointer_info columnMemberInfo{column.member_pointer};
+                            if(memberInfo == columnMemberInfo) {
+                                res = column.name;
+                            }
+                        }
+                    })(column);
                 });
                 return res;
             }
@@ -166,11 +174,17 @@ namespace sqlite_orm {
             std::string find_column_name(G getter,
                                          typename std::enable_if<is_getter<G>::value>::type * = nullptr) const {
                 std::string res;
-                using field_type = typename getter_traits<G>::field_type;
-                this->template for_each_column_with_field_type<field_type>([&res, getter](auto &c) {
-                    if(compare_any(c.getter, getter)) {
-                        res = c.name;
-                    }
+                iterate_tuple(this->columns, [&res, getter](auto &column) {
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    static_if<is_column<column_type>{}>([&res, getter](auto &column) {
+                        if(!column.member_pointer) {
+                            member_pointer_info getterInfo{getter};
+                            member_pointer_info columnGetterInfo{column.getter};
+                            if(getterInfo == columnGetterInfo) {
+                                res = column.name;
+                            }
+                        }
+                    })(column);
                 });
                 return res;
             }
@@ -183,11 +197,17 @@ namespace sqlite_orm {
             std::string find_column_name(S setter,
                                          typename std::enable_if<is_setter<S>::value>::type * = nullptr) const {
                 std::string res;
-                using field_type = typename setter_traits<S>::field_type;
-                this->template for_each_column_with_field_type<field_type>([&res, setter](auto &c) {
-                    if(compare_any(c.setter, setter)) {
-                        res = c.name;
-                    }
+                iterate_tuple(this->columns, [&res, setter](auto &column) {
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    static_if<is_column<column_type>{}>([&res, setter](auto &column) {
+                        if(!column.member_pointer) {
+                            member_pointer_info setterInfo{setter};
+                            member_pointer_info columnSetterInfo{column.setter};
+                            if(setterInfo == columnSetterInfo) {
+                                res = column.name;
+                            }
+                        }
+                    })(column);
                 });
                 return res;
             }
