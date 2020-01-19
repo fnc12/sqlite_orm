@@ -13,6 +13,15 @@ namespace sqlite_orm {
                                                                !std::is_member_function_pointer<T>::value>::type>
             : std::true_type {};
 
+        template<class T, class SFINAE = void>
+        struct field_member_traits;
+
+        template<class O, class F>
+        struct field_member_traits<F O::*, typename std::enable_if<is_field_member_pointer<F O::*>::value>::type> {
+            using object_type = O;
+            using field_type = F;
+        };
+
         /**
      *  Getters aliases
      */
@@ -149,6 +158,27 @@ namespace sqlite_orm {
         struct setter_traits<setter_by_const_ref<O, T>> {
             using object_type = O;
             using field_type = T;
+        };
+
+        template<class T, class SFINAE = void>
+        struct member_traits;
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_field_member_pointer<T>::value>::type> {
+            using object_type = typename field_member_traits<T>::object_type;
+            using field_type = typename field_member_traits<T>::field_type;
+        };
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_getter<T>::value>::type> {
+            using object_type = typename getter_traits<T>::object_type;
+            using field_type = typename getter_traits<T>::field_type;
+        };
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_setter<T>::value>::type> {
+            using object_type = typename setter_traits<T>::object_type;
+            using field_type = typename setter_traits<T>::field_type;
         };
     }
 }

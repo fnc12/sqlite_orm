@@ -43,8 +43,8 @@ namespace sqlite_orm {
 
             template<class F, class T>
             member_pointer_info(F T::*member) :
-                type_index{typeid(T)},
-                field_index{typeid(F)}, t{type_from_value(member)}, value{value_from_member_pointer(member)} {}
+                type_index{typeid(T)}, field_index{typeid(typename member_traits<F T::*>::field_type)},
+                t{type_from_value(member)}, value{value_from_member_pointer(member)} {}
 
             const std::type_index type_index;
             const std::type_index field_index;

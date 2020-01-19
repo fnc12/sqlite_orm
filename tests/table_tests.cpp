@@ -17,12 +17,6 @@ TEST_CASE("table") {
         {
             using column_type = decltype(contactIdColumn);
             static_assert(internal::is_column<column_type>::value, "");
-
-            /*int calledTimed = 0;
-            internal::static_if<internal::is_column<column_type>{}>([&calledTimed](auto &column){
-                ++calledTimed;
-            })(column);
-            REQUIRE(calledTimed == 1);*/
         }
 
         auto table = make_table("contacts",

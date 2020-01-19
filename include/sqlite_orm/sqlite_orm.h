@@ -1251,6 +1251,15 @@ namespace sqlite_orm {
                                                                !std::is_member_function_pointer<T>::value>::type>
             : std::true_type {};
 
+        template<class T, class SFINAE = void>
+        struct field_member_traits;
+
+        template<class O, class F>
+        struct field_member_traits<F O::*, typename std::enable_if<is_field_member_pointer<F O::*>::value>::type> {
+            using object_type = O;
+            using field_type = F;
+        };
+
         /**
      *  Getters aliases
      */
@@ -1387,6 +1396,27 @@ namespace sqlite_orm {
         struct setter_traits<setter_by_const_ref<O, T>> {
             using object_type = O;
             using field_type = T;
+        };
+
+        template<class T, class SFINAE = void>
+        struct member_traits;
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_field_member_pointer<T>::value>::type> {
+            using object_type = typename field_member_traits<T>::object_type;
+            using field_type = typename field_member_traits<T>::field_type;
+        };
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_getter<T>::value>::type> {
+            using object_type = typename getter_traits<T>::object_type;
+            using field_type = typename getter_traits<T>::field_type;
+        };
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_setter<T>::value>::type> {
+            using object_type = typename setter_traits<T>::object_type;
+            using field_type = typename setter_traits<T>::field_type;
         };
     }
 }
@@ -5910,8 +5940,8 @@ namespace sqlite_orm {
 
             template<class F, class T>
             member_pointer_info(F T::*member) :
-                type_index{typeid(T)},
-                field_index{typeid(F)}, t{type_from_value(member)}, value{value_from_member_pointer(member)} {}
+                type_index{typeid(T)}, field_index{typeid(typename member_traits<F T::*>::field_type)},
+                t{type_from_value(member)}, value{value_from_member_pointer(member)} {}
 
             const std::type_index type_index;
             const std::type_index field_index;
@@ -6058,7 +6088,7 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Searches column name by class member pointer passed as first argument.
+             *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
             template<class F, class O>
@@ -6098,46 +6128,6 @@ namespace sqlite_orm {
                 });
                 return res;
             }
-
-            /**
-             *  Searches column name by class getter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            /*template<class G>
-            std::string find_column_name(G getter,
-                                         typename std::enable_if<is_getter<G>::value>::type * = nullptr) const {
-                std::string res;
-                iterate_tuple(this->columns, [&res, getter](auto &column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<is_column<column_type>{}>([&res, getter](auto &column) {
-                        if(!column.member_pointer) {
-                            member_pointer_info getterInfo{getter};
-                            
-                        }
-                    })(column);
-                });
-                return res;
-            }*/
-
-            /**
-             *  Searches column name by class setter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            /*template<class S>
-            std::string find_column_name(S setter,
-                                         typename std::enable_if<is_setter<S>::value>::type * = nullptr) const {
-                std::string res;
-                iterate_tuple(this->columns, [&res, setter](auto &column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<is_column<column_type>{}>([&res, setter](auto &column) {
-                        if(!column.member_pointer) {
-                            member_pointer_info setterInfo{setter};
-                            
-                        }
-                    })(column);
-                });
-                return res;
-            }*/
 
             /**
              *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise
