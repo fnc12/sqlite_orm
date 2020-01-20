@@ -5881,6 +5881,7 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 #include <algorithm>  //  std::reverse, std::find_if
+#include <iostream>
 
 // #include "column_result.h"
 
@@ -5954,6 +5955,25 @@ namespace sqlite_orm {
             const std::ptrdiff_t value;
         };
 
+        inline std::ostream &operator<<(std::ostream &os, member_pointer_info::type type) {
+            switch(type) {
+                case decltype(type)::member:
+                    os << "member";
+                    break;
+                case decltype(type)::setter:
+                    os << "setter";
+                    break;
+                case decltype(type)::getter:
+                    os << "getter";
+                    break;
+            }
+            return os;
+        }
+
+        inline std::ostream &operator<<(std::ostream &os, const member_pointer_info &info) {
+            return os << info.type_index.name() << ' ' << info.field_index.name() << ' ' << info.t << ' ' << info.value;
+        }
+
         inline bool operator==(const member_pointer_info &lhs, const member_pointer_info &rhs) {
             return lhs.type_index == rhs.type_index && lhs.field_index == rhs.field_index && lhs.t == rhs.t &&
                    lhs.value == rhs.value;
@@ -5961,27 +5981,6 @@ namespace sqlite_orm {
 
         inline bool operator!=(const member_pointer_info &lhs, const member_pointer_info &rhs) {
             return !(lhs == rhs);
-        }
-
-        inline std::ostream &operator<<(std::ostream &os, member_pointer_info::type type) {
-            switch(type) {
-                case decltype(type)::member:
-                    os << "member";
-                    break;
-
-                case decltype(type)::getter:
-                    os << "getter";
-                    break;
-
-                case decltype(type)::setter:
-                    os << "setter";
-                    break;
-            }
-            return os;
-        }
-
-        inline std::ostream &operator<<(std::ostream &os, const member_pointer_info &info) {
-            return os << info.type_index.name() << ' ' << info.field_index.name() << ' ' << info.t << info.value;
         }
 
     }
@@ -6121,6 +6120,7 @@ namespace sqlite_orm {
             std::string find_column_name(F O::*m) const {
                 std::string res;
                 member_pointer_info memberInfo{m};
+                std::cout << "memberInfo = " << memberInfo << std::endl;
                 iterate_tuple(this->columns, [&res, memberInfo](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
                     static_if<is_column<column_type>{}>([&res, memberInfo](auto &column) {

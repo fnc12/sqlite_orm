@@ -1,6 +1,7 @@
 #pragma once
 
 #include <typeindex>  //  std::type_index
+#include <ostream>
 
 #include "getter_traits.h"
 #include "error_code.h"
@@ -51,6 +52,25 @@ namespace sqlite_orm {
             const type t;
             const std::ptrdiff_t value;
         };
+
+        inline std::ostream &operator<<(std::ostream &os, member_pointer_info::type type) {
+            switch(type) {
+                case decltype(type)::member:
+                    os << "member";
+                    break;
+                case decltype(type)::setter:
+                    os << "setter";
+                    break;
+                case decltype(type)::getter:
+                    os << "getter";
+                    break;
+            }
+            return os;
+        }
+
+        inline std::ostream &operator<<(std::ostream &os, const member_pointer_info &info) {
+            return os << info.type_index.name() << ' ' << info.field_index.name() << ' ' << info.t << ' ' << info.value;
+        }
 
         inline bool operator==(const member_pointer_info &lhs, const member_pointer_info &rhs) {
             return lhs.type_index == rhs.type_index && lhs.field_index == rhs.field_index && lhs.t == rhs.t &&

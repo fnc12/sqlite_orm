@@ -5,6 +5,7 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 #include <algorithm>  //  std::reverse, std::find_if
+#include <iostream>
 
 #include "column_result.h"
 #include "static_magic.h"
@@ -149,6 +150,7 @@ namespace sqlite_orm {
             std::string find_column_name(F O::*m) const {
                 std::string res;
                 member_pointer_info memberInfo{m};
+                std::cout << "memberInfo = " << memberInfo << std::endl;
                 iterate_tuple(this->columns, [&res, memberInfo](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
                     static_if<is_column<column_type>{}>([&res, memberInfo](auto &column) {
