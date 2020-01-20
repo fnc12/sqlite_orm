@@ -148,13 +148,13 @@ namespace sqlite_orm {
             template<class F, class O>
             std::string find_column_name(F O::*m) const {
                 std::string res;
-                iterate_tuple(this->columns, [&res, m](auto &column) {
+                member_pointer_info memberInfo{m};
+                iterate_tuple(this->columns, [&res, memberInfo](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<is_column<column_type>{}>([&res, m](auto &column) {
-                        member_pointer_info memberInfo{m};
+                    static_if<is_column<column_type>{}>([&res, memberInfo](auto &column) {
                         switch(memberInfo.t) {
                             case member_pointer_info::type::member:
-                                if(column.member_pointer) {
+                                if(!column.has_getter_and_setter) {
                                     member_pointer_info columnMemberInfo{column.member_pointer};
                                     if(memberInfo == columnMemberInfo) {
                                         res = column.name;
@@ -162,7 +162,7 @@ namespace sqlite_orm {
                                 }
                                 break;
                             case member_pointer_info::type::getter:
-                                if(column.getter) {
+                                if(column.has_getter_and_setter) {
                                     member_pointer_info columnGetterInfo{column.getter};
                                     if(memberInfo == columnGetterInfo) {
                                         res = column.name;
@@ -170,7 +170,7 @@ namespace sqlite_orm {
                                 }
                                 break;
                             case member_pointer_info::type::setter:
-                                if(column.setter) {
+                                if(column.has_getter_and_setter) {
                                     member_pointer_info columnSetterInfo{column.setter};
                                     if(memberInfo == columnSetterInfo) {
                                         res = column.name;

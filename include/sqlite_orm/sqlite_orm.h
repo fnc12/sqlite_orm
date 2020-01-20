@@ -1431,6 +1431,7 @@ namespace sqlite_orm {
              *  Column name. Specified during construction in `make_column`.
              */
             const std::string name;
+            bool has_getter_and_setter = false;
         };
 
         /**
@@ -1473,8 +1474,9 @@ namespace sqlite_orm {
                      member_pointer_t member_pointer_,
                      getter_type getter_,
                      setter_type setter_,
-                     constraints_type constraints_) :
-                column_base{std::move(name)},
+                     constraints_type constraints_,
+                     bool has_getter_and_setter) :
+                column_base{std::move(name), has_getter_and_setter},
                 member_pointer(member_pointer_), getter(getter_), setter(setter_),
                 constraints(std::move(constraints_)) {}
 
@@ -1544,7 +1546,9 @@ namespace sqlite_orm {
     make_column(const std::string &name, T O::*m, Op... constraints) {
         static_assert(constraints::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {name, m, nullptr, nullptr, std::make_tuple(constraints...)};
+        static_assert(internal::is_field_member_pointer<T O::*>::value,
+                      "second argument expected as a member field pointer, not member function pointer");
+        return {name, m, nullptr, nullptr, std::make_tuple(constraints...), false};
     }
 
     /**
@@ -1566,7 +1570,7 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(constraints::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
+        return {name, nullptr, getter, setter, std::make_tuple(constraints...), true};
     }
 
     /**
@@ -1589,7 +1593,7 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(constraints::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
+        return {name, nullptr, getter, setter, std::make_tuple(constraints...), true};
     }
 
 }
@@ -5897,6 +5901,7 @@ namespace sqlite_orm {
 // #include "member_pointer_info.h"
 
 #include <typeindex>  //  std::type_index
+#include <ostream>
 
 // #include "getter_traits.h"
 
@@ -5956,6 +5961,27 @@ namespace sqlite_orm {
 
         inline bool operator!=(const member_pointer_info &lhs, const member_pointer_info &rhs) {
             return !(lhs == rhs);
+        }
+
+        inline std::ostream &operator<<(std::ostream &os, member_pointer_info::type type) {
+            switch(type) {
+                case decltype(type)::member:
+                    os << "member";
+                    break;
+
+                case decltype(type)::getter:
+                    os << "getter";
+                    break;
+
+                case decltype(type)::setter:
+                    os << "setter";
+                    break;
+            }
+            return os;
+        }
+
+        inline std::ostream &operator<<(std::ostream &os, const member_pointer_info &info) {
+            return os << info.type_index.name() << ' ' << info.field_index.name() << ' ' << info.t << info.value;
         }
 
     }
@@ -6094,13 +6120,13 @@ namespace sqlite_orm {
             template<class F, class O>
             std::string find_column_name(F O::*m) const {
                 std::string res;
-                iterate_tuple(this->columns, [&res, m](auto &column) {
+                member_pointer_info memberInfo{m};
+                iterate_tuple(this->columns, [&res, memberInfo](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<is_column<column_type>{}>([&res, m](auto &column) {
-                        member_pointer_info memberInfo{m};
+                    static_if<is_column<column_type>{}>([&res, memberInfo](auto &column) {
                         switch(memberInfo.t) {
                             case member_pointer_info::type::member:
-                                if(column.member_pointer) {
+                                if(!column.has_getter_and_setter) {
                                     member_pointer_info columnMemberInfo{column.member_pointer};
                                     if(memberInfo == columnMemberInfo) {
                                         res = column.name;
@@ -6108,7 +6134,7 @@ namespace sqlite_orm {
                                 }
                                 break;
                             case member_pointer_info::type::getter:
-                                if(column.getter) {
+                                if(column.has_getter_and_setter) {
                                     member_pointer_info columnGetterInfo{column.getter};
                                     if(memberInfo == columnGetterInfo) {
                                         res = column.name;
@@ -6116,7 +6142,7 @@ namespace sqlite_orm {
                                 }
                                 break;
                             case member_pointer_info::type::setter:
-                                if(column.setter) {
+                                if(column.has_getter_and_setter) {
                                     member_pointer_info columnSetterInfo{column.setter};
                                     if(memberInfo == columnSetterInfo) {
                                         res = column.name;

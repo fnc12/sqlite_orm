@@ -21,6 +21,7 @@ namespace sqlite_orm {
              *  Column name. Specified during construction in `make_column`.
              */
             const std::string name;
+            bool has_getter_and_setter = false;
         };
 
         /**
@@ -63,8 +64,9 @@ namespace sqlite_orm {
                      member_pointer_t member_pointer_,
                      getter_type getter_,
                      setter_type setter_,
-                     constraints_type constraints_) :
-                column_base{std::move(name)},
+                     constraints_type constraints_,
+                     bool has_getter_and_setter) :
+                column_base{std::move(name), has_getter_and_setter},
                 member_pointer(member_pointer_), getter(getter_), setter(setter_),
                 constraints(std::move(constraints_)) {}
 
@@ -134,7 +136,9 @@ namespace sqlite_orm {
     make_column(const std::string &name, T O::*m, Op... constraints) {
         static_assert(constraints::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {name, m, nullptr, nullptr, std::make_tuple(constraints...)};
+        static_assert(internal::is_field_member_pointer<T O::*>::value,
+                      "second argument expected as a member field pointer, not member function pointer");
+        return {name, m, nullptr, nullptr, std::make_tuple(constraints...), false};
     }
 
     /**
@@ -156,7 +160,7 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(constraints::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
+        return {name, nullptr, getter, setter, std::make_tuple(constraints...), true};
     }
 
     /**
@@ -179,7 +183,7 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(constraints::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
+        return {name, nullptr, getter, setter, std::make_tuple(constraints...), true};
     }
 
 }
