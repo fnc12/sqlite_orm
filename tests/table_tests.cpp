@@ -33,6 +33,10 @@ TEST_CASE("table") {
             internal::member_pointer_info info{column.member_pointer};
             cout << "info = " << info << endl;
         });
+        auto ptrdiffSize = sizeof(std::ptrdiff_t);
+        auto size = sizeof(&Contact::id);
+        std::ignore = size;
+        std::ignore = ptrdiffSize;
         auto columnNameFromTable = table.find_column_name(&Contact::id);
         //        cout << "columnNameFromTable = " << columnNameFromTable << endl;
         REQUIRE(columnNameFromTable == "contact_id");

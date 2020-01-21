@@ -5947,7 +5947,15 @@ namespace sqlite_orm {
             template<class F, class T>
             member_pointer_info(F T::*member) :
                 type_index{typeid(T)}, field_index{typeid(typename member_traits<F T::*>::field_type)},
-                t{type_from_value(member)}, value{value_from_member_pointer(member)} {}
+                t{type_from_value(member)}, value{value_from_member_pointer(member)} {
+                //                    static_assert(sizeof(member) == sizeof(value_t), "sizes differ");
+                auto sizeOfMember = sizeof(member);
+                auto sizeOfValue = sizeof(value_t);
+                std::cout << "sizeOfMember = " << sizeOfMember << ", sizeOfValue = " << sizeOfValue << std::endl;
+                if(sizeOfMember != sizeOfValue) {
+                    //                        assert(false);
+                }
+            }
 
             const std::type_index type_index;
             const std::type_index field_index;
