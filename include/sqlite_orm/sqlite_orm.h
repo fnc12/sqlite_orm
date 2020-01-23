@@ -792,15 +792,19 @@ namespace sqlite_orm {
             }
         };
 
+        struct check_string {
+            operator std::string() const {
+                return "CHECK";
+            }
+        };
+
         template<class T>
-        struct check_t {
+        struct check_t : check_string {
             using expression_type = T;
 
             expression_type expression;
 
-            operator std::string() const {
-                return "CHECK";
-            }
+            check_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
         template<class T>
@@ -1431,7 +1435,6 @@ namespace sqlite_orm {
              *  Column name. Specified during construction in `make_column`.
              */
             const std::string name;
-            bool has_getter_and_setter = false;
         };
 
         /**
@@ -1474,9 +1477,8 @@ namespace sqlite_orm {
                      member_pointer_t member_pointer_,
                      getter_type getter_,
                      setter_type setter_,
-                     constraints_type constraints_,
-                     bool has_getter_and_setter) :
-                column_base{std::move(name), has_getter_and_setter},
+                     constraints_type constraints_) :
+                column_base{std::move(name)},
                 member_pointer(member_pointer_), getter(getter_), setter(setter_),
                 constraints(std::move(constraints_)) {}
 
@@ -1548,7 +1550,7 @@ namespace sqlite_orm {
                       "Incorrect constraints pack");
         static_assert(internal::is_field_member_pointer<T O::*>::value,
                       "second argument expected as a member field pointer, not member function pointer");
-        return {name, m, nullptr, nullptr, std::make_tuple(constraints...), false};
+        return {name, m, nullptr, nullptr, std::make_tuple(constraints...)};
     }
 
     /**
@@ -1570,7 +1572,7 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(constraints::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {name, nullptr, getter, setter, std::make_tuple(constraints...), true};
+        return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
     }
 
     /**
@@ -1593,7 +1595,7 @@ namespace sqlite_orm {
                       "Getter and setter must get and set same data type");
         static_assert(constraints::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {name, nullptr, getter, setter, std::make_tuple(constraints...), true};
+        return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
     }
 
 }
@@ -5899,102 +5901,6 @@ namespace sqlite_orm {
 
 // #include "column.h"
 
-// #include "member_pointer_info.h"
-
-#include <typeindex>  //  std::type_index
-#include <ostream>
-
-// #include "getter_traits.h"
-
-// #include "error_code.h"
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        struct member_pointer_info {
-            using value_t = std::ptrdiff_t;
-
-            enum class type {
-                member,
-                getter,
-                setter,
-            };
-
-            template<class T>
-            static type type_from_value(T value) {
-                if(is_field_member_pointer<T>::value) {
-                    return type::member;
-                } else if(is_getter<T>::value) {
-                    return type::getter;
-                } else if(is_setter<T>::value) {
-                    return type::setter;
-                } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::unknown_member_value));
-                }
-            }
-
-            template<class F, class T>
-            static value_t value_from_member_pointer(F T::*member_pointer) {
-                union {
-                    F T::*pointer;
-                    value_t value;
-                } un;
-                un.pointer = member_pointer;
-                return un.value;
-            }
-
-            template<class F, class T>
-            member_pointer_info(F T::*member) :
-                type_index{typeid(T)}, field_index{typeid(typename member_traits<F T::*>::field_type)},
-                t{type_from_value(member)}, value{value_from_member_pointer(member)} {
-                //                    static_assert(sizeof(member) == sizeof(value_t), "sizes differ");
-                auto sizeOfMember = sizeof(member);
-                auto sizeOfValue = sizeof(value_t);
-                std::cout << "sizeOfMember = " << sizeOfMember << ", sizeOfValue = " << sizeOfValue << std::endl;
-                if(sizeOfMember != sizeOfValue) {
-                    //                        assert(false);
-                }
-            }
-
-            const std::type_index type_index;
-            const std::type_index field_index;
-            const type t;
-            const std::ptrdiff_t value;
-        };
-
-        inline std::ostream &operator<<(std::ostream &os, member_pointer_info::type type) {
-            switch(type) {
-                case decltype(type)::member:
-                    os << "member";
-                    break;
-                case decltype(type)::setter:
-                    os << "setter";
-                    break;
-                case decltype(type)::getter:
-                    os << "getter";
-                    break;
-            }
-            return os;
-        }
-
-        inline std::ostream &operator<<(std::ostream &os, const member_pointer_info &info) {
-            return os << info.type_index.name() << ' ' << info.field_index.name() << ' ' << info.t << ' ' << info.value;
-        }
-
-        inline bool operator==(const member_pointer_info &lhs, const member_pointer_info &rhs) {
-            return lhs.type_index == rhs.type_index && lhs.field_index == rhs.field_index && lhs.t == rhs.t &&
-                   lhs.value == rhs.value;
-        }
-
-        inline bool operator!=(const member_pointer_info &lhs, const member_pointer_info &rhs) {
-            return !(lhs == rhs);
-        }
-
-    }
-
-}
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -6124,41 +6030,50 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class F, class O>
+            template<class F,
+                     class O,
+                     typename = typename std::enable_if<std::is_member_pointer<F O::*>::value &&
+                                                        !std::is_member_function_pointer<F O::*>::value>::type>
             std::string find_column_name(F O::*m) const {
                 std::string res;
-                member_pointer_info memberInfo{m};
-                std::cout << "memberInfo = " << memberInfo << std::endl;
-                iterate_tuple(this->columns, [&res, memberInfo](auto &column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<is_column<column_type>{}>([&res, memberInfo](auto &column) {
-                        switch(memberInfo.t) {
-                            case member_pointer_info::type::member:
-                                if(!column.has_getter_and_setter) {
-                                    member_pointer_info columnMemberInfo{column.member_pointer};
-                                    if(memberInfo == columnMemberInfo) {
-                                        res = column.name;
-                                    }
-                                }
-                                break;
-                            case member_pointer_info::type::getter:
-                                if(column.has_getter_and_setter) {
-                                    member_pointer_info columnGetterInfo{column.getter};
-                                    if(memberInfo == columnGetterInfo) {
-                                        res = column.name;
-                                    }
-                                }
-                                break;
-                            case member_pointer_info::type::setter:
-                                if(column.has_getter_and_setter) {
-                                    member_pointer_info columnSetterInfo{column.setter};
-                                    if(memberInfo == columnSetterInfo) {
-                                        res = column.name;
-                                    }
-                                }
-                                break;
-                        }
-                    })(column);
+                this->template for_each_column_with_field_type<F>([&res, m](auto &c) {
+                    if(c.member_pointer == m) {
+                        res = c.name;
+                    }
+                });
+                return res;
+            }
+
+            /**
+             *  Searches column name by class getter function member pointer passed as first argument.
+             *  @return column name or empty string if nothing found.
+             */
+            template<class G>
+            std::string find_column_name(G getter,
+                                         typename std::enable_if<is_getter<G>::value>::type * = nullptr) const {
+                std::string res;
+                using field_type = typename getter_traits<G>::field_type;
+                this->template for_each_column_with_field_type<field_type>([&res, getter](auto &c) {
+                    if(compare_any(c.getter, getter)) {
+                        res = c.name;
+                    }
+                });
+                return res;
+            }
+
+            /**
+             *  Searches column name by class setter function member pointer passed as first argument.
+             *  @return column name or empty string if nothing found.
+             */
+            template<class S>
+            std::string find_column_name(S setter,
+                                         typename std::enable_if<is_setter<S>::value>::type * = nullptr) const {
+                std::string res;
+                using field_type = typename setter_traits<S>::field_type;
+                this->template for_each_column_with_field_type<field_type>([&res, setter](auto &c) {
+                    if(compare_any(c.setter, setter)) {
+                        res = c.name;
+                    }
                 });
                 return res;
             }
@@ -6266,6 +6181,7 @@ namespace sqlite_orm {
 #include <utility>  //  std::pair, std::make_pair
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::find_if
+#include <typeindex>  //  std::type_index
 
 // #include "error_code.h"
 
@@ -6312,8 +6228,6 @@ namespace sqlite_orm {
         };
     }
 }
-
-// #include "member_pointer_info.h"
 
 namespace sqlite_orm {
 
@@ -9080,16 +8994,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class SFINAE = void>
-        struct statement_serializator /*{
-            using statement_type = T;
-
-            std::string operator()(const statement_type &t, const serializator_context &context) const {
-                std::stringstream ss;
-                ss << t;
-                return ss.str();
-            }
-        }*/
-            ;
+        struct statement_serializator;
 
         template<class T>
         std::string serialize(const T &t, const serializator_context &context) {

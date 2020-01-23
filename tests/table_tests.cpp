@@ -29,16 +29,11 @@ TEST_CASE("table") {
                                 make_column("country_code", &Contact::countryCode),
                                 make_column("phone_number", &Contact::phoneNumber),
                                 make_column("visits_count", &Contact::visitsCount));
-        internal::iterate_tuple(table.columns, [](auto &column) {
-            internal::member_pointer_info info{column.member_pointer};
-            cout << "info = " << info << endl;
-        });
         auto ptrdiffSize = sizeof(std::ptrdiff_t);
         auto size = sizeof(&Contact::id);
         std::ignore = size;
         std::ignore = ptrdiffSize;
         auto columnNameFromTable = table.find_column_name(&Contact::id);
-        //        cout << "columnNameFromTable = " << columnNameFromTable << endl;
         REQUIRE(columnNameFromTable == "contact_id");
         REQUIRE(table.find_column_name(&Contact::firstName) == "first_name");
         REQUIRE(table.find_column_name(&Contact::lastName) == "last_name");

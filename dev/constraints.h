@@ -310,15 +310,19 @@ namespace sqlite_orm {
             }
         };
 
+        struct check_string {
+            operator std::string() const {
+                return "CHECK";
+            }
+        };
+
         template<class T>
-        struct check_t {
+        struct check_t : check_string {
             using expression_type = T;
 
             expression_type expression;
 
-            operator std::string() const {
-                return "CHECK";
-            }
+            check_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
         template<class T>

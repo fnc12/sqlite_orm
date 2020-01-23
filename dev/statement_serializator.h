@@ -14,16 +14,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class SFINAE = void>
-        struct statement_serializator /*{
-            using statement_type = T;
-
-            std::string operator()(const statement_type &t, const serializator_context &context) const {
-                std::stringstream ss;
-                ss << t;
-                return ss.str();
-            }
-        }*/
-            ;
+        struct statement_serializator;
 
         template<class T>
         std::string serialize(const T &t, const serializator_context &context) {

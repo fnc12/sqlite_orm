@@ -15,7 +15,6 @@
 #include "table_info.h"
 #include "type_printer.h"
 #include "column.h"
-#include "member_pointer_info.h"
 
 namespace sqlite_orm {
 
@@ -146,41 +145,50 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class F, class O>
+            template<class F,
+                     class O,
+                     typename = typename std::enable_if<std::is_member_pointer<F O::*>::value &&
+                                                        !std::is_member_function_pointer<F O::*>::value>::type>
             std::string find_column_name(F O::*m) const {
                 std::string res;
-                member_pointer_info memberInfo{m};
-                std::cout << "memberInfo = " << memberInfo << std::endl;
-                iterate_tuple(this->columns, [&res, memberInfo](auto &column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<is_column<column_type>{}>([&res, memberInfo](auto &column) {
-                        switch(memberInfo.t) {
-                            case member_pointer_info::type::member:
-                                if(!column.has_getter_and_setter) {
-                                    member_pointer_info columnMemberInfo{column.member_pointer};
-                                    if(memberInfo == columnMemberInfo) {
-                                        res = column.name;
-                                    }
-                                }
-                                break;
-                            case member_pointer_info::type::getter:
-                                if(column.has_getter_and_setter) {
-                                    member_pointer_info columnGetterInfo{column.getter};
-                                    if(memberInfo == columnGetterInfo) {
-                                        res = column.name;
-                                    }
-                                }
-                                break;
-                            case member_pointer_info::type::setter:
-                                if(column.has_getter_and_setter) {
-                                    member_pointer_info columnSetterInfo{column.setter};
-                                    if(memberInfo == columnSetterInfo) {
-                                        res = column.name;
-                                    }
-                                }
-                                break;
-                        }
-                    })(column);
+                this->template for_each_column_with_field_type<F>([&res, m](auto &c) {
+                    if(c.member_pointer == m) {
+                        res = c.name;
+                    }
+                });
+                return res;
+            }
+
+            /**
+             *  Searches column name by class getter function member pointer passed as first argument.
+             *  @return column name or empty string if nothing found.
+             */
+            template<class G>
+            std::string find_column_name(G getter,
+                                         typename std::enable_if<is_getter<G>::value>::type * = nullptr) const {
+                std::string res;
+                using field_type = typename getter_traits<G>::field_type;
+                this->template for_each_column_with_field_type<field_type>([&res, getter](auto &c) {
+                    if(compare_any(c.getter, getter)) {
+                        res = c.name;
+                    }
+                });
+                return res;
+            }
+
+            /**
+             *  Searches column name by class setter function member pointer passed as first argument.
+             *  @return column name or empty string if nothing found.
+             */
+            template<class S>
+            std::string find_column_name(S setter,
+                                         typename std::enable_if<is_setter<S>::value>::type * = nullptr) const {
+                std::string res;
+                using field_type = typename setter_traits<S>::field_type;
+                this->template for_each_column_with_field_type<field_type>([&res, setter](auto &c) {
+                    if(compare_any(c.setter, setter)) {
+                        res = c.name;
+                    }
                 });
                 return res;
             }

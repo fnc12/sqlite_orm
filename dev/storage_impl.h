@@ -10,6 +10,7 @@
 #include <utility>  //  std::pair, std::make_pair
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::find_if
+#include <typeindex>  //  std::type_index
 
 #include "error_code.h"
 #include "statement_finalizer.h"
@@ -21,7 +22,6 @@
 #include "sync_schema_result.h"
 #include "sqlite_type.h"
 #include "field_value_holder.h"
-#include "member_pointer_info.h"
 
 namespace sqlite_orm {
 
