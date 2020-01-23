@@ -173,7 +173,7 @@ namespace sqlite_orm {
                  std::regex("UNSIGNED BIG INT"),
                  std::regex("INT2"),
                  std::regex("INT8"),
-                 std::regex("UNSIGNED INT\\([[:digit:]]+\\)"),
+                 std::regex("UNSIGNED\\s+INT\\([[:digit:]]+\\)"),
              }},
             {sqlite_type::TEXT,
              {
