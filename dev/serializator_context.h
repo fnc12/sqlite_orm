@@ -4,7 +4,16 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct serializator_context {};
+        struct serializator_context_base {};
+
+        template<class I>
+        struct serializator_context : serializator_context_base {
+            using impl_type = I;
+
+            const impl_type &impl;
+
+            serializator_context(const impl_type &impl_) : impl(impl_) {}
+        };
 
     }
 

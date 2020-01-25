@@ -7,7 +7,6 @@
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
-#include "serializator_context.h"
 
 namespace sqlite_orm {
 
@@ -16,17 +15,28 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct statement_serializator;
 
-        template<class T>
-        std::string serialize(const T &t, const serializator_context &context) {
+        template<class T, class C>
+        std::string serialize(const T &t, const C &context) {
             statement_serializator<T> serializator;
             return serializator(t, context);
         }
+
+        template<class O, class F>
+        struct statement_serializator<F O::*, void> {
+            using statement_type = F O::*;
+
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
+                return context.impl.column_name(c);
+            }
+        };
 
         template<class R, class S, class... Args>
         struct statement_serializator<core_functions::core_function_t<R, S, Args...>, void> {
             using statement_type = core_functions::core_function_t<R, S, Args...>;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << "(";
                 std::vector<std::string> args;
@@ -50,7 +60,8 @@ namespace sqlite_orm {
         struct statement_serializator<constraints::autoincrement_t, void> {
             using statement_type = constraints::autoincrement_t;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -59,7 +70,8 @@ namespace sqlite_orm {
         struct statement_serializator<constraints::primary_key_t<Cs...>, void> {
             using statement_type = constraints::primary_key_t<Cs...>;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -68,7 +80,8 @@ namespace sqlite_orm {
         struct statement_serializator<constraints::unique_t, void> {
             using statement_type = constraints::unique_t;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -77,7 +90,8 @@ namespace sqlite_orm {
         struct statement_serializator<constraints::collate_t, void> {
             using statement_type = constraints::collate_t;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -86,7 +100,8 @@ namespace sqlite_orm {
         struct statement_serializator<constraints::default_t<T>, void> {
             using statement_type = constraints::default_t<T>;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 return static_cast<std::string>(c) + " (" + serialize(c.value, context) + ")";
             }
         };
@@ -95,7 +110,8 @@ namespace sqlite_orm {
         struct statement_serializator<std::string, void> {
             using statement_type = std::string;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 return "\"" + c + "\"";
             }
         };
@@ -104,7 +120,8 @@ namespace sqlite_orm {
         struct statement_serializator<const char *, void> {
             using statement_type = const char *;
 
-            std::string operator()(const char *c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const char *c, const C &context) const {
                 return std::string("'") + c + "'";
             }
         };
@@ -113,7 +130,8 @@ namespace sqlite_orm {
         struct statement_serializator<constraints::check_t<T>, void> {
             using statement_type = constraints::check_t<T>;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 return static_cast<std::string>(c) + " (" + serialize(c.expression, context) + ")";
             }
         };
@@ -124,7 +142,8 @@ namespace sqlite_orm {
             typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
             using statement_type = T;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 auto leftString = serialize(c.l, context);
                 auto rightString = serialize(c.r, context);
                 std::stringstream ss;
@@ -137,7 +156,8 @@ namespace sqlite_orm {
         struct statement_serializator<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
             using statement_type = T;
 
-            std::string operator()(const statement_type &t, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &t, const C &context) const {
                 std::stringstream ss;
                 ss << t;
                 return ss.str();
@@ -148,7 +168,8 @@ namespace sqlite_orm {
         struct statement_serializator<binary_operator<L, R, Ds...>, void> {
             using statement_type = binary_operator<L, R, Ds...>;
 
-            std::string operator()(const statement_type &c, const serializator_context &context) const {
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
                 auto lhs = serialize(c.lhs, context);
                 auto rhs = serialize(c.rhs, context);
                 std::stringstream ss;

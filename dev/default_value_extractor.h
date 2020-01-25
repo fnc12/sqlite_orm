@@ -27,7 +27,7 @@ namespace sqlite_orm {
 
             template<class T>
             std::unique_ptr<std::string> operator()(const constraints::default_t<T> &t) {
-                serializator_context context;
+                serializator_context_base context;
                 return std::make_unique<std::string>(serialize(t.value, context));
             }
         };
