@@ -98,7 +98,8 @@ namespace sqlite_orm {
                 using constraints_type = typename column_type::constraints_type;
                 ss << type_printer<field_type>().print() << " ";
                 {
-                    serializator_context context{this->impl};
+                    using serializator_context_t = serializator_context<impl_type>;
+                    serializator_context_t context{this->impl};
                     std::vector<std::string> constraintsStrings;
                     constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
                     constraintsStrings.reserve(constraintsCount);
