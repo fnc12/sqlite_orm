@@ -53,8 +53,9 @@ namespace sqlite_orm {
         template<class... Cs>
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
+            using columns_tuple = std::tuple<Cs...>;
 
-            std::tuple<Cs...> columns;
+            columns_tuple columns;
 
             primary_key_t(decltype(columns) c) : columns(std::move(c)) {}
 

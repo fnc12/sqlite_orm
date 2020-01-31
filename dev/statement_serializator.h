@@ -3,6 +3,7 @@
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_arithmetic, std::enable_if
+#include <vector>  //  std::vector
 
 #include "core_functions.h"
 #include "constraints.h"
@@ -72,7 +73,22 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
-                return static_cast<std::string>(c);
+                auto res = static_cast<std::string>(c);
+                using columns_tuple = typename statement_type::columns_tuple;
+                auto columnsCount = std::tuple_size<columns_tuple>::value;
+                if(columnsCount) {
+                    res += "(";
+                    decltype(columnsCount) columnIndex = 0;
+                    iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto &column) {
+                        res += context.column_name(column);
+                        if(columnIndex < columnsCount - 1) {
+                            res += ", ";
+                        }
+                        ++columnIndex;
+                    });
+                    res += ")";
+                }
+                return res;
             }
         };
 

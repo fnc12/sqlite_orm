@@ -251,6 +251,9 @@ namespace sqlite_orm {
         auto static_if(T t) {
             return static_if(std::integral_constant<bool, B>{}, t, [](auto &&...) {});
         }
+
+        template<typename T>
+        using static_not = std::integral_constant<bool, !T::value>;
     }
 
 }
@@ -535,8 +538,9 @@ namespace sqlite_orm {
         template<class... Cs>
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
+            using columns_tuple = std::tuple<Cs...>;
 
-            std::tuple<Cs...> columns;
+            columns_tuple columns;
 
             primary_key_t(decltype(columns) c) : columns(std::move(c)) {}
 
@@ -995,7 +999,13 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct serializator_context_base {};
+        struct serializator_context_base {
+
+            template<class O, class F>
+            std::string column_name(F O::*m) const {
+                return {};
+            }
+        };
 
         template<class I>
         struct serializator_context : serializator_context_base {
@@ -1004,6 +1014,11 @@ namespace sqlite_orm {
             const impl_type &impl;
 
             serializator_context(const impl_type &impl_) : impl(impl_) {}
+
+            template<class O, class F>
+            std::string column_name(F O::*m) const {
+                return this->impl.column_name(m);
+            }
         };
 
     }
@@ -8989,6 +9004,7 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_arithmetic, std::enable_if
+#include <vector>  //  std::vector
 
 // #include "core_functions.h"
 
@@ -9060,7 +9076,22 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
-                return static_cast<std::string>(c);
+                auto res = static_cast<std::string>(c);
+                using columns_tuple = typename statement_type::columns_tuple;
+                auto columnsCount = std::tuple_size<columns_tuple>::value;
+                if(columnsCount) {
+                    res += "(";
+                    decltype(columnsCount) columnIndex = 0;
+                    iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto &column) {
+                        res += context.column_name(column);
+                        if(columnIndex < columnsCount - 1) {
+                            res += ", ";
+                        }
+                        ++columnIndex;
+                    });
+                    res += ")";
+                }
+                return res;
             }
         };
 
@@ -9218,7 +9249,7 @@ namespace sqlite_orm {
                 using constraints_type = typename column_type::constraints_type;
                 ss << type_printer<field_type>().print() << " ";
                 {
-                    serializator_context context{&this->impl};
+                    serializator_context context{this->impl};
                     std::vector<std::string> constraintsStrings;
                     constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
                     constraintsStrings.reserve(constraintsCount);
