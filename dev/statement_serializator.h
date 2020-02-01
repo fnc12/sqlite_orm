@@ -142,6 +142,58 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... Cs, class... Rs>
+        struct statement_serializator<constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
+            using statement_type = constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
+
+            template<class C>
+            std::string operator()(const statement_type &fk, const C &context) const {
+                std::stringstream ss;
+                std::vector<std::string> columnNames;
+                using columns_type_t = typename std::decay<decltype(fk)>::type::columns_type;
+                constexpr const size_t columnsCount = std::tuple_size<columns_type_t>::value;
+                columnNames.reserve(columnsCount);
+                iterate_tuple(fk.columns, [&columnNames, &context](auto &v) {
+                    columnNames.push_back(context.impl.column_name(v));
+                });
+                ss << "FOREIGN KEY(";
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << columnNames[i];
+                    if(i < columnNames.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << ") REFERENCES ";
+                std::vector<std::string> referencesNames;
+                using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
+                constexpr const size_t referencesCount = std::tuple_size<references_type_t>::value;
+                referencesNames.reserve(referencesCount);
+                {
+                    using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
+                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    auto refTableName = context.impl.find_table_name(typeid(first_reference_mapped_type));
+                    ss << refTableName;
+                }
+                iterate_tuple(fk.references, [&referencesNames, &context](auto &v) {
+                    referencesNames.push_back(context.impl.column_name(v));
+                });
+                ss << "(";
+                for(size_t i = 0; i < referencesNames.size(); ++i) {
+                    ss << referencesNames[i];
+                    if(i < referencesNames.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << ")";
+                if(fk.on_update) {
+                    ss << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action << " ";
+                }
+                if(fk.on_delete) {
+                    ss << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action << " ";
+                }
+                return ss.str();
+            }
+        };
         template<class T>
         struct statement_serializator<constraints::check_t<T>, void> {
             using statement_type = constraints::check_t<T>;
