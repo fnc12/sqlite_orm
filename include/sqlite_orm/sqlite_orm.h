@@ -1503,8 +1503,7 @@ namespace sqlite_orm {
                      setter_type setter_,
                      constraints_type constraints_) :
                 column_base{std::move(name)},
-                member_pointer(member_pointer_), getter(getter_), setter(setter_),
-                constraints(std::move(constraints_)) {}
+                member_pointer(member_pointer_), getter(getter_), setter(setter_), constraints(move(constraints_)) {}
 
             /**
              *  Simplified interface for `NOT NULL` constraint
@@ -9005,12 +9004,15 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_arithmetic, std::enable_if
 #include <vector>  //  std::vector
+#include <algorithm>  //  std::iter_swap
 
 // #include "core_functions.h"
 
 // #include "constraints.h"
 
 // #include "conditions.h"
+
+// #include "column.h"
 
 namespace sqlite_orm {
 
@@ -9189,21 +9191,68 @@ namespace sqlite_orm {
                 }
                 ss << ")";
                 if(fk.on_update) {
-                    ss << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action << " ";
+                    ss << ' ' << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action;
                 }
                 if(fk.on_delete) {
-                    ss << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action << " ";
+                    ss << ' ' << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action;
                 }
                 return ss.str();
             }
         };
+
         template<class T>
         struct statement_serializator<constraints::check_t<T>, void> {
             using statement_type = constraints::check_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
-                return static_cast<std::string>(c) + " (" + serialize(c.expression, context) + ")";
+                return static_cast<std::string>(c) + " " + serialize(c.expression, context);
+            }
+        };
+
+        template<class O, class T, class G, class S, class... Op>
+        struct statement_serializator<column_t<O, T, G, S, Op...>, void> {
+            using statement_type = column_t<O, T, G, S, Op...>;
+
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
+                std::stringstream ss;
+                ss << "'" << c.name << "' ";
+                using column_type = typename std::decay<decltype(c)>::type;
+                using field_type = typename column_type::field_type;
+                using constraints_type = typename column_type::constraints_type;
+                ss << type_printer<field_type>().print() << " ";
+                {
+                    std::vector<std::string> constraintsStrings;
+                    constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
+                    constraintsStrings.reserve(constraintsCount);
+                    int primaryKeyIndex = -1;
+                    int autoincrementIndex = -1;
+                    int tupleIndex = 0;
+                    iterate_tuple(
+                        c.constraints,
+                        [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](auto &v) {
+                            using constraint_type = typename std::decay<decltype(v)>::type;
+                            constraintsStrings.push_back(serialize(v, context));
+                            if(is_primary_key<constraint_type>::value) {
+                                primaryKeyIndex = tupleIndex;
+                            } else if(std::is_same<constraints::autoincrement_t, constraint_type>::value) {
+                                autoincrementIndex = tupleIndex;
+                            }
+                            ++tupleIndex;
+                        });
+                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
+                        iter_swap(constraintsStrings.begin() + primaryKeyIndex,
+                                  constraintsStrings.begin() + autoincrementIndex);
+                    }
+                    for(auto &str: constraintsStrings) {
+                        ss << str << ' ';
+                    }
+                }
+                if(c.not_null()) {
+                    ss << "NOT NULL ";
+                }
+                return ss.str();
             }
         };
 
@@ -9292,66 +9341,18 @@ namespace sqlite_orm {
             template<class V>
             friend struct iterator_t;
 
-            template<class O, class T, class G, class S, class... Op>
+            /*template<class O, class T, class G, class S, class... Op>
             std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {
-                std::stringstream ss;
-                ss << "'" << c.name << "' ";
-                using column_type = typename std::decay<decltype(c)>::type;
-                using field_type = typename column_type::field_type;
-                using constraints_type = typename column_type::constraints_type;
-                ss << type_printer<field_type>().print() << " ";
-                {
-                    using serializator_context_t = serializator_context<impl_type>;
-                    serializator_context_t context{this->impl};
-                    std::vector<std::string> constraintsStrings;
-                    constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
-                    constraintsStrings.reserve(constraintsCount);
-                    int primaryKeyIndex = -1;
-                    int autoincrementIndex = -1;
-                    int tupleIndex = 0;
-                    iterate_tuple(
-                        c.constraints,
-                        [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](auto &v) {
-                            using constraint_type = typename std::decay<decltype(v)>::type;
-                            constraintsStrings.push_back(serialize(v, context));
-                            if(is_primary_key<constraint_type>::value) {
-                                primaryKeyIndex = tupleIndex;
-                            } else if(std::is_same<constraints::autoincrement_t, constraint_type>::value) {
-                                autoincrementIndex = tupleIndex;
-                            }
-                            ++tupleIndex;
-                        });
-                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
-                        iter_swap(constraintsStrings.begin() + primaryKeyIndex,
-                                  constraintsStrings.begin() + autoincrementIndex);
-                    }
-                    for(auto &str: constraintsStrings) {
-                        ss << str << ' ';
-                    }
-                }
-                if(c.not_null()) {
-                    ss << "NOT NULL ";
-                }
-                return ss.str();
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                return serialize(c, context);
             }
 
             template<class... Cs>
             std::string serialize_column_schema(const constraints::primary_key_t<Cs...> &fk) {
-                std::stringstream ss;
-                ss << static_cast<std::string>(fk) << " (";
-                std::vector<std::string> columnNames;
-                columnNames.reserve(std::tuple_size<decltype(fk.columns)>::value);
-                iterate_tuple(fk.columns, [&columnNames, this](auto &c) {
-                    columnNames.push_back(this->impl.column_name(c));
-                });
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << ") ";
-                return ss.str();
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                return serialize(fk, context);
             }
 
 #if SQLITE_VERSION_NUMBER >= 3006019
@@ -9366,10 +9367,10 @@ namespace sqlite_orm {
 #endif
             template<class T>
             std::string serialize_column_schema(const constraints::check_t<T> &ch) {
-                std::stringstream ss;
-                //                ss << static_cast<std::string>(ch) << ' ';
-                return ss.str();
-            }
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                return serialize(ch, context);
+            }*/
 
             template<class I>
             void create_table(sqlite3 *db, const std::string &tableName, I *impl) {
@@ -9377,8 +9378,10 @@ namespace sqlite_orm {
                 ss << "CREATE TABLE '" << tableName << "' ( ";
                 auto columnsCount = impl->table.columns_count;
                 auto index = 0;
-                impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, this](auto &c) {
-                    ss << this->serialize_column_schema(c);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, &context](auto &c) {
+                    ss << serialize(c, context);
                     if(index < columnsCount - 1) {
                         ss << ", ";
                     }

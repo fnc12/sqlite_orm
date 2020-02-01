@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 #if SQLITE_VERSION_NUMBER >= 3006019
 
 TEST_CASE("statement_serializator foreign key") {
-    {  //  one to one
+    SECTION("one to one") {
         struct User {
             int id = 0;
             std::string name;
@@ -18,28 +18,225 @@ TEST_CASE("statement_serializator foreign key") {
             long time = 0;
         };
 
-        auto fk = foreign_key(&Visit::userId).references(&User::id);
-
         auto usersTable = make_table("users",
                                      make_column("id", &User::id, primary_key(), autoincrement()),
                                      make_column("name", &User::name));
-        auto visitsTable = make_table("visits",
-                                      make_column("id", &Visit::id, primary_key(), autoincrement()),
-                                      make_column("user_id", &Visit::userId),
-                                      make_column("time", &Visit::time),
-                                      fk);
 
-        using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+        SECTION("simple") {
+            auto fk = foreign_key(&Visit::userId).references(&User::id);
 
-        storage_impl_t storageImpl{usersTable, visitsTable};
+            auto visitsTable = make_table("visits",
+                                          make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                          make_column("user_id", &Visit::userId),
+                                          make_column("time", &Visit::time),
+                                          fk);
 
-        using context_t = internal::serializator_context<storage_impl_t>;
+            using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
 
-        context_t context{storageImpl};
-        auto value = serialize(fk, context);
-        REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id)");
+            storage_impl_t storageImpl{usersTable, visitsTable};
+
+            using context_t = internal::serializator_context<storage_impl_t>;
+
+            context_t context{storageImpl};
+            auto value = serialize(fk, context);
+            REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id)");
+        }
+        SECTION("on update") {
+            SECTION("no_action") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.no_action();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE NO ACTION");
+            }
+            SECTION("restrict_") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.restrict_();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE RESTRICT");
+            }
+            SECTION("set_null") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_null();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE SET NULL");
+            }
+            SECTION("set_default") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_default();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE SET DEFAULT");
+            }
+            SECTION("cascade") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.cascade();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON UPDATE CASCADE");
+            }
+        }
+        SECTION("on delete") {
+            SECTION("no_action") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.no_action();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE NO ACTION");
+            }
+            SECTION("restrict_") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.restrict_();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE RESTRICT");
+            }
+            SECTION("set_null") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_null();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL");
+            }
+            SECTION("set_default") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_default();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET DEFAULT");
+            }
+            SECTION("cascade") {
+                auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.cascade();
+
+                auto visitsTable = make_table("visits",
+                                              make_column("id", &Visit::id, primary_key(), autoincrement()),
+                                              make_column("user_id", &Visit::userId),
+                                              make_column("time", &Visit::time),
+                                              fk);
+
+                using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
+
+                storage_impl_t storageImpl{usersTable, visitsTable};
+
+                using context_t = internal::serializator_context<storage_impl_t>;
+
+                context_t context{storageImpl};
+                auto value = serialize(fk, context);
+                REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE");
+            }
+        }
     }
-    {  //  one to explicit one
+    SECTION("one to explicit one") {
         struct Object {
             int id = 0;
         };
@@ -76,7 +273,7 @@ TEST_CASE("statement_serializator foreign key") {
         auto value = serialize(fk, context);
         REQUIRE(value == "FOREIGN KEY(user_id) REFERENCES users(id)");
     }
-    {  //  composite key
+    SECTION("composite key") {
         struct User {
             int id = 0;
             std::string firstName;

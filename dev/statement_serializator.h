@@ -4,10 +4,12 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_arithmetic, std::enable_if
 #include <vector>  //  std::vector
+#include <algorithm>  //  std::iter_swap
 
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
+#include "column.h"
 
 namespace sqlite_orm {
 
@@ -186,21 +188,68 @@ namespace sqlite_orm {
                 }
                 ss << ")";
                 if(fk.on_update) {
-                    ss << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action << " ";
+                    ss << ' ' << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action;
                 }
                 if(fk.on_delete) {
-                    ss << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action << " ";
+                    ss << ' ' << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action;
                 }
                 return ss.str();
             }
         };
+
         template<class T>
         struct statement_serializator<constraints::check_t<T>, void> {
             using statement_type = constraints::check_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
-                return static_cast<std::string>(c) + " (" + serialize(c.expression, context) + ")";
+                return static_cast<std::string>(c) + " " + serialize(c.expression, context);
+            }
+        };
+
+        template<class O, class T, class G, class S, class... Op>
+        struct statement_serializator<column_t<O, T, G, S, Op...>, void> {
+            using statement_type = column_t<O, T, G, S, Op...>;
+
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
+                std::stringstream ss;
+                ss << "'" << c.name << "' ";
+                using column_type = typename std::decay<decltype(c)>::type;
+                using field_type = typename column_type::field_type;
+                using constraints_type = typename column_type::constraints_type;
+                ss << type_printer<field_type>().print() << " ";
+                {
+                    std::vector<std::string> constraintsStrings;
+                    constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
+                    constraintsStrings.reserve(constraintsCount);
+                    int primaryKeyIndex = -1;
+                    int autoincrementIndex = -1;
+                    int tupleIndex = 0;
+                    iterate_tuple(
+                        c.constraints,
+                        [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](auto &v) {
+                            using constraint_type = typename std::decay<decltype(v)>::type;
+                            constraintsStrings.push_back(serialize(v, context));
+                            if(is_primary_key<constraint_type>::value) {
+                                primaryKeyIndex = tupleIndex;
+                            } else if(std::is_same<constraints::autoincrement_t, constraint_type>::value) {
+                                autoincrementIndex = tupleIndex;
+                            }
+                            ++tupleIndex;
+                        });
+                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
+                        iter_swap(constraintsStrings.begin() + primaryKeyIndex,
+                                  constraintsStrings.begin() + autoincrementIndex);
+                    }
+                    for(auto &str: constraintsStrings) {
+                        ss << str << ' ';
+                    }
+                }
+                if(c.not_null()) {
+                    ss << "NOT NULL ";
+                }
+                return ss.str();
             }
         };
 

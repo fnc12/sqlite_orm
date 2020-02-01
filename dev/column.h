@@ -65,8 +65,7 @@ namespace sqlite_orm {
                      setter_type setter_,
                      constraints_type constraints_) :
                 column_base{std::move(name)},
-                member_pointer(member_pointer_), getter(getter_), setter(setter_),
-                constraints(std::move(constraints_)) {}
+                member_pointer(member_pointer_), getter(getter_), setter(setter_), constraints(move(constraints_)) {}
 
             /**
              *  Simplified interface for `NOT NULL` constraint
