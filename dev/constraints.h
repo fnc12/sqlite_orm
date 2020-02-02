@@ -57,10 +57,9 @@ namespace sqlite_orm {
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) c) : columns(std::move(c)) {}
+            primary_key_t(decltype(columns) c) : columns(move(c)) {}
 
-            using field_type = void;  //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
+            //            using constraints_type = std::tuple<>;
 
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
@@ -256,8 +255,7 @@ namespace sqlite_orm {
                 return *this;
             }
 
-            using field_type = void;  //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
+            //            using constraints_type = std::tuple<>;
 
             template<class L>
             void for_each_column(const L &) {}

@@ -97,7 +97,7 @@ namespace sqlite_orm {
                 auto index = 0;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, &context](auto &c) {
+                iterate_tuple(impl->table.columns, [columnsCount, &index, &ss, &context](auto &c) {
                     ss << serialize(c, context);
                     if(index < columnsCount - 1) {
                         ss << ", ";

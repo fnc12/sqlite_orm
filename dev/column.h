@@ -120,6 +120,27 @@ namespace sqlite_orm {
          */
         template<class O, class T, class... Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
+
+        template<class T>
+        struct column_field_type {
+            using type = void;
+        };
+
+        template<class O, class T, class... Op>
+        struct column_field_type<column_t<O, T, Op...>> {
+            using type = typename column_t<O, T, Op...>::field_type;
+        };
+
+        template<class T>
+        struct column_constraints_type {
+            using type = std::tuple<>;
+        };
+
+        template<class O, class T, class... Op>
+        struct column_constraints_type<column_t<O, T, Op...>> {
+            using type = typename column_t<O, T, Op...>::constraints_type;
+        };
+
     }
 
     /**

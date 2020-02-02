@@ -542,10 +542,9 @@ namespace sqlite_orm {
 
             columns_tuple columns;
 
-            primary_key_t(decltype(columns) c) : columns(std::move(c)) {}
+            primary_key_t(decltype(columns) c) : columns(move(c)) {}
 
-            using field_type = void;  //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
+            //            using constraints_type = std::tuple<>;
 
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
@@ -741,8 +740,7 @@ namespace sqlite_orm {
                 return *this;
             }
 
-            using field_type = void;  //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
+            //            using constraints_type = std::tuple<>;
 
             template<class L>
             void for_each_column(const L &) {}
@@ -1558,6 +1556,27 @@ namespace sqlite_orm {
          */
         template<class O, class T, class... Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
+
+        template<class T>
+        struct column_field_type {
+            using type = void;
+        };
+
+        template<class O, class T, class... Op>
+        struct column_field_type<column_t<O, T, Op...>> {
+            using type = typename column_t<O, T, Op...>::field_type;
+        };
+
+        template<class T>
+        struct column_constraints_type {
+            using type = std::tuple<>;
+        };
+
+        template<class O, class T, class... Op>
+        struct column_constraints_type<column_t<O, T, Op...>> {
+            using type = typename column_t<O, T, Op...>::constraints_type;
+        };
+
     }
 
     /**
@@ -5378,9 +5397,6 @@ namespace sqlite_orm {
             std::string name;
             bool unique;
             columns_type columns;
-
-            template<class L>
-            void for_each_column_with_constraints(const L &) {}
         };
     }
 
@@ -6104,7 +6120,7 @@ namespace sqlite_orm {
             /**
              *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise
              * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
-             * iterate columns with table constraints use for_each_column_with_constraints instead. L is lambda type. Do
+             * iterate columns with table constraints use iterate_tuple(columns, ...) instead. L is lambda type. Do
              * not specify it explicitly.
              *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
@@ -6116,16 +6132,12 @@ namespace sqlite_orm {
                 });
             }
 
-            template<class L>
-            void for_each_column_with_constraints(const L &l) const {
-                iterate_tuple(this->columns, l);
-            }
-
             template<class F, class L>
             void for_each_column_with_field_type(const L &l) const {
                 iterate_tuple(this->columns, [&l](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<std::is_same<F, typename column_type::field_type>{}>(l)(column);
+                    using field_type = typename column_field_type<column_type>::type;
+                    static_if<std::is_same<F, field_type>{}>(l)(column);
                 });
             }
 
@@ -6140,7 +6152,8 @@ namespace sqlite_orm {
                 using tuple_helper::tuple_contains_type;
                 iterate_tuple(this->columns, [&l](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<tuple_contains_type<Op, typename column_type::constraints_type>{}>(l)(column);
+                    using constraints_type = typename column_constraints_type<column_type>::type;
+                    static_if<tuple_contains_type<Op, constraints_type>{}>(l)(column);
                 });
             }
 
@@ -6411,7 +6424,7 @@ namespace sqlite_orm {
              */
             int foreign_keys_count() {
                 auto res = 0;
-                this->table.for_each_column_with_constraints([&res](auto &c) {
+                iterate_tuple(this->table.columns, [&res](auto &c) {
                     if(internal::is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
                         ++res;
                     }
@@ -9341,37 +9354,6 @@ namespace sqlite_orm {
             template<class V>
             friend struct iterator_t;
 
-            /*template<class O, class T, class G, class S, class... Op>
-            std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                return serialize(c, context);
-            }
-
-            template<class... Cs>
-            std::string serialize_column_schema(const constraints::primary_key_t<Cs...> &fk) {
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                return serialize(fk, context);
-            }
-
-#if SQLITE_VERSION_NUMBER >= 3006019
-
-            template<class... Cs, class... Rs>
-            std::string
-            serialize_column_schema(const constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> &fk) {
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                return serialize(fk, context);
-            }
-#endif
-            template<class T>
-            std::string serialize_column_schema(const constraints::check_t<T> &ch) {
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                return serialize(ch, context);
-            }*/
-
             template<class I>
             void create_table(sqlite3 *db, const std::string &tableName, I *impl) {
                 std::stringstream ss;
@@ -9380,7 +9362,7 @@ namespace sqlite_orm {
                 auto index = 0;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, &context](auto &c) {
+                iterate_tuple(impl->table.columns, [columnsCount, &index, &ss, &context](auto &c) {
                     ss << serialize(c, context);
                     if(index < columnsCount - 1) {
                         ss << ", ";

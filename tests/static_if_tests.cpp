@@ -48,4 +48,20 @@ TEST_CASE("static_if") {
             })();
         REQUIRE(value == -1);
     }
+    {
+        struct User {
+            std::string name;
+        };
+        auto ch = check(length(&User::name) > 5);
+        static_assert(!internal::is_column<decltype(ch)>::value, "");
+        int called = 0;
+        internal::static_if<internal::is_column<decltype(ch)>{}>(
+            [&called] {
+                called = 1;
+            },
+            [&called] {
+                called = -1;
+            })();
+        REQUIRE(called == -1);
+    }
 }
