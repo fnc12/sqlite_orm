@@ -59,8 +59,6 @@ namespace sqlite_orm {
 
             primary_key_t(decltype(columns) c) : columns(move(c)) {}
 
-            //            using constraints_type = std::tuple<>;
-
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
                 res.asc_option = order_by::ascending;
@@ -254,8 +252,6 @@ namespace sqlite_orm {
                 this->on_delete = {*this, false, other.on_delete._action};
                 return *this;
             }
-
-            //            using constraints_type = std::tuple<>;
 
             template<class L>
             void for_each_column(const L &) {}
