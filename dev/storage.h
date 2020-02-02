@@ -47,6 +47,7 @@
 #include "storage_base.h"
 #include "prepared_statement.h"
 #include "expression_object_type.h"
+#include "statement_serializator.h"
 
 namespace sqlite_orm {
 
@@ -88,127 +89,16 @@ namespace sqlite_orm {
             template<class V>
             friend struct iterator_t;
 
-            template<class O, class T, class G, class S, class... Op>
-            std::string serialize_column_schema(const internal::column_t<O, T, G, S, Op...> &c) {
-                std::stringstream ss;
-                ss << "'" << c.name << "' ";
-                using column_type = typename std::decay<decltype(c)>::type;
-                using field_type = typename column_type::field_type;
-                using constraints_type = typename column_type::constraints_type;
-                ss << type_printer<field_type>().print() << " ";
-                {
-                    std::vector<std::string> constraintsStrings;
-                    constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
-                    constraintsStrings.reserve(constraintsCount);
-                    int primaryKeyIndex = -1;
-                    int autoincrementIndex = -1;
-                    int tupleIndex = 0;
-                    iterate_tuple(c.constraints,
-                                  [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex](auto &v) {
-                                      using constraint_type = typename std::decay<decltype(v)>::type;
-                                      constraintsStrings.push_back(serialize(v));
-                                      if(is_primary_key<constraint_type>::value) {
-                                          primaryKeyIndex = tupleIndex;
-                                      } else if(std::is_same<constraints::autoincrement_t, constraint_type>::value) {
-                                          autoincrementIndex = tupleIndex;
-                                      }
-                                      ++tupleIndex;
-                                  });
-                    if(primaryKeyIndex != -1 && autoincrementIndex != -1 && autoincrementIndex < primaryKeyIndex) {
-                        iter_swap(constraintsStrings.begin() + primaryKeyIndex,
-                                  constraintsStrings.begin() + autoincrementIndex);
-                    }
-                    for(auto &str: constraintsStrings) {
-                        ss << str << ' ';
-                    }
-                }
-                if(c.not_null()) {
-                    ss << "NOT NULL ";
-                }
-                return ss.str();
-            }
-
-            template<class... Cs>
-            std::string serialize_column_schema(const constraints::primary_key_t<Cs...> &fk) {
-                std::stringstream ss;
-                ss << static_cast<std::string>(fk) << " (";
-                std::vector<std::string> columnNames;
-                columnNames.reserve(std::tuple_size<decltype(fk.columns)>::value);
-                iterate_tuple(fk.columns, [&columnNames, this](auto &c) {
-                    columnNames.push_back(this->impl.column_name(c));
-                });
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << ") ";
-                return ss.str();
-            }
-
-#if SQLITE_VERSION_NUMBER >= 3006019
-
-            template<class... Cs, class... Rs>
-            std::string
-            serialize_column_schema(const constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> &fk) {
-                std::stringstream ss;
-                std::vector<std::string> columnNames;
-                using columns_type_t = typename std::decay<decltype(fk)>::type::columns_type;
-                constexpr const size_t columnsCount = std::tuple_size<columns_type_t>::value;
-                columnNames.reserve(columnsCount);
-                iterate_tuple(fk.columns, [&columnNames, this](auto &v) {
-                    columnNames.push_back(this->impl.column_name(v));
-                });
-                ss << "FOREIGN KEY( ";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                ss << ") REFERENCES ";
-                std::vector<std::string> referencesNames;
-                using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
-                constexpr const size_t referencesCount = std::tuple_size<references_type_t>::value;
-                referencesNames.reserve(referencesCount);
-                {
-                    using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
-                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
-                    auto refTableName = this->impl.template find_table_name<first_reference_mapped_type>();
-                    ss << refTableName << " ";
-                }
-                iterate_tuple(fk.references, [&referencesNames, this](auto &v) {
-                    referencesNames.push_back(this->impl.column_name(v));
-                });
-                ss << "( ";
-                for(size_t i = 0; i < referencesNames.size(); ++i) {
-                    ss << referencesNames[i];
-                    if(i < referencesNames.size() - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                ss << ") ";
-                if(fk.on_update) {
-                    ss << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action << " ";
-                }
-                if(fk.on_delete) {
-                    ss << static_cast<std::string>(fk.on_delete) << " " << fk.on_delete._action << " ";
-                }
-                return ss.str();
-            }
-#endif
-
             template<class I>
             void create_table(sqlite3 *db, const std::string &tableName, I *impl) {
                 std::stringstream ss;
                 ss << "CREATE TABLE '" << tableName << "' ( ";
                 auto columnsCount = impl->table.columns_count;
                 auto index = 0;
-                impl->table.for_each_column_with_constraints([columnsCount, &index, &ss, this](auto &c) {
-                    ss << this->serialize_column_schema(c);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                iterate_tuple(impl->table.columns, [columnsCount, &index, &ss, &context](auto &c) {
+                    ss << serialize(c, context);
                     if(index < columnsCount - 1) {
                         ss << ", ";
                     }
@@ -343,7 +233,7 @@ namespace sqlite_orm {
             std::string string_from_expression(F O::*m, bool noTableName) const {
                 std::stringstream ss;
                 if(!noTableName) {
-                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
+                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
                 }
                 ss << "\"" << this->impl.column_name(m) << "\"";
                 return ss.str();
@@ -365,7 +255,7 @@ namespace sqlite_orm {
             std::string string_from_expression(const table_rowid_t<O> &rid, bool noTableName) const {
                 std::stringstream ss;
                 if(!noTableName) {
-                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
+                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
                 }
                 ss << static_cast<std::string>(rid);
                 return ss.str();
@@ -375,7 +265,7 @@ namespace sqlite_orm {
             std::string string_from_expression(const table_oid_t<O> &rid, bool noTableName) const {
                 std::stringstream ss;
                 if(!noTableName) {
-                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
+                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
                 }
                 ss << static_cast<std::string>(rid);
                 return ss.str();
@@ -385,7 +275,7 @@ namespace sqlite_orm {
             std::string string_from_expression(const table__rowid_t<O> &rid, bool noTableName) const {
                 std::stringstream ss;
                 if(!noTableName) {
-                    ss << "'" << this->impl.template find_table_name<O>() << "'.";
+                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
                 }
                 ss << static_cast<std::string>(rid);
                 return ss.str();
@@ -500,7 +390,7 @@ namespace sqlite_orm {
             std::string string_from_expression(const column_pointer<T, F> &c, bool noTableName) const {
                 std::stringstream ss;
                 if(!noTableName) {
-                    ss << "'" << this->impl.template find_table_name<T>() << "'.";
+                    ss << "'" << this->impl.find_table_name(typeid(T)) << "'.";
                 }
                 auto &impl = this->get_impl<T>();
                 ss << "\"" << impl.column_name_simple(c.field) << "\"";
@@ -571,7 +461,7 @@ namespace sqlite_orm {
                 internal::join_iterator<Args...>()([&tableNamesSet, this](const auto &c) {
                     using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
-                    auto crossJoinedTableName = this->impl.template find_table_name<cross_join_type>();
+                    auto crossJoinedTableName = this->impl.find_table_name(typeid(cross_join_type));
                     auto tableAliasString = alias_extractor<original_join_type>::get();
                     std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
                                                                            std::move(tableAliasString));
@@ -1227,20 +1117,20 @@ namespace sqlite_orm {
             template<class O>
             void process_single_condition(std::stringstream &ss, const conditions::cross_join_t<O> &c) const {
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.template find_table_name<O>() << "'";
+                ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
             }
 
             template<class O>
             void process_single_condition(std::stringstream &ss, const conditions::natural_join_t<O> &c) const {
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.template find_table_name<O>() << "'";
+                ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
             }
 
             template<class T, class O>
             void process_single_condition(std::stringstream &ss, const conditions::inner_join_t<T, O> &l) const {
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_extractor<T>::get();
-                ss << " '" << this->impl.template find_table_name<typename mapped_type_proxy<T>::type>() << "' ";
+                ss << " '" << this->impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
                 if(aliasString.length()) {
                     ss << "'" << aliasString << "' ";
                 }
@@ -1250,21 +1140,21 @@ namespace sqlite_orm {
             template<class T, class O>
             void process_single_condition(std::stringstream &ss, const conditions::left_outer_join_t<T, O> &l) const {
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << this->impl.template find_table_name<T>() << "' ";
+                ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
                 this->process_join_constraint(ss, l.constraint);
             }
 
             template<class T, class O>
             void process_single_condition(std::stringstream &ss, const conditions::left_join_t<T, O> &l) const {
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << this->impl.template find_table_name<T>() << "' ";
+                ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
                 this->process_join_constraint(ss, l.constraint);
             }
 
             template<class T, class O>
             void process_single_condition(std::stringstream &ss, const conditions::join_t<T, O> &l) const {
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << this->impl.template find_table_name<T>() << "' ";
+                ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
                 this->process_join_constraint(ss, l.constraint);
             }
 
@@ -1391,7 +1281,7 @@ namespace sqlite_orm {
 
             template<class F, class O>
             std::set<std::pair<std::string, std::string>> parse_table_name(F O::*, std::string alias = {}) const {
-                return {std::make_pair(this->impl.template find_table_name<O>(), std::move(alias))};
+                return {std::make_pair(this->impl.find_table_name(typeid(O)), std::move(alias))};
             }
 
             template<class T>
@@ -1480,7 +1370,7 @@ namespace sqlite_orm {
             template<class T, class F>
             std::set<std::pair<std::string, std::string>> parse_table_name(const column_pointer<T, F> &) const {
                 std::set<std::pair<std::string, std::string>> res;
-                res.insert({this->impl.template find_table_name<T>(), ""});
+                res.insert({this->impl.find_table_name(typeid(T)), ""});
                 return res;
             }
 
@@ -1492,7 +1382,7 @@ namespace sqlite_orm {
             template<class T>
             std::set<std::pair<std::string, std::string>>
             parse_table_name(const aggregate_functions::count_asterisk_t<T> &) const {
-                auto tableName = this->impl.template find_table_name<T>();
+                auto tableName = this->impl.find_table_name(typeid(T));
                 if(!tableName.empty()) {
                     return {std::make_pair(std::move(tableName), "")};
                 } else {
@@ -1507,7 +1397,7 @@ namespace sqlite_orm {
 
             template<class T>
             std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &) const {
-                auto tableName = this->impl.template find_table_name<T>();
+                auto tableName = this->impl.find_table_name(typeid(T));
                 return {std::make_pair(std::move(tableName), "")};
             }
 
@@ -2022,7 +1912,7 @@ namespace sqlite_orm {
                 using head_t = typename std::tuple_element<0, columns_type>::type;
                 using indexed_type = typename internal::table_type<head_t>::type;
                 ss << "INDEX IF NOT EXISTS '" << impl->table.name << "' ON '"
-                   << this->impl.template find_table_name<indexed_type>() << "' ( ";
+                   << this->impl.find_table_name(typeid(indexed_type)) << "' ( ";
                 std::vector<std::string> columnNames;
                 iterate_tuple(impl->table.columns, [&columnNames, this](auto &v) {
                     columnNames.push_back(this->impl.column_name(v));

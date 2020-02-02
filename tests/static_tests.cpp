@@ -291,7 +291,7 @@ TEST_CASE("Select return types") {
     {
         //  test storage traits
         struct Visit {
-            int id;
+            int id = 0;
             std::string date;
         };
         using namespace sqlite_orm::internal::storage_traits;

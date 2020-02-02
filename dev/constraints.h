@@ -53,13 +53,11 @@ namespace sqlite_orm {
         template<class... Cs>
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
+            using columns_tuple = std::tuple<Cs...>;
 
-            std::tuple<Cs...> columns;
+            columns_tuple columns;
 
-            primary_key_t(decltype(columns) c) : columns(std::move(c)) {}
-
-            using field_type = void;  //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
+            primary_key_t(decltype(columns) c) : columns(move(c)) {}
 
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
@@ -255,9 +253,6 @@ namespace sqlite_orm {
                 return *this;
             }
 
-            using field_type = void;  //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
-
             template<class L>
             void for_each_column(const L &) {}
 
@@ -310,6 +305,21 @@ namespace sqlite_orm {
             }
         };
 
+        struct check_string {
+            operator std::string() const {
+                return "CHECK";
+            }
+        };
+
+        template<class T>
+        struct check_t : check_string {
+            using expression_type = T;
+
+            expression_type expression;
+
+            check_t(expression_type expression_) : expression(std::move(expression_)) {}
+        };
+
         template<class T>
         struct is_constraint : std::false_type {};
 
@@ -330,6 +340,9 @@ namespace sqlite_orm {
 
         template<>
         struct is_constraint<collate_t> : std::true_type {};
+
+        template<class T>
+        struct is_constraint<check_t<T>> : std::true_type {};
 
         template<class... Args>
         struct constraints_size;
@@ -389,6 +402,11 @@ namespace sqlite_orm {
 
     inline constraints::collate_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
+    }
+
+    template<class T>
+    constraints::check_t<T> check(T t) {
+        return {std::move(t)};
     }
 
     namespace internal {

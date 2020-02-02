@@ -226,6 +226,14 @@ TEST_CASE("Join") {
         auto rows = storage.get_all<User>(inner_join<Visit>(on(is_equal(&Visit::userId, 2))));
         REQUIRE(rows.size() == 6);
     }
+    {
+        auto rows = storage.get_all<User>(cross_join<Visit>());
+        REQUIRE(rows.size() == 15);
+    }
+    {
+        auto rows = storage.get_all<User>(natural_join<Visit>());
+        REQUIRE(rows.size() == 3);
+    }
 }
 
 TEST_CASE("Storage copy") {

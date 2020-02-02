@@ -21,6 +21,7 @@ namespace sqlite_orm {
         incorrect_journal_mode_string,
         invalid_collate_argument_enum,
         failed_to_init_a_backup,
+        unknown_member_value,
     };
 
 }
@@ -57,6 +58,8 @@ namespace sqlite_orm {
                     return "Invalid collate_argument enum";
                 case orm_error_code::failed_to_init_a_backup:
                     return "Failed to init a backup";
+                case orm_error_code::unknown_member_value:
+                    return "Unknown member value";
                 default:
                     return "unknown error";
             }
