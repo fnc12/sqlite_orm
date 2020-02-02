@@ -3613,6 +3613,12 @@ namespace sqlite_orm {
                 return "SUBSTR";
             }
         };
+
+        struct soundex_string {
+            operator std::string() const {
+                return "SOUNDEX";
+            }
+        };
     }
 
     /**
@@ -3914,6 +3920,15 @@ namespace sqlite_orm {
     template<class X, class Y, class Z>
     core_functions::core_function_t<std::string, core_functions::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
+        return {move(args)};
+    }
+
+    /**
+ *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
+ */
+    template<class X>
+    core_functions::core_function_t<std::string, core_functions::soundex_string, X> soundex(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
 

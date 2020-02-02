@@ -119,4 +119,10 @@ TEST_CASE("statement_serializator core functions") {
         auto value = serialize(substr("Natasha", 3, 2), context);
         REQUIRE(value == "SUBSTR('Natasha', 3, 2)");
     }
+    {
+#ifdef SQLITE_SOUNDEX
+        auto value = serialize(soundex("Vaso"), context);
+        REQUIRE(value == "SOUNDEX('Vaso')");
+#endif
+    }
 }
