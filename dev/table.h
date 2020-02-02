@@ -5,7 +5,6 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 #include <algorithm>  //  std::reverse, std::find_if
-#include <iostream>
 
 #include "column_result.h"
 #include "static_magic.h"
