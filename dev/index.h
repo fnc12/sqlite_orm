@@ -16,9 +16,6 @@ namespace sqlite_orm {
             std::string name;
             bool unique;
             columns_type columns;
-
-            template<class L>
-            void for_each_column_with_constraints(const L &) {}
         };
     }
 

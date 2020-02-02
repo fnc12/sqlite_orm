@@ -28,7 +28,7 @@ TEST_CASE("Explicit colums") {
         make_table<Token>("tokens",
                           make_column("id", &Token::id, primary_key()),
                           make_column("token", &Token::token),
-                          make_column("used_id", &Token::usedId),
+                          make_column("user_id", &Token::usedId),
                           foreign_key(&Token::usedId).references(column<User>(&User::id))));
     storage.sync_schema();
     REQUIRE(storage.table_exists("users"));

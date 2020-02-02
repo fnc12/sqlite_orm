@@ -5,6 +5,7 @@
 #include <sstream>  //  std::stringstream
 
 #include "constraints.h"
+#include "serializator_context.h"
 
 namespace sqlite_orm {
 
@@ -26,7 +27,8 @@ namespace sqlite_orm {
 
             template<class T>
             std::unique_ptr<std::string> operator()(const constraints::default_t<T> &t) {
-                return std::make_unique<std::string>(serialize(t.value));
+                serializator_context_base context;
+                return std::make_unique<std::string>(serialize(t.value, context));
             }
         };
 
