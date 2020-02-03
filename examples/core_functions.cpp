@@ -335,6 +335,9 @@ int main(int, char **argv) {
 
     //  SELECT round(0.5)
     cout << "SELECT round(0.5) = " << storage.select(round(0.5)).front() << endl;
-
+#ifdef SQLITE_SOUNDEX
+    //  SELECT soundex('Schn Thomson')
+    cout << "SELECT soundex('Schn Thomson') = " << storage.select(soundex("Schn Thomson")).front() << endl;
+#endif
     return 0;
 }
