@@ -108,6 +108,10 @@ TEST_CASE("statement_serializator core functions") {
         REQUIRE(value == "JULIANDAY('now')");
     }
     {
+        auto value = serialize(strftime("%s", "2014-10-07 02:34:56"), context);
+        REQUIRE(value == "STRFTIME('%s', '2014-10-07 02:34:56')");
+    }
+    {
         auto value = serialize(zeroblob(5), context);
         REQUIRE(value == "ZEROBLOB(5)");
     }

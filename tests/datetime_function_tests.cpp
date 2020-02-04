@@ -56,3 +56,10 @@ TEST_CASE("date") {
     REQUIRE(rows.size() == 1);
     REQUIRE(!rows.front().empty());
 }
+
+TEST_CASE("strftime") {
+    auto storage = make_storage({});
+    auto rows = storage.select(strftime("%Y %m %d", "now"));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(!rows.front().empty());
+}

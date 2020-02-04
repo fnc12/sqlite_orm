@@ -3602,6 +3602,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct strftime_string {
+            operator std::string() const {
+                return "STRFTIME";
+            }
+        };
+
         struct zeroblob_string {
             operator std::string() const {
                 return "ZEROBLOB";
@@ -3613,12 +3619,13 @@ namespace sqlite_orm {
                 return "SUBSTR";
             }
         };
-
+#ifdef SQLITE_SOUNDEX
         struct soundex_string {
             operator std::string() const {
                 return "SOUNDEX";
             }
         };
+#endif
     }
 
     /**
@@ -3897,6 +3904,15 @@ namespace sqlite_orm {
     }
 
     /**
+     *  STRFTIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    template<class... Args>
+    core_functions::core_function_t<std::string, core_functions::strftime_string, Args...> strftime(Args... args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    /**
      *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
      */
     template<class N>
@@ -3923,6 +3939,7 @@ namespace sqlite_orm {
         return {move(args)};
     }
 
+#ifdef SQLITE_SOUNDEX
     /**
  *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
  */
@@ -3931,6 +3948,7 @@ namespace sqlite_orm {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
+#endif
 
     template<class L,
              class R,

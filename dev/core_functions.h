@@ -163,6 +163,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct strftime_string {
+            operator std::string() const {
+                return "STRFTIME";
+            }
+        };
+
         struct zeroblob_string {
             operator std::string() const {
                 return "ZEROBLOB";
@@ -454,6 +460,15 @@ namespace sqlite_orm {
      */
     template<class... Args>
     core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args... args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    /**
+     *  STRFTIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
+     */
+    template<class... Args>
+    core_functions::core_function_t<std::string, core_functions::strftime_string, Args...> strftime(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {move(t)};
     }
