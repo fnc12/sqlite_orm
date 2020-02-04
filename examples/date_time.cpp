@@ -81,5 +81,17 @@ int main() {
     auto time12utc = storage.select(time("12:00", "utc")).front();
     cout << "SELECT time('12:00', 'utc') = " << time12utc << endl;
 
+    //  SELECT strftime('%Y %m %d','now')
+    auto strftimeRes = storage.select(strftime("%Y %m %d", "now")).front();
+    cout << "SELECT strftime('%Y %m %d','now') = " << strftimeRes << endl;
+
+    //  SELECT strftime('%H %M %S %s','now')
+    auto strftimeRes2 = storage.select(strftime("%H %M %S %s", "now")).front();
+    cout << "SELECT strftime('%H %M %S %s','now') = " << strftimeRes2 << endl;
+
+    //  SELECT strftime('%s','now') - strftime('%s','2014-10-07 02:34:56')
+    auto strftimeResSub = storage.select(strftime("%s", "now") - strftime("%s", "2014-10-07 02:34:56")).front();
+    cout << "SELECT strftime('%s','now') - strftime('%s','2014-10-07 02:34:56') = " << strftimeResSub << endl;
+
     return 0;
 }
