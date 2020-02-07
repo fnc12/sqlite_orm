@@ -24,7 +24,7 @@ TEST_CASE("statement_serializator check") {
 
         context_t context{storageImpl};
         auto value = serialize(ch, context);
-        REQUIRE(value == "CHECK (col3 > 0)");
+        REQUIRE(value == "CHECK (\"col3\" > 0)");
     }
     {
         struct Book {
@@ -47,6 +47,6 @@ TEST_CASE("statement_serializator check") {
 
         context_t context{storageImpl};
         auto value = serialize(ch, context);
-        REQUIRE(value == "CHECK (0 < PRICE)");
+        REQUIRE(value == "CHECK (0 < \"PRICE\")");
     }
 }

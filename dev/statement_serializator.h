@@ -10,6 +10,7 @@
 #include "constraints.h"
 #include "conditions.h"
 #include "column.h"
+#include "rowid.h"
 
 namespace sqlite_orm {
 
@@ -23,14 +24,49 @@ namespace sqlite_orm {
             statement_serializator<T> serializator;
             return serializator(t, context);
         }
+    
+    template<>
+    struct statement_serializator<rowid_t, void> {
+        using statement_type = rowid_t;
+        
+        template<class C>
+        std::string operator()(const statement_type &s, const C &context) {
+            return static_cast<std::string>(s);
+        }
+    };
+    
+    template<>
+    struct statement_serializator<_rowid_t, void> {
+        using statement_type = _rowid_t;
+        
+        template<class C>
+        std::string operator()(const statement_type &s, const C &context) {
+            return static_cast<std::string>(s);
+        }
+    };
+    
+    template<>
+    struct statement_serializator<oid_t, void> {
+        using statement_type = oid_t;
+        
+        template<class C>
+        std::string operator()(const statement_type &s, const C &context) {
+            return static_cast<std::string>(s);
+        }
+    };
 
         template<class O, class F>
         struct statement_serializator<F O::*, void> {
             using statement_type = F O::*;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
-                return context.impl.column_name(c);
+            std::string operator()(const statement_type &m, const C &context) const {
+                std::stringstream ss;
+                if(!context.skip_table_name) {
+                    ss << "\"" << context.impl.find_table_name(typeid(O)) << "\".";
+                }
+                ss << "\"" << context.column_name(m) << "\"";
+                return ss.str();
             }
         };
 
@@ -130,7 +166,11 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
-                return "\"" + c + "\"";
+                if(context.replace_bindable_with_question){
+                    return "?";
+                }else{
+                    return "\'" + c + "\'";
+                }
             }
         };
 
@@ -140,7 +180,11 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const char *c, const C &context) const {
-                return std::string("'") + c + "'";
+                if(context.replace_bindable_with_question){
+                    return "?";
+                }else{
+                    return std::string("'") + c + "'";
+                }
             }
         };
 

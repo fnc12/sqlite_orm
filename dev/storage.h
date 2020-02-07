@@ -221,34 +221,39 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            std::string string_from_expression(const std::string &, bool /*noTableName*/) const {
-                return "?";
+            std::string string_from_expression(const std::string &s, bool /*noTableName*/) const {
+                serializator_context_base context;
+                context.replace_bindable_with_question = true;
+                return serialize(s, context);
             }
 
-            std::string string_from_expression(const char *, bool /*noTableName*/) const {
-                return "?";
+            std::string string_from_expression(const char *s, bool /*noTableName*/) const {
+                serializator_context_base context;
+                context.replace_bindable_with_question = true;
+                return serialize(s, context);
             }
 
             template<class F, class O>
             std::string string_from_expression(F O::*m, bool noTableName) const {
-                std::stringstream ss;
-                if(!noTableName) {
-                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
-                }
-                ss << "\"" << this->impl.column_name(m) << "\"";
-                return ss.str();
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = noTableName;
+                return serialize(m, context);
             }
 
             std::string string_from_expression(const rowid_t &rid, bool /*noTableName*/) const {
-                return static_cast<std::string>(rid);
+                serializator_context_base context;
+                return serialize(rid, context);
             }
 
             std::string string_from_expression(const oid_t &rid, bool /*noTableName*/) const {
-                return static_cast<std::string>(rid);
+                serializator_context_base context;
+                return serialize(rid, context);
             }
 
             std::string string_from_expression(const _rowid_t &rid, bool /*noTableName*/) const {
-                return static_cast<std::string>(rid);
+                serializator_context_base context;
+                return serialize(rid, context);
             }
 
             template<class O>
