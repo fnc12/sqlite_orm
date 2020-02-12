@@ -18,7 +18,6 @@
 		"dev/alias.h",
 		"dev/join_iterator.h",
 		"dev/core_functions.h",
-		"dev/aggregate_functions.h",
 		"dev/typed_comparator.h",
 		"dev/select_constraints.h",
 		"dev/table_type.h",

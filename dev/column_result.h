@@ -5,7 +5,6 @@
 #include <functional>  //  std::reference_wrapper
 
 #include "core_functions.h"
-#include "aggregate_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
 #include "rowid.h"
@@ -20,7 +19,7 @@ namespace sqlite_orm {
         /**
          *  This is a proxy class used to define what type must have result type depending on select
          *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
-         *  for different types. E.g. specialization for core_functions::length_t has `type` int cause
+         *  for different types. E.g. specialization for internal::length_t has `type` int cause
          *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
          *  c++ SELECT return type for T
          *  T - C++ type
@@ -53,61 +52,23 @@ namespace sqlite_orm {
             using type = typename setter_traits<T>::field_type;
         };
 
-        template<class St, class T>
-        struct column_result_t<
-            St,
-            T,
-            typename std::enable_if<is_base_of_template<T, core_functions::core_function_t>::value>::type> {
-            using type = typename T::return_type;
+        template<class St, class R, class S, class... Args>
+        struct column_result_t<St, internal::core_function_t<R, S, Args...>, void> {
+            using type = R;
+        };
+
+        template<class St, class X, class S>
+        struct column_result_t<St, core_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
         template<class St, class T>
-        struct column_result_t<St, aggregate_functions::avg_t<T>, void> {
-            using type = double;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::count_t<T>, void> {
+        struct column_result_t<St, count_asterisk_t<T>, void> {
             using type = int;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::count_asterisk_t<T>, void> {
-            using type = int;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::sum_t<T>, void> {
-            using type = std::unique_ptr<double>;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::total_t<T>, void> {
-            using type = double;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::group_concat_single_t<T>, void> {
-            using type = std::string;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::group_concat_double_t<T>, void> {
-            using type = std::string;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::max_t<T>, void> {
-            using type = std::unique_ptr<typename column_result_t<St, T>::type>;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::min_t<T>, void> {
-            using type = std::unique_ptr<typename column_result_t<St, T>::type>;
         };
 
         template<class St>
-        struct column_result_t<St, aggregate_functions::count_asterisk_without_type, void> {
+        struct column_result_t<St, count_asterisk_without_type, void> {
             using type = int;
         };
 

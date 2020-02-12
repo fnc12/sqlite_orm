@@ -29,7 +29,6 @@
 #include "type_is_nullable.h"
 #include "field_printer.h"
 #include "rowid.h"
-#include "aggregate_functions.h"
 #include "operators.h"
 #include "select_constraints.h"
 #include "core_functions.h"
@@ -185,8 +184,7 @@ namespace sqlite_orm {
             }
 
             template<class R, class S, class... Args>
-            std::string string_from_expression(const core_functions::core_function_t<R, S, Args...> &c,
-                                               bool noTableName) const {
+            std::string string_from_expression(const core_function_t<R, S, Args...> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << "(";
                 std::vector<std::string> args;
@@ -281,25 +279,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::group_concat_double_t<T> &f,
-                                               bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                auto expr2 = this->string_from_expression(f.y, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::group_concat_single_t<T> &f,
-                                               bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
             template<class L, class R, class... Ds>
             std::string string_from_expression(const binary_operator<L, R, Ds...> &f, bool noTableName) const {
                 std::stringstream ss;
@@ -310,63 +289,14 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            std::string string_from_expression(const aggregate_functions::min_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
+            std::string string_from_expression(const internal::count_asterisk_t<T> &, bool noTableName) const {
+                return this->string_from_expression(internal::count_asterisk_without_type{}, noTableName);
             }
 
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::max_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::total_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::sum_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::count_asterisk_t<T> &,
-                                               bool noTableName) const {
-                return this->string_from_expression(aggregate_functions::count_asterisk_without_type{}, noTableName);
-            }
-
-            std::string string_from_expression(const aggregate_functions::count_asterisk_without_type &f,
+            std::string string_from_expression(const internal::count_asterisk_without_type &f,
                                                bool /*noTableName*/) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(*)";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::count_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::avg_t<T> &a, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(a.arg, noTableName);
-                ss << static_cast<std::string>(a) << "(" << expr << ") ";
                 return ss.str();
             }
 
@@ -1284,60 +1214,9 @@ namespace sqlite_orm {
                 return {std::make_pair(this->impl.find_table_name(typeid(O)), std::move(alias))};
             }
 
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::min_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::max_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::sum_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::total_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::group_concat_double_t<T> &f) const {
-                auto res = this->parse_table_name(f.arg);
-                auto secondSet = this->parse_table_name(f.y);
-                res.insert(secondSet.begin(), secondSet.end());
-                return res;
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::group_concat_single_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::count_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::avg_t<T> &a) const {
-                return this->parse_table_name(a.arg);
-            }
-
             template<class R, class S, class... Args>
             std::set<std::pair<std::string, std::string>>
-            parse_table_name(const core_functions::core_function_t<R, S, Args...> &f) const {
+            parse_table_name(const core_function_t<R, S, Args...> &f) const {
                 std::set<std::pair<std::string, std::string>> res;
                 iterate_tuple(f.args, [&res, this](auto &v) {
                     auto tableNames = this->parse_table_name(v);
@@ -1381,7 +1260,7 @@ namespace sqlite_orm {
 
             template<class T>
             std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::count_asterisk_t<T> &) const {
+            parse_table_name(const internal::count_asterisk_t<T> &) const {
                 auto tableName = this->impl.find_table_name(typeid(T));
                 if(!tableName.empty()) {
                     return {std::make_pair(std::move(tableName), "")};
@@ -1391,7 +1270,7 @@ namespace sqlite_orm {
             }
 
             std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::count_asterisk_without_type &) const {
+            parse_table_name(const internal::count_asterisk_without_type &) const {
                 return {};
             }
 
