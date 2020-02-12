@@ -3451,7 +3451,10 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
-    namespace core_functions {
+    namespace internal {
+
+        template<class T>
+        struct unique_ptr_result_of {};
 
         /**
          *  Base class for operator overloading
@@ -3626,56 +3629,130 @@ namespace sqlite_orm {
             }
         };
 #endif
+        struct total_string {
+            operator std::string() const {
+                return "TOTAL";
+            }
+        };
+
+        struct sum_string {
+            operator std::string() const {
+                return "SUM";
+            }
+        };
+
+        struct count_string {
+            operator std::string() const {
+                return "COUNT";
+            }
+        };
+
+        /**
+         *  T is use to specify type explicitly for queries like
+         *  SELECT COUNT(*) FROM table_name;
+         *  T can be omitted with void.
+         */
+        template<class T>
+        struct count_asterisk_t : count_string {
+            using type = T;
+        };
+
+        /**
+         *  The same thing as count<T>() but without T arg.
+         *  Is used in cases like this:
+         *    SELECT cust_code, cust_name, cust_city, grade
+         *    FROM customer
+         *    WHERE grade=2 AND EXISTS
+         *        (SELECT COUNT(*)
+         *        FROM customer
+         *        WHERE grade=2
+         *        GROUP BY grade
+         *        HAVING COUNT(*)>2);
+         *  `c++`
+         *  auto rows =
+         *      storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
+         *          where(is_equal(&Customer::grade, 2)
+         *              and exists(select(count<Customer>(),
+         *                  where(is_equal(&Customer::grade, 2)),
+         *          group_by(&Customer::grade),
+         *          having(greater_than(count(), 2))))));
+         */
+        struct count_asterisk_without_type : count_string {};
+
+        struct avg_string {
+            operator std::string() const {
+                return "AVG";
+            }
+        };
+
+        struct max_string {
+            operator std::string() const {
+                return "MAX";
+            }
+        };
+
+        struct min_string {
+            operator std::string() const {
+                return "MIN";
+            }
+        };
+
+        struct group_concat_string {
+            operator std::string() const {
+                return "GROUP_CONCAT";
+            }
+        };
+
     }
 
     /**
      *  Cute operators for core functions
      */
 
-    template<class F,
-             class R,
-             typename = typename std::enable_if<
-                 internal::is_base_of_template<F, core_functions::core_function_t>::value>::type>
+    template<
+        class F,
+        class R,
+        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
     conditions::lesser_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             typename = typename std::enable_if<
-                 internal::is_base_of_template<F, core_functions::core_function_t>::value>::type>
+    template<
+        class F,
+        class R,
+        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
     conditions::lesser_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             typename = typename std::enable_if<
-                 internal::is_base_of_template<F, core_functions::core_function_t>::value>::type>
+    template<
+        class F,
+        class R,
+        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
     conditions::greater_than_t<F, R> operator>(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             typename = typename std::enable_if<
-                 internal::is_base_of_template<F, core_functions::core_function_t>::value>::type>
+    template<
+        class F,
+        class R,
+        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
     conditions::greater_or_equal_t<F, R> operator>=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             typename = typename std::enable_if<
-                 internal::is_base_of_template<F, core_functions::core_function_t>::value>::type>
+    template<
+        class F,
+        class R,
+        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
     conditions::is_equal_t<F, R> operator==(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<class F,
-             class R,
-             typename = typename std::enable_if<
-                 internal::is_base_of_template<F, core_functions::core_function_t>::value>::type>
+    template<
+        class F,
+        class R,
+        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
     conditions::is_not_equal_t<F, R> operator!=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
@@ -3684,7 +3761,7 @@ namespace sqlite_orm {
      *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
      */
     template<class T>
-    core_functions::core_function_t<int, core_functions::length_string, T> length(T t) {
+    internal::core_function_t<int, internal::length_string, T> length(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {move(args)};
     }
@@ -3693,7 +3770,7 @@ namespace sqlite_orm {
      *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
      */
     template<class T>
-    core_functions::core_function_t<std::unique_ptr<double>, core_functions::abs_string, T> abs(T t) {
+    internal::core_function_t<std::unique_ptr<double>, internal::abs_string, T> abs(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {move(args)};
     }
@@ -3702,7 +3779,7 @@ namespace sqlite_orm {
      *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::lower_string, T> lower(T t) {
+    internal::core_function_t<std::string, internal::lower_string, T> lower(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {move(args)};
     }
@@ -3711,7 +3788,7 @@ namespace sqlite_orm {
      *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::upper_string, T> upper(T t) {
+    internal::core_function_t<std::string, internal::upper_string, T> upper(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {move(args)};
     }
@@ -3719,7 +3796,7 @@ namespace sqlite_orm {
     /**
      *  CHANGES() function https://sqlite.org/lang_corefunc.html#changes
      */
-    inline core_functions::core_function_t<int, core_functions::changes_string> changes() {
+    inline internal::core_function_t<int, internal::changes_string> changes() {
         return {{}};
     }
 
@@ -3727,7 +3804,7 @@ namespace sqlite_orm {
      *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class T>
-    core_functions::core_function_t<std::string, core_functions::trim_string, T> trim(T t) {
+    internal::core_function_t<std::string, internal::trim_string, T> trim(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {move(args)};
     }
@@ -3736,7 +3813,7 @@ namespace sqlite_orm {
      *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::trim_string, X, Y> trim(X x, Y y) {
+    internal::core_function_t<std::string, internal::trim_string, X, Y> trim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
@@ -3745,7 +3822,7 @@ namespace sqlite_orm {
      *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::ltrim_string, X> ltrim(X x) {
+    internal::core_function_t<std::string, internal::ltrim_string, X> ltrim(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
@@ -3754,7 +3831,7 @@ namespace sqlite_orm {
      *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::ltrim_string, X, Y> ltrim(X x, Y y) {
+    internal::core_function_t<std::string, internal::ltrim_string, X, Y> ltrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
@@ -3763,7 +3840,7 @@ namespace sqlite_orm {
      *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::rtrim_string, X> rtrim(X x) {
+    internal::core_function_t<std::string, internal::rtrim_string, X> rtrim(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
@@ -3772,7 +3849,7 @@ namespace sqlite_orm {
      *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::rtrim_string, X, Y> rtrim(X x, Y y) {
+    internal::core_function_t<std::string, internal::rtrim_string, X, Y> rtrim(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
@@ -3781,7 +3858,7 @@ namespace sqlite_orm {
      *  HEX(X) function https://sqlite.org/lang_corefunc.html#hex
      */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::hex_string, X> hex(X x) {
+    internal::core_function_t<std::string, internal::hex_string, X> hex(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
@@ -3790,7 +3867,7 @@ namespace sqlite_orm {
      *  QUOTE(X) function https://sqlite.org/lang_corefunc.html#quote
      */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::quote_string, X> quote(X x) {
+    internal::core_function_t<std::string, internal::quote_string, X> quote(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
@@ -3799,7 +3876,7 @@ namespace sqlite_orm {
      *  RANDOMBLOB(X) function https://sqlite.org/lang_corefunc.html#randomblob
      */
     template<class X>
-    core_functions::core_function_t<std::vector<char>, core_functions::randomblob_string, X> randomblob(X x) {
+    internal::core_function_t<std::vector<char>, internal::randomblob_string, X> randomblob(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
@@ -3808,7 +3885,7 @@ namespace sqlite_orm {
      *  INSTR(X) function https://sqlite.org/lang_corefunc.html#instr
      */
     template<class X, class Y>
-    core_functions::core_function_t<int, core_functions::instr_string, X, Y> instr(X x, Y y) {
+    internal::core_function_t<int, internal::instr_string, X, Y> instr(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
@@ -3817,7 +3894,7 @@ namespace sqlite_orm {
      *  REPLACE(X) function https://sqlite.org/lang_corefunc.html#replace
      */
     template<class X, class Y, class Z>
-    core_functions::core_function_t<std::string, core_functions::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
+    internal::core_function_t<std::string, internal::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
         return {move(args)};
     }
@@ -3826,7 +3903,7 @@ namespace sqlite_orm {
      *  ROUND(X) function https://sqlite.org/lang_corefunc.html#round
      */
     template<class X>
-    core_functions::core_function_t<double, core_functions::round_string, X> round(X x) {
+    internal::core_function_t<double, internal::round_string, X> round(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
@@ -3835,7 +3912,7 @@ namespace sqlite_orm {
      *  ROUND(X, Y) function https://sqlite.org/lang_corefunc.html#round
      */
     template<class X, class Y>
-    core_functions::core_function_t<double, core_functions::round_string, X, Y> round(X x, Y y) {
+    internal::core_function_t<double, internal::round_string, X, Y> round(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
@@ -3846,14 +3923,14 @@ namespace sqlite_orm {
      *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::char_string, Args...> char_(Args... args) {
+    internal::core_function_t<std::string, internal::char_string, Args...> char_(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**
      *  RANDOM() function https://www.sqlite.org/lang_corefunc.html#random
      */
-    inline core_functions::core_function_t<int, core_functions::random_string> random() {
+    inline internal::core_function_t<int, internal::random_string> random() {
         return {{}};
     }
 
@@ -3863,7 +3940,7 @@ namespace sqlite_orm {
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
     template<class R, class... Args>
-    core_functions::core_function_t<R, core_functions::coalesce_string, Args...> coalesce(Args... args) {
+    internal::core_function_t<R, internal::coalesce_string, Args...> coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -3871,7 +3948,7 @@ namespace sqlite_orm {
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::date_string, Args...> date(Args... args) {
+    internal::core_function_t<std::string, internal::date_string, Args...> date(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {move(t)};
     }
@@ -3880,7 +3957,7 @@ namespace sqlite_orm {
      *  TIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::time_string, Args...> time(Args... args) {
+    internal::core_function_t<std::string, internal::time_string, Args...> time(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {move(t)};
     }
@@ -3889,7 +3966,7 @@ namespace sqlite_orm {
      *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::datetime_string, Args...> datetime(Args... args) {
+    internal::core_function_t<std::string, internal::datetime_string, Args...> datetime(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {move(t)};
     }
@@ -3898,7 +3975,7 @@ namespace sqlite_orm {
      *  JULIANDAY(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<double, core_functions::julianday_string, Args...> julianday(Args... args) {
+    internal::core_function_t<double, internal::julianday_string, Args...> julianday(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {move(t)};
     }
@@ -3907,7 +3984,7 @@ namespace sqlite_orm {
      *  STRFTIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    core_functions::core_function_t<std::string, core_functions::strftime_string, Args...> strftime(Args... args) {
+    internal::core_function_t<std::string, internal::strftime_string, Args...> strftime(Args... args) {
         std::tuple<Args...> t{std::forward<Args>(args)...};
         return {move(t)};
     }
@@ -3916,7 +3993,7 @@ namespace sqlite_orm {
      *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
      */
     template<class N>
-    core_functions::core_function_t<std::vector<char>, core_functions::zeroblob_string, N> zeroblob(N n) {
+    internal::core_function_t<std::vector<char>, internal::zeroblob_string, N> zeroblob(N n) {
         std::tuple<N> args{std::forward<N>(n)};
         return {move(args)};
     }
@@ -3925,7 +4002,7 @@ namespace sqlite_orm {
      *  SUBSTR(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y>
-    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y> substr(X x, Y y) {
+    internal::core_function_t<std::string, internal::substr_string, X, Y> substr(X x, Y y) {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
@@ -3934,21 +4011,109 @@ namespace sqlite_orm {
      *  SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y, class Z>
-    core_functions::core_function_t<std::string, core_functions::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
+    internal::core_function_t<std::string, internal::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
         return {move(args)};
     }
 
 #ifdef SQLITE_SOUNDEX
     /**
- *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
- */
+     *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
+     */
     template<class X>
-    core_functions::core_function_t<std::string, core_functions::soundex_string, X> soundex(X x) {
+    internal::core_function_t<std::string, internal::soundex_string, X> soundex(X x) {
         std::tuple<X> args{std::forward<X>(x)};
         return {move(args)};
     }
 #endif
+
+    /**
+     *  TOTAL(X) aggregate function.
+     */
+    template<class X>
+    internal::core_function_t<double, internal::total_string, X> total(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  SUM(X) aggregate function.
+     */
+    template<class X>
+    internal::core_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  COUNT(X) aggregate function.
+     */
+    template<class X>
+    internal::core_function_t<int, internal::count_string, X> count(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  COUNT(*) without FROM function.
+     */
+    inline internal::count_asterisk_without_type count() {
+        return {};
+    }
+
+    /**
+     *  COUNT(*) with FROM function. Specified type T will be serializeed as
+     *  a from argument.
+     */
+    template<class T>
+    internal::count_asterisk_t<T> count() {
+        return {};
+    }
+
+    /**
+     *  AVG(X) aggregate function.
+     */
+    template<class X>
+    internal::core_function_t<double, internal::avg_string, X> avg(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  MAX(X) aggregate function.
+     */
+    template<class X>
+    internal::core_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  MIN(X) aggregate function.
+     */
+    template<class X>
+    internal::core_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  GROUP_CONCAT(X) aggregate function.
+     */
+    template<class X>
+    internal::core_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    /**
+     *  GROUP_CONCAT(X, Y) aggregate function.
+     */
+    template<class X, class Y>
+    internal::core_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
 
     template<class L,
              class R,
@@ -3993,278 +4158,6 @@ namespace sqlite_orm {
                                                  0)>::type>
     internal::mod_t<L, R> operator%(L l, R r) {
         return {std::move(l), std::move(r)};
-    }
-}
-#pragma once
-
-namespace sqlite_orm {
-
-    namespace aggregate_functions {
-
-        struct avg_string {
-            operator std::string() const {
-                return "AVG";
-            }
-        };
-
-        /**
-         *  Result of avg(...) call.
-         *  T is an argument type
-         */
-        template<class T>
-        struct avg_t : avg_string {
-            using arg_type = T;
-
-            arg_type arg;
-
-            avg_t(arg_type arg_) : arg(std::move(arg_)) {}
-        };
-
-        struct count_string {
-            operator std::string() const {
-                return "COUNT";
-            }
-        };
-
-        /**
-         *  Result of count(...) call.
-         *  T is an argument type
-         */
-        template<class T>
-        struct count_t : count_string {
-            using arg_type = T;
-
-            arg_type arg;
-
-            count_t(arg_type arg_) : arg(std::move(arg_)) {}
-        };
-
-        /**
-         *  T is use to specify type explicitly for queries like
-         *  SELECT COUNT(*) FROM table_name;
-         *  T can be omitted with void.
-         */
-        template<class T>
-        struct count_asterisk_t : count_string {
-            using type = T;
-        };
-
-        /**
-         *  The same thing as count<T>() but without T arg.
-         *  Is used in cases like this:
-         *    SELECT cust_code, cust_name, cust_city, grade
-         *    FROM customer
-         *    WHERE grade=2 AND EXISTS
-         *        (SELECT COUNT(*)
-         *        FROM customer
-         *        WHERE grade=2
-         *        GROUP BY grade
-         *        HAVING COUNT(*)>2);
-         *  `c++`
-         *  auto rows =
-         *      storage.select(columns(&Customer::code, &Customer::name, &Customer::city, &Customer::grade),
-         *          where(is_equal(&Customer::grade, 2)
-         *              and exists(select(count<Customer>(),
-         *                  where(is_equal(&Customer::grade, 2)),
-         *          group_by(&Customer::grade),
-         *          having(greater_than(count(), 2))))));
-         */
-        struct count_asterisk_without_type : count_string {};
-
-        struct sum_string {
-            operator std::string() const {
-                return "SUM";
-            }
-        };
-
-        /**
-         *  Result of sum(...) call.
-         *  T is an argument type
-         */
-        template<class T>
-        struct sum_t : sum_string {
-            using arg_type = T;
-
-            arg_type arg;
-
-            sum_t(arg_type arg_) : arg(std::move(arg_)) {}
-        };
-
-        struct total_string {
-            operator std::string() const {
-                return "TOTAL";
-            }
-        };
-
-        /**
-         *  Result of total(...) call.
-         *  T is an argument type
-         */
-        template<class T>
-        struct total_t : total_string {
-            using arg_type = T;
-
-            arg_type arg;
-
-            total_t(arg_type arg_) : arg(std::move(arg_)) {}
-        };
-
-        struct max_string {
-            operator std::string() const {
-                return "MAX";
-            }
-        };
-
-        /**
-         *  Result of max(...) call.
-         *  T is an argument type
-         */
-        template<class T>
-        struct max_t : max_string {
-            using arg_type = T;
-
-            arg_type arg;
-
-            max_t(arg_type arg_) : arg(std::move(arg_)) {}
-        };
-
-        struct min_string {
-            operator std::string() const {
-                return "MIN";
-            }
-        };
-
-        /**
-         *  Result of min(...) call.
-         *  T is an argument type
-         */
-        template<class T>
-        struct min_t : min_string {
-            using arg_type = T;
-
-            arg_type arg;
-
-            min_t(arg_type arg_) : arg(std::move(arg_)) {}
-        };
-
-        struct group_concat_string {
-            operator std::string() const {
-                return "GROUP_CONCAT";
-            }
-        };
-
-        /**
-         *  Result of group_concat(X) call.
-         *  T is an argument type
-         */
-        template<class T>
-        struct group_concat_single_t : group_concat_string {
-            using arg_type = T;
-
-            arg_type arg;
-
-            group_concat_single_t(arg_type arg_) : arg(std::move(arg_)) {}
-        };
-
-        struct group_concat_double_base : group_concat_string {
-            std::string y;
-
-            group_concat_double_base(std::string y_) : y(move(y_)) {}
-        };
-
-        /**
-         *  Result of group_concat(X, Y) call.
-         *  T is an argument type
-         */
-        template<class T>
-        struct group_concat_double_t : group_concat_double_base {
-            using arg_type = T;
-
-            arg_type arg;
-
-            group_concat_double_t(arg_type arg_, std::string y) :
-                group_concat_double_base(move(y)), arg(std::move(arg_)) {}
-        };
-    }
-
-    /**
-     *  AVG(X) aggregate function.
-     */
-    template<class T>
-    aggregate_functions::avg_t<T> avg(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  COUNT(X) aggregate function.
-     */
-    template<class T>
-    aggregate_functions::count_t<T> count(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  COUNT(*) without FROM function.
-     */
-    inline aggregate_functions::count_asterisk_without_type count() {
-        return {};
-    }
-
-    /**
-     *  COUNT(*) with FROM function. Specified type T will be serializeed as
-     *  a from argument.
-     */
-    template<class T>
-    aggregate_functions::count_asterisk_t<T> count() {
-        return {};
-    }
-
-    /**
-     *  SUM(X) aggregate function.
-     */
-    template<class T>
-    aggregate_functions::sum_t<T> sum(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  MAX(X) aggregate function.
-     */
-    template<class T>
-    aggregate_functions::max_t<T> max(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  MIN(X) aggregate function.
-     */
-    template<class T>
-    aggregate_functions::min_t<T> min(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  TOTAL(X) aggregate function.
-     */
-    template<class T>
-    aggregate_functions::total_t<T> total(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  GROUP_CONCAT(X) aggregate function.
-     */
-    template<class T>
-    aggregate_functions::group_concat_single_t<T> group_concat(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  GROUP_CONCAT(X, Y) aggregate function.
-     */
-    template<class T, class Y>
-    aggregate_functions::group_concat_double_t<T> group_concat(T t, Y y) {
-        return {std::move(t), std::move(y)};
     }
 }
 #pragma once
@@ -5539,8 +5432,6 @@ namespace sqlite_orm {
 
 // #include "core_functions.h"
 
-// #include "aggregate_functions.h"
-
 // #include "select_constraints.h"
 
 // #include "operators.h"
@@ -5698,7 +5589,7 @@ namespace sqlite_orm {
         /**
          *  This is a proxy class used to define what type must have result type depending on select
          *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
-         *  for different types. E.g. specialization for core_functions::length_t has `type` int cause
+         *  for different types. E.g. specialization for internal::length_t has `type` int cause
          *  LENGTH returns INTEGER in sqlite. Every column_result_t must have `type` type that equals
          *  c++ SELECT return type for T
          *  T - C++ type
@@ -5731,61 +5622,23 @@ namespace sqlite_orm {
             using type = typename setter_traits<T>::field_type;
         };
 
-        template<class St, class T>
-        struct column_result_t<
-            St,
-            T,
-            typename std::enable_if<is_base_of_template<T, core_functions::core_function_t>::value>::type> {
-            using type = typename T::return_type;
+        template<class St, class R, class S, class... Args>
+        struct column_result_t<St, internal::core_function_t<R, S, Args...>, void> {
+            using type = R;
+        };
+
+        template<class St, class X, class S>
+        struct column_result_t<St, core_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
         template<class St, class T>
-        struct column_result_t<St, aggregate_functions::avg_t<T>, void> {
-            using type = double;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::count_t<T>, void> {
+        struct column_result_t<St, count_asterisk_t<T>, void> {
             using type = int;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::count_asterisk_t<T>, void> {
-            using type = int;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::sum_t<T>, void> {
-            using type = std::unique_ptr<double>;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::total_t<T>, void> {
-            using type = double;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::group_concat_single_t<T>, void> {
-            using type = std::string;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::group_concat_double_t<T>, void> {
-            using type = std::string;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::max_t<T>, void> {
-            using type = std::unique_ptr<typename column_result_t<St, T>::type>;
-        };
-
-        template<class St, class T>
-        struct column_result_t<St, aggregate_functions::min_t<T>, void> {
-            using type = std::unique_ptr<typename column_result_t<St, T>::type>;
         };
 
         template<class St>
-        struct column_result_t<St, aggregate_functions::count_asterisk_without_type, void> {
+        struct column_result_t<St, count_asterisk_without_type, void> {
             using type = int;
         };
 
@@ -6768,8 +6621,6 @@ namespace sqlite_orm {
 // #include "field_printer.h"
 
 // #include "rowid.h"
-
-// #include "aggregate_functions.h"
 
 // #include "operators.h"
 
@@ -7756,8 +7607,8 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct ast_iterator<core_functions::core_function_t<R, S, Args...>, void> {
-            using node_type = core_functions::core_function_t<R, S, Args...>;
+        struct ast_iterator<core_function_t<R, S, Args...>, void> {
+            using node_type = core_function_t<R, S, Args...>;
 
             template<class L>
             void operator()(const node_type &f, const L &l) const {
@@ -9079,8 +8930,8 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct statement_serializator<core_functions::core_function_t<R, S, Args...>, void> {
-            using statement_type = core_functions::core_function_t<R, S, Args...>;
+        struct statement_serializator<core_function_t<R, S, Args...>, void> {
+            using statement_type = core_function_t<R, S, Args...>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9478,8 +9329,7 @@ namespace sqlite_orm {
             }
 
             template<class R, class S, class... Args>
-            std::string string_from_expression(const core_functions::core_function_t<R, S, Args...> &c,
-                                               bool noTableName) const {
+            std::string string_from_expression(const core_function_t<R, S, Args...> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << "(";
                 std::vector<std::string> args;
@@ -9574,25 +9424,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::group_concat_double_t<T> &f,
-                                               bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                auto expr2 = this->string_from_expression(f.y, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ", " << expr2 << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::group_concat_single_t<T> &f,
-                                               bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
             template<class L, class R, class... Ds>
             std::string string_from_expression(const binary_operator<L, R, Ds...> &f, bool noTableName) const {
                 std::stringstream ss;
@@ -9603,63 +9434,14 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            std::string string_from_expression(const aggregate_functions::min_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
+            std::string string_from_expression(const internal::count_asterisk_t<T> &, bool noTableName) const {
+                return this->string_from_expression(internal::count_asterisk_without_type{}, noTableName);
             }
 
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::max_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::total_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::sum_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::count_asterisk_t<T> &,
-                                               bool noTableName) const {
-                return this->string_from_expression(aggregate_functions::count_asterisk_without_type{}, noTableName);
-            }
-
-            std::string string_from_expression(const aggregate_functions::count_asterisk_without_type &f,
+            std::string string_from_expression(const internal::count_asterisk_without_type &f,
                                                bool /*noTableName*/) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(f) << "(*)";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::count_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.arg, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const aggregate_functions::avg_t<T> &a, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(a.arg, noTableName);
-                ss << static_cast<std::string>(a) << "(" << expr << ") ";
                 return ss.str();
             }
 
@@ -10577,60 +10359,9 @@ namespace sqlite_orm {
                 return {std::make_pair(this->impl.find_table_name(typeid(O)), std::move(alias))};
             }
 
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::min_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::max_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::sum_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::total_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::group_concat_double_t<T> &f) const {
-                auto res = this->parse_table_name(f.arg);
-                auto secondSet = this->parse_table_name(f.y);
-                res.insert(secondSet.begin(), secondSet.end());
-                return res;
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::group_concat_single_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::count_t<T> &f) const {
-                return this->parse_table_name(f.arg);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::avg_t<T> &a) const {
-                return this->parse_table_name(a.arg);
-            }
-
             template<class R, class S, class... Args>
             std::set<std::pair<std::string, std::string>>
-            parse_table_name(const core_functions::core_function_t<R, S, Args...> &f) const {
+            parse_table_name(const core_function_t<R, S, Args...> &f) const {
                 std::set<std::pair<std::string, std::string>> res;
                 iterate_tuple(f.args, [&res, this](auto &v) {
                     auto tableNames = this->parse_table_name(v);
@@ -10674,7 +10405,7 @@ namespace sqlite_orm {
 
             template<class T>
             std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::count_asterisk_t<T> &) const {
+            parse_table_name(const internal::count_asterisk_t<T> &) const {
                 auto tableName = this->impl.find_table_name(typeid(T));
                 if(!tableName.empty()) {
                     return {std::make_pair(std::move(tableName), "")};
@@ -10684,7 +10415,7 @@ namespace sqlite_orm {
             }
 
             std::set<std::pair<std::string, std::string>>
-            parse_table_name(const aggregate_functions::count_asterisk_without_type &) const {
+            parse_table_name(const internal::count_asterisk_without_type &) const {
                 return {};
             }
 
@@ -12464,8 +12195,8 @@ __pragma(pop_macro("min"))
         };
 
         template<class R, class S, class... Args>
-        struct node_tuple<core_functions::core_function_t<R, S, Args...>, void> {
-            using node_type = core_functions::core_function_t<R, S, Args...>;
+        struct node_tuple<core_function_t<R, S, Args...>, void> {
+            using node_type = core_function_t<R, S, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 

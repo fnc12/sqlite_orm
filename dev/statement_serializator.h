@@ -35,8 +35,8 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct statement_serializator<core_functions::core_function_t<R, S, Args...>, void> {
-            using statement_type = core_functions::core_function_t<R, S, Args...>;
+        struct statement_serializator<core_function_t<R, S, Args...>, void> {
+            using statement_type = core_function_t<R, S, Args...>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
