@@ -160,7 +160,7 @@ namespace sqlite_orm {
                 });
                 ss << "FOREIGN KEY(";
                 for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
+                    ss << "'" << columnNames[i] << "'";
                     if(i < columnNames.size() - 1) {
                         ss << ", ";
                     }
@@ -181,7 +181,7 @@ namespace sqlite_orm {
                 });
                 ss << "(";
                 for(size_t i = 0; i < referencesNames.size(); ++i) {
-                    ss << referencesNames[i];
+                    ss << "'" << referencesNames[i] << "'";
                     if(i < referencesNames.size() - 1) {
                         ss << ", ";
                     }
