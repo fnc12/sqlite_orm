@@ -451,7 +451,6 @@ namespace sqlite_orm {
                         ss << " ";
                     }
                 }
-                //                ss << "FROM '" << impl.table.name << "' ";
                 ss << "FROM ";
                 std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
                                                                             collector.table_names.end());
