@@ -41,7 +41,7 @@ namespace sqlite_orm {
 
             template<class T, class C>
             void operator()(const alias_column_t<T, C> &a) const {
-                *this(a.column, alias_extractor<T>::get());
+                (*this)(a.column, alias_extractor<T>::get());
             }
 
             template<class T>

@@ -27,7 +27,7 @@ __pragma(push_macro("min"))
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
 
-        namespace sqlite_orm {
+namespace sqlite_orm {
 
     enum class orm_error_code {
         not_found = 1,
@@ -44,6 +44,7 @@ __pragma(push_macro("min"))
         failed_to_init_a_backup,
         unknown_member_value,
     };
+
 }
 
 namespace sqlite_orm {
@@ -224,6 +225,7 @@ namespace sqlite_orm {
 
 // #include "static_magic.h"
 
+
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
 
 namespace sqlite_orm {
@@ -257,6 +259,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -989,6 +992,7 @@ namespace sqlite_orm {
 
 // #include "serializator_context.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1018,6 +1022,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -1260,6 +1265,7 @@ namespace sqlite_orm {
 
 // #include "getter_traits.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1442,6 +1448,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -1773,6 +1780,7 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1804,6 +1812,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -3293,6 +3302,7 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -3412,6 +3422,7 @@ namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
+
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
 
 namespace sqlite_orm {
@@ -3448,6 +3459,7 @@ namespace sqlite_orm {
 #endif
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -4201,6 +4213,7 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -4557,6 +4570,7 @@ namespace sqlite_orm {
 
 // #include "column.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -4663,6 +4677,7 @@ namespace sqlite_orm {
 
 // #include "is_std_ptr.h"
 
+
 namespace sqlite_orm {
 
     /**
@@ -4689,6 +4704,7 @@ namespace sqlite_orm {
         }
     };
 }
+
 
 namespace sqlite_orm {
 
@@ -4900,6 +4916,7 @@ namespace sqlite_orm {
 
 // #include "journal_mode.h"
 
+
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
@@ -4959,6 +4976,7 @@ namespace sqlite_orm {
 }
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -5336,6 +5354,7 @@ namespace sqlite_orm {
 
 // #include "alias.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -5582,6 +5601,7 @@ namespace sqlite_orm {
     }
 }
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -5820,6 +5840,7 @@ namespace sqlite_orm {
 // #include "type_printer.h"
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
 
@@ -6120,9 +6141,11 @@ namespace sqlite_orm {
 
 // #include "field_value_holder.h"
 
+
 #include <type_traits>  //  std::enable_if
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -6145,6 +6168,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -6647,6 +6671,7 @@ namespace sqlite_orm {
 
 // #include "view.h"
 
+
 #include <memory>  //  std::shared_ptr
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
@@ -6662,6 +6687,7 @@ namespace sqlite_orm {
 
 // #include "iterator.h"
 
+
 #include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <sqlite3.h>
 #include <type_traits>  //  std::decay
@@ -6676,6 +6702,7 @@ namespace sqlite_orm {
 // #include "statement_finalizer.h"
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -6805,6 +6832,7 @@ namespace sqlite_orm {
 
 // #include "ast_iterator.h"
 
+
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 
@@ -6820,6 +6848,7 @@ namespace sqlite_orm {
 
 // #include "prepared_statement.h"
 
+
 #include <sqlite3.h>
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
@@ -6828,11 +6857,13 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <system_error>  //  std::system_error
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -6907,6 +6938,7 @@ namespace sqlite_orm {
 }
 
 // #include "select_constraints.h"
+
 
 namespace sqlite_orm {
 
@@ -7278,6 +7310,7 @@ namespace sqlite_orm {
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
+
 
 namespace sqlite_orm {
 
@@ -7756,6 +7789,7 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -7814,6 +7848,7 @@ namespace sqlite_orm {
 
 // #include "storage_base.h"
 
+
 #include <functional>  //  std::function, std::bind
 #include <sqlite3.h>
 #include <string>  //  std::string
@@ -7828,6 +7863,7 @@ namespace sqlite_orm {
 
 // #include "pragma.h"
 
+
 #include <string>  //  std::string
 #include <sqlite3.h>
 #include <functional>  //  std::function
@@ -7840,6 +7876,7 @@ namespace sqlite_orm {
 // #include "journal_mode.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -7961,12 +7998,14 @@ namespace sqlite_orm {
 
 // #include "limit_accesor.h"
 
+
 #include <sqlite3.h>
 #include <map>  //  std::map
 #include <functional>  //  std::function
 #include <memory>  //  std::shared_ptr
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -8101,9 +8140,11 @@ namespace sqlite_orm {
 
 // #include "transaction_guard.h"
 
+
 #include <functional>  //  std::function
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -8179,6 +8220,7 @@ namespace sqlite_orm {
 
 // #include "backup.h"
 
+
 #include <sqlite3.h>
 #include <string>  //  std::string
 #include <memory>
@@ -8186,6 +8228,7 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -8251,6 +8294,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -8787,10 +8831,12 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
+
 #include <type_traits>  //  std::decay
 #include <functional>  //  std::reference_wrapper
 
 // #include "prepared_statement.h"
+
 
 namespace sqlite_orm {
 
@@ -8911,6 +8957,7 @@ namespace sqlite_orm {
 
 // #include "statement_serializator.h"
 
+
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_arithmetic, std::enable_if
@@ -8924,6 +8971,7 @@ namespace sqlite_orm {
 // #include "conditions.h"
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
 
@@ -9214,6 +9262,7 @@ namespace sqlite_orm {
 
 // #include "table_name_collector.h"
 
+
 #include <set>  //  std::set
 #include <string>  //  std::string
 #include <functional>  //  std::function
@@ -9224,6 +9273,7 @@ namespace sqlite_orm {
 // #include "alias.h"
 
 // #include "core_functions.h"
+
 
 namespace sqlite_orm {
 
@@ -9257,7 +9307,7 @@ namespace sqlite_orm {
 
             template<class T, class C>
             void operator()(const alias_column_t<T, C> &a) const {
-                *this(a.column, alias_extractor<T>::get());
+                (*this)(a.column, alias_extractor<T>::get());
             }
 
             template<class T>
@@ -9282,6 +9332,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -11866,19 +11917,20 @@ __pragma(pop_macro("min"))
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
 
-    // #include "conditions.h"
+// #include "conditions.h"
 
-    // #include "operators.h"
+// #include "operators.h"
 
-    // #include "select_constraints.h"
+// #include "select_constraints.h"
 
-    // #include "prepared_statement.h"
+// #include "prepared_statement.h"
 
-    // #include "optional_container.h"
+// #include "optional_container.h"
 
-    // #include "core_functions.h"
+// #include "core_functions.h"
 
-    namespace sqlite_orm {
+
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -12159,6 +12211,7 @@ __pragma(pop_macro("min"))
 // #include "static_magic.h"
 
 // #include "expression_object_type.h"
+
 
 namespace sqlite_orm {
 
