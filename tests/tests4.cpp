@@ -1,6 +1,5 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
-#include <numeric>
 #include <algorithm>  //  std::count_if
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
