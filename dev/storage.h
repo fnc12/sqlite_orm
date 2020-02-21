@@ -12,7 +12,6 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
-#include <set>  //  std::set
 #include <algorithm>  //  std::find
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -47,6 +46,7 @@
 #include "prepared_statement.h"
 #include "expression_object_type.h"
 #include "statement_serializator.h"
+#include "table_name_collector.h"
 
 namespace sqlite_orm {
 
@@ -387,20 +387,24 @@ namespace sqlite_orm {
                     }
                     ss << " ";
                 }
-                auto tableNamesSet = this->parse_table_name(sel.col);
-                internal::join_iterator<Args...>()([&tableNamesSet, this](const auto &c) {
+                table_name_collector collector{[this](std::type_index ti) {
+                    return this->impl.find_table_name(ti);
+                }};
+                iterate_ast(sel.col, collector);
+                iterate_ast(sel.conditions, collector);
+                internal::join_iterator<Args...>()([&collector, this](const auto &c) {
                     using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
                     auto crossJoinedTableName = this->impl.find_table_name(typeid(cross_join_type));
                     auto tableAliasString = alias_extractor<original_join_type>::get();
                     std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
                                                                            std::move(tableAliasString));
-                    tableNamesSet.erase(tableNameWithAlias);
+                    collector.table_names.erase(tableNameWithAlias);
                 });
-                if(!tableNamesSet.empty()) {
+                if(!collector.table_names.empty()) {
                     ss << "FROM ";
-                    std::vector<std::pair<std::string, std::string>> tableNames(tableNamesSet.begin(),
-                                                                                tableNamesSet.end());
+                    std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
+                                                                                collector.table_names.end());
                     for(size_t i = 0; i < tableNames.size(); ++i) {
                         auto &tableNamePair = tableNames[i];
                         ss << "'" << tableNamePair.first << "' ";
@@ -426,11 +430,17 @@ namespace sqlite_orm {
 
             // Common code for statements returning the whole content of a table: get_all_t, get_all_pointer_t,
             // get_all_optional_t.
-            template<class T, class... Args>
-            std::stringstream string_from_expression_impl_get_all(bool /*noTableName*/) const {
+            template<class T>
+            std::stringstream string_from_expression_impl_get_all(const T &get_query, bool /*noTableName*/) const {
+                using primary_type = typename T::type;
+
+                table_name_collector collector;
+                collector.table_names.insert(
+                    std::make_pair(this->impl.find_table_name(typeid(primary_type)), std::string{}));
+                iterate_ast(get_query.conditions, collector);
                 std::stringstream ss;
                 ss << "SELECT ";
-                auto &impl = this->get_impl<T>();
+                auto &impl = this->get_impl<primary_type>();
                 auto columnNames = impl.table.column_names();
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << "\"" << impl.table.name << "\"."
@@ -441,20 +451,33 @@ namespace sqlite_orm {
                         ss << " ";
                     }
                 }
-                ss << "FROM '" << impl.table.name << "' ";
+                ss << "FROM ";
+                std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
+                                                                            collector.table_names.end());
+                for(size_t i = 0; i < tableNames.size(); ++i) {
+                    auto &tableNamePair = tableNames[i];
+                    ss << "'" << tableNamePair.first << "' ";
+                    if(!tableNamePair.second.empty()) {
+                        ss << tableNamePair.second << " ";
+                    }
+                    if(int(i) < int(tableNames.size()) - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
                 return ss;
             }
 
             template<class T, class... Args>
             std::string string_from_expression(const get_all_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = this->string_from_expression_impl_get_all<T>(noTableName);
+                std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
                 this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
 
             template<class T, class... Args>
             std::string string_from_expression(const get_all_pointer_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = this->string_from_expression_impl_get_all<T>(noTableName);
+                std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
                 this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
@@ -462,7 +485,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Args>
             std::string string_from_expression(const get_all_optional_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = this->string_from_expression_impl_get_all<T>(noTableName);
+                std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
                 this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
@@ -473,14 +496,13 @@ namespace sqlite_orm {
                                                bool /*noTableName*/) const {
                 std::stringstream ss;
                 ss << "UPDATE ";
-                std::set<std::pair<std::string, std::string>> tableNamesSet;
-                iterate_tuple(upd.set.assigns, [this, &tableNamesSet](auto &asgn) {
-                    auto tableName = this->parse_table_name(asgn.lhs);
-                    tableNamesSet.insert(tableName.begin(), tableName.end());
-                });
-                if(!tableNamesSet.empty()) {
-                    if(tableNamesSet.size() == 1) {
-                        ss << " '" << tableNamesSet.begin()->first << "' ";
+                table_name_collector collector{[this](std::type_index ti) {
+                    return this->impl.find_table_name(ti);
+                }};
+                iterate_ast(upd.set.assigns, collector);
+                if(!collector.table_names.empty()) {
+                    if(collector.table_names.size() == 1) {
+                        ss << " '" << collector.table_names.begin()->first << "' ";
                         ss << static_cast<std::string>(upd.set) << " ";
                         std::vector<std::string> setPairs;
                         iterate_tuple(upd.set.assigns, [this, &setPairs](auto &asgn) {
@@ -1204,242 +1226,6 @@ namespace sqlite_orm {
             }
 
           protected:
-            template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const T &) const {
-                return {};
-            }
-
-            template<class F, class O>
-            std::set<std::pair<std::string, std::string>> parse_table_name(F O::*, std::string alias = {}) const {
-                return {std::make_pair(this->impl.find_table_name(typeid(O)), std::move(alias))};
-            }
-
-            template<class R, class S, class... Args>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const core_function_t<R, S, Args...> &f) const {
-                std::set<std::pair<std::string, std::string>> res;
-                iterate_tuple(f.args, [&res, this](auto &v) {
-                    auto tableNames = this->parse_table_name(v);
-                    res.insert(tableNames.begin(), tableNames.end());
-                });
-                return res;
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const distinct_t<T> &f) const {
-                return this->parse_table_name(f.t);
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const all_t<T> &f) const {
-                return this->parse_table_name(f.t);
-            }
-
-            template<class L, class R, class... Ds>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const binary_operator<L, R, Ds...> &f) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftSet = this->parse_table_name(f.lhs);
-                res.insert(leftSet.begin(), leftSet.end());
-                auto rightSet = this->parse_table_name(f.rhs);
-                res.insert(rightSet.begin(), rightSet.end());
-                return res;
-            }
-
-            template<class T, class F>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const column_pointer<T, F> &) const {
-                std::set<std::pair<std::string, std::string>> res;
-                res.insert({this->impl.find_table_name(typeid(T)), ""});
-                return res;
-            }
-
-            template<class T, class C>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const alias_column_t<T, C> &a) const {
-                return this->parse_table_name(a.column, alias_extractor<T>::get());
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const internal::count_asterisk_t<T> &) const {
-                auto tableName = this->impl.find_table_name(typeid(T));
-                if(!tableName.empty()) {
-                    return {std::make_pair(std::move(tableName), "")};
-                } else {
-                    return {};
-                }
-            }
-
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const internal::count_asterisk_without_type &) const {
-                return {};
-            }
-
-            template<class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const asterisk_t<T> &) const {
-                auto tableName = this->impl.find_table_name(typeid(T));
-                return {std::make_pair(std::move(tableName), "")};
-            }
-
-            template<class T, class E>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::cast_t<T, E> &c) const {
-                return this->parse_table_name(c.expression);
-            }
-
-            template<class R, class T, class E, class... Args>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const simple_case_t<R, T, E, Args...> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                c.case_expression.apply([this, &res](auto &c) {
-                    auto caseExpressionSet = this->parse_table_name(c);
-                    res.insert(caseExpressionSet.begin(), caseExpressionSet.end());
-                });
-                iterate_tuple(c.args, [this, &res](auto &pair) {
-                    auto leftSet = this->parse_table_name(pair.first);
-                    res.insert(leftSet.begin(), leftSet.end());
-                    auto rightSet = this->parse_table_name(pair.second);
-                    res.insert(rightSet.begin(), rightSet.end());
-                });
-                c.else_expression.apply([this, &res](auto &el) {
-                    auto tableNames = this->parse_table_name(el);
-                    res.insert(tableNames.begin(), tableNames.end());
-                });
-                return res;
-            }
-
-            template<class L, class R>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::and_condition_t<L, R> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftTableNames = this->parse_table_name(c.l);
-                res.insert(leftTableNames.begin(), leftTableNames.end());
-                auto rightTableNames = this->parse_table_name(c.r);
-                res.insert(rightTableNames.begin(), rightTableNames.end());
-                return res;
-            }
-
-            template<class L, class R>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::or_condition_t<L, R> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftTableNames = this->parse_table_name(c.l);
-                res.insert(leftTableNames.begin(), leftTableNames.end());
-                auto rightTableNames = this->parse_table_name(c.r);
-                res.insert(rightTableNames.begin(), rightTableNames.end());
-                return res;
-            }
-
-            template<class L, class R>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::is_equal_t<L, R> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftTableNames = this->parse_table_name(c.l);
-                res.insert(leftTableNames.begin(), leftTableNames.end());
-                auto rightTableNames = this->parse_table_name(c.r);
-                res.insert(rightTableNames.begin(), rightTableNames.end());
-                return res;
-            }
-
-            template<class L, class R>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::is_not_equal_t<L, R> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftTableNames = this->parse_table_name(c.l);
-                res.insert(leftTableNames.begin(), leftTableNames.end());
-                auto rightTableNames = this->parse_table_name(c.r);
-                res.insert(rightTableNames.begin(), rightTableNames.end());
-                return res;
-            }
-
-            template<class L, class R>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::greater_than_t<L, R> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftTableNames = this->parse_table_name(c.l);
-                res.insert(leftTableNames.begin(), leftTableNames.end());
-                auto rightTableNames = this->parse_table_name(c.r);
-                res.insert(rightTableNames.begin(), rightTableNames.end());
-                return res;
-            }
-
-            template<class L, class R>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::greater_or_equal_t<L, R> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftTableNames = this->parse_table_name(c.l);
-                res.insert(leftTableNames.begin(), leftTableNames.end());
-                auto rightTableNames = this->parse_table_name(c.r);
-                res.insert(rightTableNames.begin(), rightTableNames.end());
-                return res;
-            }
-
-            template<class L, class R>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::lesser_than_t<L, R> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftTableNames = this->parse_table_name(c.l);
-                res.insert(leftTableNames.begin(), leftTableNames.end());
-                auto rightTableNames = this->parse_table_name(c.r);
-                res.insert(rightTableNames.begin(), rightTableNames.end());
-                return res;
-            }
-
-            template<class L, class R>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::lesser_or_equal_t<L, R> &c) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto leftTableNames = this->parse_table_name(c.l);
-                res.insert(leftTableNames.begin(), leftTableNames.end());
-                auto rightTableNames = this->parse_table_name(c.r);
-                res.insert(rightTableNames.begin(), rightTableNames.end());
-                return res;
-            }
-
-            template<class A, class T, class E>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::like_t<A, T, E> &l) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto argTableNames = this->parse_table_name(l.arg);
-                res.insert(argTableNames.begin(), argTableNames.end());
-                auto patternTableNames = this->parse_table_name(l.pattern);
-                res.insert(patternTableNames.begin(), patternTableNames.end());
-                l.arg3.apply([&res, this](auto &value) {
-                    auto escapeTableNames = this->parse_table_name(value);
-                    res.insert(escapeTableNames.begin(), escapeTableNames.end());
-                });
-                return res;
-            }
-
-            template<class A, class T>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const conditions::glob_t<A, T> &l) const {
-                std::set<std::pair<std::string, std::string>> res;
-                auto argTableNames = this->parse_table_name(l.arg);
-                res.insert(argTableNames.begin(), argTableNames.end());
-                auto patternTableNames = this->parse_table_name(l.pattern);
-                res.insert(patternTableNames.begin(), patternTableNames.end());
-                return res;
-            }
-
-            template<class C>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const conditions::negated_condition_t<C> &c) const {
-                return this->parse_table_name(c.c);
-            }
-
-            template<class T, class E>
-            std::set<std::pair<std::string, std::string>> parse_table_name(const as_t<T, E> &a) const {
-                return this->parse_table_name(a.expression);
-            }
-
-            template<class... Args>
-            std::set<std::pair<std::string, std::string>>
-            parse_table_name(const internal::columns_t<Args...> &cols) const {
-                std::set<std::pair<std::string, std::string>> res;
-                iterate_tuple(cols.columns, [&res, this](auto &m) {
-                    auto tableName = this->parse_table_name(m);
-                    res.insert(tableName.begin(), tableName.end());
-                });
-                return res;
-            }
-
             template<class F, class O, class... Args>
             std::string group_concat_internal(F O::*m, std::unique_ptr<std::string> y, Args &&... args) {
                 this->assert_mapped_type<O>();
