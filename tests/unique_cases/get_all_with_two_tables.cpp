@@ -30,6 +30,8 @@ TEST_CASE("get_all with two tables") {
     const Item item1{1, "one"};
     const Item item2{2, "two"};
     const Item item3{3, "three"};
+    const Item item4{4, "nwa"};
+
     storage.replace(item1);
     storage.replace(item2);
     storage.replace(item3);
@@ -43,10 +45,26 @@ TEST_CASE("get_all with two tables") {
     {
         auto rows = storage.select(&Item::id, where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%"))));
         REQUIRE_THAT(rows, UnorderedEquals<int>({1, 2}));
-    }
-    auto items = storage.get_all<Item>(
-        where(in(&Item::id, select(&Item::id, where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%")))))));
-    storage.rollback();
 
-    REQUIRE_THAT(items, UnorderedEquals<Item>({item1, item2}));
+        auto items = storage.get_all<Item>(where(
+            in(&Item::id, select(&Item::id, where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%")))))));
+        REQUIRE_THAT(items, UnorderedEquals<Item>({item1, item2}));
+    }
+    {
+        storage.replace(Item{4, "nwa"});
+        auto rows = storage.select(&Item::id,
+                                   where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%"))),
+                                   group_by(&Item::id),
+                                   having(is_equal(count(&Pattern::value), select(count<Pattern>()))));
+        REQUIRE_THAT(rows, UnorderedEquals<int>({4}));
+
+        auto items = storage.get_all<Item>(
+            where(in(&Item::id,
+                     select(&Item::id,
+                            where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%"))),
+                            group_by(&Item::id),
+                            having(is_equal(count(&Pattern::value), select(count<Pattern>())))))));
+        REQUIRE_THAT(items, UnorderedEquals<Item>({item4}));
+    }
+    storage.rollback();
 }
