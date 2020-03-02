@@ -489,28 +489,34 @@ TEST_CASE("get_all deque") {
     {
         auto users = storage.get_all<User>();
         REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
+        static_assert(std::is_same<decltype(users), std::vector<User>>::value, "");
     }
     {
         auto users = storage.get_all<User, std::deque<User>>();
         REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
+        static_assert(std::is_same<decltype(users), std::deque<User>>::value, "");
     }
     {
         auto users = storage.get_all<User, std::list<User>>();
         REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
+        static_assert(std::is_same<decltype(users), std::list<User>>::value, "");
     }
     {
         auto statement = storage.prepare(get_all<User>());
         auto users = storage.execute(statement);
         REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
+        static_assert(std::is_same<decltype(users), std::vector<User>>::value, "");
     }
     {
         auto statement = storage.prepare(get_all<User, std::deque<User>>());
         auto users = storage.execute(statement);
         REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
+        static_assert(std::is_same<decltype(users), std::deque<User>>::value, "");
     }
     {
         auto statement = storage.prepare(get_all<User, std::list<User>>());
         auto users = storage.execute(statement);
         REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
+        static_assert(std::is_same<decltype(users), std::list<User>>::value, "");
     }
 }
