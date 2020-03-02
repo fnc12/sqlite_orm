@@ -1248,10 +1248,17 @@ namespace sqlite_orm {
              *  O is an object type to be extracted. Must be specified explicitly.
              *  @return All objects of type O stored in database at the moment.
              */
-            template<class O, class C = std::vector<O>, class... Args>
-            C get_all(Args &&... args) {
+            template<class O, class... Args>
+            auto get_all(Args &&... args) {
                 this->assert_mapped_type<O>();
-                auto statement = this->prepare(sqlite_orm::get_all<O, C, Args ...>(std::forward<Args>(args)...));
+                auto statement = this->prepare(sqlite_orm::get_all<O>(std::forward<Args>(args)...));
+                return this->execute(statement);
+            }
+
+            template<class O, class R, class... Args>
+            auto get_all(Args &&... args) {
+                this->assert_mapped_type<O>();
+                auto statement = this->prepare(sqlite_orm::get_all<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
 
@@ -2451,8 +2458,8 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class T, class C, class... Args>
-            C execute(const prepared_statement_t<get_all_t<T, C, Args...>> &statement) {
+            template<class T, class R, class... Args>
+            R execute(const prepared_statement_t<get_all_t<T, R, Args...>> &statement) {
                 auto &impl = this->get_impl<T>();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -2467,7 +2474,7 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                C res;
+                R res;
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);

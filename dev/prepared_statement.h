@@ -76,9 +76,13 @@ namespace sqlite_orm {
                 prepared_statement_base{stmt, std::move(con_)}, t(std::move(t_)) {}
         };
 
-        template<class T, class... Args>
+        /**
+     *  T - type of object to obtain from a database
+     */
+        template<class T, class R, class... Args>
         struct get_all_t {
             using type = T;
+            using return_type = R;
 
             using conditions_type = std::tuple<Args...>;
 
@@ -335,8 +339,16 @@ namespace sqlite_orm {
      *  T is an object type mapped to a storage.
      *  Usage: storage.get_all<User>(...);
      */
-    template<class T, class C = std::vector<T>, class... Args>
-    internal::get_all_t<T, C, Args...> get_all(Args... args) {
+    template<class T, class... Args>
+    internal::get_all_t<T, std::vector<T>, Args...> get_all(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
+    }
+
+    template<class T, class R, class... Args>
+    internal::get_all_t<T, R, Args...> get_all(Args... args) {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
