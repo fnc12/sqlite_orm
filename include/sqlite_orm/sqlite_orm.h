@@ -4423,9 +4423,9 @@ namespace sqlite_orm {
             template<class W, class Th>
             simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
                 using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
-                result_args_type result_args;
-                move_tuple<std::tuple_size<args_type>::value>(result_args, this->args);
                 std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
+                result_args_type result_args =
+                    std::tuple_cat(std::move(this->args), std::move(std::make_tuple(newPair)));
                 std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
                 return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
             }
