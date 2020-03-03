@@ -7,7 +7,7 @@ namespace sqlite_orm {
         struct serializator_context_base {
 
             template<class O, class F>
-            std::string column_name(F O::*m) const {
+            std::string column_name(F O::*) const {
                 return {};
             }
         };

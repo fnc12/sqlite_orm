@@ -21,7 +21,7 @@ namespace sqlite_orm {
             mutable table_name_set table_names;
 
             template<class T>
-            table_name_set operator()(const T &t) const {
+            table_name_set operator()(const T &) const {
                 return {};
             }
 

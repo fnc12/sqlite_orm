@@ -996,7 +996,7 @@ namespace sqlite_orm {
         struct serializator_context_base {
 
             template<class O, class F>
-            std::string column_name(F O::*m) const {
+            std::string column_name(F O::*) const {
                 return {};
             }
         };
@@ -6559,7 +6559,7 @@ namespace sqlite_orm {
         template<>
         struct storage_impl<> : storage_impl_base {
 
-            std::string find_table_name(std::type_index ti) const {
+            std::string find_table_name(std::type_index) const {
                 return {};
             }
 
@@ -8992,7 +8992,7 @@ namespace sqlite_orm {
             using statement_type = constraints::autoincrement_t;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
+            std::string operator()(const statement_type &c, const C &) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -9027,7 +9027,7 @@ namespace sqlite_orm {
             using statement_type = constraints::unique_t;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
+            std::string operator()(const statement_type &c, const C &) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -9037,7 +9037,7 @@ namespace sqlite_orm {
             using statement_type = constraints::collate_t;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
+            std::string operator()(const statement_type &c, const C &) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -9057,7 +9057,7 @@ namespace sqlite_orm {
             using statement_type = std::string;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
+            std::string operator()(const statement_type &c, const C &) const {
                 return "\"" + c + "\"";
             }
         };
@@ -9067,7 +9067,7 @@ namespace sqlite_orm {
             using statement_type = const char *;
 
             template<class C>
-            std::string operator()(const char *c, const C &context) const {
+            std::string operator()(const char *c, const C &) const {
                 return std::string("'") + c + "'";
             }
         };
@@ -9202,7 +9202,7 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class C>
-            std::string operator()(const statement_type &t, const C &context) const {
+            std::string operator()(const statement_type &t, const C &) const {
                 std::stringstream ss;
                 ss << t;
                 return ss.str();
@@ -9251,7 +9251,7 @@ namespace sqlite_orm {
             mutable table_name_set table_names;
 
             template<class T>
-            table_name_set operator()(const T &t) const {
+            table_name_set operator()(const T &) const {
                 return {};
             }
 
