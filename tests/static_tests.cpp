@@ -98,32 +98,32 @@ TEST_CASE("Aggregate function return types") {
             return this->id;
         }
 
-        void setIdByVal(int id) {
-            this->id = id;
+        void setIdByVal(int id_) {
+            this->id = id_;
         }
 
         std::string getNameByVal() {
             return this->name;
         }
 
-        void setNameByConstRef(const std::string &name) {
-            this->name = name;
+        void setNameByConstRef(const std::string &name_) {
+            this->name = name_;
         }
 
         const int &getConstIdByRefConst() const {
             return this->id;
         }
 
-        void setIdByRef(int &id) {
-            this->id = id;
+        void setIdByRef(int &id_) {
+            this->id = id_;
         }
 
         const std::string &getConstNameByRefConst() const {
             return this->name;
         }
 
-        void setNameByRef(std::string &name) {
-            this->name = std::move(name);
+        void setNameByRef(std::string &name_) {
+            this->name = std::move(name_);
         }
     };
     const std::string filename = "static_tests.sqlite";

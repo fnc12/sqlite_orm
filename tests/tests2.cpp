@@ -322,16 +322,16 @@ TEST_CASE("Replace query") {
             return this->id;
         }
 
-        void setId(int id) {
-            this->id = id;
+        void setId(int id_) {
+            this->id = id_;
         }
 
         std::string getName() const {
             return this->name;
         }
 
-        void setName(std::string name) {
-            this->name = move(name);
+        void setName(std::string name_) {
+            this->name = move(name_);
         }
 
       private:
