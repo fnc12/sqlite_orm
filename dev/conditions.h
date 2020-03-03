@@ -651,8 +651,8 @@ namespace sqlite_orm {
 
             template<class C>
             like_t<A, T, C> escape(C c) const {
-                sqlite_orm::internal::optional_container<C> arg3{std::move(c)};
-                return {std::move(this->arg), std::move(this->pattern), std::move(arg3)};
+                sqlite_orm::internal::optional_container<C> newArg3{std::move(c)};
+                return {std::move(this->arg), std::move(this->pattern), std::move(newArg3)};
             }
 
             negated_condition_t<self> operator!() const {

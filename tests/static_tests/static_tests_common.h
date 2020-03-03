@@ -15,16 +15,16 @@ struct User {
         return this->id;
     }
 
-    void setIdByVal(int id) {
-        this->id = id;
+    void setIdByVal(int id_) {
+        this->id = id_;
     }
 
-    void setIdByConstRef(const int &id) {
-        this->id = id;
+    void setIdByConstRef(const int &id_) {
+        this->id = id_;
     }
 
-    void setIdByRef(int &id) {
-        this->id = id;
+    void setIdByRef(int &id_) {
+        this->id = id_;
     }
 };
 

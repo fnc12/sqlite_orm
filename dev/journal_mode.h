@@ -39,7 +39,9 @@ namespace sqlite_orm {
 
         inline std::unique_ptr<journal_mode> journal_mode_from_string(const std::string &str) {
             std::string upper_str;
-            std::transform(str.begin(), str.end(), std::back_inserter(upper_str), ::toupper);
+            std::transform(str.begin(), str.end(), std::back_inserter(upper_str), [](char c) {
+                return static_cast<char>(std::toupper(static_cast<int>(c)));
+            });
             static std::array<journal_mode, 6> all = {
                 journal_mode::DELETE,
                 journal_mode::TRUNCATE,

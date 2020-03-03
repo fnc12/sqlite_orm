@@ -273,10 +273,11 @@ TEST_CASE("Set null") {
 
     storage.replace(User{1, std::make_unique<std::string>("Ototo")});
     REQUIRE(storage.count<User>() == 1);
-
-    auto rows = storage.get_all<User>();
-    REQUIRE(rows.size() == 1);
-    REQUIRE(rows.front().name);
+    {
+        auto rows = storage.get_all<User>();
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows.front().name);
+    }
 
     storage.update_all(set(assign(&User::name, nullptr)));
     {
