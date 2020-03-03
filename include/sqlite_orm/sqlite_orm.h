@@ -4598,12 +4598,12 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     struct table_info {
-        int cid;
+        int cid = 0;
         std::string name;
         std::string type;
-        bool notnull;
+        bool notnull = false;
         std::string dflt_value;
-        int pk;
+        int pk = 0;
     };
 
 }
@@ -6975,9 +6975,13 @@ namespace sqlite_orm {
                 prepared_statement_base{stmt, std::move(con_)}, t(std::move(t_)) {}
         };
 
-        template<class T, class... Args>
+        /**
+     *  T - type of object to obtain from a database
+     */
+        template<class T, class R, class... Args>
         struct get_all_t {
             using type = T;
+            using return_type = R;
 
             using conditions_type = std::tuple<Args...>;
 
@@ -7235,7 +7239,15 @@ namespace sqlite_orm {
      *  Usage: storage.get_all<User>(...);
      */
     template<class T, class... Args>
-    internal::get_all_t<T, Args...> get_all(Args... args) {
+    internal::get_all_t<T, std::vector<T>, Args...> get_all(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
+    }
+
+    template<class T, class R, class... Args>
+    internal::get_all_t<T, R, Args...> get_all(Args... args) {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
         args_tuple conditions{std::forward<Args>(args)...};
@@ -7423,9 +7435,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class... Args>
-        struct ast_iterator<get_all_t<T, Args...>, void> {
-            using node_type = get_all_t<T, Args...>;
+        template<class T, class R, class... Args>
+        struct ast_iterator<get_all_t<T, R, Args...>, void> {
+            using node_type = get_all_t<T, R, Args...>;
 
             template<class L>
             void operator()(const node_type &get, const L &l) const {
@@ -7768,7 +7780,7 @@ namespace sqlite_orm {
 
             storage_type &storage;
             connection_ref connection;
-            get_all_t<T, Args...> args;
+            get_all_t<T, std::vector<T>, Args...> args;
 
             view_t(storage_type &stor, decltype(connection) conn, Args &&... args_) :
                 storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
@@ -10483,10 +10495,17 @@ namespace sqlite_orm {
              *  O is an object type to be extracted. Must be specified explicitly.
              *  @return All objects of type O stored in database at the moment.
              */
-            template<class O, class C = std::vector<O>, class... Args>
-            C get_all(Args &&... args) {
+            template<class O, class... Args>
+            auto get_all(Args &&... args) {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_all<O>(std::forward<Args>(args)...));
+                return this->execute(statement);
+            }
+
+            template<class O, class R, class... Args>
+            auto get_all(Args &&... args) {
+                this->assert_mapped_type<O>();
+                auto statement = this->prepare(sqlite_orm::get_all<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
 
@@ -11686,8 +11705,8 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class T, class... Args>
-            std::vector<T> execute(const prepared_statement_t<get_all_t<T, Args...>> &statement) {
+            template<class T, class R, class... Args>
+            R execute(const prepared_statement_t<get_all_t<T, R, Args...>> &statement) {
                 auto &impl = this->get_impl<T>();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -11702,7 +11721,7 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                std::vector<T> res;
+                R res;
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);
@@ -11956,9 +11975,9 @@ __pragma(pop_macro("min"))
             using type = typename conc_tuple<columns_tuple, args_tuple>::type;
         };
 
-        template<class T, class... Args>
-        struct node_tuple<get_all_t<T, Args...>, void> {
-            using node_type = get_all_t<T, Args...>;
+        template<class T, class R, class... Args>
+        struct node_tuple<get_all_t<T, R, Args...>, void> {
+            using node_type = get_all_t<T, R, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 

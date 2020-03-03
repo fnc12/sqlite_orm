@@ -154,9 +154,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class... Args>
-        struct ast_iterator<get_all_t<T, Args...>, void> {
-            using node_type = get_all_t<T, Args...>;
+        template<class T, class R, class... Args>
+        struct ast_iterator<get_all_t<T, R, Args...>, void> {
+            using node_type = get_all_t<T, R, Args...>;
 
             template<class L>
             void operator()(const node_type &get, const L &l) const {
