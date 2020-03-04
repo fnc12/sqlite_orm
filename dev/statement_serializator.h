@@ -64,7 +64,7 @@ namespace sqlite_orm {
             using statement_type = constraints::autoincrement_t;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
+            std::string operator()(const statement_type &c, const C &) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -99,7 +99,7 @@ namespace sqlite_orm {
             using statement_type = constraints::unique_t;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
+            std::string operator()(const statement_type &c, const C &) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -109,7 +109,7 @@ namespace sqlite_orm {
             using statement_type = constraints::collate_t;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
+            std::string operator()(const statement_type &c, const C &) const {
                 return static_cast<std::string>(c);
             }
         };
@@ -129,7 +129,7 @@ namespace sqlite_orm {
             using statement_type = std::string;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
+            std::string operator()(const statement_type &c, const C &) const {
                 return "\"" + c + "\"";
             }
         };
@@ -139,7 +139,7 @@ namespace sqlite_orm {
             using statement_type = const char *;
 
             template<class C>
-            std::string operator()(const char *c, const C &context) const {
+            std::string operator()(const char *c, const C &) const {
                 return std::string("'") + c + "'";
             }
         };
@@ -274,7 +274,7 @@ namespace sqlite_orm {
             using statement_type = T;
 
             template<class C>
-            std::string operator()(const statement_type &t, const C &context) const {
+            std::string operator()(const statement_type &t, const C &) const {
                 std::stringstream ss;
                 ss << t;
                 return ss.str();

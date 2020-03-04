@@ -434,7 +434,7 @@ namespace sqlite_orm {
         template<>
         struct storage_impl<> : storage_impl_base {
 
-            std::string find_table_name(std::type_index ti) const {
+            std::string find_table_name(std::type_index) const {
                 return {};
             }
 
