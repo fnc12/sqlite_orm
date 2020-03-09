@@ -132,6 +132,11 @@ namespace sqlite_orm {
             using type = int;
         };
 
+        template<class St, class T>
+        struct column_result_t<St, bitwise_not_t<T>, void> {
+            using type = int;
+        };
+
         template<class St>
         struct column_result_t<St, rowid_t, void> {
             using type = int64;

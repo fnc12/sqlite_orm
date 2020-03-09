@@ -480,5 +480,15 @@ namespace sqlite_orm {
                 iterate_ast(a.t, l);
             }
         };
+
+        template<class T>
+        struct ast_iterator<bitwise_not_t<T>, void> {
+            using node_type = bitwise_not_t<T>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.argument, l);
+            }
+        };
     }
 }

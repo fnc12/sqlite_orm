@@ -28,6 +28,10 @@ TEST_CASE("bitwise operators") {
         auto rows = storage.select(bitwise_shift_right(60, 2));
         REQUIRE(rows == std::vector<int>{15});
     }
+    {
+        auto rows = storage.select(bitwise_not(60));
+        REQUIRE(rows == std::vector<int>{-61});
+    }
     storage.insert(Entry{60, 13});
     {
         auto rows = storage.select(bitwise_or(&Entry::lhs, &Entry::rhs));
@@ -46,5 +50,9 @@ TEST_CASE("bitwise operators") {
     {
         auto rows = storage.select(bitwise_shift_right(&Entry::lhs, &Entry::rhs));
         REQUIRE(rows == std::vector<int>{15});
+    }
+    {
+        auto rows = storage.select(bitwise_not(&Entry::lhs));
+        REQUIRE(rows == std::vector<int>{-61});
     }
 }
