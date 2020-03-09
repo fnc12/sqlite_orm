@@ -112,6 +112,26 @@ namespace sqlite_orm {
             using type = double;
         };
 
+        template<class St, class L, class R>
+        struct column_result_t<St, bitwise_shift_left_t<L, R>, void> {
+            using type = int;
+        };
+
+        template<class St, class L, class R>
+        struct column_result_t<St, bitwise_shift_right_t<L, R>, void> {
+            using type = int;
+        };
+
+        template<class St, class L, class R>
+        struct column_result_t<St, bitwise_and_t<L, R>, void> {
+            using type = int;
+        };
+
+        template<class St, class L, class R>
+        struct column_result_t<St, bitwise_or_t<L, R>, void> {
+            using type = int;
+        };
+
         template<class St>
         struct column_result_t<St, rowid_t, void> {
             using type = int64;
