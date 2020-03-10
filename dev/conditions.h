@@ -8,6 +8,7 @@
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
+#include "negatable.h"
 
 namespace sqlite_orm {
 
@@ -170,14 +171,10 @@ namespace sqlite_orm {
          *  = and == operators object
          */
         template<class L, class R>
-        struct is_equal_t : binary_condition<L, R>, is_equal_string {
+        struct is_equal_t : binary_condition<L, R>, is_equal_string, internal::negatable_t {
             using self = is_equal_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
 
             collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
@@ -206,14 +203,10 @@ namespace sqlite_orm {
          *  != operator object
          */
         template<class L, class R>
-        struct is_not_equal_t : binary_condition<L, R>, is_not_equal_string {
+        struct is_not_equal_t : binary_condition<L, R>, is_not_equal_string, internal::negatable_t {
             using self = is_not_equal_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
 
             collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
@@ -238,14 +231,10 @@ namespace sqlite_orm {
          *  > operator object.
          */
         template<class L, class R>
-        struct greater_than_t : binary_condition<L, R>, greater_than_string {
+        struct greater_than_t : binary_condition<L, R>, greater_than_string, internal::negatable_t {
             using self = greater_than_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
 
             collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
@@ -270,14 +259,10 @@ namespace sqlite_orm {
          *  >= operator object.
          */
         template<class L, class R>
-        struct greater_or_equal_t : binary_condition<L, R>, greater_or_equal_string {
+        struct greater_or_equal_t : binary_condition<L, R>, greater_or_equal_string, internal::negatable_t {
             using self = greater_or_equal_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
 
             collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
@@ -302,14 +287,10 @@ namespace sqlite_orm {
          *  < operator object.
          */
         template<class L, class R>
-        struct lesser_than_t : binary_condition<L, R>, lesser_than_string {
+        struct lesser_than_t : binary_condition<L, R>, lesser_than_string, internal::negatable_t {
             using self = lesser_than_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
 
             collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
@@ -334,14 +315,10 @@ namespace sqlite_orm {
          *  <= operator object.
          */
         template<class L, class R>
-        struct lesser_or_equal_t : binary_condition<L, R>, lesser_or_equal_string {
+        struct lesser_or_equal_t : binary_condition<L, R>, lesser_or_equal_string, internal::negatable_t {
             using self = lesser_or_equal_t<L, R>;
 
             using binary_condition<L, R>::binary_condition;
-
-            negated_condition_t<lesser_or_equal_t<L, R>> operator!() const {
-                return {*this};
-            }
 
             collate_t<self> collate_binary() const {
                 return {*this, internal::collate_argument::binary};
@@ -372,17 +349,13 @@ namespace sqlite_orm {
          *  IN operator object.
          */
         template<class L, class A>
-        struct in_t : condition_t, in_base {
+        struct in_t : condition_t, in_base, internal::negatable_t {
             using self = in_t<L, A>;
 
             L l;  //  left expression
             A arg;  //  in arg
 
             in_t(L l_, A arg_, bool negative) : in_base{negative}, l(l_), arg(std::move(arg_)) {}
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
         };
 
         struct is_null_string {
@@ -395,16 +368,12 @@ namespace sqlite_orm {
          *  IS NULL operator object.
          */
         template<class T>
-        struct is_null_t : is_null_string {
+        struct is_null_t : is_null_string, internal::negatable_t {
             using self = is_null_t<T>;
 
             T t;
 
             is_null_t(T t_) : t(std::move(t_)) {}
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
         };
 
         struct is_not_null_string {
@@ -417,16 +386,12 @@ namespace sqlite_orm {
          *  IS NOT NULL operator object.
          */
         template<class T>
-        struct is_not_null_t : is_not_null_string {
+        struct is_not_null_t : is_not_null_string, internal::negatable_t {
             using self = is_not_null_t<T>;
 
             T t;
 
             is_not_null_t(T t_) : t(std::move(t_)) {}
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
         };
 
         struct where_string {
@@ -635,7 +600,7 @@ namespace sqlite_orm {
          *  LIKE operator object.
          */
         template<class A, class T, class E>
-        struct like_t : condition_t, like_string {
+        struct like_t : condition_t, like_string, internal::negatable_t {
             using self = like_t<A, T, E>;
             using arg_t = A;
             using pattern_t = T;
@@ -654,10 +619,6 @@ namespace sqlite_orm {
                 sqlite_orm::internal::optional_container<C> newArg3{std::move(c)};
                 return {std::move(this->arg), std::move(this->pattern), std::move(newArg3)};
             }
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
         };
 
         struct glob_string {
@@ -667,7 +628,7 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct glob_t : condition_t, glob_string {
+        struct glob_t : condition_t, glob_string, internal::negatable_t {
             using self = glob_t<A, T>;
             using arg_t = A;
             using pattern_t = T;
@@ -676,10 +637,6 @@ namespace sqlite_orm {
             pattern_t pattern;
 
             glob_t(arg_t arg_, pattern_t pattern_) : arg(std::move(arg_)), pattern(std::move(pattern_)) {}
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
         };
 
         struct cross_join_string {
@@ -834,17 +791,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct exists_t : condition_t, exists_string {
+        struct exists_t : condition_t, exists_string, internal::negatable_t {
             using type = T;
             using self = exists_t<type>;
 
             type t;
 
             exists_t(T t_) : t(std::move(t_)) {}
-
-            negated_condition_t<self> operator!() const {
-                return {*this};
-            }
         };
 
         struct having_string {
@@ -894,6 +847,11 @@ namespace sqlite_orm {
             cast_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
+    }
+
+    template<class T, typename = typename std::enable_if<std::is_base_of<internal::negatable_t, T>::value>::type>
+    conditions::negated_condition_t<T> operator!(T arg) {
+        return {std::move(arg)};
     }
 
     /**

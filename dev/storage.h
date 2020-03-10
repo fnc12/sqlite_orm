@@ -906,6 +906,15 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
+            template<class T>
+            std::string string_from_expression(const bitwise_not_t<T> &arg, bool noTableName) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(arg) << " ";
+                auto cString = this->string_from_expression(arg.argument, noTableName);
+                ss << " (" << cString << " ) ";
+                return ss.str();
+            }
+
             template<class C>
             std::string string_from_expression(const conditions::negated_condition_t<C> &c, bool noTableName) const {
                 std::stringstream ss;
