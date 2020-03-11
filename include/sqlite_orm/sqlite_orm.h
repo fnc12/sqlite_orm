@@ -9194,7 +9194,7 @@ namespace sqlite_orm {
                     using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
                     using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
                     auto refTableName = context.impl.find_table_name(typeid(first_reference_mapped_type));
-                    ss << refTableName;
+                    ss << '\'' << refTableName << '\'';
                 }
                 iterate_tuple(fk.references, [&referencesNames, &context](auto &v) {
                     referencesNames.push_back(context.impl.column_name(v));
