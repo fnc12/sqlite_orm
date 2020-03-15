@@ -154,9 +154,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class... Args>
-        struct ast_iterator<get_all_t<T, Args...>, void> {
-            using node_type = get_all_t<T, Args...>;
+        template<class T, class R, class... Args>
+        struct ast_iterator<get_all_t<T, R, Args...>, void> {
+            using node_type = get_all_t<T, R, Args...>;
 
             template<class L>
             void operator()(const node_type &get, const L &l) const {
@@ -337,8 +337,8 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct ast_iterator<core_functions::core_function_t<R, S, Args...>, void> {
-            using node_type = core_functions::core_function_t<R, S, Args...>;
+        struct ast_iterator<core_function_t<R, S, Args...>, void> {
+            using node_type = core_function_t<R, S, Args...>;
 
             template<class L>
             void operator()(const node_type &f, const L &l) const {
@@ -458,6 +458,36 @@ namespace sqlite_orm {
                     iterate_ast(value, l);
                 });
                 iterate_ast(a.lim, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<distinct_t<T>, void> {
+            using node_type = distinct_t<T>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.t, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<all_t<T>, void> {
+            using node_type = all_t<T>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.t, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<bitwise_not_t<T>, void> {
+            using node_type = bitwise_not_t<T>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.argument, l);
             }
         };
     }

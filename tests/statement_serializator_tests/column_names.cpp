@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("statement_serializator column names") {    
+TEST_CASE("statement_serializator column names") {
     SECTION("by member field pointer") {
         struct User {
             int id = 0;

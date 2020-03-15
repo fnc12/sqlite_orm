@@ -89,9 +89,9 @@ namespace sqlite_orm {
             using type = typename conc_tuple<columns_tuple, args_tuple>::type;
         };
 
-        template<class T, class... Args>
-        struct node_tuple<get_all_t<T, Args...>, void> {
-            using node_type = get_all_t<T, Args...>;
+        template<class T, class R, class... Args>
+        struct node_tuple<get_all_t<T, R, Args...>, void> {
+            using node_type = get_all_t<T, R, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 
@@ -204,8 +204,8 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct node_tuple<core_functions::core_function_t<R, S, Args...>, void> {
-            using node_type = core_functions::core_function_t<R, S, Args...>;
+        struct node_tuple<core_function_t<R, S, Args...>, void> {
+            using node_type = core_function_t<R, S, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 

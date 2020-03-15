@@ -7,9 +7,9 @@ namespace sqlite_orm {
         struct serializator_context_base {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
-            
+
             template<class O, class F>
-            std::string column_name(F O::*m) const {
+            std::string column_name(F O::*) const {
                 return {};
             }
         };

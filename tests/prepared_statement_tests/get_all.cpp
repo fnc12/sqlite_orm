@@ -150,30 +150,32 @@ TEST_CASE("Prepared get all") {
         REQUIRE(get<3>(statement) == 20.0f);
     }
     {
-        {  //  by val
-            auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
-            std::vector<User> expected;
-            REQUIRE(get<0>(statement) == 2);
-            expected.push_back(User{1, "Team BS"});
-            {
-                auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals(expected));
-            }
+        {
+            {  //  by val
+                auto statement = storage.prepare(get_all<User>(where(lesser_than(&User::id, 2))));
+                std::vector<User> expected;
+                REQUIRE(get<0>(statement) == 2);
+                expected.push_back(User{1, "Team BS"});
+                {
+                    auto rows = storage.execute(statement);
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
 
-            get<0>(statement) = 3;
-            REQUIRE(get<0>(statement) == 3);
-            expected.push_back(User{2, "Shy'm"});
-            {
-                auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals(expected));
-            }
+                get<0>(statement) = 3;
+                REQUIRE(get<0>(statement) == 3);
+                expected.push_back(User{2, "Shy'm"});
+                {
+                    auto rows = storage.execute(statement);
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
 
-            get<0>(statement) = 4;
-            REQUIRE(get<0>(statement) == 4);
-            expected.push_back(User{3, "Maître Gims"});
-            {
-                auto rows = storage.execute(statement);
-                REQUIRE_THAT(rows, UnorderedEquals(expected));
+                get<0>(statement) = 4;
+                REQUIRE(get<0>(statement) == 4);
+                expected.push_back(User{3, "Maître Gims"});
+                {
+                    auto rows = storage.execute(statement);
+                    REQUIRE_THAT(rows, UnorderedEquals(expected));
+                }
             }
             {  //  by ref
                 auto id = 2;
