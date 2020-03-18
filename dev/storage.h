@@ -334,9 +334,12 @@ namespace sqlite_orm {
 
             template<class T>
             std::vector<std::string> get_column_names(const T &t) const {
-                auto columnName = this->string_from_expression(t, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                auto columnName = serialize(t, context);
                 if(columnName.length()) {
-                    return {columnName};
+                    return {move(columnName)};
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
@@ -348,18 +351,21 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            std::vector<std::string> get_column_names(const internal::asterisk_t<T> &) const {
+            std::vector<std::string> get_column_names(const asterisk_t<T> &) const {
                 std::vector<std::string> res;
                 res.push_back("*");
                 return res;
             }
 
             template<class... Args>
-            std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) const {
+            std::vector<std::string> get_column_names(const columns_t<Args...> &cols) const {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(static_cast<size_t>(cols.count));
-                iterate_tuple(cols.columns, [&columnNames, this](auto &m) {
-                    auto columnName = this->string_from_expression(m, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                iterate_tuple(cols.columns, [&columnNames, &context](auto &m) {
+                    auto columnName = serialize(m, context);
                     if(columnName.length()) {
                         columnNames.push_back(columnName);
                     } else {
@@ -373,7 +379,7 @@ namespace sqlite_orm {
              *  Takes select_t object and returns SELECT query string
              */
             template<class T, class... Args>
-            std::string string_from_expression(const internal::select_t<T, Args...> &sel, bool /*noTableName*/) const {
+            std::string string_from_expression(const select_t<T, Args...> &sel, bool /*noTableName*/) const {
                 std::stringstream ss;
                 if(!is_base_of_template<T, compound_operator>::value) {
                     if(!sel.highest_level) {
@@ -510,11 +516,15 @@ namespace sqlite_orm {
                         ss << " '" << collector.table_names.begin()->first << "' ";
                         ss << static_cast<std::string>(upd.set) << " ";
                         std::vector<std::string> setPairs;
-                        iterate_tuple(upd.set.assigns, [this, &setPairs](auto &asgn) {
+                        using context_t = serializator_context<impl_type>;
+                        context_t context{this->impl};
+                        iterate_tuple(upd.set.assigns, [&context, &setPairs](auto &asgn) {
                             std::stringstream sss;
-                            sss << this->string_from_expression(asgn.lhs, true);
+                            context.skip_table_name = true;
+                            sss << serialize(asgn.lhs, context);
                             sss << " " << static_cast<std::string>(asgn) << " ";
-                            sss << this->string_from_expression(asgn.rhs, false) << " ";
+                            context.skip_table_name = false;
+                            sss << serialize(asgn.rhs, context) << " ";
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();
@@ -1029,7 +1039,10 @@ namespace sqlite_orm {
             template<class O>
             std::string process_order_by(const conditions::order_by_t<O> &orderBy) const {
                 std::stringstream ss;
-                auto columnName = this->string_from_expression(orderBy.o, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                auto columnName = serialize(orderBy.o, context);
                 ss << columnName << " ";
                 if(orderBy._collate_argument.length()) {
                     ss << "COLLATE " << orderBy._collate_argument << " ";
@@ -1047,7 +1060,10 @@ namespace sqlite_orm {
 
             template<class T>
             void process_join_constraint(std::stringstream &ss, const conditions::on_t<T> &t) const {
-                ss << static_cast<std::string>(t) << " " << this->string_from_expression(t.arg, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                ss << static_cast<std::string>(t) << " " << serialize(t.arg, context);
             }
 
             template<class F, class O>
@@ -1127,7 +1143,10 @@ namespace sqlite_orm {
             template<class C>
             void process_single_condition(std::stringstream &ss, const conditions::where_t<C> &w) const {
                 ss << static_cast<std::string>(w) << " ";
-                auto whereString = this->string_from_expression(w.c, false);
+//                auto whereString = this->string_from_expression(w.c, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                auto whereString = serialize(w.c, context);
                 ss << "( " << whereString << ") ";
             }
 

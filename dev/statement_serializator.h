@@ -25,6 +25,16 @@ namespace sqlite_orm {
             statement_serializator<T> serializator;
             return serializator(t, context);
         }
+    
+    template<class T>
+    struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
+        using statement_type = T;
+        
+        template<class C>
+        std::string operator()(const statement_type &, const C &) {
+            return "?";
+        }
+    };
 
         template<class T>
         struct statement_serializator<std::reference_wrapper<T>, void> {
@@ -408,7 +418,7 @@ namespace sqlite_orm {
             }
         };
 
-        template<class L, class R>
+        /*template<class L, class R>
         struct statement_serializator<conditions::is_equal_t<L, R>, void> {
             using statement_type = conditions::is_equal_t<L, R>;
 
@@ -420,7 +430,7 @@ namespace sqlite_orm {
                 ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
                 return ss.str();
             }
-        };
+        };*/
 
         template<class T>
         struct statement_serializator<
@@ -550,7 +560,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type &c, const C &context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
-                ss << serialize(c.t, noTableName);
+                ss << serialize(c.t, context);
                 return ss.str();
             }
         };
@@ -729,7 +739,7 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
+        /*template<class T>
         struct statement_serializator<
             T,
             typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
@@ -743,9 +753,9 @@ namespace sqlite_orm {
                 ss << "(" << leftString << " " << static_cast<std::string>(c) << " " << rightString << ")";
                 return ss.str();
             }
-        };
+        };*/
 
-        template<class T>
+        /*template<class T>
         struct statement_serializator<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
             using statement_type = T;
 
@@ -755,7 +765,7 @@ namespace sqlite_orm {
                 ss << t;
                 return ss.str();
             }
-        };
+        };*/
 
     }
 }
