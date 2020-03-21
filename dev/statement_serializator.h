@@ -418,20 +418,6 @@ namespace sqlite_orm {
             }
         };
 
-        /*template<class L, class R>
-        struct statement_serializator<conditions::is_equal_t<L, R>, void> {
-            using statement_type = conditions::is_equal_t<L, R>;
-
-            template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
-                auto leftString = serialize(c.l, context);
-                auto rightString = serialize(c.r, context);
-                std::stringstream ss;
-                ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
-                return ss.str();
-            }
-        };*/
-
         template<class T>
         struct statement_serializator<
             T,
@@ -738,6 +724,72 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+    
+    template<class T, class... Args>
+    struct statement_serializator<select_t<T, Args...>, void> {
+        using statement_type = select_t<T, Args...>;
+        
+        template<class C>
+        std::string operator()(const statement_type &sel, const C &context) const {
+            std::stringstream ss;
+            if(!is_base_of_template<T, compound_operator>::value) {
+                if(!sel.highest_level) {
+                    ss << "( ";
+                }
+                ss << "SELECT ";
+            }
+            if(get_distinct(sel.col)) {
+                ss << static_cast<std::string>(distinct(0)) << " ";
+            }
+            auto columnNames = get_column_names(sel.col, context);
+            for(size_t i = 0; i < columnNames.size(); ++i) {
+                ss << columnNames[i];
+                if(i < columnNames.size() - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            table_name_collector collector{[&context](std::type_index ti) {
+                return context.impl.find_table_name(ti);
+            }};
+            iterate_ast(sel.col, collector);
+            iterate_ast(sel.conditions, collector);
+            internal::join_iterator<Args...>()([&collector, &](const auto &c) {
+                using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
+                using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
+                auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
+                auto tableAliasString = alias_extractor<original_join_type>::get();
+                std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
+                                                                       std::move(tableAliasString));
+                collector.table_names.erase(tableNameWithAlias);
+            });
+            if(!collector.table_names.empty()) {
+                ss << "FROM ";
+                std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
+                                                                            collector.table_names.end());
+                for(size_t i = 0; i < tableNames.size(); ++i) {
+                    auto &tableNamePair = tableNames[i];
+                    ss << "'" << tableNamePair.first << "' ";
+                    if(!tableNamePair.second.empty()) {
+                        ss << tableNamePair.second << " ";
+                    }
+                    if(int(i) < int(tableNames.size()) - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+            }
+            iterate_tuple(sel.conditions, [&ss, this](auto &v) {
+                this->process_single_condition(ss, v);
+            });
+            if(!is_base_of_template<T, compound_operator>::value) {
+                if(!sel.highest_level) {
+                    ss << ") ";
+                }
+            }
+            return ss.str();
+        }
+    };
 
         /*template<class T>
         struct statement_serializator<

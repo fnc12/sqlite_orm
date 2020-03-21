@@ -332,7 +332,7 @@ namespace sqlite_orm {
                 return ss.str();
             }*/
 
-            template<class T>
+            /*template<class T>
             std::vector<std::string> get_column_names(const T &t) const {
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
@@ -343,21 +343,21 @@ namespace sqlite_orm {
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                 }
-            }
+            }*/
 
-            template<class T>
+            /*template<class T>
             std::vector<std::string> get_column_names(std::reference_wrapper<T> r) const {
                 return this->get_column_names(r.get());
-            }
+            }*/
 
-            template<class T>
+            /*template<class T>
             std::vector<std::string> get_column_names(const asterisk_t<T> &) const {
                 std::vector<std::string> res;
                 res.push_back("*");
                 return res;
-            }
+            }*/
 
-            template<class... Args>
+            /*template<class... Args>
             std::vector<std::string> get_column_names(const columns_t<Args...> &cols) const {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(static_cast<size_t>(cols.count));
@@ -373,14 +373,14 @@ namespace sqlite_orm {
                     }
                 });
                 return columnNames;
-            }
+            }*/
 
             /**
              *  Takes select_t object and returns SELECT query string
              */
             template<class T, class... Args>
-            std::string string_from_expression(const select_t<T, Args...> &sel, bool /*noTableName*/) const {
-                std::stringstream ss;
+            std::string string_from_expression(const select_t<T, Args...> &sel, bool) const {
+                /*std::stringstream ss;
                 if(!is_base_of_template<T, compound_operator>::value) {
                     if(!sel.highest_level) {
                         ss << "( ";
@@ -436,7 +436,10 @@ namespace sqlite_orm {
                         ss << ") ";
                     }
                 }
-                return ss.str();
+                return ss.str();*/
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                return serialize(sel, context);
             }
 
             // Common code for statements returning the whole content of a table: get_all_t, get_all_pointer_t,

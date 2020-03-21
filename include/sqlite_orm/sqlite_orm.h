@@ -10221,14 +10221,14 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            std::vector<std::string> get_column_names(const internal::asterisk_t<T> &) const {
+            std::vector<std::string> get_column_names(const asterisk_t<T> &) const {
                 std::vector<std::string> res;
                 res.push_back("*");
                 return res;
             }
 
             template<class... Args>
-            std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) const {
+            std::vector<std::string> get_column_names(const columns_t<Args...> &cols) const {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(static_cast<size_t>(cols.count));
                 using context_t = serializator_context<impl_type>;
@@ -10249,7 +10249,7 @@ namespace sqlite_orm {
              *  Takes select_t object and returns SELECT query string
              */
             template<class T, class... Args>
-            std::string string_from_expression(const internal::select_t<T, Args...> &sel, bool /*noTableName*/) const {
+            std::string string_from_expression(const select_t<T, Args...> &sel, bool /*noTableName*/) const {
                 std::stringstream ss;
                 if(!is_base_of_template<T, compound_operator>::value) {
                     if(!sel.highest_level) {
