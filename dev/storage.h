@@ -429,7 +429,7 @@ namespace sqlite_orm {
                     }
                 }
                 iterate_tuple(sel.conditions, [&ss, this](auto &v) {
-                    this->process_single_condition(ss, v);
+                    ss << this->string_from_expression(v, false);
                 });
                 if(!is_base_of_template<T, compound_operator>::value) {
                     if(!sel.highest_level) {
@@ -1079,7 +1079,8 @@ namespace sqlite_orm {
              *  OI - offset is implicit
              */
             template<class T, bool HO, bool OI, class O>
-            void process_single_condition(std::stringstream &ss, const conditions::limit_t<T, HO, OI, O> &limt) const {
+            std::string string_from_expression(const conditions::limit_t<T, HO, OI, O> &limt, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(limt) << " ";
                 if(HO) {
                     if(OI) {
@@ -1097,22 +1098,28 @@ namespace sqlite_orm {
                 } else {
                     ss << this->string_from_expression(limt.lim, false);
                 }
+                return ss.str();
             }
 
             template<class O>
-            void process_single_condition(std::stringstream &ss, const conditions::cross_join_t<O> &c) const {
+            std::string string_from_expression(const conditions::cross_join_t<O> &c, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
+                return ss.str();
             }
 
             template<class O>
-            void process_single_condition(std::stringstream &ss, const conditions::natural_join_t<O> &c) const {
+            std::string string_from_expression(const conditions::natural_join_t<O> &c, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
+                return ss.str();
             }
 
             template<class T, class O>
-            void process_single_condition(std::stringstream &ss, const conditions::inner_join_t<T, O> &l) const {
+            std::string string_from_expression(const conditions::inner_join_t<T, O> &l, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_extractor<T>::get();
                 ss << " '" << this->impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
@@ -1120,49 +1127,60 @@ namespace sqlite_orm {
                     ss << "'" << aliasString << "' ";
                 }
                 this->process_join_constraint(ss, l.constraint);
+                return ss.str();
             }
 
             template<class T, class O>
-            void process_single_condition(std::stringstream &ss, const conditions::left_outer_join_t<T, O> &l) const {
+            std::string string_from_expression(const conditions::left_outer_join_t<T, O> &l, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
                 this->process_join_constraint(ss, l.constraint);
+                return ss.str();
             }
 
             template<class T, class O>
-            void process_single_condition(std::stringstream &ss, const conditions::left_join_t<T, O> &l) const {
+            std::string string_from_expression(const conditions::left_join_t<T, O> &l, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
                 this->process_join_constraint(ss, l.constraint);
+                return ss.str();
             }
 
             template<class T, class O>
-            void process_single_condition(std::stringstream &ss, const conditions::join_t<T, O> &l) const {
+            std::string string_from_expression(const conditions::join_t<T, O> &l, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
                 this->process_join_constraint(ss, l.constraint);
+                return ss.str();
             }
 
             template<class C>
-            void process_single_condition(std::stringstream &ss, const conditions::where_t<C> &w) const {
+            std::string string_from_expression(const conditions::where_t<C> &w, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(w) << " ";
 //                auto whereString = this->string_from_expression(w.c, false);
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 auto whereString = serialize(w.c, context);
                 ss << "( " << whereString << ") ";
+                return ss.str();
             }
 
             template<class O>
-            void process_single_condition(std::stringstream &ss, const conditions::order_by_t<O> &orderBy) const {
+            std::string string_from_expression(const conditions::order_by_t<O> &orderBy, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
                 auto orderByString = this->process_order_by(orderBy);
                 ss << orderByString << " ";
+                return ss.str();
             }
 
             template<class... Args>
-            void process_single_condition(std::stringstream &ss,
-                                          const conditions::multi_order_by_t<Args...> &orderBy) const {
+            std::string string_from_expression(const conditions::multi_order_by_t<Args...> &orderBy, bool) const {
+                std::stringstream ss;
                 std::vector<std::string> expressions;
                 iterate_tuple(orderBy.args, [&expressions, this](auto &v) {
                     auto expression = this->process_order_by(v);
@@ -1176,16 +1194,19 @@ namespace sqlite_orm {
                     }
                 }
                 ss << " ";
+                return ss.str();
             }
 
             template<class S>
-            void process_single_condition(std::stringstream &ss,
-                                          const conditions::dynamic_order_by_t<S> &orderBy) const {
+            std::string string_from_expression(const conditions::dynamic_order_by_t<S> &orderBy, bool) const {
+                std::stringstream ss;
                 ss << this->storage_base::process_order_by(orderBy) << " ";
+                return ss.str();
             }
 
             template<class... Args>
-            void process_single_condition(std::stringstream &ss, const conditions::group_by_t<Args...> &groupBy) const {
+            std::string string_from_expression(const conditions::group_by_t<Args...> &groupBy, bool) const {
+                std::stringstream ss;
                 std::vector<std::string> expressions;
                 iterate_tuple(groupBy.args, [&expressions, this](auto &v) {
                     auto expression = this->string_from_expression(v, false);
@@ -1199,18 +1220,21 @@ namespace sqlite_orm {
                     }
                 }
                 ss << " ";
+                return ss.str();
             }
 
             template<class T>
-            void process_single_condition(std::stringstream &ss, const conditions::having_t<T> &hav) const {
+            std::string string_from_expression(const conditions::having_t<T> &hav, bool) const {
+                std::stringstream ss;
                 ss << static_cast<std::string>(hav) << " ";
                 ss << this->string_from_expression(hav.t, false) << " ";
+                return ss.str();
             }
 
             template<class... Args>
             void process_conditions(std::stringstream &ss, const std::tuple<Args...> &args) const {
                 iterate_tuple(args, [this, &ss](auto &v) {
-                    this->process_single_condition(ss, v);
+                    ss << this->string_from_expression(v, false);
                 });
             }
 
