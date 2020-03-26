@@ -509,9 +509,7 @@ namespace sqlite_orm {
             using const_iterator = typename std::vector<entry_t>::const_iterator;
 
             template<class S>
-            dynamic_order_by_t(const S &storage_) : context(storage_.impl) {
-                //                this->context.skip_table_name = true;
-            }
+            dynamic_order_by_t(const S &storage_) : context(storage_.impl) {}
 
             template<class O>
             void push_back(order_by_t<O> order_by) {
