@@ -34,7 +34,7 @@ struct column_names_getter {
     template<class T, class C>
     std::vector<std::string> get_column_names(const T &t, const C &context) {
         column_names_getter<T> serializator;
-        return column_names_getter(t, context);
+        return serializator(t, context);
     }
 
 template<class T>
@@ -63,7 +63,7 @@ struct column_names_getter<columns_t<Args...>, void> {
     using expression_type = columns_t<Args...>;
     
     template<class C>
-    std::vector<std::string> operator()(const expression_type &expression, const C &context) {
+    std::vector<std::string> operator()(const expression_type &cols, const C &context) {
         std::vector<std::string> columnNames;
         columnNames.reserve(static_cast<size_t>(cols.count));
         auto newContext = context;

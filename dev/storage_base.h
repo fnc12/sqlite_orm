@@ -500,7 +500,7 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class S>
+            /*template<class S>
             std::string process_order_by(const conditions::dynamic_order_by_t<S> &orderBy) const {
                 std::vector<std::string> expressions;
                 for(auto &entry: orderBy) {
@@ -533,7 +533,7 @@ namespace sqlite_orm {
                 }
                 ss << " ";
                 return ss.str();
-            }
+            }*/
 
             static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {
                 auto &f = *(collating_function *)arg;

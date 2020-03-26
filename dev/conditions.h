@@ -492,11 +492,11 @@ namespace sqlite_orm {
         };
 
         /**
-         *  S - storage class
+         *  C - serializator context class
          */
-        template<class S>
+        template<class C>
         struct dynamic_order_by_t : order_by_string {
-            using storage_type = S;
+            using context_t = C;
 
             struct entry_t : order_by_base {
                 std::string name;
@@ -507,11 +507,13 @@ namespace sqlite_orm {
 
             using const_iterator = typename std::vector<entry_t>::const_iterator;
 
-            dynamic_order_by_t(const storage_type &storage_) : storage(storage_) {}
+            dynamic_order_by_t(const context_t &context_) : context(context_) {}
 
             template<class O>
             void push_back(order_by_t<O> order_by) {
-                auto columnName = this->storage.string_from_expression(order_by.o, true);
+                auto newContext = this->context;
+                newContext.skip_table_name = true;
+                auto columnName = serialize(order_by.o, newContext);
                 entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
             }
 
@@ -529,7 +531,7 @@ namespace sqlite_orm {
 
           protected:
             std::vector<entry_t> entries;
-            const storage_type &storage;
+            const context_t &context;
         };
 
         template<class T>
@@ -541,8 +543,8 @@ namespace sqlite_orm {
         template<class... Args>
         struct is_order_by<multi_order_by_t<Args...>> : std::true_type {};
 
-        template<class S>
-        struct is_order_by<dynamic_order_by_t<S>> : std::true_type {};
+        template<class C>
+        struct is_order_by<dynamic_order_by_t<C>> : std::true_type {};
 
         struct group_by_string {
             operator std::string() const {
@@ -1220,8 +1222,11 @@ namespace sqlite_orm {
      *  }
      */
     template<class S>
-    conditions::dynamic_order_by_t<S> dynamic_order_by(const S &storage) {
-        return {storage};
+    conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage) {
+        using context_t = internal::serializator_context<typename S::impl_type>;
+        using return_type = conditions::dynamic_order_by_t<context_t>;
+        context_t context{storage.impl};
+        return return_type{std::move(context)};
     }
 
     /**
