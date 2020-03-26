@@ -16,7 +16,7 @@ namespace sqlite_orm {
         struct arithmetic_t;
     }
 
-    namespace conditions {
+    namespace internal {
 
         struct limit_string {
             operator std::string() const {
@@ -491,27 +491,31 @@ namespace sqlite_orm {
             multi_order_by_t(args_type &&args_) : args(std::move(args_)) {}
         };
 
+        struct dynamic_order_by_entry_t : order_by_base {
+            std::string name;
+
+            dynamic_order_by_entry_t(decltype(name) name_, int asc_desc, std::string collate_argument) :
+                order_by_base{asc_desc, move(collate_argument)}, name(move(name_)) {}
+        };
+
         /**
-         *  S - storage class
+         *  C - serializator context class
          */
-        template<class S>
+        template<class C>
         struct dynamic_order_by_t : order_by_string {
-            using storage_type = S;
-
-            struct entry_t : order_by_base {
-                std::string name;
-
-                entry_t(decltype(name) name_, int asc_desc, std::string collate_argument) :
-                    order_by_base{asc_desc, move(collate_argument)}, name(move(name_)) {}
-            };
+            using context_type = C;
+            using entry_t = dynamic_order_by_entry_t;
 
             using const_iterator = typename std::vector<entry_t>::const_iterator;
 
-            dynamic_order_by_t(const storage_type &storage_) : storage(storage_) {}
+            template<class S>
+            dynamic_order_by_t(const S &storage_) : context(storage_.impl) {
+                //                this->context.skip_table_name = true;
+            }
 
             template<class O>
             void push_back(order_by_t<O> order_by) {
-                auto columnName = this->storage.string_from_expression(order_by.o, true);
+                auto columnName = serialize(order_by.o, this->context);
                 entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
             }
 
@@ -529,7 +533,7 @@ namespace sqlite_orm {
 
           protected:
             std::vector<entry_t> entries;
-            const storage_type &storage;
+            context_type context;
         };
 
         template<class T>
@@ -850,7 +854,7 @@ namespace sqlite_orm {
     }
 
     template<class T, typename = typename std::enable_if<std::is_base_of<internal::negatable_t, T>::value>::type>
-    conditions::negated_condition_t<T> operator!(T arg) {
+    internal::negated_condition_t<T> operator!(T arg) {
         return {std::move(arg)};
     }
 
@@ -858,62 +862,62 @@ namespace sqlite_orm {
      *  Cute operators for columns
      */
     template<class T, class R>
-    conditions::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
+    internal::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::lesser_than_t<L, T> operator<(L l, internal::expression_t<T> expr) {
+    internal::lesser_than_t<L, T> operator<(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
+    internal::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
+    internal::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
+    internal::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
+    internal::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
+    internal::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
+    internal::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
+    internal::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
+    internal::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
+    internal::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
+    internal::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
@@ -1008,184 +1012,184 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    conditions::using_t<F, O> using_(F O::*p) {
+    internal::using_t<F, O> using_(F O::*p) {
         return {std::move(p)};
     }
 
     template<class T>
-    conditions::on_t<T> on(T t) {
+    internal::on_t<T> on(T t) {
         return {std::move(t)};
     }
 
     template<class T>
-    conditions::cross_join_t<T> cross_join() {
+    internal::cross_join_t<T> cross_join() {
         return {};
     }
 
     template<class T>
-    conditions::natural_join_t<T> natural_join() {
+    internal::natural_join_t<T> natural_join() {
         return {};
     }
 
     template<class T, class O>
-    conditions::left_join_t<T, O> left_join(O o) {
+    internal::left_join_t<T, O> left_join(O o) {
         return {std::move(o)};
     }
 
     template<class T, class O>
-    conditions::join_t<T, O> join(O o) {
+    internal::join_t<T, O> join(O o) {
         return {std::move(o)};
     }
 
     template<class T, class O>
-    conditions::left_outer_join_t<T, O> left_outer_join(O o) {
+    internal::left_outer_join_t<T, O> left_outer_join(O o) {
         return {std::move(o)};
     }
 
     template<class T, class O>
-    conditions::inner_join_t<T, O> inner_join(O o) {
+    internal::inner_join_t<T, O> inner_join(O o) {
         return {std::move(o)};
     }
 
     template<class T>
-    conditions::offset_t<T> offset(T off) {
+    internal::offset_t<T> offset(T off) {
         return {std::move(off)};
     }
 
     template<class T>
-    conditions::limit_t<T, false, false, void> limit(T lim) {
+    internal::limit_t<T, false, false, void> limit(T lim) {
         return {std::move(lim)};
     }
 
     template<class T, class O>
-    typename std::enable_if<!conditions::is_offset<T>::value, conditions::limit_t<T, true, true, O>>::type
-    limit(O off, T lim) {
+    typename std::enable_if<!internal::is_offset<T>::value, internal::limit_t<T, true, true, O>>::type limit(O off,
+                                                                                                             T lim) {
         return {std::move(lim), {std::move(off)}};
     }
 
     template<class T, class O>
-    conditions::limit_t<T, true, false, O> limit(T lim, conditions::offset_t<O> offt) {
+    internal::limit_t<T, true, false, O> limit(T lim, internal::offset_t<O> offt) {
         return {std::move(lim), {std::move(offt.off)}};
     }
 
     template<class L,
              class R,
-             typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value ||
-                                                std::is_base_of<conditions::condition_t, R>::value>::type>
-    conditions::and_condition_t<L, R> operator&&(L l, R r) {
+             typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
+                                                std::is_base_of<internal::condition_t, R>::value>::type>
+    internal::and_condition_t<L, R> operator&&(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L,
              class R,
-             typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value ||
-                                                std::is_base_of<conditions::condition_t, R>::value>::type>
-    conditions::or_condition_t<L, R> operator||(L l, R r) {
+             typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
+                                                std::is_base_of<internal::condition_t, R>::value>::type>
+    internal::or_condition_t<L, R> operator||(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class T>
-    conditions::is_not_null_t<T> is_not_null(T t) {
+    internal::is_not_null_t<T> is_not_null(T t) {
         return {std::move(t)};
     }
 
     template<class T>
-    conditions::is_null_t<T> is_null(T t) {
+    internal::is_null_t<T> is_null(T t) {
         return {std::move(t)};
     }
 
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
+    internal::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values), false};
     }
 
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
+    internal::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values), false};
     }
 
     template<class L, class A>
-    conditions::in_t<L, A> in(L l, A arg) {
+    internal::in_t<L, A> in(L l, A arg) {
         return {std::move(l), std::move(arg), false};
     }
 
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
+    internal::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values), true};
     }
 
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
+    internal::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values), true};
     }
 
     template<class L, class A>
-    conditions::in_t<L, A> not_in(L l, A arg) {
+    internal::in_t<L, A> not_in(L l, A arg) {
         return {std::move(l), std::move(arg), true};
     }
 
     template<class L, class R>
-    conditions::is_equal_t<L, R> is_equal(L l, R r) {
+    internal::is_equal_t<L, R> is_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::is_equal_t<L, R> eq(L l, R r) {
+    internal::is_equal_t<L, R> eq(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::is_not_equal_t<L, R> is_not_equal(L l, R r) {
+    internal::is_not_equal_t<L, R> is_not_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::is_not_equal_t<L, R> ne(L l, R r) {
+    internal::is_not_equal_t<L, R> ne(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::greater_than_t<L, R> greater_than(L l, R r) {
+    internal::greater_than_t<L, R> greater_than(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::greater_than_t<L, R> gt(L l, R r) {
+    internal::greater_than_t<L, R> gt(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
+    internal::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::greater_or_equal_t<L, R> ge(L l, R r) {
+    internal::greater_or_equal_t<L, R> ge(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::lesser_than_t<L, R> lesser_than(L l, R r) {
+    internal::lesser_than_t<L, R> lesser_than(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::lesser_than_t<L, R> lt(L l, R r) {
+    internal::lesser_than_t<L, R> lt(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
+    internal::lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::lesser_or_equal_t<L, R> le(L l, R r) {
+    internal::lesser_or_equal_t<L, R> le(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class C>
-    conditions::where_t<C> where(C c) {
+    internal::where_t<C> where(C c) {
         return {std::move(c)};
     }
 
@@ -1194,7 +1198,7 @@ namespace sqlite_orm {
      * Example: storage.select(&User::name, order_by(&User::id))
      */
     template<class O>
-    conditions::order_by_t<O> order_by(O o) {
+    internal::order_by_t<O> order_by(O o) {
         return {std::move(o)};
     }
 
@@ -1203,7 +1207,7 @@ namespace sqlite_orm {
      * Example: storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc(), order_by(&Singer::gender).desc())
      */
     template<class... Args>
-    conditions::multi_order_by_t<Args...> multi_order_by(Args &&... args) {
+    internal::multi_order_by_t<Args...> multi_order_by(Args &&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -1220,7 +1224,8 @@ namespace sqlite_orm {
      *  }
      */
     template<class S>
-    conditions::dynamic_order_by_t<S> dynamic_order_by(const S &storage) {
+    internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>>
+    dynamic_order_by(const S &storage) {
         return {storage};
     }
 
@@ -1229,7 +1234,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))
      */
     template<class... Args>
-    conditions::group_by_t<Args...> group_by(Args &&... args) {
+    internal::group_by_t<Args...> group_by(Args &&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -1238,7 +1243,7 @@ namespace sqlite_orm {
      *  Example: storage.select(between(&User::id, 10, 20))
      */
     template<class A, class T>
-    conditions::between_t<A, T> between(A expr, T b1, T b2) {
+    internal::between_t<A, T> between(A expr, T b1, T b2) {
         return {std::move(expr), std::move(b1), std::move(b2)};
     }
 
@@ -1247,7 +1252,7 @@ namespace sqlite_orm {
      *  Example: storage.select(like(&User::name, "T%"))
      */
     template<class A, class T>
-    conditions::like_t<A, T, void> like(A a, T t) {
+    internal::like_t<A, T, void> like(A a, T t) {
         return {std::move(a), std::move(t), {}};
     }
 
@@ -1256,7 +1261,7 @@ namespace sqlite_orm {
      *  Example: storage.select(glob(&User::name, "*S"))
      */
     template<class A, class T>
-    conditions::glob_t<A, T> glob(A a, T t) {
+    internal::glob_t<A, T> glob(A a, T t) {
         return {std::move(a), std::move(t)};
     }
 
@@ -1265,7 +1270,7 @@ namespace sqlite_orm {
      *  Example: storage.select(like(&User::name, "T%", "%"))
      */
     template<class A, class T, class E>
-    conditions::like_t<A, T, E> like(A a, T t, E e) {
+    internal::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
     }
 
@@ -1278,7 +1283,7 @@ namespace sqlite_orm {
          order_by(&Agent::comission));
      */
     template<class T>
-    conditions::exists_t<T> exists(T t) {
+    internal::exists_t<T> exists(T t) {
         return {std::move(t)};
     }
 
@@ -1287,7 +1292,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
      */
     template<class T>
-    conditions::having_t<T> having(T t) {
+    internal::having_t<T> having(T t) {
         return {std::move(t)};
     }
 
@@ -1296,7 +1301,7 @@ namespace sqlite_orm {
      *  Example: cast<std::string>(&User::id)
      */
     template<class T, class E>
-    conditions::cast_t<T, E> cast(E e) {
+    internal::cast_t<T, E> cast(E e) {
         return {std::move(e)};
     }
 }

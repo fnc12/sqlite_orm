@@ -83,7 +83,7 @@ namespace sqlite_orm {
             friend struct view_t;
 
             template<class S>
-            friend struct conditions::dynamic_order_by_t;
+            friend struct dynamic_order_by_t;
 
             template<class V>
             friend struct iterator_t;
@@ -855,7 +855,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class E>
-            std::string string_from_expression(const conditions::cast_t<T, E> &c, bool noTableName) const {
+            std::string string_from_expression(const cast_t<T, E> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " (";
                 ss << this->string_from_expression(c.expression, noTableName) << " AS " << type_printer<T>().print()
@@ -893,14 +893,14 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            std::string string_from_expression(const conditions::is_null_t<T> &c, bool noTableName) const {
+            std::string string_from_expression(const is_null_t<T> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << this->string_from_expression(c.t, noTableName) << " " << static_cast<std::string>(c) << " ";
                 return ss.str();
             }
 
             template<class T>
-            std::string string_from_expression(const conditions::is_not_null_t<T> &c, bool noTableName) const {
+            std::string string_from_expression(const is_not_null_t<T> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << this->string_from_expression(c.t, noTableName) << " " << static_cast<std::string>(c) << " ";
                 return ss.str();
@@ -916,7 +916,7 @@ namespace sqlite_orm {
             }
 
             template<class C>
-            std::string string_from_expression(const conditions::negated_condition_t<C> &c, bool noTableName) const {
+            std::string string_from_expression(const negated_condition_t<C> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
                 auto cString = this->string_from_expression(c.c, noTableName);
@@ -925,7 +925,7 @@ namespace sqlite_orm {
             }
 
             template<class L, class R>
-            std::string string_from_expression(const conditions::is_equal_t<L, R> &c, bool noTableName) const {
+            std::string string_from_expression(const is_equal_t<L, R> &c, bool noTableName) const {
                 auto leftString = this->string_from_expression(c.l, noTableName);
                 auto rightString = this->string_from_expression(c.r, noTableName);
                 std::stringstream ss;
@@ -934,7 +934,7 @@ namespace sqlite_orm {
             }
 
             template<class C>
-            typename std::enable_if<is_base_of_template<C, conditions::binary_condition>::value, std::string>::type
+            typename std::enable_if<is_base_of_template<C, binary_condition>::value, std::string>::type
             string_from_expression(const C &c, bool noTableName) const {
                 auto leftString = this->string_from_expression(c.l, noTableName);
                 auto rightString = this->string_from_expression(c.r, noTableName);
@@ -944,19 +944,19 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            std::string string_from_expression(const conditions::named_collate<T> &col, bool noTableName) const {
+            std::string string_from_expression(const named_collate<T> &col, bool noTableName) const {
                 auto res = this->string_from_expression(col.expr, noTableName);
                 return res + " " + static_cast<std::string>(col);
             }
 
             template<class T>
-            std::string string_from_expression(const conditions::collate_t<T> &col, bool noTableName) const {
+            std::string string_from_expression(const collate_t<T> &col, bool noTableName) const {
                 auto res = this->string_from_expression(col.expr, noTableName);
                 return res + " " + static_cast<std::string>(col);
             }
 
             template<class L, class A>
-            std::string string_from_expression(const conditions::in_t<L, A> &inCondition, bool noTableName) const {
+            std::string string_from_expression(const in_t<L, A> &inCondition, bool noTableName) const {
                 std::stringstream ss;
                 auto leftString = this->string_from_expression(inCondition.l, noTableName);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " ";
@@ -965,8 +965,7 @@ namespace sqlite_orm {
             }
 
             template<class L, class E>
-            std::string string_from_expression(const conditions::in_t<L, std::vector<E>> &inCondition,
-                                               bool noTableName) const {
+            std::string string_from_expression(const in_t<L, std::vector<E>> &inCondition, bool noTableName) const {
                 std::stringstream ss;
                 auto leftString = this->string_from_expression(inCondition.l, noTableName);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " ( ";
@@ -982,7 +981,7 @@ namespace sqlite_orm {
             }
 
             template<class A, class T, class E>
-            std::string string_from_expression(const conditions::like_t<A, T, E> &l, bool noTableName) const {
+            std::string string_from_expression(const like_t<A, T, E> &l, bool noTableName) const {
                 std::stringstream ss;
                 ss << this->string_from_expression(l.arg, noTableName) << " ";
                 ss << static_cast<std::string>(l) << " ";
@@ -994,7 +993,7 @@ namespace sqlite_orm {
             }
 
             template<class A, class T>
-            std::string string_from_expression(const conditions::glob_t<A, T> &l, bool noTableName) const {
+            std::string string_from_expression(const glob_t<A, T> &l, bool noTableName) const {
                 std::stringstream ss;
                 ss << this->string_from_expression(l.arg, noTableName) << " ";
                 ss << static_cast<std::string>(l) << " ";
@@ -1003,7 +1002,7 @@ namespace sqlite_orm {
             }
 
             template<class A, class T>
-            std::string string_from_expression(const conditions::between_t<A, T> &bw, bool noTableName) const {
+            std::string string_from_expression(const between_t<A, T> &bw, bool noTableName) const {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr, noTableName);
                 ss << expr << " " << static_cast<std::string>(bw) << " ";
@@ -1014,7 +1013,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            std::string string_from_expression(const conditions::exists_t<T> &e, bool noTableName) const {
+            std::string string_from_expression(const exists_t<T> &e, bool noTableName) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(e) << " ";
                 ss << this->string_from_expression(e.t, noTableName);
@@ -1022,7 +1021,7 @@ namespace sqlite_orm {
             }
 
             template<class O>
-            std::string process_order_by(const conditions::order_by_t<O> &orderBy) const {
+            std::string process_order_by(const order_by_t<O> &orderBy) const {
                 std::stringstream ss;
                 auto columnName = this->string_from_expression(orderBy.o, false);
                 ss << columnName << " ";
@@ -1041,12 +1040,12 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void process_join_constraint(std::stringstream &ss, const conditions::on_t<T> &t) const {
+            void process_join_constraint(std::stringstream &ss, const on_t<T> &t) const {
                 ss << static_cast<std::string>(t) << " " << this->string_from_expression(t.arg, false);
             }
 
             template<class F, class O>
-            void process_join_constraint(std::stringstream &ss, const conditions::using_t<F, O> &u) const {
+            void process_join_constraint(std::stringstream &ss, const using_t<F, O> &u) const {
                 ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " )";
             }
 
@@ -1055,7 +1054,7 @@ namespace sqlite_orm {
              *  OI - offset is implicit
              */
             template<class T, bool HO, bool OI, class O>
-            std::string string_from_expression(const conditions::limit_t<T, HO, OI, O> &limt, bool) const {
+            std::string string_from_expression(const limit_t<T, HO, OI, O> &limt, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(limt) << " ";
                 if(HO) {
@@ -1078,7 +1077,7 @@ namespace sqlite_orm {
             }
 
             template<class O>
-            std::string string_from_expression(const conditions::cross_join_t<O> &c, bool) const {
+            std::string string_from_expression(const cross_join_t<O> &c, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
@@ -1086,7 +1085,7 @@ namespace sqlite_orm {
             }
 
             template<class O>
-            std::string string_from_expression(const conditions::natural_join_t<O> &c, bool) const {
+            std::string string_from_expression(const natural_join_t<O> &c, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
@@ -1094,7 +1093,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class O>
-            std::string string_from_expression(const conditions::inner_join_t<T, O> &l, bool) const {
+            std::string string_from_expression(const inner_join_t<T, O> &l, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_extractor<T>::get();
@@ -1107,7 +1106,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class O>
-            std::string string_from_expression(const conditions::left_outer_join_t<T, O> &l, bool) const {
+            std::string string_from_expression(const left_outer_join_t<T, O> &l, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
@@ -1116,7 +1115,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class O>
-            std::string string_from_expression(const conditions::left_join_t<T, O> &l, bool) const {
+            std::string string_from_expression(const left_join_t<T, O> &l, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
@@ -1125,7 +1124,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class O>
-            std::string string_from_expression(const conditions::join_t<T, O> &l, bool) const {
+            std::string string_from_expression(const join_t<T, O> &l, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
@@ -1134,7 +1133,7 @@ namespace sqlite_orm {
             }
 
             template<class C>
-            std::string string_from_expression(const conditions::where_t<C> &w, bool) const {
+            std::string string_from_expression(const where_t<C> &w, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(w) << " ";
                 auto whereString = this->string_from_expression(w.c, false);
@@ -1143,7 +1142,7 @@ namespace sqlite_orm {
             }
 
             template<class O>
-            std::string string_from_expression(const conditions::order_by_t<O> &orderBy, bool) const {
+            std::string string_from_expression(const order_by_t<O> &orderBy, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
                 auto orderByString = this->process_order_by(orderBy);
@@ -1152,7 +1151,7 @@ namespace sqlite_orm {
             }
 
             template<class... Args>
-            std::string string_from_expression(const conditions::multi_order_by_t<Args...> &orderBy, bool) const {
+            std::string string_from_expression(const multi_order_by_t<Args...> &orderBy, bool) const {
                 std::stringstream ss;
                 std::vector<std::string> expressions;
                 iterate_tuple(orderBy.args, [&expressions, this](auto &v) {
@@ -1171,14 +1170,14 @@ namespace sqlite_orm {
             }
 
             template<class S>
-            std::string string_from_expression(const conditions::dynamic_order_by_t<S> &orderBy, bool) const {
+            std::string string_from_expression(const dynamic_order_by_t<S> &orderBy, bool) const {
                 std::stringstream ss;
                 ss << this->storage_base::process_order_by(orderBy) << " ";
                 return ss.str();
             }
 
             template<class... Args>
-            std::string string_from_expression(const conditions::group_by_t<Args...> &groupBy, bool) const {
+            std::string string_from_expression(const group_by_t<Args...> &groupBy, bool) const {
                 std::stringstream ss;
                 std::vector<std::string> expressions;
                 iterate_tuple(groupBy.args, [&expressions, this](auto &v) {
@@ -1197,7 +1196,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            std::string string_from_expression(const conditions::having_t<T> &hav, bool) const {
+            std::string string_from_expression(const having_t<T> &hav, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(hav) << " ";
                 ss << this->string_from_expression(hav.t, false) << " ";

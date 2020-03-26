@@ -274,7 +274,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::lesser_than_t<F, R> operator<(F f, R r) {
+    internal::lesser_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -282,7 +282,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::lesser_or_equal_t<F, R> operator<=(F f, R r) {
+    internal::lesser_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -290,7 +290,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::greater_than_t<F, R> operator>(F f, R r) {
+    internal::greater_than_t<F, R> operator>(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -298,7 +298,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::greater_or_equal_t<F, R> operator>=(F f, R r) {
+    internal::greater_or_equal_t<F, R> operator>=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -306,7 +306,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::is_equal_t<F, R> operator==(F f, R r) {
+    internal::is_equal_t<F, R> operator==(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -314,7 +314,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::is_not_equal_t<F, R> operator!=(F f, R r) {
+    internal::is_not_equal_t<F, R> operator!=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 

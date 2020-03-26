@@ -224,7 +224,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class E>
-        struct column_result_t<St, conditions::cast_t<T, E>, void> {
+        struct column_result_t<St, cast_t<T, E>, void> {
             using type = T;
         };
 
@@ -234,17 +234,17 @@ namespace sqlite_orm {
         };
 
         template<class St, class A, class T, class E>
-        struct column_result_t<St, conditions::like_t<A, T, E>, void> {
+        struct column_result_t<St, like_t<A, T, E>, void> {
             using type = bool;
         };
 
         template<class St, class A, class T>
-        struct column_result_t<St, conditions::glob_t<A, T>, void> {
+        struct column_result_t<St, glob_t<A, T>, void> {
             using type = bool;
         };
 
         template<class St, class C>
-        struct column_result_t<St, conditions::negated_condition_t<C>, void> {
+        struct column_result_t<St, negated_condition_t<C>, void> {
             using type = bool;
         };
 
