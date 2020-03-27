@@ -254,9 +254,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<
-            T,
-            typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+        struct statement_serializator<T,
+                                      typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using statement_type = T;
 
             template<class C>

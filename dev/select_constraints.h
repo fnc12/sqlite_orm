@@ -236,14 +236,10 @@ namespace sqlite_orm {
 
         template<class T>
         void validate_conditions() {
-            static_assert(count_tuple<T, conditions::is_where>::value <= 1,
-                          "a single query cannot contain > 1 WHERE blocks");
-            static_assert(count_tuple<T, conditions::is_group_by>::value <= 1,
-                          "a single query cannot contain > 1 GROUP BY blocks");
-            static_assert(count_tuple<T, conditions::is_order_by>::value <= 1,
-                          "a single query cannot contain > 1 ORDER BY blocks");
-            static_assert(count_tuple<T, conditions::is_limit>::value <= 1,
-                          "a single query cannot contain > 1 LIMIT blocks");
+            static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
+            static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
+            static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
+            static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
         }
     }
 

@@ -41,7 +41,7 @@ TEST_CASE("Node tuple") {
     }
 
     {  //  binary_condition
-        using namespace conditions;
+        using namespace internal;
         {  //  5 < 6.0f
             auto c = lesser_than(5, 6.0f);
             using C = decltype(c);
