@@ -754,7 +754,7 @@ For more details please check the project [wiki](https://github.com/fnc12/sqlite
 
 # Installation
 
-Use popular package manager like [vcpkg](https://github.com/Microsoft/vcpkg) and just install it with `vcpkg install sqlite_orm` command.
+Use popular package manager like [vcpkg](https://github.com/Microsoft/vcpkg) and just install it with `vcpkg install sqlite-orm` command.
 
 Or you can use below instructions
 
