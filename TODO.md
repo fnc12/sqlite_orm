@@ -2,7 +2,7 @@
 
 `sqlite_orm` is a wonderful library but there are still features that are not implemented. Here you can find a list of them:
 
-* `FOREIGN KEY` - sync_schema fk comparison and ability of two tables to have fk to each other
+* `FOREIGN KEY` - sync_schema fk comparison and ability of two tables to have fk to each other (`PRAGMA foreign_key_list(%table_name%);` may be useful)
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
 * `ATTACH`
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
