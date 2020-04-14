@@ -16,5 +16,6 @@
 * `SAVEPOINT` https://www.sqlite.org/lang_savepoint.html
 * add `static_assert` in crud `get*` functions in case user passes `where_t` instead of id to make compilation error more clear (example https://github.com/fnc12/sqlite_orm/issues/485)
 * generated columns https://www.sqlite.org/gencol.html
+* named constraints: constraint can have name `CREATE TABLE heroes(id INTEGER CONSTRAINT pk PRIMARY KEY)`
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
