@@ -51,25 +51,25 @@ matrix:
             - ninja
           update: true
 
-    - name: "[C++14] LLVM/Clang (latest)"
-      os: osx
-      osx_image: xcode10.2
-      addons:
-        homebrew:
-          packages:
-            - llvm
-            - catch2
-            - ninja
-          update: true
-      env:
-        - CPPFLAGS: "-I/usr/local/opt/llvm/include"
-        - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
-        - CPATH: /usr/local/opt/llvm/include
-        - LIBRARY_PATH: /usr/local/opt/llvm/lib
-        - LD_LIBRARY_PATH: /usr/local/opt/llvm/lib
-        - CC: /usr/local/opt/llvm/bin/clang
-        - CXX: /usr/local/opt/llvm/bin/clang++
-        - SQLITE_ORM_OMITS_CODECVT: ON
+#    - name: "[C++14] LLVM/Clang (latest)"
+#      os: osx
+#      osx_image: xcode10.2
+#      addons:
+#        homebrew:
+#          packages:
+#            - llvm
+#            - catch2
+#            - ninja
+#          update: true
+#      env:
+#        - CPPFLAGS: "-I/usr/local/opt/llvm/include"
+#        - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
+#        - CPATH: /usr/local/opt/llvm/include
+#        - LIBRARY_PATH: /usr/local/opt/llvm/lib
+#        - LD_LIBRARY_PATH: /usr/local/opt/llvm/lib
+#        - CC: /usr/local/opt/llvm/bin/clang
+#        - CXX: /usr/local/opt/llvm/bin/clang++
+#        - SQLITE_ORM_OMITS_CODECVT: ON
 
     - name: "[C++14] GCC-6"
       os: osx
@@ -125,26 +125,26 @@ matrix:
             - ninja
           update: true
 
-    - name: "[C++17] LLVM/Clang (latest)"
-      os: osx
-      osx_image: xcode10.2
-      addons:
-        homebrew:
-          packages:
-            - llvm
-            - catch2
-            - ninja
-          update: true
-      env:
-        - CPPFLAGS: "-I/usr/local/opt/llvm/include"
-        - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
-        - CPATH: /usr/local/opt/llvm/include
-        - LIBRARY_PATH: /usr/local/opt/llvm/lib
-        - LD_LIBRARY_PATH: /usr/local/opt/llvm/lib
-        - CC: /usr/local/opt/llvm/bin/clang
-        - CXX: /usr/local/opt/llvm/bin/clang++
-        - SQLITE_ORM_OMITS_CODECVT: ON
-        - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+#    - name: "[C++17] LLVM/Clang (latest)"
+#      os: osx
+#      osx_image: xcode10.2
+#      addons:
+#        homebrew:
+#          packages:
+#            - llvm
+#            - catch2
+#            - ninja
+#          update: true
+#      env:
+#        - CPPFLAGS: "-I/usr/local/opt/llvm/include"
+#        - LDFLAGS: "-L/usr/local/opt/llvm/lib -Wl,-rpath,/usr/local/opt/llvm/lib"
+#        - CPATH: /usr/local/opt/llvm/include
+#        - LIBRARY_PATH: /usr/local/opt/llvm/lib
+#        - LD_LIBRARY_PATH: /usr/local/opt/llvm/lib
+#        - CC: /usr/local/opt/llvm/bin/clang
+#        - CXX: /usr/local/opt/llvm/bin/clang++
+#        - SQLITE_ORM_OMITS_CODECVT: ON
+#        - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
 before_install:
   - |

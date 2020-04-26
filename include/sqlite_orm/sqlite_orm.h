@@ -1020,6 +1020,20 @@ namespace sqlite_orm {
                 return this->impl.column_name(m);
             }
         };
+    
+    template<class S>
+    struct serializator_context_builder {
+        using storage_type = S;
+        using impl_type = typename storage_type::impl_type;
+        
+        serializator_context_builder(const storage_type &storage_) : storage(storage_) {}
+        
+        serializator_context<impl_type> operator()() const {
+            return {this->storage.impl};
+        }
+        
+        const storage_type &storage;
+    };
 
     }
 
@@ -1924,7 +1938,7 @@ namespace sqlite_orm {
         struct arithmetic_t;
     }
 
-    namespace conditions {
+    namespace internal {
 
         struct limit_string {
             operator std::string() const {
@@ -2399,24 +2413,24 @@ namespace sqlite_orm {
             multi_order_by_t(args_type &&args_) : args(std::move(args_)) {}
         };
 
+        struct dynamic_order_by_entry_t : order_by_base {
+            std::string name;
+
+            dynamic_order_by_entry_t(decltype(name) name_, int asc_desc, std::string collate_argument) :
+                order_by_base{asc_desc, move(collate_argument)}, name(move(name_)) {}
+        };
+
         /**
          *  C - serializator context class
          */
         template<class C>
         struct dynamic_order_by_t : order_by_string {
             using context_t = C;
-
-            struct entry_t : order_by_base {
-                std::string name;
-
-                entry_t(decltype(name) name_, int asc_desc, std::string collate_argument) :
-                    order_by_base{asc_desc, move(collate_argument)}, name(move(name_)) {}
-            };
-
+            using entry_t = dynamic_order_by_entry_t;
             using const_iterator = typename std::vector<entry_t>::const_iterator;
-
+            
             dynamic_order_by_t(const context_t &context_) : context(context_) {}
-
+            
             template<class O>
             void push_back(order_by_t<O> order_by) {
                 auto newContext = this->context;
@@ -2439,7 +2453,7 @@ namespace sqlite_orm {
 
           protected:
             std::vector<entry_t> entries;
-            const context_t &context;
+            context_t context;
         };
 
         template<class T>
@@ -2760,7 +2774,7 @@ namespace sqlite_orm {
     }
 
     template<class T, typename = typename std::enable_if<std::is_base_of<internal::negatable_t, T>::value>::type>
-    conditions::negated_condition_t<T> operator!(T arg) {
+    internal::negated_condition_t<T> operator!(T arg) {
         return {std::move(arg)};
     }
 
@@ -2768,62 +2782,62 @@ namespace sqlite_orm {
      *  Cute operators for columns
      */
     template<class T, class R>
-    conditions::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
+    internal::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::lesser_than_t<L, T> operator<(L l, internal::expression_t<T> expr) {
+    internal::lesser_than_t<L, T> operator<(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
+    internal::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
+    internal::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
+    internal::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
+    internal::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
+    internal::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
+    internal::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
+    internal::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
+    internal::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
     template<class T, class R>
-    conditions::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
+    internal::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
         return {std::move(expr.t), std::move(r)};
     }
 
     template<class L, class T>
-    conditions::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
+    internal::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
         return {std::move(l), std::move(expr.t)};
     }
 
@@ -2918,184 +2932,184 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    conditions::using_t<F, O> using_(F O::*p) {
+    internal::using_t<F, O> using_(F O::*p) {
         return {std::move(p)};
     }
 
     template<class T>
-    conditions::on_t<T> on(T t) {
+    internal::on_t<T> on(T t) {
         return {std::move(t)};
     }
 
     template<class T>
-    conditions::cross_join_t<T> cross_join() {
+    internal::cross_join_t<T> cross_join() {
         return {};
     }
 
     template<class T>
-    conditions::natural_join_t<T> natural_join() {
+    internal::natural_join_t<T> natural_join() {
         return {};
     }
 
     template<class T, class O>
-    conditions::left_join_t<T, O> left_join(O o) {
+    internal::left_join_t<T, O> left_join(O o) {
         return {std::move(o)};
     }
 
     template<class T, class O>
-    conditions::join_t<T, O> join(O o) {
+    internal::join_t<T, O> join(O o) {
         return {std::move(o)};
     }
 
     template<class T, class O>
-    conditions::left_outer_join_t<T, O> left_outer_join(O o) {
+    internal::left_outer_join_t<T, O> left_outer_join(O o) {
         return {std::move(o)};
     }
 
     template<class T, class O>
-    conditions::inner_join_t<T, O> inner_join(O o) {
+    internal::inner_join_t<T, O> inner_join(O o) {
         return {std::move(o)};
     }
 
     template<class T>
-    conditions::offset_t<T> offset(T off) {
+    internal::offset_t<T> offset(T off) {
         return {std::move(off)};
     }
 
     template<class T>
-    conditions::limit_t<T, false, false, void> limit(T lim) {
+    internal::limit_t<T, false, false, void> limit(T lim) {
         return {std::move(lim)};
     }
 
     template<class T, class O>
-    typename std::enable_if<!conditions::is_offset<T>::value, conditions::limit_t<T, true, true, O>>::type
-    limit(O off, T lim) {
+    typename std::enable_if<!internal::is_offset<T>::value, internal::limit_t<T, true, true, O>>::type limit(O off,
+                                                                                                             T lim) {
         return {std::move(lim), {std::move(off)}};
     }
 
     template<class T, class O>
-    conditions::limit_t<T, true, false, O> limit(T lim, conditions::offset_t<O> offt) {
+    internal::limit_t<T, true, false, O> limit(T lim, internal::offset_t<O> offt) {
         return {std::move(lim), {std::move(offt.off)}};
     }
 
     template<class L,
              class R,
-             typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value ||
-                                                std::is_base_of<conditions::condition_t, R>::value>::type>
-    conditions::and_condition_t<L, R> operator&&(L l, R r) {
+             typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
+                                                std::is_base_of<internal::condition_t, R>::value>::type>
+    internal::and_condition_t<L, R> operator&&(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L,
              class R,
-             typename = typename std::enable_if<std::is_base_of<conditions::condition_t, L>::value ||
-                                                std::is_base_of<conditions::condition_t, R>::value>::type>
-    conditions::or_condition_t<L, R> operator||(L l, R r) {
+             typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
+                                                std::is_base_of<internal::condition_t, R>::value>::type>
+    internal::or_condition_t<L, R> operator||(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class T>
-    conditions::is_not_null_t<T> is_not_null(T t) {
+    internal::is_not_null_t<T> is_not_null(T t) {
         return {std::move(t)};
     }
 
     template<class T>
-    conditions::is_null_t<T> is_null(T t) {
+    internal::is_null_t<T> is_null(T t) {
         return {std::move(t)};
     }
 
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
+    internal::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values), false};
     }
 
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
+    internal::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values), false};
     }
 
     template<class L, class A>
-    conditions::in_t<L, A> in(L l, A arg) {
+    internal::in_t<L, A> in(L l, A arg) {
         return {std::move(l), std::move(arg), false};
     }
 
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
+    internal::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values), true};
     }
 
     template<class L, class E>
-    conditions::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
+    internal::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values), true};
     }
 
     template<class L, class A>
-    conditions::in_t<L, A> not_in(L l, A arg) {
+    internal::in_t<L, A> not_in(L l, A arg) {
         return {std::move(l), std::move(arg), true};
     }
 
     template<class L, class R>
-    conditions::is_equal_t<L, R> is_equal(L l, R r) {
+    internal::is_equal_t<L, R> is_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::is_equal_t<L, R> eq(L l, R r) {
+    internal::is_equal_t<L, R> eq(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::is_not_equal_t<L, R> is_not_equal(L l, R r) {
+    internal::is_not_equal_t<L, R> is_not_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::is_not_equal_t<L, R> ne(L l, R r) {
+    internal::is_not_equal_t<L, R> ne(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::greater_than_t<L, R> greater_than(L l, R r) {
+    internal::greater_than_t<L, R> greater_than(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::greater_than_t<L, R> gt(L l, R r) {
+    internal::greater_than_t<L, R> gt(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
+    internal::greater_or_equal_t<L, R> greater_or_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::greater_or_equal_t<L, R> ge(L l, R r) {
+    internal::greater_or_equal_t<L, R> ge(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::lesser_than_t<L, R> lesser_than(L l, R r) {
+    internal::lesser_than_t<L, R> lesser_than(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::lesser_than_t<L, R> lt(L l, R r) {
+    internal::lesser_than_t<L, R> lt(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
+    internal::lesser_or_equal_t<L, R> lesser_or_equal(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class L, class R>
-    conditions::lesser_or_equal_t<L, R> le(L l, R r) {
+    internal::lesser_or_equal_t<L, R> le(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
     template<class C>
-    conditions::where_t<C> where(C c) {
+    internal::where_t<C> where(C c) {
         return {std::move(c)};
     }
 
@@ -3104,7 +3118,7 @@ namespace sqlite_orm {
      * Example: storage.select(&User::name, order_by(&User::id))
      */
     template<class O>
-    conditions::order_by_t<O> order_by(O o) {
+    internal::order_by_t<O> order_by(O o) {
         return {std::move(o)};
     }
 
@@ -3113,7 +3127,7 @@ namespace sqlite_orm {
      * Example: storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc(), order_by(&Singer::gender).desc())
      */
     template<class... Args>
-    conditions::multi_order_by_t<Args...> multi_order_by(Args &&... args) {
+    internal::multi_order_by_t<Args...> multi_order_by(Args &&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -3130,11 +3144,13 @@ namespace sqlite_orm {
      *  }
      */
     template<class S>
-    conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage) {
-        using context_t = internal::serializator_context<typename S::impl_type>;
-        using return_type = conditions::dynamic_order_by_t<context_t>;
+    internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage) {
+        internal::serializator_context_builder<S> builder(storage);
+        return builder();
+        /*using context_t = internal::serializator_context<typename S::impl_type>;
+        using return_type = internal::dynamic_order_by_t<context_t>;
         context_t context{storage.impl};
-        return return_type{std::move(context)};
+        return return_type{std::move(context)};*/
     }
 
     /**
@@ -3142,7 +3158,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))
      */
     template<class... Args>
-    conditions::group_by_t<Args...> group_by(Args &&... args) {
+    internal::group_by_t<Args...> group_by(Args &&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -3151,7 +3167,7 @@ namespace sqlite_orm {
      *  Example: storage.select(between(&User::id, 10, 20))
      */
     template<class A, class T>
-    conditions::between_t<A, T> between(A expr, T b1, T b2) {
+    internal::between_t<A, T> between(A expr, T b1, T b2) {
         return {std::move(expr), std::move(b1), std::move(b2)};
     }
 
@@ -3160,7 +3176,7 @@ namespace sqlite_orm {
      *  Example: storage.select(like(&User::name, "T%"))
      */
     template<class A, class T>
-    conditions::like_t<A, T, void> like(A a, T t) {
+    internal::like_t<A, T, void> like(A a, T t) {
         return {std::move(a), std::move(t), {}};
     }
 
@@ -3169,7 +3185,7 @@ namespace sqlite_orm {
      *  Example: storage.select(glob(&User::name, "*S"))
      */
     template<class A, class T>
-    conditions::glob_t<A, T> glob(A a, T t) {
+    internal::glob_t<A, T> glob(A a, T t) {
         return {std::move(a), std::move(t)};
     }
 
@@ -3178,7 +3194,7 @@ namespace sqlite_orm {
      *  Example: storage.select(like(&User::name, "T%", "%"))
      */
     template<class A, class T, class E>
-    conditions::like_t<A, T, E> like(A a, T t, E e) {
+    internal::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
     }
 
@@ -3191,7 +3207,7 @@ namespace sqlite_orm {
          order_by(&Agent::comission));
      */
     template<class T>
-    conditions::exists_t<T> exists(T t) {
+    internal::exists_t<T> exists(T t) {
         return {std::move(t)};
     }
 
@@ -3200,7 +3216,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
      */
     template<class T>
-    conditions::having_t<T> having(T t) {
+    internal::having_t<T> having(T t) {
         return {std::move(t)};
     }
 
@@ -3209,7 +3225,7 @@ namespace sqlite_orm {
      *  Example: cast<std::string>(&User::id)
      */
     template<class T, class E>
-    conditions::cast_t<T, E> cast(E e) {
+    internal::cast_t<T, E> cast(E e) {
         return {std::move(e)};
     }
 }
@@ -3402,9 +3418,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Tail>
-        struct join_iterator<conditions::cross_join_t<T>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<cross_join_t<T>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::cross_join_t<T>;
+            using join_type = cross_join_t<T>;
 
             template<class L>
             void operator()(const L &l) {
@@ -3414,9 +3430,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Tail>
-        struct join_iterator<conditions::natural_join_t<T>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<natural_join_t<T>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::natural_join_t<T>;
+            using join_type = natural_join_t<T>;
 
             template<class L>
             void operator()(const L &l) {
@@ -3426,9 +3442,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class O, class... Tail>
-        struct join_iterator<conditions::left_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<left_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::left_join_t<T, O>;
+            using join_type = left_join_t<T, O>;
 
             template<class L>
             void operator()(const L &l) {
@@ -3438,9 +3454,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class O, class... Tail>
-        struct join_iterator<conditions::join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::join_t<T, O>;
+            using join_type = join_t<T, O>;
 
             template<class L>
             void operator()(const L &l) {
@@ -3450,9 +3466,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class O, class... Tail>
-        struct join_iterator<conditions::left_outer_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<left_outer_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::left_outer_join_t<T, O>;
+            using join_type = left_outer_join_t<T, O>;
 
             template<class L>
             void operator()(const L &l) {
@@ -3462,9 +3478,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class O, class... Tail>
-        struct join_iterator<conditions::inner_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<inner_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::inner_join_t<T, O>;
+            using join_type = inner_join_t<T, O>;
 
             template<class L>
             void operator()(const L &l) {
@@ -3791,7 +3807,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::lesser_than_t<F, R> operator<(F f, R r) {
+    internal::lesser_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -3799,7 +3815,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::lesser_or_equal_t<F, R> operator<=(F f, R r) {
+    internal::lesser_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -3807,7 +3823,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::greater_than_t<F, R> operator>(F f, R r) {
+    internal::greater_than_t<F, R> operator>(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -3815,7 +3831,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::greater_or_equal_t<F, R> operator>=(F f, R r) {
+    internal::greater_or_equal_t<F, R> operator>=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -3823,7 +3839,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::is_equal_t<F, R> operator==(F f, R r) {
+    internal::is_equal_t<F, R> operator==(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -3831,7 +3847,7 @@ namespace sqlite_orm {
         class F,
         class R,
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
-    conditions::is_not_equal_t<F, R> operator!=(F f, R r) {
+    internal::is_not_equal_t<F, R> operator!=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
@@ -4508,14 +4524,10 @@ namespace sqlite_orm {
 
         template<class T>
         void validate_conditions() {
-            static_assert(count_tuple<T, conditions::is_where>::value <= 1,
-                          "a single query cannot contain > 1 WHERE blocks");
-            static_assert(count_tuple<T, conditions::is_group_by>::value <= 1,
-                          "a single query cannot contain > 1 GROUP BY blocks");
-            static_assert(count_tuple<T, conditions::is_order_by>::value <= 1,
-                          "a single query cannot contain > 1 ORDER BY blocks");
-            static_assert(count_tuple<T, conditions::is_limit>::value <= 1,
-                          "a single query cannot contain > 1 LIMIT blocks");
+            static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
+            static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
+            static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
+            static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
         }
     }
 
@@ -5882,7 +5894,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class E>
-        struct column_result_t<St, conditions::cast_t<T, E>, void> {
+        struct column_result_t<St, cast_t<T, E>, void> {
             using type = T;
         };
 
@@ -5892,17 +5904,17 @@ namespace sqlite_orm {
         };
 
         template<class St, class A, class T, class E>
-        struct column_result_t<St, conditions::like_t<A, T, E>, void> {
+        struct column_result_t<St, like_t<A, T, E>, void> {
             using type = bool;
         };
 
         template<class St, class A, class T>
-        struct column_result_t<St, conditions::glob_t<A, T>, void> {
+        struct column_result_t<St, glob_t<A, T>, void> {
             using type = bool;
         };
 
         template<class St, class C>
-        struct column_result_t<St, conditions::negated_condition_t<C>, void> {
+        struct column_result_t<St, negated_condition_t<C>, void> {
             using type = bool;
         };
 
@@ -7463,8 +7475,8 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct ast_iterator<conditions::where_t<C>, void> {
-            using node_type = conditions::where_t<C>;
+        struct ast_iterator<where_t<C>, void> {
+            using node_type = where_t<C>;
 
             template<class L>
             void operator()(const node_type &where, const L &l) const {
@@ -7473,9 +7485,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<
-            T,
-            typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+        struct ast_iterator<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using node_type = T;
 
             template<class L>
@@ -7507,8 +7517,8 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct ast_iterator<conditions::in_t<L, A>, void> {
-            using node_type = conditions::in_t<L, A>;
+        struct ast_iterator<in_t<L, A>, void> {
+            using node_type = in_t<L, A>;
 
             template<class C>
             void operator()(const node_type &in, const C &l) const {
@@ -7637,8 +7647,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::having_t<T>, void> {
-            using node_type = conditions::having_t<T>;
+        struct ast_iterator<having_t<T>, void> {
+            using node_type = having_t<T>;
 
             template<class L>
             void operator()(const node_type &hav, const L &l) const {
@@ -7647,8 +7657,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class E>
-        struct ast_iterator<conditions::cast_t<T, E>, void> {
-            using node_type = conditions::cast_t<T, E>;
+        struct ast_iterator<cast_t<T, E>, void> {
+            using node_type = cast_t<T, E>;
 
             template<class L>
             void operator()(const node_type &c, const L &l) const {
@@ -7657,8 +7667,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::exists_t<T>, void> {
-            using node_type = conditions::exists_t<T>;
+        struct ast_iterator<exists_t<T>, void> {
+            using node_type = exists_t<T>;
 
             template<class L>
             void operator()(const node_type &e, const L &l) const {
@@ -7667,8 +7677,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T, class E>
-        struct ast_iterator<conditions::like_t<A, T, E>, void> {
-            using node_type = conditions::like_t<A, T, E>;
+        struct ast_iterator<like_t<A, T, E>, void> {
+            using node_type = like_t<A, T, E>;
 
             template<class L>
             void operator()(const node_type &lk, const L &l) const {
@@ -7681,8 +7691,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct ast_iterator<conditions::glob_t<A, T>, void> {
-            using node_type = conditions::glob_t<A, T>;
+        struct ast_iterator<glob_t<A, T>, void> {
+            using node_type = glob_t<A, T>;
 
             template<class L>
             void operator()(const node_type &lk, const L &l) const {
@@ -7692,8 +7702,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct ast_iterator<conditions::between_t<A, T>, void> {
-            using node_type = conditions::between_t<A, T>;
+        struct ast_iterator<between_t<A, T>, void> {
+            using node_type = between_t<A, T>;
 
             template<class L>
             void operator()(const node_type &b, const L &l) const {
@@ -7704,8 +7714,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::named_collate<T>, void> {
-            using node_type = conditions::named_collate<T>;
+        struct ast_iterator<named_collate<T>, void> {
+            using node_type = named_collate<T>;
 
             template<class L>
             void operator()(const node_type &col, const L &l) const {
@@ -7714,8 +7724,8 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct ast_iterator<conditions::negated_condition_t<C>, void> {
-            using node_type = conditions::negated_condition_t<C>;
+        struct ast_iterator<negated_condition_t<C>, void> {
+            using node_type = negated_condition_t<C>;
 
             template<class L>
             void operator()(const node_type &neg, const L &l) const {
@@ -7724,8 +7734,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::is_null_t<T>, void> {
-            using node_type = conditions::is_null_t<T>;
+        struct ast_iterator<is_null_t<T>, void> {
+            using node_type = is_null_t<T>;
 
             template<class L>
             void operator()(const node_type &i, const L &l) const {
@@ -7734,8 +7744,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::is_not_null_t<T>, void> {
-            using node_type = conditions::is_not_null_t<T>;
+        struct ast_iterator<is_not_null_t<T>, void> {
+            using node_type = is_not_null_t<T>;
 
             template<class L>
             void operator()(const node_type &i, const L &l) const {
@@ -7754,8 +7764,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::left_join_t<T, O>, void> {
-            using node_type = conditions::left_join_t<T, O>;
+        struct ast_iterator<left_join_t<T, O>, void> {
+            using node_type = left_join_t<T, O>;
 
             template<class L>
             void operator()(const node_type &j, const L &l) const {
@@ -7764,8 +7774,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::on_t<T>, void> {
-            using node_type = conditions::on_t<T>;
+        struct ast_iterator<on_t<T>, void> {
+            using node_type = on_t<T>;
 
             template<class L>
             void operator()(const node_type &o, const L &l) const {
@@ -7774,8 +7784,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::join_t<T, O>, void> {
-            using node_type = conditions::join_t<T, O>;
+        struct ast_iterator<join_t<T, O>, void> {
+            using node_type = join_t<T, O>;
 
             template<class L>
             void operator()(const node_type &j, const L &l) const {
@@ -7784,8 +7794,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::left_outer_join_t<T, O>, void> {
-            using node_type = conditions::left_outer_join_t<T, O>;
+        struct ast_iterator<left_outer_join_t<T, O>, void> {
+            using node_type = left_outer_join_t<T, O>;
 
             template<class L>
             void operator()(const node_type &j, const L &l) const {
@@ -7794,8 +7804,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::inner_join_t<T, O>, void> {
-            using node_type = conditions::inner_join_t<T, O>;
+        struct ast_iterator<inner_join_t<T, O>, void> {
+            using node_type = inner_join_t<T, O>;
 
             template<class L>
             void operator()(const node_type &j, const L &l) const {
@@ -7833,8 +7843,8 @@ namespace sqlite_orm {
         };
 
         template<class T, bool OI>
-        struct ast_iterator<conditions::limit_t<T, false, OI, void>, void> {
-            using node_type = conditions::limit_t<T, false, OI, void>;
+        struct ast_iterator<limit_t<T, false, OI, void>, void> {
+            using node_type = limit_t<T, false, OI, void>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
@@ -7843,8 +7853,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::limit_t<T, true, false, O>, void> {
-            using node_type = conditions::limit_t<T, true, false, O>;
+        struct ast_iterator<limit_t<T, true, false, O>, void> {
+            using node_type = limit_t<T, true, false, O>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
@@ -7856,8 +7866,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::limit_t<T, true, true, O>, void> {
-            using node_type = conditions::limit_t<T, true, true, O>;
+        struct ast_iterator<limit_t<T, true, true, O>, void> {
+            using node_type = limit_t<T, true, true, O>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
@@ -8890,7 +8900,7 @@ namespace sqlite_orm {
             }
 
             /*template<class S>
-            std::string process_order_by(const conditions::dynamic_order_by_t<S> &orderBy) const {
+            std::string process_order_by(const dynamic_order_by_t<S> &orderBy) const {
                 std::vector<std::string> expressions;
                 for(auto &entry: orderBy) {
                     std::string entryString;
@@ -9273,8 +9283,8 @@ std::string serialize_order_by(const T &t, const C &context) {
 }
 
 template<class O>
-struct order_by_serializator<conditions::order_by_t<O>, void> {
-    using statement_type = conditions::order_by_t<O>;
+struct order_by_serializator<order_by_t<O>, void> {
+    using statement_type = order_by_t<O>;
     
     template<class C>
     std::string operator()(const statement_type &orderBy, const C &context) const {
@@ -9299,8 +9309,8 @@ struct order_by_serializator<conditions::order_by_t<O>, void> {
 };
 
 template<class S>
-struct order_by_serializator<conditions::dynamic_order_by_t<S>, void> {
-    using statement_type = conditions::dynamic_order_by_t<S>;
+struct order_by_serializator<dynamic_order_by_t<S>, void> {
+    using statement_type = dynamic_order_by_t<S>;
     
     template<class C>
     std::string operator()(const statement_type &orderBy, const C &) const {
@@ -9355,13 +9365,33 @@ namespace sqlite_orm {
             return serializator(t, context);
         }
     
+    /*template<class T>
+    struct statement_serializator<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+        using statement_type = T;
+        
+        template<class C>
+        std::string operator()(const statement_type &statement, const C &context) {
+            if(context.replace_bindable_with_question){
+                return "?";
+            }else{
+                std::stringstream ss;
+                ss << statement;
+                return ss.str();
+            }
+        }
+    };*/
+    
     template<class T>
     struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
         using statement_type = T;
         
         template<class C>
-        std::string operator()(const statement_type &, const C &) {
-            return "?";
+        std::string operator()(const statement_type &statement, const C &context) {
+            if(context.replace_bindable_with_question){
+                return "?";
+            }else{
+                return field_printer<T>{}(statement);
+            }
         }
     };
 
@@ -9644,8 +9674,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class E>
-        struct statement_serializator<conditions::cast_t<T, E>, void> {
-            using statement_type = conditions::cast_t<T, E>;
+        struct statement_serializator<cast_t<T, E>, void> {
+            using statement_type = cast_t<T, E>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9696,8 +9726,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::is_null_t<T>, void> {
-            using statement_type = conditions::is_null_t<T>;
+        struct statement_serializator<is_null_t<T>, void> {
+            using statement_type = is_null_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9708,8 +9738,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::is_not_null_t<T>, void> {
-            using statement_type = conditions::is_not_null_t<T>;
+        struct statement_serializator<is_not_null_t<T>, void> {
+            using statement_type = is_not_null_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9734,8 +9764,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::negated_condition_t<T>, void> {
-            using statement_type = conditions::negated_condition_t<T>;
+        struct statement_serializator<negated_condition_t<T>, void> {
+            using statement_type = negated_condition_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9750,7 +9780,7 @@ namespace sqlite_orm {
         template<class T>
         struct statement_serializator<
             T,
-            typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+            typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using statement_type = T;
 
             template<class C>
@@ -9764,8 +9794,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::named_collate<T>, void> {
-            using statement_type = conditions::named_collate<T>;
+        struct statement_serializator<named_collate<T>, void> {
+            using statement_type = named_collate<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9775,8 +9805,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::collate_t<T>, void> {
-            using statement_type = conditions::collate_t<T>;
+        struct statement_serializator<collate_t<T>, void> {
+            using statement_type = collate_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9786,8 +9816,8 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct statement_serializator<conditions::in_t<L, A>, void> {
-            using statement_type = conditions::in_t<L, A>;
+        struct statement_serializator<in_t<L, A>, void> {
+            using statement_type = in_t<L, A>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9800,8 +9830,8 @@ namespace sqlite_orm {
         };
 
         template<class L, class E>
-        struct statement_serializator<conditions::in_t<L, std::vector<E>>, void> {
-            using statement_type = conditions::in_t<L, std::vector<E>>;
+        struct statement_serializator<in_t<L, std::vector<E>>, void> {
+            using statement_type = in_t<L, std::vector<E>>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9821,8 +9851,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T, class E>
-        struct statement_serializator<conditions::like_t<A, T, E>, void> {
-            using statement_type = conditions::like_t<A, T, E>;
+        struct statement_serializator<like_t<A, T, E>, void> {
+            using statement_type = like_t<A, T, E>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9838,8 +9868,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct statement_serializator<conditions::glob_t<A, T>, void> {
-            using statement_type = conditions::glob_t<A, T>;
+        struct statement_serializator<glob_t<A, T>, void> {
+            using statement_type = glob_t<A, T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9852,8 +9882,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct statement_serializator<conditions::between_t<A, T>, void> {
-            using statement_type = conditions::between_t<A, T>;
+        struct statement_serializator<between_t<A, T>, void> {
+            using statement_type = between_t<A, T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -9868,8 +9898,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::exists_t<T>, void> {
-            using statement_type = conditions::exists_t<T>;
+        struct statement_serializator<exists_t<T>, void> {
+            using statement_type = exists_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -10108,8 +10138,8 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-            iterate_tuple(sel.conditions, [&context](auto &v) {
-                serialize(v, context);
+            iterate_tuple(sel.conditions, [&context, &ss](auto &v) {
+                ss << serialize(v, context);
             });
             if(!is_base_of_template<T, compound_operator>::value) {
                 if(!sel.highest_level) {
@@ -10121,8 +10151,8 @@ namespace sqlite_orm {
     };
     
     template<class T>
-    struct statement_serializator<conditions::where_t<T>, void> {
-        using statement_type = conditions::where_t<T>;
+    struct statement_serializator<where_t<T>, void> {
+        using statement_type = where_t<T>;
         
         template<class C>
         std::string operator()(const statement_type &w, const C &context) const {
@@ -10135,8 +10165,8 @@ namespace sqlite_orm {
     };
     
     template<class O>
-    struct statement_serializator<conditions::order_by_t<O>, void> {
-        using statement_type = conditions::order_by_t<O>;
+    struct statement_serializator<order_by_t<O>, void> {
+        using statement_type = order_by_t<O>;
         
         template<class C>
         std::string operator()(const statement_type &orderBy, const C &context) const {
@@ -10148,9 +10178,19 @@ namespace sqlite_orm {
         }
     };
     
+    template<class C>
+    struct statement_serializator<dynamic_order_by_t<C>, void> {
+        using statement_type = dynamic_order_by_t<C>;
+        
+        template<class CC>
+        std::string operator()(const statement_type &orderBy, const CC &context) const {
+            return serialize_order_by(orderBy, context);
+        }
+    };
+    
     template<class... Args>
-    struct statement_serializator<conditions::multi_order_by_t<Args...>, void> {
-        using statement_type = conditions::multi_order_by_t<Args...>;
+    struct statement_serializator<multi_order_by_t<Args...>, void> {
+        using statement_type = multi_order_by_t<Args...>;
         
         template<class C>
         std::string operator()(const statement_type &orderBy, const C &context) const {
@@ -10173,8 +10213,8 @@ namespace sqlite_orm {
     };
     
     template<class O>
-    struct statement_serializator<conditions::cross_join_t<O>, void> {
-        using statement_type = conditions::cross_join_t<O>;
+    struct statement_serializator<cross_join_t<O>, void> {
+        using statement_type = cross_join_t<O>;
         
         template<class C>
         std::string operator()(const statement_type &c, const C &context) const {
@@ -10186,8 +10226,8 @@ namespace sqlite_orm {
     };
     
     template<class T, class O>
-    struct statement_serializator<conditions::inner_join_t<T, O>, void> {
-        using statement_type = conditions::inner_join_t<T, O>;
+    struct statement_serializator<inner_join_t<T, O>, void> {
+        using statement_type = inner_join_t<T, O>;
         
         template<class C>
         std::string operator()(const statement_type &l, const C &context) const {
@@ -10204,8 +10244,8 @@ namespace sqlite_orm {
     };
     
     template<class T>
-    struct statement_serializator<conditions::on_t<T>, void> {
-        using statement_type = conditions::on_t<T>;
+    struct statement_serializator<on_t<T>, void> {
+        using statement_type = on_t<T>;
         
         template<class C>
         std::string operator()(const statement_type &t, const C &context) const {
@@ -10218,8 +10258,8 @@ namespace sqlite_orm {
     };
     
     template<class T, class O>
-    struct statement_serializator<conditions::join_t<T, O>, void> {
-        using statement_type = conditions::join_t<T, O>;
+    struct statement_serializator<join_t<T, O>, void> {
+        using statement_type = join_t<T, O>;
         
         template<class C>
         std::string operator()(const statement_type &l, const C &context) const {
@@ -10232,8 +10272,8 @@ namespace sqlite_orm {
     };
     
     template<class T, class O>
-    struct statement_serializator<conditions::left_join_t<T, O>, void> {
-        using statement_type = conditions::left_join_t<T, O>;
+    struct statement_serializator<left_join_t<T, O>, void> {
+        using statement_type = left_join_t<T, O>;
         
         template<class C>
         std::string operator()(const statement_type &l, const C &context) const {
@@ -10246,8 +10286,8 @@ namespace sqlite_orm {
     };
     
     template<class T, class O>
-    struct statement_serializator<conditions::left_outer_join_t<T, O>, void> {
-        using statement_type = conditions::left_outer_join_t<T, O>;
+    struct statement_serializator<left_outer_join_t<T, O>, void> {
+        using statement_type = left_outer_join_t<T, O>;
         
         template<class C>
         std::string operator()(const statement_type &l, const C &context) const {
@@ -10260,8 +10300,8 @@ namespace sqlite_orm {
     };
     
     template<class O>
-    struct statement_serializator<conditions::natural_join_t<O>, void> {
-        using statement_type = conditions::natural_join_t<O>;
+    struct statement_serializator<natural_join_t<O>, void> {
+        using statement_type = natural_join_t<O>;
         
         template<class C>
         std::string operator()(const statement_type &c, const C &context) const {
@@ -10273,8 +10313,8 @@ namespace sqlite_orm {
     };
     
     template<class... Args>
-    struct statement_serializator<conditions::group_by_t<Args...>, void> {
-        using statement_type = conditions::group_by_t<Args...>;
+    struct statement_serializator<group_by_t<Args...>, void> {
+        using statement_type = group_by_t<Args...>;
         
         template<class C>
         std::string operator()(const statement_type &groupBy, const C &context) const {
@@ -10299,8 +10339,8 @@ namespace sqlite_orm {
     };
     
     template<class T>
-    struct statement_serializator<conditions::having_t<T>, void> {
-        using statement_type = conditions::having_t<T>;
+    struct statement_serializator<having_t<T>, void> {
+        using statement_type = having_t<T>;
         
         template<class C>
         std::string operator()(const statement_type &hav, const C &context) const {
@@ -10318,8 +10358,8 @@ namespace sqlite_orm {
      *  OI - offset is implicit
     */
     template<class T, bool HO, bool OI, class O>
-    struct statement_serializator<conditions::limit_t<T, HO, OI, O>, void> {
-        using statement_type = conditions::limit_t<T, HO, OI, O>;
+    struct statement_serializator<limit_t<T, HO, OI, O>, void> {
+        using statement_type = limit_t<T, HO, OI, O>;
         
         template<class C>
         std::string operator()(const statement_type &limt, const C &context) const {
@@ -10350,7 +10390,7 @@ namespace sqlite_orm {
         /*template<class T>
         struct statement_serializator<
             T,
-            typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+            typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using statement_type = T;
 
             template<class C>
@@ -10383,14 +10423,14 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
-template<class S>
-conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
+//template<class S>
+//internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
 
-    namespace conditions {
+    /*namespace conditions {
 
         template<class S>
         struct dynamic_order_by_t;
-    }
+    }*/
 
     namespace internal {
 
@@ -10419,10 +10459,13 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             friend struct view_t;
 
             template<class S>
-            friend struct conditions::dynamic_order_by_t;
+            friend struct dynamic_order_by_t;
 
             template<class V>
             friend struct iterator_t;
+            
+            template<class S>
+            friend struct serializator_context_builder;
 
             template<class I>
             void create_table(sqlite3 *db, const std::string &tableName, I *tableImpl) {
@@ -10711,73 +10754,6 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
                 return columnNames;
             }*/
 
-            /**
-             *  Takes select_t object and returns SELECT query string
-             */
-            template<class T, class... Args>
-            std::string string_from_expression(const select_t<T, Args...> &sel, bool) const {
-                /*std::stringstream ss;
-                if(!is_base_of_template<T, compound_operator>::value) {
-                    if(!sel.highest_level) {
-                        ss << "( ";
-                    }
-                    ss << "SELECT ";
-                }
-                if(get_distinct(sel.col)) {
-                    ss << static_cast<std::string>(distinct(0)) << " ";
-                }
-                auto columnNames = this->get_column_names(sel.col);
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                table_name_collector collector{[this](std::type_index ti) {
-                    return this->impl.find_table_name(ti);
-                }};
-                iterate_ast(sel.col, collector);
-                iterate_ast(sel.conditions, collector);
-                internal::join_iterator<Args...>()([&collector, this](const auto &c) {
-                    using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
-                    using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
-                    auto crossJoinedTableName = this->impl.find_table_name(typeid(cross_join_type));
-                    auto tableAliasString = alias_extractor<original_join_type>::get();
-                    std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
-                                                                           std::move(tableAliasString));
-                    collector.table_names.erase(tableNameWithAlias);
-                });
-                if(!collector.table_names.empty()) {
-                    ss << "FROM ";
-                    std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
-                                                                                collector.table_names.end());
-                    for(size_t i = 0; i < tableNames.size(); ++i) {
-                        auto &tableNamePair = tableNames[i];
-                        ss << "'" << tableNamePair.first << "' ";
-                        if(!tableNamePair.second.empty()) {
-                            ss << tableNamePair.second << " ";
-                        }
-                        if(int(i) < int(tableNames.size()) - 1) {
-                            ss << ",";
-                        }
-                        ss << " ";
-                    }
-                }
-                iterate_tuple(sel.conditions, [&ss, this](auto &v) {
-                    ss << this->string_from_expression(v, false);
-                });
-                if(!is_base_of_template<T, compound_operator>::value) {
-                    if(!sel.highest_level) {
-                        ss << ") ";
-                    }
-                }
-                return ss.str();*/
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                return serialize(sel, context);
-            }
-
             // Common code for statements returning the whole content of a table: get_all_t, get_all_pointer_t,
             // get_all_optional_t.
             template<class T>
@@ -10857,6 +10833,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
                         std::vector<std::string> setPairs;
                         using context_t = serializator_context<impl_type>;
                         context_t context{this->impl};
+                        context.replace_bindable_with_question = true;
                         iterate_tuple(upd.set.assigns, [&context, &setPairs](auto &asgn) {
                             std::stringstream sss;
                             context.skip_table_name = true;
@@ -11212,7 +11189,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }
 
             /*template<class T, class E>
-            std::string string_from_expression(const conditions::cast_t<T, E> &c, bool noTableName) const {
+            std::string string_from_expression(const cast_t<T, E> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " (";
                 ss << this->string_from_expression(c.expression, noTableName) << " AS " << type_printer<T>().print()
@@ -11250,14 +11227,14 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T>
-            std::string string_from_expression(const conditions::is_null_t<T> &c, bool noTableName) const {
+            std::string string_from_expression(const is_null_t<T> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << this->string_from_expression(c.t, noTableName) << " " << static_cast<std::string>(c) << " ";
                 return ss.str();
             }*/
 
             /*template<class T>
-            std::string string_from_expression(const conditions::is_not_null_t<T> &c, bool noTableName) const {
+            std::string string_from_expression(const is_not_null_t<T> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << this->string_from_expression(c.t, noTableName) << " " << static_cast<std::string>(c) << " ";
                 return ss.str();
@@ -11273,7 +11250,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class C>
-            std::string string_from_expression(const conditions::negated_condition_t<C> &c, bool noTableName) const {
+            std::string string_from_expression(const negated_condition_t<C> &c, bool noTableName) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
                 auto cString = this->string_from_expression(c.c, noTableName);
@@ -11282,7 +11259,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class L, class R>
-            std::string string_from_expression(const conditions::is_equal_t<L, R> &c, bool noTableName) const {
+            std::string string_from_expression(const is_equal_t<L, R> &c, bool noTableName) const {
                 auto leftString = this->string_from_expression(c.l, noTableName);
                 auto rightString = this->string_from_expression(c.r, noTableName);
                 std::stringstream ss;
@@ -11291,7 +11268,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class C>
-            typename std::enable_if<is_base_of_template<C, conditions::binary_condition>::value, std::string>::type
+            typename std::enable_if<is_base_of_template<C, binary_condition>::value, std::string>::type
             string_from_expression(const C &c, bool noTableName) const {
                 auto leftString = this->string_from_expression(c.l, noTableName);
                 auto rightString = this->string_from_expression(c.r, noTableName);
@@ -11301,19 +11278,19 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T>
-            std::string string_from_expression(const conditions::named_collate<T> &col, bool noTableName) const {
+            std::string string_from_expression(const named_collate<T> &col, bool noTableName) const {
                 auto res = this->string_from_expression(col.expr, noTableName);
                 return res + " " + static_cast<std::string>(col);
             }*/
 
             /*template<class T>
-            std::string string_from_expression(const conditions::collate_t<T> &col, bool noTableName) const {
+            std::string string_from_expression(const collate_t<T> &col, bool noTableName) const {
                 auto res = this->string_from_expression(col.expr, noTableName);
                 return res + " " + static_cast<std::string>(col);
             }*/
 
             /*template<class L, class A>
-            std::string string_from_expression(const conditions::in_t<L, A> &inCondition, bool noTableName) const {
+            std::string string_from_expression(const in_t<L, A> &inCondition, bool noTableName) const {
                 std::stringstream ss;
                 auto leftString = this->string_from_expression(inCondition.l, noTableName);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " ";
@@ -11322,8 +11299,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class L, class E>
-            std::string string_from_expression(const conditions::in_t<L, std::vector<E>> &inCondition,
-                                               bool noTableName) const {
+            std::string string_from_expression(const in_t<L, std::vector<E>> &inCondition, bool noTableName) const {
                 std::stringstream ss;
                 auto leftString = this->string_from_expression(inCondition.l, noTableName);
                 ss << leftString << " " << static_cast<std::string>(inCondition) << " ( ";
@@ -11339,7 +11315,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class A, class T, class E>
-            std::string string_from_expression(const conditions::like_t<A, T, E> &l, bool noTableName) const {
+            std::string string_from_expression(const like_t<A, T, E> &l, bool noTableName) const {
                 std::stringstream ss;
                 ss << this->string_from_expression(l.arg, noTableName) << " ";
                 ss << static_cast<std::string>(l) << " ";
@@ -11351,7 +11327,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class A, class T>
-            std::string string_from_expression(const conditions::glob_t<A, T> &l, bool noTableName) const {
+            std::string string_from_expression(const glob_t<A, T> &l, bool noTableName) const {
                 std::stringstream ss;
                 ss << this->string_from_expression(l.arg, noTableName) << " ";
                 ss << static_cast<std::string>(l) << " ";
@@ -11360,7 +11336,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class A, class T>
-            std::string string_from_expression(const conditions::between_t<A, T> &bw, bool noTableName) const {
+            std::string string_from_expression(const between_t<A, T> &bw, bool noTableName) const {
                 std::stringstream ss;
                 auto expr = this->string_from_expression(bw.expr, noTableName);
                 ss << expr << " " << static_cast<std::string>(bw) << " ";
@@ -11371,7 +11347,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T>
-            std::string string_from_expression(const conditions::exists_t<T> &e, bool noTableName) const {
+            std::string string_from_expression(const exists_t<T> &e, bool noTableName) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(e) << " ";
                 ss << this->string_from_expression(e.t, noTableName);
@@ -11379,7 +11355,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class O>
-            std::string process_order_by(const conditions::order_by_t<O> &orderBy) const {
+            std::string process_order_by(const order_by_t<O> &orderBy) const {
                 std::stringstream ss;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
@@ -11401,7 +11377,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T>
-            void process_join_constraint(std::stringstream &ss, const conditions::on_t<T> &t) const {
+            void process_join_constraint(std::stringstream &ss, const on_t<T> &t) const {
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
@@ -11409,7 +11385,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             template<class F, class O>
-            void process_join_constraint(std::stringstream &ss, const conditions::using_t<F, O> &u) const {
+            void process_join_constraint(std::stringstream &ss, const using_t<F, O> &u) const {
                 ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " )";
             }
 
@@ -11418,7 +11394,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
              *  OI - offset is implicit
              */
             /*template<class T, bool HO, bool OI, class O>
-            std::string string_from_expression(const conditions::limit_t<T, HO, OI, O> &limt, bool) const {
+            std::string string_from_expression(const limit_t<T, HO, OI, O> &limt, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(limt) << " ";
                 if(HO) {
@@ -11441,7 +11417,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class O>
-            std::string string_from_expression(const conditions::cross_join_t<O> &c, bool) const {
+            std::string string_from_expression(const cross_join_t<O> &c, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
@@ -11449,7 +11425,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class O>
-            std::string string_from_expression(const conditions::natural_join_t<O> &c, bool) const {
+            std::string string_from_expression(const natural_join_t<O> &c, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
@@ -11457,7 +11433,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T, class O>
-            std::string string_from_expression(const conditions::inner_join_t<T, O> &l, bool) const {
+            std::string string_from_expression(const inner_join_t<T, O> &l, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_extractor<T>::get();
@@ -11470,7 +11446,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T, class O>
-            std::string string_from_expression(const conditions::left_outer_join_t<T, O> &l, bool) const {
+            std::string string_from_expression(const left_outer_join_t<T, O> &l, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
@@ -11479,7 +11455,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T, class O>
-            std::string string_from_expression(const conditions::left_join_t<T, O> &l, bool) const {
+            std::string string_from_expression(const left_join_t<T, O> &l, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
@@ -11488,7 +11464,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T, class O>
-            std::string string_from_expression(const conditions::join_t<T, O> &l, bool) const {
+            std::string string_from_expression(const join_t<T, O> &l, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
@@ -11497,7 +11473,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class C>
-            std::string string_from_expression(const conditions::where_t<C> &w, bool) const {
+            std::string string_from_expression(const where_t<C> &w, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(w) << " ";
 //                auto whereString = this->string_from_expression(w.c, false);
@@ -11509,7 +11485,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class O>
-            std::string string_from_expression(const conditions::order_by_t<O> &orderBy, bool) const {
+            std::string string_from_expression(const order_by_t<O> &orderBy, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
                 auto orderByString = this->process_order_by(orderBy);
@@ -11518,7 +11494,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class... Args>
-            std::string string_from_expression(const conditions::multi_order_by_t<Args...> &orderBy, bool) const {
+            std::string string_from_expression(const multi_order_by_t<Args...> &orderBy, bool) const {
                 std::stringstream ss;
                 std::vector<std::string> expressions;
                 iterate_tuple(orderBy.args, [&expressions, this](auto &v) {
@@ -11537,14 +11513,14 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             template<class S>
-            std::string string_from_expression(const conditions::dynamic_order_by_t<S> &orderBy, bool) const {
+            std::string string_from_expression(const dynamic_order_by_t<S> &orderBy, bool) const {
                 std::stringstream ss;
                 ss << this->storage_base::process_order_by(orderBy) << " ";
                 return ss.str();
             }
 
             /*template<class... Args>
-            std::string string_from_expression(const conditions::group_by_t<Args...> &groupBy, bool) const {
+            std::string string_from_expression(const group_by_t<Args...> &groupBy, bool) const {
                 std::stringstream ss;
                 std::vector<std::string> expressions;
                 iterate_tuple(groupBy.args, [&expressions, this](auto &v) {
@@ -11563,7 +11539,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }*/
 
             /*template<class T>
-            std::string string_from_expression(const conditions::having_t<T> &hav, bool) const {
+            std::string string_from_expression(const having_t<T> &hav, bool) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(hav) << " ";
                 ss << this->string_from_expression(hav.t, false) << " ";
@@ -11575,6 +11551,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
                 iterate_tuple(args, [&context, &ss](auto &v) {
                     ss << serialize(v, context);
                 });
@@ -11628,8 +11605,12 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
             }
 
           protected:
-            template<class S>
-            friend conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
+//            template<class S>
+//            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
+//            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage)
+            
+//            template<class S>
+//            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
             
             template<class F, class O, class... Args>
             std::string group_concat_internal(F O::*m, std::unique_ptr<std::string> y, Args &&... args) {
@@ -12143,6 +12124,7 @@ conditions::dynamic_order_by_t<internal::serializator_context<typename S::impl_t
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
                 auto query = serialize(sel, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(sel), stmt, con};
@@ -13080,14 +13062,13 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct node_tuple<conditions::where_t<C>, void> {
-            using node_type = conditions::where_t<C>;
+        struct node_tuple<where_t<C>, void> {
+            using node_type = where_t<C>;
             using type = typename node_tuple<C>::type;
         };
 
         template<class T>
-        struct node_tuple<T,
-                          typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
@@ -13113,8 +13094,8 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct node_tuple<conditions::in_t<L, A>, void> {
-            using node_type = conditions::in_t<L, A>;
+        struct node_tuple<in_t<L, A>, void> {
+            using node_type = in_t<L, A>;
             using left_tuple = typename node_tuple<L>::type;
             using right_tuple = typename node_tuple<A>::type;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
@@ -13173,20 +13154,20 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<conditions::having_t<T>, void> {
-            using node_type = conditions::having_t<T>;
+        struct node_tuple<having_t<T>, void> {
+            using node_type = having_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T, class E>
-        struct node_tuple<conditions::cast_t<T, E>, void> {
-            using node_type = conditions::cast_t<T, E>;
+        struct node_tuple<cast_t<T, E>, void> {
+            using node_type = cast_t<T, E>;
             using type = typename node_tuple<E>::type;
         };
 
         template<class T>
-        struct node_tuple<conditions::exists_t<T>, void> {
-            using node_type = conditions::exists_t<T>;
+        struct node_tuple<exists_t<T>, void> {
+            using node_type = exists_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
@@ -13203,8 +13184,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T, class E>
-        struct node_tuple<conditions::like_t<A, T, E>, void> {
-            using node_type = conditions::like_t<A, T, E>;
+        struct node_tuple<like_t<A, T, E>, void> {
+            using node_type = like_t<A, T, E>;
             using arg_tuple = typename node_tuple<A>::type;
             using pattern_tuple = typename node_tuple<T>::type;
             using escape_tuple = typename node_tuple<E>::type;
@@ -13212,16 +13193,16 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct node_tuple<conditions::glob_t<A, T>, void> {
-            using node_type = conditions::glob_t<A, T>;
+        struct node_tuple<glob_t<A, T>, void> {
+            using node_type = glob_t<A, T>;
             using arg_tuple = typename node_tuple<A>::type;
             using pattern_tuple = typename node_tuple<T>::type;
             using type = typename conc_tuple<arg_tuple, pattern_tuple>::type;
         };
 
         template<class A, class T>
-        struct node_tuple<conditions::between_t<A, T>, void> {
-            using node_type = conditions::between_t<A, T>;
+        struct node_tuple<between_t<A, T>, void> {
+            using node_type = between_t<A, T>;
             using expression_tuple = typename node_tuple<A>::type;
             using lower_tuple = typename node_tuple<T>::type;
             using upper_tuple = typename node_tuple<T>::type;
@@ -13229,26 +13210,26 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<conditions::named_collate<T>, void> {
-            using node_type = conditions::named_collate<T>;
+        struct node_tuple<named_collate<T>, void> {
+            using node_type = named_collate<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T>
-        struct node_tuple<conditions::is_null_t<T>, void> {
-            using node_type = conditions::is_null_t<T>;
+        struct node_tuple<is_null_t<T>, void> {
+            using node_type = is_null_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T>
-        struct node_tuple<conditions::is_not_null_t<T>, void> {
-            using node_type = conditions::is_not_null_t<T>;
+        struct node_tuple<is_not_null_t<T>, void> {
+            using node_type = is_not_null_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class C>
-        struct node_tuple<conditions::negated_condition_t<C>, void> {
-            using node_type = conditions::negated_condition_t<C>;
+        struct node_tuple<negated_condition_t<C>, void> {
+            using node_type = negated_condition_t<C>;
             using type = typename node_tuple<C>::type;
         };
 
@@ -13259,32 +13240,32 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::left_join_t<T, O>, void> {
-            using node_type = conditions::left_join_t<T, O>;
+        struct node_tuple<left_join_t<T, O>, void> {
+            using node_type = left_join_t<T, O>;
             using type = typename node_tuple<O>::type;
         };
 
         template<class T>
-        struct node_tuple<conditions::on_t<T>, void> {
-            using node_type = conditions::on_t<T>;
+        struct node_tuple<on_t<T>, void> {
+            using node_type = on_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::join_t<T, O>, void> {
-            using node_type = conditions::join_t<T, O>;
+        struct node_tuple<join_t<T, O>, void> {
+            using node_type = join_t<T, O>;
             using type = typename node_tuple<O>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::left_outer_join_t<T, O>, void> {
-            using node_type = conditions::left_outer_join_t<T, O>;
+        struct node_tuple<left_outer_join_t<T, O>, void> {
+            using node_type = left_outer_join_t<T, O>;
             using type = typename node_tuple<O>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::inner_join_t<T, O>, void> {
-            using node_type = conditions::inner_join_t<T, O>;
+        struct node_tuple<inner_join_t<T, O>, void> {
+            using node_type = inner_join_t<T, O>;
             using type = typename node_tuple<O>::type;
         };
 
@@ -13312,20 +13293,20 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<conditions::limit_t<T, false, false, void>, void> {
-            using node_type = conditions::limit_t<T, false, false, void>;
+        struct node_tuple<limit_t<T, false, false, void>, void> {
+            using node_type = limit_t<T, false, false, void>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::limit_t<T, true, false, O>, void> {
-            using node_type = conditions::limit_t<T, true, false, O>;
+        struct node_tuple<limit_t<T, true, false, O>, void> {
+            using node_type = limit_t<T, true, false, O>;
             using type = typename conc_tuple<typename node_tuple<T>::type, typename node_tuple<O>::type>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::limit_t<T, true, true, O>, void> {
-            using node_type = conditions::limit_t<T, true, true, O>;
+        struct node_tuple<limit_t<T, true, true, O>, void> {
+            using node_type = limit_t<T, true, true, O>;
             using type = typename conc_tuple<typename node_tuple<O>::type, typename node_tuple<T>::type>::type;
         };
     }

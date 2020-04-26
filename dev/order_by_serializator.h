@@ -18,8 +18,8 @@ std::string serialize_order_by(const T &t, const C &context) {
 }
 
 template<class O>
-struct order_by_serializator<conditions::order_by_t<O>, void> {
-    using statement_type = conditions::order_by_t<O>;
+struct order_by_serializator<order_by_t<O>, void> {
+    using statement_type = order_by_t<O>;
     
     template<class C>
     std::string operator()(const statement_type &orderBy, const C &context) const {
@@ -44,8 +44,8 @@ struct order_by_serializator<conditions::order_by_t<O>, void> {
 };
 
 template<class S>
-struct order_by_serializator<conditions::dynamic_order_by_t<S>, void> {
-    using statement_type = conditions::dynamic_order_by_t<S>;
+struct order_by_serializator<dynamic_order_by_t<S>, void> {
+    using statement_type = dynamic_order_by_t<S>;
     
     template<class C>
     std::string operator()(const statement_type &orderBy, const C &) const {

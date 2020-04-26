@@ -27,6 +27,20 @@ namespace sqlite_orm {
                 return this->impl.column_name(m);
             }
         };
+    
+    template<class S>
+    struct serializator_context_builder {
+        using storage_type = S;
+        using impl_type = typename storage_type::impl_type;
+        
+        serializator_context_builder(const storage_type &storage_) : storage(storage_) {}
+        
+        serializator_context<impl_type> operator()() const {
+            return {this->storage.impl};
+        }
+        
+        const storage_type &storage;
+    };
 
     }
 

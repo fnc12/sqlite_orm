@@ -29,13 +29,33 @@ namespace sqlite_orm {
             return serializator(t, context);
         }
     
+    /*template<class T>
+    struct statement_serializator<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+        using statement_type = T;
+        
+        template<class C>
+        std::string operator()(const statement_type &statement, const C &context) {
+            if(context.replace_bindable_with_question){
+                return "?";
+            }else{
+                std::stringstream ss;
+                ss << statement;
+                return ss.str();
+            }
+        }
+    };*/
+    
     template<class T>
     struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
         using statement_type = T;
         
         template<class C>
-        std::string operator()(const statement_type &, const C &) {
-            return "?";
+        std::string operator()(const statement_type &statement, const C &context) {
+            if(context.replace_bindable_with_question){
+                return "?";
+            }else{
+                return field_printer<T>{}(statement);
+            }
         }
     };
 
@@ -318,8 +338,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class E>
-        struct statement_serializator<conditions::cast_t<T, E>, void> {
-            using statement_type = conditions::cast_t<T, E>;
+        struct statement_serializator<cast_t<T, E>, void> {
+            using statement_type = cast_t<T, E>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -370,8 +390,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::is_null_t<T>, void> {
-            using statement_type = conditions::is_null_t<T>;
+        struct statement_serializator<is_null_t<T>, void> {
+            using statement_type = is_null_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -382,8 +402,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::is_not_null_t<T>, void> {
-            using statement_type = conditions::is_not_null_t<T>;
+        struct statement_serializator<is_not_null_t<T>, void> {
+            using statement_type = is_not_null_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -408,8 +428,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::negated_condition_t<T>, void> {
-            using statement_type = conditions::negated_condition_t<T>;
+        struct statement_serializator<negated_condition_t<T>, void> {
+            using statement_type = negated_condition_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -424,7 +444,7 @@ namespace sqlite_orm {
         template<class T>
         struct statement_serializator<
             T,
-            typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+            typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using statement_type = T;
 
             template<class C>
@@ -438,8 +458,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::named_collate<T>, void> {
-            using statement_type = conditions::named_collate<T>;
+        struct statement_serializator<named_collate<T>, void> {
+            using statement_type = named_collate<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -449,8 +469,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::collate_t<T>, void> {
-            using statement_type = conditions::collate_t<T>;
+        struct statement_serializator<collate_t<T>, void> {
+            using statement_type = collate_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -460,8 +480,8 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct statement_serializator<conditions::in_t<L, A>, void> {
-            using statement_type = conditions::in_t<L, A>;
+        struct statement_serializator<in_t<L, A>, void> {
+            using statement_type = in_t<L, A>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -474,8 +494,8 @@ namespace sqlite_orm {
         };
 
         template<class L, class E>
-        struct statement_serializator<conditions::in_t<L, std::vector<E>>, void> {
-            using statement_type = conditions::in_t<L, std::vector<E>>;
+        struct statement_serializator<in_t<L, std::vector<E>>, void> {
+            using statement_type = in_t<L, std::vector<E>>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -495,8 +515,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T, class E>
-        struct statement_serializator<conditions::like_t<A, T, E>, void> {
-            using statement_type = conditions::like_t<A, T, E>;
+        struct statement_serializator<like_t<A, T, E>, void> {
+            using statement_type = like_t<A, T, E>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -512,8 +532,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct statement_serializator<conditions::glob_t<A, T>, void> {
-            using statement_type = conditions::glob_t<A, T>;
+        struct statement_serializator<glob_t<A, T>, void> {
+            using statement_type = glob_t<A, T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -526,8 +546,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct statement_serializator<conditions::between_t<A, T>, void> {
-            using statement_type = conditions::between_t<A, T>;
+        struct statement_serializator<between_t<A, T>, void> {
+            using statement_type = between_t<A, T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -542,8 +562,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<conditions::exists_t<T>, void> {
-            using statement_type = conditions::exists_t<T>;
+        struct statement_serializator<exists_t<T>, void> {
+            using statement_type = exists_t<T>;
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
@@ -782,8 +802,8 @@ namespace sqlite_orm {
                     ss << " ";
                 }
             }
-            iterate_tuple(sel.conditions, [&context](auto &v) {
-                serialize(v, context);
+            iterate_tuple(sel.conditions, [&context, &ss](auto &v) {
+                ss << serialize(v, context);
             });
             if(!is_base_of_template<T, compound_operator>::value) {
                 if(!sel.highest_level) {
@@ -795,8 +815,8 @@ namespace sqlite_orm {
     };
     
     template<class T>
-    struct statement_serializator<conditions::where_t<T>, void> {
-        using statement_type = conditions::where_t<T>;
+    struct statement_serializator<where_t<T>, void> {
+        using statement_type = where_t<T>;
         
         template<class C>
         std::string operator()(const statement_type &w, const C &context) const {
@@ -809,8 +829,8 @@ namespace sqlite_orm {
     };
     
     template<class O>
-    struct statement_serializator<conditions::order_by_t<O>, void> {
-        using statement_type = conditions::order_by_t<O>;
+    struct statement_serializator<order_by_t<O>, void> {
+        using statement_type = order_by_t<O>;
         
         template<class C>
         std::string operator()(const statement_type &orderBy, const C &context) const {
@@ -822,9 +842,19 @@ namespace sqlite_orm {
         }
     };
     
+    template<class C>
+    struct statement_serializator<dynamic_order_by_t<C>, void> {
+        using statement_type = dynamic_order_by_t<C>;
+        
+        template<class CC>
+        std::string operator()(const statement_type &orderBy, const CC &context) const {
+            return serialize_order_by(orderBy, context);
+        }
+    };
+    
     template<class... Args>
-    struct statement_serializator<conditions::multi_order_by_t<Args...>, void> {
-        using statement_type = conditions::multi_order_by_t<Args...>;
+    struct statement_serializator<multi_order_by_t<Args...>, void> {
+        using statement_type = multi_order_by_t<Args...>;
         
         template<class C>
         std::string operator()(const statement_type &orderBy, const C &context) const {
@@ -847,8 +877,8 @@ namespace sqlite_orm {
     };
     
     template<class O>
-    struct statement_serializator<conditions::cross_join_t<O>, void> {
-        using statement_type = conditions::cross_join_t<O>;
+    struct statement_serializator<cross_join_t<O>, void> {
+        using statement_type = cross_join_t<O>;
         
         template<class C>
         std::string operator()(const statement_type &c, const C &context) const {
@@ -860,8 +890,8 @@ namespace sqlite_orm {
     };
     
     template<class T, class O>
-    struct statement_serializator<conditions::inner_join_t<T, O>, void> {
-        using statement_type = conditions::inner_join_t<T, O>;
+    struct statement_serializator<inner_join_t<T, O>, void> {
+        using statement_type = inner_join_t<T, O>;
         
         template<class C>
         std::string operator()(const statement_type &l, const C &context) const {
@@ -878,8 +908,8 @@ namespace sqlite_orm {
     };
     
     template<class T>
-    struct statement_serializator<conditions::on_t<T>, void> {
-        using statement_type = conditions::on_t<T>;
+    struct statement_serializator<on_t<T>, void> {
+        using statement_type = on_t<T>;
         
         template<class C>
         std::string operator()(const statement_type &t, const C &context) const {
@@ -892,8 +922,8 @@ namespace sqlite_orm {
     };
     
     template<class T, class O>
-    struct statement_serializator<conditions::join_t<T, O>, void> {
-        using statement_type = conditions::join_t<T, O>;
+    struct statement_serializator<join_t<T, O>, void> {
+        using statement_type = join_t<T, O>;
         
         template<class C>
         std::string operator()(const statement_type &l, const C &context) const {
@@ -906,8 +936,8 @@ namespace sqlite_orm {
     };
     
     template<class T, class O>
-    struct statement_serializator<conditions::left_join_t<T, O>, void> {
-        using statement_type = conditions::left_join_t<T, O>;
+    struct statement_serializator<left_join_t<T, O>, void> {
+        using statement_type = left_join_t<T, O>;
         
         template<class C>
         std::string operator()(const statement_type &l, const C &context) const {
@@ -920,8 +950,8 @@ namespace sqlite_orm {
     };
     
     template<class T, class O>
-    struct statement_serializator<conditions::left_outer_join_t<T, O>, void> {
-        using statement_type = conditions::left_outer_join_t<T, O>;
+    struct statement_serializator<left_outer_join_t<T, O>, void> {
+        using statement_type = left_outer_join_t<T, O>;
         
         template<class C>
         std::string operator()(const statement_type &l, const C &context) const {
@@ -934,8 +964,8 @@ namespace sqlite_orm {
     };
     
     template<class O>
-    struct statement_serializator<conditions::natural_join_t<O>, void> {
-        using statement_type = conditions::natural_join_t<O>;
+    struct statement_serializator<natural_join_t<O>, void> {
+        using statement_type = natural_join_t<O>;
         
         template<class C>
         std::string operator()(const statement_type &c, const C &context) const {
@@ -947,8 +977,8 @@ namespace sqlite_orm {
     };
     
     template<class... Args>
-    struct statement_serializator<conditions::group_by_t<Args...>, void> {
-        using statement_type = conditions::group_by_t<Args...>;
+    struct statement_serializator<group_by_t<Args...>, void> {
+        using statement_type = group_by_t<Args...>;
         
         template<class C>
         std::string operator()(const statement_type &groupBy, const C &context) const {
@@ -973,8 +1003,8 @@ namespace sqlite_orm {
     };
     
     template<class T>
-    struct statement_serializator<conditions::having_t<T>, void> {
-        using statement_type = conditions::having_t<T>;
+    struct statement_serializator<having_t<T>, void> {
+        using statement_type = having_t<T>;
         
         template<class C>
         std::string operator()(const statement_type &hav, const C &context) const {
@@ -992,8 +1022,8 @@ namespace sqlite_orm {
      *  OI - offset is implicit
     */
     template<class T, bool HO, bool OI, class O>
-    struct statement_serializator<conditions::limit_t<T, HO, OI, O>, void> {
-        using statement_type = conditions::limit_t<T, HO, OI, O>;
+    struct statement_serializator<limit_t<T, HO, OI, O>, void> {
+        using statement_type = limit_t<T, HO, OI, O>;
         
         template<class C>
         std::string operator()(const statement_type &limt, const C &context) const {
@@ -1024,7 +1054,7 @@ namespace sqlite_orm {
         /*template<class T>
         struct statement_serializator<
             T,
-            typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+            typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using statement_type = T;
 
             template<class C>

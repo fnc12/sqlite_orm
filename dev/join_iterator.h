@@ -35,9 +35,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Tail>
-        struct join_iterator<conditions::cross_join_t<T>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<cross_join_t<T>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::cross_join_t<T>;
+            using join_type = cross_join_t<T>;
 
             template<class L>
             void operator()(const L &l) {
@@ -47,9 +47,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Tail>
-        struct join_iterator<conditions::natural_join_t<T>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<natural_join_t<T>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::natural_join_t<T>;
+            using join_type = natural_join_t<T>;
 
             template<class L>
             void operator()(const L &l) {
@@ -59,9 +59,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class O, class... Tail>
-        struct join_iterator<conditions::left_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<left_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::left_join_t<T, O>;
+            using join_type = left_join_t<T, O>;
 
             template<class L>
             void operator()(const L &l) {
@@ -71,9 +71,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class O, class... Tail>
-        struct join_iterator<conditions::join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::join_t<T, O>;
+            using join_type = join_t<T, O>;
 
             template<class L>
             void operator()(const L &l) {
@@ -83,9 +83,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class O, class... Tail>
-        struct join_iterator<conditions::left_outer_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<left_outer_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::left_outer_join_t<T, O>;
+            using join_type = left_outer_join_t<T, O>;
 
             template<class L>
             void operator()(const L &l) {
@@ -95,9 +95,9 @@ namespace sqlite_orm {
         };
 
         template<class T, class O, class... Tail>
-        struct join_iterator<conditions::inner_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
+        struct join_iterator<inner_join_t<T, O>, Tail...> : public join_iterator<Tail...> {
             using super = join_iterator<Tail...>;
-            using join_type = conditions::inner_join_t<T, O>;
+            using join_type = inner_join_t<T, O>;
 
             template<class L>
             void operator()(const L &l) {
