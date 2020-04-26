@@ -28,8 +28,8 @@ namespace sqlite_orm {
             statement_serializator<T> serializator;
             return serializator(t, context);
         }
-    
-    /*template<class T>
+
+        /*template<class T>
     struct statement_serializator<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
         using statement_type = T;
         
@@ -44,20 +44,20 @@ namespace sqlite_orm {
             }
         }
     };*/
-    
-    template<class T>
-    struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
-        using statement_type = T;
-        
-        template<class C>
-        std::string operator()(const statement_type &statement, const C &context) {
-            if(context.replace_bindable_with_question){
-                return "?";
-            }else{
-                return field_printer<T>{}(statement);
+
+        template<class T>
+        struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
+            using statement_type = T;
+
+            template<class C>
+            std::string operator()(const statement_type &statement, const C &context) {
+                if(context.replace_bindable_with_question) {
+                    return "?";
+                } else {
+                    return field_printer<T>{}(statement);
+                }
             }
-        }
-    };
+        };
 
         template<class T>
         struct statement_serializator<std::reference_wrapper<T>, void> {
@@ -351,9 +351,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<
-            T,
-            typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct statement_serializator<T,
+                                      typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
             using statement_type = T;
 
             template<class C>
@@ -442,9 +441,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<
-            T,
-            typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct statement_serializator<T,
+                                      typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using statement_type = T;
 
             template<class C>
@@ -452,7 +450,13 @@ namespace sqlite_orm {
                 auto leftString = serialize(c.l, context);
                 auto rightString = serialize(c.r, context);
                 std::stringstream ss;
-                ss << "(" << leftString << " " << static_cast<std::string>(c) << " " << rightString << ")";
+                if(context.use_parentheses) {
+                    ss << "(";
+                }
+                ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
+                if(context.use_parentheses) {
+                    ss << ")";
+                }
                 return ss.str();
             }
         };
@@ -463,7 +467,9 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
-                auto res = serialize(c.expr, context);
+                auto newContext = context;
+                newContext.use_parentheses = false;
+                auto res = serialize(c.expr, newContext);
                 return res + " " + static_cast<std::string>(c);
             }
         };
@@ -474,7 +480,9 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type &c, const C &context) const {
-                auto res = serialize(c.expr, context);
+                auto newContext = context;
+                newContext.use_parentheses = false;
+                auto res = serialize(c.expr, newContext);
                 return res + " " + static_cast<std::string>(c);
             }
         };
@@ -747,310 +755,310 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
-    
-    template<class T, class... Args>
-    struct statement_serializator<select_t<T, Args...>, void> {
-        using statement_type = select_t<T, Args...>;
-        
-        template<class C>
-        std::string operator()(const statement_type &sel, const C &context) const {
-            std::stringstream ss;
-            if(!is_base_of_template<T, compound_operator>::value) {
-                if(!sel.highest_level) {
-                    ss << "( ";
-                }
-                ss << "SELECT ";
-            }
-            if(get_distinct(sel.col)) {
-                ss << static_cast<std::string>(distinct(0)) << " ";
-            }
-            auto columnNames = get_column_names(sel.col, context);
-            for(size_t i = 0; i < columnNames.size(); ++i) {
-                ss << columnNames[i];
-                if(i < columnNames.size() - 1) {
-                    ss << ",";
-                }
-                ss << " ";
-            }
-            table_name_collector collector{[&context](std::type_index ti) {
-                return context.impl.find_table_name(ti);
-            }};
-            iterate_ast(sel.col, collector);
-            iterate_ast(sel.conditions, collector);
-            internal::join_iterator<Args...>()([&collector, &context](const auto &c) {
-                using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
-                using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
-                auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
-                auto tableAliasString = alias_extractor<original_join_type>::get();
-                std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
-                                                                       std::move(tableAliasString));
-                collector.table_names.erase(tableNameWithAlias);
-            });
-            if(!collector.table_names.empty()) {
-                ss << "FROM ";
-                std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
-                                                                            collector.table_names.end());
-                for(size_t i = 0; i < tableNames.size(); ++i) {
-                    auto &tableNamePair = tableNames[i];
-                    ss << "'" << tableNamePair.first << "' ";
-                    if(!tableNamePair.second.empty()) {
-                        ss << tableNamePair.second << " ";
+
+        template<class T, class... Args>
+        struct statement_serializator<select_t<T, Args...>, void> {
+            using statement_type = select_t<T, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &sel, const C &context) const {
+                std::stringstream ss;
+                if(!is_base_of_template<T, compound_operator>::value) {
+                    if(!sel.highest_level) {
+                        ss << "( ";
                     }
-                    if(int(i) < int(tableNames.size()) - 1) {
+                    ss << "SELECT ";
+                }
+                if(get_distinct(sel.col)) {
+                    ss << static_cast<std::string>(distinct(0)) << " ";
+                }
+                auto columnNames = get_column_names(sel.col, context);
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << columnNames[i];
+                    if(i < columnNames.size() - 1) {
                         ss << ",";
                     }
                     ss << " ";
                 }
-            }
-            iterate_tuple(sel.conditions, [&context, &ss](auto &v) {
-                ss << serialize(v, context);
-            });
-            if(!is_base_of_template<T, compound_operator>::value) {
-                if(!sel.highest_level) {
-                    ss << ") ";
+                table_name_collector collector{[&context](std::type_index ti) {
+                    return context.impl.find_table_name(ti);
+                }};
+                iterate_ast(sel.col, collector);
+                iterate_ast(sel.conditions, collector);
+                internal::join_iterator<Args...>()([&collector, &context](const auto &c) {
+                    using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
+                    using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
+                    auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
+                    auto tableAliasString = alias_extractor<original_join_type>::get();
+                    std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
+                                                                           std::move(tableAliasString));
+                    collector.table_names.erase(tableNameWithAlias);
+                });
+                if(!collector.table_names.empty()) {
+                    ss << "FROM ";
+                    std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
+                                                                                collector.table_names.end());
+                    for(size_t i = 0; i < tableNames.size(); ++i) {
+                        auto &tableNamePair = tableNames[i];
+                        ss << "'" << tableNamePair.first << "' ";
+                        if(!tableNamePair.second.empty()) {
+                            ss << tableNamePair.second << " ";
+                        }
+                        if(int(i) < int(tableNames.size()) - 1) {
+                            ss << ",";
+                        }
+                        ss << " ";
+                    }
                 }
-            }
-            return ss.str();
-        }
-    };
-    
-    template<class T>
-    struct statement_serializator<where_t<T>, void> {
-        using statement_type = where_t<T>;
-        
-        template<class C>
-        std::string operator()(const statement_type &w, const C &context) const {
-            std::stringstream ss;
-                            ss << static_cast<std::string>(w) << " ";
-                            auto whereString = serialize(w.c, context);
-                            ss << "( " << whereString << ") ";
-                            return ss.str();
-        }
-    };
-    
-    template<class O>
-    struct statement_serializator<order_by_t<O>, void> {
-        using statement_type = order_by_t<O>;
-        
-        template<class C>
-        std::string operator()(const statement_type &orderBy, const C &context) const {
-            std::stringstream ss;
-            ss << static_cast<std::string>(orderBy) << " ";
-            auto orderByString = serialize_order_by(orderBy, context);
-            ss << orderByString << " ";
-            return ss.str();
-        }
-    };
-    
-    template<class C>
-    struct statement_serializator<dynamic_order_by_t<C>, void> {
-        using statement_type = dynamic_order_by_t<C>;
-        
-        template<class CC>
-        std::string operator()(const statement_type &orderBy, const CC &context) const {
-            return serialize_order_by(orderBy, context);
-        }
-    };
-    
-    template<class... Args>
-    struct statement_serializator<multi_order_by_t<Args...>, void> {
-        using statement_type = multi_order_by_t<Args...>;
-        
-        template<class C>
-        std::string operator()(const statement_type &orderBy, const C &context) const {
-            std::stringstream ss;
-            std::vector<std::string> expressions;
-            iterate_tuple(orderBy.args, [&expressions, &context](auto &v) {
-                auto expression = serialize_order_by(v, context);
-                expressions.push_back(move(expression));
-            });
-            ss << static_cast<std::string>(orderBy) << " ";
-            for(size_t i = 0; i < expressions.size(); ++i) {
-                ss << expressions[i];
-                if(i < expressions.size() - 1) {
-                    ss << ", ";
+                iterate_tuple(sel.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
+                if(!is_base_of_template<T, compound_operator>::value) {
+                    if(!sel.highest_level) {
+                        ss << ") ";
+                    }
                 }
+                return ss.str();
             }
-            ss << " ";
-            return ss.str();
-        }
-    };
-    
-    template<class O>
-    struct statement_serializator<cross_join_t<O>, void> {
-        using statement_type = cross_join_t<O>;
-        
-        template<class C>
-        std::string operator()(const statement_type &c, const C &context) const {
-            std::stringstream ss;
-            ss << static_cast<std::string>(c) << " ";
-            ss << " '" << context.impl.find_table_name(typeid(O)) << "'";
-            return ss.str();
-        }
-    };
-    
-    template<class T, class O>
-    struct statement_serializator<inner_join_t<T, O>, void> {
-        using statement_type = inner_join_t<T, O>;
-        
-        template<class C>
-        std::string operator()(const statement_type &l, const C &context) const {
-            std::stringstream ss;
-            ss << static_cast<std::string>(l) << " ";
-            auto aliasString = alias_extractor<T>::get();
-            ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
-            if(aliasString.length()) {
-                ss << "'" << aliasString << "' ";
+        };
+
+        template<class T>
+        struct statement_serializator<where_t<T>, void> {
+            using statement_type = where_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type &w, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(w) << " ";
+                auto whereString = serialize(w.c, context);
+                ss << "( " << whereString << ") ";
+                return ss.str();
             }
-            ss << serialize(l.constraint, context);
-            return ss.str();
-        }
-    };
-    
-    template<class T>
-    struct statement_serializator<on_t<T>, void> {
-        using statement_type = on_t<T>;
-        
+        };
+
+        template<class O>
+        struct statement_serializator<order_by_t<O>, void> {
+            using statement_type = order_by_t<O>;
+
+            template<class C>
+            std::string operator()(const statement_type &orderBy, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(orderBy) << " ";
+                auto orderByString = serialize_order_by(orderBy, context);
+                ss << orderByString << " ";
+                return ss.str();
+            }
+        };
+
         template<class C>
-        std::string operator()(const statement_type &t, const C &context) const {
-            std::stringstream ss;
-            auto newContext = context;
-            newContext.skip_table_name = false;
-            ss << static_cast<std::string>(t) << " " << serialize(t.arg, newContext);
-            return ss.str();
-        }
-    };
-    
-    template<class T, class O>
-    struct statement_serializator<join_t<T, O>, void> {
-        using statement_type = join_t<T, O>;
-        
-        template<class C>
-        std::string operator()(const statement_type &l, const C &context) const {
-            std::stringstream ss;
-            ss << static_cast<std::string>(l) << " ";
-            ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
-            ss << serialize(l.constraint, context);
-            return ss.str();
-        }
-    };
-    
-    template<class T, class O>
-    struct statement_serializator<left_join_t<T, O>, void> {
-        using statement_type = left_join_t<T, O>;
-        
-        template<class C>
-        std::string operator()(const statement_type &l, const C &context) const {
-            std::stringstream ss;
-            ss << static_cast<std::string>(l) << " ";
-            ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
-            ss << serialize(l.constraint, context);
-            return ss.str();
-        }
-    };
-    
-    template<class T, class O>
-    struct statement_serializator<left_outer_join_t<T, O>, void> {
-        using statement_type = left_outer_join_t<T, O>;
-        
-        template<class C>
-        std::string operator()(const statement_type &l, const C &context) const {
-            std::stringstream ss;
-            ss << static_cast<std::string>(l) << " ";
-            ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
-            ss << serialize(l.constraint, context);
-            return ss.str();
-        }
-    };
-    
-    template<class O>
-    struct statement_serializator<natural_join_t<O>, void> {
-        using statement_type = natural_join_t<O>;
-        
-        template<class C>
-        std::string operator()(const statement_type &c, const C &context) const {
-            std::stringstream ss;
-            ss << static_cast<std::string>(c) << " ";
-            ss << " '" << context.impl.find_table_name(typeid(O)) << "'";
-            return ss.str();
-        }
-    };
-    
-    template<class... Args>
-    struct statement_serializator<group_by_t<Args...>, void> {
-        using statement_type = group_by_t<Args...>;
-        
-        template<class C>
-        std::string operator()(const statement_type &groupBy, const C &context) const {
-            std::stringstream ss;
-            std::vector<std::string> expressions;
-            auto newContext = context;
-            newContext.skip_table_name = false;
-            iterate_tuple(groupBy.args, [&expressions, &newContext](auto &v) {
-                auto expression = serialize(v, newContext);
-                expressions.push_back(expression);
-            });
-            ss << static_cast<std::string>(groupBy) << " ";
-            for(size_t i = 0; i < expressions.size(); ++i) {
-                ss << expressions[i];
-                if(i < expressions.size() - 1) {
-                    ss << ", ";
+        struct statement_serializator<dynamic_order_by_t<C>, void> {
+            using statement_type = dynamic_order_by_t<C>;
+
+            template<class CC>
+            std::string operator()(const statement_type &orderBy, const CC &context) const {
+                return serialize_order_by(orderBy, context);
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<multi_order_by_t<Args...>, void> {
+            using statement_type = multi_order_by_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &orderBy, const C &context) const {
+                std::stringstream ss;
+                std::vector<std::string> expressions;
+                iterate_tuple(orderBy.args, [&expressions, &context](auto &v) {
+                    auto expression = serialize_order_by(v, context);
+                    expressions.push_back(move(expression));
+                });
+                ss << static_cast<std::string>(orderBy) << " ";
+                for(size_t i = 0; i < expressions.size(); ++i) {
+                    ss << expressions[i];
+                    if(i < expressions.size() - 1) {
+                        ss << ", ";
+                    }
                 }
+                ss << " ";
+                return ss.str();
             }
-            ss << " ";
-            return ss.str();
-        }
-    };
-    
-    template<class T>
-    struct statement_serializator<having_t<T>, void> {
-        using statement_type = having_t<T>;
-        
-        template<class C>
-        std::string operator()(const statement_type &hav, const C &context) const {
-            std::stringstream ss;
-            auto newContext = context;
-            newContext.skip_table_name = false;
-            ss << static_cast<std::string>(hav) << " ";
-            ss << serialize(hav.t, newContext) << " ";
-            return ss.str();
-        }
-    };
-    
-    /**
+        };
+
+        template<class O>
+        struct statement_serializator<cross_join_t<O>, void> {
+            using statement_type = cross_join_t<O>;
+
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(c) << " ";
+                ss << " '" << context.impl.find_table_name(typeid(O)) << "'";
+                return ss.str();
+            }
+        };
+
+        template<class T, class O>
+        struct statement_serializator<inner_join_t<T, O>, void> {
+            using statement_type = inner_join_t<T, O>;
+
+            template<class C>
+            std::string operator()(const statement_type &l, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(l) << " ";
+                auto aliasString = alias_extractor<T>::get();
+                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                if(aliasString.length()) {
+                    ss << "'" << aliasString << "' ";
+                }
+                ss << serialize(l.constraint, context);
+                return ss.str();
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<on_t<T>, void> {
+            using statement_type = on_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type &t, const C &context) const {
+                std::stringstream ss;
+                auto newContext = context;
+                newContext.skip_table_name = false;
+                ss << static_cast<std::string>(t) << " " << serialize(t.arg, newContext);
+                return ss.str();
+            }
+        };
+
+        template<class T, class O>
+        struct statement_serializator<join_t<T, O>, void> {
+            using statement_type = join_t<T, O>;
+
+            template<class C>
+            std::string operator()(const statement_type &l, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(l) << " ";
+                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                ss << serialize(l.constraint, context);
+                return ss.str();
+            }
+        };
+
+        template<class T, class O>
+        struct statement_serializator<left_join_t<T, O>, void> {
+            using statement_type = left_join_t<T, O>;
+
+            template<class C>
+            std::string operator()(const statement_type &l, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(l) << " ";
+                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                ss << serialize(l.constraint, context);
+                return ss.str();
+            }
+        };
+
+        template<class T, class O>
+        struct statement_serializator<left_outer_join_t<T, O>, void> {
+            using statement_type = left_outer_join_t<T, O>;
+
+            template<class C>
+            std::string operator()(const statement_type &l, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(l) << " ";
+                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                ss << serialize(l.constraint, context);
+                return ss.str();
+            }
+        };
+
+        template<class O>
+        struct statement_serializator<natural_join_t<O>, void> {
+            using statement_type = natural_join_t<O>;
+
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(c) << " ";
+                ss << " '" << context.impl.find_table_name(typeid(O)) << "'";
+                return ss.str();
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<group_by_t<Args...>, void> {
+            using statement_type = group_by_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &groupBy, const C &context) const {
+                std::stringstream ss;
+                std::vector<std::string> expressions;
+                auto newContext = context;
+                newContext.skip_table_name = false;
+                iterate_tuple(groupBy.args, [&expressions, &newContext](auto &v) {
+                    auto expression = serialize(v, newContext);
+                    expressions.push_back(expression);
+                });
+                ss << static_cast<std::string>(groupBy) << " ";
+                for(size_t i = 0; i < expressions.size(); ++i) {
+                    ss << expressions[i];
+                    if(i < expressions.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << " ";
+                return ss.str();
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<having_t<T>, void> {
+            using statement_type = having_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type &hav, const C &context) const {
+                std::stringstream ss;
+                auto newContext = context;
+                newContext.skip_table_name = false;
+                ss << static_cast<std::string>(hav) << " ";
+                ss << serialize(hav.t, newContext) << " ";
+                return ss.str();
+            }
+        };
+
+        /**
      *  HO - has offset
      *  OI - offset is implicit
     */
-    template<class T, bool HO, bool OI, class O>
-    struct statement_serializator<limit_t<T, HO, OI, O>, void> {
-        using statement_type = limit_t<T, HO, OI, O>;
-        
-        template<class C>
-        std::string operator()(const statement_type &limt, const C &context) const {
-            auto newContext = context;
-            newContext.skip_table_name = false;
-            std::stringstream ss;
-            ss << static_cast<std::string>(limt) << " ";
-            if(HO) {
-                if(OI) {
-                    limt.off.apply([&newContext, &ss](auto &value) {
-                        ss << serialize(value, newContext);
-                    });
-                    ss << ", ";
-                    ss << serialize(limt.lim, newContext);
+        template<class T, bool HO, bool OI, class O>
+        struct statement_serializator<limit_t<T, HO, OI, O>, void> {
+            using statement_type = limit_t<T, HO, OI, O>;
+
+            template<class C>
+            std::string operator()(const statement_type &limt, const C &context) const {
+                auto newContext = context;
+                newContext.skip_table_name = false;
+                std::stringstream ss;
+                ss << static_cast<std::string>(limt) << " ";
+                if(HO) {
+                    if(OI) {
+                        limt.off.apply([&newContext, &ss](auto &value) {
+                            ss << serialize(value, newContext);
+                        });
+                        ss << ", ";
+                        ss << serialize(limt.lim, newContext);
+                    } else {
+                        ss << serialize(limt.lim, newContext) << " OFFSET ";
+                        limt.off.apply([&newContext, &ss](auto &value) {
+                            ss << serialize(value, newContext);
+                        });
+                    }
                 } else {
-                    ss << serialize(limt.lim, newContext) << " OFFSET ";
-                    limt.off.apply([&newContext, &ss](auto &value) {
-                        ss << serialize(value, newContext);
-                    });
+                    ss << serialize(limt.lim, newContext);
                 }
-            } else {
-                ss << serialize(limt.lim, newContext);
+                return ss.str();
             }
-            return ss.str();
-        }
-    };
-    
+        };
+
         /*template<class T>
         struct statement_serializator<
             T,

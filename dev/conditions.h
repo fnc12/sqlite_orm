@@ -506,9 +506,9 @@ namespace sqlite_orm {
             using context_t = C;
             using entry_t = dynamic_order_by_entry_t;
             using const_iterator = typename std::vector<entry_t>::const_iterator;
-            
+
             dynamic_order_by_t(const context_t &context_) : context(context_) {}
-            
+
             template<class O>
             void push_back(order_by_t<O> order_by) {
                 auto newContext = this->context;
@@ -1222,7 +1222,8 @@ namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage) {
+    internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>>
+    dynamic_order_by(const S &storage) {
         internal::serializator_context_builder<S> builder(storage);
         return builder();
         /*using context_t = internal::serializator_context<typename S::impl_type>;

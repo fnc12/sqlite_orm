@@ -50,8 +50,8 @@
 
 namespace sqlite_orm {
 
-//template<class S>
-//internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
+    //template<class S>
+    //internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
 
     /*namespace conditions {
 
@@ -90,7 +90,7 @@ namespace sqlite_orm {
 
             template<class V>
             friend struct iterator_t;
-            
+
             template<class S>
             friend struct serializator_context_builder;
 
@@ -1232,13 +1232,13 @@ namespace sqlite_orm {
             }
 
           protected:
-//            template<class S>
-//            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
-//            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage)
-            
-//            template<class S>
-//            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
-            
+            //            template<class S>
+            //            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
+            //            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage)
+
+            //            template<class S>
+            //            friend dynamic_order_by_t<internal::serializator_context<typename S::impl_type>> dynamic_order_by(const S &storage);
+
             template<class F, class O, class... Args>
             std::string group_concat_internal(F O::*m, std::unique_ptr<std::string> y, Args &&... args) {
                 this->assert_mapped_type<O>();
