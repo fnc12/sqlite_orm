@@ -29,22 +29,6 @@ namespace sqlite_orm {
             return serializator(t, context);
         }
 
-        /*template<class T>
-    struct statement_serializator<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
-        using statement_type = T;
-        
-        template<class C>
-        std::string operator()(const statement_type &statement, const C &context) {
-            if(context.replace_bindable_with_question){
-                return "?";
-            }else{
-                std::stringstream ss;
-                ss << statement;
-                return ss.str();
-            }
-        }
-    };*/
-
         template<class T>
         struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
             using statement_type = T;
@@ -1026,9 +1010,9 @@ namespace sqlite_orm {
         };
 
         /**
-     *  HO - has offset
-     *  OI - offset is implicit
-    */
+         *  HO - has offset
+         *  OI - offset is implicit
+         */
         template<class T, bool HO, bool OI, class O>
         struct statement_serializator<limit_t<T, HO, OI, O>, void> {
             using statement_type = limit_t<T, HO, OI, O>;
@@ -1058,34 +1042,5 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
-
-        /*template<class T>
-        struct statement_serializator<
-            T,
-            typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
-            using statement_type = T;
-
-            template<class C>
-            std::string operator()(const statement_type &c, const C &context) const {
-                auto leftString = serialize(c.l, context);
-                auto rightString = serialize(c.r, context);
-                std::stringstream ss;
-                ss << "(" << leftString << " " << static_cast<std::string>(c) << " " << rightString << ")";
-                return ss.str();
-            }
-        };*/
-
-        /*template<class T>
-        struct statement_serializator<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
-            using statement_type = T;
-
-            template<class C>
-            std::string operator()(const statement_type &t, const C &) const {
-                std::stringstream ss;
-                ss << t;
-                return ss.str();
-            }
-        };*/
-
     }
 }

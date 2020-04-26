@@ -1226,10 +1226,6 @@ namespace sqlite_orm {
     dynamic_order_by(const S &storage) {
         internal::serializator_context_builder<S> builder(storage);
         return builder();
-        /*using context_t = internal::serializator_context<typename S::impl_type>;
-        using return_type = internal::dynamic_order_by_t<context_t>;
-        context_t context{storage.impl};
-        return return_type{std::move(context)};*/
     }
 
     /**
