@@ -10849,11 +10849,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class F, class O>
-            void process_join_constraint(std::stringstream &ss, const using_t<F, O> &u) const {
-                ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " )";
-            }
-
             template<class S>
             std::string string_from_expression(const dynamic_order_by_t<S> &orderBy, bool) const {
                 std::stringstream ss;
