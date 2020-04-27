@@ -4,7 +4,7 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator column names") {
-    {  //  by member field pointer
+    SECTION("by member field pointer") {
         struct User {
             int id = 0;
             std::string name;
@@ -15,17 +15,24 @@ TEST_CASE("statement_serializator column names") {
         {
             using context_t = internal::serializator_context<storage_impl_t>;
             context_t context{storageImpl};
-            {
-                auto value = serialize(&User::id, context);
-                REQUIRE(value == "id");
+            SECTION("id") {
+                SECTION("skip table name") {
+                    auto value = serialize(&User::id, context);
+                    REQUIRE(value == "\"id\"");
+                }
+                SECTION("don't skip table name") {
+                    context.skip_table_name = false;
+                    auto value = serialize(&User::id, context);
+                    REQUIRE(value == "\"users\".\"id\"");
+                }
             }
-            {
+            SECTION("name") {
                 auto value = serialize(&User::name, context);
-                REQUIRE(value == "name");
+                REQUIRE(value == "\"name\"");
             }
         }
     }
-    {  //  by getters and setters pointers
+    SECTION("by getters and setters pointers") {
         struct User {
 
             int getId() const {
@@ -59,19 +66,19 @@ TEST_CASE("statement_serializator column names") {
                 context_t context{storageImpl};
                 {
                     auto value = serialize(&User::getId, context);
-                    REQUIRE(value == "id");
+                    REQUIRE(value == "\"id\"");
                 }
                 {
                     auto value = serialize(&User::setId, context);
-                    REQUIRE(value == "id");
+                    REQUIRE(value == "\"id\"");
                 }
                 {
                     auto value = serialize(&User::getName, context);
-                    REQUIRE(value == "name");
+                    REQUIRE(value == "\"name\"");
                 }
                 {
                     auto value = serialize(&User::setName, context);
-                    REQUIRE(value == "name");
+                    REQUIRE(value == "\"name\"");
                 }
             }
         }
@@ -86,19 +93,19 @@ TEST_CASE("statement_serializator column names") {
                 context_t context{storageImpl};
                 {
                     auto value = serialize(&User::getId, context);
-                    REQUIRE(value == "id");
+                    REQUIRE(value == "\"id\"");
                 }
                 {
                     auto value = serialize(&User::setId, context);
-                    REQUIRE(value == "id");
+                    REQUIRE(value == "\"id\"");
                 }
                 {
                     auto value = serialize(&User::getName, context);
-                    REQUIRE(value == "name");
+                    REQUIRE(value == "\"name\"");
                 }
                 {
                     auto value = serialize(&User::setName, context);
-                    REQUIRE(value == "name");
+                    REQUIRE(value == "\"name\"");
                 }
             }
         }

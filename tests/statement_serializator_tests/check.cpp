@@ -4,7 +4,7 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator check") {
-    {
+    SECTION("greater than") {
         struct Table {
             int col1 = 0;
             std::string col2;
@@ -23,10 +23,20 @@ TEST_CASE("statement_serializator check") {
         using context_t = internal::serializator_context<storage_impl_t>;
 
         context_t context{storageImpl};
-        auto value = serialize(ch, context);
-        REQUIRE(value == "CHECK (col3 > 0)");
+        std::string value;
+        std::string expected;
+        SECTION("with parentheses") {
+            value = serialize(ch, context);
+            expected = "CHECK (\"col3\" > 0)";
+        }
+        SECTION("without parentheses") {
+            context.use_parentheses = false;
+            value = serialize(ch, context);
+            expected = "CHECK \"col3\" > 0";
+        }
+        REQUIRE(value == expected);
     }
-    {
+    SECTION("lesser than") {
         struct Book {
             int id = 0;
             std::string name;
@@ -46,7 +56,17 @@ TEST_CASE("statement_serializator check") {
         using context_t = internal::serializator_context<storage_impl_t>;
 
         context_t context{storageImpl};
-        auto value = serialize(ch, context);
-        REQUIRE(value == "CHECK (0 < PRICE)");
+        std::string value;
+        std::string expected;
+        SECTION("with parentheses") {
+            value = serialize(ch, context);
+            expected = "CHECK (0 < \"PRICE\")";
+        }
+        SECTION("without parentheses") {
+            context.use_parentheses = false;
+            value = serialize(ch, context);
+            expected = "CHECK 0 < \"PRICE\"";
+        }
+        REQUIRE(value == expected);
     }
 }

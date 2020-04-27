@@ -28,7 +28,8 @@ TEST_CASE("Dynamic order by") {
     std::vector<decltype(User::id)> expectedIds;
 
     SECTION("id") {
-        orderBy.push_back(order_by(&User::id));
+        auto ob = order_by(&User::id);
+        orderBy.push_back(ob);
         expectedIds = {
             1,
             2,

@@ -50,17 +50,11 @@
 
 namespace sqlite_orm {
 
-    namespace conditions {
-
-        template<class S>
-        struct dynamic_order_by_t;
-    }
-
     namespace internal {
 
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
-         * function.
+         *  function.
          */
         template<class... Ts>
         struct storage_t : storage_base {
@@ -87,6 +81,9 @@ namespace sqlite_orm {
 
             template<class V>
             friend struct iterator_t;
+
+            template<class S>
+            friend struct serializator_context_builder;
 
             template<class I>
             void create_table(sqlite3 *db, const std::string &tableName, I *tableImpl) {
@@ -161,271 +158,6 @@ namespace sqlite_orm {
             template<class O>
             auto &get_impl() const {
                 return this->impl.template get_impl<O>();
-            }
-
-            template<class T>
-            typename std::enable_if<is_bindable<T>::value, std::string>::type
-            string_from_expression(const T &, bool /*noTableName*/) const {
-                return "?";
-            }
-
-            template<class T>
-            std::string string_from_expression(std::reference_wrapper<T> ref, bool noTableName) const {
-                return this->string_from_expression(ref.get(), noTableName);
-            }
-
-            std::string string_from_expression(std::nullptr_t, bool /*noTableName*/) const {
-                return "?";
-            }
-
-            template<class T>
-            std::string string_from_expression(const alias_holder<T> &, bool /*noTableName*/) const {
-                return T::get();
-            }
-
-            template<class R, class S, class... Args>
-            std::string string_from_expression(const core_function_t<R, S, Args...> &c, bool noTableName) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(c) << "(";
-                std::vector<std::string> args;
-                using args_type = typename std::decay<decltype(c)>::type::args_type;
-                args.reserve(std::tuple_size<args_type>::value);
-                iterate_tuple(c.args, [&args, this, noTableName](auto &v) {
-                    args.push_back(this->string_from_expression(v, noTableName));
-                });
-                for(size_t i = 0; i < args.size(); ++i) {
-                    ss << args[i];
-                    if(i < args.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << ")";
-                return ss.str();
-            }
-
-            template<class T, class E>
-            std::string string_from_expression(const as_t<T, E> &als, bool noTableName) const {
-                auto tableAliasString = alias_extractor<T>::get();
-                return this->string_from_expression(als.expression, noTableName) + " AS " + tableAliasString;
-            }
-
-            template<class T, class C>
-            std::string string_from_expression(const alias_column_t<T, C> &als, bool noTableName) const {
-                std::stringstream ss;
-                if(!noTableName) {
-                    ss << "'" << T::get() << "'.";
-                }
-                ss << this->string_from_expression(als.column, true);
-                return ss.str();
-            }
-
-            std::string string_from_expression(const std::string &, bool /*noTableName*/) const {
-                return "?";
-            }
-
-            std::string string_from_expression(const char *, bool /*noTableName*/) const {
-                return "?";
-            }
-
-            template<class F, class O>
-            std::string string_from_expression(F O::*m, bool noTableName) const {
-                std::stringstream ss;
-                if(!noTableName) {
-                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
-                }
-                ss << "\"" << this->impl.column_name(m) << "\"";
-                return ss.str();
-            }
-
-            std::string string_from_expression(const rowid_t &rid, bool /*noTableName*/) const {
-                return static_cast<std::string>(rid);
-            }
-
-            std::string string_from_expression(const oid_t &rid, bool /*noTableName*/) const {
-                return static_cast<std::string>(rid);
-            }
-
-            std::string string_from_expression(const _rowid_t &rid, bool /*noTableName*/) const {
-                return static_cast<std::string>(rid);
-            }
-
-            template<class O>
-            std::string string_from_expression(const table_rowid_t<O> &rid, bool noTableName) const {
-                std::stringstream ss;
-                if(!noTableName) {
-                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
-                }
-                ss << static_cast<std::string>(rid);
-                return ss.str();
-            }
-
-            template<class O>
-            std::string string_from_expression(const table_oid_t<O> &rid, bool noTableName) const {
-                std::stringstream ss;
-                if(!noTableName) {
-                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
-                }
-                ss << static_cast<std::string>(rid);
-                return ss.str();
-            }
-
-            template<class O>
-            std::string string_from_expression(const table__rowid_t<O> &rid, bool noTableName) const {
-                std::stringstream ss;
-                if(!noTableName) {
-                    ss << "'" << this->impl.find_table_name(typeid(O)) << "'.";
-                }
-                ss << static_cast<std::string>(rid);
-                return ss.str();
-            }
-
-            template<class L, class R, class... Ds>
-            std::string string_from_expression(const binary_operator<L, R, Ds...> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto lhs = this->string_from_expression(f.lhs, noTableName);
-                auto rhs = this->string_from_expression(f.rhs, noTableName);
-                ss << "(" << lhs << " " << static_cast<std::string>(f) << " " << rhs << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const internal::count_asterisk_t<T> &, bool noTableName) const {
-                return this->string_from_expression(internal::count_asterisk_without_type{}, noTableName);
-            }
-
-            std::string string_from_expression(const internal::count_asterisk_without_type &f,
-                                               bool /*noTableName*/) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(f) << "(*)";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const distinct_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ") ";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const all_t<T> &f, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(f.t, noTableName);
-                ss << static_cast<std::string>(f) << "(" << expr << ") ";
-                return ss.str();
-            }
-
-            template<class T, class F>
-            std::string string_from_expression(const column_pointer<T, F> &c, bool noTableName) const {
-                std::stringstream ss;
-                if(!noTableName) {
-                    ss << "'" << this->impl.find_table_name(typeid(T)) << "'.";
-                }
-                auto &tImpl = this->get_impl<T>();
-                ss << "\"" << tImpl.column_name_simple(c.field) << "\"";
-                return ss.str();
-            }
-
-            template<class T>
-            std::vector<std::string> get_column_names(const T &t) const {
-                auto columnName = this->string_from_expression(t, false);
-                if(columnName.length()) {
-                    return {columnName};
-                } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                }
-            }
-
-            template<class T>
-            std::vector<std::string> get_column_names(std::reference_wrapper<T> r) const {
-                return this->get_column_names(r.get());
-            }
-
-            template<class T>
-            std::vector<std::string> get_column_names(const internal::asterisk_t<T> &) const {
-                std::vector<std::string> res;
-                res.push_back("*");
-                return res;
-            }
-
-            template<class... Args>
-            std::vector<std::string> get_column_names(const internal::columns_t<Args...> &cols) const {
-                std::vector<std::string> columnNames;
-                columnNames.reserve(static_cast<size_t>(cols.count));
-                iterate_tuple(cols.columns, [&columnNames, this](auto &m) {
-                    auto columnName = this->string_from_expression(m, false);
-                    if(columnName.length()) {
-                        columnNames.push_back(columnName);
-                    } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                    }
-                });
-                return columnNames;
-            }
-
-            /**
-             *  Takes select_t object and returns SELECT query string
-             */
-            template<class T, class... Args>
-            std::string string_from_expression(const internal::select_t<T, Args...> &sel, bool /*noTableName*/) const {
-                std::stringstream ss;
-                if(!is_base_of_template<T, compound_operator>::value) {
-                    if(!sel.highest_level) {
-                        ss << "( ";
-                    }
-                    ss << "SELECT ";
-                }
-                if(get_distinct(sel.col)) {
-                    ss << static_cast<std::string>(distinct(0)) << " ";
-                }
-                auto columnNames = this->get_column_names(sel.col);
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                table_name_collector collector{[this](std::type_index ti) {
-                    return this->impl.find_table_name(ti);
-                }};
-                iterate_ast(sel.col, collector);
-                iterate_ast(sel.conditions, collector);
-                internal::join_iterator<Args...>()([&collector, this](const auto &c) {
-                    using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
-                    using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
-                    auto crossJoinedTableName = this->impl.find_table_name(typeid(cross_join_type));
-                    auto tableAliasString = alias_extractor<original_join_type>::get();
-                    std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
-                                                                           std::move(tableAliasString));
-                    collector.table_names.erase(tableNameWithAlias);
-                });
-                if(!collector.table_names.empty()) {
-                    ss << "FROM ";
-                    std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
-                                                                                collector.table_names.end());
-                    for(size_t i = 0; i < tableNames.size(); ++i) {
-                        auto &tableNamePair = tableNames[i];
-                        ss << "'" << tableNamePair.first << "' ";
-                        if(!tableNamePair.second.empty()) {
-                            ss << tableNamePair.second << " ";
-                        }
-                        if(int(i) < int(tableNames.size()) - 1) {
-                            ss << ",";
-                        }
-                        ss << " ";
-                    }
-                }
-                iterate_tuple(sel.conditions, [&ss, this](auto &v) {
-                    ss << this->string_from_expression(v, false);
-                });
-                if(!is_base_of_template<T, compound_operator>::value) {
-                    if(!sel.highest_level) {
-                        ss << ") ";
-                    }
-                }
-                return ss.str();
             }
 
             // Common code for statements returning the whole content of a table: get_all_t, get_all_pointer_t,
@@ -505,11 +237,16 @@ namespace sqlite_orm {
                         ss << " '" << collector.table_names.begin()->first << "' ";
                         ss << static_cast<std::string>(upd.set) << " ";
                         std::vector<std::string> setPairs;
-                        iterate_tuple(upd.set.assigns, [this, &setPairs](auto &asgn) {
+                        using context_t = serializator_context<impl_type>;
+                        context_t context{this->impl};
+                        context.replace_bindable_with_question = true;
+                        iterate_tuple(upd.set.assigns, [&context, &setPairs](auto &asgn) {
                             std::stringstream sss;
-                            sss << this->string_from_expression(asgn.lhs, true);
+                            context.skip_table_name = true;
+                            sss << serialize(asgn.lhs, context);
                             sss << " " << static_cast<std::string>(asgn) << " ";
-                            sss << this->string_from_expression(asgn.rhs, false) << " ";
+                            context.skip_table_name = false;
+                            sss << serialize(asgn.rhs, context) << " ";
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();
@@ -650,8 +387,11 @@ namespace sqlite_orm {
                 ss << "INSERT INTO '" << tImpl.table.name << "' ";
                 std::vector<std::string> columnNames;
                 columnNames.reserve(colsCount);
-                iterate_tuple(ins.columns.columns, [&columnNames, this](auto &m) {
-                    auto columnName = this->string_from_expression(m, true);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = true;
+                iterate_tuple(ins.columns.columns, [&columnNames, &context](auto &m) {
+                    auto columnName = serialize(m, context);
                     if(!columnName.empty()) {
                         columnNames.push_back(columnName);
                     } else {
@@ -854,321 +594,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class T, class E>
-            std::string string_from_expression(const cast_t<T, E> &c, bool noTableName) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(c) << " (";
-                ss << this->string_from_expression(c.expression, noTableName) << " AS " << type_printer<T>().print()
-                   << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            typename std::enable_if<is_base_of_template<T, compound_operator>::value, std::string>::type
-            string_from_expression(const T &op, bool noTableName) const {
-                std::stringstream ss;
-                ss << this->string_from_expression(op.left, noTableName) << " ";
-                ss << static_cast<std::string>(op) << " ";
-                ss << this->string_from_expression(op.right, noTableName);
-                return ss.str();
-            }
-
-            template<class R, class T, class E, class... Args>
-            std::string string_from_expression(const internal::simple_case_t<R, T, E, Args...> &c,
-                                               bool noTableName) const {
-                std::stringstream ss;
-                ss << "CASE ";
-                c.case_expression.apply([&ss, this, noTableName](auto &c) {
-                    ss << this->string_from_expression(c, noTableName) << " ";
-                });
-                iterate_tuple(c.args, [&ss, this, noTableName](auto &pair) {
-                    ss << "WHEN " << this->string_from_expression(pair.first, noTableName) << " ";
-                    ss << "THEN " << this->string_from_expression(pair.second, noTableName) << " ";
-                });
-                c.else_expression.apply([&ss, this, noTableName](auto &el) {
-                    ss << "ELSE " << this->string_from_expression(el, noTableName) << " ";
-                });
-                ss << "END";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const is_null_t<T> &c, bool noTableName) const {
-                std::stringstream ss;
-                ss << this->string_from_expression(c.t, noTableName) << " " << static_cast<std::string>(c) << " ";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const is_not_null_t<T> &c, bool noTableName) const {
-                std::stringstream ss;
-                ss << this->string_from_expression(c.t, noTableName) << " " << static_cast<std::string>(c) << " ";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const bitwise_not_t<T> &arg, bool noTableName) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(arg) << " ";
-                auto cString = this->string_from_expression(arg.argument, noTableName);
-                ss << " (" << cString << " ) ";
-                return ss.str();
-            }
-
-            template<class C>
-            std::string string_from_expression(const negated_condition_t<C> &c, bool noTableName) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                auto cString = this->string_from_expression(c.c, noTableName);
-                ss << " (" << cString << " ) ";
-                return ss.str();
-            }
-
-            template<class L, class R>
-            std::string string_from_expression(const is_equal_t<L, R> &c, bool noTableName) const {
-                auto leftString = this->string_from_expression(c.l, noTableName);
-                auto rightString = this->string_from_expression(c.r, noTableName);
-                std::stringstream ss;
-                ss << leftString << " " << static_cast<std::string>(c) << " " << rightString;
-                return ss.str();
-            }
-
-            template<class C>
-            typename std::enable_if<is_base_of_template<C, binary_condition>::value, std::string>::type
-            string_from_expression(const C &c, bool noTableName) const {
-                auto leftString = this->string_from_expression(c.l, noTableName);
-                auto rightString = this->string_from_expression(c.r, noTableName);
-                std::stringstream ss;
-                ss << "(" << leftString << " " << static_cast<std::string>(c) << " " << rightString << ")";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const named_collate<T> &col, bool noTableName) const {
-                auto res = this->string_from_expression(col.expr, noTableName);
-                return res + " " + static_cast<std::string>(col);
-            }
-
-            template<class T>
-            std::string string_from_expression(const collate_t<T> &col, bool noTableName) const {
-                auto res = this->string_from_expression(col.expr, noTableName);
-                return res + " " + static_cast<std::string>(col);
-            }
-
-            template<class L, class A>
-            std::string string_from_expression(const in_t<L, A> &inCondition, bool noTableName) const {
-                std::stringstream ss;
-                auto leftString = this->string_from_expression(inCondition.l, noTableName);
-                ss << leftString << " " << static_cast<std::string>(inCondition) << " ";
-                ss << this->string_from_expression(inCondition.arg, noTableName);
-                return ss.str();
-            }
-
-            template<class L, class E>
-            std::string string_from_expression(const in_t<L, std::vector<E>> &inCondition, bool noTableName) const {
-                std::stringstream ss;
-                auto leftString = this->string_from_expression(inCondition.l, noTableName);
-                ss << leftString << " " << static_cast<std::string>(inCondition) << " ( ";
-                for(size_t index = 0; index < inCondition.arg.size(); ++index) {
-                    auto &value = inCondition.arg[index];
-                    ss << " " << this->string_from_expression(value, noTableName);
-                    if(index < inCondition.arg.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << " )";
-                return ss.str();
-            }
-
-            template<class A, class T, class E>
-            std::string string_from_expression(const like_t<A, T, E> &l, bool noTableName) const {
-                std::stringstream ss;
-                ss << this->string_from_expression(l.arg, noTableName) << " ";
-                ss << static_cast<std::string>(l) << " ";
-                ss << this->string_from_expression(l.pattern, noTableName);
-                l.arg3.apply([&ss, this, noTableName](auto &value) {
-                    ss << " ESCAPE " << this->string_from_expression(value, noTableName);
-                });
-                return ss.str();
-            }
-
-            template<class A, class T>
-            std::string string_from_expression(const glob_t<A, T> &l, bool noTableName) const {
-                std::stringstream ss;
-                ss << this->string_from_expression(l.arg, noTableName) << " ";
-                ss << static_cast<std::string>(l) << " ";
-                ss << this->string_from_expression(l.pattern, noTableName);
-                return ss.str();
-            }
-
-            template<class A, class T>
-            std::string string_from_expression(const between_t<A, T> &bw, bool noTableName) const {
-                std::stringstream ss;
-                auto expr = this->string_from_expression(bw.expr, noTableName);
-                ss << expr << " " << static_cast<std::string>(bw) << " ";
-                ss << this->string_from_expression(bw.b1, noTableName);
-                ss << " AND ";
-                ss << this->string_from_expression(bw.b2, noTableName);
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const exists_t<T> &e, bool noTableName) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(e) << " ";
-                ss << this->string_from_expression(e.t, noTableName);
-                return ss.str();
-            }
-
-            template<class O>
-            std::string process_order_by(const order_by_t<O> &orderBy) const {
-                std::stringstream ss;
-                auto columnName = this->string_from_expression(orderBy.o, false);
-                ss << columnName << " ";
-                if(orderBy._collate_argument.length()) {
-                    ss << "COLLATE " << orderBy._collate_argument << " ";
-                }
-                switch(orderBy.asc_desc) {
-                    case 1:
-                        ss << "ASC";
-                        break;
-                    case -1:
-                        ss << "DESC";
-                        break;
-                }
-                return ss.str();
-            }
-
-            template<class T>
-            void process_join_constraint(std::stringstream &ss, const on_t<T> &t) const {
-                ss << static_cast<std::string>(t) << " " << this->string_from_expression(t.arg, false);
-            }
-
-            template<class F, class O>
-            void process_join_constraint(std::stringstream &ss, const using_t<F, O> &u) const {
-                ss << static_cast<std::string>(u) << " (" << this->string_from_expression(u.column, true) << " )";
-            }
-
-            /**
-             *  HO - has offset
-             *  OI - offset is implicit
-             */
-            template<class T, bool HO, bool OI, class O>
-            std::string string_from_expression(const limit_t<T, HO, OI, O> &limt, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(limt) << " ";
-                if(HO) {
-                    if(OI) {
-                        limt.off.apply([this, &ss](auto &value) {
-                            ss << this->string_from_expression(value, false);
-                        });
-                        ss << ", ";
-                        ss << this->string_from_expression(limt.lim, false);
-                    } else {
-                        ss << this->string_from_expression(limt.lim, false) << " OFFSET ";
-                        limt.off.apply([this, &ss](auto &value) {
-                            ss << this->string_from_expression(value, false);
-                        });
-                    }
-                } else {
-                    ss << this->string_from_expression(limt.lim, false);
-                }
-                return ss.str();
-            }
-
-            template<class O>
-            std::string string_from_expression(const cross_join_t<O> &c, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
-                return ss.str();
-            }
-
-            template<class O>
-            std::string string_from_expression(const natural_join_t<O> &c, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                ss << " '" << this->impl.find_table_name(typeid(O)) << "'";
-                return ss.str();
-            }
-
-            template<class T, class O>
-            std::string string_from_expression(const inner_join_t<T, O> &l, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(l) << " ";
-                auto aliasString = alias_extractor<T>::get();
-                ss << " '" << this->impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
-                if(aliasString.length()) {
-                    ss << "'" << aliasString << "' ";
-                }
-                this->process_join_constraint(ss, l.constraint);
-                return ss.str();
-            }
-
-            template<class T, class O>
-            std::string string_from_expression(const left_outer_join_t<T, O> &l, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(l) << " ";
-                ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
-                this->process_join_constraint(ss, l.constraint);
-                return ss.str();
-            }
-
-            template<class T, class O>
-            std::string string_from_expression(const left_join_t<T, O> &l, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(l) << " ";
-                ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
-                this->process_join_constraint(ss, l.constraint);
-                return ss.str();
-            }
-
-            template<class T, class O>
-            std::string string_from_expression(const join_t<T, O> &l, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(l) << " ";
-                ss << " '" << this->impl.find_table_name(typeid(T)) << "' ";
-                this->process_join_constraint(ss, l.constraint);
-                return ss.str();
-            }
-
-            template<class C>
-            std::string string_from_expression(const where_t<C> &w, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(w) << " ";
-                auto whereString = this->string_from_expression(w.c, false);
-                ss << "( " << whereString << ") ";
-                return ss.str();
-            }
-
-            template<class O>
-            std::string string_from_expression(const order_by_t<O> &orderBy, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(orderBy) << " ";
-                auto orderByString = this->process_order_by(orderBy);
-                ss << orderByString << " ";
-                return ss.str();
-            }
-
-            template<class... Args>
-            std::string string_from_expression(const multi_order_by_t<Args...> &orderBy, bool) const {
-                std::stringstream ss;
-                std::vector<std::string> expressions;
-                iterate_tuple(orderBy.args, [&expressions, this](auto &v) {
-                    auto expression = this->process_order_by(v);
-                    expressions.push_back(std::move(expression));
-                });
-                ss << static_cast<std::string>(orderBy) << " ";
-                for(size_t i = 0; i < expressions.size(); ++i) {
-                    ss << expressions[i];
-                    if(i < expressions.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << " ";
-                return ss.str();
-            }
-
             template<class S>
             std::string string_from_expression(const dynamic_order_by_t<S> &orderBy, bool) const {
                 std::stringstream ss;
@@ -1177,36 +602,13 @@ namespace sqlite_orm {
             }
 
             template<class... Args>
-            std::string string_from_expression(const group_by_t<Args...> &groupBy, bool) const {
-                std::stringstream ss;
-                std::vector<std::string> expressions;
-                iterate_tuple(groupBy.args, [&expressions, this](auto &v) {
-                    auto expression = this->string_from_expression(v, false);
-                    expressions.push_back(expression);
-                });
-                ss << static_cast<std::string>(groupBy) << " ";
-                for(size_t i = 0; i < expressions.size(); ++i) {
-                    ss << expressions[i];
-                    if(i < expressions.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << " ";
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const having_t<T> &hav, bool) const {
-                std::stringstream ss;
-                ss << static_cast<std::string>(hav) << " ";
-                ss << this->string_from_expression(hav.t, false) << " ";
-                return ss.str();
-            }
-
-            template<class... Args>
             void process_conditions(std::stringstream &ss, const std::tuple<Args...> &args) const {
-                iterate_tuple(args, [this, &ss](auto &v) {
-                    ss << this->string_from_expression(v, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                iterate_tuple(args, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
                 });
             }
 
@@ -1767,7 +1169,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(sel, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(sel, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(sel), stmt, con};
                 } else {

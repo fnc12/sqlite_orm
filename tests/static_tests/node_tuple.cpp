@@ -292,7 +292,7 @@ static_assert(is_same<Tuple, std::tuple<>>::value, "get_all<User>()");
 }
 }
 {  // having_t
-    using namespace conditions;
+    using namespace internal;
     auto hav = having(greater_or_equal(&User::id, 10));
     using Having = decltype(hav);
     using Tuple = node_tuple<Having>::type;

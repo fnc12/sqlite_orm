@@ -503,17 +503,17 @@ namespace sqlite_orm {
          */
         template<class C>
         struct dynamic_order_by_t : order_by_string {
-            using context_type = C;
+            using context_t = C;
             using entry_t = dynamic_order_by_entry_t;
-
             using const_iterator = typename std::vector<entry_t>::const_iterator;
 
-            template<class S>
-            dynamic_order_by_t(const S &storage_) : context(storage_.impl) {}
+            dynamic_order_by_t(const context_t &context_) : context(context_) {}
 
             template<class O>
             void push_back(order_by_t<O> order_by) {
-                auto columnName = serialize(order_by.o, this->context);
+                auto newContext = this->context;
+                newContext.skip_table_name = true;
+                auto columnName = serialize(order_by.o, newContext);
                 entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
             }
 
@@ -531,7 +531,7 @@ namespace sqlite_orm {
 
           protected:
             std::vector<entry_t> entries;
-            context_type context;
+            context_t context;
         };
 
         template<class T>
@@ -543,8 +543,8 @@ namespace sqlite_orm {
         template<class... Args>
         struct is_order_by<multi_order_by_t<Args...>> : std::true_type {};
 
-        template<class S>
-        struct is_order_by<dynamic_order_by_t<S>> : std::true_type {};
+        template<class C>
+        struct is_order_by<dynamic_order_by_t<C>> : std::true_type {};
 
         struct group_by_string {
             operator std::string() const {
@@ -1224,7 +1224,8 @@ namespace sqlite_orm {
     template<class S>
     internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>>
     dynamic_order_by(const S &storage) {
-        return {storage};
+        internal::serializator_context_builder<S> builder(storage);
+        return builder();
     }
 
     /**
