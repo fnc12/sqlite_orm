@@ -544,63 +544,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
 
-            template<class It>
-            std::string string_from_expression(const insert_range_t<It> &ins, bool /*noTableName*/) const {
-                using expression_type = typename std::decay<decltype(ins)>::type;
-                using object_type = typename expression_type::object_type;
-                auto &tImpl = this->get_impl<object_type>();
-
-                std::stringstream ss;
-                ss << "INSERT INTO '" << tImpl.table.name << "' (";
-                std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&columnNames](auto &c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
-                        columnNames.emplace_back(c.name);
-                    }
-                });
-
-                auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                ss << "VALUES ";
-                auto valuesString = [columnNamesCount] {
-                    std::stringstream ss;
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss << ", ";
-                        } else {
-                            ss << ")";
-                        }
-                    }
-                    return ss.str();
-                }();
-                auto valuesCount = static_cast<int>(std::distance(ins.range.first, ins.range.second));
-                for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
-            }
-
-            template<class S>
-            std::string string_from_expression(const dynamic_order_by_t<S> &orderBy, bool) const {
-                std::stringstream ss;
-                ss << this->storage_base::process_order_by(orderBy) << " ";
-                return ss.str();
-            }
-
             template<class... Args>
             void process_conditions(std::stringstream &ss, const std::tuple<Args...> &args) const {
                 using context_t = serializator_context<impl_type>;
@@ -1356,13 +1299,17 @@ namespace sqlite_orm {
             }
 
             template<class It>
-            prepared_statement_t<insert_range_t<It>> prepare(insert_range_t<It> ins) {
+            prepared_statement_t<insert_range_t<It>> prepare(insert_range_t<It> statement) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(ins, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(statement, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(ins), stmt, con};
+                    return {std::move(statement), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
