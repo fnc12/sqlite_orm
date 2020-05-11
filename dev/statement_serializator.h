@@ -740,6 +740,28 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class... Ids>
+        struct statement_serializator<remove_t<T, Ids...>, void> {
+            using statement_type = remove_t<T, Ids...>;
+
+            template<class C>
+            std::string operator()(const statement_type &, const C &context) const {
+                auto &tImpl = context.impl.template get_impl<T>();
+                std::stringstream ss;
+                ss << "DELETE FROM '" << tImpl.table.name << "' ";
+                ss << "WHERE ";
+                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
+                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                    ss << "\"" << primaryKeyColumnNames[i] << "\""
+                       << " = ? ";
+                    if(i < primaryKeyColumnNames.size() - 1) {
+                        ss << "AND ";
+                    }
+                }
+                return ss.str();
+            }
+        };
+
         template<class It>
         struct statement_serializator<insert_range_t<It>, void> {
             using statement_type = insert_range_t<It>;

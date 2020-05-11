@@ -9984,6 +9984,28 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class... Ids>
+        struct statement_serializator<remove_t<T, Ids...>, void> {
+            using statement_type = remove_t<T, Ids...>;
+
+            template<class C>
+            std::string operator()(const statement_type &, const C &context) const {
+                auto &tImpl = context.impl.template get_impl<T>();
+                std::stringstream ss;
+                ss << "DELETE FROM '" << tImpl.table.name << "' ";
+                ss << "WHERE ";
+                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
+                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                    ss << "\"" << primaryKeyColumnNames[i] << "\""
+                       << " = ? ";
+                    if(i < primaryKeyColumnNames.size() - 1) {
+                        ss << "AND ";
+                    }
+                }
+                return ss.str();
+            }
+        };
+
         template<class It>
         struct statement_serializator<insert_range_t<It>, void> {
             using statement_type = insert_range_t<It>;
@@ -10513,14 +10535,26 @@ namespace sqlite_orm {
             template<class T, class... Args>
             std::string string_from_expression(const get_all_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                this->process_conditions(ss, get.conditions);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
                 return ss.str();
             }
 
             template<class T, class... Args>
             std::string string_from_expression(const get_all_pointer_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                this->process_conditions(ss, get.conditions);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
                 return ss.str();
             }
 
@@ -10528,7 +10562,13 @@ namespace sqlite_orm {
             template<class T, class... Args>
             std::string string_from_expression(const get_all_optional_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                this->process_conditions(ss, get.conditions);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
                 return ss.str();
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -10566,7 +10606,10 @@ namespace sqlite_orm {
                                 ss << ", ";
                             }
                         }
-                        this->process_conditions(ss, upd.conditions);
+                        context.skip_table_name = false;
+                        iterate_tuple(upd.conditions, [&context, &ss](auto &v) {
+                            ss << serialize(v, context);
+                        });
                         return ss.str();
                     } else {
                         throw std::system_error(std::make_error_code(orm_error_code::too_many_tables_specified));
@@ -10581,7 +10624,13 @@ namespace sqlite_orm {
                 auto &tImpl = this->get_impl<T>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << tImpl.table.name << "' ";
-                this->process_conditions(ss, rem.conditions);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                iterate_tuple(rem.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
                 return ss.str();
             }
 
@@ -10664,23 +10713,6 @@ namespace sqlite_orm {
                         ss << " AND";
                     }
                     ss << " ";
-                }
-                return ss.str();
-            }
-
-            template<class T, class... Ids>
-            std::string string_from_expression(const remove_t<T, Ids...> &, bool /*noTableName*/) const {
-                auto &tImpl = this->get_impl<T>();
-                std::stringstream ss;
-                ss << "DELETE FROM '" << tImpl.table.name << "' ";
-                ss << "WHERE ";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ? ";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << "AND ";
-                    }
                 }
                 return ss.str();
             }
@@ -10852,29 +10884,6 @@ namespace sqlite_orm {
                     ss << " ";
                 }
                 return ss.str();
-            }
-
-            /*template<class It>
-            std::string string_from_expression(const insert_range_t<It> &ins, bool ) const {
-                ff
-            }*/
-
-            /*template<class S>
-            std::string string_from_expression(const dynamic_order_by_t<S> &orderBy, bool) const {
-                std::stringstream ss;
-                ss << this->storage_base::process_order_by(orderBy) << " ";
-                return ss.str();
-            }*/
-
-            template<class... Args>
-            void process_conditions(std::stringstream &ss, const std::tuple<Args...> &args) const {
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = false;
-                context.replace_bindable_with_question = true;
-                iterate_tuple(args, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
             }
 
           public:
@@ -11583,7 +11592,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(rem, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(rem, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rem), stmt, con};
                 } else {
