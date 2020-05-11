@@ -740,6 +740,59 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<insert_t<T>, void> {
+            using statement_type = insert_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type &, const C &context) const {
+                using object_type = typename expression_object_type<statement_type>::type;
+                auto &tImpl = context.impl.template get_impl<object_type>();
+                std::stringstream ss;
+                ss << "INSERT INTO '" << tImpl.table.name << "' ";
+                std::vector<std::string> columnNames;
+                auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
+
+                tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto &c) {
+                    if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
+                        auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
+                        if(it == compositeKeyColumnNames.end()) {
+                            columnNames.emplace_back(c.name);
+                        }
+                    }
+                });
+
+                auto columnNamesCount = columnNames.size();
+                if(columnNamesCount) {
+                    ss << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "\"" << columnNames[i] << "\"";
+                        if(i < columnNamesCount - 1) {
+                            ss << ",";
+                        } else {
+                            ss << ")";
+                        }
+                        ss << " ";
+                    }
+                } else {
+                    ss << "DEFAULT ";
+                }
+                ss << "VALUES ";
+                if(columnNamesCount) {
+                    ss << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "?";
+                        if(i < columnNamesCount - 1) {
+                            ss << ", ";
+                        } else {
+                            ss << ")";
+                        }
+                    }
+                }
+                return ss.str();
+            }
+        };
+
         template<class T, class... Ids>
         struct statement_serializator<remove_t<T, Ids...>, void> {
             using statement_type = remove_t<T, Ids...>;
