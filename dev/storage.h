@@ -287,21 +287,6 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, class... Args>
-            std::string string_from_expression(const remove_all_t<T, Args...> &rem, bool /*noTableName*/) const {
-                auto &tImpl = this->get_impl<T>();
-                std::stringstream ss;
-                ss << "DELETE FROM '" << tImpl.table.name << "' ";
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = false;
-                context.replace_bindable_with_question = true;
-                iterate_tuple(rem.conditions, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
-                return ss.str();
-            }
-
             // Common code for statements with conditions: get_t, get_pointer_t, get_optional_t.
             template<class T>
             std::string string_from_expression_impl_get(bool /*noTableName*/) const {
@@ -1138,7 +1123,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(rem, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(rem, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rem), stmt, std::move(con)};
                 } else {

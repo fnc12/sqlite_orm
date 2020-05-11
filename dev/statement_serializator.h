@@ -740,6 +740,22 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class... Args>
+        struct statement_serializator<remove_all_t<T, Args...>, void> {
+            using statement_type = remove_all_t<T, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &rem, const C &context) const {
+                auto &tImpl = context.impl.template get_impl<T>();
+                std::stringstream ss;
+                ss << "DELETE FROM '" << tImpl.table.name << "' ";
+                iterate_tuple(rem.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
+                return ss.str();
+            }
+        };
+
         template<class T>
         struct statement_serializator<insert_t<T>, void> {
             using statement_type = insert_t<T>;
