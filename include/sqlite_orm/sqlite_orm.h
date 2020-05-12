@@ -10248,6 +10248,53 @@ namespace sqlite_orm {
         };
 
         template<class It>
+        struct statement_serializator<replace_range_t<It>, void> {
+            using statement_type = replace_range_t<It>;
+
+            template<class C>
+            std::string operator()(const statement_type &rep, const C &context) const {
+                using expression_type = typename std::decay<decltype(rep)>::type;
+                using object_type = typename expression_type::object_type;
+                auto &tImpl = context.impl.template get_impl<object_type>();
+                std::stringstream ss;
+                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
+                auto columnNames = tImpl.table.column_names();
+                auto columnNamesCount = columnNames.size();
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss << "\"" << columnNames[i] << "\"";
+                    if(i < columnNamesCount - 1) {
+                        ss << ", ";
+                    } else {
+                        ss << ") ";
+                    }
+                }
+                ss << "VALUES ";
+                auto valuesString = [columnNamesCount] {
+                    std::stringstream ss;
+                    ss << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "?";
+                        if(i < columnNamesCount - 1) {
+                            ss << ", ";
+                        } else {
+                            ss << ")";
+                        }
+                    }
+                    return ss.str();
+                }();
+                auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
+                for(auto i = 0; i < valuesCount; ++i) {
+                    ss << valuesString;
+                    if(i < valuesCount - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                return ss.str();
+            }
+        };
+
+        template<class It>
         struct statement_serializator<insert_range_t<It>, void> {
             using statement_type = insert_range_t<It>;
 
@@ -10861,48 +10908,6 @@ namespace sqlite_orm {
                 return this->string_from_expression_impl_get<T>(noTableName);
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-            template<class It>
-            std::string string_from_expression(const replace_range_t<It> &rep, bool /*noTableName*/) const {
-                using expression_type = typename std::decay<decltype(rep)>::type;
-                using object_type = typename expression_type::object_type;
-                auto &tImpl = this->get_impl<object_type>();
-                std::stringstream ss;
-                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
-                auto columnNames = tImpl.table.column_names();
-                auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << ") ";
-                    }
-                }
-                ss << "VALUES ";
-                auto valuesString = [columnNamesCount] {
-                    std::stringstream ss;
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss << ", ";
-                        } else {
-                            ss << ")";
-                        }
-                    }
-                    return ss.str();
-                }();
-                auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
-                for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
-            }
 
           public:
             template<class T, class... Args>
@@ -11698,7 +11703,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(rep, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(rep, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rep), stmt, con};
                 } else {

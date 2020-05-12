@@ -1004,6 +1004,53 @@ namespace sqlite_orm {
         };
 
         template<class It>
+        struct statement_serializator<replace_range_t<It>, void> {
+            using statement_type = replace_range_t<It>;
+
+            template<class C>
+            std::string operator()(const statement_type &rep, const C &context) const {
+                using expression_type = typename std::decay<decltype(rep)>::type;
+                using object_type = typename expression_type::object_type;
+                auto &tImpl = context.impl.template get_impl<object_type>();
+                std::stringstream ss;
+                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
+                auto columnNames = tImpl.table.column_names();
+                auto columnNamesCount = columnNames.size();
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss << "\"" << columnNames[i] << "\"";
+                    if(i < columnNamesCount - 1) {
+                        ss << ", ";
+                    } else {
+                        ss << ") ";
+                    }
+                }
+                ss << "VALUES ";
+                auto valuesString = [columnNamesCount] {
+                    std::stringstream ss;
+                    ss << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "?";
+                        if(i < columnNamesCount - 1) {
+                            ss << ", ";
+                        } else {
+                            ss << ")";
+                        }
+                    }
+                    return ss.str();
+                }();
+                auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
+                for(auto i = 0; i < valuesCount; ++i) {
+                    ss << valuesString;
+                    if(i < valuesCount - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                return ss.str();
+            }
+        };
+
+        template<class It>
         struct statement_serializator<insert_range_t<It>, void> {
             using statement_type = insert_range_t<It>;
 
