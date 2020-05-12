@@ -756,6 +756,46 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<update_t<T>, void> {
+            using statement_type = update_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type &upd, const C &context) const {
+                using expression_type = typename std::decay<decltype(upd)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                auto &tImpl = context.impl.template get_impl<object_type>();
+
+                std::stringstream ss;
+                ss << "UPDATE '" << tImpl.table.name << "' SET ";
+                std::vector<std::string> setColumnNames;
+                tImpl.table.for_each_column([&setColumnNames](auto &c) {
+                    if(!c.template has<constraints::primary_key_t<>>()) {
+                        setColumnNames.emplace_back(c.name);
+                    }
+                });
+                for(size_t i = 0; i < setColumnNames.size(); ++i) {
+                    ss << "\"" << setColumnNames[i] << "\""
+                       << " = ?";
+                    if(i < setColumnNames.size() - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                ss << "WHERE ";
+                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
+                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                    ss << "\"" << primaryKeyColumnNames[i] << "\""
+                       << " = ?";
+                    if(i < primaryKeyColumnNames.size() - 1) {
+                        ss << " AND";
+                    }
+                    ss << " ";
+                }
+                return ss.str();
+            }
+        };
+
         template<class... Args, class... Wargs>
         struct statement_serializator<update_all_t<set_t<Args...>, Wargs...>, void> {
             using statement_type = update_all_t<set_t<Args...>, Wargs...>;

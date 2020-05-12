@@ -289,41 +289,6 @@ namespace sqlite_orm {
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-            template<class T>
-            std::string string_from_expression(const update_t<T> &upd, bool /*noTableName*/) const {
-                using expression_type = typename std::decay<decltype(upd)>::type;
-                using object_type = typename expression_object_type<expression_type>::type;
-                auto &tImpl = this->get_impl<object_type>();
-
-                std::stringstream ss;
-                ss << "UPDATE '" << tImpl.table.name << "' SET ";
-                std::vector<std::string> setColumnNames;
-                tImpl.table.for_each_column([&setColumnNames](auto &c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
-                        setColumnNames.emplace_back(c.name);
-                    }
-                });
-                for(size_t i = 0; i < setColumnNames.size(); ++i) {
-                    ss << "\"" << setColumnNames[i] << "\""
-                       << " = ?";
-                    if(i < setColumnNames.size() - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                ss << "WHERE ";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ?";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << " AND";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
-            }
-
             template<class T, class... Cols>
             std::string string_from_expression(const insert_explicit<T, Cols...> &ins, bool /*noTableName*/) const {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
@@ -1143,7 +1108,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(upd, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(upd, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(upd), stmt, con};
                 } else {
