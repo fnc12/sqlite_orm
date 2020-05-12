@@ -756,6 +756,41 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<replace_t<T>, void> {
+            using statement_type = replace_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type &rep, const C &context) const {
+                using expression_type = typename std::decay<decltype(rep)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                auto &tImpl = context.impl.template get_impl<object_type>();
+                std::stringstream ss;
+                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
+                auto columnNames = tImpl.table.column_names();
+                auto columnNamesCount = columnNames.size();
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss << "\"" << columnNames[i] << "\"";
+                    if(i < columnNamesCount - 1) {
+                        ss << ",";
+                    } else {
+                        ss << ")";
+                    }
+                    ss << " ";
+                }
+                ss << "VALUES(";
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss << "?";
+                    if(i < columnNamesCount - 1) {
+                        ss << ", ";
+                    } else {
+                        ss << ")";
+                    }
+                }
+                return ss.str();
+            }
+        };
+
         template<class T, class... Cols>
         struct statement_serializator<insert_explicit<T, Cols...>, void> {
             using statement_type = insert_explicit<T, Cols...>;
