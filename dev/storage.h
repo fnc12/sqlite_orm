@@ -197,32 +197,21 @@ namespace sqlite_orm {
                     }
                     ss << " ";
                 }
-                return ss;
-            }
 
-            template<class T, class... Args>
-            std::string string_from_expression(const get_all_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
+                iterate_tuple(get_query.conditions, [&context, &ss](auto &v) {
                     ss << serialize(v, context);
                 });
-                return ss.str();
+
+                return ss;
             }
 
             template<class T, class... Args>
             std::string string_from_expression(const get_all_pointer_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = false;
-                context.replace_bindable_with_question = true;
-                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
                 return ss.str();
             }
 
@@ -230,13 +219,6 @@ namespace sqlite_orm {
             template<class T, class... Args>
             std::string string_from_expression(const get_all_optional_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = false;
-                context.replace_bindable_with_question = true;
-                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
                 return ss.str();
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -864,7 +846,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(get, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(get, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(get), stmt, con};
                 } else {

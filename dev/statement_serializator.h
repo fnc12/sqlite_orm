@@ -1106,6 +1106,49 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Args>
+        struct statement_serializator<get_all_t<T, Args...>, void> {
+            using statement_type = get_all_t<T, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &get, const C &context) const {
+                table_name_collector collector;
+                collector.table_names.insert(std::make_pair(context.impl.find_table_name(typeid(T)), std::string{}));
+                iterate_ast(get.conditions, collector);
+                std::stringstream ss;
+                ss << "SELECT ";
+                auto &tImpl = context.impl.template get_impl<T>();
+                auto columnNames = tImpl.table.column_names();
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << "\"" << tImpl.table.name << "\"."
+                       << "\"" << columnNames[i] << "\"";
+                    if(i < columnNames.size() - 1) {
+                        ss << ", ";
+                    } else {
+                        ss << " ";
+                    }
+                }
+                ss << "FROM ";
+                std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
+                                                                            collector.table_names.end());
+                for(size_t i = 0; i < tableNames.size(); ++i) {
+                    auto &tableNamePair = tableNames[i];
+                    ss << "'" << tableNamePair.first << "' ";
+                    if(!tableNamePair.second.empty()) {
+                        ss << tableNamePair.second << " ";
+                    }
+                    if(int(i) < int(tableNames.size()) - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
+                return ss.str();
+            }
+        };
+
+        template<class T, class... Args>
         struct statement_serializator<select_t<T, Args...>, void> {
             using statement_type = select_t<T, Args...>;
 

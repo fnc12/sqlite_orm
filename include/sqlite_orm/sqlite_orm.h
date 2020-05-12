@@ -7909,7 +7909,11 @@ namespace sqlite_orm {
             iterator_t<self> begin() {
                 sqlite3_stmt *stmt = nullptr;
                 auto db = this->connection.get();
-                auto query = this->storage.string_from_expression(this->args, false);
+                using context_t = serializator_context<typename storage_type::impl_type>;
+                context_t context{this->storage.impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(this->args, context);
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK) {
                     auto index = 1;
@@ -10350,6 +10354,49 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Args>
+        struct statement_serializator<get_all_t<T, Args...>, void> {
+            using statement_type = get_all_t<T, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &get, const C &context) const {
+                table_name_collector collector;
+                collector.table_names.insert(std::make_pair(context.impl.find_table_name(typeid(T)), std::string{}));
+                iterate_ast(get.conditions, collector);
+                std::stringstream ss;
+                ss << "SELECT ";
+                auto &tImpl = context.impl.template get_impl<T>();
+                auto columnNames = tImpl.table.column_names();
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << "\"" << tImpl.table.name << "\"."
+                       << "\"" << columnNames[i] << "\"";
+                    if(i < columnNames.size() - 1) {
+                        ss << ", ";
+                    } else {
+                        ss << " ";
+                    }
+                }
+                ss << "FROM ";
+                std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
+                                                                            collector.table_names.end());
+                for(size_t i = 0; i < tableNames.size(); ++i) {
+                    auto &tableNamePair = tableNames[i];
+                    ss << "'" << tableNamePair.first << "' ";
+                    if(!tableNamePair.second.empty()) {
+                        ss << tableNamePair.second << " ";
+                    }
+                    if(int(i) < int(tableNames.size()) - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
+                return ss.str();
+            }
+        };
+
+        template<class T, class... Args>
         struct statement_serializator<select_t<T, Args...>, void> {
             using statement_type = select_t<T, Args...>;
 
@@ -10817,32 +10864,21 @@ namespace sqlite_orm {
                     }
                     ss << " ";
                 }
-                return ss;
-            }
 
-            template<class T, class... Args>
-            std::string string_from_expression(const get_all_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
+                iterate_tuple(get_query.conditions, [&context, &ss](auto &v) {
                     ss << serialize(v, context);
                 });
-                return ss.str();
+
+                return ss;
             }
 
             template<class T, class... Args>
             std::string string_from_expression(const get_all_pointer_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = false;
-                context.replace_bindable_with_question = true;
-                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
                 return ss.str();
             }
 
@@ -10850,13 +10886,6 @@ namespace sqlite_orm {
             template<class T, class... Args>
             std::string string_from_expression(const get_all_optional_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = false;
-                context.replace_bindable_with_question = true;
-                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
                 return ss.str();
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -11484,7 +11513,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(get, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(get, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(get), stmt, con};
                 } else {
