@@ -289,52 +289,6 @@ namespace sqlite_orm {
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-            template<class T, class... Cols>
-            std::string string_from_expression(const insert_explicit<T, Cols...> &ins, bool /*noTableName*/) const {
-                constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
-                static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
-                using expression_type = typename std::decay<decltype(ins)>::type;
-                using object_type = typename expression_object_type<expression_type>::type;
-                this->assert_mapped_type<object_type>();
-                auto &tImpl = this->get_impl<object_type>();
-                std::stringstream ss;
-                ss << "INSERT INTO '" << tImpl.table.name << "' ";
-                std::vector<std::string> columnNames;
-                columnNames.reserve(colsCount);
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = true;
-                iterate_tuple(ins.columns.columns, [&columnNames, &context](auto &m) {
-                    auto columnName = serialize(m, context);
-                    if(!columnName.empty()) {
-                        columnNames.push_back(columnName);
-                    } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                    }
-                });
-                ss << "(";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                ss << "VALUES (";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "?";
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
-            }
-
             template<class T>
             std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
                 using expression_type = typename std::decay<decltype(rep)>::type;
@@ -1207,10 +1161,16 @@ namespace sqlite_orm {
 
             template<class T, class... Cols>
             prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
+                using object_type = typename expression_object_type<decltype(ins)>::type;
+                this->assert_mapped_type<object_type>();
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(ins, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(ins, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(ins), stmt, con};
                 } else {

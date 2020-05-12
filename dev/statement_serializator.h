@@ -756,6 +756,57 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class... Cols>
+        struct statement_serializator<insert_explicit<T, Cols...>, void> {
+            using statement_type = insert_explicit<T, Cols...>;
+
+            template<class C>
+            std::string operator()(const statement_type &ins, const C &context) const {
+                constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
+                static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
+                using expression_type = typename std::decay<decltype(ins)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                auto &tImpl = context.impl.template get_impl<object_type>();
+                std::stringstream ss;
+                ss << "INSERT INTO '" << tImpl.table.name << "' ";
+                std::vector<std::string> columnNames;
+                columnNames.reserve(colsCount);
+                {
+                    auto columnsContext = context;
+                    columnsContext.skip_table_name = true;
+                    iterate_tuple(ins.columns.columns, [&columnNames, &columnsContext](auto &m) {
+                        auto columnName = serialize(m, columnsContext);
+                        if(!columnName.empty()) {
+                            columnNames.push_back(columnName);
+                        } else {
+                            throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                        }
+                    });
+                }
+                ss << "(";
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << columnNames[i];
+                    if(i < columnNames.size() - 1) {
+                        ss << ",";
+                    } else {
+                        ss << ")";
+                    }
+                    ss << " ";
+                }
+                ss << "VALUES (";
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << "?";
+                    if(i < columnNames.size() - 1) {
+                        ss << ",";
+                    } else {
+                        ss << ")";
+                    }
+                    ss << " ";
+                }
+                return ss.str();
+            }
+        };
+
         template<class T>
         struct statement_serializator<update_t<T>, void> {
             using statement_type = update_t<T>;
