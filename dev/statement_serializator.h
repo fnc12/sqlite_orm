@@ -1105,9 +1105,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class... Args>
-        struct statement_serializator<get_all_t<T, Args...>, void> {
-            using statement_type = get_all_t<T, Args...>;
+        template<class T, class R, class... Args>
+        struct statement_serializator<get_all_t<T, R, Args...>, void> {
+            using statement_type = get_all_t<T, R, Args...>;
 
             template<class C>
             std::string operator()(const statement_type &get, const C &context) const {
