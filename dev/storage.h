@@ -241,52 +241,6 @@ namespace sqlite_orm {
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-            template<class... Args, class... Wargs>
-            std::string string_from_expression(const update_all_t<set_t<Args...>, Wargs...> &upd,
-                                               bool /*noTableName*/) const {
-                std::stringstream ss;
-                ss << "UPDATE ";
-                table_name_collector collector{[this](std::type_index ti) {
-                    return this->impl.find_table_name(ti);
-                }};
-                iterate_ast(upd.set.assigns, collector);
-                if(!collector.table_names.empty()) {
-                    if(collector.table_names.size() == 1) {
-                        ss << " '" << collector.table_names.begin()->first << "' ";
-                        ss << static_cast<std::string>(upd.set) << " ";
-                        std::vector<std::string> setPairs;
-                        using context_t = serializator_context<impl_type>;
-                        context_t context{this->impl};
-                        context.replace_bindable_with_question = true;
-                        iterate_tuple(upd.set.assigns, [&context, &setPairs](auto &asgn) {
-                            std::stringstream sss;
-                            context.skip_table_name = true;
-                            sss << serialize(asgn.lhs, context);
-                            sss << " " << static_cast<std::string>(asgn) << " ";
-                            context.skip_table_name = false;
-                            sss << serialize(asgn.rhs, context) << " ";
-                            setPairs.push_back(sss.str());
-                        });
-                        auto setPairsCount = setPairs.size();
-                        for(size_t i = 0; i < setPairsCount; ++i) {
-                            ss << setPairs[i] << " ";
-                            if(i < setPairsCount - 1) {
-                                ss << ", ";
-                            }
-                        }
-                        context.skip_table_name = false;
-                        iterate_tuple(upd.conditions, [&context, &ss](auto &v) {
-                            ss << serialize(v, context);
-                        });
-                        return ss.str();
-                    } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::too_many_tables_specified));
-                    }
-                } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_set_fields_specified));
-                }
-            }
-
             // Common code for statements with conditions: get_t, get_pointer_t, get_optional_t.
             template<class T>
             std::string string_from_expression_impl_get(bool /*noTableName*/) const {
@@ -1109,7 +1063,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(upd, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(upd, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(upd), stmt, con};
                 } else {

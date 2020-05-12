@@ -756,6 +756,52 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... Args, class... Wargs>
+        struct statement_serializator<update_all_t<set_t<Args...>, Wargs...>, void> {
+            using statement_type = update_all_t<set_t<Args...>, Wargs...>;
+
+            template<class C>
+            std::string operator()(const statement_type &upd, const C &context) const {
+                std::stringstream ss;
+                ss << "UPDATE ";
+                table_name_collector collector{[&context](std::type_index ti) {
+                    return context.impl.find_table_name(ti);
+                }};
+                iterate_ast(upd.set.assigns, collector);
+                if(!collector.table_names.empty()) {
+                    if(collector.table_names.size() == 1) {
+                        ss << " '" << collector.table_names.begin()->first << "' ";
+                        ss << static_cast<std::string>(upd.set) << " ";
+                        std::vector<std::string> setPairs;
+                        auto leftContext = context;
+                        leftContext.skip_table_name = true;
+                        iterate_tuple(upd.set.assigns, [&context, &leftContext, &setPairs](auto &asgn) {
+                            std::stringstream sss;
+                            sss << serialize(asgn.lhs, leftContext);
+                            sss << " " << static_cast<std::string>(asgn) << " ";
+                            sss << serialize(asgn.rhs, context) << " ";
+                            setPairs.push_back(sss.str());
+                        });
+                        auto setPairsCount = setPairs.size();
+                        for(size_t i = 0; i < setPairsCount; ++i) {
+                            ss << setPairs[i] << " ";
+                            if(i < setPairsCount - 1) {
+                                ss << ", ";
+                            }
+                        }
+                        iterate_tuple(upd.conditions, [&context, &ss](auto &v) {
+                            ss << serialize(v, context);
+                        });
+                        return ss.str();
+                    } else {
+                        throw std::system_error(std::make_error_code(orm_error_code::too_many_tables_specified));
+                    }
+                } else {
+                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_set_fields_specified));
+                }
+            }
+        };
+
         template<class T>
         struct statement_serializator<insert_t<T>, void> {
             using statement_type = insert_t<T>;
