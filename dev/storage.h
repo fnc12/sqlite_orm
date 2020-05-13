@@ -366,7 +366,7 @@ namespace sqlite_orm {
                 auto statement = this->prepare(sqlite_orm::get_all_pointer<O>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
-            
+
             /**
              *  Select * with no conditions routine.
              *  O is an object type to be extracted. Must be specified explicitly.

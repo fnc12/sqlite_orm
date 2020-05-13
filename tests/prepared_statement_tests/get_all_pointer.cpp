@@ -97,7 +97,7 @@ TEST_CASE("Prepared get all pointer") {
     {  //  by ref
         auto id = 3;
         auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, std::ref(id)))));
-        
+
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
