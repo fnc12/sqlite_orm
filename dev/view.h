@@ -47,7 +47,11 @@ namespace sqlite_orm {
             iterator_t<self> begin() {
                 sqlite3_stmt *stmt = nullptr;
                 auto db = this->connection.get();
-                auto query = this->storage.string_from_expression(this->args, false);
+                using context_t = serializator_context<typename storage_type::impl_type>;
+                context_t context{this->storage.impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(this->args, context);
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK) {
                     auto index = 1;

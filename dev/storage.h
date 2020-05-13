@@ -197,20 +197,21 @@ namespace sqlite_orm {
                     }
                     ss << " ";
                 }
-                return ss;
-            }
 
-            template<class T, class... Args>
-            std::string string_from_expression(const get_all_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                this->process_conditions(ss, get.conditions);
-                return ss.str();
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                iterate_tuple(get_query.conditions, [&context, &ss](auto &v) {
+                    ss << serialize(v, context);
+                });
+
+                return ss;
             }
 
             template<class T, class... Args>
             std::string string_from_expression(const get_all_pointer_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
 
@@ -218,62 +219,9 @@ namespace sqlite_orm {
             template<class T, class... Args>
             std::string string_from_expression(const get_all_optional_t<T, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                this->process_conditions(ss, get.conditions);
                 return ss.str();
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-            template<class... Args, class... Wargs>
-            std::string string_from_expression(const update_all_t<set_t<Args...>, Wargs...> &upd,
-                                               bool /*noTableName*/) const {
-                std::stringstream ss;
-                ss << "UPDATE ";
-                table_name_collector collector{[this](std::type_index ti) {
-                    return this->impl.find_table_name(ti);
-                }};
-                iterate_ast(upd.set.assigns, collector);
-                if(!collector.table_names.empty()) {
-                    if(collector.table_names.size() == 1) {
-                        ss << " '" << collector.table_names.begin()->first << "' ";
-                        ss << static_cast<std::string>(upd.set) << " ";
-                        std::vector<std::string> setPairs;
-                        using context_t = serializator_context<impl_type>;
-                        context_t context{this->impl};
-                        context.replace_bindable_with_question = true;
-                        iterate_tuple(upd.set.assigns, [&context, &setPairs](auto &asgn) {
-                            std::stringstream sss;
-                            context.skip_table_name = true;
-                            sss << serialize(asgn.lhs, context);
-                            sss << " " << static_cast<std::string>(asgn) << " ";
-                            context.skip_table_name = false;
-                            sss << serialize(asgn.rhs, context) << " ";
-                            setPairs.push_back(sss.str());
-                        });
-                        auto setPairsCount = setPairs.size();
-                        for(size_t i = 0; i < setPairsCount; ++i) {
-                            ss << setPairs[i] << " ";
-                            if(i < setPairsCount - 1) {
-                                ss << ", ";
-                            }
-                        }
-                        this->process_conditions(ss, upd.conditions);
-                        return ss.str();
-                    } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::too_many_tables_specified));
-                    }
-                } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_set_fields_specified));
-                }
-            }
-
-            template<class T, class... Args>
-            std::string string_from_expression(const remove_all_t<T, Args...> &rem, bool /*noTableName*/) const {
-                auto &tImpl = this->get_impl<T>();
-                std::stringstream ss;
-                ss << "DELETE FROM '" << tImpl.table.name << "' ";
-                this->process_conditions(ss, rem.conditions);
-                return ss.str();
-            }
 
             // Common code for statements with conditions: get_t, get_pointer_t, get_optional_t.
             template<class T>
@@ -322,238 +270,6 @@ namespace sqlite_orm {
                 return this->string_from_expression_impl_get<T>(noTableName);
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-            template<class T>
-            std::string string_from_expression(const update_t<T> &upd, bool /*noTableName*/) const {
-                using expression_type = typename std::decay<decltype(upd)>::type;
-                using object_type = typename expression_object_type<expression_type>::type;
-                auto &tImpl = this->get_impl<object_type>();
-
-                std::stringstream ss;
-                ss << "UPDATE '" << tImpl.table.name << "' SET ";
-                std::vector<std::string> setColumnNames;
-                tImpl.table.for_each_column([&setColumnNames](auto &c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
-                        setColumnNames.emplace_back(c.name);
-                    }
-                });
-                for(size_t i = 0; i < setColumnNames.size(); ++i) {
-                    ss << "\"" << setColumnNames[i] << "\""
-                       << " = ?";
-                    if(i < setColumnNames.size() - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                ss << "WHERE ";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ?";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << " AND";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
-            }
-
-            template<class T, class... Ids>
-            std::string string_from_expression(const remove_t<T, Ids...> &, bool /*noTableName*/) const {
-                auto &tImpl = this->get_impl<T>();
-                std::stringstream ss;
-                ss << "DELETE FROM '" << tImpl.table.name << "' ";
-                ss << "WHERE ";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ? ";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << "AND ";
-                    }
-                }
-                return ss.str();
-            }
-
-            template<class T, class... Cols>
-            std::string string_from_expression(const insert_explicit<T, Cols...> &ins, bool /*noTableName*/) const {
-                constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
-                static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
-                using expression_type = typename std::decay<decltype(ins)>::type;
-                using object_type = typename expression_object_type<expression_type>::type;
-                this->assert_mapped_type<object_type>();
-                auto &tImpl = this->get_impl<object_type>();
-                std::stringstream ss;
-                ss << "INSERT INTO '" << tImpl.table.name << "' ";
-                std::vector<std::string> columnNames;
-                columnNames.reserve(colsCount);
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = true;
-                iterate_tuple(ins.columns.columns, [&columnNames, &context](auto &m) {
-                    auto columnName = serialize(m, context);
-                    if(!columnName.empty()) {
-                        columnNames.push_back(columnName);
-                    } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                    }
-                });
-                ss << "(";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                ss << "VALUES (";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "?";
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const insert_t<T> &ins, bool /*noTableName*/) const {
-                using expression_type = typename std::decay<decltype(ins)>::type;
-                using object_type = typename expression_object_type<expression_type>::type;
-                this->assert_mapped_type<object_type>();
-                auto &tImpl = this->get_impl<object_type>();
-                std::stringstream ss;
-                ss << "INSERT INTO '" << tImpl.table.name << "' ";
-                std::vector<std::string> columnNames;
-                auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
-
-                tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto &c) {
-                    if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
-                        auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
-                        if(it == compositeKeyColumnNames.end()) {
-                            columnNames.emplace_back(c.name);
-                        }
-                    }
-                });
-
-                auto columnNamesCount = columnNames.size();
-                if(columnNamesCount) {
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "\"" << columnNames[i] << "\"";
-                        if(i < columnNamesCount - 1) {
-                            ss << ",";
-                        } else {
-                            ss << ")";
-                        }
-                        ss << " ";
-                    }
-                } else {
-                    ss << "DEFAULT ";
-                }
-                ss << "VALUES ";
-                if(columnNamesCount) {
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss << ", ";
-                        } else {
-                            ss << ")";
-                        }
-                    }
-                }
-                return ss.str();
-            }
-
-            template<class T>
-            std::string string_from_expression(const replace_t<T> &rep, bool /*noTableName*/) const {
-                using expression_type = typename std::decay<decltype(rep)>::type;
-                using object_type = typename expression_object_type<expression_type>::type;
-                this->assert_mapped_type<object_type>();
-                auto &tImpl = this->get_impl<object_type>();
-                std::stringstream ss;
-                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
-                auto columnNames = tImpl.table.column_names();
-                auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                ss << "VALUES(";
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "?";
-                    if(i < columnNamesCount - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << ")";
-                    }
-                }
-                return ss.str();
-            }
-
-            template<class It>
-            std::string string_from_expression(const replace_range_t<It> &rep, bool /*noTableName*/) const {
-                using expression_type = typename std::decay<decltype(rep)>::type;
-                using object_type = typename expression_type::object_type;
-                auto &tImpl = this->get_impl<object_type>();
-                std::stringstream ss;
-                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
-                auto columnNames = tImpl.table.column_names();
-                auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << ") ";
-                    }
-                }
-                ss << "VALUES ";
-                auto valuesString = [columnNamesCount] {
-                    std::stringstream ss;
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss << ", ";
-                        } else {
-                            ss << ")";
-                        }
-                    }
-                    return ss.str();
-                }();
-                auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
-                for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
-            }
-
-            template<class... Args>
-            void process_conditions(std::stringstream &ss, const std::tuple<Args...> &args) const {
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = false;
-                context.replace_bindable_with_question = true;
-                iterate_tuple(args, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
-            }
 
           public:
             template<class T, class... Args>
@@ -1130,7 +846,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(get, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(get, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(get), stmt, con};
                 } else {
@@ -1175,7 +895,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(upd, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(upd, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(upd), stmt, con};
                 } else {
@@ -1189,7 +913,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(rem, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(rem, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rem), stmt, std::move(con)};
                 } else {
@@ -1247,7 +975,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(upd, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(upd, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(upd), stmt, con};
                 } else {
@@ -1261,7 +993,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(rem, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(rem, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rem), stmt, con};
                 } else {
@@ -1272,10 +1008,16 @@ namespace sqlite_orm {
 
             template<class T>
             prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
+                using object_type = typename expression_object_type<decltype(ins)>::type;
+                this->assert_mapped_type<object_type>();
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(ins, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(ins, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(ins), stmt, con};
                 } else {
@@ -1288,8 +1030,14 @@ namespace sqlite_orm {
             prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
+                using object_type = typename expression_object_type<decltype(rep)>::type;
+                this->assert_mapped_type<object_type>();
                 auto db = con.get();
-                auto query = this->string_from_expression(rep, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(rep, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rep), stmt, con};
                 } else {
@@ -1321,7 +1069,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(rep, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(rep, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(rep), stmt, con};
                 } else {
@@ -1332,10 +1084,16 @@ namespace sqlite_orm {
 
             template<class T, class... Cols>
             prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
+                using object_type = typename expression_object_type<decltype(ins)>::type;
+                this->assert_mapped_type<object_type>();
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(ins, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(ins, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(ins), stmt, con};
                 } else {
