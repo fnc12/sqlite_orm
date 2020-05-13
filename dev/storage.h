@@ -360,10 +360,23 @@ namespace sqlite_orm {
              *  O is an object type to be extracted. Must be specified explicitly.
              *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
              */
-            template<class O, class C = std::vector<std::unique_ptr<O>>, class... Args>
-            C get_all_pointer(Args &&... args) {
+            template<class O, class... Args>
+            auto get_all_pointer(Args &&... args) {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_all_pointer<O>(std::forward<Args>(args)...));
+                return this->execute(statement);
+            }
+            
+            /**
+             *  Select * with no conditions routine.
+             *  O is an object type to be extracted. Must be specified explicitly.
+             *  R is a container type. std::vector<std::unique_ptr<O>> is default
+             *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
+            */
+            template<class O, class R, class... Args>
+            auto get_all_pointer(Args &&... args) {
+                this->assert_mapped_type<O>();
+                auto statement = this->prepare(sqlite_orm::get_all_pointer<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
 
@@ -1648,9 +1661,8 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class T, class... Args>
-            std::vector<std::unique_ptr<T>>
-            execute(const prepared_statement_t<get_all_pointer_t<T, Args...>> &statement) {
+            template<class T, class R, class... Args>
+            R execute(const prepared_statement_t<get_all_pointer_t<T, R, Args...>> &statement) {
                 auto &tImpl = this->get_impl<T>();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -1665,7 +1677,7 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                std::vector<std::unique_ptr<T>> res;
+                R res;
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);

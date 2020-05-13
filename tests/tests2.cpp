@@ -3,8 +3,6 @@
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <list>
-#include <deque>
 
 using namespace sqlite_orm;
 
@@ -456,67 +454,4 @@ TEST_CASE("Insert") {
     REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
     storage.insert(ObjectWithoutRowid{20, "Death"});
     REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
-}
-
-namespace get_all_deque {
-    struct User {
-        int id = 0;
-        std::string name;
-    };
-
-    bool operator==(const User &lhs, const User &rhs) {
-        return lhs.id == rhs.id && lhs.name == rhs.name;
-    }
-}
-
-TEST_CASE("get_all deque") {
-    using namespace get_all_deque;
-    using Catch::Matchers::UnorderedEquals;
-
-    auto storage = make_storage(
-        {},
-        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
-    storage.sync_schema();
-
-    User user1{1, "Nicki"};
-    User user2{2, "Karol"};
-    storage.replace(user1);
-    storage.replace(user2);
-
-    std::vector<User> expected;
-    expected.push_back(user1);
-    expected.push_back(user2);
-    {
-        auto users = storage.get_all<User>();
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::vector<User>>::value, "");
-    }
-    {
-        auto users = storage.get_all<User, std::deque<User>>();
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::deque<User>>::value, "");
-    }
-    {
-        auto users = storage.get_all<User, std::list<User>>();
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::list<User>>::value, "");
-    }
-    {
-        auto statement = storage.prepare(get_all<User>());
-        auto users = storage.execute(statement);
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::vector<User>>::value, "");
-    }
-    {
-        auto statement = storage.prepare(get_all<User, std::deque<User>>());
-        auto users = storage.execute(statement);
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::deque<User>>::value, "");
-    }
-    {
-        auto statement = storage.prepare(get_all<User, std::list<User>>());
-        auto users = storage.execute(statement);
-        REQUIRE(std::equal(users.begin(), users.end(), expected.begin(), expected.end()));
-        static_assert(std::is_same<decltype(users), std::list<User>>::value, "");
-    }
 }

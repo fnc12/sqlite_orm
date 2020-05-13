@@ -89,10 +89,11 @@ namespace sqlite_orm {
             conditions_type conditions;
         };
 
-        template<class T, class... Args>
+        template<class T, class R, class... Args>
         struct get_all_pointer_t {
             using type = T;
-
+            using return_type = R;
+            
             using conditions_type = std::tuple<Args...>;
 
             conditions_type conditions;
@@ -373,10 +374,25 @@ namespace sqlite_orm {
      *  Usage: storage.get_all_pointer<User>(...);
      */
     template<class T, class... Args>
-    internal::get_all_pointer_t<T, Args...> get_all_pointer(Args... args) {
+    internal::get_all_pointer_t<T, std::vector<std::unique_ptr<T>>, Args...> get_all_pointer(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
+    /**
+     *  Create a get all pointer statement.
+     *  T is an object type mapped to a storage.
+     *  R  is a container return type. std::vector<std::unique_ptr<T>> is default
+     *  Usage: storage.get_all_pointer<User>(...);
+    */
+template<class T, class R, class... Args>
+internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... args) {
+    using args_tuple = std::tuple<Args...>;
+    internal::validate_conditions<args_tuple>();
+    std::tuple<Args...> conditions{std::forward<Args>(args)...};
+    return {move(conditions)};
+}
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
