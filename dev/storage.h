@@ -216,8 +216,8 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-            template<class T, class... Args>
-            std::string string_from_expression(const get_all_optional_t<T, Args...> &get, bool noTableName) const {
+            template<class T, class R, class... Args>
+            std::string string_from_expression(const get_all_optional_t<T, R, Args...> &get, bool noTableName) const {
                 std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
                 return ss.str();
             }
@@ -887,8 +887,8 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-            template<class T, class... Args>
-            prepared_statement_t<get_all_optional_t<T, Args...>> prepare(get_all_optional_t<T, Args...> get) {
+            template<class T, class R, class... Args>
+            prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> get) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -1708,9 +1708,8 @@ namespace sqlite_orm {
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-            template<class T, class... Args>
-            std::vector<std::optional<T>>
-            execute(const prepared_statement_t<get_all_optional_t<T, Args...>> &statement) {
+            template<class T, class R, class... Args>
+            R execute(const prepared_statement_t<get_all_optional_t<T, R, Args...>> &statement) {
                 auto &tImpl = this->get_impl<T>();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -1725,7 +1724,7 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                std::vector<std::optional<T>> res;
+                R res;
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);
