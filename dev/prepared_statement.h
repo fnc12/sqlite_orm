@@ -231,8 +231,8 @@ namespace sqlite_orm {
      *  Create a replace statement.
      *  T is an object type mapped to a storage.
      *  Usage: storage.replace(myUserInstance);
-     *  Parameter obj is accepted by value. Is you want to accept it by ref
-     *  the use std::ref function: storage.replace(std::ref(myUserInstance));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.replace(std::ref(myUserInstance));
      */
     template<class T>
     internal::replace_t<T> replace(T obj) {
@@ -243,8 +243,8 @@ namespace sqlite_orm {
      *  Create an insert statement.
      *  T is an object type mapped to a storage.
      *  Usage: storage.insert(myUserInstance);
-     *  Parameter obj is accepted by value. Is you want to accept it by ref
-     *  the use std::ref function: storage.insert(std::ref(myUserInstance));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.insert(std::ref(myUserInstance));
      */
     template<class T>
     internal::insert_t<T> insert(T obj) {
@@ -256,8 +256,8 @@ namespace sqlite_orm {
      *  T is an object type mapped to a storage.
      *  Cols is columns types aparameter pack. Must contain member pointers
      *  Usage: storage.insert(myUserInstance, columns(&User::id, &User::name));
-     *  Parameter obj is accepted by value. Is you want to accept it by ref
-     *  the use std::ref function: storage.insert(std::ref(myUserInstance), columns(&User::id, &User::name));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.insert(std::ref(myUserInstance), columns(&User::id, &User::name));
      */
     template<class T, class... Cols>
     internal::insert_explicit<T, Cols...> insert(T obj, internal::columns_t<Cols...> cols) {
@@ -279,8 +279,8 @@ namespace sqlite_orm {
      *  Create an update statement.
      *  T is an object type mapped to a storage.
      *  Usage: storage.update(myUserInstance);
-     *  Parameter obj is accepted by value. Is you want to accept it by ref
-     *  the use std::ref function: storage.update(std::ref(myUserInstance));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.update(std::ref(myUserInstance));
      */
     template<class T>
     internal::update_t<T> update(T obj) {
@@ -348,6 +348,12 @@ namespace sqlite_orm {
         return {move(conditions)};
     }
 
+    /**
+     *  Create a get all statement.
+     *  T is an object type mapped to a storage.
+     *  R is a container type. std::vector<T> is default
+     *  Usage: storage.get_all<User>(...);
+    */
     template<class T, class R, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... args) {
         using args_tuple = std::tuple<Args...>;
