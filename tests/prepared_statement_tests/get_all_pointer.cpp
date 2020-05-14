@@ -60,18 +60,6 @@ TEST_CASE("Prepared get all pointer") {
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
-        {
-            static_assert(std::tuple_size<NodeTuple>::value == 2, "");
-            {
-                using Arg0 = std::tuple_element<0, NodeTuple>::type;
-                static_assert(std::is_same<Arg0, decltype(&User::id)>::value, "");
-            }
-            {
-                using Arg1 = std::tuple_element<1, NodeTuple>::type;
-                static_assert(std::is_same<Arg1, int>::value, "");
-            }
-        }
-
         using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
         {
             static_assert(std::tuple_size<BindTuple>::value == 1, "");
@@ -109,21 +97,10 @@ TEST_CASE("Prepared get all pointer") {
     {  //  by ref
         auto id = 3;
         auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, std::ref(id)))));
+
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
         using NodeTuple = internal::node_tuple<Expression>::type;
-        {
-            static_assert(std::tuple_size<NodeTuple>::value == 2, "");
-            {
-                using Arg0 = std::tuple_element<0, NodeTuple>::type;
-                static_assert(std::is_same<Arg0, decltype(&User::id)>::value, "");
-            }
-            {
-                using Arg1 = std::tuple_element<1, NodeTuple>::type;
-                static_assert(std::is_same<Arg1, int>::value, "");
-            }
-        }
-
         using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
         {
             static_assert(std::tuple_size<BindTuple>::value == 1, "");

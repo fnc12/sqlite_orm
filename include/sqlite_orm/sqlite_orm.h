@@ -7089,9 +7089,10 @@ namespace sqlite_orm {
             conditions_type conditions;
         };
 
-        template<class T, class... Args>
+        template<class T, class R, class... Args>
         struct get_all_pointer_t {
             using type = T;
+            using return_type = R;
 
             using conditions_type = std::tuple<Args...>;
 
@@ -7373,7 +7374,22 @@ namespace sqlite_orm {
      *  Usage: storage.get_all_pointer<User>(...);
      */
     template<class T, class... Args>
-    internal::get_all_pointer_t<T, Args...> get_all_pointer(Args... args) {
+    internal::get_all_pointer_t<T, std::vector<std::unique_ptr<T>>, Args...> get_all_pointer(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
+    }
+    /**
+     *  Create a get all pointer statement.
+     *  T is an object type mapped to a storage.
+     *  R  is a container return type
+     *  Usage: storage.get_all_pointer<User>(...);
+    */
+    template<class T, class R, class... Args>
+    internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
         std::tuple<Args...> conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
@@ -11027,10 +11043,17 @@ namespace sqlite_orm {
              *  O is an object type to be extracted. Must be specified explicitly.
              *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
              */
-            template<class O, class C = std::vector<std::unique_ptr<O>>, class... Args>
-            C get_all_pointer(Args &&... args) {
+            template<class O, class... Args>
+            auto get_all_pointer(Args &&... args) {
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::get_all_pointer<O>(std::forward<Args>(args)...));
+                return this->execute(statement);
+            }
+
+            template<class O, class R, class... Args>
+            auto get_all_pointer(Args &&... args) {
+                this->assert_mapped_type<O>();
+                auto statement = this->prepare(sqlite_orm::get_all_pointer<O, R>(std::forward<Args>(args)...));
                 return this->execute(statement);
             }
 
@@ -12315,9 +12338,8 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class T, class... Args>
-            std::vector<std::unique_ptr<T>>
-            execute(const prepared_statement_t<get_all_pointer_t<T, Args...>> &statement) {
+            template<class T, class R, class... Args>
+            R execute(const prepared_statement_t<get_all_pointer_t<T, R, Args...>> &statement) {
                 auto &tImpl = this->get_impl<T>();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -12332,7 +12354,7 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                std::vector<std::unique_ptr<T>> res;
+                R res;
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);
