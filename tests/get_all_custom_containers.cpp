@@ -24,6 +24,15 @@ struct Comparator {
             return false;
         }
     }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    bool operator()(const std::optional<User> &lhs, const User &rhs) const {
+        if(lhs.has_value()) {
+            return this->operator()(*lhs, rhs);
+        } else {
+            return false;
+        }
+    }
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 };
 
 struct Tester {
@@ -71,21 +80,52 @@ TEST_CASE("get_all deque") {
     tester.testPreparedStatement<std::list<User>>(storage, storage.prepare(get_all<User, std::list<User>>()));
 
     //  get_all_pointer
-    tester.testContainer<std::vector<std::unique_ptr<User>>>(storage.get_all_pointer<User>());
-    tester.testContainer<std::vector<std::unique_ptr<User>>>(
-        storage.get_all_pointer<User, std::vector<std::unique_ptr<User>>>());
-    tester.testContainer<std::deque<std::unique_ptr<User>>>(
-        storage.get_all_pointer<User, std::deque<std::unique_ptr<User>>>());
-    tester.testContainer<std::list<std::unique_ptr<User>>>(
-        storage.get_all_pointer<User, std::list<std::unique_ptr<User>>>());
-    tester.testPreparedStatement<std::vector<std::unique_ptr<User>>>(storage, storage.prepare(get_all_pointer<User>()));
-    tester.testPreparedStatement<std::vector<std::unique_ptr<User>>>(
-        storage,
-        storage.prepare(get_all_pointer<User, std::vector<std::unique_ptr<User>>>()));
-    tester.testPreparedStatement<std::deque<std::unique_ptr<User>>>(
-        storage,
-        storage.prepare(get_all_pointer<User, std::deque<std::unique_ptr<User>>>()));
-    tester.testPreparedStatement<std::list<std::unique_ptr<User>>>(
-        storage,
-        storage.prepare(get_all_pointer<User, std::list<std::unique_ptr<User>>>()));
+    {
+        using UserP = std::unique_ptr<User>;
+        tester.testContainer<std::vector<UserP>>(storage.get_all_pointer<User>());
+        {
+            using Container = std::vector<UserP>;
+            tester.testContainer<Container>(storage.get_all_pointer<User, Container>());
+        }
+        {
+            using Container = std::deque<UserP>;
+            tester.testContainer<Container>(storage.get_all_pointer<User, Container>());
+        }
+        {
+            using Container = std::list<UserP>;
+            tester.testContainer<Container>(storage.get_all_pointer<User, Container>());
+        }
+        tester.testPreparedStatement<std::vector<UserP>>(storage, storage.prepare(get_all_pointer<User>()));
+        {
+            using Container = std::vector<UserP>;
+            tester.testPreparedStatement<Container>(storage, storage.prepare(get_all_pointer<User, Container>()));
+        }
+        {
+            using Container = std::deque<UserP>;
+            tester.testPreparedStatement<Container>(storage, storage.prepare(get_all_pointer<User, Container>()));
+        }
+        {
+            using Container = std::list<UserP>;
+            tester.testPreparedStatement<Container>(storage, storage.prepare(get_all_pointer<User, Container>()));
+        }
+    }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    //  get_all_optional
+    {
+        using UserP = std::optional<User>;
+        tester.testPreparedStatement<std::vector<UserP>>(storage, storage.prepare(get_all_optional<User>()));
+        {
+            using Container = std::vector<UserP>;
+            tester.testPreparedStatement<Container>(storage, storage.prepare(get_all_optional<User, Container>()));
+        }
+        {
+            using Container = std::deque<UserP>;
+            tester.testPreparedStatement<Container>(storage, storage.prepare(get_all_optional<User, Container>()));
+        }
+        {
+            using Container = std::list<UserP>;
+            tester.testPreparedStatement<Container>(storage, storage.prepare(get_all_optional<User, Container>()));
+        }
+    }
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 }

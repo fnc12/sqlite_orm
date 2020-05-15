@@ -77,8 +77,8 @@ namespace sqlite_orm {
         };
 
         /**
-     *  T - type of object to obtain from a database
-     */
+         *  T - type of object to obtain from a database
+         */
         template<class T, class R, class... Args>
         struct get_all_t {
             using type = T;
@@ -100,9 +100,10 @@ namespace sqlite_orm {
         };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        template<class T, class... Args>
+        template<class T, class R, class... Args>
         struct get_all_optional_t {
             using type = T;
+            using return_type = R;
 
             using conditions_type = std::tuple<Args...>;
 
@@ -231,8 +232,8 @@ namespace sqlite_orm {
      *  Create a replace statement.
      *  T is an object type mapped to a storage.
      *  Usage: storage.replace(myUserInstance);
-     *  Parameter obj is accepted by value. Is you want to accept it by ref
-     *  the use std::ref function: storage.replace(std::ref(myUserInstance));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.replace(std::ref(myUserInstance));
      */
     template<class T>
     internal::replace_t<T> replace(T obj) {
@@ -243,8 +244,8 @@ namespace sqlite_orm {
      *  Create an insert statement.
      *  T is an object type mapped to a storage.
      *  Usage: storage.insert(myUserInstance);
-     *  Parameter obj is accepted by value. Is you want to accept it by ref
-     *  the use std::ref function: storage.insert(std::ref(myUserInstance));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.insert(std::ref(myUserInstance));
      */
     template<class T>
     internal::insert_t<T> insert(T obj) {
@@ -256,8 +257,8 @@ namespace sqlite_orm {
      *  T is an object type mapped to a storage.
      *  Cols is columns types aparameter pack. Must contain member pointers
      *  Usage: storage.insert(myUserInstance, columns(&User::id, &User::name));
-     *  Parameter obj is accepted by value. Is you want to accept it by ref
-     *  the use std::ref function: storage.insert(std::ref(myUserInstance), columns(&User::id, &User::name));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.insert(std::ref(myUserInstance), columns(&User::id, &User::name));
      */
     template<class T, class... Cols>
     internal::insert_explicit<T, Cols...> insert(T obj, internal::columns_t<Cols...> cols) {
@@ -279,8 +280,8 @@ namespace sqlite_orm {
      *  Create an update statement.
      *  T is an object type mapped to a storage.
      *  Usage: storage.update(myUserInstance);
-     *  Parameter obj is accepted by value. Is you want to accept it by ref
-     *  the use std::ref function: storage.update(std::ref(myUserInstance));
+     *  Parameter obj is accepted by value. If you want to accept it by ref
+     *  please use std::ref function: storage.update(std::ref(myUserInstance));
      */
     template<class T>
     internal::update_t<T> update(T obj) {
@@ -348,6 +349,12 @@ namespace sqlite_orm {
         return {move(conditions)};
     }
 
+    /**
+     *  Create a get all statement.
+     *  T is an object type mapped to a storage.
+     *  R is a container type. std::vector<T> is default
+     *  Usage: storage.get_all<User>(...);
+    */
     template<class T, class R, class... Args>
     internal::get_all_t<T, R, Args...> get_all(Args... args) {
         using args_tuple = std::tuple<Args...>;
@@ -377,20 +384,20 @@ namespace sqlite_orm {
     internal::get_all_pointer_t<T, std::vector<std::unique_ptr<T>>, Args...> get_all_pointer(Args... args) {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
-        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        args_tuple conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
     /**
      *  Create a get all pointer statement.
      *  T is an object type mapped to a storage.
-     *  R  is a container return type. std::vector<std::unique_ptr<T>> is default
+     *  R is a container return type. std::vector<std::unique_ptr<T>> is default
      *  Usage: storage.get_all_pointer<User>(...);
     */
     template<class T, class R, class... Args>
     internal::get_all_pointer_t<T, R, Args...> get_all_pointer(Args... args) {
         using args_tuple = std::tuple<Args...>;
         internal::validate_conditions<args_tuple>();
-        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+        args_tuple conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 
@@ -401,8 +408,24 @@ namespace sqlite_orm {
      *  Usage: storage.get_all_optional<User>(...);
      */
     template<class T, class... Args>
-    internal::get_all_optional_t<T, Args...> get_all_optional(Args... args) {
-        std::tuple<Args...> conditions{std::forward<Args>(args)...};
+    internal::get_all_optional_t<T, std::vector<std::optional<T>>, Args...> get_all_optional(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Args>(args)...};
+        return {move(conditions)};
+    }
+
+    /**
+     *  Create a get all optional statement.
+     *  T is an object type mapped to a storage.
+     *  R is a container return type. std::vector<std::optional<T>> is default
+     *  Usage: storage.get_all_optional<User>(...);
+     */
+    template<class T, class R, class... Args>
+    internal::get_all_optional_t<T, R, Args...> get_all_optional(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        internal::validate_conditions<args_tuple>();
+        args_tuple conditions{std::forward<Args>(args)...};
         return {move(conditions)};
     }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
