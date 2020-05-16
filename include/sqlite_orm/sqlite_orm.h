@@ -10392,49 +10392,141 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class C>
+        std::string serialize_get_all_impl(const T &get, const C &context) {
+            using primary_type = typename T::type;
+
+            table_name_collector collector;
+            collector.table_names.insert(
+                std::make_pair(context.impl.find_table_name(typeid(primary_type)), std::string{}));
+            iterate_ast(get.conditions, collector);
+            std::stringstream ss;
+            ss << "SELECT ";
+            auto &tImpl = context.impl.template get_impl<primary_type>();
+            auto columnNames = tImpl.table.column_names();
+            for(size_t i = 0; i < columnNames.size(); ++i) {
+                ss << "\"" << tImpl.table.name << "\"."
+                   << "\"" << columnNames[i] << "\"";
+                if(i < columnNames.size() - 1) {
+                    ss << ", ";
+                } else {
+                    ss << " ";
+                }
+            }
+            ss << "FROM ";
+            std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
+                                                                        collector.table_names.end());
+            for(size_t i = 0; i < tableNames.size(); ++i) {
+                auto &tableNamePair = tableNames[i];
+                ss << "'" << tableNamePair.first << "' ";
+                if(!tableNamePair.second.empty()) {
+                    ss << tableNamePair.second << " ";
+                }
+                if(int(i) < int(tableNames.size()) - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            iterate_tuple(get.conditions, [&context, &ss](auto &v) {
+                ss << serialize(v, context);
+            });
+            return ss.str();
+        }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T, class R, class... Args>
+        struct statement_serializator<get_all_optional_t<T, R, Args...>, void> {
+            using statement_type = get_all_optional_t<T, R, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &get, const C &context) const {
+                return serialize_get_all_impl(get, context);
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+        template<class T, class R, class... Args>
+        struct statement_serializator<get_all_pointer_t<T, R, Args...>, void> {
+            using statement_type = get_all_pointer_t<T, R, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &get, const C &context) const {
+                return serialize_get_all_impl(get, context);
+            }
+        };
+
         template<class T, class R, class... Args>
         struct statement_serializator<get_all_t<T, R, Args...>, void> {
             using statement_type = get_all_t<T, R, Args...>;
 
             template<class C>
             std::string operator()(const statement_type &get, const C &context) const {
-                table_name_collector collector;
-                collector.table_names.insert(std::make_pair(context.impl.find_table_name(typeid(T)), std::string{}));
-                iterate_ast(get.conditions, collector);
-                std::stringstream ss;
-                ss << "SELECT ";
-                auto &tImpl = context.impl.template get_impl<T>();
-                auto columnNames = tImpl.table.column_names();
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "\"" << tImpl.table.name << "\"."
-                       << "\"" << columnNames[i] << "\"";
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << " ";
-                    }
-                }
-                ss << "FROM ";
-                std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
-                                                                            collector.table_names.end());
-                for(size_t i = 0; i < tableNames.size(); ++i) {
-                    auto &tableNamePair = tableNames[i];
-                    ss << "'" << tableNamePair.first << "' ";
-                    if(!tableNamePair.second.empty()) {
-                        ss << tableNamePair.second << " ";
-                    }
-                    if(int(i) < int(tableNames.size()) - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                iterate_tuple(get.conditions, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
-                return ss.str();
+                return serialize_get_all_impl(get, context);
             }
         };
 
+        template<class T, class C>
+        std::string serialize_get_impl(const T &, const C &context) {
+            using primary_type = typename T::type;
+            auto &tImpl = context.impl.template get_impl<primary_type>();
+            std::stringstream ss;
+            ss << "SELECT ";
+            auto columnNames = tImpl.table.column_names();
+            for(size_t i = 0; i < columnNames.size(); ++i) {
+                ss << "\"" << columnNames[i] << "\"";
+                if(i < columnNames.size() - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            ss << "FROM '" << tImpl.table.name << "' WHERE ";
+            auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
+            if(!primaryKeyColumnNames.empty()) {
+                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                    ss << "\"" << primaryKeyColumnNames[i] << "\""
+                       << " = ? ";
+                    if(i < primaryKeyColumnNames.size() - 1) {
+                        ss << "AND";
+                    }
+                    ss << ' ';
+                }
+                return ss.str();
+            } else {
+                throw std::system_error(std::make_error_code(orm_error_code::table_has_no_primary_key_column));
+            }
+        }
+
+        template<class T, class... Ids>
+        struct statement_serializator<get_t<T, Ids...>, void> {
+            using statement_type = get_t<T, Ids...>;
+
+            template<class C>
+            std::string operator()(const statement_type &get, const C &context) const {
+                return serialize_get_impl(get, context);
+            }
+        };
+
+        template<class T, class... Ids>
+        struct statement_serializator<get_pointer_t<T, Ids...>, void> {
+            using statement_type = get_pointer_t<T, Ids...>;
+
+            template<class C>
+            std::string operator()(const statement_type &get, const C &context) const {
+                return serialize_get_impl(get, context);
+            }
+        };
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T, class... Ids>
+        struct statement_serializator<get_optional_t<T, Ids...>, void> {
+            using statement_type = get_optional_t<T, Ids...>;
+
+            template<class C>
+            std::string operator()(const statement_type &get, const C &context) const {
+                return serialize_get_impl(get, context);
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Args>
         struct statement_serializator<select_t<T, Args...>, void> {
             using statement_type = select_t<T, Args...>;
@@ -10865,117 +10957,6 @@ namespace sqlite_orm {
             auto &get_impl() const {
                 return this->impl.template get_impl<O>();
             }
-
-            // Common code for statements returning the whole content of a table: get_all_t, get_all_pointer_t,
-            // get_all_optional_t.
-            template<class T>
-            std::stringstream string_from_expression_impl_get_all(const T &get_query, bool /*noTableName*/) const {
-                using primary_type = typename T::type;
-
-                table_name_collector collector;
-                collector.table_names.insert(
-                    std::make_pair(this->impl.find_table_name(typeid(primary_type)), std::string{}));
-                iterate_ast(get_query.conditions, collector);
-                std::stringstream ss;
-                ss << "SELECT ";
-                auto &tImpl = this->get_impl<primary_type>();
-                auto columnNames = tImpl.table.column_names();
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "\"" << tImpl.table.name << "\"."
-                       << "\"" << columnNames[i] << "\"";
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << " ";
-                    }
-                }
-                ss << "FROM ";
-                std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
-                                                                            collector.table_names.end());
-                for(size_t i = 0; i < tableNames.size(); ++i) {
-                    auto &tableNamePair = tableNames[i];
-                    ss << "'" << tableNamePair.first << "' ";
-                    if(!tableNamePair.second.empty()) {
-                        ss << tableNamePair.second << " ";
-                    }
-                    if(int(i) < int(tableNames.size()) - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
-                context.skip_table_name = false;
-                context.replace_bindable_with_question = true;
-                iterate_tuple(get_query.conditions, [&context, &ss](auto &v) {
-                    ss << serialize(v, context);
-                });
-
-                return ss;
-            }
-
-            template<class T, class... Args>
-            std::string string_from_expression(const get_all_pointer_t<T, Args...> &get, bool noTableName) const {
-                std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                return ss.str();
-            }
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-            template<class T, class R, class... Args>
-            std::string string_from_expression(const get_all_optional_t<T, R, Args...> &get, bool noTableName) const {
-                std::stringstream ss = this->string_from_expression_impl_get_all(get, noTableName);
-                return ss.str();
-            }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-            // Common code for statements with conditions: get_t, get_pointer_t, get_optional_t.
-            template<class T>
-            std::string string_from_expression_impl_get(bool /*noTableName*/) const {
-                auto &tImpl = this->get_impl<T>();
-                std::stringstream ss;
-                ss << "SELECT ";
-                auto columnNames = tImpl.table.column_names();
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                ss << "FROM '" << tImpl.table.name << "' WHERE ";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                if(!primaryKeyColumnNames.empty()) {
-                    for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                        ss << "\"" << primaryKeyColumnNames[i] << "\""
-                           << " = ? ";
-                        if(i < primaryKeyColumnNames.size() - 1) {
-                            ss << "AND ";
-                        }
-                        ss << ' ';
-                    }
-                    return ss.str();
-                } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::table_has_no_primary_key_column));
-                }
-            }
-
-            template<class T, class... Ids>
-            std::string string_from_expression(const get_t<T, Ids...> &, bool noTableName) const {
-                return this->string_from_expression_impl_get<T>(noTableName);
-            }
-
-            template<class T, class... Ids>
-            std::string string_from_expression(const get_pointer_t<T, Ids...> &, bool noTableName) const {
-                return this->string_from_expression_impl_get<T>(noTableName);
-            }
-
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-            template<class T, class... Ids>
-            std::string string_from_expression(const get_optional_t<T, Ids...> &, bool noTableName) const {
-                return this->string_from_expression_impl_get<T>(noTableName);
-            }
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
           public:
             template<class T, class... Args>
@@ -11583,7 +11564,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(get, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(get, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(get), stmt, con};
                 } else {
@@ -11598,7 +11583,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(get, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(get, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return {std::move(get), stmt, con};
                 } else {
@@ -11646,13 +11635,17 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> g) {
+            prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> get) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(g, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(get, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(g), stmt, con};
+                    return {std::move(get), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -11660,13 +11653,17 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> g) {
+            prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> get) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(g, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(get, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(g), stmt, con};
+                    return {std::move(get), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -11675,13 +11672,17 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Ids>
-            prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> g) {
+            prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> get) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
-                auto query = this->string_from_expression(g, false);
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                context.skip_table_name = false;
+                context.replace_bindable_with_question = true;
+                auto query = serialize(get, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(g), stmt, con};
+                    return {std::move(get), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
