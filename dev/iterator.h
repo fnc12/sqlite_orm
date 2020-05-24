@@ -12,6 +12,7 @@
 #include "row_extractor.h"
 #include "statement_finalizer.h"
 #include "error_code.h"
+#include "object_from_column_builder.h"
 
 namespace sqlite_orm {
 
@@ -42,17 +43,8 @@ namespace sqlite_orm {
                 temp = std::make_unique<value_type>();
                 auto &storage = this->view.storage;
                 auto &impl = storage.template get_impl<value_type>();
-                auto index = 0;
-                impl.table.for_each_column([&index, &temp, this](auto &c) {
-                    using field_type = typename std::decay<decltype(c)>::type::field_type;
-                    auto value = row_extractor<field_type>().extract(*this->stmt, index++);
-                    if(c.member_pointer) {
-                        auto member_pointer = c.member_pointer;
-                        (*temp).*member_pointer = std::move(value);
-                    } else {
-                        ((*temp).*(c.setter))(std::move(value));
-                    }
-                });
+                object_from_column_builder<value_type> builder{*temp, *this->stmt};
+                impl.table.for_each_column(builder);
             }
 
           public:

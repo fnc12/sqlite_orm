@@ -37,7 +37,7 @@ TEST_CASE("Prepared get all pointer") {
     storage.replace(UserAndVisit{2, 1, "Glad you came"});
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
-    {
+    SECTION("no conditions") {
         auto statement = storage.prepare(get_all_pointer<User>());
         testSerializing(statement);
         SECTION("nothing") {
@@ -55,7 +55,7 @@ TEST_CASE("Prepared get all pointer") {
             REQUIRE(*rows[2].get() == expected[2]);
         }
     }
-    {  //  by val
+    SECTION("with conditions by val") {
         auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, 3))));
         using Statement = decltype(statement);
         using Expression = Statement::expression_type;
@@ -94,7 +94,7 @@ TEST_CASE("Prepared get all pointer") {
             }
         }
     }
-    {  //  by ref
+    SECTION("with conditions by ref") {
         auto id = 3;
         auto statement = storage.prepare(get_all_pointer<User>(where(lesser_than(&User::id, std::ref(id)))));
 

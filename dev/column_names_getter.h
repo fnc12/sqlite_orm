@@ -46,9 +46,22 @@ namespace sqlite_orm {
                 return get_column_names(expression.get(), context);
             }
         };
+
         template<class T>
         struct column_names_getter<asterisk_t<T>, void> {
             using expression_type = asterisk_t<T>;
+
+            template<class C>
+            std::vector<std::string> operator()(const expression_type &, const C &) {
+                std::vector<std::string> res;
+                res.push_back("*");
+                return res;
+            }
+        };
+
+        template<class T>
+        struct column_names_getter<object_t<T>, void> {
+            using expression_type = object_t<T>;
 
             template<class C>
             std::vector<std::string> operator()(const expression_type &, const C &) {

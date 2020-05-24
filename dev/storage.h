@@ -19,7 +19,7 @@
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "alias.h"
-#include "row_extractor.h"
+#include "row_extractor_builder.h"
 #include "error_code.h"
 #include "type_printer.h"
 #include "tuple_helper.h"
@@ -47,6 +47,7 @@
 #include "expression_object_type.h"
 #include "statement_serializator.h"
 #include "table_name_collector.h"
+#include "object_from_column_builder.h"
 
 namespace sqlite_orm {
 
@@ -1327,16 +1328,8 @@ namespace sqlite_orm {
                 switch(stepRes) {
                     case SQLITE_ROW: {
                         auto res = std::make_unique<T>();
-                        index = 0;
-                        tImpl.table.for_each_column([&index, &res, stmt](auto &c) {
-                            using field_type = typename std::decay<decltype(c)>::type::field_type;
-                            auto value = row_extractor<field_type>().extract(stmt, index++);
-                            if(c.member_pointer) {
-                                (*res).*c.member_pointer = std::move(value);
-                            } else {
-                                ((*res).*(c.setter))(std::move(value));
-                            }
-                        });
+                        object_from_column_builder<T> builder{*res, stmt};
+                        tImpl.table.for_each_column(builder);
                         return res;
                     } break;
                     case SQLITE_DONE: {
@@ -1369,16 +1362,8 @@ namespace sqlite_orm {
                 switch(stepRes) {
                     case SQLITE_ROW: {
                         auto res = std::make_optional<T>();
-                        index = 0;
-                        tImpl.table.for_each_column([&index, &res, stmt](auto &c) {
-                            using field_type = typename std::decay<decltype(c)>::type::field_type;
-                            auto value = row_extractor<field_type>().extract(stmt, index++);
-                            if(c.member_pointer) {
-                                (*res).*c.member_pointer = std::move(value);
-                            } else {
-                                ((*res).*(c.setter))(std::move(value));
-                            }
-                        });
+                        object_from_column_builder<T> builder{res.value(), stmt};
+                        tImpl.table.for_each_column(builder);
                         return res;
                     } break;
                     case SQLITE_DONE: {
@@ -1411,17 +1396,8 @@ namespace sqlite_orm {
                 switch(stepRes) {
                     case SQLITE_ROW: {
                         T res;
-                        index = 0;
-                        tImpl.table.for_each_column([&index, &res, stmt](auto &c) {
-                            using column_type = typename std::decay<decltype(c)>::type;
-                            using field_type = typename column_type::field_type;
-                            auto value = row_extractor<field_type>().extract(stmt, index++);
-                            if(c.member_pointer) {
-                                res.*c.member_pointer = std::move(value);
-                            } else {
-                                ((res).*(c.setter))(std::move(value));
-                            }
-                        });
+                        object_from_column_builder<T> builder{res, stmt};
+                        tImpl.table.for_each_column(builder);
                         return res;
                     } break;
                     case SQLITE_DONE: {
@@ -1506,12 +1482,18 @@ namespace sqlite_orm {
                     }
                 });
                 std::vector<R> res;
+                auto tableInfoPointer = this->impl.template find_table<R>();
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);
                     switch(stepRes) {
                         case SQLITE_ROW: {
-                            res.push_back(row_extractor<R>().extract(stmt, 0));
+                            using table_info_pointer_t = typename std::remove_pointer<decltype(tableInfoPointer)>::type;
+                            using table_info_t = typename std::decay<table_info_pointer_t>::type;
+                            row_extractor_builder<R, storage_traits::type_is_mapped<self, R>::value, table_info_t>
+                                builder;
+                            auto rowExtractor = builder(tableInfoPointer);
+                            res.push_back(rowExtractor.extract(stmt, 0));
                         } break;
                         case SQLITE_DONE:
                             break;
@@ -1547,16 +1529,8 @@ namespace sqlite_orm {
                     switch(stepRes) {
                         case SQLITE_ROW: {
                             T obj;
-                            index = 0;
-                            tImpl.table.for_each_column([&index, &obj, stmt](auto &c) {
-                                using field_type = typename std::decay<decltype(c)>::type::field_type;
-                                auto value = row_extractor<field_type>().extract(stmt, index++);
-                                if(c.member_pointer) {
-                                    obj.*c.member_pointer = std::move(value);
-                                } else {
-                                    ((obj).*(c.setter))(std::move(value));
-                                }
-                            });
+                            object_from_column_builder<T> builder{obj, stmt};
+                            tImpl.table.for_each_column(builder);
                             res.push_back(std::move(obj));
                         } break;
                         case SQLITE_DONE:
@@ -1593,17 +1567,9 @@ namespace sqlite_orm {
                     switch(stepRes) {
                         case SQLITE_ROW: {
                             auto obj = std::make_unique<T>();
-                            index = 0;
-                            tImpl.table.for_each_column([&index, &obj, stmt](auto &c) {
-                                using field_type = typename std::decay<decltype(c)>::type::field_type;
-                                auto value = row_extractor<field_type>().extract(stmt, index++);
-                                if(c.member_pointer) {
-                                    (*obj).*c.member_pointer = std::move(value);
-                                } else {
-                                    ((*obj).*(c.setter))(std::move(value));
-                                }
-                            });
-                            res.push_back(std::move(obj));
+                            object_from_column_builder<T> builder{*obj, stmt};
+                            tImpl.table.for_each_column(builder);
+                            res.push_back(move(obj));
                         } break;
                         case SQLITE_DONE:
                             break;
@@ -1640,17 +1606,9 @@ namespace sqlite_orm {
                     switch(stepRes) {
                         case SQLITE_ROW: {
                             auto obj = std::make_optional<T>();
-                            index = 0;
-                            tImpl.table.for_each_column([&index, &obj, stmt](auto &c) {
-                                using field_type = typename std::decay<decltype(c)>::type::field_type;
-                                auto value = row_extractor<field_type>().extract(stmt, index++);
-                                if(c.member_pointer) {
-                                    (*obj).*c.member_pointer = std::move(value);
-                                } else {
-                                    ((*obj).*(c.setter))(std::move(value));
-                                }
-                            });
-                            res.push_back(std::move(obj));
+                            object_from_column_builder<T> builder{*obj, stmt};
+                            tImpl.table.for_each_column(builder);
+                            res.push_back(move(obj));
                         } break;
                         case SQLITE_DONE:
                             break;
