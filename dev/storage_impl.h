@@ -243,6 +243,16 @@ namespace sqlite_orm {
                 return this->super::template get_impl<O>();
             }
 
+            template<class O, class HH = typename H::object_type>
+            auto *find_table(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+                return &this->table;
+            }
+
+            template<class O, class HH = typename H::object_type>
+            auto *find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+                return this->super::template find_table<O>();
+            }
+
             std::string find_table_name(std::type_index ti) const {
                 std::type_index thisTypeIndex{typeid(typename H::object_type)};
                 if(thisTypeIndex == ti) {
@@ -448,6 +458,11 @@ namespace sqlite_orm {
             template<class O>
             std::string dump(const O &, sqlite3 *, std::nullptr_t) {
                 throw std::system_error(std::make_error_code(orm_error_code::type_is_not_mapped_to_storage));
+            }
+
+            template<class O>
+            const void *find_table() const {
+                return nullptr;
             }
         };
 

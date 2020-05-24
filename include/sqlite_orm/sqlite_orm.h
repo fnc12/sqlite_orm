@@ -233,22 +233,22 @@ namespace sqlite_orm {
     namespace internal {
 
         template<typename T, typename F>
-        auto static_if(std::true_type, T t, F) {
-            return std::move(t);
+        decltype(auto) static_if(std::true_type, const T &t, const F &) {
+            return (t);
         }
 
         template<typename T, typename F>
-        auto static_if(std::false_type, T, F f) {
-            return std::move(f);
+        decltype(auto) static_if(std::false_type, const T &, const F &f) {
+            return (f);
         }
 
         template<bool B, typename T, typename F>
-        auto static_if(T t, F f) {
-            return static_if(std::integral_constant<bool, B>{}, std::move(t), std::move(f));
+        decltype(auto) static_if(const T &t, const F &f) {
+            return static_if(std::integral_constant<bool, B>{}, t, f);
         }
 
         template<bool B, typename T>
-        auto static_if(T t) {
+        decltype(auto) static_if(const T &t) {
             return static_if(std::integral_constant<bool, B>{}, t, [](auto &&...) {});
         }
 
@@ -4451,6 +4451,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
+        struct object_t {
+            using type = T;
+        };
+
+        template<class T>
         struct then_t {
             using expression_type = T;
 
@@ -4618,8 +4623,27 @@ namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs), true};
     }
 
+    /**
+     * SELECT * FROM T function.
+     * T is typed mapped to a storage.
+     * Example: auto rows = storage.select(asterisk<User>());
+     * // decltype(rows) is std::vector<std::tuple<...all column typed in declared in make_table order...>>
+     * If you need to fetch result as objects not tuple please use `object<T>` instead.
+     */
     template<class T>
     internal::asterisk_t<T> asterisk() {
+        return {};
+    }
+
+    /**
+     * SELECT * FROM T function.
+     * T is typed mapped to a storage.
+     * Example: auto rows = storage.select(object<User>());
+     * // decltype(rows) is std::vector<User>
+     * If you need to fetch result as tuples not objects please use `asterisk<T>` instead.
+     */
+    template<class T>
+    internal::object_t<T> object() {
         return {};
     }
 }
@@ -5096,8 +5120,8 @@ namespace sqlite_orm {
     /**
      *  Specialization for std::string.
      */
-    template<class V>
-    struct row_extractor<V, std::enable_if_t<std::is_same<V, std::string>::value>> {
+    template<>
+    struct row_extractor<std::string, void> {
         std::string extract(const char *row_value) {
             if(row_value) {
                 return row_value;
@@ -5119,8 +5143,8 @@ namespace sqlite_orm {
     /**
      *  Specialization for std::wstring.
      */
-    template<class V>
-    struct row_extractor<V, std::enable_if_t<std::is_same<V, std::wstring>::value>> {
+    template<>
+    struct row_extractor<std::wstring, void> {
         std::wstring extract(const char *row_value) {
             if(row_value) {
                 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
@@ -5141,38 +5165,6 @@ namespace sqlite_orm {
         }
     };
 #endif  //  SQLITE_ORM_OMITS_CODECVT
-    /**
-     *  Specialization for std::vector<char>.
-     */
-    template<class V>
-    struct row_extractor<V, std::enable_if_t<std::is_same<V, std::vector<char>>::value>> {
-        std::vector<char> extract(const char *row_value) {
-            if(row_value) {
-                auto len = ::strlen(row_value);
-                return this->go(row_value, len);
-            } else {
-                return {};
-            }
-        }
-
-        std::vector<char> extract(sqlite3_stmt *stmt, int columnIndex) {
-            auto bytes = static_cast<const char *>(sqlite3_column_blob(stmt, columnIndex));
-            auto len = sqlite3_column_bytes(stmt, columnIndex);
-            return this->go(bytes, len);
-        }
-
-      protected:
-        std::vector<char> go(const char *bytes, size_t len) {
-            if(len) {
-                std::vector<char> res;
-                res.reserve(len);
-                std::copy(bytes, bytes + len, std::back_inserter(res));
-                return res;
-            } else {
-                return {};
-            }
-        }
-    };
 
     template<class V>
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
@@ -5296,8 +5288,8 @@ namespace sqlite_orm {
     /**
      *  Specialization for journal_mode.
      */
-    template<class V>
-    struct row_extractor<V, std::enable_if_t<std::is_same<V, journal_mode>::value>> {
+    template<>
+    struct row_extractor<journal_mode, void> {
         journal_mode extract(const char *row_value) {
             if(row_value) {
                 if(auto res = internal::journal_mode_from_string(row_value)) {
@@ -5867,6 +5859,11 @@ namespace sqlite_orm {
         template<class St, class T>
         struct column_result_t<St, asterisk_t<T>, void> {
             using type = typename storage_traits::storage_mapped_columns<St, T>::type;
+        };
+
+        template<class St, class T>
+        struct column_result_t<St, object_t<T>, void> {
+            using type = T;
         };
 
         template<class St, class T, class E>
@@ -6467,6 +6464,16 @@ namespace sqlite_orm {
                 return this->super::template get_impl<O>();
             }
 
+            template<class O, class HH = typename H::object_type>
+            auto *find_table(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+                return &this->table;
+            }
+
+            template<class O, class HH = typename H::object_type>
+            auto *find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+                return this->super::template find_table<O>();
+            }
+
             std::string find_table_name(std::type_index ti) const {
                 std::type_index thisTypeIndex{typeid(typename H::object_type)};
                 if(thisTypeIndex == ti) {
@@ -6673,6 +6680,11 @@ namespace sqlite_orm {
             std::string dump(const O &, sqlite3 *, std::nullptr_t) {
                 throw std::system_error(std::make_error_code(orm_error_code::type_is_not_mapped_to_storage));
             }
+
+            template<class O>
+            const void *find_table() const {
+                return nullptr;
+            }
         };
 
         template<class T>
@@ -6704,7 +6716,126 @@ namespace sqlite_orm {
 
 // #include "alias.h"
 
+// #include "row_extractor_builder.h"
+
 // #include "row_extractor.h"
+
+// #include "mapped_row_extractor.h"
+
+#include <sqlite3.h>
+
+// #include "object_from_column_builder.h"
+
+#include <sqlite3.h>
+
+// #include "row_extractor.h"
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        struct object_from_column_builder_base {
+            sqlite3_stmt *stmt = nullptr;
+            mutable int index = 0;
+        };
+
+        /**
+ * This is a cute lambda replacement which is used in several places.
+ */
+        template<class O>
+        struct object_from_column_builder : object_from_column_builder_base {
+            using object_type = O;
+
+            object_type &object;
+
+            object_from_column_builder(object_type &object_, sqlite3_stmt *stmt_) :
+                object_from_column_builder_base{stmt_}, object(object_) {}
+
+            template<class C>
+            void operator()(const C &c) const {
+                using field_type = typename C::field_type;
+                auto value = row_extractor<field_type>().extract(this->stmt, this->index++);
+                if(c.member_pointer) {
+                    this->object.*c.member_pointer = std::move(value);
+                } else {
+                    ((this->object).*(c.setter))(std::move(value));
+                }
+            }
+        };
+
+    }
+}
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        /**
+ * This is a private row extractor class. It is used for extracting rows as objects instead of tuple.
+ * Main difference from regular `row_extractor` is that this class takes table info which is required
+ * for constructing objects by member pointers. To construct please use `row_extractor_builder` class
+ * Type arguments:
+ * V is value type just like regular `row_extractor` has
+ * T is table info class `table_t`
+ */
+        template<class V, class T>
+        struct mapped_row_extractor {
+            using table_info_t = T;
+
+            mapped_row_extractor(const table_info_t &tableInfo_) : tableInfo(tableInfo_) {}
+
+            V extract(sqlite3_stmt *stmt, int /*columnIndex*/) {
+                V res;
+                object_from_column_builder<V> builder{res, stmt};
+                this->tableInfo.for_each_column(builder);
+                return res;
+            }
+
+            const table_info_t &tableInfo;
+        };
+
+    }
+
+}
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        /**
+ * This builder is used to construct different row extractors depending on type.
+ * It has two specializations: for mapped to storage types (e.g. User, Visit etc) and
+ * for non-mapped (e.g. std::string, QString, int etc). For non mapped its operator() returns
+ * generic `row_extractor`, for mapped it returns `mapped_row_extractor` instance.
+ */
+        template<class T, bool IsMapped, class I>
+        struct row_extractor_builder;
+
+        template<class T, class I>
+        struct row_extractor_builder<T, false, I> {
+
+            row_extractor<T> operator()(const I * /*tableInfo*/) const {
+                return {};
+            }
+        };
+
+        template<class T, class I>
+        struct row_extractor_builder<T, true, I> {
+
+            mapped_row_extractor<T, I> operator()(const I *tableInfo) const {
+                return {*tableInfo};
+            }
+        };
+
+        template<class T, bool IsMapped, class I>
+        auto make_row_extractor(const I *tableInfo) {
+            using builder_t = row_extractor_builder<T, IsMapped, I>;
+            return builder_t{}(tableInfo);
+        }
+
+    }
+
+}
 
 // #include "error_code.h"
 
@@ -6778,6 +6909,8 @@ namespace sqlite_orm {
 
 // #include "error_code.h"
 
+// #include "object_from_column_builder.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -6807,17 +6940,8 @@ namespace sqlite_orm {
                 temp = std::make_unique<value_type>();
                 auto &storage = this->view.storage;
                 auto &impl = storage.template get_impl<value_type>();
-                auto index = 0;
-                impl.table.for_each_column([&index, &temp, this](auto &c) {
-                    using field_type = typename std::decay<decltype(c)>::type::field_type;
-                    auto value = row_extractor<field_type>().extract(*this->stmt, index++);
-                    if(c.member_pointer) {
-                        auto member_pointer = c.member_pointer;
-                        (*temp).*member_pointer = std::move(value);
-                    } else {
-                        ((*temp).*(c.setter))(std::move(value));
-                    }
-                });
+                object_from_column_builder<value_type> builder{*temp, *this->stmt};
+                impl.table.for_each_column(builder);
             }
 
           public:
@@ -9123,6 +9247,14 @@ namespace sqlite_orm {
                     table_names.insert(std::make_pair(move(tableName), ""));
                 }
             }
+
+            template<class T>
+            void operator()(const object_t<T> &) const {
+                if(this->find_table_name) {
+                    auto tableName = this->find_table_name(typeid(T));
+                    table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
         };
 
     }
@@ -9178,9 +9310,22 @@ namespace sqlite_orm {
                 return get_column_names(expression.get(), context);
             }
         };
+
         template<class T>
         struct column_names_getter<asterisk_t<T>, void> {
             using expression_type = asterisk_t<T>;
+
+            template<class C>
+            std::vector<std::string> operator()(const expression_type &, const C &) {
+                std::vector<std::string> res;
+                res.push_back("*");
+                return res;
+            }
+        };
+
+        template<class T>
+        struct column_names_getter<object_t<T>, void> {
+            using expression_type = object_t<T>;
 
             template<class C>
             std::vector<std::string> operator()(const expression_type &, const C &) {
@@ -10846,6 +10991,8 @@ namespace sqlite_orm {
 
 // #include "table_name_collector.h"
 
+// #include "object_from_column_builder.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -12125,16 +12272,8 @@ namespace sqlite_orm {
                 switch(stepRes) {
                     case SQLITE_ROW: {
                         auto res = std::make_unique<T>();
-                        index = 0;
-                        tImpl.table.for_each_column([&index, &res, stmt](auto &c) {
-                            using field_type = typename std::decay<decltype(c)>::type::field_type;
-                            auto value = row_extractor<field_type>().extract(stmt, index++);
-                            if(c.member_pointer) {
-                                (*res).*c.member_pointer = std::move(value);
-                            } else {
-                                ((*res).*(c.setter))(std::move(value));
-                            }
-                        });
+                        object_from_column_builder<T> builder{*res, stmt};
+                        tImpl.table.for_each_column(builder);
                         return res;
                     } break;
                     case SQLITE_DONE: {
@@ -12167,16 +12306,8 @@ namespace sqlite_orm {
                 switch(stepRes) {
                     case SQLITE_ROW: {
                         auto res = std::make_optional<T>();
-                        index = 0;
-                        tImpl.table.for_each_column([&index, &res, stmt](auto &c) {
-                            using field_type = typename std::decay<decltype(c)>::type::field_type;
-                            auto value = row_extractor<field_type>().extract(stmt, index++);
-                            if(c.member_pointer) {
-                                (*res).*c.member_pointer = std::move(value);
-                            } else {
-                                ((*res).*(c.setter))(std::move(value));
-                            }
-                        });
+                        object_from_column_builder<T> builder{res.value(), stmt};
+                        tImpl.table.for_each_column(builder);
                         return res;
                     } break;
                     case SQLITE_DONE: {
@@ -12209,17 +12340,8 @@ namespace sqlite_orm {
                 switch(stepRes) {
                     case SQLITE_ROW: {
                         T res;
-                        index = 0;
-                        tImpl.table.for_each_column([&index, &res, stmt](auto &c) {
-                            using column_type = typename std::decay<decltype(c)>::type;
-                            using field_type = typename column_type::field_type;
-                            auto value = row_extractor<field_type>().extract(stmt, index++);
-                            if(c.member_pointer) {
-                                res.*c.member_pointer = std::move(value);
-                            } else {
-                                ((res).*(c.setter))(std::move(value));
-                            }
-                        });
+                        object_from_column_builder<T> builder{res, stmt};
+                        tImpl.table.for_each_column(builder);
                         return res;
                     } break;
                     case SQLITE_DONE: {
@@ -12304,12 +12426,18 @@ namespace sqlite_orm {
                     }
                 });
                 std::vector<R> res;
+                auto tableInfoPointer = this->impl.template find_table<R>();
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);
                     switch(stepRes) {
                         case SQLITE_ROW: {
-                            res.push_back(row_extractor<R>().extract(stmt, 0));
+                            using table_info_pointer_t = typename std::remove_pointer<decltype(tableInfoPointer)>::type;
+                            using table_info_t = typename std::decay<table_info_pointer_t>::type;
+                            row_extractor_builder<R, storage_traits::type_is_mapped<self, R>::value, table_info_t>
+                                builder;
+                            auto rowExtractor = builder(tableInfoPointer);
+                            res.push_back(rowExtractor.extract(stmt, 0));
                         } break;
                         case SQLITE_DONE:
                             break;
@@ -12345,16 +12473,8 @@ namespace sqlite_orm {
                     switch(stepRes) {
                         case SQLITE_ROW: {
                             T obj;
-                            index = 0;
-                            tImpl.table.for_each_column([&index, &obj, stmt](auto &c) {
-                                using field_type = typename std::decay<decltype(c)>::type::field_type;
-                                auto value = row_extractor<field_type>().extract(stmt, index++);
-                                if(c.member_pointer) {
-                                    obj.*c.member_pointer = std::move(value);
-                                } else {
-                                    ((obj).*(c.setter))(std::move(value));
-                                }
-                            });
+                            object_from_column_builder<T> builder{obj, stmt};
+                            tImpl.table.for_each_column(builder);
                             res.push_back(std::move(obj));
                         } break;
                         case SQLITE_DONE:
@@ -12391,17 +12511,9 @@ namespace sqlite_orm {
                     switch(stepRes) {
                         case SQLITE_ROW: {
                             auto obj = std::make_unique<T>();
-                            index = 0;
-                            tImpl.table.for_each_column([&index, &obj, stmt](auto &c) {
-                                using field_type = typename std::decay<decltype(c)>::type::field_type;
-                                auto value = row_extractor<field_type>().extract(stmt, index++);
-                                if(c.member_pointer) {
-                                    (*obj).*c.member_pointer = std::move(value);
-                                } else {
-                                    ((*obj).*(c.setter))(std::move(value));
-                                }
-                            });
-                            res.push_back(std::move(obj));
+                            object_from_column_builder<T> builder{*obj, stmt};
+                            tImpl.table.for_each_column(builder);
+                            res.push_back(move(obj));
                         } break;
                         case SQLITE_DONE:
                             break;
@@ -12438,17 +12550,9 @@ namespace sqlite_orm {
                     switch(stepRes) {
                         case SQLITE_ROW: {
                             auto obj = std::make_optional<T>();
-                            index = 0;
-                            tImpl.table.for_each_column([&index, &obj, stmt](auto &c) {
-                                using field_type = typename std::decay<decltype(c)>::type::field_type;
-                                auto value = row_extractor<field_type>().extract(stmt, index++);
-                                if(c.member_pointer) {
-                                    (*obj).*c.member_pointer = std::move(value);
-                                } else {
-                                    ((*obj).*(c.setter))(std::move(value));
-                                }
-                            });
-                            res.push_back(std::move(obj));
+                            object_from_column_builder<T> builder{*obj, stmt};
+                            tImpl.table.for_each_column(builder);
+                            res.push_back(move(obj));
                         } break;
                         case SQLITE_DONE:
                             break;

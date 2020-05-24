@@ -223,6 +223,11 @@ namespace sqlite_orm {
             using type = typename storage_traits::storage_mapped_columns<St, T>::type;
         };
 
+        template<class St, class T>
+        struct column_result_t<St, object_t<T>, void> {
+            using type = T;
+        };
+
         template<class St, class T, class E>
         struct column_result_t<St, cast_t<T, E>, void> {
             using type = T;

@@ -180,6 +180,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
+        struct object_t {
+            using type = T;
+        };
+
+        template<class T>
         struct then_t {
             using expression_type = T;
 
@@ -347,8 +352,27 @@ namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs), true};
     }
 
+    /**
+     * SELECT * FROM T function.
+     * T is typed mapped to a storage.
+     * Example: auto rows = storage.select(asterisk<User>());
+     * // decltype(rows) is std::vector<std::tuple<...all column typed in declared in make_table order...>>
+     * If you need to fetch result as objects not tuple please use `object<T>` instead.
+     */
     template<class T>
     internal::asterisk_t<T> asterisk() {
+        return {};
+    }
+
+    /**
+     * SELECT * FROM T function.
+     * T is typed mapped to a storage.
+     * Example: auto rows = storage.select(object<User>());
+     * // decltype(rows) is std::vector<User>
+     * If you need to fetch result as tuples not objects please use `asterisk<T>` instead.
+     */
+    template<class T>
+    internal::object_t<T> object() {
         return {};
     }
 }
