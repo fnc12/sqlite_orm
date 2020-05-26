@@ -601,13 +601,28 @@ namespace sqlite_orm {
             }
         };
 
-        template<>
-        struct statement_serializator<constraints::unique_t, void> {
-            using statement_type = constraints::unique_t;
+        template<class... Args>
+        struct statement_serializator<constraints::unique_t<Args...>, void> {
+            using statement_type = constraints::unique_t<Args...>;
 
             template<class C>
-            std::string operator()(const statement_type &c, const C &) const {
-                return static_cast<std::string>(c);
+            std::string operator()(const statement_type &c, const C &context) const {
+                auto res = static_cast<std::string>(c);
+                using columns_tuple = typename statement_type::columns_tuple;
+                auto columnsCount = std::tuple_size<columns_tuple>::value;
+                if(columnsCount) {
+                    res += "(";
+                    decltype(columnsCount) columnIndex = 0;
+                    iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto &column) {
+                        res += context.column_name(column);
+                        if(columnIndex < columnsCount - 1) {
+                            res += ", ";
+                        }
+                        ++columnIndex;
+                    });
+                    res += ")";
+                }
+                return res;
             }
         };
 

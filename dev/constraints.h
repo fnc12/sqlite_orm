@@ -72,14 +72,22 @@ namespace sqlite_orm {
             }
         };
 
-        /**
-         *  UNIQUE constraint class.
-         */
-        struct unique_t {
-
+        struct unique_base {
             operator std::string() const {
                 return "UNIQUE";
             }
+        };
+
+        /**
+         *  UNIQUE constraint class.
+         */
+        template<class... Args>
+        struct unique_t : unique_base {
+            using columns_tuple = std::tuple<Args...>;
+
+            columns_tuple columns;
+
+            unique_t(columns_tuple columns_) : columns(move(columns_)) {}
         };
 
         /**
@@ -329,8 +337,8 @@ namespace sqlite_orm {
         template<class... Cs>
         struct is_constraint<primary_key_t<Cs...>> : std::true_type {};
 
-        template<>
-        struct is_constraint<unique_t> : std::true_type {};
+        template<class... Args>
+        struct is_constraint<unique_t<Args...>> : std::true_type {};
 
         template<class T>
         struct is_constraint<default_t<T>> : std::true_type {};
@@ -373,8 +381,13 @@ namespace sqlite_orm {
     /**
      *  UNIQUE constraint builder function.
      */
-    inline constraints::unique_t unique() {
-        return {};
+    template<class... Args>
+    constraints::unique_t<Args...> unique(Args... args) {
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    inline constraints::unique_t<> unique() {
+        return {{}};
     }
 
     inline constraints::autoincrement_t autoincrement() {
@@ -382,9 +395,12 @@ namespace sqlite_orm {
     }
 
     template<class... Cs>
-    inline constraints::primary_key_t<Cs...> primary_key(Cs... cs) {
-        using ret_type = constraints::primary_key_t<Cs...>;
-        return ret_type(std::make_tuple(cs...));
+    constraints::primary_key_t<Cs...> primary_key(Cs... cs) {
+        return {std::make_tuple(std::forward<Cs>(cs)...)};
+    }
+
+    inline constraints::primary_key_t<> primary_key() {
+        return {{}};
     }
 
     template<class T>
