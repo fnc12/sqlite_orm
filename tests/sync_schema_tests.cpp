@@ -109,3 +109,307 @@ TEST_CASE("Sync schema") {
     });
     REQUIRE(std::equal(ids.begin(), ids.end(), idsFromGetAll.begin(), idsFromGetAll.end()));
 }
+
+TEST_CASE("issue521") {
+    auto storagePath = "issue521.sqlite";
+
+    struct MockDatabasePoco {
+        int id{-1};
+        std::string name{""};
+        uint32_t alpha{0};
+        float beta{0.0};
+    };
+    std::vector<MockDatabasePoco> pocosToInsert;
+
+    ::remove(storagePath);
+    {
+        // --- Create the initial database
+        auto storage = sqlite_orm::make_storage(
+            storagePath,
+            sqlite_orm::make_table("pocos",
+                                   sqlite_orm::make_column("id", &MockDatabasePoco::id, sqlite_orm::primary_key()),
+                                   sqlite_orm::make_column("name", &MockDatabasePoco::name)));
+
+        // --- We simulate the synchronization first, then do it for real and compare
+        auto simulated = storage.sync_schema_simulate(true);
+        auto ssr = storage.sync_schema(true);
+        REQUIRE(ssr == simulated);
+        REQUIRE(ssr.at("pocos") == sqlite_orm::sync_schema_result::new_table_created);
+
+        // --- Insert two rows
+        pocosToInsert.clear();
+        pocosToInsert.push_back({-1, "Michael", 10, 10.10});
+        pocosToInsert.push_back({-1, "Joyce", 20, 20.20});
+
+        for(auto &poco: pocosToInsert) {
+            auto insertedId = storage.insert(poco);
+            poco.id = insertedId;
+        }
+
+        // --- Retrieve the pocos and verify
+        REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
+
+        using namespace sqlite_orm;
+        auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
+        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+            auto &pocoFromDb = pocosFromDb[i];
+            auto &oldPoco = pocosToInsert[i];
+
+            REQUIRE(pocoFromDb.id == oldPoco.id);
+            REQUIRE(pocoFromDb.name == oldPoco.name);
+        }
+    }
+    {
+        // --- Read the database and create the storage
+        auto storage = sqlite_orm::make_storage(
+            storagePath,
+            sqlite_orm::make_table("pocos",
+                                   sqlite_orm::make_column("id", &MockDatabasePoco::id, sqlite_orm::primary_key()),
+                                   sqlite_orm::make_column("name", &MockDatabasePoco::name)));
+        // --- We simulate the synchronization first, then do it for real and compare
+        auto simulated = storage.sync_schema_simulate(true);
+        auto ssr = storage.sync_schema(true);
+        REQUIRE(ssr == simulated);
+        REQUIRE(ssr["pocos"] == sqlite_orm::sync_schema_result::already_in_sync);
+
+        REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
+
+        auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
+        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+            auto &pocoFromDb = pocosFromDb[i];
+            auto &oldPoco = pocosToInsert[i];
+            REQUIRE(pocoFromDb.id == oldPoco.id);
+            REQUIRE(pocoFromDb.name == oldPoco.name);
+        }
+    }
+    // --- Add a new column
+    {
+        // --- Read the database and create the storage
+        auto storage = sqlite_orm::make_storage(
+            storagePath,
+            sqlite_orm::make_table(
+                "pocos",
+                sqlite_orm::make_column("id", &MockDatabasePoco::id, sqlite_orm::primary_key()),
+                sqlite_orm::make_column("name", &MockDatabasePoco::name),
+                sqlite_orm::make_column("alpha", &MockDatabasePoco::alpha, sqlite_orm::default_value(1))));
+        // --- We simulate the synchronization first, then do it for real and compare
+        auto simulated = storage.sync_schema_simulate(true);
+        auto ssr = storage.sync_schema(true);
+        REQUIRE(ssr == simulated);
+        REQUIRE(ssr["pocos"] == sqlite_orm::sync_schema_result::new_columns_added);
+        REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
+
+        auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
+        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+            auto &pocoFromDb = pocosFromDb[i];
+            auto &oldPoco = pocosToInsert[i];
+            REQUIRE(pocoFromDb.id == oldPoco.id);
+            REQUIRE(pocoFromDb.name == oldPoco.name);
+            REQUIRE(pocoFromDb.alpha == 1);
+        }
+    }
+    // --- Add a new column and delete an old one
+    {
+        // --- Read the database and create the storage
+        auto storage = sqlite_orm::make_storage(
+            storagePath,
+            sqlite_orm::make_table(
+                "pocos",
+                sqlite_orm::make_column("id", &MockDatabasePoco::id, sqlite_orm::primary_key()),
+                sqlite_orm::make_column("name", &MockDatabasePoco::name),
+                sqlite_orm::make_column("beta", &MockDatabasePoco::beta, sqlite_orm::default_value(1.1))));
+
+        // --- We simulate the synchronization first, then do it for real and compare
+        auto simulated = storage.sync_schema_simulate(true);
+        auto ssr = storage.sync_schema(true);
+        REQUIRE(ssr == simulated);
+        REQUIRE(ssr["pocos"] == sqlite_orm::sync_schema_result::new_columns_added_and_old_columns_removed);
+        REQUIRE(static_cast<size_t>(storage.count<MockDatabasePoco>()) == pocosToInsert.size());
+
+        auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
+        for(size_t i = 0; i < pocosFromDb.size(); ++i) {
+            auto &pocoFromDb = pocosFromDb[i];
+            auto &oldPoco = pocosToInsert[i];
+
+            REQUIRE(pocoFromDb.id == oldPoco.id);
+            REQUIRE(pocoFromDb.name == oldPoco.name);
+            REQUIRE(!(pocoFromDb.beta < 1));
+        }
+    }
+}
+
+bool compareUniquePointers(const std::unique_ptr<int> &lhs, const std::unique_ptr<int> &rhs) {
+    if(!lhs && !rhs) {
+        return true;
+    } else {
+        if(lhs && rhs) {
+            return *lhs == *rhs;
+        } else {
+            return false;
+        }
+    }
+}
+
+TEST_CASE("sync_schema") {
+    using Catch::Matchers::UnorderedEquals;
+    struct User {
+        int id = 0;
+        std::string name;
+        int age = 0;
+        std::unique_ptr<int> ageNullable;
+
+        User() = default;
+
+        User(int id_) : id(id_) {}
+
+        User(int id_, std::string name_) : id(id_), name(move(name_)) {}
+
+        User(int id_, int age_) : id(id_), age(age_) {}
+
+        User(const User &other) :
+            id(other.id), name(other.name), age(other.age),
+            ageNullable(other.ageNullable ? std::make_unique<int>(*other.ageNullable) : nullptr) {}
+
+        bool operator==(const User &other) const {
+            return this->id == other.id && this->name == other.name && this->age == other.age;
+        }
+    };
+    auto storagePath = "sync_schema.sqlite";
+    std::string tableName = "users";
+    struct {
+        const std::string id = "id";
+        const std::string name = "name";
+        const std::string age = "age";
+    } columnNames;
+    ::remove(storagePath);
+    {
+        auto storage = make_storage(storagePath,
+                                    make_table(tableName,
+                                               make_column(columnNames.id, &User::id, primary_key()),
+                                               make_column(columnNames.name, &User::name)));
+        auto syncSchemaSimulateRes = storage.sync_schema_simulate(true);
+        auto syncSchemaRes = storage.sync_schema(true);
+        REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+        decltype(syncSchemaRes) expected{
+            {tableName, sync_schema_result::new_table_created},
+        };
+        REQUIRE(syncSchemaRes == expected);
+
+        storage.replace(User{1, "Alex"});
+        storage.replace(User{2, "Michael"});
+    }
+    SECTION("remove name column") {
+        auto storage =
+            make_storage(storagePath, make_table(tableName, make_column(columnNames.id, &User::id, primary_key())));
+        SECTION("preserve = true") {
+            auto syncSchemaSimulateRes = storage.sync_schema_simulate(true);
+            auto syncSchemaRes = storage.sync_schema(true);
+            REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+            decltype(syncSchemaRes) expected{
+                {tableName, sync_schema_result::old_columns_removed},
+            };
+            REQUIRE(syncSchemaRes == expected);
+            auto users = storage.get_all<User>();
+            REQUIRE_THAT(users, UnorderedEquals<User>(std::vector<User>{User{1}, User{2}}));
+        }
+        SECTION("preserve = false") {
+            auto syncSchemaSimulateRes = storage.sync_schema_simulate();
+            auto syncSchemaRes = storage.sync_schema();
+            REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+            decltype(syncSchemaRes) expected{
+                {tableName, sync_schema_result::dropped_and_recreated},
+            };
+            REQUIRE(syncSchemaRes == expected);
+            auto users = storage.get_all<User>();
+            REQUIRE(users.empty());
+        }
+    }
+    SECTION("replace a column with no default value") {
+        auto storage = make_storage(storagePath,
+                                    make_table(tableName,
+                                               make_column(columnNames.id, &User::id, primary_key()),
+                                               make_column(columnNames.age, &User::age)));
+        std::map<std::string, sync_schema_result> syncSchemaSimulateRes;
+        std::map<std::string, sync_schema_result> syncSchemaRes;
+        SECTION("preserve = true") {
+            syncSchemaSimulateRes = storage.sync_schema_simulate(true);
+            syncSchemaRes = storage.sync_schema(true);
+        }
+        SECTION("preserve = false") {
+            syncSchemaSimulateRes = storage.sync_schema_simulate();
+            syncSchemaRes = storage.sync_schema();
+        }
+        REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+        decltype(syncSchemaRes) expected{
+            {tableName, sync_schema_result::dropped_and_recreated},
+        };
+        REQUIRE(syncSchemaRes == expected);
+        auto users = storage.get_all<User>();
+        REQUIRE(users.empty());
+    }
+    SECTION("replace a column with default value") {
+        auto storage = make_storage(storagePath,
+                                    make_table(tableName,
+                                               make_column(columnNames.id, &User::id, primary_key()),
+                                               make_column(columnNames.age, &User::age, default_value(-1))));
+        SECTION("preserve = true") {
+            auto syncSchemaSimulateRes = storage.sync_schema_simulate(true);
+            auto syncSchemaRes = storage.sync_schema(true);
+            REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+            decltype(syncSchemaRes) expected{
+                {tableName, sync_schema_result::new_columns_added_and_old_columns_removed},
+            };
+            REQUIRE(syncSchemaRes == expected);
+            auto users = storage.get_all<User>();
+            REQUIRE_THAT(users, UnorderedEquals<User>(std::vector<User>{User{1, -1}, User{2, -1}}));
+        }
+        SECTION("preserve = false") {
+            auto syncSchemaSimulateRes = storage.sync_schema_simulate();
+            auto syncSchemaRes = storage.sync_schema();
+            REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+            decltype(syncSchemaRes) expected{
+                {tableName, sync_schema_result::dropped_and_recreated},
+            };
+            REQUIRE(syncSchemaRes == expected);
+            auto users = storage.get_all<User>();
+            REQUIRE(users.empty());
+        }
+    }
+    SECTION("replace a column with null") {
+        auto storage = make_storage(storagePath,
+                                    make_table(tableName,
+                                               make_column(columnNames.id, &User::id, primary_key()),
+                                               make_column(columnNames.age, &User::ageNullable)));
+        SECTION("preserve = true") {
+            auto syncSchemaSimulateRes = storage.sync_schema_simulate(true);
+            auto syncSchemaRes = storage.sync_schema(true);
+            REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+            {
+                decltype(syncSchemaRes) expected{
+                    {tableName, sync_schema_result::new_columns_added_and_old_columns_removed},
+                };
+                REQUIRE(syncSchemaRes == expected);
+            }
+            auto users = storage.get_all<User>();
+            REQUIRE_THAT(users, UnorderedEquals<User>(std::vector<User>{User{1}, User{2}}));
+            {
+                auto rows = storage.select(asterisk<User>());
+                decltype(rows) expected;
+                expected.push_back({1, std::unique_ptr<int>()});
+                expected.push_back({2, std::unique_ptr<int>()});
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+        }
+        SECTION("preserve = false") {
+            auto syncSchemaSimulateRes = storage.sync_schema_simulate();
+            auto syncSchemaRes = storage.sync_schema();
+            REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
+            decltype(syncSchemaRes) expected{
+                {tableName, sync_schema_result::dropped_and_recreated},
+            };
+            REQUIRE(syncSchemaRes == expected);
+            auto users = storage.get_all<User>();
+            REQUIRE(users.empty());
+        }
+    }
+}

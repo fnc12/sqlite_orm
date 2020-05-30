@@ -122,7 +122,7 @@ namespace sqlite_orm {
             }
 
             template<class I>
-            void backup_table(sqlite3 *db, I *tableImpl) {
+            void backup_table(sqlite3 *db, I *tableImpl, const std::vector<table_info *> &columnsToIgnore) {
 
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
@@ -143,7 +143,7 @@ namespace sqlite_orm {
 
                 this->create_table(db, backupTableName, tableImpl);
 
-                tableImpl->copy_table(db, backupTableName);
+                tableImpl->copy_table(db, backupTableName, columnsToIgnore);
 
                 this->drop_table_internal(tableImpl->table.name, db);
 
@@ -631,7 +631,7 @@ namespace sqlite_orm {
                             if(schema_stat == sync_schema_result::old_columns_removed) {
 
                                 //  extra table columns than storage columns
-                                this->backup_table(db, tImpl);
+                                this->backup_table(db, tImpl, {});
                                 res = decltype(res)::old_columns_removed;
                             }
 
@@ -645,10 +645,7 @@ namespace sqlite_orm {
                             if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                                 // remove extra columns
-                                this->backup_table(db, tImpl);
-                                for(auto columnPointer: columnsToAdd) {
-                                    tImpl->add_column(*columnPointer, db);
-                                }
+                                this->backup_table(db, tImpl, columnsToAdd);
                                 res = decltype(res)::new_columns_added_and_old_columns_removed;
                             }
                         } else if(schema_stat == sync_schema_result::dropped_and_recreated) {

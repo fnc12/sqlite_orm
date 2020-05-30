@@ -332,11 +332,21 @@ namespace sqlite_orm {
              *  Copies current table to another table with a given **name**.
              *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
              */
-            void copy_table(sqlite3 *db, const std::string &name) {
+            void copy_table(sqlite3 *db, const std::string &name, const std::vector<table_info *> &columnsToIgnore) {
+                std::ignore = columnsToIgnore;
+
                 std::stringstream ss;
                 std::vector<std::string> columnNames;
-                this->table.for_each_column([&columnNames](auto &c) {
-                    columnNames.emplace_back(c.name);
+                this->table.for_each_column([&columnNames, &columnsToIgnore](auto &c) {
+                    auto &columnName = c.name;
+                    auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
+                                                         columnsToIgnore.end(),
+                                                         [&columnName](auto tableInfoPointer) {
+                                                             return columnName == tableInfoPointer->name;
+                                                         });
+                    if(columnToIgnoreIt == columnsToIgnore.end()) {
+                        columnNames.emplace_back(columnName);
+                    }
                 });
                 auto columnNamesCount = columnNames.size();
                 ss << "INSERT INTO " << name << " (";
