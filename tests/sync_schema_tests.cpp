@@ -121,8 +121,6 @@ TEST_CASE("issue521") {
     };
     std::vector<MockDatabasePoco> pocosToInsert;
 
-    //    constexpr size_t zeroSize{ 0 };
-
     ::remove(storagePath);
     {
         // --- Create the initial database
