@@ -20,30 +20,24 @@ auto initStorage(const std::string &path) {
     using namespace sqlite_orm;
     return make_storage(path,
                         make_table("COMPANY",
-                                   make_column("ID",
-                                               &Employee::id,
-                                               primary_key()),
-                                   make_column("NAME",
-                                               &Employee::name),
-                                   make_column("AGE",
-                                               &Employee::age),
-                                   make_column("ADDRESS",
-                                               &Employee::address),
-                                   make_column("SALARY",
-                                               &Employee::salary)));
+                                   make_column("ID", &Employee::id, primary_key()),
+                                   make_column("NAME", &Employee::name),
+                                   make_column("AGE", &Employee::age),
+                                   make_column("ADDRESS", &Employee::address),
+                                   make_column("SALARY", &Employee::salary)));
 }
 using Storage = decltype(initStorage(""));
 
-int main(int argc, char **argv) {
-    
+int main(int, char **) {
+
     Storage storage = initStorage("distinct.sqlite");
-    
+
     //  sync schema in case this is a very first launch
     storage.sync_schema();
-    
+
     //  remove all employees if it is not the very first launch
     storage.remove_all<Employee>();
-    
+
     //  now let's insert start values to wirk with. We'll make it within a transaction
     //  for better perfomance
     storage.begin_transaction();
@@ -118,31 +112,31 @@ int main(int argc, char **argv) {
         5000.0,
     });
     storage.commit();
-    
+
     //  SELECT 'NAME' FROM 'COMPANY'
     auto pureNames = storage.select(&Employee::name);
     cout << "NAME" << endl;
     cout << "----------" << endl;
-    for(auto &name : pureNames) {
+    for(auto &name: pureNames) {
         cout << name << endl;
     }
     cout << endl;
-    
+
     using namespace sqlite_orm;
     //  SELECT DISTINCT 'NAME' FROM 'COMPANY'
     auto distinctNames = storage.select(distinct(&Employee::name));
     cout << "NAME" << endl;
     cout << "----------" << endl;
-    for(auto &name : distinctNames) {
+    for(auto &name: distinctNames) {
         cout << name << endl;
     }
     cout << endl;
-    
+
     //  SELECT DISTINCT 'ADDRESS', 'NAME' FROM 'COMPANY'
     auto severalColumns = storage.select(distinct(columns(&Employee::address, &Employee::name)));
     cout << "ADDRESS" << '\t' << "NAME" << endl;
     cout << "----------" << endl;
-    for(auto &t : severalColumns) {
+    for(auto &t: severalColumns) {
         cout << std::get<0>(t) << '\t' << std::get<1>(t) << endl;
     }
     return 0;

@@ -3,11 +3,18 @@
 </p>
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm)
 [![Donate using PayPal](https://img.shields.io/badge/donate-PayPal-brightgreen.svg)](https://paypal.me/fnc12)
+[![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/fold_left.svg?style=social&label=Follow%20%40sqlite_orm)](https://twitter.com/sqlite_orm)
+
 
 # SQLite ORM
 SQLite ORM light header only library for modern C++
+
+# Status
+| Branch | Travis | Appveyor |
+| :----- | :----- | :------- |
+| [`master`](https://github.com/fnc12/sqlite_orm/tree/master) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=master&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/) |
+| [`dev`](https://github.com/fnc12/sqlite_orm/tree/dev) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=dev)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=dev&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/tree/dev) |
 
 # Advantages
 
@@ -17,6 +24,8 @@ SQLite ORM light header only library for modern C++
 * **Built with modern C++14 features (no macros and external scripts)**
 * **CRUD support**
 * **Pure select query support**
+* **Prepared statements support**
+* **UNION, EXCEPT and INTERSECT support**
 * **STL compatible**
 * **Custom types binding support**
 * **BLOB support** - maps to `std::vector<char>` or one can bind your custom type
@@ -38,7 +47,7 @@ SQLite ORM light header only library for modern C++
 * **COLLATE support**
 * **Limits setting/getting support**
 
-`sqlite_orm` library allows to create easy data model mappings to your database schema. It is built to manage (CRUD) objects with a single column with primary key and without it. It also allows you to specify table names and column names explicitly no matter how your classes actually named. Take a look at example:
+`sqlite_orm` library allows to create easy data model mappings to your database schema. It is built to manage (CRUD) objects with a primary key and without it. It also allows you to specify table names and column names explicitly no matter how your classes actually named. Take a look at example:
 
 ```c++
 
@@ -47,7 +56,7 @@ struct User{
     std::string firstName;
     std::string lastName;
     int birthDate;
-    std::shared_ptr<std::string> imageUrl;      
+    std::unique_ptr<std::string> imageUrl;
     int typeId;
 };
 
@@ -64,49 +73,36 @@ So we have database with predefined schema like
 
 `CREATE TABLE user_types (id integer primary key autoincrement, name text not null DEFAULT 'name_placeholder')`
 
-Now we tell `sqlite_orm` library about schema and provide database filename. We create `storage` service object that has CRUD interface. Also we create every table and every column. All code is intuitive and minimalistic.
+Now we tell `sqlite_orm` library about our schema and provide database filename. We create `storage` service object that has CRUD interface. Also we create every table and every column. All code is intuitive and minimalistic.
 
 ```c++
 
 using namespace sqlite_orm;
 auto storage = make_storage("db.sqlite",
                             make_table("users",
-                                       make_column("id",
-                                                   &User::id,
-                                                   autoincrement(),
-                                                   primary_key()),
-                                       make_column("first_name",
-                                                   &User::firstName),
-                                       make_column("last_name",
-                                                   &User::lastName),
-                                       make_column("birth_date",
-                                                   &User::birthDate),
-                                       make_column("image_url",
-                                                   &User::imageUrl),
-                                       make_column("type_id",
-                                                   &User::typeId)),
+                                       make_column("id", &User::id, autoincrement(), primary_key()),
+                                       make_column("first_name", &User::firstName),
+                                       make_column("last_name", &User::lastName),
+                                       make_column("birth_date", &User::birthDate),
+                                       make_column("image_url", &User::imageUrl),
+                                       make_column("type_id", &User::typeId)),
                             make_table("user_types",
-                                       make_column("id",
-                                                   &UserType::id,
-                                                   autoincrement(),
-                                                   primary_key()),
-                                       make_column("name",
-                                                   &UserType::name,
-                                                   default_value("name_placeholder"))));
+                                       make_column("id", &UserType::id, autoincrement(), primary_key()),
+                                       make_column("name", &UserType::name, default_value("name_placeholder"))));
 ```
 
-Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like ~~`not_null`~~ (deduced from type), `primary_key`, `autoincrement`, `default_value` or `unique`(order isn't important).
+Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like `primary_key`, `autoincrement`, `default_value` or `unique`(order isn't important; `not_null` is deduced from type automatically).
+
+More details about making storage can be found in [tutorial](https://github.com/fnc12/sqlite_orm/wiki/Making-a-storage).
 
 If your datamodel classes have private or protected members to map to sqlite then you can make a storage with setter and getter functions. More info in the [example](https://github.com/fnc12/sqlite_orm/blob/master/examples/private_class_members.cpp).
 
-More details about making storage can be found in [tutorial](https://github.com/fnc12/sqlite_orm/wiki/Making-storage).
-
 # CRUD
 
-Let's create and insert new `User` into database. First we need to create a `User` object with any id and call `insert` function. It will return id of just created user or throw exception if something goes wrong.
+Let's create and insert new `User` into our database. First we need to create a `User` object with any id and call `insert` function. It will return id of just created user or throw exception if something goes wrong.
 
 ```c++
-User user{-1, "Jonh", "Doe", 664416000, std::make_shared<std::string>("url_to_heaven"), 3 };
+User user{-1, "Jonh", "Doe", 664416000, std::make_unique<std::string>("url_to_heaven"), 3 };
     
 auto insertedId = storage.insert(user);
 cout << "insertedId = " << insertedId << endl;      //  insertedId = 8
@@ -117,6 +113,8 @@ insertedId = storage.insert(secondUser);
 secondUser.id = insertedId;
 
 ```
+
+Note: if we need to insert a new user with specified id call `storage.replace(user);` instead of `insert`.
 
 Next let's get our user by id.
 
@@ -131,17 +129,17 @@ try{
 }
 ```
 
-Probably you may not like throwing exceptions. Me too. Exception `not_found_exception` is thrown because return type in `get` function is not nullable. You can use alternative version `get_no_throw` which returns `std::shared_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
+Probably you may not like throwing exceptions. Me too. Exception `std::system_error` is thrown because return type in `get` function is not nullable. You can use alternative version `get_pointer` which returns `std::unique_ptr` and doesn't throw `not_found_exception` if nothing found - just returns `nullptr`.
 
 ```c++
-if(auto user = storage.get_no_throw<User>(insertedId)){
+if(auto user = storage.get_pointer<User>(insertedId)){
     cout << "user = " << user->firstName << " " << user->lastName << endl;
 }else{
     cout << "no user with id " << insertedId << endl;
 }
 ```
 
-`std::shared_ptr` is used as optional in `sqlite_orm`. Of course there is class optional in C++14 located at `std::experimental::optional`. But we don't want to use it until it is `experimental`.
+`std::unique_ptr` is used as optional in `sqlite_orm`. Of course there is class optional in C++14 located at `std::experimental::optional`. But we don't want to use it until it is `experimental`.
 
 We can also update our user. It updates row by id provided in `user` object and sets all other non `primary_key` fields to values stored in the passed `user` object. So you can just assign members to `user` object you want and call `update`
 
@@ -193,7 +191,27 @@ for(auto &user : storage.iterate<User>()) {
 
 `iterate` member function returns adapter object that has `begin` and `end` member functions returning iterators that fetch object on dereference operator call.
 
-CRUD functions `get`, `get_no_throw`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::system_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `date_time.cpp` example in `examples` folder.
+CRUD functions `get`, `get_pointer`, `remove`, `update` (not `insert`) work only if your type has a primary key column. If you try to `get` an object that is mapped to your storage but has no primary key column a `std::system_error` will be thrown cause `sqlite_orm` cannot detect an id. If you want to know how to perform a storage without primary key take a look at `date_time.cpp` example in `examples` folder.
+
+# Prepared statements
+
+Prepared statements are strongly typed.
+
+```c++
+//  SELECT doctor_id
+//  FROM visits
+//  WHERE LENGTH(patient_name) > 8
+auto selectStatement = storage.prepare(select(&Visit::doctor_id, where(length(&Visit::patient_name) > 8)));
+cout << "selectStatement = " << selectStatement.sql() << endl;  //  prints "SELECT doctor_id FROM ..."
+auto rows = storage.execute(selectStatement); //  rows is std::vector<decltype(Visit::doctor_id)>
+
+//  SELECT doctor_id
+//  FROM visits
+//  WHERE LENGTH(patient_name) > 11
+get<0>(selectStatement) = 11;
+auto rows2 = storage.execute(selectStatement);
+```
+`get<N>(statement)` function call allows you to access fields to bind them to your statement.
 
 # Aggregate Functions
 
@@ -228,21 +246,21 @@ cout << "concatedUserIdWithDashes = " << concatedUserIdWithDashes << endl;      
 
 //  SELECT MAX(id) FROM users
 if(auto maxId = storage.max(&User::id)){    
-    cout << "maxId = " << *maxId <<endl;    //  maxId = 12  (maxId is std::shared_ptr<int>)
+    cout << "maxId = " << *maxId <<endl;    //  maxId = 12  (maxId is std::unique_ptr<int>)
 }else{
     cout << "maxId is null" << endl;
 }
     
 //  SELECT MAX(first_name) FROM users
 if(auto maxFirstName = storage.max(&User::firstName)){ 
-    cout << "maxFirstName = " << *maxFirstName << endl; //  maxFirstName = Jonh (maxFirstName is std::shared_ptr<std::string>)
+    cout << "maxFirstName = " << *maxFirstName << endl; //  maxFirstName = Jonh (maxFirstName is std::unique_ptr<std::string>)
 }else{
     cout << "maxFirstName is null" << endl;
 }
 
 //  SELECT MIN(id) FROM users
 if(auto minId = storage.min(&User::id)){    
-    cout << "minId = " << *minId << endl;   //  minId = 1 (minId is std::shared_ptr<int>)
+    cout << "minId = " << *minId << endl;   //  minId = 1 (minId is std::unique_ptr<int>)
 }else{
     cout << "minId is null" << endl;
 }
@@ -255,7 +273,7 @@ if(auto minLastName = storage.min(&User::lastName)){
 }
 
 //  SELECT SUM(id) FROM users
-if(auto sumId = storage.sum(&User::id)){    //  sumId is std::shared_ptr<int>
+if(auto sumId = storage.sum(&User::id)){    //  sumId is std::unique_ptr<int>
     cout << "sumId = " << *sumId << endl;
 }else{
     cout << "sumId is null" << endl;
@@ -382,7 +400,7 @@ for(auto &user : whereNameLike) {
 }
 ```
 
-Looks like magic but it works very simple. Cute function `c` (column) takes a class pointer and returns a special expression middle object that can be used with operators overloaded in `::sqlite_orm` namespace. Operator overloads act just like functions
+Looks like magic but it works very simple. Cute function `c` (column) takes a class member pointer and returns a special expression middle object that can be used with operators overloaded in `::sqlite_orm` namespace. Operator overloads act just like functions
 
 * is_equal
 * is_not_equal
@@ -393,7 +411,7 @@ Looks like magic but it works very simple. Cute function `c` (column) takes a cl
 * is_null
 * is_not_null
 
-that simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or any other expression (core function or literal). Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals to literals (numbers to raw numbers and string to quoted strings). Next `where` function places brackets around condition and adds "WHERE" keyword before condition text. Next resulted string appends to query string and is being processed further.
+that simulate binary comparison operator so they take 2 arguments: left hand side and right hand side. Arguments may be either member pointer of mapped class or any other expression (core/aggregate function, literal or subexpression). Binary comparison functions map arguments to text to be passed to sqlite engine to process query. Member pointers are being mapped to column names and literals/variables/constants to '?' and then are bound automatically. Next `where` function places brackets around condition and adds "WHERE" keyword before condition text. Next resulted string appends to a query string and is being processed further.
 
 If you omit `where` function in `get_all` it will return all objects from a table:
 
@@ -600,7 +618,7 @@ Two `INNER JOIN`s in one query:
 auto innerJoinRows2 = storage.select(columns(&Track::trackId, &Track::name, &Album::title, &Artist::name),
                                      inner_join<Album>(on(c(&Album::albumId) == &Track::albumId)),
                                      inner_join<Artist>(on(c(&Artist::artistId) == &Album::artistId)));
-//  innerJoinRows2 is std::vector<std::tuple<decltype(&Track::trackId), decltype(&Track::name), decltype(&Album::title), decltype(&Artist::name)>>
+//  innerJoinRows2 is std::vector<std::tuple<decltype(Track::trackId), decltype(Track::name), decltype(Album::title), decltype(Artist::name)>>
 ```
 
 More join examples can be found in [examples folder](https://github.com/fnc12/sqlite_orm/blob/master/examples/left_and_inner_join.cpp).
@@ -677,7 +695,7 @@ storage.transaction([&] () mutable {
 
 It will print a number of deleted users (rows). But if you call `changes` without a transaction and your database is located in file not in RAM the result will be 0 always cause `sqlite_orm` opens and closes connection every time you call a function without a transaction.
 
-Also a `transaction` function returns `true` if transaction is commited and `false` if it is rollbacked. It can be useful if your next moves depend on transaction result:
+Also a `transaction` function returns `true` if transaction is commited and `false` if it is rollbacked. It can be useful if your next actions depend on transaction result:
 
 ```c++
 auto commited = storage.transaction([&] () mutable {    
@@ -726,6 +744,7 @@ To manage in memory database just provide `:memory:` or `""` instead as filename
 |Custom types binding|yes|no|yes|yes|
 |Doesn't use macros and/or external codegen scripts|yes|yes|no|no|
 |Aggregate functions|yes|yes|no|yes|
+|Prepared statements|yes|yes|no|no|
 
 # Notes
 
@@ -735,9 +754,36 @@ For more details please check the project [wiki](https://github.com/fnc12/sqlite
 
 # Installation
 
-Just put `include/sqlite_orm/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no normal dependency manager for C++ yet.
+Use popular package manager like [vcpkg](https://github.com/Microsoft/vcpkg) and just install it with `vcpkg install sqlite-orm` command.
+
+Or you can use below instructions
+
+```bash
+git clone https://github.com/fnc12/sqlite_orm.git sqlite_orm
+cd sqlite_orm
+mkdir compile
+cd compile
+cmake ..
+cmake --build .
+sudo make install
+```
+
+then you can just include `sqlite_orm.h` that is installed in system-wide header files location or in case you use cmake build system you can just add below commands in CMakeLists.txt
+
+```cmake
+find_package(sqlite_orm CONFIG REQUIRED)
+target_link_libraries(main PRIVATE sqlite_orm::sqlite_orm)
+target_include_directories(main PRIVATE ${SQLITE_ORM_INCLUDE_DIR})
+```
+
+Or just put `include/sqlite_orm/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no dominant normal dependency manager for C++ yet.
 
 # Requirements
 
 * C++14 compatible compiler (not C++11 cause of templated lambdas in the lib).
 * libsqlite3 linked to your binary
+
+## Support on Beerpay
+Hey dude! Help me out for a couple of :beers:!
+
+[![Beerpay](https://beerpay.io/fnc12/sqlite_orm/badge.svg?style=beer-square)](https://beerpay.io/fnc12/sqlite_orm)  [![Beerpay](https://beerpay.io/fnc12/sqlite_orm/make-wish.svg?style=flat-square)](https://beerpay.io/fnc12/sqlite_orm?focus=wish)

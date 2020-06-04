@@ -1,0 +1,58 @@
+# build format
+version: "{build}"
+
+skip_branch_with_pr: true
+skip_commits:
+  files:
+  - .git*
+  - .travis.yml
+  - _config.yml
+  - LICENSE
+  - '*.md'
+  - '*.png'
+  - '*.sh'
+
+image:
+  - Visual Studio 2017
+
+# configurations to add to build matrix
+# TODO: MinGW Makefiles and MSYS Makefiles
+configuration:
+  - Debug
+  - Release
+
+platform:
+  - x86
+  - x64
+  
+environment:
+  matrix:
+   # using c++14
+   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+   
+   # using C++17 (for std::optional support)
+   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+
+init:
+  - echo %APPVEYOR_BUILD_WORKER_IMAGE% - %configuration% - %PLATFORM%
+  - if "%PLATFORM%"=="x64" (set architecture=-A x64)
+  - if "%PLATFORM%"=="x86" (set architecture=-A Win32)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" (set generator="Visual Studio 16 2019" %architecture%)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2013" (set generator="Visual Studio 12 2013" %architecture%)
+
+install:
+  - C:\Tools\vcpkg\vcpkg integrate install
+  - vcpkg install catch2:%PLATFORM%-windows
+
+# scripts to run before build
+before_build:
+  - mkdir compile
+  - cd compile
+  - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+
+# build examples, and run tests (ie make & make test)
+build_script:
+  - cmake --build . --config %configuration%
+  - ctest --verbose --output-on-failure --build-config %configuration%

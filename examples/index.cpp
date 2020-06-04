@@ -21,30 +21,27 @@ auto storage = make_storage("index.sqlite",
                             make_index("idx_contacts_name", &Contract::firstName, &Contract::lastName),
                             make_unique_index("idx_contacts_email", &Contract::email),
                             make_table("contacts",
-                                       make_column("first_name",
-                                                   &Contract::firstName),
-                                       make_column("last_name",
-                                                   &Contract::lastName),
-                                       make_column("email",
-                                                   &Contract::email)));
+                                       make_column("first_name", &Contract::firstName),
+                                       make_column("last_name", &Contract::lastName),
+                                       make_column("email", &Contract::email)));
 
-int main(int argc, char **argv) {
-    
+int main(int, char **) {
+
     storage.sync_schema();
     storage.remove_all<Contract>();
-    
+
     storage.insert(Contract{
         "John",
         "Doe",
         "john.doe@sqlitetutorial.net",
     });
-    try{
+    try {
         storage.insert(Contract{
             "Johny",
             "Doe",
             "john.doe@sqlitetutorial.net",
         });
-    }catch(std::system_error e){
+    } catch(const std::system_error &e) {
         cout << e.what() << endl;
     }
     std::vector<Contract> moreContracts = {
@@ -59,13 +56,12 @@ int main(int argc, char **argv) {
             "lisa.smith@sqlitetutorial.net",
         },
     };
-    storage.insert_range(moreContracts.begin(),
-                         moreContracts.end());
-    
+    storage.insert_range(moreContracts.begin(), moreContracts.end());
+
     auto lisas = storage.get_all<Contract>(where(c(&Contract::email) == "lisa.smith@sqlitetutorial.net"));
-    
+
     storage.drop_index("idx_contacts_name");
     storage.drop_index("idx_contacts_email");
-    
+
     return 0;
 }

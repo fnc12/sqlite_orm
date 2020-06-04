@@ -1,0 +1,12 @@
+name: clang-format lint
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: clang-format lint
+      uses: DoozyX/clang-format-lint-action@v0.3.1
