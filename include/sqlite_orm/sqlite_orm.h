@@ -8633,6 +8633,16 @@ namespace sqlite_orm {
             }
 
             /**
+             * Rename table named `from` to `to`.
+             */
+            void rename_table(const std::string &from, const std::string &to) {
+                auto con = this->get_connection();
+                std::stringstream ss;
+                ss << "ALTER TABLE '" << from << "' RENAME TO '" << to << "'";
+                this->perform_query_without_result(ss.str(), con.get());
+            }
+
+            /**
              *  sqlite3_changes function.
              */
             int changes() {
@@ -9028,7 +9038,10 @@ namespace sqlite_orm {
             void drop_table_internal(const std::string &tableName, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "DROP TABLE '" << tableName + "'";
-                auto query = ss.str();
+                this->perform_query_without_result(ss.str(), db);
+            }
+
+            void perform_query_without_result(const std::string &query, sqlite3 *db) {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
