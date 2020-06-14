@@ -161,6 +161,11 @@ namespace sqlite_orm {
                 return this->impl.template get_impl<O>();
             }
 
+            template<class O>
+            auto &get_impl() {
+                return this->impl.template get_impl<O>();
+            }
+
           public:
             template<class T, class... Args>
             view_t<T, self, Args...> iterate(Args &&... args) {
@@ -170,6 +175,13 @@ namespace sqlite_orm {
                 return {*this, std::move(con), std::forward<Args>(args)...};
             }
 
+            /**
+             * Delete from routine.
+             * O is an object's type. Must be specified explicitly.
+             * @param args optional conditions: `where`, `join` etc
+             * @example: storage.remove_all<User>(); - DELETE FROM users
+             * @example: storage.remove_all<User>(where(in(&User::id, {5, 6, 7}))); - DELETE FROM users WHERE id IN (5, 6, 7)
+             */
             template<class O, class... Args>
             void remove_all(Args &&... args) {
                 this->assert_mapped_type<O>();
@@ -227,9 +239,12 @@ namespace sqlite_orm {
 
           public:
             /**
-             *  Select * with no conditions routine.
+             *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
-             *  @return All objects of type O stored in database at the moment.
+             *  @return All objects of type O stored in database at the moment in `std::vector`.
+             *  @note If you need to return the result in a different container type then use a different `get_all` function overload `get_all<User, std::list<User>>`
+             *  @example: storage.get_all<User>() - SELECT * FROM users
+             *  @example: storage.get_all<User>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
              */
             template<class O, class... Args>
             auto get_all(Args &&... args) {
@@ -238,6 +253,14 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+            /**
+             *  SELECT * routine.
+             *  O is an object type to be extracted. Must be specified explicitly.
+             *  R is an explicit return type. This type must have `push_back(O &&)` function.
+             *  @return All objects of type O stored in database at the moment in `R`.
+             *  @example: storage.get_all<User, std::list<User>>(); - SELECT * FROM users
+             *  @example: storage.get_all<User, std::list<User>>(where(like(&User::name, "N%")), order_by(&User::id)); - SELECT * FROM users WHERE name LIKE 'N%' ORDER BY id
+            */
             template<class O, class R, class... Args>
             auto get_all(Args &&... args) {
                 this->assert_mapped_type<O>();
@@ -246,9 +269,12 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Select * with no conditions routine.
+             *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
-             *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
+             *  @return All objects of type O as `std::unique_ptr<O>` inside a `std::vector` stored in database at the moment.
+             *  @note If you need to return the result in a different container type then use a different `get_all_pointer` function overload `get_all_pointer<User, std::list<User>>`
+             *  @example: storage.get_all_pointer<User>(); - SELECT * FROM users
+             *  @example: storage.get_all_pointer<User>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
              */
             template<class O, class... Args>
             auto get_all_pointer(Args &&... args) {
@@ -258,10 +284,12 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Select * with no conditions routine.
+             *  SELECT * routine.
              *  O is an object type to be extracted. Must be specified explicitly.
              *  R is a container type. std::vector<std::unique_ptr<O>> is default
              *  @return All objects of type O as std::unique_ptr<O> stored in database at the moment.
+             *  @example: storage.get_all_pointer<User, std::list<User>>(); - SELECT * FROM users
+             *  @example: storage.get_all_pointer<User, std::list<User>>(where(length(&User::name) > 6)); - SELECT * FROM users WHERE LENGTH(name)  > 6
             */
             template<class O, class R, class... Args>
             auto get_all_pointer(Args &&... args) {
@@ -565,6 +593,30 @@ namespace sqlite_orm {
 
                 auto statement = this->prepare(sqlite_orm::insert_range(from, to));
                 this->execute(statement);
+            }
+
+            /**
+             * Change table name inside storage's schema info. This function does not
+             * affect database
+             */
+            template<class O>
+            void rename_table(std::string name) {
+                this->assert_mapped_type<O>();
+                auto &tImpl = this->get_impl<O>();
+                tImpl.table.name = move(name);
+            }
+
+            using storage_base::rename_table;
+
+            /**
+             * Get table's name stored in storage's schema info. This function does not call
+             * any SQLite queries
+             */
+            template<class O>
+            const std::string &tablename() const {
+                this->assert_mapped_type<O>();
+                auto &tImpl = this->get_impl<O>();
+                return tImpl.table.name;
             }
 
           protected:
