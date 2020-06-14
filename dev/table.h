@@ -24,7 +24,7 @@ namespace sqlite_orm {
             /**
              *  Table name.
              */
-            const std::string name;
+            std::string name;
 
             bool _without_rowid = false;
         };

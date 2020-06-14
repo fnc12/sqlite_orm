@@ -131,7 +131,7 @@ namespace sqlite_orm {
                 return sqlite3_libversion();
             }
 
-            bool transaction(std::function<bool()> f) {
+            bool transaction(const std::function<bool()> &f) {
                 this->begin_transaction();
                 auto con = this->get_connection();
                 auto db = con.get();

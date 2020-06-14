@@ -234,22 +234,32 @@ namespace sqlite_orm {
             }
 
             template<class O, class HH = typename H::object_type>
-            auto &get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+            const auto &get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return *this;
             }
 
             template<class O, class HH = typename H::object_type>
-            auto &get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+            const auto &get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::template get_impl<O>();
             }
 
             template<class O, class HH = typename H::object_type>
-            auto *find_table(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+            auto &get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+                return *this;
+            }
+
+            template<class O, class HH = typename H::object_type>
+            auto &get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+                return this->super::template get_impl<O>();
+            }
+
+            template<class O, class HH = typename H::object_type>
+            const auto *find_table(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return &this->table;
             }
 
             template<class O, class HH = typename H::object_type>
-            auto *find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+            const auto *find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::template find_table<O>();
             }
 
