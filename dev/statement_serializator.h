@@ -15,6 +15,7 @@
 #include "table_name_collector.h"
 #include "column_names_getter.h"
 #include "order_by_serializator.h"
+#include "values.h"
 
 namespace sqlite_orm {
 
@@ -480,7 +481,9 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto leftString = serialize(c.l, context);
                 ss << leftString << " " << static_cast<std::string>(c) << " ";
-                ss << serialize(c.arg, context);
+                auto newContext = context;
+                newContext.use_parentheses = true;
+                ss << serialize(c.arg, newContext);
                 return ss.str();
             }
         };
@@ -1569,5 +1572,59 @@ namespace sqlite_orm {
                 return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + " )";
             }
         };
+
+        template<class... Args>
+        struct statement_serializator<std::tuple<Args...>, void> {
+            using statement_type = std::tuple<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &statement, const C &context) const {
+                std::stringstream ss;
+                ss << '(';
+                auto index = 0;
+                const auto tupleSize = int(std::tuple_size<statement_type>::value);
+                iterate_tuple(statement, [&context, &index, &ss](auto &value) {
+                    ss << serialize(value, context);
+                    if(index < tupleSize - 1) {
+                        ss << ", ";
+                    }
+                    ++index;
+                });
+                ss << ')';
+                return ss.str();
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<values_t<Args...>, void> {
+            using statement_type = values_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type &statement, const C &context) const {
+                std::stringstream ss;
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
+                ss << "VALUES ";
+                {
+                    auto index = 0;
+                    auto &tuple = statement.tuple;
+                    using tuple_type = typename std::decay<decltype(tuple)>::type;
+                    const auto tupleSize = int(std::tuple_size<tuple_type>::value);
+                    iterate_tuple(tuple, [&context, &index, &ss](auto &value) {
+                        ss << serialize(value, context);
+                        if(index < tupleSize - 1) {
+                            ss << ", ";
+                        }
+                        ++index;
+                    });
+                }
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
+                return ss.str();
+            }
+        };
+
     }
 }
