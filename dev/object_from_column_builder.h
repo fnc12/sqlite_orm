@@ -14,8 +14,8 @@ namespace sqlite_orm {
         };
 
         /**
- * This is a cute lambda replacement which is used in several places.
- */
+         * This is a cute lambda replacement which is used in several places.
+         */
         template<class O>
         struct object_from_column_builder : object_from_column_builder_base {
             using object_type = O;
