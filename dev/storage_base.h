@@ -284,7 +284,8 @@ namespace sqlite_orm {
 
             backup_t make_backup_from(const std::string &filename) {
                 auto holder = std::make_unique<connection_holder>(filename);
-                return {this->get_connection(), "main", connection_ref{*holder}, "main", move(holder)};
+                connection_ref conRef{*holder};
+                return {this->get_connection(), "main", conRef, "main", move(holder)};
             }
 
             backup_t make_backup_from(storage_base &other) {
