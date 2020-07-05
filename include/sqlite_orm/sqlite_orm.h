@@ -8528,14 +8528,14 @@ namespace sqlite_orm {
                      const std::string &zSourceName,
                      std::unique_ptr<connection_holder> holder_) :
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
-                holder(move(holder_)), to(to_), from(from_) {
+                to(to_), from(from_), holder(move(holder_)) {
                 if(!this->handle) {
                     throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
                 }
             }
 
             backup_t(backup_t &&other) :
-                handle(other.handle), holder(move(other.holder)), to(other.to), from(other.from) {
+                handle(other.handle), to(other.to), from(other.from), holder(move(other.holder)) {
                 other.handle = nullptr;
             }
 
@@ -8569,9 +8569,9 @@ namespace sqlite_orm {
 
           protected:
             sqlite3_backup *handle = nullptr;
-            std::unique_ptr<connection_holder> holder;
             connection_ref to;
             connection_ref from;
+            std::unique_ptr<connection_holder> holder;
         };
     }
 }
@@ -8828,7 +8828,8 @@ namespace sqlite_orm {
 
             backup_t make_backup_to(const std::string &filename) {
                 auto holder = std::make_unique<connection_holder>(filename);
-                return {connection_ref{*holder}, "main", this->get_connection(), "main", move(holder)};
+                connection_ref conRef{*holder};
+                return {conRef, "main", this->get_connection(), "main", move(holder)};
             }
 
             backup_t make_backup_to(storage_base &other) {
@@ -8837,7 +8838,8 @@ namespace sqlite_orm {
 
             backup_t make_backup_from(const std::string &filename) {
                 auto holder = std::make_unique<connection_holder>(filename);
-                return {this->get_connection(), "main", connection_ref{*holder}, "main", move(holder)};
+                connection_ref conRef{*holder};
+                return {this->get_connection(), "main", conRef, "main", move(holder)};
             }
 
             backup_t make_backup_from(storage_base &other) {

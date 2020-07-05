@@ -9,7 +9,7 @@ TEST_CASE("statement_serializator base types") {
         std::string str("calma");
         SECTION("no question") {
             auto value = serialize(str, context);
-            REQUIRE(value == "\'calma\'");
+            REQUIRE(value == "\"calma\"");
         }
         SECTION("question") {
             context.replace_bindable_with_question = true;
