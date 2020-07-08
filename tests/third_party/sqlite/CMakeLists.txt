@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 3.2)
 
 set(SQLITE3_ARCH_NAME "${CMAKE_CURRENT_BINARY_DIR}/sqlite.zip")
 set(SQLITE3_LINK "https://www.sqlite.org/2020/sqlite-amalgamation-3320300.zip")
-set(SQLITE3_ARCH_SHA1 "0949c0a18d750df869003f3b2793a66012584f87")
+set(SQLITE3_ARCH_SHA1 "0c805bea134712a903290a26b2a61c3a8a3bd8cc")
 
 add_custom_command(
     OUTPUT ${SQLITE3_ARCH_NAME}
