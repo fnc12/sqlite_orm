@@ -8,6 +8,11 @@ namespace sqlite_orm {
     //  https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
     namespace internal {
 
+        static inline decltype(auto) empty_callable() {
+            static auto res = [](auto &&...) {};
+            return (res);
+        }
+
         template<typename T, typename F>
         decltype(auto) static_if(std::true_type, const T &t, const F &) {
             return (t);
@@ -25,7 +30,7 @@ namespace sqlite_orm {
 
         template<bool B, typename T>
         decltype(auto) static_if(const T &t) {
-            return static_if(std::integral_constant<bool, B>{}, t, [](auto &&...) {});
+            return static_if(std::integral_constant<bool, B>{}, t, empty_callable());
         }
 
         template<typename T>
