@@ -1626,5 +1626,33 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<dynamic_values_t<T>, void> {
+            using statement_type = dynamic_values_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type &statement, const C &context) const {
+                std::stringstream ss;
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
+                ss << "VALUES ";
+                {
+                    auto vectorSize = statement.vector.size();
+                    for(decltype(vectorSize) index = 0; index < vectorSize; ++index) {
+                        auto &value = statement.vector[index];
+                        ss << serialize(value, context);
+                        if(index < vectorSize - 1) {
+                            ss << ", ";
+                        }
+                    }
+                }
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
+                return ss.str();
+            }
+        };
+
     }
 }

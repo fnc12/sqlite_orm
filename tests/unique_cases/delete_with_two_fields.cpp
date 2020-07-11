@@ -15,4 +15,9 @@ TEST_CASE("delete with two fields") {
     storage.sync_schema();
     storage.remove_all<Device>(where(in(std::make_tuple(&Device::serialNumber, &Device::deviceId),
                                         values(std::make_tuple("abc", "123"), std::make_tuple("def", "456")))));
+
+    storage.remove_all<Device>(
+        where(in(std::make_tuple(&Device::serialNumber, &Device::deviceId),
+                 values(std::vector<std::tuple<std::string, std::string>>{std::make_tuple("abc", "123"),
+                                                                          std::make_tuple("def", "456")}))));
 }
