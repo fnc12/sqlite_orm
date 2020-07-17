@@ -403,3 +403,49 @@ TEST_CASE("Insert") {
     storage.insert(ObjectWithoutRowid{20, "Death"});
     REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
 }
+
+TEST_CASE("custom functions") {
+    struct SqrtFunction {
+        double operator()(double arg) const {
+            return std::sqrt(arg);
+        }
+    };
+//    auto storage = make_storage("",
+//                                make_table(<#const std::string &name#>, <#Cs args...#>))
+    
+    struct Member {
+        int pid = 0;
+        int ref = 0;
+        int role = 0;
+    };
+    struct SemanticObject {
+        int id = 0;
+        std::string name;
+        std::string type;
+        float x = 0;
+        float y = 0;
+        float z = 0;
+        float yaw = 0;
+        int etype = 0;
+        int coordType = 0;
+        bool physical = false;
+    };
+    auto storage = make_storage({},
+                                make_table("MEMBER",
+                                           make_column("PID", &Member::pid),
+                                           make_column("REF", &Member::ref),
+                                           make_column("ROLE", &Member::role)),
+                                make_table("SEMANTIC_OBJECT",
+                                           make_column("ID", &SemanticObject::id, primary_key()),
+                                           make_column("NAME", &SemanticObject::name),
+                                           make_column("TYPE", &SemanticObject::type),
+                                           make_column("X", &SemanticObject::x),
+                                           make_column("Y", &SemanticObject::y),
+                                           make_column("Z", &SemanticObject::z),
+                                           make_column("YAW", &SemanticObject::yaw),
+                                           make_column("ETYPE", &SemanticObject::etype),
+                                           make_column("COORD_TYPE", &SemanticObject::coordType),
+                                           make_column("PHYSICAL", &SemanticObject::physical)));
+    storage.sync_schema();
+    storage
+}
