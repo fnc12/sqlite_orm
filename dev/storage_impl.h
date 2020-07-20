@@ -272,42 +272,6 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class O, class HH = typename H::object_type>
-            std::string dump(const O &o, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-                return this->super::dump(o, nullptr);
-            }
-
-            template<class O, class HH = typename H::object_type>
-            std::string dump(const O &o, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
-                std::stringstream ss;
-                ss << "{ ";
-                using pair = std::pair<std::string, std::string>;
-                std::vector<pair> pairs;
-                this->table.for_each_column([&pairs, &o](auto &c) {
-                    using column_type = typename std::decay<decltype(c)>::type;
-                    using field_type = typename column_type::field_type;
-                    pair p{c.name, ""};
-                    if(c.member_pointer) {
-                        p.second = field_printer<field_type>()(o.*c.member_pointer);
-                    } else {
-                        using getter_type = typename column_type::getter_type;
-                        field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
-                        p.second = field_printer<field_type>()(valueHolder.value);
-                    }
-                    pairs.push_back(std::move(p));
-                });
-                for(size_t i = 0; i < pairs.size(); ++i) {
-                    auto &p = pairs[i];
-                    ss << p.first << " : '" << p.second << "'";
-                    if(i < pairs.size() - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << " }";
-                    }
-                }
-                return ss.str();
-            }
-
             void add_column(const table_info &ti, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name << " ";
@@ -473,11 +437,6 @@ namespace sqlite_orm {
 
             int foreign_keys_count() {
                 return 0;
-            }
-
-            template<class O>
-            std::string dump(const O &, sqlite3 *, std::nullptr_t) {
-                throw std::system_error(std::make_error_code(orm_error_code::type_is_not_mapped_to_storage));
             }
 
             template<class O>

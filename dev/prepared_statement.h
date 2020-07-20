@@ -76,6 +76,12 @@ namespace sqlite_orm {
                 prepared_statement_base{stmt, std::move(con_)}, t(std::move(t_)) {}
         };
 
+        template<class T>
+        struct is_prepared_statement : std::false_type {};
+
+        template<class T>
+        struct is_prepared_statement<prepared_statement_t<T>> : std::true_type {};
+
         /**
          *  T - type of object to obtain from a database
          */
