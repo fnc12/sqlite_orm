@@ -11630,8 +11630,6 @@ namespace sqlite_orm {
             dump(const T &preparedStatement) const {
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                //                context.skip_table_name = false;
-                //                context.replace_bindable_with_question = true;
                 return serialize(preparedStatement.t, context);
             }
 
