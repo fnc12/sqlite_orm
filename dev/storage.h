@@ -527,14 +527,49 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+            template<class T>
+            typename std::enable_if<is_prepared_statement<T>::value, std::string>::type
+            dump(const T &preparedStatement) const {
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                return serialize(preparedStatement.t, context);
+            }
+
             /**
              *  Returns a string representation of object of a class mapped to the storage.
              *  Type of string has json-like style.
              */
             template<class O>
-            std::string dump(const O &o) {
-                this->assert_mapped_type<O>();
-                return this->impl.dump(o);
+            typename std::enable_if<storage_traits::type_is_mapped<self, O>::value, std::string>::type
+            dump(const O &o) {
+                auto &tImpl = this->get_impl<O>();
+                std::stringstream ss;
+                ss << "{ ";
+                using pair = std::pair<std::string, std::string>;
+                std::vector<pair> pairs;
+                tImpl.table.for_each_column([&pairs, &o](auto &c) {
+                    using column_type = typename std::decay<decltype(c)>::type;
+                    using field_type = typename column_type::field_type;
+                    pair p{c.name, std::string()};
+                    if(c.member_pointer) {
+                        p.second = field_printer<field_type>()(o.*c.member_pointer);
+                    } else {
+                        using getter_type = typename column_type::getter_type;
+                        field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                        p.second = field_printer<field_type>()(valueHolder.value);
+                    }
+                    pairs.push_back(move(p));
+                });
+                for(size_t i = 0; i < pairs.size(); ++i) {
+                    auto &p = pairs[i];
+                    ss << p.first << " : '" << p.second << "'";
+                    if(i < pairs.size() - 1) {
+                        ss << ", ";
+                    } else {
+                        ss << " }";
+                    }
+                }
+                return ss.str();
             }
 
             /**
