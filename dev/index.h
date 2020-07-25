@@ -14,7 +14,7 @@ namespace sqlite_orm {
             using object_type = void;
 
             std::string name;
-            bool unique;
+            bool unique = false;
             columns_type columns;
         };
     }

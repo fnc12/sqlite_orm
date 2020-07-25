@@ -298,3 +298,18 @@ TEST_CASE("Dump") {
     REQUIRE(dumpUser2 == std::string{"{ id : '2', car_year : '2006' }"});
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+TEST_CASE("CustomFunctions") {
+    struct Sqrt {
+        double operator()(double arg) const {
+            return std::sqrt(arg);
+        }
+        
+        static std::string name() {
+            return "sqrt";
+        }
+    };
+    
+    auto storage = make_storage({});
+    storage.cre
+}

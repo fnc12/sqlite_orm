@@ -224,6 +224,8 @@ namespace sqlite_orm {
                     }
                 }
             }
+            
+            f
 
             void begin_transaction() {
                 this->connection->retain();
