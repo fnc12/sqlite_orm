@@ -758,7 +758,8 @@ For more details please check the project [wiki](https://github.com/fnc12/sqlite
 
 Use popular package manager like [vcpkg](https://github.com/Microsoft/vcpkg) and just install it with `vcpkg install sqlite-orm` command.
 
-Or you can use below instructions
+Or you can use below instructions  
+Note: If you build on Mac OSX, you need to install Catch2 project prior to the following installation  
 
 ```bash
 git clone https://github.com/fnc12/sqlite_orm.git sqlite_orm
