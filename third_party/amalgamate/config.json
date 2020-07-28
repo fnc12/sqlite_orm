@@ -18,7 +18,6 @@
 		"dev/alias.h",
 		"dev/join_iterator.h",
 		"dev/core_functions.h",
-		"dev/aggregate_functions.h",
 		"dev/typed_comparator.h",
 		"dev/select_constraints.h",
 		"dev/table_type.h",
@@ -37,8 +36,7 @@
 		"dev/storage.h",
 		"dev/finish_macros.h",
         "dev/node_tuple.h",
-        "dev/get_prepared_statement.h",
-        "dev/statement_serializator.h"
+        "dev/get_prepared_statement.h"
 	],
 	"include_paths": ["dev"]
 }

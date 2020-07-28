@@ -16,8 +16,8 @@ TEST_CASE("Issue 343") {
             return this->id;
         }
 
-        void setId(int id) {
-            this->id = id;
+        void setId(int id_) {
+            this->id = id_;
         }
 
         std::string name;

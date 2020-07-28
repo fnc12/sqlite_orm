@@ -89,6 +89,16 @@ namespace sqlite_orm {
             }
 
             /**
+             * Rename table named `from` to `to`.
+             */
+            void rename_table(const std::string &from, const std::string &to) {
+                auto con = this->get_connection();
+                std::stringstream ss;
+                ss << "ALTER TABLE '" << from << "' RENAME TO '" << to << "'";
+                this->perform_query_without_result(ss.str(), con.get());
+            }
+
+            /**
              *  sqlite3_changes function.
              */
             int changes() {
@@ -121,7 +131,7 @@ namespace sqlite_orm {
                 return sqlite3_libversion();
             }
 
-            bool transaction(std::function<bool()> f) {
+            bool transaction(const std::function<bool()> &f) {
                 this->begin_transaction();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -264,7 +274,8 @@ namespace sqlite_orm {
 
             backup_t make_backup_to(const std::string &filename) {
                 auto holder = std::make_unique<connection_holder>(filename);
-                return {connection_ref{*holder}, "main", this->get_connection(), "main", move(holder)};
+                connection_ref conRef{*holder};
+                return {conRef, "main", this->get_connection(), "main", move(holder)};
             }
 
             backup_t make_backup_to(storage_base &other) {
@@ -273,7 +284,8 @@ namespace sqlite_orm {
 
             backup_t make_backup_from(const std::string &filename) {
                 auto holder = std::make_unique<connection_holder>(filename);
-                return {this->get_connection(), "main", connection_ref{*holder}, "main", move(holder)};
+                connection_ref conRef{*holder};
+                return {this->get_connection(), "main", conRef, "main", move(holder)};
             }
 
             backup_t make_backup_from(storage_base &other) {
@@ -484,7 +496,10 @@ namespace sqlite_orm {
             void drop_table_internal(const std::string &tableName, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "DROP TABLE '" << tableName + "'";
-                auto query = ss.str();
+                this->perform_query_without_result(ss.str(), db);
+            }
+
+            void perform_query_without_result(const std::string &query, sqlite3 *db) {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
@@ -498,41 +513,6 @@ namespace sqlite_orm {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
-            }
-
-            template<class S>
-            std::string process_order_by(const conditions::dynamic_order_by_t<S> &orderBy) const {
-                std::vector<std::string> expressions;
-                for(auto &entry: orderBy) {
-                    std::string entryString;
-                    {
-                        std::stringstream ss;
-                        ss << entry.name << " ";
-                        if(!entry._collate_argument.empty()) {
-                            ss << "COLLATE " << entry._collate_argument << " ";
-                        }
-                        switch(entry.asc_desc) {
-                            case 1:
-                                ss << "ASC";
-                                break;
-                            case -1:
-                                ss << "DESC";
-                                break;
-                        }
-                        entryString = ss.str();
-                    }
-                    expressions.push_back(move(entryString));
-                };
-                std::stringstream ss;
-                ss << static_cast<std::string>(orderBy) << " ";
-                for(size_t i = 0; i < expressions.size(); ++i) {
-                    ss << expressions[i];
-                    if(i < expressions.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << " ";
-                return ss.str();
             }
 
             static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {

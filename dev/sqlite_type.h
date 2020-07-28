@@ -25,7 +25,7 @@ namespace sqlite_orm {
     inline std::unique_ptr<sqlite_type> to_sqlite_type(const std::string &str) {
         auto asciiStringToUpper = [](std::string &s) {
             std::transform(s.begin(), s.end(), s.begin(), [](char c) {
-                return std::toupper(c);
+                return static_cast<char>(std::toupper(static_cast<int>(c)));
             });
         };
         auto upperStr = str;
@@ -43,6 +43,7 @@ namespace sqlite_orm {
                  std::regex("UNSIGNED BIG INT"),
                  std::regex("INT2"),
                  std::regex("INT8"),
+                 std::regex("UNSIGNED\\s+INT\\([[:digit:]]+\\)"),
              }},
             {sqlite_type::TEXT,
              {

@@ -2,6 +2,8 @@
 
 #include <type_traits>  //  std::false_type, std::true_type
 
+#include "negatable.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -44,7 +46,7 @@ namespace sqlite_orm {
          *  Result of addition + operator
          */
         template<class L, class R>
-        using add_t = binary_operator<L, R, add_string, arithmetic_t>;
+        using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
 
         struct sub_string {
             operator std::string() const {
@@ -56,7 +58,7 @@ namespace sqlite_orm {
          *  Result of substitute - operator
          */
         template<class L, class R>
-        using sub_t = binary_operator<L, R, sub_string, arithmetic_t>;
+        using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
 
         struct mul_string {
             operator std::string() const {
@@ -68,7 +70,7 @@ namespace sqlite_orm {
          *  Result of multiply * operator
          */
         template<class L, class R>
-        using mul_t = binary_operator<L, R, mul_string, arithmetic_t>;
+        using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
 
         struct div_string {
             operator std::string() const {
@@ -80,7 +82,7 @@ namespace sqlite_orm {
          *  Result of divide / operator
          */
         template<class L, class R>
-        using div_t = binary_operator<L, R, div_string, arithmetic_t>;
+        using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
         struct mod_string {
             operator std::string() const {
@@ -92,14 +94,79 @@ namespace sqlite_orm {
          *  Result of mod % operator
          */
         template<class L, class R>
-        using mod_t = binary_operator<L, R, mod_string, arithmetic_t>;
+        using mod_t = binary_operator<L, R, mod_string, arithmetic_t, negatable_t>;
+
+        struct bitwise_shift_left_string {
+            operator std::string() const {
+                return "<<";
+            }
+        };
+
+        /**
+     * Result of bitwise shift left << operator
+     */
+        template<class L, class R>
+        using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
+
+        struct bitwise_shift_right_string {
+            operator std::string() const {
+                return ">>";
+            }
+        };
+
+        /**
+     * Result of bitwise shift right >> operator
+     */
+        template<class L, class R>
+        using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
+
+        struct bitwise_and_string {
+            operator std::string() const {
+                return "&";
+            }
+        };
+
+        /**
+     * Result of bitwise and & operator
+     */
+        template<class L, class R>
+        using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
+
+        struct bitwise_or_string {
+            operator std::string() const {
+                return "|";
+            }
+        };
+
+        /**
+     * Result of bitwise or | operator
+     */
+        template<class L, class R>
+        using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
+
+        struct bitwise_not_string {
+            operator std::string() const {
+                return "~";
+            }
+        };
+
+        /**
+     * Result of bitwise not ~ operator
+     */
+        template<class T>
+        struct bitwise_not_t : bitwise_not_string, arithmetic_t, negatable_t {
+            using argument_type = T;
+
+            argument_type argument;
+
+            bitwise_not_t(argument_type argument_) : argument(std::move(argument_)) {}
+        };
 
         struct assign_string {
             operator std::string() const {
                 return "=";
             }
         };
-
         /**
          *  Result of assign = operator
          */
@@ -186,6 +253,31 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::mod_t<L, R> mod(L l, R r) {
         return {std::move(l), std::move(r)};
+    }
+
+    template<class L, class R>
+    internal::bitwise_shift_left_t<L, R> bitwise_shift_left(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+
+    template<class L, class R>
+    internal::bitwise_shift_right_t<L, R> bitwise_shift_right(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+
+    template<class L, class R>
+    internal::bitwise_and_t<L, R> bitwise_and(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+
+    template<class L, class R>
+    internal::bitwise_or_t<L, R> bitwise_or(L l, R r) {
+        return {std::move(l), std::move(r)};
+    }
+
+    template<class T>
+    internal::bitwise_not_t<T> bitwise_not(T t) {
+        return {std::move(t)};
     }
 
     template<class L, class R>

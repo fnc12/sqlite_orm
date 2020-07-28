@@ -31,14 +31,13 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct node_tuple<conditions::where_t<C>, void> {
-            using node_type = conditions::where_t<C>;
+        struct node_tuple<where_t<C>, void> {
+            using node_type = where_t<C>;
             using type = typename node_tuple<C>::type;
         };
 
         template<class T>
-        struct node_tuple<T,
-                          typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
@@ -64,8 +63,8 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct node_tuple<conditions::in_t<L, A>, void> {
-            using node_type = conditions::in_t<L, A>;
+        struct node_tuple<in_t<L, A>, void> {
+            using node_type = in_t<L, A>;
             using left_tuple = typename node_tuple<L>::type;
             using right_tuple = typename node_tuple<A>::type;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
@@ -89,9 +88,9 @@ namespace sqlite_orm {
             using type = typename conc_tuple<columns_tuple, args_tuple>::type;
         };
 
-        template<class T, class... Args>
-        struct node_tuple<get_all_t<T, Args...>, void> {
-            using node_type = get_all_t<T, Args...>;
+        template<class T, class R, class... Args>
+        struct node_tuple<get_all_t<T, R, Args...>, void> {
+            using node_type = get_all_t<T, R, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 
@@ -124,20 +123,20 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<conditions::having_t<T>, void> {
-            using node_type = conditions::having_t<T>;
+        struct node_tuple<having_t<T>, void> {
+            using node_type = having_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T, class E>
-        struct node_tuple<conditions::cast_t<T, E>, void> {
-            using node_type = conditions::cast_t<T, E>;
+        struct node_tuple<cast_t<T, E>, void> {
+            using node_type = cast_t<T, E>;
             using type = typename node_tuple<E>::type;
         };
 
         template<class T>
-        struct node_tuple<conditions::exists_t<T>, void> {
-            using node_type = conditions::exists_t<T>;
+        struct node_tuple<exists_t<T>, void> {
+            using node_type = exists_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
@@ -154,8 +153,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T, class E>
-        struct node_tuple<conditions::like_t<A, T, E>, void> {
-            using node_type = conditions::like_t<A, T, E>;
+        struct node_tuple<like_t<A, T, E>, void> {
+            using node_type = like_t<A, T, E>;
             using arg_tuple = typename node_tuple<A>::type;
             using pattern_tuple = typename node_tuple<T>::type;
             using escape_tuple = typename node_tuple<E>::type;
@@ -163,16 +162,16 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct node_tuple<conditions::glob_t<A, T>, void> {
-            using node_type = conditions::glob_t<A, T>;
+        struct node_tuple<glob_t<A, T>, void> {
+            using node_type = glob_t<A, T>;
             using arg_tuple = typename node_tuple<A>::type;
             using pattern_tuple = typename node_tuple<T>::type;
             using type = typename conc_tuple<arg_tuple, pattern_tuple>::type;
         };
 
         template<class A, class T>
-        struct node_tuple<conditions::between_t<A, T>, void> {
-            using node_type = conditions::between_t<A, T>;
+        struct node_tuple<between_t<A, T>, void> {
+            using node_type = between_t<A, T>;
             using expression_tuple = typename node_tuple<A>::type;
             using lower_tuple = typename node_tuple<T>::type;
             using upper_tuple = typename node_tuple<T>::type;
@@ -180,62 +179,62 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<conditions::named_collate<T>, void> {
-            using node_type = conditions::named_collate<T>;
+        struct node_tuple<named_collate<T>, void> {
+            using node_type = named_collate<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T>
-        struct node_tuple<conditions::is_null_t<T>, void> {
-            using node_type = conditions::is_null_t<T>;
+        struct node_tuple<is_null_t<T>, void> {
+            using node_type = is_null_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T>
-        struct node_tuple<conditions::is_not_null_t<T>, void> {
-            using node_type = conditions::is_not_null_t<T>;
+        struct node_tuple<is_not_null_t<T>, void> {
+            using node_type = is_not_null_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class C>
-        struct node_tuple<conditions::negated_condition_t<C>, void> {
-            using node_type = conditions::negated_condition_t<C>;
+        struct node_tuple<negated_condition_t<C>, void> {
+            using node_type = negated_condition_t<C>;
             using type = typename node_tuple<C>::type;
         };
 
         template<class R, class S, class... Args>
-        struct node_tuple<core_functions::core_function_t<R, S, Args...>, void> {
-            using node_type = core_functions::core_function_t<R, S, Args...>;
+        struct node_tuple<core_function_t<R, S, Args...>, void> {
+            using node_type = core_function_t<R, S, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::left_join_t<T, O>, void> {
-            using node_type = conditions::left_join_t<T, O>;
+        struct node_tuple<left_join_t<T, O>, void> {
+            using node_type = left_join_t<T, O>;
             using type = typename node_tuple<O>::type;
         };
 
         template<class T>
-        struct node_tuple<conditions::on_t<T>, void> {
-            using node_type = conditions::on_t<T>;
+        struct node_tuple<on_t<T>, void> {
+            using node_type = on_t<T>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::join_t<T, O>, void> {
-            using node_type = conditions::join_t<T, O>;
+        struct node_tuple<join_t<T, O>, void> {
+            using node_type = join_t<T, O>;
             using type = typename node_tuple<O>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::left_outer_join_t<T, O>, void> {
-            using node_type = conditions::left_outer_join_t<T, O>;
+        struct node_tuple<left_outer_join_t<T, O>, void> {
+            using node_type = left_outer_join_t<T, O>;
             using type = typename node_tuple<O>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::inner_join_t<T, O>, void> {
-            using node_type = conditions::inner_join_t<T, O>;
+        struct node_tuple<inner_join_t<T, O>, void> {
+            using node_type = inner_join_t<T, O>;
             using type = typename node_tuple<O>::type;
         };
 
@@ -263,20 +262,20 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<conditions::limit_t<T, false, false, void>, void> {
-            using node_type = conditions::limit_t<T, false, false, void>;
+        struct node_tuple<limit_t<T, false, false, void>, void> {
+            using node_type = limit_t<T, false, false, void>;
             using type = typename node_tuple<T>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::limit_t<T, true, false, O>, void> {
-            using node_type = conditions::limit_t<T, true, false, O>;
+        struct node_tuple<limit_t<T, true, false, O>, void> {
+            using node_type = limit_t<T, true, false, O>;
             using type = typename conc_tuple<typename node_tuple<T>::type, typename node_tuple<O>::type>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<conditions::limit_t<T, true, true, O>, void> {
-            using node_type = conditions::limit_t<T, true, true, O>;
+        struct node_tuple<limit_t<T, true, true, O>, void> {
+            using node_type = limit_t<T, true, true, O>;
             using type = typename conc_tuple<typename node_tuple<O>::type, typename node_tuple<T>::type>::type;
         };
     }

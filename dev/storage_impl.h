@@ -10,6 +10,7 @@
 #include <utility>  //  std::pair, std::make_pair
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::find_if
+#include <typeindex>  //  std::type_index
 
 #include "error_code.h"
 #include "statement_finalizer.h"
@@ -181,7 +182,7 @@ namespace sqlite_orm {
              */
             int foreign_keys_count() {
                 auto res = 0;
-                this->table.for_each_column_with_constraints([&res](auto &c) {
+                iterate_tuple(this->table.columns, [&res](auto &c) {
                     if(internal::is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
                         ++res;
                     }
@@ -199,22 +200,6 @@ namespace sqlite_orm {
             template<class O, class F>
             std::string column_name_simple(F O::*m) const {
                 return this->table.find_column_name(m);
-            }
-
-            /**
-             *  Same thing as above for getter.
-             */
-            template<class T, typename std::enable_if<is_getter<T>::value>::type>
-            std::string column_name_simple(T g) const {
-                return this->table.find_column_name(g);
-            }
-
-            /**
-             *  Same thing as above for setter.
-             */
-            template<class T, typename std::enable_if<is_setter<T>::value>::type>
-            std::string column_name_simple(T s) const {
-                return this->table.find_column_name(s);
             }
 
             /**
@@ -236,44 +221,6 @@ namespace sqlite_orm {
                 return this->super::column_name(m);
             }
 
-            /**
-             *  Cute function used to find column name by its type and getter pointer. Uses SFINAE to
-             *  skip inequal type O.
-             */
-            template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(const F &(O::*g)() const,
-                                    typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
-                return this->table.find_column_name(g);
-            }
-
-            /**
-             *  Opposite version of function defined above. Just calls same function in superclass.
-             */
-            template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(const F &(O::*g)() const,
-                                    typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
-                return this->super::column_name(g);
-            }
-
-            /**
-             *  Cute function used to find column name by its type and setter pointer. Uses SFINAE to
-             *  skip inequal type O.
-             */
-            template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(void (O::*s)(F),
-                                    typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
-                return this->table.find_column_name(s);
-            }
-
-            /**
-             *  Opposite version of function defined above. Just calls same function in superclass.
-             */
-            template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(void (O::*s)(F),
-                                    typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
-                return this->super::column_name(s);
-            }
-
             template<class T, class F, class HH = typename H::object_type>
             std::string column_name(const column_pointer<T, F> &c,
                                     typename std::enable_if<std::is_same<T, HH>::value>::type * = nullptr) const {
@@ -287,59 +234,42 @@ namespace sqlite_orm {
             }
 
             template<class O, class HH = typename H::object_type>
-            auto &get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+            const auto &get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
                 return *this;
             }
 
             template<class O, class HH = typename H::object_type>
-            auto &get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+            const auto &get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
                 return this->super::template get_impl<O>();
             }
 
             template<class O, class HH = typename H::object_type>
-            std::string find_table_name(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
-                return this->table.name;
+            auto &get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
+                return *this;
             }
 
             template<class O, class HH = typename H::object_type>
-            std::string find_table_name(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
-                return this->super::template find_table_name<O>();
+            auto &get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
+                return this->super::template get_impl<O>();
             }
 
             template<class O, class HH = typename H::object_type>
-            std::string dump(const O &o, typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) {
-                return this->super::dump(o, nullptr);
+            const auto *find_table(typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) const {
+                return &this->table;
             }
 
             template<class O, class HH = typename H::object_type>
-            std::string dump(const O &o, typename std::enable_if<std::is_same<O, HH>::value>::type * = nullptr) {
-                std::stringstream ss;
-                ss << "{ ";
-                using pair = std::pair<std::string, std::string>;
-                std::vector<pair> pairs;
-                this->table.for_each_column([&pairs, &o](auto &c) {
-                    using column_type = typename std::decay<decltype(c)>::type;
-                    using field_type = typename column_type::field_type;
-                    pair p{c.name, ""};
-                    if(c.member_pointer) {
-                        p.second = field_printer<field_type>()(o.*c.member_pointer);
-                    } else {
-                        using getter_type = typename column_type::getter_type;
-                        field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
-                        p.second = field_printer<field_type>()(valueHolder.value);
-                    }
-                    pairs.push_back(std::move(p));
-                });
-                for(size_t i = 0; i < pairs.size(); ++i) {
-                    auto &p = pairs[i];
-                    ss << p.first << " : '" << p.second << "'";
-                    if(i < pairs.size() - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << " }";
-                    }
+            const auto *find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type * = nullptr) const {
+                return this->super::template find_table<O>();
+            }
+
+            std::string find_table_name(std::type_index ti) const {
+                std::type_index thisTypeIndex{typeid(typename H::object_type)};
+                if(thisTypeIndex == ti) {
+                    return this->table.name;
+                } else {
+                    return this->super::find_table_name(ti);
                 }
-                return ss.str();
             }
 
             void add_column(const table_info &ti, sqlite3 *db) {
@@ -376,11 +306,21 @@ namespace sqlite_orm {
              *  Copies current table to another table with a given **name**.
              *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
              */
-            void copy_table(sqlite3 *db, const std::string &name) {
+            void copy_table(sqlite3 *db, const std::string &name, const std::vector<table_info *> &columnsToIgnore) {
+                std::ignore = columnsToIgnore;
+
                 std::stringstream ss;
                 std::vector<std::string> columnNames;
-                this->table.for_each_column([&columnNames](auto &c) {
-                    columnNames.emplace_back(c.name);
+                this->table.for_each_column([&columnNames, &columnsToIgnore](auto &c) {
+                    auto &columnName = c.name;
+                    auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
+                                                         columnsToIgnore.end(),
+                                                         [&columnName](auto tableInfoPointer) {
+                                                             return columnName == tableInfoPointer->name;
+                                                         });
+                    if(columnToIgnoreIt == columnsToIgnore.end()) {
+                        columnNames.emplace_back(columnName);
+                    }
                 });
                 auto columnNamesCount = columnNames.size();
                 ss << "INSERT INTO " << name << " (";
@@ -488,8 +428,7 @@ namespace sqlite_orm {
         template<>
         struct storage_impl<> : storage_impl_base {
 
-            template<class O>
-            std::string find_table_name() const {
+            std::string find_table_name(std::type_index) const {
                 return {};
             }
 
@@ -501,8 +440,8 @@ namespace sqlite_orm {
             }
 
             template<class O>
-            std::string dump(const O &, sqlite3 *, std::nullptr_t) {
-                throw std::system_error(std::make_error_code(orm_error_code::type_is_not_mapped_to_storage));
+            const void *find_table() const {
+                return nullptr;
             }
         };
 

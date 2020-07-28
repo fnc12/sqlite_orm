@@ -40,7 +40,8 @@ TEST_CASE("backup") {
             filename,
             make_table(usersTableName, make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
     };
-    const std::string backupFilename = "backup.sqlite";
+    static int filenameSuffix = 0;  //  to make an unique filename for every test
+    const std::string backupFilename = "backup" + std::to_string(filenameSuffix++) + ".sqlite";
     SECTION("to") {
         ::remove(backupFilename.c_str());
         auto storage2 = makeStorage(backupFilename);

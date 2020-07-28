@@ -24,7 +24,7 @@ namespace sqlite_orm {
             /**
              *  Table name.
              */
-            const std::string name;
+            std::string name;
 
             bool _without_rowid = false;
         };
@@ -141,7 +141,7 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Searches column name by class member pointer passed as first argument.
+             *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
             template<class F,
@@ -195,7 +195,7 @@ namespace sqlite_orm {
             /**
              *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise
              * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
-             * iterate columns with table constraints use for_each_column_with_constraints instead. L is lambda type. Do
+             * iterate columns with table constraints use iterate_tuple(columns, ...) instead. L is lambda type. Do
              * not specify it explicitly.
              *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
@@ -207,16 +207,12 @@ namespace sqlite_orm {
                 });
             }
 
-            template<class L>
-            void for_each_column_with_constraints(const L &l) const {
-                iterate_tuple(this->columns, l);
-            }
-
             template<class F, class L>
             void for_each_column_with_field_type(const L &l) const {
                 iterate_tuple(this->columns, [&l](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<std::is_same<F, typename column_type::field_type>{}>(l)(column);
+                    using field_type = typename column_field_type<column_type>::type;
+                    static_if<std::is_same<F, field_type>{}>(l)(column);
                 });
             }
 
@@ -231,7 +227,8 @@ namespace sqlite_orm {
                 using tuple_helper::tuple_contains_type;
                 iterate_tuple(this->columns, [&l](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<tuple_contains_type<Op, typename column_type::constraints_type>{}>(l)(column);
+                    using constraints_type = typename column_constraints_type<column_type>::type;
+                    static_if<tuple_contains_type<Op, constraints_type>{}>(l)(column);
                 });
             }
 

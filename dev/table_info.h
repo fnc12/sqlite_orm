@@ -5,12 +5,12 @@
 namespace sqlite_orm {
 
     struct table_info {
-        int cid;
+        int cid = 0;
         std::string name;
         std::string type;
-        bool notnull;
+        bool notnull = false;
         std::string dflt_value;
-        int pk;
+        int pk = 0;
     };
 
 }

@@ -25,19 +25,20 @@ TEST_CASE("Glob") {
                                            make_column("salary", &Employee::salary),
                                            make_column("dept_id", &Employee::deptId)));
     storage.sync_schema();
-
-    std::vector<Employee> employees = {
-        Employee{1, "Honey", "Patel", 10100, 1},
-        Employee{2, "Shweta", "Jariwala", 19300, 2},
-        Employee{3, "Vinay", "Jariwala", 35100, 3},
-        Employee{4, "Jagruti", "Viras", 9500, 2},
-        Employee{5, "Shweta", "Rana", 12000, 3},
-        Employee{6, "sonal", "Menpara", 13000, 1},
-        Employee{7, "Yamini", "Patel", 10000, 2},
-        Employee{8, "Khyati", "Shah", 500000, 3},
-        Employee{9, "Shwets", "Jariwala", 19400, 2},
-    };
-    storage.replace_range(employees.begin(), employees.end());
+    {
+        std::vector<Employee> employees = {
+            Employee{1, "Honey", "Patel", 10100, 1},
+            Employee{2, "Shweta", "Jariwala", 19300, 2},
+            Employee{3, "Vinay", "Jariwala", 35100, 3},
+            Employee{4, "Jagruti", "Viras", 9500, 2},
+            Employee{5, "Shweta", "Rana", 12000, 3},
+            Employee{6, "sonal", "Menpara", 13000, 1},
+            Employee{7, "Yamini", "Patel", 10000, 2},
+            Employee{8, "Khyati", "Shah", 500000, 3},
+            Employee{9, "Shwets", "Jariwala", 19400, 2},
+        };
+        storage.replace_range(employees.begin(), employees.end());
+    }
 
     auto expectIds = [](const std::vector<Employee> &employees, const std::vector<decltype(Employee::id)> ids) {
         for(auto expectedId: ids) {
