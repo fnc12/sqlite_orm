@@ -5426,7 +5426,7 @@ namespace sqlite_orm {
             using object_type = void;
 
             std::string name;
-            bool unique;
+            bool unique = false;
             columns_type columns;
         };
     }
@@ -8800,6 +8800,37 @@ namespace sqlite_orm {
                     }
                 }
             }
+            
+//            template <class R, class... Ps>
+            template<class F>
+            static void functionx_impl(sqlite3_context* ctx, int /*nargs*/, sqlite3_value** /*values*/)
+            {
+              /*context c(ctx, nargs, values);
+              auto f = static_cast<std::function<R (Ps...)>*>(sqlite3_user_data(ctx));
+              c.result(apply(*f, c.to_tuple<Ps...>()));*/
+                sqlite3_result_double(ctx, 4);
+            }
+            
+            template<class F>
+            int create_scalar_function() {
+                std::stringstream ss;
+                ss << F::name();
+                auto functionName = ss.str();
+//                auto function = std::make_shared<scalar_function_pointer>();
+                auto function = new std::function<F>(F{});
+                scalarFunctions[move(functionName)] = std::make_shared<void>(function);
+                /*scalarFunctions[move(functionName)] = [this](sqlite3_context* ctx, int nargs, sqlite3_value** values){
+                    
+                };*/
+                //  create collations if db is open
+                if(this->connection->retain_count() > 0) {
+                    auto db = this->connection->get();
+                    auto argumentsCount = 1;
+                    return sqlite3_create_function(db, functionName.c_str(), argumentsCount, SQLITE_UTF8, function, functionx_impl<F>, nullptr, nullptr);
+                }else{
+                    return 0;
+                }
+            }
 
             void begin_transaction() {
                 this->connection->retain();
@@ -8903,11 +8934,14 @@ namespace sqlite_orm {
                     this->connection->release();
                 }
             }
+            
+            using scalar_function_pointer = std::function<void(sqlite3_context* ctx, int nargs, sqlite3_value** values)>;
 
             const bool inMemory;
             bool isOpenedForever = false;
             std::unique_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
+            std::map<std::string, std::shared_ptr<void>> scalarFunctions;
             const int cachedForeignKeysCount;
 
             connection_ref get_connection() {

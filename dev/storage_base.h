@@ -225,7 +225,40 @@ namespace sqlite_orm {
                 }
             }
             
-            f
+//            template <class R, class... Ps>
+            template<class F>
+            static void functionx_impl(sqlite3_context* ctx, int /*nargs*/, sqlite3_value** /*values*/)
+            {
+              /*context c(ctx, nargs, values);
+              auto f = static_cast<std::function<R (Ps...)>*>(sqlite3_user_data(ctx));
+              c.result(apply(*f, c.to_tuple<Ps...>()));*/
+                sqlite3_result_double(ctx, 4);
+            }
+            
+            template<class R>
+            struct create_function_impl;
+
+            template<class R, class... Ps>
+            struct create_function_impl<R (Ps...)>
+            {
+                int operator()(sqlite3* db, void* fh, char const* name) {
+                    return sqlite3_create_function(db, name, sizeof...(Ps), SQLITE_UTF8, fh, functionx_impl<R, Ps...>, nullptr, nullptr);
+                }
+            };
+            
+            template<class F>
+            int create_scalar_function(std::string name, std::function<F> function) {
+//                auto function = new std::function<F>(F{});
+                auto functionRawPointer = (scalarFunctions[move(name)] = std::shared_ptr<void>(new std::function<F>(move(function)))).get();
+                
+                //  create collations if db is open
+                if(this->connection->retain_count() > 0) {
+                    auto db = this->connection->get();
+                    return create_function_impl<F>()(db, functionRawPointer, name);
+                }else{
+                    return 0;
+                }
+            }
 
             void begin_transaction() {
                 this->connection->retain();
@@ -329,11 +362,14 @@ namespace sqlite_orm {
                     this->connection->release();
                 }
             }
+            
+            using scalar_function_pointer = std::function<void(sqlite3_context* ctx, int nargs, sqlite3_value** values)>;
 
             const bool inMemory;
             bool isOpenedForever = false;
             std::unique_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
+            std::map<std::string, std::shared_ptr<void>> scalarFunctions;
             const int cachedForeignKeysCount;
 
             connection_ref get_connection() {

@@ -311,5 +311,5 @@ TEST_CASE("CustomFunctions") {
     };
     
     auto storage = make_storage({});
-    storage.cre
+    storage.create_scalar_function<Sqrt>();
 }
