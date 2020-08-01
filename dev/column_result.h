@@ -14,6 +14,9 @@
 
 namespace sqlite_orm {
 
+    using int64 = sqlite_int64;
+    using uint64 = sqlite_uint64;
+
     namespace internal {
 
         /**

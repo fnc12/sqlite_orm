@@ -20,7 +20,6 @@
 #include "field_printer.h"
 #include "table_info.h"
 #include "sync_schema_result.h"
-#include "sqlite_type.h"
 #include "field_value_holder.h"
 
 namespace sqlite_orm {
@@ -93,29 +92,19 @@ namespace sqlite_orm {
                     });
                     if(dbColumnInfoIt != dbTableInfo.end()) {
                         auto &dbColumnInfo = *dbColumnInfoIt;
-                        auto dbColumnInfoType = to_sqlite_type(dbColumnInfo.type);
-                        auto storageColumnInfoType = to_sqlite_type(storageColumnInfo.type);
-                        if(dbColumnInfoType && storageColumnInfoType) {
-                            auto columnsAreEqual =
-                                dbColumnInfo.name == storageColumnInfo.name &&
-                                *dbColumnInfoType == *storageColumnInfoType &&
-                                dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                                (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
-                                dbColumnInfo.pk == storageColumnInfo.pk;
-                            if(!columnsAreEqual) {
-                                notEqual = true;
-                                break;
-                            }
-                            dbTableInfo.erase(dbColumnInfoIt);
-                            storageTableInfo.erase(storageTableInfo.begin() +
-                                                   static_cast<ptrdiff_t>(storageColumnInfoIndex));
-                            --storageColumnInfoIndex;
-                        } else {
-
-                            //  undefined type/types
+                        auto columnsAreEqual =
+                            dbColumnInfo.name == storageColumnInfo.name &&
+                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                            (dbColumnInfo.dflt_value.length() > 0) == (storageColumnInfo.dflt_value.length() > 0) &&
+                            dbColumnInfo.pk == storageColumnInfo.pk;
+                        if(!columnsAreEqual) {
                             notEqual = true;
                             break;
                         }
+                        dbTableInfo.erase(dbColumnInfoIt);
+                        storageTableInfo.erase(storageTableInfo.begin() +
+                                               static_cast<ptrdiff_t>(storageColumnInfoIndex));
+                        --storageColumnInfoIndex;
                     } else {
                         columnsToAdd.push_back(&storageColumnInfo);
                     }
