@@ -18,10 +18,7 @@ if(SQLITE_ORM_OMITS_CODECVT)
 	target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
 endif()
 
-find_package(Catch2 REQUIRED)
-target_link_libraries(unit_tests PRIVATE sqlite_orm sqlite3 Catch2::Catch2)
-
-enable_testing()
+target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2)
 
 add_test(NAME "All_in_one_unit_test"
     COMMAND unit_tests

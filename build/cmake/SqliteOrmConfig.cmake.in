@@ -1,5 +1,8 @@
 set(SQLITE_ORM_VERSION ${sqlite_orm_VERSION})
 
+include(CMakeFindDependencyMacro)
+find_dependency(SQLite3)
+
 @PACKAGE_INIT@
 
 set_and_check(SQLITE_ORM_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")

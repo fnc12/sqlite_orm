@@ -23,11 +23,14 @@ set(PACKAGE_VERSION ${sqlite_orm_VERSION})
 
 project("sqlite_orm" VERSION ${PACKAGE_VERSION})
 
+
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 message(STATUS "Configuring ${CMAKE_PROJECT_NAME} ${sqlite_orm_VERSION}")
 
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/build/cmake")
+
+include(CTest)
 
 # Build time options are defined here
 include(DefineInstallationPaths)
@@ -37,10 +40,16 @@ include(GenerateConfigModule)
 
 set(ProjectName "SqliteOrm")
 
-option(SqliteOrm_BuildTests "Build sqlite_orm unit tests" ON)
+### Dependencies
+add_subdirectory(dependencies)
 
+### Main Build Targets
 set(SqliteOrm_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_library(sqlite_orm INTERFACE)
+add_library(sqlite_orm::sqlite_orm ALIAS sqlite_orm)
+
+find_package(SQLite3 REQUIRED)
+target_link_libraries(sqlite_orm INTERFACE SQLite::SQLite3)
 
 target_sources(sqlite_orm INTERFACE
 	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>
@@ -69,9 +78,7 @@ ucm_print_flags()
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 # Tests
-include(CTest)
-if(SqliteOrm_BuildTests AND BUILD_TESTING)
-    enable_testing()
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
