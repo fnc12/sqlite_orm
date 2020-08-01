@@ -82,7 +82,10 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
-add_subdirectory(examples)
+option(BUILD_EXAMPLES ON)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_EXAMPLES)
+	add_subdirectory(examples)
+endif()
 
 install(TARGETS sqlite_orm EXPORT "${ProjectName}Targets"
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development
