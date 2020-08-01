@@ -1,5 +1,5 @@
-cmake_minimum_required (VERSION 3.2)
-cmake_policy(SET CMP0057 NEW)
+cmake_minimum_required (VERSION 3.17)
+#cmake_policy(SET CMP0057 NEW)
 
 # Handling C++ standard version to use
 option(SQLITE_ORM_ENABLE_CXX_17 "Enable C++ 17" OFF)
@@ -28,17 +28,9 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 
 message(STATUS "Configuring ${CMAKE_PROJECT_NAME} ${sqlite_orm_VERSION}")
 
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/build/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 include(CTest)
-
-# Build time options are defined here
-include(DefineInstallationPaths)
-
-# Generate the SqliteOrmConfig.cmake module
-include(GenerateConfigModule)
-
-set(ProjectName "SqliteOrm")
 
 ### Dependencies
 add_subdirectory(dependencies)
@@ -51,13 +43,9 @@ add_library(sqlite_orm::sqlite_orm ALIAS sqlite_orm)
 find_package(SQLite3 REQUIRED)
 target_link_libraries(sqlite_orm INTERFACE SQLite::SQLite3)
 
-target_sources(sqlite_orm INTERFACE
-	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>
-	$<INSTALL_INTERFACE:include/sqlite_orm/sqlite_orm.h>)
+target_sources(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>)
 
-target_include_directories(sqlite_orm INTERFACE
-	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-	$<INSTALL_INTERFACE:include>)
+target_include_directories(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 
 include(ucm)
 
@@ -87,18 +75,5 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_EXAMPLES)
 	add_subdirectory(examples)
 endif()
 
-install(TARGETS sqlite_orm EXPORT "${ProjectName}Targets"
-	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development
-	PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development)
-
-install(FILES "include/sqlite_orm/sqlite_orm.h"
-	DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development)
-
-export(EXPORT "${ProjectName}Targets"
-	FILE "${CMAKE_CURRENT_BINARY_DIR}/${ProjectName}/${ProjectName}Targets.cmake"
-	NAMESPACE "sqlite_orm::")
-
-install(EXPORT "${ProjectName}Targets"
-	FILE "${ProjectName}Targets.cmake"
-	NAMESPACE "sqlite_orm::"
-	DESTINATION "${CMAKE_INSTALL_DIR}/sqlite_orm")
+### Packaging
+add_subdirectory(packaging)
