@@ -4937,7 +4937,7 @@ namespace sqlite_orm {
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
 #include <algorithm>  //  std::transform
-#include <locale>  // std::toupper
+#include <cctype>  // std::toupper
 
 namespace sqlite_orm {
 
