@@ -1,6 +1,6 @@
 # Defaults
 os: linux
-dist: xenial
+dist: focal
 
 matrix:
   include:
