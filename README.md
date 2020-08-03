@@ -795,8 +795,3 @@ If you want to use the lib directly with Make or something else, just set the in
 
 * C++14 compatible compiler (not C++11 cause of templated lambdas in the lib).
 * Sqlite3 installed on your system and in the path, so cmake can find it (or linked to you project if you don't use cmake)
-
-## Support on Beerpay
-Hey dude! Help me out for a couple of :beers:!
-
-[![Beerpay](https://beerpay.io/fnc12/sqlite_orm/badge.svg?style=beer-square)](https://beerpay.io/fnc12/sqlite_orm)  [![Beerpay](https://beerpay.io/fnc12/sqlite_orm/make-wish.svg?style=flat-square)](https://beerpay.io/fnc12/sqlite_orm?focus=wish)
