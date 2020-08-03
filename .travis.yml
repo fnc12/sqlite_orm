@@ -1,6 +1,6 @@
 # Defaults
 os: linux
-dist: xenial
+dist: bionic
 
 matrix:
   include:
@@ -151,6 +151,12 @@ before_install:
     if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then
       export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Use coreutils from homebrew.
     fi
+  # Add ppa repo for cmake and delete cmake 3.12.4 folder of travis
+  - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+  - sudo apt-add-repository -y 'deb https://apt.kitware.com/ubuntu/ bionic main'
+  - sudo apt-get update -qq -y
+  - sudo apt-get install -y cmake
+  - sudo rm -r /usr/local/cmake-3.12.4/
 
 # scripts to run before build
 before_script:
