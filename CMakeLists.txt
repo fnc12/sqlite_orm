@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.12.4)
+cmake_minimum_required (VERSION 3.16.0)
 
 # Handling C++ standard version to use
 option(SQLITE_ORM_ENABLE_CXX_17 "Enable C++ 17" OFF)
