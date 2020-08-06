@@ -59,6 +59,10 @@ namespace sqlite_orm {
 
     }
 
+    /**
+     * Use this function to specify indexed column inside `make_index` function call.
+     * Example: make_index("index_name", indexed_column(&User::id).asc())
+     */
     template<class C>
     internal::indexed_column_t<C> indexed_column(C column_or_expression) {
         return {std::move(column_or_expression)};

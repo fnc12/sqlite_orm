@@ -1346,7 +1346,7 @@ namespace sqlite_orm {
                             ss << " ASC";
                             break;
                         default:
-                            throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                            throw std::system_error(std::make_error_code(orm_error_code::incorrect_order));
                     }
                 }
                 return ss.str();
