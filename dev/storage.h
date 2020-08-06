@@ -24,7 +24,6 @@
 #include "type_printer.h"
 #include "tuple_helper.h"
 #include "constraints.h"
-#include "table_type.h"
 #include "type_is_nullable.h"
 #include "field_printer.h"
 #include "rowid.h"
@@ -87,14 +86,14 @@ namespace sqlite_orm {
             friend struct serializator_context_builder;
 
             template<class I>
-            void create_table(sqlite3 *db, const std::string &tableName, I *tableImpl) {
+            void create_table(sqlite3 *db, const std::string &tableName, const I &tableImpl) {
                 std::stringstream ss;
                 ss << "CREATE TABLE '" << tableName << "' ( ";
-                auto columnsCount = tableImpl->table.columns_count;
+                auto columnsCount = tableImpl.table.columns_count;
                 auto index = 0;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                iterate_tuple(tableImpl->table.columns, [columnsCount, &index, &ss, &context](auto &c) {
+                iterate_tuple(tableImpl.table.columns, [columnsCount, &index, &ss, &context](auto &c) {
                     ss << serialize(c, context);
                     if(index < columnsCount - 1) {
                         ss << ", ";
@@ -102,7 +101,7 @@ namespace sqlite_orm {
                     index++;
                 });
                 ss << ") ";
-                if(tableImpl->table._without_rowid) {
+                if(tableImpl.table._without_rowid) {
                     ss << "WITHOUT ROWID ";
                 }
                 auto query = ss.str();
@@ -122,18 +121,18 @@ namespace sqlite_orm {
             }
 
             template<class I>
-            void backup_table(sqlite3 *db, I *tableImpl, const std::vector<table_info *> &columnsToIgnore) {
+            void backup_table(sqlite3 *db, const I &tableImpl, const std::vector<table_info *> &columnsToIgnore) {
 
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
-                auto backupTableName = tableImpl->table.name + "_backup";
-                if(tableImpl->table_exists(backupTableName, db)) {
+                auto backupTableName = tableImpl.table.name + "_backup";
+                if(tableImpl.table_exists(backupTableName, db)) {
                     int suffix = 1;
                     do {
                         std::stringstream stream;
                         stream << suffix;
                         auto anotherBackupTableName = backupTableName + stream.str();
-                        if(!tableImpl->table_exists(anotherBackupTableName, db)) {
+                        if(!tableImpl.table_exists(anotherBackupTableName, db)) {
                             backupTableName = anotherBackupTableName;
                             break;
                         }
@@ -143,11 +142,11 @@ namespace sqlite_orm {
 
                 this->create_table(db, backupTableName, tableImpl);
 
-                tableImpl->copy_table(db, backupTableName, columnsToIgnore);
+                tableImpl.copy_table(db, backupTableName, columnsToIgnore);
 
-                this->drop_table_internal(tableImpl->table.name, db);
+                this->drop_table_internal(tableImpl.table.name, db);
 
-                tableImpl->rename_table(db, backupTableName, tableImpl->table.name);
+                tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
             }
 
             template<class O>
@@ -656,32 +655,11 @@ namespace sqlite_orm {
 
           protected:
             template<class... Tss, class... Cols>
-            sync_schema_result
-            sync_table(storage_impl<internal::index_t<Cols...>, Tss...> *tableImpl, sqlite3 *db, bool) {
+            sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...> &tableImpl, sqlite3 *db, bool) {
                 auto res = sync_schema_result::already_in_sync;
-                std::stringstream ss;
-                ss << "CREATE ";
-                if(tableImpl->table.unique) {
-                    ss << "UNIQUE ";
-                }
-                using columns_type = typename decltype(tableImpl->table)::columns_type;
-                using head_t = typename std::tuple_element<0, columns_type>::type;
-                using indexed_type = typename internal::table_type<head_t>::type;
-                ss << "INDEX IF NOT EXISTS '" << tableImpl->table.name << "' ON '"
-                   << this->impl.find_table_name(typeid(indexed_type)) << "' ( ";
-                std::vector<std::string> columnNames;
-                iterate_tuple(tableImpl->table.columns, [&columnNames, this](auto &v) {
-                    columnNames.push_back(this->impl.column_name(v));
-                });
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "'" << columnNames[i] << "'";
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                ss << ") ";
-                auto query = ss.str();
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                auto query = serialize(tableImpl.table, context);
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -691,13 +669,14 @@ namespace sqlite_orm {
             }
 
             template<class... Tss, class... Cs>
-            sync_schema_result sync_table(storage_impl<table_t<Cs...>, Tss...> *tImpl, sqlite3 *db, bool preserve) {
+            sync_schema_result
+            sync_table(const storage_impl<table_t<Cs...>, Tss...> &tImpl, sqlite3 *db, bool preserve) {
                 auto res = sync_schema_result::already_in_sync;
 
-                auto schema_stat = tImpl->schema_status(db, preserve);
+                auto schema_stat = tImpl.schema_status(db, preserve);
                 if(schema_stat != decltype(schema_stat)::already_in_sync) {
                     if(schema_stat == decltype(schema_stat)::new_table_created) {
-                        this->create_table(db, tImpl->table.name, tImpl);
+                        this->create_table(db, tImpl.table.name, tImpl);
                         res = decltype(res)::new_table_created;
                     } else {
                         if(schema_stat == sync_schema_result::old_columns_removed ||
@@ -705,15 +684,15 @@ namespace sqlite_orm {
                            schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                             //  get table info provided in `make_table` call..
-                            auto storageTableInfo = tImpl->table.get_table_info();
+                            auto storageTableInfo = tImpl.table.get_table_info();
 
                             //  now get current table info from db using `PRAGMA table_info` query..
-                            auto dbTableInfo = tImpl->get_table_info(tImpl->table.name, db);
+                            auto dbTableInfo = tImpl.get_table_info(tImpl.table.name, db);
 
                             //  this vector will contain pointers to columns that gotta be added..
                             std::vector<table_info *> columnsToAdd;
 
-                            tImpl->get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                            tImpl.get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                             if(schema_stat == sync_schema_result::old_columns_removed) {
 
@@ -724,7 +703,7 @@ namespace sqlite_orm {
 
                             if(schema_stat == sync_schema_result::new_columns_added) {
                                 for(auto columnPointer: columnsToAdd) {
-                                    tImpl->add_column(*columnPointer, db);
+                                    tImpl.add_column(*columnPointer, db);
                                 }
                                 res = decltype(res)::new_columns_added;
                             }
@@ -736,8 +715,8 @@ namespace sqlite_orm {
                                 res = decltype(res)::new_columns_added_and_old_columns_removed;
                             }
                         } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
-                            this->drop_table_internal(tImpl->table.name, db);
-                            this->create_table(db, tImpl->table.name, tImpl);
+                            this->drop_table_internal(tImpl.table.name, db);
+                            this->create_table(db, tImpl.table.name, tImpl);
                             res = decltype(res)::dropped_and_recreated;
                         }
                     }
@@ -777,9 +756,9 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
-                this->impl.for_each([&result, db, preserve, this](auto tableImpl) {
+                this->impl.for_each([&result, db, preserve, this](auto &tableImpl) {
                     auto res = this->sync_table(tableImpl, db, preserve);
-                    result.insert({tableImpl->table.name, res});
+                    result.insert({tableImpl.table.name, res});
                 });
                 return result;
             }
@@ -794,7 +773,7 @@ namespace sqlite_orm {
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
                 this->impl.for_each([&result, db, preserve](auto tableImpl) {
-                    result.insert({tableImpl->table.name, tableImpl->schema_status(db, preserve)});
+                    result.insert({tableImpl.table.name, tableImpl.schema_status(db, preserve)});
                 });
                 return result;
             }

@@ -2,7 +2,7 @@
 
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
-#include <type_traits>  //  std::is_arithmetic, std::enable_if
+#include <type_traits>  //  std::enable_if
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
 
@@ -16,6 +16,8 @@
 #include "column_names_getter.h"
 #include "order_by_serializator.h"
 #include "values.h"
+#include "table_type.h"
+#include "indexed_column.h"
 
 namespace sqlite_orm {
 
@@ -1320,6 +1322,64 @@ namespace sqlite_orm {
                         ss << ") ";
                     }
                 }
+                return ss.str();
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<indexed_column_t<T>, void> {
+            using statement_type = indexed_column_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type &statement, const C &context) const {
+                std::stringstream ss;
+                ss << serialize(statement.column_or_expression, context);
+                if(!statement._collation_name.empty()) {
+                    ss << " COLLATE " << statement._collation_name;
+                }
+                if(statement._order) {
+                    switch(statement._order) {
+                        case -1:
+                            ss << " DESC";
+                            break;
+                        case 1:
+                            ss << " ASC";
+                            break;
+                        default:
+                            throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    }
+                }
+                return ss.str();
+            }
+        };
+
+        template<class... Cols>
+        struct statement_serializator<index_t<Cols...>, void> {
+            using statement_type = index_t<Cols...>;
+
+            template<class C>
+            std::string operator()(const statement_type &statement, const C &context) const {
+                std::stringstream ss;
+                ss << "CREATE ";
+                if(statement.unique) {
+                    ss << "UNIQUE ";
+                }
+                using columns_type = typename std::decay<decltype(statement)>::type::columns_type;
+                using head_t = typename std::tuple_element<0, columns_type>::type::column_type;
+                using indexed_type = typename table_type<head_t>::type;
+                ss << "INDEX IF NOT EXISTS '" << statement.name << "' ON '"
+                   << context.impl.find_table_name(typeid(indexed_type)) << "' (";
+                std::vector<std::string> columnNames;
+                iterate_tuple(statement.columns, [&columnNames, &context](auto &v) {
+                    columnNames.push_back(context.column_name(v.column_or_expression));
+                });
+                for(size_t i = 0; i < columnNames.size(); ++i) {
+                    ss << "'" << columnNames[i] << "'";
+                    if(i < columnNames.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << ")";
                 return ss.str();
             }
         };

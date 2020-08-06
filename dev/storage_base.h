@@ -524,8 +524,8 @@ namespace sqlite_orm {
             template<class T>
             static int foreign_keys_count(T &storageImpl) {
                 auto res = 0;
-                storageImpl.for_each([&res](auto impl) {
-                    res += impl->foreign_keys_count();
+                storageImpl.for_each([&res](auto &impl) {
+                    res += impl.foreign_keys_count();
                 });
                 return res;
             }
