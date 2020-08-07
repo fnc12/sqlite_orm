@@ -28,7 +28,7 @@ namespace sqlite_orm {
 
         struct storage_impl_base {
 
-            bool table_exists(const std::string &tableName, sqlite3 *db) {
+            bool table_exists(const std::string &tableName, sqlite3 *db) const {
                 auto res = false;
                 std::stringstream ss;
                 ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '"
@@ -54,7 +54,7 @@ namespace sqlite_orm {
                 return res;
             }
 
-            void rename_table(sqlite3 *db, const std::string &oldName, const std::string &newName) {
+            void rename_table(sqlite3 *db, const std::string &oldName, const std::string &newName) const {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << oldName << " RENAME TO " << newName;
                 auto query = ss.str();
@@ -112,7 +112,7 @@ namespace sqlite_orm {
                 return notEqual;
             }
 
-            std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) {
+            std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) const {
                 std::vector<table_info> res;
                 auto query = "PRAGMA table_info('" + tableName + "')";
                 auto rc = sqlite3_exec(
@@ -161,7 +161,7 @@ namespace sqlite_orm {
             template<class L>
             void for_each(const L &l) {
                 this->super::for_each(l);
-                l(this);
+                l(*this);
             }
 
 #if SQLITE_VERSION_NUMBER >= 3006019
@@ -261,7 +261,7 @@ namespace sqlite_orm {
                 }
             }
 
-            void add_column(const table_info &ti, sqlite3 *db) {
+            void add_column(const table_info &ti, sqlite3 *db) const {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name << " ";
                 ss << ti.type << " ";
@@ -295,7 +295,8 @@ namespace sqlite_orm {
              *  Copies current table to another table with a given **name**.
              *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
              */
-            void copy_table(sqlite3 *db, const std::string &name, const std::vector<table_info *> &columnsToIgnore) {
+            void
+            copy_table(sqlite3 *db, const std::string &name, const std::vector<table_info *> &columnsToIgnore) const {
                 std::ignore = columnsToIgnore;
 
                 std::stringstream ss;
@@ -346,7 +347,7 @@ namespace sqlite_orm {
                 }
             }
 
-            sync_schema_result schema_status(sqlite3 *db, bool preserve) {
+            sync_schema_result schema_status(sqlite3 *db, bool preserve) const {
 
                 auto res = sync_schema_result::already_in_sync;
 

@@ -232,7 +232,7 @@ namespace sqlite_orm {
                 });
             }
 
-            std::vector<table_info> get_table_info() {
+            std::vector<table_info> get_table_info() const {
                 std::vector<table_info> res;
                 res.reserve(size_t(this->columns_count));
                 this->for_each_column([&res](auto &col) {
