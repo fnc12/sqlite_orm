@@ -156,7 +156,7 @@ before_install:
       sudo apt-get update -qq -y
       sudo apt-get install -y cmake
       sudo rm -r /usr/local/cmake-3.12.4/
-    fi'
+    fi
 
 # scripts to run before build
 before_script:
