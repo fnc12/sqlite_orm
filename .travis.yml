@@ -47,7 +47,6 @@ matrix:
       addons:
         homebrew:
           packages:
-            - catch2
             - ninja
           update: true
 
@@ -58,7 +57,6 @@ matrix:
         homebrew:
           packages:
             - llvm
-            - catch2
             - ninja
           update: true
       env:
@@ -78,7 +76,6 @@ matrix:
         homebrew:
           packages:
             - gcc@6
-            - catch2
             - ninja
           update: true
       env:
@@ -121,7 +118,6 @@ matrix:
       addons:
         homebrew:
           packages:
-            - catch2
             - ninja
           update: true
 
@@ -132,7 +128,6 @@ matrix:
         homebrew:
           packages:
             - llvm
-            - catch2
             - ninja
           update: true
       env:
