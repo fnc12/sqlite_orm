@@ -5375,6 +5375,10 @@ namespace sqlite_orm {
 
     }
 
+    /**
+     * Use this function to specify indexed column inside `make_index` function call.
+     * Example: make_index("index_name", indexed_column(&User::id).asc())
+     */
     template<class C>
     internal::indexed_column_t<C> indexed_column(C column_or_expression) {
         return {std::move(column_or_expression)};
@@ -11114,10 +11118,10 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << '(';
                 auto index = 0;
-                const auto tupleSize = int(std::tuple_size<statement_type>::value);
+                using TupleSize = std::tuple_size<statement_type>;
                 iterate_tuple(statement, [&context, &index, &ss](auto &value) {
                     ss << serialize(value, context);
-                    if(index < tupleSize - 1) {
+                    if(index < TupleSize::value - 1) {
                         ss << ", ";
                     }
                     ++index;
@@ -11142,10 +11146,10 @@ namespace sqlite_orm {
                     auto index = 0;
                     auto &tuple = statement.tuple;
                     using tuple_type = typename std::decay<decltype(tuple)>::type;
-                    const auto tupleSize = int(std::tuple_size<tuple_type>::value);
+                    using TupleSize = std::tuple_size<tuple_type>;
                     iterate_tuple(tuple, [&context, &index, &ss](auto &value) {
                         ss << serialize(value, context);
-                        if(index < tupleSize - 1) {
+                        if(index < TupleSize::value - 1) {
                             ss << ", ";
                         }
                         ++index;
