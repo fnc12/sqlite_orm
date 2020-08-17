@@ -9,6 +9,7 @@
 #include "tuple_helper.h"
 #include "core_functions.h"
 #include "prepared_statement.h"
+#include "values.h"
 
 namespace sqlite_orm {
 
@@ -488,5 +489,26 @@ namespace sqlite_orm {
                 iterate_ast(a.argument, l);
             }
         };
+
+        template<class... Args>
+        struct ast_iterator<values_t<Args...>, void> {
+            using node_type = values_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type &node, const L &l) const {
+                iterate_ast(node.tuple, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<dynamic_values_t<T>, void> {
+            using node_type = dynamic_values_t<T>;
+
+            template<class L>
+            void operator()(const node_type &node, const L &l) const {
+                iterate_ast(node.vector, l);
+            }
+        };
+
     }
 }
