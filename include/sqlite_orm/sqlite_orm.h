@@ -7549,6 +7549,40 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 }
 
+// #include "values.h"
+
+#include <vector>  //  std::vector
+#include <initializer_list>
+#include <tuple>  //  std::tuple
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<class... Args>
+        struct values_t {
+            std::tuple<Args...> tuple;
+        };
+
+        template<class T>
+        struct dynamic_values_t {
+            std::vector<T> vector;
+        };
+
+    }
+
+    template<class... Args>
+    internal::values_t<Args...> values(Args... args) {
+        return {{std::forward<Args>(args)...}};
+    }
+
+    template<class T>
+    internal::dynamic_values_t<T> values(std::vector<T> vector) {
+        return {{move(vector)}};
+    }
+
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -8027,6 +8061,27 @@ namespace sqlite_orm {
                 iterate_ast(a.argument, l);
             }
         };
+
+        template<class... Args>
+        struct ast_iterator<values_t<Args...>, void> {
+            using node_type = values_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type &node, const L &l) const {
+                iterate_ast(node.tuple, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<dynamic_values_t<T>, void> {
+            using node_type = dynamic_values_t<T>;
+
+            template<class L>
+            void operator()(const node_type &node, const L &l) const {
+                iterate_ast(node.vector, l);
+            }
+        };
+
     }
 }
 
@@ -9458,38 +9513,6 @@ namespace sqlite_orm {
 }
 
 // #include "values.h"
-
-#include <vector>  //  std::vector
-#include <initializer_list>
-#include <tuple>  //  std::tuple
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        template<class... Args>
-        struct values_t {
-            std::tuple<Args...> tuple;
-        };
-
-        template<class T>
-        struct dynamic_values_t {
-            std::vector<T> vector;
-        };
-
-    }
-
-    template<class... Args>
-    internal::values_t<Args...> values(Args... args) {
-        return {{std::forward<Args>(args)...}};
-    }
-
-    template<class T>
-    internal::dynamic_values_t<T> values(std::vector<T> vector) {
-        return {{move(vector)}};
-    }
-
-}
 
 // #include "table_type.h"
 
