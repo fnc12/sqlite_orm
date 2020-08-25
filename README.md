@@ -16,8 +16,6 @@ SQLite ORM light header only library for modern C++
 | [`master`](https://github.com/fnc12/sqlite_orm/tree/master) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=master&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/) |
 | [`dev`](https://github.com/fnc12/sqlite_orm/tree/dev) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=dev)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=dev&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/tree/dev) |
 
-<a href="https://tracking.gitads.io/?repo=sqlite_orm"><img src="https://images.gitads.io/sqlite_orm" alt="GitAds"/></a>
-
 # Advantages
 
 * **No raw string queries**
@@ -795,3 +793,7 @@ If you want to use the lib directly with Make or something else, just set the in
 
 * C++14 compatible compiler (not C++11 cause of templated lambdas in the lib).
 * Sqlite3 installed on your system and in the path, so cmake can find it (or linked to you project if you don't use cmake)
+
+# SqliteMan
+
+In case you need a native SQLite client for macOS or Windows 10 you can use SqliteMan https://sqliteman.dev. It is not a commercial. It is a free native client being developed by the maintainer of this repo.
