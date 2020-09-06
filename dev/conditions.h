@@ -72,7 +72,7 @@ namespace sqlite_orm {
             T expr;
             internal::collate_argument argument;
 
-            collate_t(T expr_, internal::collate_argument argument_) : expr(expr_), argument(argument_) {}
+            collate_t(T expr_, internal::collate_argument argument_) : expr(std::move(expr_)), argument(argument_) {}
 
             operator std::string() const {
                 return constraints::collate_t{this->argument};

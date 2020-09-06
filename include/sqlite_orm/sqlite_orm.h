@@ -1922,7 +1922,7 @@ namespace sqlite_orm {
             T expr;
             internal::collate_argument argument;
 
-            collate_t(T expr_, internal::collate_argument argument_) : expr(expr_), argument(argument_) {}
+            collate_t(T expr_, internal::collate_argument argument_) : expr(std::move(expr_)), argument(argument_) {}
 
             operator std::string() const {
                 return constraints::collate_t{this->argument};
@@ -8079,6 +8079,16 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type &node, const L &l) const {
                 iterate_ast(node.vector, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<collate_t<T>, void> {
+            using node_type = collate_t<T>;
+
+            template<class L>
+            void operator()(const node_type &node, const L &l) const {
+                iterate_ast(node.expr, l);
             }
         };
 
