@@ -4979,14 +4979,14 @@ namespace sqlite_orm {
             std::transform(str.begin(), str.end(), std::back_inserter(upper_str), [](char c) {
                 return static_cast<char>(std::toupper(static_cast<int>(c)));
             });
-            static std::array<journal_mode, 6> all = {
+            static std::array<journal_mode, 6> all = {{
                 journal_mode::DELETE,
                 journal_mode::TRUNCATE,
                 journal_mode::PERSIST,
                 journal_mode::MEMORY,
                 journal_mode::WAL,
                 journal_mode::OFF,
-            };
+            }};
             for(auto j: all) {
                 if(to_string(j) == upper_str) {
                     return std::make_unique<journal_mode>(j);
