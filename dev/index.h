@@ -20,8 +20,8 @@ namespace sqlite_orm {
             using columns_type = std::tuple<Cols...>;
             using object_type = void;
 
-            index_t(std::string name, bool unique, columns_type columns_) :
-                index_base{move(name), unique}, columns(move(columns_)) {}
+            index_t(std::string name_, bool unique_, columns_type columns_) :
+                index_base{move(name_), unique_}, columns(move(columns_)) {}
 
             columns_type columns;
         };

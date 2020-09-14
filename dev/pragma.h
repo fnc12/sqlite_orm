@@ -69,7 +69,7 @@ namespace sqlite_orm {
         T get_pragma(const std::string &name) {
             auto connection = this->get_connection();
             auto query = "PRAGMA " + name;
-            T res;
+            T result;
             auto db = connection.get();
             auto rc = sqlite3_exec(
                 db,
@@ -81,10 +81,10 @@ namespace sqlite_orm {
                     }
                     return 0;
                 },
-                &res,
+                &result,
                 nullptr);
             if(rc == SQLITE_OK) {
-                return res;
+                return result;
             } else {
                 throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                         sqlite3_errmsg(db));

@@ -123,8 +123,8 @@ namespace sqlite_orm {
             using left_type = typename compound_operator<L, R>::left_type;
             using right_type = typename compound_operator<L, R>::right_type;
 
-            union_t(left_type l, right_type r, decltype(all) all) :
-                compound_operator<L, R>(std::move(l), std::move(r)), union_base{all} {}
+            union_t(left_type l, right_type r, decltype(all) all_) :
+                compound_operator<L, R>(std::move(l), std::move(r)), union_base{all_} {}
 
             union_t(left_type l, right_type r) : union_t(std::move(l), std::move(r), false) {}
         };

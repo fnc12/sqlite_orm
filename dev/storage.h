@@ -808,7 +808,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Args>
-            prepared_statement_t<get_all_t<T, Args...>> prepare(get_all_t<T, Args...> get) {
+            prepared_statement_t<get_all_t<T, Args...>> prepare(get_all_t<T, Args...> get_) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -816,9 +816,9 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(get, context);
+                auto query = serialize(get_, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(get), stmt, con};
+                    return {std::move(get_), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -826,7 +826,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Args>
-            prepared_statement_t<get_all_pointer_t<T, Args...>> prepare(get_all_pointer_t<T, Args...> get) {
+            prepared_statement_t<get_all_pointer_t<T, Args...>> prepare(get_all_pointer_t<T, Args...> get_) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -834,9 +834,9 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(get, context);
+                auto query = serialize(get_, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(get), stmt, con};
+                    return {std::move(get_), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -845,7 +845,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class R, class... Args>
-            prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> get) {
+            prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> get_) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -853,9 +853,9 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(get, context);
+                auto query = serialize(get_, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(get), stmt, con};
+                    return {std::move(get_), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -901,7 +901,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> get) {
+            prepared_statement_t<get_t<T, Ids...>> prepare(get_t<T, Ids...> get_) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -909,9 +909,9 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(get, context);
+                auto query = serialize(get_, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(get), stmt, con};
+                    return {std::move(get_), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -919,7 +919,7 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> get) {
+            prepared_statement_t<get_pointer_t<T, Ids...>> prepare(get_pointer_t<T, Ids...> get_) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -927,9 +927,9 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(get, context);
+                auto query = serialize(get_, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(get), stmt, con};
+                    return {std::move(get_), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -938,7 +938,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Ids>
-            prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> get) {
+            prepared_statement_t<get_optional_t<T, Ids...>> prepare(get_optional_t<T, Ids...> get_) {
                 auto con = this->get_connection();
                 sqlite3_stmt *stmt;
                 auto db = con.get();
@@ -946,9 +946,9 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
-                auto query = serialize(get, context);
+                auto query = serialize(get_, context);
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    return {std::move(get), stmt, con};
+                    return {std::move(get_), stmt, con};
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));

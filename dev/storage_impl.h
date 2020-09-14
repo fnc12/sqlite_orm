@@ -29,7 +29,7 @@ namespace sqlite_orm {
         struct storage_impl_base {
 
             bool table_exists(const std::string &tableName, sqlite3 *db) const {
-                auto res = false;
+                auto result = false;
                 std::stringstream ss;
                 ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '"
                    << "table"
@@ -45,13 +45,13 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &res,
+                    &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
-                return res;
+                return result;
             }
 
             void rename_table(sqlite3 *db, const std::string &oldName, const std::string &newName) const {
@@ -113,7 +113,7 @@ namespace sqlite_orm {
             }
 
             std::vector<table_info> get_table_info(const std::string &tableName, sqlite3 *db) const {
-                std::vector<table_info> res;
+                std::vector<table_info> result;
                 auto query = "PRAGMA table_info('" + tableName + "')";
                 auto rc = sqlite3_exec(
                     db,
@@ -133,13 +133,13 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &res,
+                    &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
-                return res;
+                return result;
             }
         };
 
