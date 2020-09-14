@@ -355,7 +355,7 @@ namespace sqlite_orm {
             L l;  //  left expression
             A arg;  //  in arg
 
-            in_t(L l_, A arg_, bool negative) : in_base{negative}, l(l_), arg(std::move(arg_)) {}
+            in_t(L l_, A arg_, bool negative_) : in_base{negative_}, l(l_), arg(std::move(arg_)) {}
         };
 
         struct is_null_string {
@@ -494,8 +494,8 @@ namespace sqlite_orm {
         struct dynamic_order_by_entry_t : order_by_base {
             std::string name;
 
-            dynamic_order_by_entry_t(decltype(name) name_, int asc_desc, std::string collate_argument) :
-                order_by_base{asc_desc, move(collate_argument)}, name(move(name_)) {}
+            dynamic_order_by_entry_t(decltype(name) name_, int asc_desc_, std::string collate_argument_) :
+                order_by_base{asc_desc_, move(collate_argument_)}, name(move(name_)) {}
         };
 
         /**
@@ -613,8 +613,8 @@ namespace sqlite_orm {
             sqlite_orm::internal::optional_container<escape_t>
                 arg3;  //  not escape cause escape exists as a function here
 
-            like_t(arg_t arg_, pattern_t pattern_, sqlite_orm::internal::optional_container<escape_t> escape) :
-                arg(std::move(arg_)), pattern(std::move(pattern_)), arg3(std::move(escape)) {}
+            like_t(arg_t arg_, pattern_t pattern_, sqlite_orm::internal::optional_container<escape_t> escape_) :
+                arg(std::move(arg_)), pattern(std::move(pattern_)), arg3(std::move(escape_)) {}
 
             template<class C>
             like_t<A, T, C> escape(C c) const {

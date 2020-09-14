@@ -177,10 +177,10 @@ namespace sqlite_orm {
                     db,
                     sql.c_str(),
                     [](void *data, int argc, char **argv, char * * /*columnName*/) -> int {
-                        auto &tableNames = *(data_t *)data;
+                        auto &tableNames_ = *(data_t *)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
-                                tableNames.push_back(argv[i]);
+                                tableNames_.push_back(argv[i]);
                             }
                         }
                         return 0;
@@ -357,7 +357,7 @@ namespace sqlite_orm {
 
             bool foreign_keys(sqlite3 *db) {
                 std::string query = "PRAGMA foreign_keys";
-                auto res = false;
+                auto result = false;
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
@@ -368,13 +368,13 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &res,
+                    &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
-                return res;
+                return result;
             }
 
 #endif
@@ -468,7 +468,7 @@ namespace sqlite_orm {
             }
 
             std::string current_timestamp(sqlite3 *db) {
-                std::string res;
+                std::string result;
                 std::stringstream ss;
                 ss << "SELECT CURRENT_TIMESTAMP";
                 auto query = ss.str();
@@ -484,13 +484,13 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &res,
+                    &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
-                return res;
+                return result;
             }
 
             void drop_table_internal(const std::string &tableName, sqlite3 *db) {

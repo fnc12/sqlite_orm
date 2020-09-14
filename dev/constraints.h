@@ -170,8 +170,8 @@ namespace sqlite_orm {
 
             const foreign_key_type &fk;
 
-            on_update_delete_t(decltype(fk) fk_, decltype(update) update, foreign_key_action action_) :
-                on_update_delete_base{update}, fk(fk_), _action(action_) {}
+            on_update_delete_t(decltype(fk) fk_, decltype(update) update_, foreign_key_action action_) :
+                on_update_delete_base{update_}, fk(fk_), _action(action_) {}
 
             foreign_key_action _action = foreign_key_action::none;
 
@@ -284,8 +284,8 @@ namespace sqlite_orm {
             foreign_key_intermediate_t(tuple_type columns_) : columns(std::move(columns_)) {}
 
             template<class... Rs>
-            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... references) {
-                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...)};
+            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
+                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(refs)...)};
             }
         };
 #endif

@@ -134,8 +134,8 @@ namespace sqlite_orm {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node) {
-                    result = const_cast<typename std::remove_reference<decltype(result)>::type>(&node);
+                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &r, auto &n) {
+                    r = const_cast<typename std::remove_reference<decltype(r)>::type>(&n);
                 })(result, node);
             }
         });
@@ -157,8 +157,8 @@ namespace sqlite_orm {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &result, auto &node) {
-                    result = const_cast<typename std::remove_reference<decltype(result)>::type>(&node);
+                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto &r, auto &n) {
+                    r = const_cast<typename std::remove_reference<decltype(r)>::type>(&n);
                 })(result, node);
             }
         });

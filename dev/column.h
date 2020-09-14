@@ -59,12 +59,12 @@ namespace sqlite_orm {
              */
             constraints_type constraints;
 
-            column_t(std::string name,
+            column_t(std::string name_,
                      member_pointer_t member_pointer_,
                      getter_type getter_,
                      setter_type setter_,
                      constraints_type constraints_) :
-                column_base{std::move(name)},
+                column_base{std::move(name_)},
                 member_pointer(member_pointer_), getter(getter_), setter(setter_), constraints(move(constraints_)) {}
 
             /**

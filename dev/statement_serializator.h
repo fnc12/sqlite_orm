@@ -360,8 +360,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type &c, const C &context) const {
                 std::stringstream ss;
                 ss << "CASE ";
-                c.case_expression.apply([&ss, context](auto &c) {
-                    ss << serialize(c, context) << " ";
+                c.case_expression.apply([&ss, context](auto &c_) {
+                    ss << serialize(c_, context) << " ";
                 });
                 iterate_tuple(c.args, [&ss, context](auto &pair) {
                     ss << "WHEN " << serialize(pair.first, context) << " ";
@@ -1046,17 +1046,17 @@ namespace sqlite_orm {
                 }
                 ss << "VALUES ";
                 auto valuesString = [columnNamesCount] {
-                    std::stringstream ss;
-                    ss << "(";
+                    std::stringstream ss_;
+                    ss_ << "(";
                     for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
+                        ss_ << "?";
                         if(i < columnNamesCount - 1) {
-                            ss << ", ";
+                            ss_ << ", ";
                         } else {
-                            ss << ")";
+                            ss_ << ")";
                         }
                     }
-                    return ss.str();
+                    return ss_.str();
                 }();
                 auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
                 for(auto i = 0; i < valuesCount; ++i) {
@@ -1101,17 +1101,17 @@ namespace sqlite_orm {
                 }
                 ss << "VALUES ";
                 auto valuesString = [columnNamesCount] {
-                    std::stringstream ss;
-                    ss << "(";
+                    std::stringstream ss_;
+                    ss_ << "(";
                     for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
+                        ss_ << "?";
                         if(i < columnNamesCount - 1) {
-                            ss << ", ";
+                            ss_ << ", ";
                         } else {
-                            ss << ")";
+                            ss_ << ")";
                         }
                     }
-                    return ss.str();
+                    return ss_.str();
                 }();
                 auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
                 for(auto i = 0; i < valuesCount; ++i) {
