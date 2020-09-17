@@ -183,6 +183,25 @@ TEST_CASE("Busy timeout") {
     storage.busy_timeout(500);
 }
 
+TEST_CASE("Busy handler") {
+    auto storage = make_storage("testBusyHandler.sqlite");
+    int value = 42;
+    storage.busy_handler<int>(
+        [](int *ptr, int times) -> int {
+            int ptr_value = *ptr;
+            return (ptr_value == 42) ? 1 : 0;
+        },
+        value);
+
+    // Test if lambda captures compile successfully
+    storage.busy_handler<int>(
+        [&value](int *ptr, int times) -> int {
+            int ptr_value = *ptr;
+            return (ptr_value == value) ? 1 : 0;
+        },
+        value);
+}
+
 TEST_CASE("Aggregate functions") {
     struct User {
         int id;

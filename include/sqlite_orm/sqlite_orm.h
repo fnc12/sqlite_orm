@@ -8701,6 +8701,25 @@ namespace sqlite_orm {
                 return sqlite3_busy_timeout(con.get(), ms);
             }
 
+            /*
+             * Ownership is NOT transferred, i.e. data
+             * must not go out of scope for the lifetime of the database.
+             */
+            template<typename T = void>
+            int busy_handler(std::function<int(T *, int)> f, T &data) {
+                handler = {[f{move(f)}](void *ptr, int times) -> int {
+                               return f(reinterpret_cast<T *>(ptr), times);
+                           },
+                           (void *)&data};
+                return sqlite3_busy_handler(
+                    this->get_connection().get(),
+                    [](void *ptr, int times) -> int {
+                        auto h = *reinterpret_cast<handler_t *>(ptr);
+                        return h.fn(reinterpret_cast<T *>(h.ptr), times);
+                    },
+                    &handler);
+            }
+
             /**
              *  Returns libsqlite3 lib version, not sqlite_orm
              */
@@ -8916,6 +8935,11 @@ namespace sqlite_orm {
             std::unique_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
+
+            struct handler_t final {
+                std::function<int(void *, int)> fn;
+                void *ptr;
+            } handler;
 
             connection_ref get_connection() {
                 connection_ref res{*this->connection};
