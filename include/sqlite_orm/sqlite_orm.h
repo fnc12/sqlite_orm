@@ -8710,8 +8710,6 @@ namespace sqlite_orm {
 
             bool transaction(const std::function<bool()> &f) {
                 this->begin_transaction();
-                //                auto con = this->get_connection();
-                //                auto db = con.get();
                 auto shouldCommit = f();
                 if(shouldCommit) {
                     this->commit();
