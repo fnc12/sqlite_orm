@@ -8710,13 +8710,11 @@ namespace sqlite_orm {
 
             bool transaction(const std::function<bool()> &f) {
                 this->begin_transaction();
-                auto con = this->get_connection();
-                auto db = con.get();
                 auto shouldCommit = f();
                 if(shouldCommit) {
-                    this->commit(db);
+                    this->commit();
                 } else {
-                    this->rollback(db);
+                    this->rollback();
                 }
                 return shouldCommit;
             }
@@ -8871,6 +8869,14 @@ namespace sqlite_orm {
 
             const std::string &filename() const {
                 return this->connection->filename;
+            }
+
+            /**
+             * Checks whether connection to database is opened right now.
+             * Returns always `true` for in memory databases.
+             */
+            bool is_opened() const {
+                return this->connection->retain_count() > 0;
             }
 
           protected:
