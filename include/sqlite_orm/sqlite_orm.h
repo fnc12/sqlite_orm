@@ -8702,7 +8702,7 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Returns libsqltie3 lib version, not sqlite_orm
+             *  Returns libsqlite3 lib version, not sqlite_orm
              */
             std::string libversion() {
                 return sqlite3_libversion();
