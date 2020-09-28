@@ -8199,6 +8199,14 @@ namespace sqlite_orm {
 
         pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
 
+        void busy_timeout(int value) {
+            this->set_pragma("busy_timeout", value);
+        }
+
+        int busy_timeout() {
+            return this->get_pragma<int>("busy_timeout");
+        }
+
         sqlite_orm::journal_mode journal_mode() {
             return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
         }
@@ -8879,6 +8887,19 @@ namespace sqlite_orm {
                 return this->connection->retain_count() > 0;
             }
 
+            int busy_handler(std::function<int(int)> handler) {
+                _busy_handler = move(handler);
+                if(this->is_opened()) {
+                    if(_busy_handler) {
+                        return sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
+                    } else {
+                        return sqlite3_busy_handler(this->connection->get(), nullptr, nullptr);
+                    }
+                } else {
+                    return SQLITE_OK;
+                }
+            }
+
           protected:
             storage_base(const std::string &filename_, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
@@ -8916,6 +8937,7 @@ namespace sqlite_orm {
             std::unique_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
+            std::function<int(int)> _busy_handler;
 
             connection_ref get_connection() {
                 connection_ref res{*this->connection};
@@ -8986,6 +9008,10 @@ namespace sqlite_orm {
 
                 for(auto &p: this->limit.limits) {
                     sqlite3_limit(db, p.first, p.second);
+                }
+
+                if(_busy_handler) {
+                    sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
                 }
 
                 if(this->on_open) {
@@ -9101,6 +9127,15 @@ namespace sqlite_orm {
             static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {
                 auto &f = *(collating_function *)arg;
                 return f(leftLen, lhs, rightLen, rhs);
+            }
+
+            static int busy_handler_callback(void *selfPointer, int triesCount) {
+                auto &storage = *static_cast<storage_base *>(selfPointer);
+                if(storage._busy_handler) {
+                    return storage._busy_handler(triesCount);
+                } else {
+                    return 0;
+                }
             }
 
             //  returns foreign keys count in storage definition

@@ -99,3 +99,22 @@ TEST_CASE("Auto vacuum") {
     storage.pragma.auto_vacuum(2);
     REQUIRE(storage.pragma.auto_vacuum() == 2);
 }
+
+TEST_CASE("busy_timeout") {
+    auto storage = make_storage({});
+
+    auto value = storage.pragma.busy_timeout();
+    REQUIRE(value == 0);
+
+    storage.pragma.busy_timeout(10);
+    value = storage.pragma.busy_timeout();
+    REQUIRE(value == 10);
+
+    storage.pragma.busy_timeout(20);
+    value = storage.pragma.busy_timeout();
+    REQUIRE(value == 20);
+
+    storage.pragma.busy_timeout(-1);
+    value = storage.pragma.busy_timeout();
+    REQUIRE(value == 0);
+}
