@@ -3,6 +3,13 @@
 
 using namespace sqlite_orm;
 
+TEST_CASE("busy handler") {
+    auto storage = make_storage({});
+    storage.busy_handler([](int /*timesCount*/) {
+        return 0;
+    });
+}
+
 TEST_CASE("drop table") {
     struct User {
         int id = 0;

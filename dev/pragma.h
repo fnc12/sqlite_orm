@@ -21,6 +21,14 @@ namespace sqlite_orm {
 
         pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
 
+        void busy_timeout(int value) {
+            this->set_pragma("busy_timeout", value);
+        }
+
+        int busy_timeout() {
+            return this->get_pragma<int>("busy_timeout");
+        }
+
         sqlite_orm::journal_mode journal_mode() {
             return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
         }
