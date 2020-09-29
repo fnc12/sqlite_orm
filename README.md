@@ -42,7 +42,6 @@ SQLite ORM light header only library for modern C++
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
 * **C++ standard code style**
-* **No undefined behaviour** - if something goes wrong lib throws an exception
 * **In memory database support** - provide `:memory:` or empty filename
 * **COLLATE support**
 * **Limits setting/getting support**
@@ -793,6 +792,10 @@ If you want to use the lib directly with Make or something else, just set the in
 
 * C++14 compatible compiler (not C++11 cause of templated lambdas in the lib).
 * Sqlite3 installed on your system and in the path, so cmake can find it (or linked to you project if you don't use cmake)
+
+# Video from conference
+
+[![Video from conference](https://img.youtube.com/vi/ngsilquWgpo/0.jpg)](https://www.youtube.com/watch?v=ngsilquWgpo)
 
 # SqliteMan
 
