@@ -7,7 +7,6 @@
 * `ATTACH`
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
 * explicit FROM for subqueries in FROM argument
-* busy handler https://sqlite.org/c3ref/busy_handler.html
 * CREATE VIEW and other view operations https://sqlite.org/lang_createview.html
 * triggers
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
