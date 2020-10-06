@@ -769,7 +769,7 @@ You might need admin rights for the last command.
 
 # Usage
 
-## Cmake 
+## CMake
 
 If you use cmake, there are two supported ways how to use it with cmake (if another works as well or should be supported, open an issue). 
 
@@ -779,12 +779,18 @@ Either way you choose, the include path as well as the dependency sqlite3 will b
 
 If you have installed the lib system wide and it's in your PATH, you can use find_package to include it in cmake. It will make a target `sqlite_orm::sqlite_orm` available which you can link against. Have a look at examples/find_package for a full example.
 
+```cmake
+find_package(SqliteOrm REQUIRED)
+
+target_link_libraries(main PRIVATE sqlite_orm::sqlite_orm)
+```
+
 ## Fetch Content (Recommended)
 
 Alternatively, cmake can download the project directly from github during configure stage and therefore you don't need to install the lib before.
 Againt a target `sqlite_orm::sqlite_orm` will be available which you can link against. Have a look at examples/fetch_content for a full example.
 
-## None cmake
+## No CMake
 
 If you want to use the lib directly with Make or something else, just set the inlcude path correctly (should be correct on Linux already), so `sqlite_orm/sqlite_orm.h` is found. As this is a header only lib, there is nothing more you have to do.
 
