@@ -58,15 +58,7 @@ namespace sqlite_orm {
             void rename_table(sqlite3 *db, const std::string &oldName, const std::string &newName) const {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << oldName << " RENAME TO " << newName;
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(db, ss.str());
             }
 
             static bool get_remove_add_columns(std::vector<table_info *> &columnsToAdd,
@@ -270,16 +262,7 @@ namespace sqlite_orm {
                 if(ti.dflt_value.length()) {
                     ss << "DEFAULT " << ti.dflt_value << " ";
                 }
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                auto prepareResult = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
-                if(prepareResult == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(db, ss.str());
             }
 
             /**
@@ -322,15 +305,7 @@ namespace sqlite_orm {
                     ss << " ";
                 }
                 ss << "FROM '" << this->table.name << "' ";
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(db, ss.str());
             }
 
             sync_schema_result schema_status(sqlite3 *db, bool preserve) const {

@@ -42,33 +42,13 @@ namespace sqlite_orm {
             }
 
             void drop_index(const std::string &indexName) {
-                auto con = this->get_connection();
-                auto db = con.get();
                 std::stringstream ss;
                 ss << "DROP INDEX '" << indexName + "'";
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(get_connection().get(), ss.str());
             }
 
             void vacuum() {
-                auto con = this->get_connection();
-                auto db = con.get();
-                std::string query = "VACUUM";
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(get_connection().get(), "VACUUM");
             }
 
             /**
@@ -83,10 +63,9 @@ namespace sqlite_orm {
              * Rename table named `from` to `to`.
              */
             void rename_table(const std::string &from, const std::string &to) {
-                auto con = this->get_connection();
                 std::stringstream ss;
                 ss << "ALTER TABLE '" << from << "' RENAME TO '" << to << "'";
-                this->perform_query_without_result(ss.str(), con.get());
+                perform_void_exec(get_connection().get(), ss.str());
             }
 
             /**
@@ -220,12 +199,12 @@ namespace sqlite_orm {
                     this->on_open_internal(this->connection->get());
                 }
                 auto db = this->connection->get();
-                this->begin_transaction(db);
+                perform_void_exec(db, "BEGIN TRANSACTION");
             }
 
             void commit() {
                 auto db = this->connection->get();
-                this->commit(db);
+                perform_void_exec(db, "COMMIT");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
                     throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
@@ -234,7 +213,7 @@ namespace sqlite_orm {
 
             void rollback() {
                 auto db = this->connection->get();
-                this->rollback(db);
+                perform_void_exec(db, "ROLLBACK");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
                     throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
@@ -358,12 +337,7 @@ namespace sqlite_orm {
             void foreign_keys(sqlite3 *db, bool value) {
                 std::stringstream ss;
                 ss << "PRAGMA foreign_keys = " << value;
-                auto query = ss.str();
-                auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(db, ss.str());
             }
 
             bool foreign_keys(sqlite3 *db) {
@@ -425,48 +399,6 @@ namespace sqlite_orm {
                 }
             }
 
-            void begin_transaction(sqlite3 *db) {
-                std::stringstream ss;
-                ss << "BEGIN TRANSACTION";
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
-            }
-
-            void commit(sqlite3 *db) {
-                std::stringstream ss;
-                ss << "COMMIT";
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
-            }
-
-            void rollback(sqlite3 *db) {
-                std::stringstream ss;
-                ss << "ROLLBACK";
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
-            }
-
             std::string current_timestamp(sqlite3 *db) {
                 std::string result;
                 std::stringstream ss;
@@ -496,18 +428,7 @@ namespace sqlite_orm {
             void drop_table_internal(const std::string &tableName, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "DROP TABLE '" << tableName + "'";
-                this->perform_query_without_result(ss.str(), db);
-            }
-
-            void perform_query_without_result(const std::string &query, sqlite3 *db) {
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(db, ss.str());
             }
 
             static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {

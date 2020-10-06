@@ -104,15 +104,7 @@ namespace sqlite_orm {
                 if(tableImpl.table._without_rowid) {
                     ss << "WITHOUT ROWID ";
                 }
-                auto query = ss.str();
-                sqlite3_stmt *stmt;
-                if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
-                    statement_finalizer finalizer{stmt};
-                    perform_step(db, stmt);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(db, ss.str());
             }
 
             template<class I>
@@ -655,11 +647,7 @@ namespace sqlite_orm {
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 auto query = serialize(tableImpl.table, context);
-                auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_void_exec(db, query);
                 return res;
             }
 

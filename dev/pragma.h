@@ -6,6 +6,7 @@
 #include <memory>  // std::shared_ptr
 
 #include "error_code.h"
+#include "util.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
 #include "connection_holder.h"
@@ -111,12 +112,7 @@ namespace sqlite_orm {
             }
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << value;
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
-            }
+            internal::perform_void_exec(db, ss.str());
         }
 
         void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
@@ -126,12 +122,7 @@ namespace sqlite_orm {
             }
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << internal::to_string(value);
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
-            }
+            internal::perform_void_exec(db, ss.str());
         }
     };
 }
