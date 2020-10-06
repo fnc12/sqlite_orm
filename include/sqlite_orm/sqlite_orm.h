@@ -5249,6 +5249,24 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <sqlite3.h>
+#include <system_error>  //  std::system_error, std::error_code
+
+namespace sqlite_orm {
+
+    namespace internal {
+        static void perform_step(sqlite3 *db, sqlite3_stmt *stmt) {
+            if(sqlite3_step(stmt) == SQLITE_DONE) {
+                //  done..
+            } else {
+                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                        sqlite3_errmsg(db));
+            }
+        }
+    }
+}
+#pragma once
+
 #include <ostream>
 
 namespace sqlite_orm {
@@ -6226,6 +6244,8 @@ namespace sqlite_orm {
 
 // #include "row_extractor.h"
 
+// #include "util.h"
+
 // #include "constraints.h"
 
 // #include "select_constraints.h"
@@ -6303,12 +6323,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -6521,12 +6536,7 @@ namespace sqlite_orm {
                 auto prepareResult = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(prepareResult == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -6577,12 +6587,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -8530,6 +8535,8 @@ namespace sqlite_orm {
 
 // #include "row_extractor.h"
 
+// #include "util.h"
+
 // #include "connection_holder.h"
 
 // #include "backup.h"
@@ -8634,12 +8641,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -8653,12 +8655,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -9026,12 +9023,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -9045,12 +9037,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -9064,12 +9051,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -9112,12 +9094,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -11331,12 +11308,7 @@ namespace sqlite_orm {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
-                    if(sqlite3_step(stmt) == SQLITE_DONE) {
-                        //  done..
-                    } else {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
+                    perform_step(db, stmt);
                 } else {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
@@ -12332,12 +12304,8 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    return sqlite3_last_insert_rowid(db);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_step(db, stmt);
+                return sqlite3_last_insert_rowid(db);
             }
 
             template<class It>
@@ -12373,12 +12341,7 @@ namespace sqlite_orm {
                         }
                     });
                 }
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    //..
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_step(db, stmt);
             }
 
             template<class It>
@@ -12417,12 +12380,7 @@ namespace sqlite_orm {
                         }
                     });
                 }
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    //..
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_step(db, stmt);
             }
 
             template<class T>
@@ -12454,12 +12412,7 @@ namespace sqlite_orm {
                         }
                     }
                 });
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    //..
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_step(db, stmt);
             }
 
             template<class T>
@@ -12501,13 +12454,8 @@ namespace sqlite_orm {
                         }
                     }
                 });
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    res = sqlite3_last_insert_rowid(db);
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
-                return res;
+                perform_step(db, stmt);
+                return sqlite3_last_insert_rowid(db);
             }
 
             template<class T, class... Ids>
@@ -12524,12 +12472,7 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    //  done..
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_step(db, stmt);
             }
 
             template<class T>
@@ -12587,12 +12530,7 @@ namespace sqlite_orm {
                         }
                     }
                 });
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    //  done..
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_step(db, stmt);
             }
 
             template<class T, class... Ids>
@@ -12711,12 +12649,7 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    //  done..
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_step(db, stmt);
             }
 
             template<class... Args, class... Wargs>
@@ -12744,12 +12677,7 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 });
-                if(sqlite3_step(stmt) == SQLITE_DONE) {
-                    //  done..
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
+                perform_step(db, stmt);
             }
 
             template<class T, class... Args, class R = typename column_result_t<self, T>::type>
