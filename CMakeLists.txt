@@ -6,7 +6,7 @@ cmake_minimum_required (VERSION 3.14.0)
 set(sqlite_orm_VERSION "1.3.0")
 set(PACKAGE_VERSION ${sqlite_orm_VERSION})
 
-project("sqlite_orm" LANGUAGES CXX VERSION ${PACKAGE_VERSION})
+project("sqlite_orm" VERSION ${PACKAGE_VERSION})
 
 # Handling C++ standard version to use
 option(SQLITE_ORM_ENABLE_CXX_17 "Enable C++ 17" OFF)
