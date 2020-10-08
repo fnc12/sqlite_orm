@@ -1,6 +1,6 @@
 # Defaults
 os: linux
-dist: bionic
+dist: focal
 
 matrix:
   include:
@@ -142,16 +142,7 @@ matrix:
         - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
 before_install:
-  - |
-    if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then
-      export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
-    else
-      wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
-      sudo apt-add-repository -y 'deb https://apt.kitware.com/ubuntu/ bionic main'
-      sudo apt-get update -qq -y
-      sudo apt-get install -y cmake
-      sudo rm -r /usr/local/cmake-3.12.4/
-    fi
+  - if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"; fi
 
 # scripts to run before build
 before_script:
