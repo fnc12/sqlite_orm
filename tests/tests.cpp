@@ -14,43 +14,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("Join iterator ctor compilation error") {
-    //  TODO: move to static tests
-    struct Tag {
-        int objectId;
-        std::string text;
-    };
-
-    auto storage =
-        make_storage("join_error.sqlite",
-                     make_table("tags", make_column("object_id", &Tag::objectId), make_column("text", &Tag::text)));
-    storage.sync_schema();
-
-    auto offs = 0;
-    auto lim = 5;
-    storage.select(columns(&Tag::text, count(&Tag::text)),
-                   group_by(&Tag::text),
-                   order_by(count(&Tag::text)).desc(),
-                   limit(offs, lim));
-    {
-        auto statement = storage.prepare(select(columns(&Tag::text, count(&Tag::text)),
-                                                group_by(&Tag::text),
-                                                order_by(count(&Tag::text)).desc(),
-                                                limit(offs, lim)));
-        REQUIRE(get<0>(statement) == offs);
-        REQUIRE(get<1>(statement) == lim);
-    }
-    {
-        auto statement = storage.prepare(select(columns(&Tag::text, count(&Tag::text)),
-                                                group_by(&Tag::text),
-                                                order_by(count(&Tag::text)).desc(),
-                                                limit(lim, offset(offs))));
-        REQUIRE(get<0>(statement) == lim);
-        REQUIRE(get<1>(statement) == offs);
-    }
-}
-
-TEST_CASE("limits") {
+TEST_CASE("Limits") {
     auto storage2 = make_storage("limits.sqlite");
     auto storage = storage2;
     storage.sync_schema();
@@ -356,6 +320,32 @@ TEST_CASE("Custom collate") {
                           where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                           order_by(&Item::name).collate("alwaysequal"));
     REQUIRE(rows.size() == static_cast<size_t>(storage.count<Item>()));
+}
+
+TEST_CASE("collate") {
+    struct User {
+        int id = 0;
+        std::string firstName;
+
+        bool operator==(const User &user) const {
+            return this->id == user.id && this->firstName == user.firstName;
+        }
+    };
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("first_name", &User::firstName)));
+    storage.sync_schema();
+    User user1{1, "HELLO"};
+    User user2{2, "Hello"};
+    User user3{3, "HEllo"};
+
+    storage.replace(user1);
+    storage.replace(user2);
+    storage.replace(user3);
+
+    auto rows = storage.get_all<User>(where(is_equal(&User::firstName, "hello").collate_nocase()));
+    std::vector<User> expected = {user1, user2, user3};
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("Vacuum") {

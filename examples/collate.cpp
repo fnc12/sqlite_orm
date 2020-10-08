@@ -33,9 +33,9 @@ int main(int, char **) {
     storage.remove_all<User>();
     storage.remove_all<Foo>();
 
-    storage.insert(User{0, "Lil Kim", time(nullptr)});
-    storage.insert(User{0, "lil kim", time(nullptr)});
-    storage.insert(User{0, "Nicki Minaj", time(nullptr)});
+    storage.insert(User{0, "Lil Kim", std::time(nullptr)});
+    storage.insert(User{0, "lil kim", std::time(nullptr)});
+    storage.insert(User{0, "Nicki Minaj", std::time(nullptr)});
 
     //  SELECT COUNT(*)
     //  FROM users

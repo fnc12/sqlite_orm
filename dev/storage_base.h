@@ -89,6 +89,16 @@ namespace sqlite_orm {
             }
 
             /**
+             * Rename table named `from` to `to`.
+             */
+            void rename_table(const std::string &from, const std::string &to) {
+                auto con = this->get_connection();
+                std::stringstream ss;
+                ss << "ALTER TABLE '" << from << "' RENAME TO '" << to << "'";
+                this->perform_query_without_result(ss.str(), con.get());
+            }
+
+            /**
              *  sqlite3_changes function.
              */
             int changes() {
@@ -121,15 +131,13 @@ namespace sqlite_orm {
                 return sqlite3_libversion();
             }
 
-            bool transaction(std::function<bool()> f) {
+            bool transaction(const std::function<bool()> &f) {
                 this->begin_transaction();
-                auto con = this->get_connection();
-                auto db = con.get();
                 auto shouldCommit = f();
                 if(shouldCommit) {
-                    this->commit(db);
+                    this->commit();
                 } else {
-                    this->rollback(db);
+                    this->rollback();
                 }
                 return shouldCommit;
             }
@@ -167,10 +175,10 @@ namespace sqlite_orm {
                     db,
                     sql.c_str(),
                     [](void *data, int argc, char **argv, char * * /*columnName*/) -> int {
-                        auto &tableNames = *(data_t *)data;
+                        auto &tableNames_ = *(data_t *)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
-                                tableNames.push_back(argv[i]);
+                                tableNames_.push_back(argv[i]);
                             }
                         }
                         return 0;
@@ -264,7 +272,8 @@ namespace sqlite_orm {
 
             backup_t make_backup_to(const std::string &filename) {
                 auto holder = std::make_unique<connection_holder>(filename);
-                return {connection_ref{*holder}, "main", this->get_connection(), "main", move(holder)};
+                connection_ref conRef{*holder};
+                return {conRef, "main", this->get_connection(), "main", move(holder)};
             }
 
             backup_t make_backup_to(storage_base &other) {
@@ -273,7 +282,8 @@ namespace sqlite_orm {
 
             backup_t make_backup_from(const std::string &filename) {
                 auto holder = std::make_unique<connection_holder>(filename);
-                return {this->get_connection(), "main", connection_ref{*holder}, "main", move(holder)};
+                connection_ref conRef{*holder};
+                return {this->get_connection(), "main", conRef, "main", move(holder)};
             }
 
             backup_t make_backup_from(storage_base &other) {
@@ -282,6 +292,27 @@ namespace sqlite_orm {
 
             const std::string &filename() const {
                 return this->connection->filename;
+            }
+
+            /**
+             * Checks whether connection to database is opened right now.
+             * Returns always `true` for in memory databases.
+             */
+            bool is_opened() const {
+                return this->connection->retain_count() > 0;
+            }
+
+            int busy_handler(std::function<int(int)> handler) {
+                _busy_handler = move(handler);
+                if(this->is_opened()) {
+                    if(_busy_handler) {
+                        return sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
+                    } else {
+                        return sqlite3_busy_handler(this->connection->get(), nullptr, nullptr);
+                    }
+                } else {
+                    return SQLITE_OK;
+                }
             }
 
           protected:
@@ -321,6 +352,7 @@ namespace sqlite_orm {
             std::unique_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
+            std::function<int(int)> _busy_handler;
 
             connection_ref get_connection() {
                 connection_ref res{*this->connection};
@@ -345,7 +377,7 @@ namespace sqlite_orm {
 
             bool foreign_keys(sqlite3 *db) {
                 std::string query = "PRAGMA foreign_keys";
-                auto res = false;
+                auto result = false;
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
@@ -356,13 +388,13 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &res,
+                    &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
-                return res;
+                return result;
             }
 
 #endif
@@ -391,6 +423,10 @@ namespace sqlite_orm {
 
                 for(auto &p: this->limit.limits) {
                     sqlite3_limit(db, p.first, p.second);
+                }
+
+                if(_busy_handler) {
+                    sqlite3_busy_handler(this->connection->get(), busy_handler_callback, this);
                 }
 
                 if(this->on_open) {
@@ -456,7 +492,7 @@ namespace sqlite_orm {
             }
 
             std::string current_timestamp(sqlite3 *db) {
-                std::string res;
+                std::string result;
                 std::stringstream ss;
                 ss << "SELECT CURRENT_TIMESTAMP";
                 auto query = ss.str();
@@ -472,19 +508,22 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &res,
+                    &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
-                return res;
+                return result;
             }
 
             void drop_table_internal(const std::string &tableName, sqlite3 *db) {
                 std::stringstream ss;
                 ss << "DROP TABLE '" << tableName + "'";
-                auto query = ss.str();
+                this->perform_query_without_result(ss.str(), db);
+            }
+
+            void perform_query_without_result(const std::string &query, sqlite3 *db) {
                 sqlite3_stmt *stmt;
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     statement_finalizer finalizer{stmt};
@@ -500,52 +539,26 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class S>
-            std::string process_order_by(const conditions::dynamic_order_by_t<S> &orderBy) const {
-                std::vector<std::string> expressions;
-                for(auto &entry: orderBy) {
-                    std::string entryString;
-                    {
-                        std::stringstream ss;
-                        ss << entry.name << " ";
-                        if(!entry._collate_argument.empty()) {
-                            ss << "COLLATE " << entry._collate_argument << " ";
-                        }
-                        switch(entry.asc_desc) {
-                            case 1:
-                                ss << "ASC";
-                                break;
-                            case -1:
-                                ss << "DESC";
-                                break;
-                        }
-                        entryString = ss.str();
-                    }
-                    expressions.push_back(move(entryString));
-                };
-                std::stringstream ss;
-                ss << static_cast<std::string>(orderBy) << " ";
-                for(size_t i = 0; i < expressions.size(); ++i) {
-                    ss << expressions[i];
-                    if(i < expressions.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << " ";
-                return ss.str();
-            }
-
             static int collate_callback(void *arg, int leftLen, const void *lhs, int rightLen, const void *rhs) {
                 auto &f = *(collating_function *)arg;
                 return f(leftLen, lhs, rightLen, rhs);
+            }
+
+            static int busy_handler_callback(void *selfPointer, int triesCount) {
+                auto &storage = *static_cast<storage_base *>(selfPointer);
+                if(storage._busy_handler) {
+                    return storage._busy_handler(triesCount);
+                } else {
+                    return 0;
+                }
             }
 
             //  returns foreign keys count in storage definition
             template<class T>
             static int foreign_keys_count(T &storageImpl) {
                 auto res = 0;
-                storageImpl.for_each([&res](auto impl) {
-                    res += impl->foreign_keys_count();
+                storageImpl.for_each([&res](auto &impl) {
+                    res += impl.foreign_keys_count();
                 });
                 return res;
             }

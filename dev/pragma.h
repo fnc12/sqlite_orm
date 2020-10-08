@@ -21,6 +21,14 @@ namespace sqlite_orm {
 
         pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
 
+        void busy_timeout(int value) {
+            this->set_pragma("busy_timeout", value);
+        }
+
+        int busy_timeout() {
+            return this->get_pragma<int>("busy_timeout");
+        }
+
         sqlite_orm::journal_mode journal_mode() {
             return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
         }
@@ -69,7 +77,7 @@ namespace sqlite_orm {
         T get_pragma(const std::string &name) {
             auto connection = this->get_connection();
             auto query = "PRAGMA " + name;
-            T res;
+            T result;
             auto db = connection.get();
             auto rc = sqlite3_exec(
                 db,
@@ -81,10 +89,10 @@ namespace sqlite_orm {
                     }
                     return 0;
                 },
-                &res,
+                &result,
                 nullptr);
             if(rc == SQLITE_OK) {
-                return res;
+                return result;
             } else {
                 throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                         sqlite3_errmsg(db));

@@ -98,13 +98,13 @@ TEST_CASE("Row id") {
 
 TEST_CASE("Issue 87") {
     struct Data {
-        uint8_t mDefault; /**< 0=User or 1=Default*/
-        uint8_t mAppLang;  // en_GB
-        uint8_t mContentLang1;  // de_DE
-        uint8_t mContentLang2;  // en_GB
-        uint8_t mContentLang3;
-        uint8_t mContentLang4;
-        uint8_t mContentLang5;
+        uint8_t mDefault = 0; /**< 0=User or 1=Default*/
+        uint8_t mAppLang = 0;  // en_GB
+        uint8_t mContentLang1 = 0;  // de_DE
+        uint8_t mContentLang2 = 0;  // en_GB
+        uint8_t mContentLang3 = 0;
+        uint8_t mContentLang4 = 0;
+        uint8_t mContentLang5 = 0;
     };
 
     Data data;
@@ -449,94 +449,4 @@ TEST_CASE("Escape chars") {
     selena.name = "Gomez";
     storage.update(selena);
     storage.remove<Employee>(10);
-}
-
-TEST_CASE("Transaction guard") {
-    struct Object {
-        int id;
-        std::string name;
-    };
-
-    auto storage = make_storage(
-        "test_transaction_guard.sqlite",
-        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
-
-    storage.sync_schema();
-    storage.remove_all<Object>();
-
-    storage.insert(Object{0, "Jack"});
-
-    //  insert, call make a storage to cakk an exception and check that rollback was fired
-    auto countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-
-        storage.insert(Object{0, "John"});
-
-        storage.get<Object>(-1);
-
-        REQUIRE(false);
-    } catch(...) {
-        auto countNow = storage.count<Object>();
-
-        REQUIRE(countBefore == countNow);
-    }
-
-    //  check that one can call other transaction functions without exceptions
-    storage.transaction([&] {
-        return false;
-    });
-
-    //  commit explicitly and check that after exception data was saved
-    countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-        storage.insert(Object{0, "John"});
-        guard.commit();
-        storage.get<Object>(-1);
-        REQUIRE(false);
-    } catch(...) {
-        auto countNow = storage.count<Object>();
-
-        REQUIRE(countNow == countBefore + 1);
-    }
-
-    //  rollback explicitly
-    countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-        storage.insert(Object{0, "Michael"});
-        guard.rollback();
-        storage.get<Object>(-1);
-        REQUIRE(false);
-    } catch(...) {
-        auto countNow = storage.count<Object>();
-        REQUIRE(countNow == countBefore);
-    }
-
-    //  commit on exception
-    countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-        guard.commit_on_destroy = true;
-        storage.insert(Object{0, "Michael"});
-        storage.get<Object>(-1);
-        REQUIRE(false);
-    } catch(...) {
-        auto countNow = storage.count<Object>();
-        REQUIRE(countNow == countBefore + 1);
-    }
-
-    //  work witout exception
-    countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-        guard.commit_on_destroy = true;
-        storage.insert(Object{0, "Lincoln"});
-
-    } catch(...) {
-        throw std::runtime_error("Must not fire");
-    }
-    auto countNow = storage.count<Object>();
-    REQUIRE(countNow == countBefore + 1);
 }

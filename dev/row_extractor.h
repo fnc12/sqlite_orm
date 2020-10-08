@@ -77,8 +77,8 @@ namespace sqlite_orm {
     /**
      *  Specialization for std::string.
      */
-    template<class V>
-    struct row_extractor<V, std::enable_if_t<std::is_same<V, std::string>::value>> {
+    template<>
+    struct row_extractor<std::string, void> {
         std::string extract(const char *row_value) {
             if(row_value) {
                 return row_value;
@@ -100,8 +100,8 @@ namespace sqlite_orm {
     /**
      *  Specialization for std::wstring.
      */
-    template<class V>
-    struct row_extractor<V, std::enable_if_t<std::is_same<V, std::wstring>::value>> {
+    template<>
+    struct row_extractor<std::wstring, void> {
         std::wstring extract(const char *row_value) {
             if(row_value) {
                 std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
@@ -122,38 +122,6 @@ namespace sqlite_orm {
         }
     };
 #endif  //  SQLITE_ORM_OMITS_CODECVT
-    /**
-     *  Specialization for std::vector<char>.
-     */
-    template<class V>
-    struct row_extractor<V, std::enable_if_t<std::is_same<V, std::vector<char>>::value>> {
-        std::vector<char> extract(const char *row_value) {
-            if(row_value) {
-                auto len = ::strlen(row_value);
-                return this->go(row_value, len);
-            } else {
-                return {};
-            }
-        }
-
-        std::vector<char> extract(sqlite3_stmt *stmt, int columnIndex) {
-            auto bytes = static_cast<const char *>(sqlite3_column_blob(stmt, columnIndex));
-            auto len = sqlite3_column_bytes(stmt, columnIndex);
-            return this->go(bytes, len);
-        }
-
-      protected:
-        std::vector<char> go(const char *bytes, size_t len) {
-            if(len) {
-                std::vector<char> res;
-                res.reserve(len);
-                std::copy(bytes, bytes + len, std::back_inserter(res));
-                return res;
-            } else {
-                return {};
-            }
-        }
-    };
 
     template<class V>
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
@@ -277,8 +245,8 @@ namespace sqlite_orm {
     /**
      *  Specialization for journal_mode.
      */
-    template<class V>
-    struct row_extractor<V, std::enable_if_t<std::is_same<V, journal_mode>::value>> {
+    template<>
+    struct row_extractor<journal_mode, void> {
         journal_mode extract(const char *row_value) {
             if(row_value) {
                 if(auto res = internal::journal_mode_from_string(row_value)) {

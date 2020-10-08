@@ -13,6 +13,13 @@ struct MarvelHero {
     short points;
 };
 
+struct Contact {
+    int id = 0;
+    std::string firstName;
+    std::string lastName;
+    std::string phone;
+};
+
 int main(int, char **argv) {
     cout << "path = " << argv[0] << endl;
 
@@ -22,7 +29,12 @@ int main(int, char **argv) {
                                            make_column("id", &MarvelHero::id, primary_key()),
                                            make_column("name", &MarvelHero::name),
                                            make_column("abilities", &MarvelHero::abilities),
-                                           make_column("points", &MarvelHero::points)));
+                                           make_column("points", &MarvelHero::points)),
+                                make_table("contacts",
+                                           make_column("contact_id", &Contact::id, primary_key()),
+                                           make_column("first_name", &Contact::firstName),
+                                           make_column("last_name", &Contact::lastName),
+                                           make_column("phone", &Contact::phone)));
     storage.sync_schema();
 
     storage.remove_all<MarvelHero>();
@@ -41,6 +53,11 @@ int main(int, char **argv) {
         storage.insert(MarvelHero{-1, "Groot", "I am Groot!", 2});
         return true;
     });
+
+    Contact john{0, "John", "Doe", "410-555-0168"};
+    Contact lily{0, "Lily", "Bush", "410-444-9862"};
+    john.id = storage.insert(john);
+    lily.id = storage.insert(lily);
 
     //  SELECT LENGTH(name)
     //  FROM marvel
@@ -139,11 +156,12 @@ int main(int, char **argv) {
 
 #if SQLITE_VERSION_NUMBER >= 3007016
 
-    //  SELECT CHAR(67,72,65,82)
+    //  SELECT CHAR(67, 72, 65, 82)
     auto charString = storage.select(char_(67, 72, 65, 82)).front();
     cout << "SELECT CHAR(67,72,65,82) = *" << charString << "*" << endl;
 
-    //  SELECT LOWER(name) || '@marvel.com' FROM marvel
+    //  SELECT LOWER(name) || '@marvel.com'
+    //  FROM marvel
     auto emails = storage.select(lower(&MarvelHero::name) || c("@marvel.com"));
     cout << "emails.size = " << emails.size() << endl;
     for(auto &email: emails) {
@@ -257,5 +275,69 @@ int main(int, char **argv) {
     //  SELECT substr('SQLite substr', 1, 6);
     cout << "substr('SQLite substr', 1, 6) = " << storage.select(substr("SQLite substr", 1, 6)).front() << endl;
 
+    //  SELECT hex(67);
+    cout << "hex(67) = " << storage.select(hex(67)).front() << endl;
+
+    //  SELECT quote('hi')
+    cout << "SELECT quote('hi') = " << storage.select(quote("hi")).front() << endl;
+
+    //  SELECT hex(randomblob(10))
+    cout << "SELECT hex(randomblob(10)) = " << storage.select(hex(randomblob(10))).front() << endl;
+
+    //  SELECT instr('something about it', 't')
+    cout << "SELECT instr('something about it', 't') = " << storage.select(instr("something about it", "t")).front()
+         << endl;
+
+    {
+        cout << endl;
+        struct o_pos : alias_tag {
+            static const std::string &get() {
+                static const std::string res = "o_pos";
+                return res;
+            }
+        };
+
+        //  SELECT name, instr(abilities, 'o') o_pos
+        //  FROM marvel
+        //  WHERE o_pos > 0
+        auto rows = storage.select(columns(&MarvelHero::name, as<o_pos>(instr(&MarvelHero::abilities, "o"))),
+                                   where(greater_than(get<o_pos>(), 0)));
+        for(auto &row: rows) {
+            cout << get<0>(row) << '\t' << get<1>(row) << endl;
+        }
+        cout << endl;
+    }
+
+    //  SELECT replace('AA B CC AAA','A','Z')
+    cout << "SELECT replace('AA B CC AAA','A','Z') = " << storage.select(replace("AA B CC AAA", "A", "Z")).front()
+         << endl;
+
+    //  SELECT replace('This is a cat','This','That')
+    cout << "SELECT replace('This is a cat','This','That') = "
+         << storage.select(replace("This is a cat", "This", "That")).front() << endl;
+
+    //  UPDATE contacts
+    //  SET phone = REPLACE(phone, '410', '+1-410')
+    storage.update_all(set(c(&Contact::phone) = replace(&Contact::phone, "410", "+1-410")));
+    cout << "Contacts:" << endl;
+    for(auto &contact: storage.iterate<Contact>()) {
+        cout << storage.dump(contact) << endl;
+    }
+
+    //  SELECT round(1929.236, 2)
+    cout << "SELECT round(1929.236, 2) = " << storage.select(round(1929.236, 2)).front() << endl;
+
+    //  SELECT round(1929.236, 1)
+    cout << "SELECT round(1929.236, 1) = " << storage.select(round(1929.236, 1)).front() << endl;
+
+    //  SELECT round(1929.236)
+    cout << "SELECT round(1929.236) = " << storage.select(round(1929.236)).front() << endl;
+
+    //  SELECT round(0.5)
+    cout << "SELECT round(0.5) = " << storage.select(round(0.5)).front() << endl;
+#ifdef SQLITE_SOUNDEX
+    //  SELECT soundex('Schn Thomson')
+    cout << "SELECT soundex('Schn Thomson') = " << storage.select(soundex("Schn Thomson")).front() << endl;
+#endif
     return 0;
 }

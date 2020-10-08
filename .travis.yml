@@ -1,6 +1,6 @@
 # Defaults
 os: linux
-dist: xenial
+dist: bionic
 
 matrix:
   include:
@@ -38,18 +38,18 @@ matrix:
       env:
         - SQLITE_ORM_OMITS_CODECVT: ON
 
-    - name: "[C++14] AppleClang-10.0.1"
-      os: osx
-      osx_image: xcode10.2
-      language: cpp
-      env:
-        - SQLITE_ORM_OMITS_CODECVT: ON
-      addons:
-        homebrew:
-          packages:
-            - catch2
-            - ninja
-          update: true
+#    - name: "[C++14] AppleClang-10.0.1"
+#      os: osx
+#      osx_image: xcode10.2
+#      language: cpp
+#      env:
+#        - SQLITE_ORM_OMITS_CODECVT: ON
+#      addons:
+#        homebrew:
+#          packages:
+#            - catch2
+#            - ninja
+#          update: true
 
 #    - name: "[C++14] LLVM/Clang (latest)"
 #      os: osx
@@ -71,19 +71,19 @@ matrix:
 #        - CXX: /usr/local/opt/llvm/bin/clang++
 #        - SQLITE_ORM_OMITS_CODECVT: ON
 
-    - name: "[C++14] GCC-6"
-      os: osx
-      osx_image: xcode10.2
-      addons:
-        homebrew:
-          packages:
-            - gcc@6
-            - catch2
-            - ninja
-          update: true
-      env:
-        - CC: gcc-6
-        - CXX: g++-6
+#    - name: "[C++14] GCC-6"
+#      os: osx
+#      osx_image: xcode10.2
+#      addons:
+#        homebrew:
+#          packages:
+#            - gcc@6
+#            - catch2
+#            - ninja
+#          update: true
+#      env:
+#        - CC: gcc-6
+#        - CXX: g++-6
 
     - name: "[C++17] GCC-9"
       addons:
@@ -111,19 +111,19 @@ matrix:
         - CXX: g++-7
         - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
-    - name: "[C++17] AppleClang-10.0.1"
-      os: osx
-      osx_image: xcode10.2
-      language: cpp
-      env:
-        - SQLITE_ORM_OMITS_CODECVT: ON
-        - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
-      addons:
-        homebrew:
-          packages:
-            - catch2
-            - ninja
-          update: true
+#    - name: "[C++17] AppleClang-10.0.1"
+#      os: osx
+#      osx_image: xcode10.2
+#      language: cpp
+#      env:
+#        - SQLITE_ORM_OMITS_CODECVT: ON
+#        - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+#      addons:
+#        homebrew:
+#          packages:
+#            - catch2
+#            - ninja
+#          update: true
 
 #    - name: "[C++17] LLVM/Clang (latest)"
 #      os: osx
@@ -151,16 +151,12 @@ before_install:
     if [[ ${TRAVIS_OS_NAME} == "osx" ]]; then
       export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH" # Use coreutils from homebrew.
     fi
-
-install:
-  - |
-    # Catch2 test framework
-    if [[ ${TRAVIS_OS_NAME} == "linux" ]]; then
-      git clone --depth=1 --quiet https://github.com/catchorg/Catch2.git
-      cd Catch2
-      cmake -Bbuild -H. -DBUILD_TESTING=OFF
-      sudo env "PATH=$PATH" cmake --build ./build --target install
-    fi
+  # Add ppa repo for cmake and delete cmake 3.12.4 folder of travis
+  - wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null | gpg --dearmor - | sudo tee /etc/apt/trusted.gpg.d/kitware.gpg >/dev/null
+  - sudo apt-add-repository -y 'deb https://apt.kitware.com/ubuntu/ bionic main'
+  - sudo apt-get update -qq -y
+  - sudo apt-get install -y cmake
+  - sudo rm -r /usr/local/cmake-3.12.4/
 
 # scripts to run before build
 before_script:

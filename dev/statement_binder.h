@@ -4,11 +4,12 @@
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
+#include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
 #include <utility>  //  std::declval
+#include <locale>  //  std::wstring_convert
 
 #include "is_std_ptr.h"
 

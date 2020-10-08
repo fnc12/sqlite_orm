@@ -53,13 +53,11 @@ namespace sqlite_orm {
         template<class... Cs>
         struct primary_key_t : primary_key_base {
             using order_by = primary_key_base::order_by;
+            using columns_tuple = std::tuple<Cs...>;
 
-            std::tuple<Cs...> columns;
+            columns_tuple columns;
 
-            primary_key_t(decltype(columns) c) : columns(std::move(c)) {}
-
-            using field_type = void;  //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
+            primary_key_t(decltype(columns) c) : columns(move(c)) {}
 
             primary_key_t<Cs...> asc() const {
                 auto res = *this;
@@ -74,14 +72,22 @@ namespace sqlite_orm {
             }
         };
 
-        /**
-         *  UNIQUE constraint class.
-         */
-        struct unique_t {
-
+        struct unique_base {
             operator std::string() const {
                 return "UNIQUE";
             }
+        };
+
+        /**
+         *  UNIQUE constraint class.
+         */
+        template<class... Args>
+        struct unique_t : unique_base {
+            using columns_tuple = std::tuple<Args...>;
+
+            columns_tuple columns;
+
+            unique_t(columns_tuple columns_) : columns(move(columns_)) {}
         };
 
         /**
@@ -164,8 +170,8 @@ namespace sqlite_orm {
 
             const foreign_key_type &fk;
 
-            on_update_delete_t(decltype(fk) fk_, decltype(update) update, foreign_key_action action_) :
-                on_update_delete_base{update}, fk(fk_), _action(action_) {}
+            on_update_delete_t(decltype(fk) fk_, decltype(update) update_, foreign_key_action action_) :
+                on_update_delete_base{update_}, fk(fk_), _action(action_) {}
 
             foreign_key_action _action = foreign_key_action::none;
 
@@ -255,9 +261,6 @@ namespace sqlite_orm {
                 return *this;
             }
 
-            using field_type = void;  //  for column iteration. Better be deleted
-            using constraints_type = std::tuple<>;
-
             template<class L>
             void for_each_column(const L &) {}
 
@@ -281,8 +284,8 @@ namespace sqlite_orm {
             foreign_key_intermediate_t(tuple_type columns_) : columns(std::move(columns_)) {}
 
             template<class... Rs>
-            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... references) {
-                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(references)...)};
+            foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
+                return {std::move(this->columns), std::make_tuple(std::forward<Rs>(refs)...)};
             }
         };
 #endif
@@ -310,6 +313,21 @@ namespace sqlite_orm {
             }
         };
 
+        struct check_string {
+            operator std::string() const {
+                return "CHECK";
+            }
+        };
+
+        template<class T>
+        struct check_t : check_string {
+            using expression_type = T;
+
+            expression_type expression;
+
+            check_t(expression_type expression_) : expression(std::move(expression_)) {}
+        };
+
         template<class T>
         struct is_constraint : std::false_type {};
 
@@ -319,8 +337,8 @@ namespace sqlite_orm {
         template<class... Cs>
         struct is_constraint<primary_key_t<Cs...>> : std::true_type {};
 
-        template<>
-        struct is_constraint<unique_t> : std::true_type {};
+        template<class... Args>
+        struct is_constraint<unique_t<Args...>> : std::true_type {};
 
         template<class T>
         struct is_constraint<default_t<T>> : std::true_type {};
@@ -330,6 +348,9 @@ namespace sqlite_orm {
 
         template<>
         struct is_constraint<collate_t> : std::true_type {};
+
+        template<class T>
+        struct is_constraint<check_t<T>> : std::true_type {};
 
         template<class... Args>
         struct constraints_size;
@@ -360,8 +381,13 @@ namespace sqlite_orm {
     /**
      *  UNIQUE constraint builder function.
      */
-    inline constraints::unique_t unique() {
-        return {};
+    template<class... Args>
+    constraints::unique_t<Args...> unique(Args... args) {
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    inline constraints::unique_t<> unique() {
+        return {{}};
     }
 
     inline constraints::autoincrement_t autoincrement() {
@@ -369,9 +395,12 @@ namespace sqlite_orm {
     }
 
     template<class... Cs>
-    inline constraints::primary_key_t<Cs...> primary_key(Cs... cs) {
-        using ret_type = constraints::primary_key_t<Cs...>;
-        return ret_type(std::make_tuple(cs...));
+    constraints::primary_key_t<Cs...> primary_key(Cs... cs) {
+        return {std::make_tuple(std::forward<Cs>(cs)...)};
+    }
+
+    inline constraints::primary_key_t<> primary_key() {
+        return {{}};
     }
 
     template<class T>
@@ -389,6 +418,11 @@ namespace sqlite_orm {
 
     inline constraints::collate_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
+    }
+
+    template<class T>
+    constraints::check_t<T> check(T t) {
+        return {std::move(t)};
     }
 
     namespace internal {

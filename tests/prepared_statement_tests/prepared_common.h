@@ -3,6 +3,7 @@
 #include <string>  //  std::string
 #include <tuple>  //  std::ignore
 #include <sqlite_orm/sqlite_orm.h>
+#include <ostream>  //  std::ostream
 
 namespace PreparedStatementTests {
     struct User {
@@ -41,5 +42,9 @@ namespace PreparedStatementTests {
         auto normalized = statement.normalized_sql();
         std::ignore = normalized;
 #endif
+    }
+
+    inline std::ostream &operator<<(std::ostream &os, const User &user) {
+        return os << "{" << user.id << ", " << user.name << "}";
     }
 }

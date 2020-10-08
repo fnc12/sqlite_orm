@@ -41,7 +41,7 @@ TEST_CASE("Node tuple") {
     }
 
     {  //  binary_condition
-        using namespace conditions;
+        using namespace internal;
         {  //  5 < 6.0f
             auto c = lesser_than(5, 6.0f);
             using C = decltype(c);
@@ -292,7 +292,7 @@ static_assert(is_same<Tuple, std::tuple<>>::value, "get_all<User>()");
 }
 }
 {  // having_t
-    using namespace conditions;
+    using namespace internal;
     auto hav = having(greater_or_equal(&User::id, 10));
     using Having = decltype(hav);
     using Tuple = node_tuple<Having>::type;

@@ -69,8 +69,29 @@ int main() {
     auto julianDiff = storage.select(julianday("now") - julianday("1776-07-04")).front();
     cout << "SELECT julianday('now') - julianday('1776-07-04') = " << julianDiff << endl;
 
-    //  SELECT (julianday('now') - 2440587.5)*86400.0;
-    auto julianConverted = storage.select((julianday("now") - 2440587.5) * 86400.0);
+    //  SELECT (julianday('now') - 2440587.5) * 86400.0
+    auto julianConverted = storage.select((julianday("now") - 2440587.5) * 86400.0).front();
+    cout << "SELECT (julianday('now') - 2440587.5) * 86400.0 = " << julianConverted << endl;
+
+    //  SELECT time('12:00', 'localtime')
+    auto time12Local = storage.select(time("12:00", "localtime")).front();
+    cout << "SELECT time('12:00', 'localtime') = " << time12Local << endl;
+
+    //  SELECT time('12:00', 'utc')
+    auto time12utc = storage.select(time("12:00", "utc")).front();
+    cout << "SELECT time('12:00', 'utc') = " << time12utc << endl;
+
+    //  SELECT strftime('%Y %m %d','now')
+    auto strftimeRes = storage.select(strftime("%Y %m %d", "now")).front();
+    cout << "SELECT strftime('%Y %m %d','now') = " << strftimeRes << endl;
+
+    //  SELECT strftime('%H %M %S %s','now')
+    auto strftimeRes2 = storage.select(strftime("%H %M %S %s", "now")).front();
+    cout << "SELECT strftime('%H %M %S %s','now') = " << strftimeRes2 << endl;
+
+    //  SELECT strftime('%s','now') - strftime('%s','2014-10-07 02:34:56')
+    auto strftimeResSub = storage.select(strftime("%s", "now") - strftime("%s", "2014-10-07 02:34:56")).front();
+    cout << "SELECT strftime('%s','now') - strftime('%s','2014-10-07 02:34:56') = " << strftimeResSub << endl;
 
     return 0;
 }

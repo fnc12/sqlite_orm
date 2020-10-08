@@ -9,6 +9,7 @@
 #include "tuple_helper.h"
 #include "core_functions.h"
 #include "prepared_statement.h"
+#include "values.h"
 
 namespace sqlite_orm {
 
@@ -56,8 +57,8 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct ast_iterator<conditions::where_t<C>, void> {
-            using node_type = conditions::where_t<C>;
+        struct ast_iterator<where_t<C>, void> {
+            using node_type = where_t<C>;
 
             template<class L>
             void operator()(const node_type &where, const L &l) const {
@@ -66,9 +67,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<
-            T,
-            typename std::enable_if<is_base_of_template<T, conditions::binary_condition>::value>::type> {
+        struct ast_iterator<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using node_type = T;
 
             template<class L>
@@ -100,8 +99,8 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct ast_iterator<conditions::in_t<L, A>, void> {
-            using node_type = conditions::in_t<L, A>;
+        struct ast_iterator<in_t<L, A>, void> {
+            using node_type = in_t<L, A>;
 
             template<class C>
             void operator()(const node_type &in, const C &l) const {
@@ -154,9 +153,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class... Args>
-        struct ast_iterator<get_all_t<T, Args...>, void> {
-            using node_type = get_all_t<T, Args...>;
+        template<class T, class R, class... Args>
+        struct ast_iterator<get_all_t<T, R, Args...>, void> {
+            using node_type = get_all_t<T, R, Args...>;
 
             template<class L>
             void operator()(const node_type &get, const L &l) const {
@@ -230,8 +229,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::having_t<T>, void> {
-            using node_type = conditions::having_t<T>;
+        struct ast_iterator<having_t<T>, void> {
+            using node_type = having_t<T>;
 
             template<class L>
             void operator()(const node_type &hav, const L &l) const {
@@ -240,8 +239,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class E>
-        struct ast_iterator<conditions::cast_t<T, E>, void> {
-            using node_type = conditions::cast_t<T, E>;
+        struct ast_iterator<cast_t<T, E>, void> {
+            using node_type = cast_t<T, E>;
 
             template<class L>
             void operator()(const node_type &c, const L &l) const {
@@ -250,8 +249,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::exists_t<T>, void> {
-            using node_type = conditions::exists_t<T>;
+        struct ast_iterator<exists_t<T>, void> {
+            using node_type = exists_t<T>;
 
             template<class L>
             void operator()(const node_type &e, const L &l) const {
@@ -260,8 +259,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T, class E>
-        struct ast_iterator<conditions::like_t<A, T, E>, void> {
-            using node_type = conditions::like_t<A, T, E>;
+        struct ast_iterator<like_t<A, T, E>, void> {
+            using node_type = like_t<A, T, E>;
 
             template<class L>
             void operator()(const node_type &lk, const L &l) const {
@@ -274,8 +273,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct ast_iterator<conditions::glob_t<A, T>, void> {
-            using node_type = conditions::glob_t<A, T>;
+        struct ast_iterator<glob_t<A, T>, void> {
+            using node_type = glob_t<A, T>;
 
             template<class L>
             void operator()(const node_type &lk, const L &l) const {
@@ -285,8 +284,8 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct ast_iterator<conditions::between_t<A, T>, void> {
-            using node_type = conditions::between_t<A, T>;
+        struct ast_iterator<between_t<A, T>, void> {
+            using node_type = between_t<A, T>;
 
             template<class L>
             void operator()(const node_type &b, const L &l) const {
@@ -297,8 +296,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::named_collate<T>, void> {
-            using node_type = conditions::named_collate<T>;
+        struct ast_iterator<named_collate<T>, void> {
+            using node_type = named_collate<T>;
 
             template<class L>
             void operator()(const node_type &col, const L &l) const {
@@ -307,8 +306,8 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct ast_iterator<conditions::negated_condition_t<C>, void> {
-            using node_type = conditions::negated_condition_t<C>;
+        struct ast_iterator<negated_condition_t<C>, void> {
+            using node_type = negated_condition_t<C>;
 
             template<class L>
             void operator()(const node_type &neg, const L &l) const {
@@ -317,8 +316,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::is_null_t<T>, void> {
-            using node_type = conditions::is_null_t<T>;
+        struct ast_iterator<is_null_t<T>, void> {
+            using node_type = is_null_t<T>;
 
             template<class L>
             void operator()(const node_type &i, const L &l) const {
@@ -327,8 +326,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::is_not_null_t<T>, void> {
-            using node_type = conditions::is_not_null_t<T>;
+        struct ast_iterator<is_not_null_t<T>, void> {
+            using node_type = is_not_null_t<T>;
 
             template<class L>
             void operator()(const node_type &i, const L &l) const {
@@ -337,8 +336,8 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct ast_iterator<core_functions::core_function_t<R, S, Args...>, void> {
-            using node_type = core_functions::core_function_t<R, S, Args...>;
+        struct ast_iterator<core_function_t<R, S, Args...>, void> {
+            using node_type = core_function_t<R, S, Args...>;
 
             template<class L>
             void operator()(const node_type &f, const L &l) const {
@@ -347,8 +346,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::left_join_t<T, O>, void> {
-            using node_type = conditions::left_join_t<T, O>;
+        struct ast_iterator<left_join_t<T, O>, void> {
+            using node_type = left_join_t<T, O>;
 
             template<class L>
             void operator()(const node_type &j, const L &l) const {
@@ -357,8 +356,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<conditions::on_t<T>, void> {
-            using node_type = conditions::on_t<T>;
+        struct ast_iterator<on_t<T>, void> {
+            using node_type = on_t<T>;
 
             template<class L>
             void operator()(const node_type &o, const L &l) const {
@@ -367,8 +366,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::join_t<T, O>, void> {
-            using node_type = conditions::join_t<T, O>;
+        struct ast_iterator<join_t<T, O>, void> {
+            using node_type = join_t<T, O>;
 
             template<class L>
             void operator()(const node_type &j, const L &l) const {
@@ -377,8 +376,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::left_outer_join_t<T, O>, void> {
-            using node_type = conditions::left_outer_join_t<T, O>;
+        struct ast_iterator<left_outer_join_t<T, O>, void> {
+            using node_type = left_outer_join_t<T, O>;
 
             template<class L>
             void operator()(const node_type &j, const L &l) const {
@@ -387,8 +386,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::inner_join_t<T, O>, void> {
-            using node_type = conditions::inner_join_t<T, O>;
+        struct ast_iterator<inner_join_t<T, O>, void> {
+            using node_type = inner_join_t<T, O>;
 
             template<class L>
             void operator()(const node_type &j, const L &l) const {
@@ -402,8 +401,8 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type &c, const L &l) const {
-                c.case_expression.apply([&l](auto &c) {
-                    iterate_ast(c, l);
+                c.case_expression.apply([&l](auto &c_) {
+                    iterate_ast(c_, l);
                 });
                 iterate_tuple(c.args, [&l](auto &pair) {
                     iterate_ast(pair.first, l);
@@ -426,8 +425,8 @@ namespace sqlite_orm {
         };
 
         template<class T, bool OI>
-        struct ast_iterator<conditions::limit_t<T, false, OI, void>, void> {
-            using node_type = conditions::limit_t<T, false, OI, void>;
+        struct ast_iterator<limit_t<T, false, OI, void>, void> {
+            using node_type = limit_t<T, false, OI, void>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
@@ -436,8 +435,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::limit_t<T, true, false, O>, void> {
-            using node_type = conditions::limit_t<T, true, false, O>;
+        struct ast_iterator<limit_t<T, true, false, O>, void> {
+            using node_type = limit_t<T, true, false, O>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
@@ -449,8 +448,8 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct ast_iterator<conditions::limit_t<T, true, true, O>, void> {
-            using node_type = conditions::limit_t<T, true, true, O>;
+        struct ast_iterator<limit_t<T, true, true, O>, void> {
+            using node_type = limit_t<T, true, true, O>;
 
             template<class L>
             void operator()(const node_type &a, const L &l) const {
@@ -460,5 +459,66 @@ namespace sqlite_orm {
                 iterate_ast(a.lim, l);
             }
         };
+
+        template<class T>
+        struct ast_iterator<distinct_t<T>, void> {
+            using node_type = distinct_t<T>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.t, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<all_t<T>, void> {
+            using node_type = all_t<T>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.t, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<bitwise_not_t<T>, void> {
+            using node_type = bitwise_not_t<T>;
+
+            template<class L>
+            void operator()(const node_type &a, const L &l) const {
+                iterate_ast(a.argument, l);
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<values_t<Args...>, void> {
+            using node_type = values_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type &node, const L &l) const {
+                iterate_ast(node.tuple, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<dynamic_values_t<T>, void> {
+            using node_type = dynamic_values_t<T>;
+
+            template<class L>
+            void operator()(const node_type &node, const L &l) const {
+                iterate_ast(node.vector, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<collate_t<T>, void> {
+            using node_type = collate_t<T>;
+
+            template<class L>
+            void operator()(const node_type &node, const L &l) const {
+                iterate_ast(node.expr, l);
+            }
+        };
+
     }
 }

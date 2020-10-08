@@ -123,8 +123,8 @@ namespace sqlite_orm {
             using left_type = typename compound_operator<L, R>::left_type;
             using right_type = typename compound_operator<L, R>::right_type;
 
-            union_t(left_type l, right_type r, decltype(all) all) :
-                compound_operator<L, R>(std::move(l), std::move(r)), union_base{all} {}
+            union_t(left_type l, right_type r, decltype(all) all_) :
+                compound_operator<L, R>(std::move(l), std::move(r)), union_base{all_} {}
 
             union_t(left_type l, right_type r) : union_t(std::move(l), std::move(r), false) {}
         };
@@ -180,6 +180,11 @@ namespace sqlite_orm {
         };
 
         template<class T>
+        struct object_t {
+            using type = T;
+        };
+
+        template<class T>
         struct then_t {
             using expression_type = T;
 
@@ -217,9 +222,9 @@ namespace sqlite_orm {
             template<class W, class Th>
             simple_case_builder<R, T, E, Args..., std::pair<W, Th>> when(W w, then_t<Th> t) {
                 using result_args_type = std::tuple<Args..., std::pair<W, Th>>;
-                result_args_type result_args;
-                move_tuple<std::tuple_size<args_type>::value>(result_args, this->args);
                 std::pair<W, Th> newPair{std::move(w), std::move(t.expression)};
+                result_args_type result_args =
+                    std::tuple_cat(std::move(this->args), std::move(std::make_tuple(newPair)));
                 std::get<std::tuple_size<result_args_type>::value - 1>(result_args) = std::move(newPair);
                 return {std::move(this->case_expression), std::move(result_args), std::move(this->else_expression)};
             }
@@ -236,14 +241,10 @@ namespace sqlite_orm {
 
         template<class T>
         void validate_conditions() {
-            static_assert(count_tuple<T, conditions::is_where>::value <= 1,
-                          "a single query cannot contain > 1 WHERE blocks");
-            static_assert(count_tuple<T, conditions::is_group_by>::value <= 1,
-                          "a single query cannot contain > 1 GROUP BY blocks");
-            static_assert(count_tuple<T, conditions::is_order_by>::value <= 1,
-                          "a single query cannot contain > 1 ORDER BY blocks");
-            static_assert(count_tuple<T, conditions::is_limit>::value <= 1,
-                          "a single query cannot contain > 1 LIMIT blocks");
+            static_assert(count_tuple<T, is_where>::value <= 1, "a single query cannot contain > 1 WHERE blocks");
+            static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
+            static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
+            static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
         }
     }
 
@@ -351,8 +352,27 @@ namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs), true};
     }
 
+    /**
+     * SELECT * FROM T function.
+     * T is typed mapped to a storage.
+     * Example: auto rows = storage.select(asterisk<User>());
+     * // decltype(rows) is std::vector<std::tuple<...all column typed in declared in make_table order...>>
+     * If you need to fetch result as objects not tuple please use `object<T>` instead.
+     */
     template<class T>
     internal::asterisk_t<T> asterisk() {
+        return {};
+    }
+
+    /**
+     * SELECT * FROM T function.
+     * T is typed mapped to a storage.
+     * Example: auto rows = storage.select(object<User>());
+     * // decltype(rows) is std::vector<User>
+     * If you need to fetch result as tuples not objects please use `asterisk<T>` instead.
+     */
+    template<class T>
+    internal::object_t<T> object() {
         return {};
     }
 }

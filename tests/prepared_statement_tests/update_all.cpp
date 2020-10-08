@@ -74,11 +74,11 @@ TEST_CASE("Prepared update all") {
                 expected.push_back("Maître Gims_123");
                 REQUIRE_THAT(names, UnorderedEquals(expected));
             }
-            auto statement = storage.prepare(
+            auto statement2 = storage.prepare(
                 update_all(set(c(&User::name) = c(&User::name) || "!"), where(like(&User::name, "T%"))));
-            REQUIRE(strcmp(get<0>(statement), "!") == 0);
-            REQUIRE(strcmp(get<1>(statement), "T%") == 0);
-            storage.execute(statement);
+            REQUIRE(strcmp(get<0>(statement2), "!") == 0);
+            REQUIRE(strcmp(get<1>(statement2), "T%") == 0);
+            storage.execute(statement2);
             {
                 auto names = storage.select(&User::name);
                 std::vector<decltype(User::name)> expected;
@@ -87,11 +87,11 @@ TEST_CASE("Prepared update all") {
                 expected.push_back("Maître Gims_123");
                 REQUIRE_THAT(names, UnorderedEquals(expected));
             }
-            get<0>(statement) = "@";
-            get<1>(statement) = "Sh%";
-            REQUIRE(strcmp(get<0>(statement), "@") == 0);
-            REQUIRE(strcmp(get<1>(statement), "Sh%") == 0);
-            storage.execute(statement);
+            get<0>(statement2) = "@";
+            get<1>(statement2) = "Sh%";
+            REQUIRE(strcmp(get<0>(statement2), "@") == 0);
+            REQUIRE(strcmp(get<1>(statement2), "Sh%") == 0);
+            storage.execute(statement2);
             {
                 auto names = storage.select(&User::name);
                 std::vector<decltype(User::name)> expected;
@@ -144,13 +144,13 @@ TEST_CASE("Prepared update all") {
             }
             std::string name = "!";
             std::string pattern = "T%";
-            auto statement = storage.prepare(update_all(set(c(&User::name) = c(&User::name) || std::ref(name)),
-                                                        where(like(&User::name, std::ref(pattern)))));
-            REQUIRE(get<0>(statement) == "!");
-            REQUIRE(&get<0>(statement) == &name);
-            REQUIRE(get<1>(statement) == "T%");
-            REQUIRE(&get<1>(statement) == &pattern);
-            storage.execute(statement);
+            auto statement2 = storage.prepare(update_all(set(c(&User::name) = c(&User::name) || std::ref(name)),
+                                                         where(like(&User::name, std::ref(pattern)))));
+            REQUIRE(get<0>(statement2) == "!");
+            REQUIRE(&get<0>(statement2) == &name);
+            REQUIRE(get<1>(statement2) == "T%");
+            REQUIRE(&get<1>(statement2) == &pattern);
+            storage.execute(statement2);
             {
                 auto names = storage.select(&User::name);
                 std::vector<decltype(User::name)> expected;
@@ -161,9 +161,9 @@ TEST_CASE("Prepared update all") {
             }
             name = "@";
             pattern = "Sh%";
-            REQUIRE(get<0>(statement) == "@");
-            REQUIRE(get<1>(statement) == "Sh%");
-            storage.execute(statement);
+            REQUIRE(get<0>(statement2) == "@");
+            REQUIRE(get<1>(statement2) == "Sh%");
+            storage.execute(statement2);
             {
                 auto names = storage.select(&User::name);
                 std::vector<decltype(User::name)> expected;
