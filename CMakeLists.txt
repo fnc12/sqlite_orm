@@ -1,12 +1,4 @@
-cmake_minimum_required (VERSION 3.14.0)
-
-# PACKAGE_VERSION is used by cpack scripts currently
-# Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
-
-set(sqlite_orm_VERSION "1.3.0")
-set(PACKAGE_VERSION ${sqlite_orm_VERSION})
-
-project("sqlite_orm" VERSION ${PACKAGE_VERSION})
+cmake_minimum_required (VERSION 3.16.0)
 
 # Handling C++ standard version to use
 option(SQLITE_ORM_ENABLE_CXX_17 "Enable C++ 17" OFF)
@@ -20,6 +12,15 @@ else()
 	message(STATUS "SQLITE_ORM: Build with C++14 features")
 endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+
+# PACKAGE_VERSION is used by cpack scripts currently
+# Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
+
+set(sqlite_orm_VERSION "1.3.0")
+set(PACKAGE_VERSION ${sqlite_orm_VERSION})
+
+project("sqlite_orm" VERSION ${PACKAGE_VERSION})
 
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
