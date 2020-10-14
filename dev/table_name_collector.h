@@ -69,6 +69,30 @@ namespace sqlite_orm {
                     table_names.insert(std::make_pair(move(tableName), ""));
                 }
             }
+
+            template<class T>
+            void operator()(const table_rowid_t<T> &) const {
+                if(this->find_table_name) {
+                    auto tableName = this->find_table_name(typeid(T));
+                    table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
+
+            template<class T>
+            void operator()(const table_oid_t<T> &) const {
+                if(this->find_table_name) {
+                    auto tableName = this->find_table_name(typeid(T));
+                    table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
+
+            template<class T>
+            void operator()(const table__rowid_t<T> &) const {
+                if(this->find_table_name) {
+                    auto tableName = this->find_table_name(typeid(T));
+                    table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
         };
 
     }

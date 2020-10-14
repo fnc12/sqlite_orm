@@ -61,41 +61,6 @@ TEST_CASE("Issue 105") {
     storage.insert(d);
 }
 
-TEST_CASE("Row id") {
-    struct SimpleTable {
-        std::string letter;
-        std::string desc;
-    };
-
-    auto storage = make_storage(
-        "rowid.sqlite",
-        make_table("tbl1", make_column("letter", &SimpleTable::letter), make_column("desc", &SimpleTable::desc)));
-    storage.sync_schema();
-    storage.remove_all<SimpleTable>();
-
-    storage.insert(SimpleTable{"A", "first letter"});
-    storage.insert(SimpleTable{"B", "second letter"});
-    storage.insert(SimpleTable{"C", "third letter"});
-
-    auto rows = storage.select(columns(rowid(),
-                                       oid(),
-                                       _rowid_(),
-                                       rowid<SimpleTable>(),
-                                       oid<SimpleTable>(),
-                                       _rowid_<SimpleTable>(),
-                                       &SimpleTable::letter,
-                                       &SimpleTable::desc));
-    for(size_t i = 0; i < rows.size(); ++i) {
-        auto &row = rows[i];
-        REQUIRE(std::get<0>(row) == std::get<1>(row));
-        REQUIRE(std::get<1>(row) == std::get<2>(row));
-        REQUIRE(std::get<2>(row) == static_cast<int>(i + 1));
-        REQUIRE(std::get<2>(row) == std::get<3>(row));
-        REQUIRE(std::get<3>(row) == std::get<4>(row));
-        REQUIRE(std::get<4>(row) == std::get<5>(row));
-    }
-}
-
 TEST_CASE("Issue 87") {
     struct Data {
         uint8_t mDefault = 0; /**< 0=User or 1=Default*/

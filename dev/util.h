@@ -7,7 +7,7 @@
 namespace sqlite_orm {
 
     namespace internal {
-        static void perform_step(sqlite3 *db, sqlite3_stmt *stmt) {
+        inline void perform_step(sqlite3 *db, sqlite3_stmt *stmt) {
             if(sqlite3_step(stmt) == SQLITE_DONE) {
                 //  done..
             } else {
