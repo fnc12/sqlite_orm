@@ -1208,7 +1208,6 @@ namespace sqlite_orm {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
-                int64 res = 0;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;

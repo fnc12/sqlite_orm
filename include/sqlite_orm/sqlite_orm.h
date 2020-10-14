@@ -5256,7 +5256,7 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     namespace internal {
-        static void perform_step(sqlite3 *db, sqlite3_stmt *stmt) {
+        inline void perform_step(sqlite3 *db, sqlite3_stmt *stmt) {
             if(sqlite3_step(stmt) == SQLITE_DONE) {
                 //  done..
             } else {
@@ -9244,6 +9244,30 @@ namespace sqlite_orm {
                     table_names.insert(std::make_pair(move(tableName), ""));
                 }
             }
+
+            template<class T>
+            void operator()(const table_rowid_t<T> &) const {
+                if(this->find_table_name) {
+                    auto tableName = this->find_table_name(typeid(T));
+                    table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
+
+            template<class T>
+            void operator()(const table_oid_t<T> &) const {
+                if(this->find_table_name) {
+                    auto tableName = this->find_table_name(typeid(T));
+                    table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
+
+            template<class T>
+            void operator()(const table__rowid_t<T> &) const {
+                if(this->find_table_name) {
+                    auto tableName = this->find_table_name(typeid(T));
+                    table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
         };
 
     }
@@ -12305,7 +12329,6 @@ namespace sqlite_orm {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
-                int64 res = 0;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
