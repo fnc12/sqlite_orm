@@ -339,5 +339,15 @@ int main(int, char **argv) {
     //  SELECT soundex('Schn Thomson')
     cout << "SELECT soundex('Schn Thomson') = " << storage.select(soundex("Schn Thomson")).front() << endl;
 #endif
+
+    //  SELECT unicode('A')
+    cout << "SELECT unicode('A') = " << storage.select(unicode("A")).front() << endl;
+
+    //  SELECT unicode('Brush')
+    cout << "SELECT unicode('Brush') = " << storage.select(unicode("Brush")).front() << endl;
+
+    //  SELECT unicode(substr('Brush', 2))
+    cout << "SELECT unicode(substr('Brush', 2)) = " << storage.select(unicode(substr("Brush", 2))).front() << endl;
+
     return 0;
 }
