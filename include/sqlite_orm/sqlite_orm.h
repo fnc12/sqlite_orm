@@ -3491,6 +3491,12 @@ namespace sqlite_orm {
             core_function_t(args_type &&args_) : args(std::move(args_)) {}
         };
 
+        struct unicode_string {
+            operator std::string() const {
+                return "UNICODE";
+            }
+        };
+
         struct length_string {
             operator std::string() const {
                 return "LENGTH";
@@ -3771,6 +3777,15 @@ namespace sqlite_orm {
         typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
     internal::is_not_equal_t<F, R> operator!=(F f, R r) {
         return {std::move(f), std::move(r)};
+    }
+
+    /**
+     *  UNICODE(x) function https://sqlite.org/lang_corefunc.html#unicode
+     */
+    template<class T>
+    internal::core_function_t<int, internal::unicode_string, T> unicode(T t) {
+        std::tuple<T> args{std::forward<T>(t)};
+        return {move(args)};
     }
 
     /**
