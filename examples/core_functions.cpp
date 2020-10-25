@@ -349,5 +349,8 @@ int main(int, char **argv) {
     //  SELECT unicode(substr('Brush', 2))
     cout << "SELECT unicode(substr('Brush', 2)) = " << storage.select(unicode(substr("Brush", 2))).front() << endl;
 
+    //  SELECT typeof(1)
+    cout << "SELECT typeof(1) = " << storage.select(typeof_(1)).front() << endl;
+
     return 0;
 }
