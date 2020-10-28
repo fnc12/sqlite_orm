@@ -473,6 +473,13 @@ static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
         using Expected = std::tuple<const char *>;
         static_assert(is_same<Tuple, Expected>::value, "upper");
     }
+    {  // total_changes
+        auto f = total_changes();
+        using Fun = decltype(f);
+        using Tuple = node_tuple<Fun>::type;
+        using Expected = std::tuple<>;
+        static_assert(is_same<Tuple, Expected>::value, "total_changes");
+    }
     {  // changes
         auto f = changes();
         using Fun = decltype(f);
