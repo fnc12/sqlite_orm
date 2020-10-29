@@ -22,6 +22,10 @@ TEST_CASE("statement_serializator core functions") {
         REQUIRE(value == "UPPER('call')");
     }
     {
+        auto value = serialize(total_changes(), context);
+        REQUIRE(value == "TOTAL_CHANGES()");
+    }
+    {
         auto value = serialize(changes(), context);
         REQUIRE(value == "CHANGES()");
     }

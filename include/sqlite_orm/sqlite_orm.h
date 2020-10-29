@@ -3527,6 +3527,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct total_changes_string {
+            operator std::string() const {
+                return "TOTAL_CHANGES";
+            }
+        };
+
         struct changes_string {
             operator std::string() const {
                 return "CHANGES";
@@ -3837,6 +3843,13 @@ namespace sqlite_orm {
     internal::core_function_t<std::string, internal::upper_string, T> upper(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {move(args)};
+    }
+
+    /**
+     *  TOTAL_CHANGES() function https://sqlite.org/lang_corefunc.html#total_changes
+     */
+    inline internal::core_function_t<int, internal::total_changes_string> total_changes() {
+        return {{}};
     }
 
     /**
