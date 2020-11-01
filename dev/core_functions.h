@@ -12,6 +12,9 @@
 
 namespace sqlite_orm {
 
+    using int64 = sqlite_int64;
+    using uint64 = sqlite_uint64;
+
     namespace internal {
 
         template<class T>
@@ -69,6 +72,12 @@ namespace sqlite_orm {
         struct upper_string {
             operator std::string() const {
                 return "UPPER";
+            }
+        };
+
+        struct last_insert_rowid_string {
+            operator std::string() const {
+                return "LAST_INSERT_ROWID";
             }
         };
 
@@ -388,6 +397,13 @@ namespace sqlite_orm {
     internal::core_function_t<std::string, internal::upper_string, T> upper(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {move(args)};
+    }
+
+    /**
+     *  LAST_INSERT_ROWID(x) function https://www.sqlite.org/lang_corefunc.html#last_insert_rowid
+     */
+    inline internal::core_function_t<int64, internal::last_insert_rowid_string> last_insert_rowid() {
+        return {{}};
     }
 
     /**
