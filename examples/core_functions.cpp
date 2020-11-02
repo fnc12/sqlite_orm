@@ -51,6 +51,8 @@ int main(int, char **argv) {
         storage.insert(MarvelHero{-1, "Clint Barton", "Hawkeye", -11});
         storage.insert(MarvelHero{-1, "Natasha Romanoff", "Black widow", 8});
         storage.insert(MarvelHero{-1, "Groot", "I am Groot!", 2});
+
+        cout << "SELECT last_insert_rowid() = " << storage.select(last_insert_rowid()).front() << endl;
         return true;
     });
 
