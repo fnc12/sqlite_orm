@@ -75,6 +75,31 @@ namespace sqlite_orm {
                 return T::get();
             }
         };
+    
+        template<class X, class Y>
+        struct statement_serializator<likelihood_t<X, Y>, void> {
+            using statement_type = likelihood_t<X, Y>;
+            
+            template<class C>
+            std::string operator()(const statement_type &c, const C &context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(c) << "(";
+                std::vector<std::string> args;
+                using args_type = typename std::decay<decltype(c)>::type::args_type;
+                args.reserve(std::tuple_size<args_type>::value);
+                iterate_tuple(c.args, [&args, &context](auto &v) {
+                    args.push_back(serialize(v, context));
+                });
+                for(size_t i = 0; i < args.size(); ++i) {
+                    ss << args[i];
+                    if(i < args.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << ")";
+                return ss.str();
+            }
+        };
 
         template<class R, class S, class... Args>
         struct statement_serializator<core_function_t<R, S, Args...>, void> {

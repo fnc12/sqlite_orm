@@ -27,7 +27,7 @@ namespace sqlite_orm {
          *  Args - function arguments types
          */
         template<class R, class S, class... Args>
-        struct core_function_t : S, internal::arithmetic_t {
+        struct core_function_t : S, arithmetic_t {
             using return_type = R;
             using string_type = S;
             using args_type = std::tuple<Args...>;
@@ -289,6 +289,20 @@ namespace sqlite_orm {
             operator std::string() const {
                 return "GROUP_CONCAT";
             }
+        };
+    
+        struct likelihood_string {
+            operator std::string() const {
+                return "LIKELIHOOD";
+            }
+        };
+    
+        template<class X, class Y>
+        struct likelihood_t : core_function_t<void, likelihood_string, X, Y> {
+            
+            using super = core_function_t<void, likelihood_string, X, Y>;
+            
+            using super::super;
         };
 
     }
@@ -646,6 +660,15 @@ namespace sqlite_orm {
         return {move(args)};
     }
 #endif
+
+    /**
+     *  LIKELIHOOD(X,Y) function https://www.sqlite.org/lang_corefunc.html#likelihood
+     */
+    template<class X, class Y>
+    internal::likelihood_t<X, Y> likelihood(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
 
     /**
      *  TOTAL(X) aggregate function.

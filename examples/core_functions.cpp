@@ -363,5 +363,45 @@ int main(int, char **argv) {
     //  SELECT typeof(1)
     cout << "SELECT typeof(1) = " << storage.select(typeof_(1)).front() << endl;
 
+    {
+        struct Composer {
+            int id = 0;
+            std::string name;
+        };
+        struct Album {
+            int id = 0;
+            std::string name;
+        };
+        struct Track {
+            int id = 0;
+            int composerId = 0;
+            int albumId = 0;
+            std::string title;
+        };
+        
+        
+        auto storage2 = make_storage({},
+                                     make_index("track_i1", &Track::composerId),
+                                     make_index("track_i2", &Track::albumId),
+                                     make_table("composer",
+                                                make_column("cid", &Composer::id, primary_key()),
+                                                make_column("cname", &Composer::name)),
+                                     make_table("album",
+                                                make_column("aid", &Album::id, primary_key()),
+                                                make_column("aname", &Album::name)),
+                                     make_table("track",
+                                                make_column("tid", &Track::id, primary_key()),
+                                                make_column("cid", &Track::composerId),
+                                                make_column("aid", &Track::albumId),
+                                                make_column("title", &Track::title),
+                                                foreign_key(&Track::composerId).references(&Composer::id),
+                                                foreign_key(&Track::albumId).references(&Album::id)));
+        storage2.sync_schema();
+        storage2.select(distinct(&Album::name),
+                        where(like(&Composer::name, "%bach%") and is_equal(&Composer::id, &Track::composerId) and is_equal(&Album::id, &Track::albumId)));
+        
+        storage2.select(distinct(&Album::name),
+                        where(likelihood(like(&Composer::name, "%bach%"), 0.05) and is_equal(&Composer::id, &Track::composerId) and is_equal(&Album::id, &Track::albumId)));
+    }
     return 0;
 }

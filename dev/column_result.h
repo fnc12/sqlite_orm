@@ -247,6 +247,11 @@ namespace sqlite_orm {
         struct column_result_t<St, glob_t<A, T>, void> {
             using type = bool;
         };
+    
+        template<class St, class X, class Y>
+        struct column_result_t<St, likelihood_t<X, Y>, void> {
+            using type = typename column_result_t<St, X>::type;
+        };
 
         template<class St, class C>
         struct column_result_t<St, negated_condition_t<C>, void> {
