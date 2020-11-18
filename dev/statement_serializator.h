@@ -1499,7 +1499,11 @@ namespace sqlite_orm {
             std::string operator()(const statement_type &l, const C &context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                auto aliasString = alias_extractor<T>::get();
+                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                if(aliasString.length()) {
+                    ss << "'" << aliasString << "' ";
+                }
                 ss << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -1513,7 +1517,11 @@ namespace sqlite_orm {
             std::string operator()(const statement_type &l, const C &context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                auto aliasString = alias_extractor<T>::get();
+                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                if(aliasString.length()) {
+                    ss << "'" << aliasString << "' ";
+                }
                 ss << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -1527,7 +1535,11 @@ namespace sqlite_orm {
             std::string operator()(const statement_type &l, const C &context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                auto aliasString = alias_extractor<T>::get();
+                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                if(aliasString.length()) {
+                    ss << "'" << aliasString << "' ";
+                }
                 ss << serialize(l.constraint, context);
                 return ss.str();
             }

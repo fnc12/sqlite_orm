@@ -3195,7 +3195,7 @@ namespace sqlite_orm {
 
             alias_column_t(){};
 
-            alias_column_t(column_type column_) : column(column_) {}
+            alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
 
         template<class T, class SFINAE = void>
@@ -4659,6 +4659,11 @@ namespace sqlite_orm {
         /**
          *  Trait class used to define table mapped type by setter/getter/member
          *  T - member pointer
+         *  `type` is a type which is mapped.
+         *  E.g.
+         *  -   `table_type<decltype(&User::id)>::type` is `User`
+         *  -   `table_type<decltype(&User::getName)>::type` is `User`
+         *  -   `table_type<decltype(&User::setName)>::type` is `User`
          */
         template<class T, class SFINAE = void>
         struct table_type;
@@ -8148,6 +8153,15 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        /**
+         * This class does not related to SQL view. This is a container like class which is returned by
+         * by storage_t::iterate function. This class contains STL functions:
+         *  -   size_t size()
+         *  -   bool empty()
+         *  -   iterator end()
+         *  -   iterator begin()
+         *  All these functions are not right const cause all of them may open SQLite connections.
+         */
         template<class T, class S, class... Args>
         struct view_t {
             using mapped_type = T;
@@ -8167,10 +8181,6 @@ namespace sqlite_orm {
 
             bool empty() {
                 return !this->size();
-            }
-
-            iterator_t<self> end() {
-                return {nullptr, *this};
             }
 
             iterator_t<self> begin() {
@@ -8197,6 +8207,10 @@ namespace sqlite_orm {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
+            }
+
+            iterator_t<self> end() {
+                return {nullptr, *this};
             }
         };
     }
@@ -11003,7 +11017,11 @@ namespace sqlite_orm {
             std::string operator()(const statement_type &l, const C &context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                auto aliasString = alias_extractor<T>::get();
+                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                if(aliasString.length()) {
+                    ss << "'" << aliasString << "' ";
+                }
                 ss << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -11017,7 +11035,11 @@ namespace sqlite_orm {
             std::string operator()(const statement_type &l, const C &context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                auto aliasString = alias_extractor<T>::get();
+                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                if(aliasString.length()) {
+                    ss << "'" << aliasString << "' ";
+                }
                 ss << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -11031,7 +11053,11 @@ namespace sqlite_orm {
             std::string operator()(const statement_type &l, const C &context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
-                ss << " '" << context.impl.find_table_name(typeid(T)) << "' ";
+                auto aliasString = alias_extractor<T>::get();
+                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                if(aliasString.length()) {
+                    ss << "'" << aliasString << "' ";
+                }
                 ss << serialize(l.constraint, context);
                 return ss.str();
             }

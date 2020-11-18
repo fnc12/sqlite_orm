@@ -122,3 +122,31 @@ TEST_CASE("rename table") {
         REQUIRE(storage.tablename<Visit>() != visitsNewTableName);
     }
 }
+
+TEST_CASE("Storage copy") {
+    struct User {
+        int id = 0;
+    };
+
+    int calledCount = 0;
+
+    auto storage = make_storage({}, make_table("users", make_column("id", &User::id)));
+    storage.sync_schema();
+    storage.remove_all<User>();
+
+    storage.on_open = [&calledCount](sqlite3 *) {
+        ++calledCount;
+    };
+
+    storage.on_open(nullptr);
+    REQUIRE(calledCount == 1);
+
+    auto storageCopy = storage;
+    REQUIRE(storageCopy.on_open);
+    REQUIRE(calledCount == 2);
+    storageCopy.on_open(nullptr);
+    REQUIRE(calledCount == 3);
+
+    storageCopy.sync_schema();
+    storageCopy.remove_all<User>();
+}
