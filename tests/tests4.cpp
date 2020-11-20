@@ -1,7 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
 #include <algorithm>  //  std::count_if
-#define SQLITE_ORM_OPTIONAL_SUPPORTED
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -277,7 +276,7 @@ TEST_CASE("two joins") {
         double amount_colones;
         double amount_dolares;
         int fkey_account_own;  // Account
-        std::optional<int> fkey_account_other;  // Account optional
+        int fkey_account_other = 0;  // Account optional
 
         long line_date;
         std::string descripcion;
