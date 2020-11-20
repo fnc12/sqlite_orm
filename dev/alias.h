@@ -39,7 +39,7 @@ namespace sqlite_orm {
 
             alias_column_t(){};
 
-            alias_column_t(column_type column_) : column(column_) {}
+            alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
 
         template<class T, class SFINAE = void>

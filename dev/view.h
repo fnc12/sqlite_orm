@@ -19,6 +19,15 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        /**
+         * This class does not related to SQL view. This is a container like class which is returned by
+         * by storage_t::iterate function. This class contains STL functions:
+         *  -   size_t size()
+         *  -   bool empty()
+         *  -   iterator end()
+         *  -   iterator begin()
+         *  All these functions are not right const cause all of them may open SQLite connections.
+         */
         template<class T, class S, class... Args>
         struct view_t {
             using mapped_type = T;
@@ -38,10 +47,6 @@ namespace sqlite_orm {
 
             bool empty() {
                 return !this->size();
-            }
-
-            iterator_t<self> end() {
-                return {nullptr, *this};
             }
 
             iterator_t<self> begin() {
@@ -68,6 +73,10 @@ namespace sqlite_orm {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
+            }
+
+            iterator_t<self> end() {
+                return {nullptr, *this};
             }
         };
     }

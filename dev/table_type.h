@@ -12,6 +12,11 @@ namespace sqlite_orm {
         /**
          *  Trait class used to define table mapped type by setter/getter/member
          *  T - member pointer
+         *  `type` is a type which is mapped.
+         *  E.g.
+         *  -   `table_type<decltype(&User::id)>::type` is `User`
+         *  -   `table_type<decltype(&User::getName)>::type` is `User`
+         *  -   `table_type<decltype(&User::setName)>::type` is `User`
          */
         template<class T, class SFINAE = void>
         struct table_type;
