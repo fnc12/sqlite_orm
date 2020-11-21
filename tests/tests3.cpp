@@ -115,7 +115,7 @@ TEST_CASE("Wide string") {
         L"АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоППРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя",  //  russian
         L"AaBbCcÇçDdEeFFGgĞğHhIıİiJjKkLlMmNnOoÖöPpRrSsŞşTtUuÜüVvYyZz",  //  turkish
     };
-    for(auto &expectedString: expectedStrings) {
+    for(auto& expectedString: expectedStrings) {
         auto id = storage.insert(Alphabet{0, expectedString});
         REQUIRE(storage.get<Alphabet>(id).letters == expectedString);
     }
@@ -158,7 +158,7 @@ TEST_CASE("Aggregate functions") {
             this->id = newValue;
         }
 
-        const int &getId() const {
+        const int& getId() const {
             return this->id;
         }
 
@@ -166,7 +166,7 @@ TEST_CASE("Aggregate functions") {
             this->name = newValue;
         }
 
-        const std::string &getName() const {
+        const std::string& getName() const {
             return this->name;
         }
 
@@ -174,7 +174,7 @@ TEST_CASE("Aggregate functions") {
             this->age = newValue;
         }
 
-        const int &getAge() const {
+        const int& getAge() const {
             return this->age;
         }
     };
@@ -313,8 +313,8 @@ TEST_CASE("Blob") {
     };
     using byte = char;
 
-    auto generateData = [](size_t size) -> byte * {
-        auto data = (byte *)::malloc(size * sizeof(byte));
+    auto generateData = [](size_t size) -> byte* {
+        auto data = (byte*)::malloc(size * sizeof(byte));
         for(int i = 0; i < static_cast<int>(size); ++i) {
             if((i + 1) % 10 == 0) {
                 data[i] = 0;
@@ -342,7 +342,7 @@ TEST_CASE("Blob") {
     {
         auto vd = storage.get_all<BlobData>();
         assert(vd.size() == 1);
-        auto &blob = vd.front();
+        auto& blob = vd.front();
         REQUIRE(blob.data.size() == size);
         REQUIRE(std::equal(data, data + size, blob.data.begin()));
     }
@@ -351,7 +351,7 @@ TEST_CASE("Blob") {
     {
         auto blobData = storage.select(&BlobData::data);
         assert(blobData.size() == 1);
-        auto &blob = blobData.front();
+        auto& blob = blobData.front();
         REQUIRE(blob.size() == size);
         REQUIRE(std::equal(data, data + size, blob.begin()));
     }
@@ -360,7 +360,7 @@ TEST_CASE("Blob") {
     {
         auto blobData = storage.select(columns(&BlobData::data));
         REQUIRE(blobData.size() == 1);
-        auto &blob = std::get<0>(blobData.front());
+        auto& blob = std::get<0>(blobData.front());
         REQUIRE(blob.size() == size);
         REQUIRE(std::equal(data, data + size, blob.begin()));
     }

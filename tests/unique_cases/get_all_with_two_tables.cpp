@@ -12,7 +12,7 @@ namespace GetAllWithTwoTablesInternal {
         std::string attributes;
     };
 
-    inline bool operator==(const Item &lhs, const Item &rhs) {
+    inline bool operator==(const Item& lhs, const Item& rhs) {
         return lhs.id == rhs.id && lhs.attributes == rhs.attributes;
     }
 }

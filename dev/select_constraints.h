@@ -165,12 +165,12 @@ namespace sqlite_orm {
          *  Generic way to get DISTINCT value from any type.
          */
         template<class T>
-        bool get_distinct(const T &) {
+        bool get_distinct(const T&) {
             return false;
         }
 
         template<class... Args>
-        bool get_distinct(const columns_t<Args...> &cols) {
+        bool get_distinct(const columns_t<Args...>& cols) {
             return cols.distinct;
         }
 

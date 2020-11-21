@@ -41,7 +41,7 @@ TEST_CASE("Prepared insert explicit") {
         User user{5, "Eminem"};
         SECTION("by ref") {
             auto statement = storage.prepare(insert(std::ref(user), columns(&User::id, &User::name)));
-            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
             {
                 auto insertedId = storage.execute(statement);
                 REQUIRE(insertedId == user.id);
@@ -69,7 +69,7 @@ TEST_CASE("Prepared insert explicit") {
                 try {
                     storage.execute(statement);
                     REQUIRE(false);
-                } catch(const std::system_error &e) {
+                } catch(const std::system_error& e) {
                     REQUIRE(storage.count<User>(where(is_equal(&User::name, "Nate Dogg"))) == 0);
                 } catch(...) {
                     REQUIRE(false);

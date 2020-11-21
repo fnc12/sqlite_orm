@@ -26,22 +26,22 @@ namespace sqlite_orm {
      */
     template<class V>
     struct statement_binder<V, std::enable_if_t<std::is_arithmetic<V>::value>> {
-        int bind(sqlite3_stmt *stmt, int index, const V &value) {
+        int bind(sqlite3_stmt* stmt, int index, const V& value) {
             return bind(stmt, index, value, tag());
         }
 
       private:
         using tag = arithmetic_tag_t<V>;
 
-        int bind(sqlite3_stmt *stmt, int index, const V &value, const int_or_smaller_tag &) {
+        int bind(sqlite3_stmt* stmt, int index, const V& value, const int_or_smaller_tag&) {
             return sqlite3_bind_int(stmt, index, static_cast<int>(value));
         }
 
-        int bind(sqlite3_stmt *stmt, int index, const V &value, const bigint_tag &) {
+        int bind(sqlite3_stmt* stmt, int index, const V& value, const bigint_tag&) {
             return sqlite3_bind_int64(stmt, index, static_cast<sqlite3_int64>(value));
         }
 
-        int bind(sqlite3_stmt *stmt, int index, const V &value, const real_tag &) {
+        int bind(sqlite3_stmt* stmt, int index, const V& value, const real_tag&) {
             return sqlite3_bind_double(stmt, index, static_cast<double>(value));
         }
     };
@@ -52,17 +52,17 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<
         V,
-        std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char *>::value>> {
-        int bind(sqlite3_stmt *stmt, int index, const V &value) {
+        std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char*>::value>> {
+        int bind(sqlite3_stmt* stmt, int index, const V& value) {
             return sqlite3_bind_text(stmt, index, string_data(value), -1, SQLITE_TRANSIENT);
         }
 
       private:
-        const char *string_data(const std::string &s) const {
+        const char* string_data(const std::string& s) const {
             return s.c_str();
         }
 
-        const char *string_data(const char *s) const {
+        const char* string_data(const char* s) const {
             return s;
         }
     };
@@ -74,8 +74,8 @@ namespace sqlite_orm {
     template<class V>
     struct statement_binder<
         V,
-        std::enable_if_t<std::is_same<V, std::wstring>::value || std::is_same<V, const wchar_t *>::value>> {
-        int bind(sqlite3_stmt *stmt, int index, const V &value) {
+        std::enable_if_t<std::is_same<V, std::wstring>::value || std::is_same<V, const wchar_t*>::value>> {
+        int bind(sqlite3_stmt* stmt, int index, const V& value) {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             std::string utf8Str = converter.to_bytes(value);
             return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
@@ -88,7 +88,7 @@ namespace sqlite_orm {
      */
     template<>
     struct statement_binder<std::nullptr_t, void> {
-        int bind(sqlite3_stmt *stmt, int index, const std::nullptr_t &) {
+        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) {
             return sqlite3_bind_null(stmt, index);
         }
     };
@@ -96,7 +96,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<>
     struct statement_binder<std::nullopt_t, void> {
-        int bind(sqlite3_stmt *stmt, int index, const std::nullopt_t &) {
+        int bind(sqlite3_stmt* stmt, int index, const std::nullopt_t&) {
             return sqlite3_bind_null(stmt, index);
         }
     };
@@ -106,7 +106,7 @@ namespace sqlite_orm {
     struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
         using value_type = typename is_std_ptr<V>::element_type;
 
-        int bind(sqlite3_stmt *stmt, int index, const V &value) {
+        int bind(sqlite3_stmt* stmt, int index, const V& value) {
             if(value) {
                 return statement_binder<value_type>().bind(stmt, index, *value);
             } else {
@@ -120,13 +120,9 @@ namespace sqlite_orm {
      */
     template<>
     struct statement_binder<std::vector<char>, void> {
-        int bind(sqlite3_stmt *stmt, int index, const std::vector<char> &value) {
+        int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) {
             if(value.size()) {
-                return sqlite3_bind_blob(stmt,
-                                         index,
-                                         (const void *)&value.front(),
-                                         int(value.size()),
-                                         SQLITE_TRANSIENT);
+                return sqlite3_bind_blob(stmt, index, (const void*)&value.front(), int(value.size()), SQLITE_TRANSIENT);
             } else {
                 return sqlite3_bind_blob(stmt, index, "", 0, SQLITE_TRANSIENT);
             }
@@ -138,7 +134,7 @@ namespace sqlite_orm {
     struct statement_binder<std::optional<T>, void> {
         using value_type = T;
 
-        int bind(sqlite3_stmt *stmt, int index, const std::optional<T> &value) {
+        int bind(sqlite3_stmt* stmt, int index, const std::optional<T>& value) {
             if(value) {
                 return statement_binder<value_type>().bind(stmt, index, *value);
             } else {
@@ -154,8 +150,8 @@ namespace sqlite_orm {
         using is_bindable = std::integral_constant<bool, !std::is_base_of<std::false_type, statement_binder<T>>::value>;
 
         struct conditional_binder_base {
-            sqlite3_stmt *stmt = nullptr;
-            int &index;
+            sqlite3_stmt* stmt = nullptr;
+            int& index;
 
             conditional_binder_base(decltype(stmt) stmt_, decltype(index) index_) : stmt(stmt_), index(index_) {}
         };
@@ -168,7 +164,7 @@ namespace sqlite_orm {
 
             using conditional_binder_base::conditional_binder_base;
 
-            int operator()(const T &t) const {
+            int operator()(const T& t) const {
                 return statement_binder<T>().bind(this->stmt, this->index++, t);
             }
         };
@@ -177,7 +173,7 @@ namespace sqlite_orm {
         struct conditional_binder<T, std::false_type> : conditional_binder_base {
             using conditional_binder_base::conditional_binder_base;
 
-            int operator()(const T &) const {
+            int operator()(const T&) const {
                 return SQLITE_OK;
             }
         };

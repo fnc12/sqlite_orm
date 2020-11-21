@@ -99,7 +99,7 @@ namespace sqlite_orm {
              */
             std::unique_ptr<std::string> default_value() const {
                 std::unique_ptr<std::string> res;
-                iterate_tuple(this->constraints, [&res](auto &v) {
+                iterate_tuple(this->constraints, [&res](auto& v) {
                     auto dft = internal::default_value_extractor()(v);
                     if(dft) {
                         res = std::move(dft);
@@ -150,8 +150,8 @@ namespace sqlite_orm {
              class T,
              typename = typename std::enable_if<!std::is_member_function_pointer<T O::*>::value>::type,
              class... Op>
-    internal::column_t<O, T, const T &(O::*)() const, void (O::*)(T), Op...>
-    make_column(const std::string &name, T O::*m, Op... constraints) {
+    internal::column_t<O, T, const T& (O::*)() const, void (O::*)(T), Op...>
+    make_column(const std::string& name, T O::*m, Op... constraints) {
         static_assert(constraints::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         static_assert(internal::is_field_member_pointer<T O::*>::value,
@@ -172,7 +172,7 @@ namespace sqlite_orm {
                        G,
                        S,
                        Op...>
-    make_column(const std::string &name, S setter, G getter, Op... constraints) {
+    make_column(const std::string& name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
@@ -195,7 +195,7 @@ namespace sqlite_orm {
                        G,
                        S,
                        Op...>
-    make_column(const std::string &name, G getter, S setter, Op... constraints) {
+    make_column(const std::string& name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");

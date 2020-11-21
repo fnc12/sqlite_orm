@@ -49,7 +49,7 @@ TEST_CASE("Iterate blob") {
     };
 
     struct TestComparator {
-        bool operator()(const Test &lhs, const Test &rhs) const {
+        bool operator()(const Test& lhs, const Test& rhs) const {
             return lhs.id == rhs.id && lhs.key == rhs.key;
         }
     };
@@ -67,11 +67,11 @@ TEST_CASE("Iterate blob") {
     db.replace(v);
 
     TestComparator testComparator;
-    for(auto &obj: db.iterate<Test>()) {
+    for(auto& obj: db.iterate<Test>()) {
         REQUIRE(testComparator(obj, v));
     }  //  test that view_t and iterator_t compile
 
-    for(const auto &obj: db.iterate<Test>()) {
+    for(const auto& obj: db.iterate<Test>()) {
         REQUIRE(testComparator(obj, v));
     }  //  test that view_t and iterator_t compile
 
@@ -85,7 +85,7 @@ TEST_CASE("Iterate blob") {
     }
     {
         int iterationsCount = 0;
-        for(auto &w: db.iterate<Test>(where(c(&Test::key) == key))) {
+        for(auto& w: db.iterate<Test>(where(c(&Test::key) == key))) {
             REQUIRE(testComparator(w, v));
             ++iterationsCount;
         }
@@ -114,23 +114,23 @@ TEST_CASE("Different getters and setters") {
             return this->name;
         }
 
-        void setNameByConstRef(const std::string &name_) {
+        void setNameByConstRef(const std::string& name_) {
             this->name = name_;
         }
 
-        const int &getConstIdByRefConst() const {
+        const int& getConstIdByRefConst() const {
             return this->id;
         }
 
-        void setIdByRef(int &id_) {
+        void setIdByRef(int& id_) {
             this->id = id_;
         }
 
-        const std::string &getConstNameByRefConst() const {
+        const std::string& getConstNameByRefConst() const {
             return this->name;
         }
 
-        void setNameByRef(std::string &name_) {
+        void setNameByRef(std::string& name_) {
             this->name = std::move(name_);
         }
     };

@@ -31,7 +31,7 @@ namespace sqlite_orm {
 
     class orm_error_category : public std::error_category {
       public:
-        const char *name() const noexcept override final {
+        const char* name() const noexcept override final {
             return "ORM error";
         }
 
@@ -71,7 +71,7 @@ namespace sqlite_orm {
 
     class sqlite_error_category : public std::error_category {
       public:
-        const char *name() const noexcept override final {
+        const char* name() const noexcept override final {
             return "SQLite error";
         }
 
@@ -80,18 +80,18 @@ namespace sqlite_orm {
         }
     };
 
-    inline const orm_error_category &get_orm_error_category() {
+    inline const orm_error_category& get_orm_error_category() {
         static orm_error_category res;
         return res;
     }
 
-    inline const sqlite_error_category &get_sqlite_error_category() {
+    inline const sqlite_error_category& get_sqlite_error_category() {
         static sqlite_error_category res;
         return res;
     }
 
     template<typename... T>
-    std::string get_error_message(sqlite3 *db, T &&... args) {
+    std::string get_error_message(sqlite3* db, T&&... args) {
         std::ostringstream stream;
         using unpack = int[];
         static_cast<void>(unpack{0, (static_cast<void>(static_cast<void>(stream << args)), 0)...});
@@ -100,7 +100,7 @@ namespace sqlite_orm {
     }
 
     template<typename... T>
-    [[noreturn]] void throw_error(sqlite3 *db, T &&... args) {
+    [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                 get_error_message(db, std::forward<T>(args)...));
     }

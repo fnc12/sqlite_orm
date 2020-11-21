@@ -38,7 +38,7 @@ struct JobHistory {
     decltype(Employee::departmentId) departmentId;
 };
 
-int main(int, char **) {
+int main(int, char**) {
     using namespace sqlite_orm;
     auto storage = make_storage("subquery.sqlite",
                                 make_table("employees",
@@ -1288,7 +1288,7 @@ int main(int, char **) {
                                select(&Employee::salary, where(is_equal(&Employee::firstName, "Alexander"))))));
         cout << "first_name  last_name   salary" << endl;
         cout << "----------  ----------  ----------" << endl;
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
     }
@@ -1300,7 +1300,7 @@ int main(int, char **) {
                                    where(greater_than(&Employee::salary, select(avg(&Employee::salary)))));
         cout << "employee_id  first_name  last_name   salary" << endl;
         cout << "-----------  ----------  ----------  ----------" << endl;
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -1316,7 +1316,7 @@ int main(int, char **) {
             where(in(&Employee::departmentId, select(&Department::id, where(c(&Department::locationId) == 1700)))));
         cout << "first_name  last_name   department_id" << endl;
         cout << "----------  ----------  -------------" << endl;
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
     }
@@ -1334,7 +1334,7 @@ int main(int, char **) {
                                         select(&Department::id, where(between(&Department::managerId, 100, 200))))));
         cout << "first_name  last_name   department_id" << endl;
         cout << "----------  ----------  -------------" << endl;
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
     }
@@ -1355,7 +1355,7 @@ int main(int, char **) {
                        where(is_equal(&Employee::departmentId, alias_column<als>(&Employee::departmentId)))))));
         cout << "last_name   salary      department_id" << endl;
         cout << "----------  ----------  -------------" << endl;
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
     }
@@ -1372,7 +1372,7 @@ int main(int, char **) {
                                select(count<JobHistory>(), where(is_equal(&Employee::id, &JobHistory::employeeId))))));
         cout << "first_name  last_name   employee_id  job_id" << endl;
         cout << "----------  ----------  -----------  ----------" << endl;
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }

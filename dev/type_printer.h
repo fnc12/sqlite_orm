@@ -16,28 +16,28 @@ namespace sqlite_orm {
     struct type_printer;
 
     struct integer_printer {
-        inline const std::string &print() {
+        inline const std::string& print() {
             static const std::string res = "INTEGER";
             return res;
         }
     };
 
     struct text_printer {
-        inline const std::string &print() {
+        inline const std::string& print() {
             static const std::string res = "TEXT";
             return res;
         }
     };
 
     struct real_printer {
-        inline const std::string &print() {
+        inline const std::string& print() {
             static const std::string res = "REAL";
             return res;
         }
     };
 
     struct blob_printer {
-        inline const std::string &print() {
+        inline const std::string& print() {
             static const std::string res = "BLOB";
             return res;
         }
@@ -87,7 +87,7 @@ namespace sqlite_orm {
     struct type_printer<std::wstring, void> : public text_printer {};
 
     template<>
-    struct type_printer<const char *, void> : public text_printer {};
+    struct type_printer<const char*, void> : public text_printer {};
 
     template<>
     struct type_printer<float, void> : public real_printer {};

@@ -8,7 +8,7 @@ namespace sqlite_orm {
      *  Guard class which finalizes `sqlite3_stmt` in dtor
      */
     struct statement_finalizer {
-        sqlite3_stmt *stmt = nullptr;
+        sqlite3_stmt* stmt = nullptr;
 
         statement_finalizer(decltype(stmt) stmt_) : stmt(stmt_) {}
 

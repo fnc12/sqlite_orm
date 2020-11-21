@@ -9,7 +9,7 @@ TEST_CASE("Journal mode") {
     ::remove(filename);
     auto storage = make_storage(filename);
     auto storageCopy = storage;
-    decltype(storage) *stor = nullptr;
+    decltype(storage)* stor = nullptr;
     SECTION("Storage as is") {
         stor = &storage;
     };
@@ -63,7 +63,7 @@ TEST_CASE("Synchronous") {
     try {
         storage.pragma.synchronous(newValue);
         throw std::runtime_error("Must not fire");
-    } catch(const std::system_error &) {
+    } catch(const std::system_error&) {
         //  Safety level may not be changed inside a transaction
         REQUIRE(storage.pragma.synchronous() == value);
     }

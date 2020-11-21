@@ -17,7 +17,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct field_printer {
-        std::string operator()(const T &t) const {
+        std::string operator()(const T& t) const {
             std::stringstream stream;
             stream << t;
             return stream.str();
@@ -29,7 +29,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<unsigned char> {
-        std::string operator()(const unsigned char &t) const {
+        std::string operator()(const unsigned char& t) const {
             std::stringstream stream;
             stream << +t;
             return stream.str();
@@ -41,7 +41,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<signed char> {
-        std::string operator()(const signed char &t) const {
+        std::string operator()(const signed char& t) const {
             std::stringstream stream;
             stream << +t;
             return stream.str();
@@ -53,7 +53,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<char> {
-        std::string operator()(const char &t) const {
+        std::string operator()(const char& t) const {
             std::stringstream stream;
             stream << +t;
             return stream.str();
@@ -62,14 +62,14 @@ namespace sqlite_orm {
 
     template<>
     struct field_printer<std::string> {
-        std::string operator()(const std::string &t) const {
+        std::string operator()(const std::string& t) const {
             return t;
         }
     };
 
     template<>
     struct field_printer<std::vector<char>> {
-        std::string operator()(const std::vector<char> &t) const {
+        std::string operator()(const std::vector<char>& t) const {
             std::stringstream ss;
             ss << std::hex;
             for(auto c: t) {
@@ -81,14 +81,14 @@ namespace sqlite_orm {
 
     template<>
     struct field_printer<std::nullptr_t> {
-        std::string operator()(const std::nullptr_t &) const {
+        std::string operator()(const std::nullptr_t&) const {
             return "null";
         }
     };
 
     template<class T>
     struct field_printer<std::shared_ptr<T>> {
-        std::string operator()(const std::shared_ptr<T> &t) const {
+        std::string operator()(const std::shared_ptr<T>& t) const {
             if(t) {
                 return field_printer<T>()(*t);
             } else {
@@ -99,7 +99,7 @@ namespace sqlite_orm {
 
     template<class T>
     struct field_printer<std::unique_ptr<T>> {
-        std::string operator()(const std::unique_ptr<T> &t) const {
+        std::string operator()(const std::unique_ptr<T>& t) const {
             if(t) {
                 return field_printer<T>()(*t);
             } else {
@@ -111,7 +111,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct field_printer<std::optional<T>> {
-        std::string operator()(const std::optional<T> &t) const {
+        std::string operator()(const std::optional<T>& t) const {
             if(t.has_value()) {
                 return field_printer<T>()(*t);
             } else {

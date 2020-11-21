@@ -30,8 +30,8 @@ namespace sqlite_orm {
              *  call. When one finishes iterating it the pointer
              *  inside the shared_ptr is nulled out in all copies.
              */
-            std::shared_ptr<sqlite3_stmt *> stmt;
-            view_type &view;
+            std::shared_ptr<sqlite3_stmt*> stmt;
+            view_type& view;
 
             /**
              *  shared_ptr is used over unique_ptr here
@@ -39,32 +39,32 @@ namespace sqlite_orm {
              */
             std::shared_ptr<value_type> current;
 
-            void extract_value(std::unique_ptr<value_type> &temp) {
+            void extract_value(std::unique_ptr<value_type>& temp) {
                 temp = std::make_unique<value_type>();
-                auto &storage = this->view.storage;
-                auto &impl = storage.template get_impl<value_type>();
+                auto& storage = this->view.storage;
+                auto& impl = storage.template get_impl<value_type>();
                 object_from_column_builder<value_type> builder{*temp, *this->stmt};
                 impl.table.for_each_column(builder);
             }
 
           public:
             using difference_type = std::ptrdiff_t;
-            using pointer = value_type *;
-            using reference = value_type &;
+            using pointer = value_type*;
+            using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
 
-            iterator_t(sqlite3_stmt *stmt_, view_type &view_) :
-                stmt(std::make_shared<sqlite3_stmt *>(stmt_)), view(view_) {
+            iterator_t(sqlite3_stmt* stmt_, view_type& view_) :
+                stmt(std::make_shared<sqlite3_stmt*>(stmt_)), view(view_) {
                 this->operator++();
             }
 
-            iterator_t(const iterator_t &) = default;
+            iterator_t(const iterator_t&) = default;
 
-            iterator_t(iterator_t &&) = default;
+            iterator_t(iterator_t&&) = default;
 
-            iterator_t &operator=(iterator_t &&) = default;
+            iterator_t& operator=(iterator_t&&) = default;
 
-            iterator_t &operator=(const iterator_t &) = default;
+            iterator_t& operator=(const iterator_t&) = default;
 
             ~iterator_t() {
                 if(this->stmt) {
@@ -72,7 +72,7 @@ namespace sqlite_orm {
                 }
             }
 
-            value_type &operator*() {
+            value_type& operator*() {
                 if(!this->stmt) {
                     throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
                 }
@@ -84,7 +84,7 @@ namespace sqlite_orm {
                 return *this->current;
             }
 
-            value_type *operator->() {
+            value_type* operator->() {
                 return &(this->operator*());
             }
 
@@ -112,7 +112,7 @@ namespace sqlite_orm {
                 this->operator++();
             }
 
-            bool operator==(const iterator_t &other) const {
+            bool operator==(const iterator_t& other) const {
                 if(this->stmt && other.stmt) {
                     return *this->stmt == *other.stmt;
                 } else {
@@ -124,7 +124,7 @@ namespace sqlite_orm {
                 }
             }
 
-            bool operator!=(const iterator_t &other) const {
+            bool operator!=(const iterator_t& other) const {
                 return !(*this == other);
             }
         };

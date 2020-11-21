@@ -12,14 +12,14 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class C>
-        std::string serialize(const T &t, const C &context);
+        std::string serialize(const T& t, const C& context);
 
         template<class T, class SFINAE = void>
         struct column_names_getter {
             using expression_type = T;
 
             template<class C>
-            std::vector<std::string> operator()(const expression_type &t, const C &context) {
+            std::vector<std::string> operator()(const expression_type& t, const C& context) {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 auto columnName = serialize(t, newContext);
@@ -32,7 +32,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class C>
-        std::vector<std::string> get_column_names(const T &t, const C &context) {
+        std::vector<std::string> get_column_names(const T& t, const C& context) {
             column_names_getter<T> serializator;
             return serializator(t, context);
         }
@@ -42,7 +42,7 @@ namespace sqlite_orm {
             using expression_type = std::reference_wrapper<T>;
 
             template<class C>
-            std::vector<std::string> operator()(const expression_type &expression, const C &context) {
+            std::vector<std::string> operator()(const expression_type& expression, const C& context) {
                 return get_column_names(expression.get(), context);
             }
         };
@@ -52,7 +52,7 @@ namespace sqlite_orm {
             using expression_type = asterisk_t<T>;
 
             template<class C>
-            std::vector<std::string> operator()(const expression_type &, const C &) {
+            std::vector<std::string> operator()(const expression_type&, const C&) {
                 std::vector<std::string> res;
                 res.push_back("*");
                 return res;
@@ -64,7 +64,7 @@ namespace sqlite_orm {
             using expression_type = object_t<T>;
 
             template<class C>
-            std::vector<std::string> operator()(const expression_type &, const C &) {
+            std::vector<std::string> operator()(const expression_type&, const C&) {
                 std::vector<std::string> res;
                 res.push_back("*");
                 return res;
@@ -76,12 +76,12 @@ namespace sqlite_orm {
             using expression_type = columns_t<Args...>;
 
             template<class C>
-            std::vector<std::string> operator()(const expression_type &cols, const C &context) {
+            std::vector<std::string> operator()(const expression_type& cols, const C& context) {
                 std::vector<std::string> columnNames;
                 columnNames.reserve(static_cast<size_t>(cols.count));
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                iterate_tuple(cols.columns, [&columnNames, &newContext](auto &m) {
+                iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
                     auto columnName = serialize(m, newContext);
                     if(columnName.length()) {
                         columnNames.push_back(columnName);

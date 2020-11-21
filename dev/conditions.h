@@ -488,7 +488,7 @@ namespace sqlite_orm {
 
             args_type args;
 
-            multi_order_by_t(args_type &&args_) : args(std::move(args_)) {}
+            multi_order_by_t(args_type&& args_) : args(std::move(args_)) {}
         };
 
         struct dynamic_order_by_entry_t : order_by_base {
@@ -507,7 +507,7 @@ namespace sqlite_orm {
             using entry_t = dynamic_order_by_entry_t;
             using const_iterator = typename std::vector<entry_t>::const_iterator;
 
-            dynamic_order_by_t(const context_t &context_) : context(context_) {}
+            dynamic_order_by_t(const context_t& context_) : context(context_) {}
 
             template<class O>
             void push_back(order_by_t<O> order_by) {
@@ -560,7 +560,7 @@ namespace sqlite_orm {
             using args_type = std::tuple<Args...>;
             args_type args;
 
-            group_by_t(args_type &&args_) : args(std::move(args_)) {}
+            group_by_t(args_type&& args_) : args(std::move(args_)) {}
         };
 
         template<class T>
@@ -1205,7 +1205,7 @@ namespace sqlite_orm {
      * Example: storage.get_all<Singer>(multi_order_by(order_by(&Singer::name).asc(), order_by(&Singer::gender).desc())
      */
     template<class... Args>
-    internal::multi_order_by_t<Args...> multi_order_by(Args &&... args) {
+    internal::multi_order_by_t<Args...> multi_order_by(Args&&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -1223,7 +1223,7 @@ namespace sqlite_orm {
      */
     template<class S>
     internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>>
-    dynamic_order_by(const S &storage) {
+    dynamic_order_by(const S& storage) {
         internal::serializator_context_builder<S> builder(storage);
         return builder();
     }
@@ -1233,7 +1233,7 @@ namespace sqlite_orm {
      *  Example: storage.get_all<Employee>(group_by(&Employee::name))
      */
     template<class... Args>
-    internal::group_by_t<Args...> group_by(Args &&... args) {
+    internal::group_by_t<Args...> group_by(Args&&... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 

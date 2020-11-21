@@ -206,7 +206,7 @@ namespace sqlite_orm {
          *  Result for the most simple queries like `SELECT 'ototo'`
          */
         template<class St>
-        struct column_result_t<St, const char *, void> {
+        struct column_result_t<St, const char*, void> {
             using type = std::string;
         };
 

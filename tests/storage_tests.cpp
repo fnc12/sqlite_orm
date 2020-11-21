@@ -134,7 +134,7 @@ TEST_CASE("Storage copy") {
     storage.sync_schema();
     storage.remove_all<User>();
 
-    storage.on_open = [&calledCount](sqlite3 *) {
+    storage.on_open = [&calledCount](sqlite3*) {
         ++calledCount;
     };
 

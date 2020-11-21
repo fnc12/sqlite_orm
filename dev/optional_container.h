@@ -15,7 +15,7 @@ namespace sqlite_orm {
             type field;
 
             template<class L>
-            void apply(const L &l) const {
+            void apply(const L& l) const {
                 l(this->field);
             }
         };
@@ -25,7 +25,7 @@ namespace sqlite_orm {
             using type = void;
 
             template<class L>
-            void apply(const L &) const {
+            void apply(const L&) const {
                 //..
             }
         };

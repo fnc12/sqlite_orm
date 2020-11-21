@@ -14,7 +14,7 @@ TEST_CASE("Column") {
         static_assert(std::is_same<column_type::object_type, User>::value, "Incorrect object_type");
         static_assert(std::is_same<column_type::field_type, int>::value, "Incorrect field_type");
         static_assert(std::is_same<column_type::member_pointer_t, int User::*>::value, "Incorrect member pointer type");
-        static_assert(std::is_same<column_type::getter_type, const int &(User::*)() const>::value,
+        static_assert(std::is_same<column_type::getter_type, const int& (User::*)() const>::value,
                       "Incorrect getter_type");
         static_assert(std::is_same<column_type::setter_type, void (User::*)(int)>::value, "Incorrect setter_type");
     }
@@ -24,7 +24,7 @@ TEST_CASE("Column") {
         static_assert(std::is_same<column_type::object_type, User>::value, "Incorrect object_type");
         static_assert(std::is_same<column_type::field_type, int>::value, "Incorrect field_type");
         static_assert(std::is_same<column_type::member_pointer_t, int User::*>::value, "Incorrect member pointer type");
-        static_assert(std::is_same<column_type::getter_type, const int &(User::*)() const>::value,
+        static_assert(std::is_same<column_type::getter_type, const int& (User::*)() const>::value,
                       "Incorrect getter_type");
         static_assert(std::is_same<column_type::setter_type, void (User::*)(int)>::value, "Incorrect setter_type");
     }
@@ -34,7 +34,7 @@ TEST_CASE("Column") {
         static_assert(std::is_same<column_type::object_type, User>::value, "Incorrect object_type");
         static_assert(std::is_same<column_type::field_type, int>::value, "Incorrect field_type");
         static_assert(std::is_same<column_type::member_pointer_t, int User::*>::value, "Incorrect member pointer type");
-        static_assert(std::is_same<column_type::getter_type, const int &(User::*)() const>::value,
+        static_assert(std::is_same<column_type::getter_type, const int& (User::*)() const>::value,
                       "Incorrect getter_type");
         static_assert(std::is_same<column_type::setter_type, void (User::*)(int)>::value, "Incorrect setter_type");
     }
@@ -44,8 +44,8 @@ TEST_CASE("Column") {
         static_assert(std::is_same<column_type::object_type, User>::value, "Incorrect object_type");
         static_assert(std::is_same<column_type::field_type, int>::value, "Incorrect field_type");
         static_assert(std::is_same<column_type::member_pointer_t, int User::*>::value, "Incorrect member pointer type");
-        static_assert(std::is_same<column_type::getter_type, const int &(User::*)()>::value, "Incorrect getter_type");
-        static_assert(std::is_same<column_type::setter_type, void (User::*)(const int &)>::value,
+        static_assert(std::is_same<column_type::getter_type, const int& (User::*)()>::value, "Incorrect getter_type");
+        static_assert(std::is_same<column_type::setter_type, void (User::*)(const int&)>::value,
                       "Incorrect setter_type");
     }
     {
@@ -54,8 +54,8 @@ TEST_CASE("Column") {
         static_assert(std::is_same<column_type::object_type, User>::value, "Incorrect object_type");
         static_assert(std::is_same<column_type::field_type, int>::value, "Incorrect field_type");
         static_assert(std::is_same<column_type::member_pointer_t, int User::*>::value, "Incorrect member pointer type");
-        static_assert(std::is_same<column_type::getter_type, const int &(User::*)()>::value, "Incorrect getter_type");
-        static_assert(std::is_same<column_type::setter_type, void (User::*)(const int &)>::value,
+        static_assert(std::is_same<column_type::getter_type, const int& (User::*)()>::value, "Incorrect getter_type");
+        static_assert(std::is_same<column_type::setter_type, void (User::*)(const int&)>::value,
                       "Incorrect setter_type");
     }
     {
@@ -65,7 +65,7 @@ TEST_CASE("Column") {
         static_assert(std::is_same<column_type::field_type, int>::value, "Incorrect field_type");
         static_assert(std::is_same<column_type::member_pointer_t, int User::*>::value, "Incorrect member pointer type");
         static_assert(std::is_same<column_type::getter_type, int (User::*)() const>::value, "Incorrect getter_type");
-        static_assert(std::is_same<column_type::setter_type, void (User::*)(int &)>::value, "Incorrect setter_type");
+        static_assert(std::is_same<column_type::setter_type, void (User::*)(int&)>::value, "Incorrect setter_type");
     }
     {
         using column_type = decltype(make_column("id", &User::setIdByRef, &User::getIdByValConst));
@@ -74,7 +74,7 @@ TEST_CASE("Column") {
         static_assert(std::is_same<column_type::field_type, int>::value, "Incorrect field_type");
         static_assert(std::is_same<column_type::member_pointer_t, int User::*>::value, "Incorrect member pointer type");
         static_assert(std::is_same<column_type::getter_type, int (User::*)() const>::value, "Incorrect getter_type");
-        static_assert(std::is_same<column_type::setter_type, void (User::*)(int &)>::value, "Incorrect setter_type");
+        static_assert(std::is_same<column_type::setter_type, void (User::*)(int&)>::value, "Incorrect setter_type");
     }
     {
         using column_type = decltype(column<Token>(&Token::id));
@@ -106,23 +106,23 @@ TEST_CASE("Aggregate function return types") {
             return this->name;
         }
 
-        void setNameByConstRef(const std::string &name_) {
+        void setNameByConstRef(const std::string& name_) {
             this->name = name_;
         }
 
-        const int &getConstIdByRefConst() const {
+        const int& getConstIdByRefConst() const {
             return this->id;
         }
 
-        void setIdByRef(int &id_) {
+        void setIdByRef(int& id_) {
             this->id = id_;
         }
 
-        const std::string &getConstNameByRefConst() const {
+        const std::string& getConstNameByRefConst() const {
             return this->name;
         }
 
-        void setNameByRef(std::string &name_) {
+        void setNameByRef(std::string& name_) {
             this->name = std::move(name_);
         }
     };

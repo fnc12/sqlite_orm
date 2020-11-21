@@ -36,7 +36,7 @@ namespace sqlite_orm {
 
             args_type args;
 
-            core_function_t(args_type &&args_) : args(std::move(args_)) {}
+            core_function_t(args_type&& args_) : args(std::move(args_)) {}
         };
 
         struct typeof_string {

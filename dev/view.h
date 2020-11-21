@@ -34,11 +34,11 @@ namespace sqlite_orm {
             using storage_type = S;
             using self = view_t<T, S, Args...>;
 
-            storage_type &storage;
+            storage_type& storage;
             connection_ref connection;
             get_all_t<T, std::vector<T>, Args...> args;
 
-            view_t(storage_type &stor, decltype(connection) conn, Args &&... args_) :
+            view_t(storage_type& stor, decltype(connection) conn, Args&&... args_) :
                 storage(stor), connection(std::move(conn)), args{std::make_tuple(std::forward<Args>(args_)...)} {}
 
             size_t size() {
@@ -50,7 +50,7 @@ namespace sqlite_orm {
             }
 
             iterator_t<self> begin() {
-                sqlite3_stmt *stmt = nullptr;
+                sqlite3_stmt* stmt = nullptr;
                 auto db = this->connection.get();
                 using context_t = serializator_context<typename storage_type::impl_type>;
                 context_t context{this->storage.impl};
@@ -60,7 +60,7 @@ namespace sqlite_orm {
                 auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
                 if(ret == SQLITE_OK) {
                     auto index = 1;
-                    iterate_ast(this->args.conditions, [&index, stmt, db](auto &node) {
+                    iterate_ast(this->args.conditions, [&index, stmt, db](auto& node) {
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                         if(SQLITE_OK != binder(node)) {

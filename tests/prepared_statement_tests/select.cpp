@@ -82,7 +82,7 @@ REQUIRE(get<1>(statement) == 25);
 {
     auto rows = storage.execute(statement);
     REQUIRE(rows.size() == 1);
-    auto &row = rows.front();
+    auto& row = rows.front();
     REQUIRE(get<0>(row) == "ototo");
     REQUIRE(get<1>(row) == 25);
 }
@@ -92,7 +92,7 @@ str = storage.dump(statement);
 {
     auto rows = storage.execute(statement);
     REQUIRE(rows.size() == 1);
-    auto &row = rows.front();
+    auto& row = rows.front();
     REQUIRE(get<0>(row) == "Rock");
     REQUIRE(get<1>(row) == -15);
 }
@@ -109,7 +109,7 @@ str = storage.dump(statement);
     {
         auto rows = storage.execute(statement);
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(get<0>(row) == "ototo");
         REQUIRE(get<1>(row) == 25);
     }
@@ -122,7 +122,7 @@ str = storage.dump(statement);
     {
         auto rows = storage.execute(statement);
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(get<0>(row) == "Rock");
         REQUIRE(get<1>(row) == -15);
     }
@@ -138,7 +138,7 @@ REQUIRE(get<1>(statement) == 10);
 {
     auto rows = storage.execute(statement);
     REQUIRE(rows.size() == 1);
-    auto &row = rows.front();
+    auto& row = rows.front();
     REQUIRE(get<0>(row) == 5.0);
     REQUIRE(get<2>(row) == 3);
 }
@@ -148,7 +148,7 @@ str = storage.dump(statement);
 {
     auto rows = storage.execute(statement);
     REQUIRE(rows.size() == 1);
-    auto &row = rows.front();
+    auto& row = rows.front();
     REQUIRE(get<0>(row) == 4.0);
     REQUIRE(get<2>(row) == 1);
 }
@@ -166,7 +166,7 @@ str = storage.dump(statement);
     {
         auto rows = storage.execute(statement);
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(get<0>(row) == 5.0);
         REQUIRE(get<2>(row) == 3);
     }
@@ -177,7 +177,7 @@ str = storage.dump(statement);
     {
         auto rows = storage.execute(statement);
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(get<0>(row) == 4.0);
         REQUIRE(get<2>(row) == 1);
     }

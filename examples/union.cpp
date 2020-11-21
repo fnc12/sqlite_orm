@@ -80,10 +80,10 @@ int main() {
                           left_outer_join<Department>(on(is_equal(&Employee::id, &Department::employeeId))))));
 
         assert(rows.size() == 7);
-        std::sort(rows.begin(), rows.end(), [](auto &lhs, auto &rhs) {
+        std::sort(rows.begin(), rows.end(), [](auto& lhs, auto& rhs) {
             return std::get<0>(lhs) < std::get<0>(rhs);
         });
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
         cout << endl;
@@ -103,7 +103,7 @@ int main() {
                              inner_join<Department>(on(is_equal(&Employee::id, &Department::employeeId)))),
                       select(columns(&Department::employeeId, &Employee::name, &Department::dept),
                              left_outer_join<Department>(on(is_equal(&Employee::id, &Department::employeeId))))));
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << endl;
         }
         cout << endl;

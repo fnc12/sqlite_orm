@@ -19,7 +19,7 @@ namespace sqlite_orm {
         template<class T, class I>
         struct row_extractor_builder<T, false, I> {
 
-            row_extractor<T> operator()(const I * /*tableInfo*/) const {
+            row_extractor<T> operator()(const I* /*tableInfo*/) const {
                 return {};
             }
         };
@@ -27,13 +27,13 @@ namespace sqlite_orm {
         template<class T, class I>
         struct row_extractor_builder<T, true, I> {
 
-            mapped_row_extractor<T, I> operator()(const I *tableInfo) const {
+            mapped_row_extractor<T, I> operator()(const I* tableInfo) const {
                 return {*tableInfo};
             }
         };
 
         template<class T, bool IsMapped, class I>
-        auto make_row_extractor(const I *tableInfo) {
+        auto make_row_extractor(const I* tableInfo) {
             using builder_t = row_extractor_builder<T, IsMapped, I>;
             return builder_t{}(tableInfo);
         }

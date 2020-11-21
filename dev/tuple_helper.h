@@ -29,7 +29,7 @@ namespace sqlite_orm {
         struct iterator {
 
             template<class L>
-            void operator()(const std::tuple<Args...> &t, const L &l, bool reverse = true) {
+            void operator()(const std::tuple<Args...>& t, const L& l, bool reverse = true) {
                 if(reverse) {
                     l(std::get<N>(t));
                     iterator<N - 1, Args...>()(t, l, reverse);
@@ -44,7 +44,7 @@ namespace sqlite_orm {
         struct iterator<0, Args...> {
 
             template<class L>
-            void operator()(const std::tuple<Args...> &t, const L &l, bool /*reverse*/ = true) {
+            void operator()(const std::tuple<Args...>& t, const L& l, bool /*reverse*/ = true) {
                 l(std::get<0>(t));
             }
         };
@@ -53,15 +53,15 @@ namespace sqlite_orm {
         struct iterator<N> {
 
             template<class L>
-            void operator()(const std::tuple<> &, const L &, bool /*reverse*/ = true) {
+            void operator()(const std::tuple<>&, const L&, bool /*reverse*/ = true) {
                 //..
             }
         };
 
         template<size_t N, size_t I, class L, class R>
-        void move_tuple_impl(L &lhs, R &rhs) {
+        void move_tuple_impl(L& lhs, R& rhs) {
             std::get<I>(lhs) = std::move(std::get<I>(rhs));
-            internal::static_if<std::integral_constant<bool, N != I + 1>{}>([](auto &l, auto &r) {
+            internal::static_if<std::integral_constant<bool, N != I + 1>{}>([](auto& l, auto& r) {
                 move_tuple_impl<N, I + 1>(l, r);
             })(lhs, rhs);
         }
@@ -70,15 +70,15 @@ namespace sqlite_orm {
     namespace internal {
 
         template<size_t N, class L, class R>
-        void move_tuple(L &lhs, R &rhs) {
+        void move_tuple(L& lhs, R& rhs) {
             using bool_type = std::integral_constant<bool, N != 0>;
-            static_if<bool_type{}>([](auto &l, auto &r) {
+            static_if<bool_type{}>([](auto& l, auto& r) {
                 tuple_helper::move_tuple_impl<N, 0>(l, r);
             })(lhs, rhs);
         }
 
         template<class L, class... Args>
-        void iterate_tuple(const std::tuple<Args...> &t, const L &l) {
+        void iterate_tuple(const std::tuple<Args...>& t, const L& l) {
             using tuple_type = std::tuple<Args...>;
             tuple_helper::iterator<std::tuple_size<tuple_type>::value - 1, Args...>()(t, l, false);
         }
