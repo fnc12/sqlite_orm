@@ -41,7 +41,7 @@ TEST_CASE("Unique") {
     try {
         storage.insert(Contact{0, "Johnny", "Doe", "john.doe@gmail.com"});
         REQUIRE(false);
-    } catch(const std::system_error &e) {
+    } catch(const std::system_error& e) {
         //..
     } catch(...) {
         REQUIRE(false);
@@ -52,7 +52,7 @@ TEST_CASE("Unique") {
     try {
         storage.insert(Shape{0, "red", "green"});
         REQUIRE(false);
-    } catch(const std::system_error &e) {
+    } catch(const std::system_error& e) {
         //..
     } catch(...) {
         REQUIRE(false);

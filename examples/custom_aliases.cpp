@@ -28,20 +28,20 @@ struct Department {
 using namespace sqlite_orm;
 
 struct EmployeeIdAlias : alias_tag {
-    static const std::string &get() {
+    static const std::string& get() {
         static const std::string res = "COMPANY_ID";
         return res;
     }
 };
 
 struct CompanyNameAlias : alias_tag {
-    static const std::string &get() {
+    static const std::string& get() {
         static const std::string res = "COMPANY_NAME";
         return res;
     }
 };
 
-int main(int, char **argv) {
+int main(int, char** argv) {
     cout << argv[0] << endl;
 
     auto storage = make_storage("custom_aliases.sqlite",
@@ -85,7 +85,7 @@ int main(int, char **argv) {
 
     cout << "ID" << '\t' << "NAME" << '\t' << "AGE" << '\t' << "DEPT" << endl;
     cout << "----------" << '\t' << "----------" << '\t' << "----------" << '\t' << "----------" << endl;
-    for(auto &row: simpleRows) {
+    for(auto& row: simpleRows) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
              << endl;
     }

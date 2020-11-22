@@ -53,7 +53,7 @@ TEST_CASE("zeroblob") {
     {
         auto rows = storage.select(zeroblob(10));
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(row.size() == 10);
         std::vector<char> expectedValue(10);
         std::fill(expectedValue.begin(), expectedValue.end(), 0);
@@ -64,7 +64,7 @@ TEST_CASE("zeroblob") {
 
         auto rows = storage.select(zeroblob(&Test::value));
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(row.size() == 100);
         std::vector<char> expectedValue(100);
         std::fill(expectedValue.begin(), expectedValue.end(), 0);
@@ -250,7 +250,7 @@ TEST_CASE("instr") {
     };
 
     struct sw : alias_tag {
-        static const std::string &get() {
+        static const std::string& get() {
             static const std::string res = "sw";
             return res;
         }
@@ -315,7 +315,7 @@ namespace replace_func_local {
         std::string phone;
     };
 
-    bool operator==(const Contact &lhs, const Contact &rhs) {
+    bool operator==(const Contact& lhs, const Contact& rhs) {
         return lhs.id == rhs.id && lhs.firstName == rhs.firstName && lhs.lastName == rhs.lastName &&
                lhs.phone == rhs.phone;
     }

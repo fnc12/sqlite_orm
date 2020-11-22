@@ -47,7 +47,7 @@ TEST_CASE("Prepared insert range") {
         try {
             auto statement = storage.prepare(insert_range(users.begin(), users.end()));
             REQUIRE(false);
-        } catch(const std::system_error &e) {
+        } catch(const std::system_error& e) {
             //..
         }
     }
@@ -76,15 +76,15 @@ TEST_CASE("Prepared insert range") {
         decltype(users) otherUsers;
         otherUsers.push_back(User{6, "DJ Alban"});
         otherUsers.push_back(User{7, "Flo Rida"});
-        for(auto &user: otherUsers) {
+        for(auto& user: otherUsers) {
             expected.push_back(user);
         }
         get<0>(statement) = otherUsers.begin();
         get<1>(statement) = otherUsers.end();
         storage.execute(statement);
 
-        std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
-        std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
+        std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
+        std::ignore = get<1>(static_cast<const decltype(statement)&>(statement));
     }
     auto rows = storage.get_all<User>();
     REQUIRE_THAT(rows, UnorderedEquals(expected));

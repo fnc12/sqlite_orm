@@ -40,7 +40,7 @@ TEST_CASE("Prepared remove") {
     SECTION("by val") {
         {
             auto statement = storage.prepare(remove<User>(1));
-            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
             REQUIRE(get<0>(statement) == 1);
             testSerializing(statement);
             storage.execute(statement);

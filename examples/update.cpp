@@ -17,7 +17,7 @@ struct Employee {
     double salary;
 };
 
-inline auto initStorage(const std::string &path) {
+inline auto initStorage(const std::string& path) {
     using namespace sqlite_orm;
     return make_storage(path,
                         make_table("COMPANY",
@@ -32,7 +32,7 @@ using Storage = decltype(initStorage(""));
 
 static std::unique_ptr<Storage> stor;
 
-int main(int, char **) {
+int main(int, char**) {
     stor = std::make_unique<Storage>(initStorage("update.sqlite"));
     stor->sync_schema();
     stor->remove_all<Employee>();
@@ -47,7 +47,7 @@ int main(int, char **) {
     stor->replace(Employee{7, "James", 24, "Houston", 10000.0});
 
     //  show 'COMPANY' table contents
-    for(auto &employee: stor->iterate<Employee>()) {
+    for(auto& employee: stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;
@@ -60,7 +60,7 @@ int main(int, char **) {
         employee6);  //  actually this call updates all non-primary-key columns' values to passed object's fields
 
     //  show 'COMPANY' table contents again
-    for(auto &employee: stor->iterate<Employee>()) {
+    for(auto& employee: stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;
@@ -71,7 +71,7 @@ int main(int, char **) {
                      where(c(&Employee::age) < 30));
 
     //  show 'COMPANY' table contents one more time
-    for(auto &employee: stor->iterate<Employee>()) {
+    for(auto& employee: stor->iterate<Employee>()) {
         cout << stor->dump(employee) << endl;
     }
     cout << endl;

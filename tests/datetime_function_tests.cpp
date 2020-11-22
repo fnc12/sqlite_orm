@@ -24,7 +24,7 @@ TEST_CASE("julianday") {
 
     auto storage = make_storage({}, make_table("test", make_column("text", &Test::text)));
     storage.sync_schema();
-    auto singleTestCase = [&storage](const std::string &arg, double expected) {
+    auto singleTestCase = [&storage](const std::string& arg, double expected) {
         {
             auto rows = storage.select(julianday(arg));
             REQUIRE(rows.size() == 1);

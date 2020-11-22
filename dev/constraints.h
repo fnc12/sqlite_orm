@@ -126,7 +126,7 @@ namespace sqlite_orm {
             cascade,
         };
 
-        inline std::ostream &operator<<(std::ostream &os, foreign_key_action action) {
+        inline std::ostream& operator<<(std::ostream& os, foreign_key_action action) {
             switch(action) {
                 case decltype(action)::no_action:
                     os << "NO ACTION";
@@ -168,7 +168,7 @@ namespace sqlite_orm {
         struct on_update_delete_t : on_update_delete_base {
             using foreign_key_type = F;
 
-            const foreign_key_type &fk;
+            const foreign_key_type& fk;
 
             on_update_delete_t(decltype(fk) fk_, decltype(update) update_, foreign_key_action action_) :
                 on_update_delete_base{update_}, fk(fk_), _action(action_) {}
@@ -249,11 +249,11 @@ namespace sqlite_orm {
                 columns(std::move(columns_)), references(std::move(references_)),
                 on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
-            foreign_key_t(const self &other) :
+            foreign_key_t(const self& other) :
                 columns(other.columns), references(other.references), on_update(*this, true, other.on_update._action),
                 on_delete(*this, false, other.on_delete._action) {}
 
-            self &operator=(const self &other) {
+            self& operator=(const self& other) {
                 this->columns = other.columns;
                 this->references = other.references;
                 this->on_update = {*this, true, other.on_update._action};
@@ -262,7 +262,7 @@ namespace sqlite_orm {
             }
 
             template<class L>
-            void for_each_column(const L &) {}
+            void for_each_column(const L&) {}
 
             template<class... Opts>
             constexpr bool has_every() const {

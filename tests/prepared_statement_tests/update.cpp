@@ -41,7 +41,7 @@ TEST_CASE("Prepared update") {
     SECTION("by ref") {
         auto statement = storage.prepare(update(std::ref(user)));
         REQUIRE(get<0>(statement) == user);
-        std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+        std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
         REQUIRE(&get<0>(statement) == &user);
         testSerializing(statement);
         SECTION("nothing") {

@@ -13,7 +13,7 @@ TEST_CASE("select asterisk") {
         std::string address;  //  optional
         double salary;  //  optional
 
-        bool operator==(const Employee &other) const {
+        bool operator==(const Employee& other) const {
             return this->id == other.id && this->name == other.name && this->age == other.age &&
                    this->address == other.address && this->salary == other.salary;
         }

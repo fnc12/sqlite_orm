@@ -19,7 +19,7 @@ struct Foo {
     int baz;
 };
 
-int main(int, char **) {
+int main(int, char**) {
 
     using namespace sqlite_orm;
     auto storage = make_storage(

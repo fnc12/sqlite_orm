@@ -10,7 +10,7 @@ namespace sqlite_orm {
         struct join_iterator {
 
             template<class L>
-            void operator()(const L &) {
+            void operator()(const L&) {
                 //..
             }
         };
@@ -19,7 +19,7 @@ namespace sqlite_orm {
         struct join_iterator<> {
 
             template<class L>
-            void operator()(const L &) {
+            void operator()(const L&) {
                 //..
             }
         };
@@ -29,7 +29,7 @@ namespace sqlite_orm {
             using super = join_iterator<Tail...>;
 
             template<class L>
-            void operator()(const L &l) {
+            void operator()(const L& l) {
                 this->super::operator()(l);
             }
         };
@@ -40,7 +40,7 @@ namespace sqlite_orm {
             using join_type = cross_join_t<T>;
 
             template<class L>
-            void operator()(const L &l) {
+            void operator()(const L& l) {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -52,7 +52,7 @@ namespace sqlite_orm {
             using join_type = natural_join_t<T>;
 
             template<class L>
-            void operator()(const L &l) {
+            void operator()(const L& l) {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -64,7 +64,7 @@ namespace sqlite_orm {
             using join_type = left_join_t<T, O>;
 
             template<class L>
-            void operator()(const L &l) {
+            void operator()(const L& l) {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -76,7 +76,7 @@ namespace sqlite_orm {
             using join_type = join_t<T, O>;
 
             template<class L>
-            void operator()(const L &l) {
+            void operator()(const L& l) {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -88,7 +88,7 @@ namespace sqlite_orm {
             using join_type = left_outer_join_t<T, O>;
 
             template<class L>
-            void operator()(const L &l) {
+            void operator()(const L& l) {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -100,7 +100,7 @@ namespace sqlite_orm {
             using join_type = inner_join_t<T, O>;
 
             template<class L>
-            void operator()(const L &l) {
+            void operator()(const L& l) {
                 l(*this);
                 this->super::operator()(l);
             }

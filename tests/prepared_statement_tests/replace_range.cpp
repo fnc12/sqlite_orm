@@ -46,7 +46,7 @@ TEST_CASE("Prepared replace range") {
         try {
             auto statement = storage.prepare(replace_range(users.begin(), users.end()));
             REQUIRE(false);
-        } catch(const std::system_error &e) {
+        } catch(const std::system_error& e) {
             //..
         }
     }

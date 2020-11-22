@@ -55,7 +55,7 @@ TEST_CASE("table") {
                 this->_id = value;
             }
 
-            const std::string &firstName() const {
+            const std::string& firstName() const {
                 return this->_firstName;
             }
 
@@ -63,7 +63,7 @@ TEST_CASE("table") {
                 this->_firstName = move(value);
             }
 
-            const std::string &lastName() const {
+            const std::string& lastName() const {
                 return this->_lastName;
             }
 
@@ -79,7 +79,7 @@ TEST_CASE("table") {
                 this->_countryCode = value;
             }
 
-            const std::string &phoneNumber() const {
+            const std::string& phoneNumber() const {
                 return this->_phoneNumber;
             }
 

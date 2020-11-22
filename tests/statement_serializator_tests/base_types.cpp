@@ -18,7 +18,7 @@ TEST_CASE("statement_serializator base types") {
         }
     }
     SECTION("const char *") {
-        const char *str = "baby";
+        const char* str = "baby";
         SECTION("no question") {
             auto value = serialize(str, context);
             REQUIRE(value == "\'baby\'");

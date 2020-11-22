@@ -47,7 +47,7 @@ TEST_CASE("Prepared replace") {
         auto statement = storage.prepare(replace(std::ref(user)));
         storage.execute(statement);
 
-        std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+        std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
         REQUIRE(user == get<0>(statement));
         REQUIRE(&user == &get<0>(statement));
     }

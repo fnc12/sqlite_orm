@@ -40,9 +40,9 @@ TEST_CASE("Glob") {
         storage.replace_range(employees.begin(), employees.end());
     }
 
-    auto expectIds = [](const std::vector<Employee> &employees, const std::vector<decltype(Employee::id)> ids) {
+    auto expectIds = [](const std::vector<Employee>& employees, const std::vector<decltype(Employee::id)> ids) {
         for(auto expectedId: ids) {
-            REQUIRE(find_if(employees.begin(), employees.end(), [expectedId](auto &employee) {
+            REQUIRE(find_if(employees.begin(), employees.end(), [expectedId](auto& employee) {
                         return employee.id == expectedId;
                     }) != employees.end());
         }

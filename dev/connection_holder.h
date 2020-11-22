@@ -36,7 +36,7 @@ namespace sqlite_orm {
                 }
             }
 
-            sqlite3 *get() const {
+            sqlite3* get() const {
                 return this->db;
             }
 
@@ -47,20 +47,20 @@ namespace sqlite_orm {
             const std::string filename;
 
           protected:
-            sqlite3 *db = nullptr;
+            sqlite3* db = nullptr;
             int _retain_count = 0;
         };
 
         struct connection_ref {
-            connection_ref(connection_holder &holder_) : holder(holder_) {
+            connection_ref(connection_holder& holder_) : holder(holder_) {
                 this->holder.retain();
             }
 
-            connection_ref(const connection_ref &other) : holder(other.holder) {
+            connection_ref(const connection_ref& other) : holder(other.holder) {
                 this->holder.retain();
             }
 
-            connection_ref(connection_ref &&other) : holder(other.holder) {
+            connection_ref(connection_ref&& other) : holder(other.holder) {
                 this->holder.retain();
             }
 
@@ -68,12 +68,12 @@ namespace sqlite_orm {
                 this->holder.release();
             }
 
-            sqlite3 *get() const {
+            sqlite3* get() const {
                 return this->holder.get();
             }
 
           protected:
-            connection_holder &holder;
+            connection_holder& holder;
         };
     }
 }

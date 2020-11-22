@@ -29,7 +29,7 @@ TEST_CASE("Row id") {
                                            &SimpleTable::letter,
                                            &SimpleTable::desc));
         for(size_t i = 0; i < rows.size(); ++i) {
-            auto &row = rows[i];
+            auto& row = rows[i];
             REQUIRE(std::get<0>(row) == std::get<1>(row));
             REQUIRE(std::get<1>(row) == std::get<2>(row));
             REQUIRE(std::get<2>(row) == static_cast<int>(i + 1));

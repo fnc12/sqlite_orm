@@ -25,7 +25,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        inline const std::string &to_string(journal_mode j) {
+        inline const std::string& to_string(journal_mode j) {
             static std::string res[] = {
                 "DELETE",
                 "TRUNCATE",
@@ -37,7 +37,7 @@ namespace sqlite_orm {
             return res[static_cast<int>(j)];
         }
 
-        inline std::unique_ptr<journal_mode> journal_mode_from_string(const std::string &str) {
+        inline std::unique_ptr<journal_mode> journal_mode_from_string(const std::string& str) {
             std::string upper_str;
             std::transform(str.begin(), str.end(), std::back_inserter(upper_str), [](char c) {
                 return static_cast<char>(std::toupper(static_cast<int>(c)));

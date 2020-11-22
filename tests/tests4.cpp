@@ -35,7 +35,7 @@ TEST_CASE("Case") {
     storage.sync_schema();
 
     struct GradeAlias : alias_tag {
-        static const std::string &get() {
+        static const std::string& get() {
             static const std::string res = "Grade";
             return res;
         }
@@ -51,7 +51,7 @@ TEST_CASE("Case") {
         auto rows = storage.select(
             columns(case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end()),
             multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
-        auto verifyRows = [&storage](auto &rows) {
+        auto verifyRows = [&storage](auto& rows) {
             REQUIRE(rows.size() == storage.count<User>());
             REQUIRE(std::get<0>(rows[0]) == "Foreign");
             REQUIRE(std::get<0>(rows[1]) == "Foreign");
@@ -82,7 +82,7 @@ TEST_CASE("Case") {
                 .else_("long")
                 .end(),
             order_by(&Track::name));
-        auto verifyRows = [&storage](auto &rows) {
+        auto verifyRows = [&storage](auto& rows) {
             REQUIRE(rows.size() == storage.count<Track>());
             REQUIRE(rows[0] == "long");
             REQUIRE(rows[1] == "medium");

@@ -14,7 +14,7 @@ namespace sqlite_orm {
     namespace internal {
 
         struct prepared_statement_base {
-            sqlite3_stmt *stmt = nullptr;
+            sqlite3_stmt* stmt = nullptr;
             connection_ref con;
 
             ~prepared_statement_base() {
@@ -72,7 +72,7 @@ namespace sqlite_orm {
 
             expression_type t;
 
-            prepared_statement_t(T t_, sqlite3_stmt *stmt_, connection_ref con_) :
+            prepared_statement_t(T t_, sqlite3_stmt* stmt_, connection_ref con_) :
                 prepared_statement_base{stmt_, std::move(con_)}, t(std::move(t_)) {}
         };
 
