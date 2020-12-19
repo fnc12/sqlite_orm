@@ -88,6 +88,7 @@ auto storage = make_storage("db.sqlite",
                             make_table("user_types",
                                        make_column("id", &UserType::id, autoincrement(), primary_key()),
                                        make_column("name", &UserType::name, default_value("name_placeholder"))));
+storage.sync_schema();
 ```
 
 Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like `primary_key`, `autoincrement`, `default_value` or `unique`(order isn't important; `not_null` is deduced from type automatically).
