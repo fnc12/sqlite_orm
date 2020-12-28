@@ -8966,12 +8966,12 @@ namespace sqlite_orm {
             }
 
             bool transaction(const std::function<bool()>& f) {
-                this->begin_transaction();
+                auto guard = transaction_guard();
                 auto shouldCommit = f();
                 if(shouldCommit) {
-                    this->commit();
+                    guard.commit();
                 } else {
-                    this->rollback();
+                    guard.rollback();
                 }
                 return shouldCommit;
             }
