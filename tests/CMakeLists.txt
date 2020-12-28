@@ -77,6 +77,7 @@ add_executable(unit_tests
 	select_asterisk.cpp
 	backup_tests.cpp
 	transaction_tests.cpp
+	prohibit_dropping_and_recreating.cpp
     json.cpp
 	row_id.cpp)
 

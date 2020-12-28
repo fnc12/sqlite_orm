@@ -23,6 +23,7 @@ namespace sqlite_orm {
         failed_to_init_a_backup,
         unknown_member_value,
         incorrect_order,
+        dropping_and_recreating_was_prohibited
     };
 
 }
@@ -63,6 +64,8 @@ namespace sqlite_orm {
                     return "Unknown member value";
                 case orm_error_code::incorrect_order:
                     return "Incorrect order";
+                case orm_error_code::dropping_and_recreating_was_prohibited:
+                    return "Dropping and re-creating tables in sync_schema method was prohibited";
                 default:
                     return "unknown error";
             }
