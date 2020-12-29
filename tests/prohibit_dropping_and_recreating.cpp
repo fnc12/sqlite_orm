@@ -37,6 +37,21 @@ TEST_CASE("prohibit_dropping_and_recreating") {
         const std::string age = "age";
     } columnNames;
     ::remove(storagePath);
+
+    /* ------------------------------------------------------------------------------------------- */
+    auto isStorageEmpty = [&]()
+    {
+        auto storage = make_storage(storagePath,
+                                    make_table(tableName,
+                                               make_column(columnNames.id, &User::id, primary_key()),
+                                               make_column(columnNames.name, &User::name)));
+        storage.sync_schema();
+
+        auto users = storage.get_all<User>();
+        return users.empty();
+    };
+    /* ------------------------------------------------------------------------------------------- */
+
     {
         auto storage = make_storage(storagePath,
                                     make_table(tableName,
@@ -45,10 +60,10 @@ TEST_CASE("prohibit_dropping_and_recreating") {
         auto syncSchemaSimulateRes = storage.sync_schema_simulate(true);
         auto syncSchemaRes = storage.sync_schema(true);
         REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
-        decltype(syncSchemaRes) expected{
+        decltype(syncSchemaSimulateRes) expected{
             {tableName, sync_schema_result::new_table_created},
         };
-        REQUIRE(syncSchemaRes == expected);
+        REQUIRE(syncSchemaSimulateRes == expected);
 
         storage.replace(User{1, "Alex"});
         storage.replace(User{2, "Michael"});
@@ -57,14 +72,19 @@ TEST_CASE("prohibit_dropping_and_recreating") {
         auto storage =
             make_storage(storagePath, make_table(tableName, make_column(columnNames.id, &User::id, primary_key())));
         auto syncSchemaSimulateRes = storage.sync_schema_simulate();
-        auto syncSchemaRes = storage.sync_schema();
-        REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
-        //decltype(syncSchemaRes) expected{
-        //    {tableName, sync_schema_result::dropped_and_recreated},
-        //};
-        //REQUIRE(syncSchemaRes == expected);
-        auto users = storage.get_all<User>();
-        REQUIRE(users.empty());
+        try {
+            storage.sync_schema();
+            REQUIRE(false);
+        } catch(const std::system_error& e) {
+            //..
+        } catch(...) {
+            REQUIRE(false);
+        }
+        decltype(syncSchemaSimulateRes) expected{
+            {tableName, sync_schema_result::dropped_and_recreated},
+        };
+        REQUIRE(syncSchemaSimulateRes == expected);
+        REQUIRE(!isStorageEmpty());
     }
     SECTION("replace a column with no default value") {
         auto storage = make_storage(storagePath,
@@ -72,22 +92,33 @@ TEST_CASE("prohibit_dropping_and_recreating") {
                                                make_column(columnNames.id, &User::id, primary_key()),
                                                make_column(columnNames.age, &User::age)));
         std::map<std::string, sync_schema_result> syncSchemaSimulateRes;
-        std::map<std::string, sync_schema_result> syncSchemaRes;
         SECTION("preserve = true") {
             syncSchemaSimulateRes = storage.sync_schema_simulate(true);
-            syncSchemaRes = storage.sync_schema(true);
+            try {
+                storage.sync_schema(true);
+                REQUIRE(false);
+            } catch(const std::system_error& e) {
+                //..
+            } catch(...) {
+                REQUIRE(false);
+            }
         }
         SECTION("preserve = false") {
             syncSchemaSimulateRes = storage.sync_schema_simulate();
-            syncSchemaRes = storage.sync_schema();
+            try {
+                storage.sync_schema();
+                REQUIRE(false);
+            } catch(const std::system_error& e) {
+                //..
+            } catch(...) {
+                REQUIRE(false);
+            }
         }
-        REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
-        //decltype(syncSchemaRes) expected{
-        //    {tableName, sync_schema_result::dropped_and_recreated},
-        //};
-        //REQUIRE(syncSchemaRes == expected);
-        auto users = storage.get_all<User>();
-        REQUIRE(users.empty());
+        decltype(syncSchemaSimulateRes) expected{
+            {tableName, sync_schema_result::dropped_and_recreated},
+        };
+        REQUIRE(syncSchemaSimulateRes == expected);
+        REQUIRE(!isStorageEmpty());
     }
     SECTION("replace a column with default value") {
         auto storage = make_storage(storagePath,
@@ -95,14 +126,19 @@ TEST_CASE("prohibit_dropping_and_recreating") {
                                                make_column(columnNames.id, &User::id, primary_key()),
                                                make_column(columnNames.age, &User::age, default_value(-1))));
         auto syncSchemaSimulateRes = storage.sync_schema_simulate();
-        auto syncSchemaRes = storage.sync_schema();
-        REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
-        //decltype(syncSchemaRes) expected{
-        //    {tableName, sync_schema_result::dropped_and_recreated},
-        //};
-        //REQUIRE(syncSchemaRes == expected);
-        auto users = storage.get_all<User>();
-        REQUIRE(users.empty());
+        try {
+            storage.sync_schema();
+            REQUIRE(false);
+        } catch(const std::system_error& e) {
+            //..
+        } catch(...) {
+            REQUIRE(false);
+        }
+        decltype(syncSchemaSimulateRes) expected{
+            {tableName, sync_schema_result::dropped_and_recreated},
+        };
+        REQUIRE(syncSchemaSimulateRes == expected);
+        REQUIRE(!isStorageEmpty());
     }
     SECTION("replace a column with null") {
         auto storage = make_storage(storagePath,
@@ -110,14 +146,20 @@ TEST_CASE("prohibit_dropping_and_recreating") {
                                                make_column(columnNames.id, &User::id, primary_key()),
                                                make_column(columnNames.age, &User::ageNullable)));
         auto syncSchemaSimulateRes = storage.sync_schema_simulate();
-        auto syncSchemaRes = storage.sync_schema();
-        REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
-        //decltype(syncSchemaRes) expected{
-        //    {tableName, sync_schema_result::dropped_and_recreated},
-        //};
-        //REQUIRE(syncSchemaRes == expected);
-        auto users = storage.get_all<User>();
-        REQUIRE(users.empty());
+        try {
+            storage.sync_schema();
+            REQUIRE(false);
+        } catch(const std::system_error& e) {
+            //..
+        } catch(...) {
+            REQUIRE(false);
+        }
+
+        decltype(syncSchemaSimulateRes) expected{
+            {tableName, sync_schema_result::dropped_and_recreated},
+        };
+        REQUIRE(syncSchemaSimulateRes == expected);
+        REQUIRE(!isStorageEmpty());
     }
 }
 

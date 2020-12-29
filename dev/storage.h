@@ -697,11 +697,14 @@ namespace sqlite_orm {
                                 this->backup_table(db, tImpl, columnsToAdd);
                                 res = decltype(res)::new_columns_added_and_old_columns_removed;
                             }
-#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                         } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
+#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                             this->drop_table_internal(tImpl.table.name, db);
                             this->create_table(db, tImpl.table.name, tImpl);
                             res = decltype(res)::dropped_and_recreated;
+#else
+                            throw std::system_error(
+                                std::make_error_code(orm_error_code::dropping_and_recreating_was_prohibited));
 #endif  // SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                         }
                     }

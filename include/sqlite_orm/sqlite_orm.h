@@ -5621,7 +5621,6 @@ namespace sqlite_orm {
          */
         new_columns_added_and_old_columns_removed,
 
-#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
         /**
          *  old table is dropped and new is recreated. Reasons :
          *      1. delete excess columns in the table than storage if preseve = false
@@ -5630,7 +5629,6 @@ namespace sqlite_orm {
          *      4. data_type mismatch between table and storage.
          */
         dropped_and_recreated,
-#endif  // SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
@@ -5645,10 +5643,8 @@ namespace sqlite_orm {
                 return os << "new columns added";
             case sync_schema_result::new_columns_added_and_old_columns_removed:
                 return os << "old excess columns removed and new columns added";
-#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
-#endif  // SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
         }
         return os;
     }
@@ -6934,12 +6930,7 @@ namespace sqlite_orm {
                         }
                     }
                     if(gottaCreateTable) {
-#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                         res = decltype(res)::dropped_and_recreated;
-#else
-                        throw std::system_error(
-                            std::make_error_code(orm_error_code::dropping_and_recreating_was_prohibited));
-#endif  // SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                     } else {
                         if(columnsToAdd.size()) {
                             // extra storage columns than table columns
@@ -6956,12 +6947,7 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                                 res = decltype(res)::dropped_and_recreated;
-#else
-                                throw std::system_error(
-                                    std::make_error_code(orm_error_code::dropping_and_recreating_was_prohibited));
-#endif  // SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                             }
                         } else {
                             if(res != decltype(res)::old_columns_removed) {
@@ -12209,11 +12195,14 @@ namespace sqlite_orm {
                                 this->backup_table(db, tImpl, columnsToAdd);
                                 res = decltype(res)::new_columns_added_and_old_columns_removed;
                             }
-#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                         } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
+#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                             this->drop_table_internal(tImpl.table.name, db);
                             this->create_table(db, tImpl.table.name, tImpl);
                             res = decltype(res)::dropped_and_recreated;
+#else
+                            throw std::system_error(
+                                std::make_error_code(orm_error_code::dropping_and_recreating_was_prohibited));
 #endif  // SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                         }
                     }

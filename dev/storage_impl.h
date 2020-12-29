@@ -341,12 +341,7 @@ namespace sqlite_orm {
                         }
                     }
                     if(gottaCreateTable) {
-#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                         res = decltype(res)::dropped_and_recreated;
-#else
-                        throw std::system_error(
-                            std::make_error_code(orm_error_code::dropping_and_recreating_was_prohibited));
-#endif  // SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                     } else {
                         if(columnsToAdd.size()) {
                             // extra storage columns than table columns
@@ -363,12 +358,7 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-#ifndef SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                                 res = decltype(res)::dropped_and_recreated;
-#else
-                                throw std::system_error(
-                                    std::make_error_code(orm_error_code::dropping_and_recreating_was_prohibited));
-#endif  // SQLITE_ORM_PROHIBIT_DROPPING_AND_RECREATING
                             }
                         } else {
                             if(res != decltype(res)::old_columns_removed) {
