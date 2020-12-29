@@ -39,8 +39,7 @@ TEST_CASE("prohibit_dropping_and_recreating") {
     ::remove(storagePath);
 
     /* ------------------------------------------------------------------------------------------- */
-    auto isStorageEmpty = [&]()
-    {
+    auto isStorageEmpty = [&]() {
         auto storage = make_storage(storagePath,
                                     make_table(tableName,
                                                make_column(columnNames.id, &User::id, primary_key()),
@@ -162,4 +161,3 @@ TEST_CASE("prohibit_dropping_and_recreating") {
         REQUIRE(!isStorageEmpty());
     }
 }
-
