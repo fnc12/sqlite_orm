@@ -403,3 +403,22 @@ TEST_CASE("Insert") {
     storage.insert(ObjectWithoutRowid{20, "Death"});
     REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
 }
+
+TEST_CASE("default value for string") {
+    struct Contact {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+        std::string phone;
+    };
+
+    using namespace sqlite_orm;
+    auto storage =
+        make_storage({},
+                     make_table("contacts",
+                                make_column("contact_id", &Contact::id, primary_key()),
+                                make_column("first_name", &Contact::firstName, default_value<std::string>("")),
+                                make_column("last_name", &Contact::lastName, default_value<std::string>("")),
+                                make_column("phone", &Contact::phone)));
+    storage.sync_schema();
+}
