@@ -47,6 +47,7 @@
 #include "statement_serializator.h"
 #include "table_name_collector.h"
 #include "object_from_column_builder.h"
+#include "table.h"
 
 namespace sqlite_orm {
 
@@ -1027,6 +1028,12 @@ namespace sqlite_orm {
                 auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
                 tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& c) {
+                    static_assert(
+                        (is_table_without_rowid<typename std::decay<decltype(tImpl.table)>::type>::value ||
+                         !c.template has<constraints::primary_key_t<>>() ||
+                         std::is_same<typename std::decay<decltype(c)>::type::field_type, int>::value),
+                        "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
+                        "key. Please use a 'replace' instead of an 'insert'.");
                     if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                         if(it == compositeKeyColumnNames.end()) {

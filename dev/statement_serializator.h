@@ -962,12 +962,12 @@ namespace sqlite_orm {
                 auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
 
                 tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
-                    // TODO: check _without_rowid in static_assert
-                    // TODO: more informative message in static_assert
-                    static_assert((!c.template has<constraints::primary_key_t<>>() ||
-                                   c.template has<constraints::autoincrement_t>() ||
-                                   std::is_same<typename std::decay<decltype(c)>::type::field_type, int>::value),
-                                  "NOT NULL constraint failed");
+                    static_assert(
+                        (is_table_without_rowid<typename std::decay<decltype(tImpl.table)>::type>::value ||
+                         !c.template has<constraints::primary_key_t<>>() ||
+                         std::is_same<typename std::decay<decltype(c)>::type::field_type, int>::value),
+                        "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
+                        "key. Please use a 'replace' instead of an 'insert'.");
                     if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                         if(it == compositeKeyColumnNames.end()) {
