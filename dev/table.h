@@ -277,6 +277,30 @@ namespace sqlite_orm {
         struct table_without_rowid_t : table_template<T, true, Cs...> {
             using table_template<T, true, Cs...>::table_template;
         };
+
+        /**
+         *  IS TABLE traits. Common case
+         */
+        template<class T>
+        struct is_table : std::false_type {};
+
+        /**
+         *  IS TABLE traits. Specialized case
+         */
+        template<class T, class... Cs>
+        struct is_table<table_t<T, Cs...>> : std::true_type {};
+
+        /**
+         *  IS TABLE WITHOUT ROWID traits. Common case
+         */
+        template<class T>
+        struct is_table_without_rowid : std::false_type {};
+
+        /**
+         *  IS TABLE WITHOUT ROWID traits. Specialized case
+         */
+        template<class T, class... Cs>
+        struct is_table_without_rowid<table_without_rowid_t<T, Cs...>> : std::true_type {};
     }
 
     /**
