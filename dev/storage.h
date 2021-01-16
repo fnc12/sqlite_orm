@@ -651,9 +651,9 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class... Tss, class... Cs>
+            template<template<class...> class TTable, class... Tss, class... Cs>
             sync_schema_result
-            sync_table(const storage_impl<table_t<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+            sync_table(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
                 auto res = sync_schema_result::already_in_sync;
 
                 auto schema_stat = tImpl.schema_status(db, preserve);

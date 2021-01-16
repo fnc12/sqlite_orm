@@ -6260,6 +6260,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<bool WR>
         struct table_base {
 
             /**
@@ -6267,14 +6268,18 @@ namespace sqlite_orm {
              */
             std::string name;
 
-            bool _without_rowid = false;
+            const bool _without_rowid = WR;
         };
+
+        template<class T, class... Cs>
+        struct table_without_rowid_t;
 
         /**
          *  Table interface class. Implementation is hidden in `table_impl` class.
          */
-        template<class T, class... Cs>
-        struct table_t : table_base {
+        template<class T, bool WR, class... Cs>
+        struct table_template : table_base<WR> {
+            using super = table_base<WR>;
             using object_type = T;
             using columns_type = std::tuple<Cs...>;
 
@@ -6282,13 +6287,11 @@ namespace sqlite_orm {
 
             columns_type columns;
 
-            table_t(decltype(name) name_, columns_type columns_) :
-                table_base{std::move(name_)}, columns(std::move(columns_)) {}
+            table_template(decltype(super::name) name_, columns_type columns_) :
+                super{std::move(name_)}, columns(std::move(columns_)) {}
 
-            table_t<T, Cs...> without_rowid() const {
-                auto res = *this;
-                res._without_rowid = true;
-                return res;
+            table_without_rowid_t<T, Cs...> without_rowid() const {
+                return {super::name, columns};
             }
 
             /**
@@ -6504,6 +6507,16 @@ namespace sqlite_orm {
                 }
                 return res;
             }
+        };
+
+        template<class T, class... Cs>
+        struct table_t : table_template<T, false, Cs...> {
+            using table_template<T, false, Cs...>::table_template;
+        };
+
+        template<class T, class... Cs>
+        struct table_without_rowid_t : table_template<T, true, Cs...> {
+            using table_template<T, true, Cs...>::table_template;
         };
     }
 
@@ -12087,9 +12100,9 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class... Tss, class... Cs>
+            template<template<class...> class TTable, class... Tss, class... Cs>
             sync_schema_result
-            sync_table(const storage_impl<table_t<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+            sync_table(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
                 auto res = sync_schema_result::already_in_sync;
 
                 auto schema_stat = tImpl.schema_status(db, preserve);
