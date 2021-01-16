@@ -1028,17 +1028,19 @@ namespace sqlite_orm {
                 auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
                 tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& c) {
+                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                    using column_type = typename std::decay<decltype(c)>::type;
+                    using field_type = typename column_type::field_type;
+                    using constraints_type = typename column_type::constraints_type;
                     static_assert(
-                        (is_table_without_rowid<typename std::decay<decltype(tImpl.table)>::type>::value ||
-                         !c.template has<constraints::primary_key_t<>>() ||
-                         std::is_same<typename std::decay<decltype(c)>::type::field_type, int>::value),
+                        (is_table_without_rowid<table_type>::value ||
+                         !tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value ||
+                         std::is_same<field_type, int>::value),
                         "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
                         "key. Please use a 'replace' instead of an 'insert'.");
                     if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                         if(it == compositeKeyColumnNames.end()) {
-                            using column_type = typename std::decay<decltype(c)>::type;
-                            using field_type = typename column_type::field_type;
                             if(c.member_pointer) {
                                 if(SQLITE_OK !=
                                    statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)) {
