@@ -75,7 +75,7 @@ namespace sqlite_orm {
             collate_t(T expr_, internal::collate_argument argument_) : expr(std::move(expr_)), argument(argument_) {}
 
             operator std::string() const {
-                return constraints::collate_t{this->argument};
+                return collate_constraint_t{this->argument};
             }
         };
 
@@ -453,22 +453,22 @@ namespace sqlite_orm {
 
             self collate_binary() const {
                 auto res = *this;
-                res._collate_argument = constraints::collate_t::string_from_collate_argument(
-                    sqlite_orm::internal::collate_argument::binary);
+                res._collate_argument =
+                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::binary);
                 return res;
             }
 
             self collate_nocase() const {
                 auto res = *this;
-                res._collate_argument = constraints::collate_t::string_from_collate_argument(
-                    sqlite_orm::internal::collate_argument::nocase);
+                res._collate_argument =
+                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::nocase);
                 return res;
             }
 
             self collate_rtrim() const {
                 auto res = *this;
                 res._collate_argument =
-                    constraints::collate_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::rtrim);
+                    collate_constraint_t::string_from_collate_argument(sqlite_orm::internal::collate_argument::rtrim);
                 return res;
             }
 

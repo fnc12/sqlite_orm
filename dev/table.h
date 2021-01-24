@@ -120,7 +120,7 @@ namespace sqlite_orm {
 
             std::vector<std::string> primary_key_column_names() const {
                 std::vector<std::string> res;
-                this->for_each_column_with<constraints::primary_key_t<>>([&res](auto& c) {
+                this->for_each_column_with<primary_key_t<>>([&res](auto& c) {
                     res.push_back(c.name);
                 });
                 if(!res.size()) {
@@ -130,7 +130,7 @@ namespace sqlite_orm {
             }
 
             template<class... Args>
-            std::vector<std::string> composite_key_columns_names(const constraints::primary_key_t<Args...>& pk) const {
+            std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& pk) const {
                 std::vector<std::string> res;
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
@@ -247,7 +247,7 @@ namespace sqlite_orm {
                         type_printer<field_type>().print(),
                         col.not_null(),
                         dft,
-                        col.template has<constraints::primary_key_t<>>(),
+                        col.template has<primary_key_t<>>(),
                     };
                     res.emplace_back(i);
                 });

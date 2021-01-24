@@ -956,7 +956,7 @@ namespace sqlite_orm {
                 for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto& o = *it;
                     tImpl.table.for_each_column([&o, &index, &stmt, db](auto& c) {
-                        if(!c.template has<constraints::primary_key_t<>>()) {
+                        if(!c.template has<primary_key_t<>>()) {
                             using column_type = typename std::decay<decltype(c)>::type;
                             using field_type = typename column_type::field_type;
                             if(c.member_pointer) {
@@ -1027,7 +1027,7 @@ namespace sqlite_orm {
                 auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
                 tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& c) {
-                    if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
+                    if(tImpl.table._without_rowid || !c.template has<primary_key_t<>>()) {
                         auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                         if(it == compositeKeyColumnNames.end()) {
                             using column_type = typename std::decay<decltype(c)>::type;
@@ -1085,7 +1085,7 @@ namespace sqlite_orm {
                 auto& o = get_object(statement.t);
                 sqlite3_reset(stmt);
                 tImpl.table.for_each_column([&o, stmt, &index, db](auto& c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
+                    if(!c.template has<primary_key_t<>>()) {
                         using column_type = typename std::decay<decltype(c)>::type;
                         using field_type = typename column_type::field_type;
                         if(c.member_pointer) {
@@ -1107,7 +1107,7 @@ namespace sqlite_orm {
                     }
                 });
                 tImpl.table.for_each_column([&o, stmt, &index, db](auto& c) {
-                    if(c.template has<constraints::primary_key_t<>>()) {
+                    if(c.template has<primary_key_t<>>()) {
                         using column_type = typename std::decay<decltype(c)>::type;
                         using field_type = typename column_type::field_type;
                         if(c.member_pointer) {

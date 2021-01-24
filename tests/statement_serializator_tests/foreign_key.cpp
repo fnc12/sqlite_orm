@@ -1,6 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
 
+#include <type_traits>  //  std::is_same
+
 using namespace sqlite_orm;
 
 #if SQLITE_VERSION_NUMBER >= 3006019
@@ -44,7 +46,10 @@ TEST_CASE("statement_serializator foreign key") {
         SECTION("on update") {
             SECTION("no_action") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.no_action();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -63,7 +68,10 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("restrict_") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.restrict_();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -82,7 +90,10 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("set_null") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_null();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -101,7 +112,10 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("set_default") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_default();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -120,7 +134,10 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("cascade") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.cascade();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -141,7 +158,10 @@ TEST_CASE("statement_serializator foreign key") {
         SECTION("on delete") {
             SECTION("no_action") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.no_action();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -160,7 +180,10 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("restrict_") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.restrict_();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -179,7 +202,10 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("set_null") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_null();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -198,7 +224,10 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("set_default") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_default();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -217,7 +246,10 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("cascade") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.cascade();
-
+                {
+                    using ForeignKey = decltype(fk);
+                    static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+                }
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -255,6 +287,10 @@ TEST_CASE("statement_serializator foreign key") {
                 Object{id_}, token(std::move(token_)), usedId(usedId_) {}
         };
         auto fk = foreign_key(&Token::usedId).references(column<User>(&User::id));
+        {
+            using ForeignKey = decltype(fk);
+            static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+        }
         auto usersTable =
             make_table<User>("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name));
         auto tokensTable = make_table<Token>("tokens",
@@ -287,6 +323,10 @@ TEST_CASE("statement_serializator foreign key") {
         };
 
         auto fk = foreign_key(&UserVisit::userId, &UserVisit::userFirstName).references(&User::id, &User::firstName);
+        {
+            using ForeignKey = decltype(fk);
+            static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
+        }
         auto usersTable = make_table("users",
                                      make_column("id", &User::id),
                                      make_column("first_name", &User::firstName),
