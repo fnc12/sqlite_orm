@@ -88,6 +88,7 @@ namespace sqlite_orm {
 
             template<class I>
             void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
+                using table_type = typename std::decay<decltype(tableImpl.table)>::type;
                 std::stringstream ss;
                 ss << "CREATE TABLE '" << tableName << "' ( ";
                 auto columnsCount = tableImpl.table.columns_count;
@@ -102,7 +103,7 @@ namespace sqlite_orm {
                     index++;
                 });
                 ss << ") ";
-                if(tableImpl.table._without_rowid) {
+                if(is_table_without_rowid<table_type>::value) {
                     ss << "WITHOUT ROWID ";
                 }
                 perform_void_exec(db, ss.str());
@@ -1049,7 +1050,7 @@ namespace sqlite_orm {
                     using table_type = typename std::decay<decltype(tImpl.table)>::type;
                     using column_type = typename std::decay<decltype(c)>::type;
                     using field_type = typename column_type::field_type;
-                    if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
+                    if(is_table_without_rowid<table_type>::value || !c.template has<constraints::primary_key_t<>>()) {
                         auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                         if(it == compositeKeyColumnNames.end()) {
                             if(c.member_pointer) {
