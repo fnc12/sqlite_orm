@@ -10825,16 +10825,6 @@ namespace sqlite_orm {
                 auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
 
                 tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
-                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                    using column_type = typename std::decay<decltype(c)>::type;
-                    using field_type = typename column_type::field_type;
-                    using constraints_type = typename column_type::constraints_type;
-                    static_assert(
-                        (is_table_without_rowid<table_type>::value ||
-                         !tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value ||
-                         std::is_base_of<integer_printer, type_printer<field_type>>::value),
-                        "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
-                        "key. Please use a 'replace' instead of an 'insert'.");
                     if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                         if(it == compositeKeyColumnNames.end()) {
@@ -11704,6 +11694,23 @@ namespace sqlite_orm {
             }
 
             template<class O>
+            void assert_insertable_type() const {
+                auto& tImpl = this->get_impl<O>();
+                tImpl.table.for_each_column([&tImpl](auto& c) {
+                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                    using column_type = typename std::decay<decltype(c)>::type;
+                    using field_type = typename column_type::field_type;
+                    using constraints_type = typename column_type::constraints_type;
+                    static_assert(
+                        (is_table_without_rowid<table_type>::value ||
+                         !tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value ||
+                         std::is_base_of<integer_printer, type_printer<field_type>>::value),
+                        "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
+                        "key. Please use a 'replace' instead of an 'insert'.");
+                });
+            }
+
+            template<class O>
             auto& get_impl() const {
                 return this->impl.template get_impl<O>();
             }
@@ -12161,6 +12168,7 @@ namespace sqlite_orm {
             template<class O>
             int insert(const O& o) {
                 this->assert_mapped_type<O>();
+                this->assert_insertable_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
                 return int(this->execute(statement));
             }
@@ -12591,13 +12599,6 @@ namespace sqlite_orm {
                     using table_type = typename std::decay<decltype(tImpl.table)>::type;
                     using column_type = typename std::decay<decltype(c)>::type;
                     using field_type = typename column_type::field_type;
-                    using constraints_type = typename column_type::constraints_type;
-                    static_assert(
-                        (is_table_without_rowid<table_type>::value ||
-                         !tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value ||
-                         std::is_base_of<integer_printer, type_printer<field_type>>::value),
-                        "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
-                        "key. Please use a 'replace' instead of an 'insert'.");
                     if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                         if(it == compositeKeyColumnNames.end()) {
