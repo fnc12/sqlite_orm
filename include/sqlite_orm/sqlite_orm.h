@@ -6295,15 +6295,6 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     namespace internal {
-
-        struct table_base {
-
-            /**
-             *  Table name.
-             */
-            std::string name;
-        };
-
         template<class T, class... Cs>
         struct table_without_rowid_t;
 
@@ -6311,17 +6302,17 @@ namespace sqlite_orm {
          *  Template for table interface class. Implementation is hidden in `table_impl` class.
          */
         template<class T, bool, class... Cs>
-        struct table_template : private table_base {
+        struct table_template {
             using object_type = T;
             using columns_type = std::tuple<Cs...>;
 
             static constexpr const int columns_count = static_cast<int>(std::tuple_size<columns_type>::value);
 
-            using table_base::name;
+            std::string name;
             columns_type columns;
 
             table_template(decltype(name) name_, columns_type columns_) :
-                table_base{std::move(name_)}, columns(std::move(columns_)) {}
+                name(std::move(name_)), columns(std::move(columns_)) {}
 
             table_without_rowid_t<T, Cs...> without_rowid() const {
                 return {name, columns};
