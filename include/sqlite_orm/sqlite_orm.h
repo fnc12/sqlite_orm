@@ -10828,8 +10828,8 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' (";
                 std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&columnNames](auto& c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
+                tImpl.table.for_each_column([&tImpl, &columnNames](auto& c) {
+                    if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         columnNames.emplace_back(c.name);
                     }
                 });
@@ -12385,8 +12385,8 @@ namespace sqlite_orm {
                 sqlite3_reset(stmt);
                 for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto& o = *it;
-                    tImpl.table.for_each_column([&o, &index, &stmt, db](auto& c) {
-                        if(!c.template has<constraints::primary_key_t<>>()) {
+                    tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, db](auto& c) {
+                        if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                             using column_type = typename std::decay<decltype(c)>::type;
                             using field_type = typename column_type::field_type;
                             if(c.member_pointer) {
