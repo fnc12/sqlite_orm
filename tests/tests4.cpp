@@ -262,8 +262,6 @@ TEST_CASE("two joins") {
         std::string nombre;
         std::string ubicacion;
         int fkey_pais;
-
-        Pais getPais() const;
     };
 
     struct AccountOwner {
@@ -284,9 +282,6 @@ TEST_CASE("two joins") {
         int fkey_concepto;
         int fkey_statement;
         int row;  // fkey_statement + row is unique
-
-        std::shared_ptr<Account> getAccountOrigin() const;
-        std::shared_ptr<Account> getAccountDestination() const;
     };
 
     struct Categoria {

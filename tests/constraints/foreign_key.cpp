@@ -36,6 +36,12 @@ TEST_CASE("Foreign key") {
                                            make_column("visited_at", &Visit::visited_at),
                                            make_column("mark", &Visit::mark),
                                            foreign_key(&Visit::location).references(&Location::id)));
+    {
+        using internal::storage_traits::storage_foreign_keys_count;
+        
+        static_assert(storage_foreign_keys_count<decltype(storage), Location>::value == 1, "");
+        static_assert(storage_foreign_keys_count<decltype(storage), Visit>::value == 0, "");
+    }
     storage.sync_schema();
 
     int fromDate = int(std::time(nullptr));

@@ -14,9 +14,6 @@ namespace sqlite_orm {
         template<class A, class B>
         struct foreign_key_t;
 
-        //        template<class T, class SFINAE = void>
-        //        struct table_type;
-
         namespace storage_traits {
 
             /**
@@ -139,14 +136,23 @@ namespace sqlite_orm {
                 typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
                 : storage_mapped_columns_impl<typename S::super, T> {};
 
+            /**
+             * C is any column type: column_t or constraint type
+             */
             template<class C, class O>
             struct column_foreign_keys_count : std::integral_constant<int, 0> {};
 
             template<class A, class B, class O>
             struct column_foreign_keys_count<foreign_key_t<A, B>, O> {
-                //                static constexpr const int value = std::is_same<O, >::value;
+                using target_type = typename foreign_key_t<A, B>::target_type;
+                
+                static constexpr const int value = std::is_same<O, target_type>::value ? 1 : 0;
             };
 
+            /**
+             * O - object type references in FOREIGN KEY
+             * Cs - column types which are stored in table_t::columns_type
+             */
             template<class O, class... Cs>
             struct table_foreign_keys_count_impl;
 
@@ -154,14 +160,25 @@ namespace sqlite_orm {
             struct table_foreign_keys_count_impl<O> {
                 static constexpr const int value = 0;
             };
-
+        
             template<class O, class H, class... Tail>
             struct table_foreign_keys_count_impl<O, H, Tail...> {
-                static constexpr const int value = 0;
+                static constexpr const int value = column_foreign_keys_count<H, O>::value + table_foreign_keys_count_impl<O, Tail...>::value;
             };
 
+            /**
+             *  T is table_t type
+             *  O is object type which is the reference target (e.g. foreign_key(&Visit::userId).references(&User::id) has O = User)
+             */
             template<class T, class O>
             struct table_foreign_keys_count;
+        
+            template<class T, class... Cs, class O>
+            struct table_foreign_keys_count<table_t<T, Cs...>, O> {
+                using table_type = table_t<T, Cs...>;
+                
+                static constexpr const int value = table_foreign_keys_count_impl<O, Cs...>::value;
+            };
 
             template<class S, class O>
             struct storage_foreign_keys_count_impl;
@@ -171,16 +188,20 @@ namespace sqlite_orm {
 
             template<class H, class... Ts, class O>
             struct storage_foreign_keys_count_impl<storage_impl<H, Ts...>, O> {
-                //            static constexpr const int value =
+                static constexpr const int value = table_foreign_keys_count<H, O>::value + storage_foreign_keys_count_impl<storage_impl<Ts...>, O>::value;
             };
 
             /**
-         * S - storage class
-         * O - type mapped to S
-         * This class tells how many types mapped to S have foreign keys to O
-         */
+             * S - storage class
+             * O - type mapped to S
+             * This class tells how many types mapped to S have foreign keys to O
+             */
             template<class S, class O>
-            struct storage_foreign_keys_count {};
+            struct storage_foreign_keys_count {
+                using impl_type = typename S::impl_type;
+                
+                static constexpr const int value = storage_foreign_keys_count_impl<impl_type, O>::value;
+            };
 
         }
     }
