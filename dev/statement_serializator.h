@@ -1083,8 +1083,8 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' (";
                 std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&columnNames](auto& c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
+                tImpl.table.for_each_column([&tImpl, &columnNames](auto& c) {
+                    if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         columnNames.emplace_back(c.name);
                     }
                 });

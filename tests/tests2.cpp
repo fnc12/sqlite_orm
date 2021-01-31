@@ -404,6 +404,49 @@ TEST_CASE("Insert") {
     REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
 }
 
+TEST_CASE("InsertRange") {
+    struct Object {
+        int id;
+        std::string name;
+    };
+
+    struct ObjectWithoutRowid {
+        int id;
+        std::string name;
+    };
+
+    auto storage = make_storage(
+        "test_insert_range.sqlite",
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)),
+        make_table("objects_without_rowid",
+                   make_column("id", &ObjectWithoutRowid::id, primary_key()),
+                   make_column("name", &ObjectWithoutRowid::name))
+            .without_rowid());
+
+    storage.sync_schema();
+    storage.remove_all<Object>();
+    storage.remove_all<ObjectWithoutRowid>();
+
+    std::vector<Object> objects = {100,
+                                   Object{
+                                       0,
+                                       "Skillet",
+                                   }};
+    storage.insert_range(objects.begin(), objects.end());
+    REQUIRE(storage.count<Object>() == 100);
+
+    //  test empty container
+    std::vector<Object> emptyVector;
+    storage.insert_range(emptyVector.begin(), emptyVector.end());
+
+    //  test insert_range without rowid
+    std::vector<ObjectWithoutRowid> objectsWR = {ObjectWithoutRowid{10, "Life"}, ObjectWithoutRowid{20, "Death"}};
+    REQUIRE(objectsWR.size() == 2);
+    storage.insert_range(objectsWR.begin(), objectsWR.end());
+    REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
+    REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
+}
+
 TEST_CASE("default value for string") {
     struct Contact {
         int id = 0;
