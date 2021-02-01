@@ -5,6 +5,9 @@
 #include <type_traits>  //  std::enable_if
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "core_functions.h"
 #include "constraints.h"
@@ -65,7 +68,17 @@ namespace sqlite_orm {
                 return "?";
             }
         };
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<>
+        struct statement_serializator<std::nullopt_t, void> {
+            using statement_type = std::nullopt_t;
 
+            template<class C>
+            std::string operator()(const statement_type&, const C&) {
+                return "?";
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<alias_holder<T>, void> {
             using statement_type = alias_holder<T>;

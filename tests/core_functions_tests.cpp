@@ -393,3 +393,21 @@ TEST_CASE("round") {
     test2(-4.535, 2, -4.54);
     test2(34.4158, -1, 34.0);
 }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+TEST_CASE("coalesce") {
+    struct Foo {
+        double field;
+    };
+
+    auto storage = make_storage({}, make_table("foo", make_column("field", &Foo::field)));
+    storage.sync_schema();
+    SECTION("nullptr") {
+        auto statement = storage.prepare(select(coalesce<std::optional<double>>(&Foo::field, nullptr)));
+        std::ignore = statement;
+    }
+    SECTION("nullopt") {
+        auto statement = storage.prepare(select(coalesce<std::optional<double>>(&Foo::field, std::nullopt)));
+        std::ignore = statement;
+    }
+}
+#endif

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  //  std::nullopt
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 #include "negatable.h"
 
 namespace sqlite_orm {
@@ -202,6 +204,11 @@ namespace sqlite_orm {
             assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
                 return {this->t, nullptr};
             }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+            assign_t<T, std::nullopt_t> operator=(std::nullopt_t) const {
+                return {this->t, std::nullopt};
+            }
+#endif
         };
 
     }
