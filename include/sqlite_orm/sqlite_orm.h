@@ -1005,7 +1005,9 @@ namespace sqlite_orm {
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  //  std::nullopt
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 // #include "negatable.h"
 
 namespace sqlite_orm {
@@ -1212,6 +1214,11 @@ namespace sqlite_orm {
             assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
                 return {this->t, nullptr};
             }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+            assign_t<T, std::nullopt_t> operator=(std::nullopt_t) const {
+                return {this->t, std::nullopt};
+            }
+#endif
         };
 
     }
@@ -1777,7 +1784,14 @@ namespace sqlite_orm {
             return "null";
         }
     };
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<>
+    struct field_printer<std::nullopt_t, void> {
+        std::string operator()(const std::nullopt_t&) const {
+            return "null";
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct field_printer<std::shared_ptr<T>, void> {
         std::string operator()(const std::shared_ptr<T>& t) const {
@@ -9455,6 +9469,9 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
 // #include "core_functions.h"
 
@@ -9810,7 +9827,17 @@ namespace sqlite_orm {
                 return "?";
             }
         };
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<>
+        struct statement_serializator<std::nullopt_t, void> {
+            using statement_type = std::nullopt_t;
 
+            template<class C>
+            std::string operator()(const statement_type&, const C&) {
+                return "?";
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<alias_holder<T>, void> {
             using statement_type = alias_holder<T>;
