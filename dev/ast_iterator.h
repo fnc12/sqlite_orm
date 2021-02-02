@@ -466,7 +466,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, const L& l) const {
-                iterate_ast(a.t, l);
+                iterate_ast(a.value, l);
             }
         };
 

@@ -4525,16 +4525,22 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        struct distinct_string {
+            operator std::string() const {
+                return "DISTINCT";
+            }
+        };
+
         /**
          *  DISCTINCT generic container.
          */
         template<class T>
-        struct distinct_t {
-            T t;
+        struct distinct_t : distinct_string {
+            using value_type = T;
 
-            operator std::string() const {
-                return "DISTINCT";
-            }
+            value_type value;
+
+            distinct_t(value_type value_) : value(std::move(value_)) {}
         };
 
         /**
@@ -8329,7 +8335,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, const L& l) const {
-                iterate_ast(a.t, l);
+                iterate_ast(a.value, l);
             }
         };
 
@@ -10062,7 +10068,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto expr = serialize(c.t, context);
+                auto expr = serialize(c.value, context);
                 ss << static_cast<std::string>(c) << "(" << expr << ")";
                 return ss.str();
             }

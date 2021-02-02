@@ -303,7 +303,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto expr = serialize(c.t, context);
+                auto expr = serialize(c.value, context);
                 ss << static_cast<std::string>(c) << "(" << expr << ")";
                 return ss.str();
             }
