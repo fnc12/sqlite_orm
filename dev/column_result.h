@@ -28,6 +28,14 @@ namespace sqlite_orm {
         template<class St, class T, class SFINAE = void>
         struct column_result_t;
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class St, class T>
+        struct column_result_t<St, as_optional_t<T>, void> {
+            using type = std::optional<typename column_result_t<St, T>::type>;
+        };
+
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
         template<class St, class O, class F>
         struct column_result_t<St,
                                F O::*,

@@ -3,6 +3,9 @@
 #include <string>  //  std::string
 #include <utility>  //  std::declval
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "is_base_of_template.h"
 #include "tuple_helper.h"
@@ -11,6 +14,14 @@
 namespace sqlite_orm {
 
     namespace internal {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct as_optional_t {
+            using value_type = T;
+
+            value_type value;
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
         struct distinct_string {
             operator std::string() const {
@@ -254,6 +265,12 @@ namespace sqlite_orm {
         }
     }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    internal::as_optional_t<T> as_optional(T value) {
+        return {std::move(value)};
+    }
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     internal::then_t<T> then(T t) {
         return {std::move(t)};

@@ -48,7 +48,17 @@ namespace sqlite_orm {
                 }
             }
         };
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct statement_serializator<as_optional_t<T>, void> {
+            using statement_type = as_optional_t<T>;
 
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) {
+                return serialize(statement.value, context);
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<std::reference_wrapper<T>, void> {
             using statement_type = std::reference_wrapper<T>;

@@ -3,6 +3,9 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "conditions.h"
 #include "operators.h"
@@ -24,7 +27,12 @@ namespace sqlite_orm {
         struct node_tuple<void, void> {
             using type = std::tuple<>;
         };
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct node_tuple<as_optional_t<T>, void> {
+            using type = typename node_tuple<T>::type;
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
             using type = typename node_tuple<T>::type;

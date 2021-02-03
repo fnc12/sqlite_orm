@@ -82,7 +82,13 @@ TEST_CASE("select constraints") {
         std::vector<std::string> names;
         decltype(names) expected;
         SECTION("without distinct") {
-            names = storage.select(&Employee::name);
+            SECTION("without prepared statement") {
+                names = storage.select(&Employee::name);
+            }
+            SECTION("with prepared statement") {
+                auto statement = storage.prepare(select(&Employee::name));
+                names = storage.execute(statement);
+            }
             expected.push_back("Paul");
             expected.push_back("Allen");
             expected.push_back("Teddy");
@@ -95,7 +101,13 @@ TEST_CASE("select constraints") {
             expected.push_back("James");
         }
         SECTION("with distinct") {
-            names = storage.select(distinct(&Employee::name));
+            SECTION("without prepared statement") {
+                names = storage.select(distinct(&Employee::name));
+            }
+            SECTION("with prepared statement") {
+                auto statement = storage.prepare(select(distinct(&Employee::name)));
+                names = storage.execute(statement);
+            }
             expected.push_back("Paul");
             expected.push_back("Allen");
             expected.push_back("Teddy");
@@ -106,4 +118,102 @@ TEST_CASE("select constraints") {
         }
         REQUIRE_THAT(names, UnorderedEquals(expected));
     }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    SECTION("as_optional") {
+        SECTION("prepared statements bindings") {
+            auto statement = storage.prepare(select(as_optional(5)));
+            auto rows = storage.execute(statement);
+            decltype(rows) expected;
+            expected.push_back(5);
+            REQUIRE(rows == expected);
+
+            get<0>(statement) = 10;
+            expected.clear();
+            expected.push_back(10);
+            rows = storage.execute(statement);
+            REQUIRE(rows == expected);
+        }
+        SECTION("just names") {
+            auto rows = storage.select(as_optional(&Employee::name));
+            decltype(rows) expected;
+            expected.push_back("Paul");
+            expected.push_back("Allen");
+            expected.push_back("Teddy");
+            expected.push_back("Mark");
+            expected.push_back("David");
+            expected.push_back("Kim");
+            expected.push_back("James");
+            REQUIRE_THAT(rows, UnorderedEquals(expected));
+        }
+        SECTION("left join") {
+            struct Author {
+                int id = 0;
+                std::string name;
+            };
+            struct Book {
+                int id = 0;
+                std::string title;
+                int authorId = 0;
+            };
+            auto storage2 = make_storage({},
+                                         make_table("Author",
+                                                    make_column("id", &Author::id),
+                                                    make_column("name", &Author::name),
+                                                    primary_key(&Author::id)),
+                                         make_table("Book",
+                                                    make_column("id", &Book::id),
+                                                    make_column("title", &Book::title),
+                                                    make_column("author_id", &Book::authorId),
+                                                    primary_key(&Book::id),
+                                                    foreign_key(&Book::authorId).references(&Author::id)));
+            storage2.sync_schema();
+            storage2.replace(Author{1, "Dostoevsky"});
+            storage2.replace(Author{2, "Tolstoy"});
+            storage2.replace(Author{3, "Chekhov"});
+            storage2.replace(Author{4, "Joanne Rowling"});
+            storage2.replace(Book{1, "War and Peace", 2});
+            storage2.replace(Book{2, "Crime and Punishment", 1});
+            storage2.replace(Book{3, "Harry Potter", 4});
+            SECTION("without optional") {
+                auto rows =
+                    storage2.select(columns(&Author::id, &Author::name, &Book::id, &Book::title, &Book::authorId),
+                                    left_join<Book>(on(c(&Author::id) == &Book::authorId)));
+                decltype(rows) expected;
+                expected.push_back(std::make_tuple(1, "Dostoevsky", 2, "Crime and Punishment", 1));
+                expected.push_back(std::make_tuple(2, "Tolstoy", 1, "War and Peace", 2));
+                expected.push_back(std::make_tuple(3, "Chekhov", 0, std::string(), 0));
+                expected.push_back(std::make_tuple(4, "Joanne Rowling", 3, "Harry Potter", 4));
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+            SECTION("with optional") {
+                using Rows = std::vector<
+                    std::tuple<int, std::string, std::optional<int>, std::optional<std::string>, std::optional<int>>>;
+                Rows rows;
+                SECTION("without prepared statement") {
+                    rows = storage2.select(columns(&Author::id,
+                                                   &Author::name,
+                                                   as_optional(&Book::id),
+                                                   as_optional(&Book::title),
+                                                   as_optional(&Book::authorId)),
+                                           left_join<Book>(on(c(&Author::id) == &Book::authorId)));
+                }
+                SECTION("with prepared statement") {
+                    auto statement = storage2.prepare(select(columns(&Author::id,
+                                                                     &Author::name,
+                                                                     as_optional(&Book::id),
+                                                                     as_optional(&Book::title),
+                                                                     as_optional(&Book::authorId)),
+                                                             left_join<Book>(on(c(&Author::id) == &Book::authorId))));
+                    rows = storage2.execute(statement);
+                }
+                decltype(rows) expected;
+                expected.push_back(std::make_tuple(1, "Dostoevsky", 2, "Crime and Punishment", 1));
+                expected.push_back(std::make_tuple(2, "Tolstoy", 1, "War and Peace", 2));
+                expected.push_back(std::make_tuple(3, "Chekhov", std::nullopt, std::nullopt, std::nullopt));
+                expected.push_back(std::make_tuple(4, "Joanne Rowling", 3, "Harry Potter", 4));
+                REQUIRE_THAT(rows, UnorderedEquals(expected));
+            }
+        }
+    }
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 }
