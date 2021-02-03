@@ -76,7 +76,7 @@ add_executable(unit_tests
 	unique_cases/delete_with_two_fields.cpp
 	unique_cases/join_iterator_ctor_compilation_error.cpp
 	get_all_custom_containers.cpp
-	select_asterisk.cpp
+	select_constraints_tests.cpp
 	backup_tests.cpp
 	transaction_tests.cpp
     json.cpp

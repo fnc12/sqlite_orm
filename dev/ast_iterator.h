@@ -46,6 +46,18 @@ namespace sqlite_orm {
             iterator(t, l);
         }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct ast_iterator<as_optional_t<T>, void> {
+            using node_type = as_optional_t<T>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.value, lambda);
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
         template<class T>
         struct ast_iterator<std::reference_wrapper<T>, void> {
             using node_type = std::reference_wrapper<T>;
@@ -466,7 +478,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, const L& l) const {
-                iterate_ast(a.t, l);
+                iterate_ast(a.value, l);
             }
         };
 

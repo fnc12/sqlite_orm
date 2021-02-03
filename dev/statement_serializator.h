@@ -5,6 +5,9 @@
 #include <type_traits>  //  std::enable_if
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "core_functions.h"
 #include "constraints.h"
@@ -45,7 +48,17 @@ namespace sqlite_orm {
                 }
             }
         };
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct statement_serializator<as_optional_t<T>, void> {
+            using statement_type = as_optional_t<T>;
 
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) {
+                return serialize(statement.value, context);
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<std::reference_wrapper<T>, void> {
             using statement_type = std::reference_wrapper<T>;
@@ -65,7 +78,17 @@ namespace sqlite_orm {
                 return "?";
             }
         };
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<>
+        struct statement_serializator<std::nullopt_t, void> {
+            using statement_type = std::nullopt_t;
 
+            template<class C>
+            std::string operator()(const statement_type&, const C&) {
+                return "?";
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<alias_holder<T>, void> {
             using statement_type = alias_holder<T>;
@@ -290,7 +313,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto expr = serialize(c.t, context);
+                auto expr = serialize(c.value, context);
                 ss << static_cast<std::string>(c) << "(" << expr << ")";
                 return ss.str();
             }
@@ -1083,8 +1106,8 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' (";
                 std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&columnNames](auto& c) {
-                    if(!c.template has<primary_key_t<>>()) {
+                tImpl.table.for_each_column([&tImpl, &columnNames](auto& c) {
+                    if(tImpl.table._without_rowid || !c.template has<primary_key_t<>>()) {
                         columnNames.emplace_back(c.name);
                     }
                 });
