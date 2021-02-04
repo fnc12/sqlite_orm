@@ -336,8 +336,11 @@ TEST_CASE("statement_serializator foreign key") {
                                      make_column("last_name", &User::lastName),
                                      primary_key(&User::id, &User::firstName));
         {
-            static_assert(internal::storage_traits::table_foreign_keys_count<decltype(usersTable), User>::value == 0, "");
-            static_assert(internal::storage_traits::table_foreign_keys_count<decltype(usersTable), UserVisit>::value == 0, "");
+            static_assert(internal::storage_traits::table_foreign_keys_count<decltype(usersTable), User>::value == 0,
+                          "");
+            static_assert(internal::storage_traits::table_foreign_keys_count<decltype(usersTable), UserVisit>::value ==
+                              0,
+                          "");
         }
         auto visitsTable = make_table("visits",
                                       make_column("user_id", &UserVisit::userId),
@@ -345,8 +348,11 @@ TEST_CASE("statement_serializator foreign key") {
                                       make_column("time", &UserVisit::time),
                                       fk);
         {
-            static_assert(internal::storage_traits::table_foreign_keys_count<decltype(visitsTable), User>::value == 1, "");
-            static_assert(internal::storage_traits::table_foreign_keys_count<decltype(visitsTable), UserVisit>::value == 0, "");
+            static_assert(internal::storage_traits::table_foreign_keys_count<decltype(visitsTable), User>::value == 1,
+                          "");
+            static_assert(internal::storage_traits::table_foreign_keys_count<decltype(visitsTable), UserVisit>::value ==
+                              0,
+                          "");
         }
         using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
 

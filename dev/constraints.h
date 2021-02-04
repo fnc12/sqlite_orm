@@ -243,6 +243,11 @@ namespace sqlite_orm {
              */
             using target_type = typename tuple_helper::same_or_void<typename table_type<Rs>::type...>::type;
 
+            /**
+             * Holds obect type of all source columns.
+             */
+            using source_type = typename tuple_helper::same_or_void<typename table_type<Cs>::type...>::type;
+
             columns_type columns;
             references_type references;
 

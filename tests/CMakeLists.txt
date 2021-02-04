@@ -52,6 +52,7 @@ add_executable(unit_tests
 	static_tests/select_return_type.cpp
     static_tests/column.cpp
     static_tests/same_or_void.cpp
+    static_tests/foreign_key.cpp
 	constraints/default.cpp
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
