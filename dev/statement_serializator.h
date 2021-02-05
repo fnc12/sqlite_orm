@@ -1108,7 +1108,8 @@ namespace sqlite_orm {
                 ss << "INSERT INTO '" << tImpl.table.name << "' (";
                 std::vector<std::string> columnNames;
                 tImpl.table.for_each_column([&tImpl, &columnNames](auto& c) {
-                    if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
+                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                    if(is_table_without_rowid<table_type>::value || !c.template has<constraints::primary_key_t<>>()) {
                         columnNames.emplace_back(c.name);
                     }
                 });

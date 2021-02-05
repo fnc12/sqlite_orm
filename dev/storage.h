@@ -977,7 +977,9 @@ namespace sqlite_orm {
                 for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto& o = *it;
                     tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, db](auto& c) {
-                        if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
+                        using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                        if(is_table_without_rowid<table_type>::value ||
+                           !c.template has<constraints::primary_key_t<>>()) {
                             using column_type = typename std::decay<decltype(c)>::type;
                             using field_type = typename column_type::field_type;
                             if(c.member_pointer) {
