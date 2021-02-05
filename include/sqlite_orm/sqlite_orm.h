@@ -1005,7 +1005,9 @@ namespace sqlite_orm {
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  //  std::nullopt
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 // #include "negatable.h"
 
 namespace sqlite_orm {
@@ -1212,6 +1214,11 @@ namespace sqlite_orm {
             assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
                 return {this->t, nullptr};
             }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+            assign_t<T, std::nullopt_t> operator=(std::nullopt_t) const {
+                return {this->t, std::nullopt};
+            }
+#endif
         };
 
     }
@@ -1777,7 +1784,14 @@ namespace sqlite_orm {
             return "null";
         }
     };
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<>
+    struct field_printer<std::nullopt_t, void> {
+        std::string operator()(const std::nullopt_t&) const {
+            return "null";
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct field_printer<std::shared_ptr<T>, void> {
         std::string operator()(const std::shared_ptr<T>& t) const {
@@ -4500,6 +4514,9 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::declval
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 // #include "is_base_of_template.h"
 
@@ -4510,17 +4527,31 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     namespace internal {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct as_optional_t {
+            using value_type = T;
+
+            value_type value;
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+        struct distinct_string {
+            operator std::string() const {
+                return "DISTINCT";
+            }
+        };
 
         /**
          *  DISCTINCT generic container.
          */
         template<class T>
-        struct distinct_t {
-            T t;
+        struct distinct_t : distinct_string {
+            using value_type = T;
 
-            operator std::string() const {
-                return "DISTINCT";
-            }
+            value_type value;
+
+            distinct_t(value_type value_) : value(std::move(value_)) {}
         };
 
         /**
@@ -4747,6 +4778,12 @@ namespace sqlite_orm {
         }
     }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    internal::as_optional_t<T> as_optional(T value) {
+        return {std::move(value)};
+    }
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     internal::then_t<T> then(T t) {
         return {std::move(t)};
@@ -6013,6 +6050,14 @@ namespace sqlite_orm {
          */
         template<class St, class T, class SFINAE = void>
         struct column_result_t;
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class St, class T>
+        struct column_result_t<St, as_optional_t<T>, void> {
+            using type = std::optional<typename column_result_t<St, T>::type>;
+        };
+
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class St, class O, class F>
         struct column_result_t<St,
@@ -7937,6 +7982,18 @@ namespace sqlite_orm {
             iterator(t, l);
         }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct ast_iterator<as_optional_t<T>, void> {
+            using node_type = as_optional_t<T>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.value, lambda);
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
         template<class T>
         struct ast_iterator<std::reference_wrapper<T>, void> {
             using node_type = std::reference_wrapper<T>;
@@ -8357,7 +8414,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, const L& l) const {
-                iterate_ast(a.t, l);
+                iterate_ast(a.value, l);
             }
         };
 
@@ -9497,6 +9554,9 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
 // #include "core_functions.h"
 
@@ -9832,7 +9892,17 @@ namespace sqlite_orm {
                 }
             }
         };
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct statement_serializator<as_optional_t<T>, void> {
+            using statement_type = as_optional_t<T>;
 
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) {
+                return serialize(statement.value, context);
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<std::reference_wrapper<T>, void> {
             using statement_type = std::reference_wrapper<T>;
@@ -9852,7 +9922,17 @@ namespace sqlite_orm {
                 return "?";
             }
         };
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<>
+        struct statement_serializator<std::nullopt_t, void> {
+            using statement_type = std::nullopt_t;
 
+            template<class C>
+            std::string operator()(const statement_type&, const C&) {
+                return "?";
+            }
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<alias_holder<T>, void> {
             using statement_type = alias_holder<T>;
@@ -10077,7 +10157,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto expr = serialize(c.t, context);
+                auto expr = serialize(c.value, context);
                 ss << static_cast<std::string>(c) << "(" << expr << ")";
                 return ss.str();
             }
@@ -10871,8 +10951,8 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' (";
                 std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&columnNames](auto& c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
+                tImpl.table.for_each_column([&tImpl, &columnNames](auto& c) {
+                    if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                         columnNames.emplace_back(c.name);
                     }
                 });
@@ -12449,8 +12529,8 @@ namespace sqlite_orm {
                 sqlite3_reset(stmt);
                 for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto& o = *it;
-                    tImpl.table.for_each_column([&o, &index, &stmt, db](auto& c) {
-                        if(!c.template has<constraints::primary_key_t<>>()) {
+                    tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, db](auto& c) {
+                        if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                             using column_type = typename std::decay<decltype(c)>::type;
                             using field_type = typename column_type::field_type;
                             if(c.member_pointer) {
@@ -12965,6 +13045,9 @@ __pragma(pop_macro("min"))
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
     // #include "conditions.h"
 
@@ -12991,7 +13074,12 @@ __pragma(pop_macro("min"))
         struct node_tuple<void, void> {
             using type = std::tuple<>;
         };
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct node_tuple<as_optional_t<T>, void> {
+            using type = typename node_tuple<T>::type;
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
             using type = typename node_tuple<T>::type;

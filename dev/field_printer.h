@@ -85,7 +85,14 @@ namespace sqlite_orm {
             return "null";
         }
     };
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<>
+    struct field_printer<std::nullopt_t, void> {
+        std::string operator()(const std::nullopt_t&) const {
+            return "null";
+        }
+    };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct field_printer<std::shared_ptr<T>, void> {
         std::string operator()(const std::shared_ptr<T>& t) const {
