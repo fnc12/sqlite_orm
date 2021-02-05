@@ -12182,6 +12182,7 @@ namespace sqlite_orm {
             void insert_range(It from, It to) {
                 using O = typename std::iterator_traits<It>::value_type;
                 this->assert_mapped_type<O>();
+                this->assert_insertable_type<O>();
                 if(from == to) {
                     return;
                 }
