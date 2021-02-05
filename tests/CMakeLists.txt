@@ -81,6 +81,7 @@ add_executable(unit_tests
 	backup_tests.cpp
 	transaction_tests.cpp
     json.cpp
+    tuple_helper_tests.cpp
 	row_id.cpp)
 
 if(SQLITE_ORM_OMITS_CODECVT)

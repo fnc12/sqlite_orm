@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::get
+#include <tuple>  //  std::tuple, std::get, std::tuple_element
 #include <type_traits>  //  std::false_type, std::true_type
 
 #include "static_magic.h"
@@ -26,35 +26,85 @@ namespace sqlite_orm {
         using tuple_contains_type = typename has_type<T, Tuple>::type;
 
         template<size_t N, class... Args>
-        struct iterator {
+        struct iterator_impl {
 
             template<class L>
-            void operator()(const std::tuple<Args...>& t, const L& l, bool reverse = true) {
+            void operator()(const std::tuple<Args...>& tuple, const L& lambda, bool reverse = true) {
                 if(reverse) {
-                    l(std::get<N>(t));
-                    iterator<N - 1, Args...>()(t, l, reverse);
+                    lambda(std::get<N>(tuple));
+                    iterator_impl<N - 1, Args...>()(tuple, lambda, reverse);
                 } else {
-                    iterator<N - 1, Args...>()(t, l, reverse);
-                    l(std::get<N>(t));
+                    iterator_impl<N - 1, Args...>()(tuple, lambda, reverse);
+                    lambda(std::get<N>(tuple));
                 }
+            }
+
+            template<class L>
+            void operator()(const L& lambda) {
+                iterator_impl<N - 1, Args...>()(lambda);
+                lambda((const typename std::tuple_element<N - 1, std::tuple<Args...>>::type*)nullptr);
             }
         };
 
         template<class... Args>
-        struct iterator<0, Args...> {
+        struct iterator_impl<0, Args...> {
 
             template<class L>
-            void operator()(const std::tuple<Args...>& t, const L& l, bool /*reverse*/ = true) {
-                l(std::get<0>(t));
+            void operator()(const std::tuple<Args...>& tuple, const L& lambda, bool /*reverse*/ = true) {
+                lambda(std::get<0>(tuple));
+            }
+
+            template<class L>
+            void operator()(const L& lambda) {
+                lambda((const typename std::tuple_element<0, std::tuple<Args...>>::type*)nullptr);
             }
         };
 
         template<size_t N>
-        struct iterator<N> {
+        struct iterator_impl<N> {
 
             template<class L>
             void operator()(const std::tuple<>&, const L&, bool /*reverse*/ = true) {
                 //..
+            }
+
+            template<class L>
+            void operator()(const L&) {
+                //..
+            }
+        };
+
+        template<class... Args>
+        struct iterator_impl2;
+
+        template<>
+        struct iterator_impl2<> {
+
+            template<class L>
+            void operator()(const L&) const {
+                //..
+            }
+        };
+
+        template<class H, class... Tail>
+        struct iterator_impl2<H, Tail...> {
+
+            template<class L>
+            void operator()(const L& lambda) const {
+                lambda((const H*)nullptr);
+                iterator_impl2<Tail...>{}(lambda);
+            }
+        };
+
+        template<class T>
+        struct iterator;
+
+        template<class... Args>
+        struct iterator<std::tuple<Args...>> {
+
+            template<class L>
+            void operator()(const L& lambda) const {
+                iterator_impl2<Args...>{}(lambda);
             }
         };
 
@@ -107,9 +157,15 @@ namespace sqlite_orm {
         }
 
         template<class L, class... Args>
-        void iterate_tuple(const std::tuple<Args...>& t, const L& l) {
+        void iterate_tuple(const std::tuple<Args...>& tuple, const L& lambda) {
             using tuple_type = std::tuple<Args...>;
-            tuple_helper::iterator<std::tuple_size<tuple_type>::value - 1, Args...>()(t, l, false);
+            tuple_helper::iterator_impl<std::tuple_size<tuple_type>::value - 1, Args...>()(tuple, lambda, false);
+        }
+
+        template<class T, class L>
+        void iterate_tuple(const L& lambda) {
+            //            tuple_helper::iterator<T>()(lambda);
+            tuple_helper::iterator<T>{}(lambda);
         }
 
         template<typename... input_t>
