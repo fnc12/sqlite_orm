@@ -47,8 +47,7 @@ TEST_CASE("Primary key 1") {
         storage.insert_range(usersInput.begin(), usersInput.end());
         const auto users = storage.get_all<User>();
         REQUIRE(users.size() == usersInput.size());
-        for (size_t i=0;i<users.size();++i)
-        {
+        for(size_t i = 0; i < users.size(); ++i) {
             REQUIRE(-1 != users[i].id);
             usersInput[i].id = users[i].id;
         }
@@ -106,8 +105,7 @@ TEST_CASE("Primary key 2") {
         storage.insert_range(usersInput.begin(), usersInput.end());
         const auto users = storage.get_all<User>();
         REQUIRE(users.size() == usersInput.size());
-        for (size_t i=0;i<users.size();++i)
-        {
+        for(size_t i = 0; i < users.size(); ++i) {
             REQUIRE(-1 != users[i].id);
             usersInput[i].id = users[i].id;
         }
@@ -117,4 +115,41 @@ TEST_CASE("Primary key 2") {
     SECTION("replace") {
         // TODO: implement this
     }
+}
+
+TEST_CASE("Primary key with default value 1") {
+    struct User {
+        std::string id;
+        std::string name;
+    };
+
+    auto storage = make_storage("primary_key_def.sqlite",
+                                make_table("users",
+                                           make_column("id", &User::id, default_value("100")),
+                                           make_column("name", &User::name, default_value("dummy_name")),
+                                           primary_key(&User::id, &User::name)));
+    storage.sync_schema();
+
+    SECTION("insert") {
+        storage.remove_all<User>();
+        storage.insert<User>({"", ""});
+        const auto users = storage.get_all<User>();
+        REQUIRE(users.size() == 1);
+        REQUIRE("100" == users.front().id);
+        REQUIRE("dummy_name" == users.front().name);
+    }
+
+    SECTION("insert_range") {
+        storage.remove_all<User>();
+        std::vector<User> inputUsers = {{"", ""}};
+        storage.insert_range(inputUsers.begin(), inputUsers.end());
+        const auto users = storage.get_all<User>();
+        REQUIRE(users.size() == 1);
+        REQUIRE("100" == users.front().id);
+        REQUIRE("dummy_name" == users.front().name);
+    }
+}
+
+TEST_CASE("Primary key with default value 2") {
+    // TODO: implement this
 }
