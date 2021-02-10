@@ -5,42 +5,30 @@ using namespace sqlite_orm;
 
 namespace {
     namespace primary_key_case {
-        struct User {
-            bool operator==(const User& rhs) const {
-                return std::tie(id, name, age, email) == std::tie(rhs.id, rhs.name, rhs.age, rhs.email);
-            }
-            bool operator!=(const User& rhs) const {
-                return !(rhs == *this);
-            }
-            int id;
-            std::string name;
-            int age;
-            std::string email;
-        };
 
-        template<typename S>
+        template<typename TUser, typename S>
         void insertSection(S& storage) {
-            storage.template remove_all<User>();
-            User user{};
+            storage.template remove_all<TUser>();
+            TUser user{};
             user.id = -1;
             user.name = "Juan";
             user.age = 57;
             user.email = "dummy@email.com";
             const auto id = storage.insert(user);
-            const auto users = storage.template get_all<User>();
+            const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == 1);
             REQUIRE(-1 != users.front().id);
             REQUIRE(id == users.front().id);
         }
 
-        template<typename S>
+        template<typename TUser, typename S>
         void insertRangeSection(S& storage) {
-            storage.template remove_all<User>();
-            std::vector<User> usersInput;
+            storage.template remove_all<TUser>();
+            std::vector<TUser> usersInput;
             usersInput.push_back({-1, "Juan", 57, "dummy@email.com"});
             usersInput.push_back({-1, "Kevin", 27, "dummy@email.com"});
             storage.insert_range(usersInput.begin(), usersInput.end());
-            const auto users = storage.template get_all<User>();
+            const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == usersInput.size());
             for(size_t i = 0; i < users.size(); ++i) {
                 REQUIRE(-1 != users[i].id);
@@ -51,30 +39,26 @@ namespace {
 
     }  // end of namespace primary_key_case
     namespace default_value_case {
-        struct User {
-            std::string id;
-            std::string name;
-        };
 
         static const char* const defaultID = "100";
         static const char* const defaultName = "dummy_name";
 
-        template<typename S>
+        template<typename TUser, typename S>
         void insertSection(S& storage) {
-            storage.template remove_all<User>();
-            storage.template insert<User>({"_", "_"});
-            const auto users = storage.template get_all<User>();
+            storage.template remove_all<TUser>();
+            storage.template insert<TUser>({"_", "_"});
+            const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == 1);
             REQUIRE(defaultID == users.front().id);
             REQUIRE(defaultName == users.front().name);
         }
 
-        template<typename S>
+        template<typename TUser, typename S>
         void insertRangeSection(S& storage) {
-            storage.template remove_all<User>();
-            std::vector<User> inputUsers = {{"_", "_"}};
+            storage.template remove_all<TUser>();
+            std::vector<TUser> inputUsers = {{"_", "_"}};
             storage.insert_range(inputUsers.begin(), inputUsers.end());
-            const auto users = storage.template get_all<User>();
+            const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == 1);
             REQUIRE(defaultID == users.front().id);
             REQUIRE(defaultName == users.front().name);
@@ -83,8 +67,21 @@ namespace {
     }  // end of namespace default_value_case
 }  // end of anonymous namespace
 
-TEST_CASE("Primary key 1") {
-    using primary_key_case::User;
+TEST_CASE("Issue 663 - pk inside") {
+
+    struct User {
+        bool operator==(const User& rhs) const {
+            return std::tie(id, name, age, email) == std::tie(rhs.id, rhs.name, rhs.age, rhs.email);
+        }
+        bool operator!=(const User& rhs) const {
+            return !(rhs == *this);
+        }
+        int id;
+        std::string name;
+        int age;
+        std::string email;
+    };
+
     auto storage = make_storage("primary_key.sqlite",
                                 make_table("users",
                                            make_column("id", &User::id, primary_key()),
@@ -94,20 +91,28 @@ TEST_CASE("Primary key 1") {
     storage.sync_schema();
 
     SECTION("insert") {
-        primary_key_case::insertSection(storage);
+        primary_key_case::insertSection<User>(storage);
     }
 
     SECTION("insert_range") {
-        primary_key_case::insertRangeSection(storage);
-    }
-
-    SECTION("replace") {
-        // TODO: implement this
+        primary_key_case::insertRangeSection<User>(storage);
     }
 }
 
-TEST_CASE("Primary key 2") {
-    using primary_key_case::User;
+TEST_CASE("Issue 663 - pk outside") {
+
+    struct User {
+        bool operator==(const User& rhs) const {
+            return std::tie(id, name, age, email) == std::tie(rhs.id, rhs.name, rhs.age, rhs.email);
+        }
+        bool operator!=(const User& rhs) const {
+            return !(rhs == *this);
+        }
+        int id;
+        std::string name;
+        int age;
+        std::string email;
+    };
 
     auto storage = make_storage("primary_key2.sqlite",
                                 make_table("users",
@@ -120,22 +125,23 @@ TEST_CASE("Primary key 2") {
     storage.remove_all<User>();
 
     SECTION("insert") {
-        primary_key_case::insertSection(storage);
+        primary_key_case::insertSection<User>(storage);
     }
 
     SECTION("insert_range") {
-        primary_key_case::insertRangeSection(storage);
-    }
-
-    SECTION("replace") {
-        // TODO: implement this
+        primary_key_case::insertRangeSection<User>(storage);
     }
 }
 
-TEST_CASE("Primary key with default value 1") {
-    using default_value_case::User;
+TEST_CASE("Issue 663 - pk outside, with default") {
+
+    struct User {
+        std::string id;
+        std::string name;
+    };
+
     auto storage =
-        make_storage("primary_key_def.sqlite",
+        make_storage("primary_key_def1.sqlite",
                      make_table("users",
                                 make_column("id", &User::id, default_value(default_value_case::defaultID)),
                                 make_column("name", &User::name, default_value(default_value_case::defaultName)),
@@ -143,22 +149,21 @@ TEST_CASE("Primary key with default value 1") {
     storage.sync_schema();
 
     SECTION("insert") {
-        default_value_case::insertSection(storage);
+        default_value_case::insertSection<User>(storage);
     }
 
     SECTION("insert_range") {
-        default_value_case::insertRangeSection(storage);
+        default_value_case::insertRangeSection<User>(storage);
     }
 }
 
-TEST_CASE("Primary key with default value 2") {
+TEST_CASE("Issue 663 - pk inside, with default") {
     struct User {
         std::string id;
     };
 
-    auto storage = make_storage("primary_key_def.sqlite",
-                                make_table("users",
-                                           make_column("id", &User::id, primary_key(), default_value("200"))));
+    auto storage = make_storage("primary_key_def2.sqlite",
+                                make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
     storage.sync_schema();
 
     SECTION("insert") {
