@@ -176,3 +176,22 @@ TEST_CASE("Issue 663 - pk inside, with default") {
         REQUIRE("200" == users.front().id);
     }
 }
+
+TEST_CASE("Issue 663 - fail test") {
+    struct User {
+        std::string id;
+    };
+
+    auto storage = make_storage("",  ///
+                                make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
+    storage.sync_schema();
+
+    std::vector<User> inputUsers = {{"_"}, {"_"}};
+    try {
+        storage.insert_range(inputUsers.begin(), inputUsers.end());
+        REQUIRE(false);
+    } catch(const std::system_error& e) {
+        REQUIRE(e.code() == std::make_error_code(orm_error_code::cannot_use_default_value));
+        REQUIRE(storage.count<User>() == 0);
+    }
+}

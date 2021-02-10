@@ -1117,7 +1117,8 @@ namespace sqlite_orm {
                     }
                 });
 
-                auto columnNamesCount = columnNames.size();
+                const auto columnNamesCount = columnNames.size();
+                const auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
                 if(columnNamesCount) {
                     ss << "(";
                     for(size_t i = 0; i < columnNamesCount; ++i) {
@@ -1133,7 +1134,6 @@ namespace sqlite_orm {
                     ss << "DEFAULT ";
                 }
                 ss << "VALUES ";
-                // TODO error when input range size is not one??
                 if(columnNamesCount) {
                     auto valuesString = [columnNamesCount] {
                         std::stringstream ss_;
@@ -1148,7 +1148,6 @@ namespace sqlite_orm {
                         }
                         return ss_.str();
                     }();
-                    auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
                     for(auto i = 0; i < valuesCount; ++i) {
                         ss << valuesString;
                         if(i < valuesCount - 1) {
@@ -1156,7 +1155,10 @@ namespace sqlite_orm {
                         }
                         ss << " ";
                     }
+                } else if(valuesCount != 1) {
+                    throw std::system_error(std::make_error_code(orm_error_code::cannot_use_default_value));
                 }
+
                 return ss.str();
             }
         };
