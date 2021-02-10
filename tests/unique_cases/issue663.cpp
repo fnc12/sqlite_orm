@@ -8,7 +8,6 @@ namespace {
 
         template<typename TUser, typename S>
         void insertSection(S& storage) {
-            storage.template remove_all<TUser>();
             TUser user{};
             user.id = -1;
             user.name = "Juan";
@@ -23,7 +22,6 @@ namespace {
 
         template<typename TUser, typename S>
         void insertRangeSection(S& storage) {
-            storage.template remove_all<TUser>();
             std::vector<TUser> usersInput;
             usersInput.push_back({-1, "Juan", 57, "dummy@email.com"});
             usersInput.push_back({-1, "Kevin", 27, "dummy@email.com"});
@@ -45,7 +43,6 @@ namespace {
 
         template<typename TUser, typename S>
         void insertSection(S& storage) {
-            storage.template remove_all<TUser>();
             storage.template insert<TUser>({"_", "_"});
             const auto users = storage.template get_all<TUser>();
             REQUIRE(users.size() == 1);
@@ -55,7 +52,6 @@ namespace {
 
         template<typename TUser, typename S>
         void insertRangeSection(S& storage) {
-            storage.template remove_all<TUser>();
             std::vector<TUser> inputUsers = {{"_", "_"}};
             storage.insert_range(inputUsers.begin(), inputUsers.end());
             const auto users = storage.template get_all<TUser>();
@@ -82,7 +78,7 @@ TEST_CASE("Issue 663 - pk inside") {
         std::string email;
     };
 
-    auto storage = make_storage("primary_key.sqlite",
+    auto storage = make_storage("",  ///
                                 make_table("users",
                                            make_column("id", &User::id, primary_key()),
                                            make_column("name", &User::name),
@@ -114,7 +110,7 @@ TEST_CASE("Issue 663 - pk outside") {
         std::string email;
     };
 
-    auto storage = make_storage("primary_key2.sqlite",
+    auto storage = make_storage("",  ///
                                 make_table("users",
                                            make_column("id", &User::id),
                                            make_column("name", &User::name),
@@ -122,7 +118,6 @@ TEST_CASE("Issue 663 - pk outside") {
                                            make_column("email", &User::email, default_value("dummy@email.com")),
                                            primary_key(&User::id)));
     storage.sync_schema();
-    storage.remove_all<User>();
 
     SECTION("insert") {
         primary_key_case::insertSection<User>(storage);
@@ -141,7 +136,7 @@ TEST_CASE("Issue 663 - pk outside, with default") {
     };
 
     auto storage =
-        make_storage("primary_key_def1.sqlite",
+        make_storage("",  ///
                      make_table("users",
                                 make_column("id", &User::id, default_value(default_value_case::defaultID)),
                                 make_column("name", &User::name, default_value(default_value_case::defaultName)),
@@ -162,12 +157,11 @@ TEST_CASE("Issue 663 - pk inside, with default") {
         std::string id;
     };
 
-    auto storage = make_storage("primary_key_def2.sqlite",
+    auto storage = make_storage("",  ///
                                 make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
     storage.sync_schema();
 
     SECTION("insert") {
-        storage.remove_all<User>();
         storage.insert<User>({"_"});
         const auto users = storage.get_all<User>();
         REQUIRE(users.size() == 1);
@@ -175,7 +169,6 @@ TEST_CASE("Issue 663 - pk inside, with default") {
     }
 
     SECTION("insert_range") {
-        storage.remove_all<User>();
         std::vector<User> inputUsers = {{"_"}};
         storage.insert_range(inputUsers.begin(), inputUsers.end());
         const auto users = storage.get_all<User>();
