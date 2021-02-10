@@ -1104,45 +1104,58 @@ namespace sqlite_orm {
                 auto& tImpl = context.impl.template get_impl<object_type>();
 
                 std::stringstream ss;
-                ss << "INSERT INTO '" << tImpl.table.name << "' (";
+                ss << "INSERT INTO '" << tImpl.table.name << "' ";
                 std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&tImpl, &columnNames](auto& c) {
+                auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
+
+                tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
                     if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
-                        columnNames.emplace_back(c.name);
+                        auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
+                        if(it == compositeKeyColumnNames.end()) {
+                            columnNames.emplace_back(c.name);
+                        }
                     }
                 });
 
                 auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
+                if(columnNamesCount) {
+                    ss << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "\"" << columnNames[i] << "\"";
+                        if(i < columnNamesCount - 1) {
+                            ss << ",";
+                        } else {
+                            ss << ")";
+                        }
+                        ss << " ";
                     }
-                    ss << " ";
+                } else {
+                    ss << "DEFAULT ";
                 }
                 ss << "VALUES ";
-                auto valuesString = [columnNamesCount] {
-                    std::stringstream ss_;
-                    ss_ << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss_ << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss_ << ", ";
-                        } else {
-                            ss_ << ")";
+                // TODO error when input range size is not one??
+                if(columnNamesCount) {
+                    auto valuesString = [columnNamesCount] {
+                        std::stringstream ss_;
+                        ss_ << "(";
+                        for(size_t i = 0; i < columnNamesCount; ++i) {
+                            ss_ << "?";
+                            if(i < columnNamesCount - 1) {
+                                ss_ << ", ";
+                            } else {
+                                ss_ << ")";
+                            }
                         }
+                        return ss_.str();
+                    }();
+                    auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
+                    for(auto i = 0; i < valuesCount; ++i) {
+                        ss << valuesString;
+                        if(i < valuesCount - 1) {
+                            ss << ",";
+                        }
+                        ss << " ";
                     }
-                    return ss_.str();
-                }();
-                auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
-                for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
                 }
                 return ss.str();
             }

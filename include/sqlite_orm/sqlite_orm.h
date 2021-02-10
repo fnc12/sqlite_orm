@@ -10906,45 +10906,58 @@ namespace sqlite_orm {
                 auto& tImpl = context.impl.template get_impl<object_type>();
 
                 std::stringstream ss;
-                ss << "INSERT INTO '" << tImpl.table.name << "' (";
+                ss << "INSERT INTO '" << tImpl.table.name << "' ";
                 std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&tImpl, &columnNames](auto& c) {
+                auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
+
+                tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
                     if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
-                        columnNames.emplace_back(c.name);
+                        auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
+                        if(it == compositeKeyColumnNames.end()) {
+                            columnNames.emplace_back(c.name);
+                        }
                     }
                 });
 
                 auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
+                if(columnNamesCount) {
+                    ss << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss << "\"" << columnNames[i] << "\"";
+                        if(i < columnNamesCount - 1) {
+                            ss << ",";
+                        } else {
+                            ss << ")";
+                        }
+                        ss << " ";
                     }
-                    ss << " ";
+                } else {
+                    ss << "DEFAULT ";
                 }
                 ss << "VALUES ";
-                auto valuesString = [columnNamesCount] {
-                    std::stringstream ss_;
-                    ss_ << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss_ << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss_ << ", ";
-                        } else {
-                            ss_ << ")";
+                // TODO error when input range size is not one??
+                if(columnNamesCount) {
+                    auto valuesString = [columnNamesCount] {
+                        std::stringstream ss_;
+                        ss_ << "(";
+                        for(size_t i = 0; i < columnNamesCount; ++i) {
+                            ss_ << "?";
+                            if(i < columnNamesCount - 1) {
+                                ss_ << ", ";
+                            } else {
+                                ss_ << ")";
+                            }
                         }
+                        return ss_.str();
+                    }();
+                    auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
+                    for(auto i = 0; i < valuesCount; ++i) {
+                        ss << valuesString;
+                        if(i < valuesCount - 1) {
+                            ss << ",";
+                        }
+                        ss << " ";
                     }
-                    return ss_.str();
-                }();
-                auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
-                for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
                 }
                 return ss.str();
             }
@@ -12462,27 +12475,32 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto& tImpl = this->get_impl<object_type>();
+                auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
                 for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
                     auto& o = *it;
-                    tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, db](auto& c) {
+                    tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& c) {
                         if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
-                            using column_type = typename std::decay<decltype(c)>::type;
-                            using field_type = typename column_type::field_type;
-                            if(c.member_pointer) {
-                                if(SQLITE_OK !=
-                                   statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)) {
-                                    throw std::system_error(
-                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
-                                }
-                            } else {
-                                using getter_type = typename column_type::getter_type;
-                                field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
-                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
-                                    throw std::system_error(
-                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
+                            auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
+                            if(it == compositeKeyColumnNames.end()) {
+                                using column_type = typename std::decay<decltype(c)>::type;
+                                using field_type = typename column_type::field_type;
+                                if(c.member_pointer) {
+                                    if(SQLITE_OK !=
+                                       statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)) {
+                                        throw std::system_error(
+                                            std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
+                                    }
+                                } else {
+                                    using getter_type = typename column_type::getter_type;
+                                    field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                                    if(SQLITE_OK !=
+                                       statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
+                                        throw std::system_error(
+                                            std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
+                                    }
                                 }
                             }
                         }
