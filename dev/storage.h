@@ -943,10 +943,10 @@ namespace sqlite_orm {
             }
 
             template<template<class> class ST,
-                     class It,
-                     typename std::enable_if<(std::is_same<insert_range_t<It>, ST<It>>::value ||
-                                              std::is_same<insert_t<It>, ST<It>>::value)>::type* = nullptr>
-            int64 execute(const prepared_statement_t<ST<It>>& statement) {
+                     class T,
+                     typename std::enable_if<(std::is_same<insert_range_t<T>, ST<T>>::value ||
+                                              std::is_same<insert_t<T>, ST<T>>::value)>::type* = nullptr>
+            int64 execute(const prepared_statement_t<ST<T>>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -987,7 +987,7 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<insert_range_t<It>, ST<It>>{}>(
+                static_if<std::is_same<insert_range_t<T>, ST<T>>{}>(
                     [&processObject](auto& statement) {
                         std::for_each(  ///
                             statement.t.range.first,
