@@ -12260,42 +12260,22 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.left, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " (";
-                for(size_t index = 0; index < c.argument.size(); ++index) {
-                    auto& value = c.argument[index];
-                    ss << serialize(value, context);
-                    if(index < c.argument.size() - 1) {
+                auto leftString = serialize(c.l, context);
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
+                ss << leftString << " " << static_cast<std::string>(c) << " ( ";
+                for(size_t index = 0; index < c.arg.size(); ++index) {
+                    auto &value = c.arg[index];
+                    ss << " " << serialize(value, context);
+                    if(index < c.arg.size() - 1) {
                         ss << ", ";
                     }
                 }
-                ss << ")";
-                return ss.str();
-            }
-        };
-
-        template<class L, class... Args>
-        struct statement_serializator<in_t<L, Args...>, void> {
-            using statement_type = in_t<L, Args...>;
-
-            template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
-                std::stringstream ss;
-                auto leftString = serialize(c.left, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " (";
-                std::vector<std::string> args;
-                using args_type = std::tuple<Args...>;
-                args.reserve(std::tuple_size<args_type>::value);
-                iterate_tuple(c.argument, [&args, &context](auto& v) {
-                    args.push_back(serialize(v, context));
-                });
-                for(size_t i = 0; i < args.size(); ++i) {
-                    ss << args[i];
-                    if(i < args.size() - 1) {
-                        ss << ", ";
-                    }
+                ss << " )";
+                if(context.use_parentheses) {
+                    ss << ')';
                 }
-                ss << ")";
                 return ss.str();
             }
         };
