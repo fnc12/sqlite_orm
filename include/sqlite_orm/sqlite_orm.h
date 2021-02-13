@@ -12395,20 +12395,23 @@ namespace sqlite_orm {
                 return sqlite3_last_insert_rowid(db);
             }
 
-            template<class It>
-            void execute(const prepared_statement_t<replace_range_t<It>>& statement) {
+            template<template<class> class ST,
+                     class T,
+                     typename std::enable_if<(std::is_same<replace_range_t<T>, ST<T>>::value ||
+                                              std::is_same<replace_t<T>, ST<T>>::value)>::type* = nullptr>
+            void execute(const prepared_statement_t<ST<T>>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
-                using object_type = typename expression_type::object_type;
+                using object_type = typename expression_object_type<expression_type>::type;
                 auto& tImpl = this->get_impl<object_type>();
                 auto index = 1;
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 sqlite3_reset(stmt);
-                for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
-                    auto& o = *it;
-                    tImpl.table.for_each_column([&o, &index, &stmt, db](auto& c) {
+
+                auto processObject = [&index, &stmt, &tImpl, db](auto& o) {
+                    tImpl.table.for_each_column([&](auto& c) {
                         using column_type = typename std::decay<decltype(c)>::type;
                         using field_type = typename column_type::field_type;
                         if(c.member_pointer) {
@@ -12427,7 +12430,20 @@ namespace sqlite_orm {
                             }
                         }
                     });
-                }
+                };
+
+                static_if<std::is_same<replace_range_t<T>, ST<T>>{}>(
+                    [&processObject](auto& statement) {
+                        std::for_each(  ///
+                            statement.t.range.first,
+                            statement.t.range.second,
+                            processObject);
+                    },
+                    [&processObject](auto& statement) {
+                        auto& o = get_object(statement.t);
+                        processObject(o);
+                    })(statement);
+
                 perform_step(db, stmt);
             }
 
@@ -12448,7 +12464,7 @@ namespace sqlite_orm {
                 sqlite3_reset(stmt);
 
                 auto processObject = [&index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& o) {
-                    tImpl.table.for_each_column([&o, &index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& c) {
+                    tImpl.table.for_each_column([&](auto& c) {
                         if(tImpl.table._without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                             auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                             if(it == compositeKeyColumnNames.end()) {
@@ -12490,38 +12506,6 @@ namespace sqlite_orm {
 
                 perform_step(db, stmt);
                 return sqlite3_last_insert_rowid(db);
-            }
-
-            template<class T>
-            void execute(const prepared_statement_t<replace_t<T>>& statement) {
-                using statement_type = typename std::decay<decltype(statement)>::type;
-                using expression_type = typename statement_type::expression_type;
-                using object_type = typename expression_object_type<expression_type>::type;
-                auto con = this->get_connection();
-                auto db = con.get();
-                auto stmt = statement.stmt;
-                auto index = 1;
-                auto& o = get_object(statement.t);
-                auto& tImpl = this->get_impl<object_type>();
-                sqlite3_reset(stmt);
-                tImpl.table.for_each_column([&o, &index, &stmt, db](auto& c) {
-                    using column_type = typename std::decay<decltype(c)>::type;
-                    using field_type = typename column_type::field_type;
-                    if(c.member_pointer) {
-                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)) {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
-                        }
-                    } else {
-                        using getter_type = typename column_type::getter_type;
-                        field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
-                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
-                        }
-                    }
-                });
-                perform_step(db, stmt);
             }
 
             template<class T, class... Ids>
