@@ -1432,6 +1432,23 @@ namespace sqlite_orm {
                 return res;
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+            
+            /*template<class O>
+            bool has_dependent_rows(const O& object) {
+                auto res = false;
+                using TupleWithForeignKeyTypes = typename storage_traits::storage_fk_references<self, O>::type;
+                iterate_tuple<TupleWithForeignKeyTypes>([&res, this](auto *itemPointer){
+                    using ConstItem = typename std::remove_pointer<decltype(itemPointer)>::type;
+                    using Item = typename std::decay<ConstItem>::type;
+                    if(!res) {
+                        auto rows = this->select(count<Item>());
+                        if (!rows.empty()) {
+                            res = rows[0];
+                        }
+                    }
+                });
+                return res;
+            }*/
         };  // struct storage_t
 
         template<class T>
@@ -1443,7 +1460,7 @@ namespace sqlite_orm {
 
     template<class... Ts>
     internal::storage_t<Ts...> make_storage(const std::string& filename, Ts... tables) {
-        return {filename, internal::storage_impl<Ts...>(tables...)};
+        return {filename, internal::storage_impl<Ts...>(std::forward<Ts>(tables)...)};
     }
 
     /**

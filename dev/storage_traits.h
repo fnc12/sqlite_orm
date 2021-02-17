@@ -211,9 +211,9 @@ namespace sqlite_orm {
             };
 
             /**
-         * C is any column type: column_t or constraint type
-         * O - object type references in FOREIGN KEY
-         */
+             * C is any column type: column_t or constraint type
+             * O - object type references in FOREIGN KEY
+             */
             template<class C, class O, class SFINAE = void>
             struct column_fk_references {
                 using type = std::tuple<>;
@@ -238,9 +238,9 @@ namespace sqlite_orm {
             };
 
             /**
-         * O - object type references in FOREIGN KEY
-         * Cs - column types which are stored in table_t::columns_type
-         */
+             * O - object type references in FOREIGN KEY
+             * Cs - column types which are stored in table_t::columns_type
+             */
             template<class O, class... Cs>
             struct table_fk_references_impl;
 
@@ -257,9 +257,9 @@ namespace sqlite_orm {
             };
 
             /**
-         *  T is table_t type
-         *  O is object type which is the reference target (e.g. foreign_key(&Visit::userId).references(&User::id) has O = User)
-         */
+             *  T is table_t type
+             *  O is object type which is the reference target (e.g. foreign_key(&Visit::userId).references(&User::id) has O = User)
+             */
             template<class T, class O>
             struct table_fk_references;
 
@@ -271,9 +271,9 @@ namespace sqlite_orm {
             };
 
             /**
-         *  S - storage class
-         *  O - type mapped to S
-         */
+             *  S - storage class
+             *  O - type mapped to S
+             */
             template<class S, class O>
             struct storage_fk_references_impl;
 
@@ -290,10 +290,10 @@ namespace sqlite_orm {
             };
 
             /**
-         *  S - storage class
-         *  O - type mapped to S
-         *  type holds `std::tuple` with types that has references to O as  foreign keys
-         */
+             *  S - storage class
+             *  O - type mapped to S
+             *  type holds `std::tuple` with types that has references to O as  foreign keys
+             */
             template<class S, class O>
             struct storage_fk_references {
                 using impl_type = typename S::impl_type;
