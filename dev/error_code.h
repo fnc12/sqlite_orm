@@ -23,6 +23,7 @@ namespace sqlite_orm {
         failed_to_init_a_backup,
         unknown_member_value,
         incorrect_order,
+        cannot_use_default_value
     };
 
 }
@@ -63,6 +64,8 @@ namespace sqlite_orm {
                     return "Unknown member value";
                 case orm_error_code::incorrect_order:
                     return "Incorrect order";
+                case orm_error_code::cannot_use_default_value:
+                    return "The statement 'INSERT INTO * DEFAULT VALUES' can be used with only one row";
                 default:
                     return "unknown error";
             }

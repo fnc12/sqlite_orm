@@ -32,6 +32,16 @@ namespace sqlite_orm {
             using type = typename std::decay<T>::type;
         };
 
+        template<class It>
+        struct expression_object_type<replace_range_t<It>> {
+            using type = typename replace_range_t<It>::object_type;
+        };
+
+        template<class It>
+        struct expression_object_type<replace_range_t<std::reference_wrapper<It>>> {
+            using type = typename replace_range_t<std::reference_wrapper<It>>::object_type;
+        };
+
         template<class T>
         struct expression_object_type<insert_t<T>> {
             using type = typename std::decay<T>::type;
@@ -40,6 +50,16 @@ namespace sqlite_orm {
         template<class T>
         struct expression_object_type<insert_t<std::reference_wrapper<T>>> {
             using type = typename std::decay<T>::type;
+        };
+
+        template<class It>
+        struct expression_object_type<insert_range_t<It>> {
+            using type = typename insert_range_t<It>::object_type;
+        };
+
+        template<class It>
+        struct expression_object_type<insert_range_t<std::reference_wrapper<It>>> {
+            using type = typename insert_range_t<std::reference_wrapper<It>>::object_type;
         };
 
         template<class T, class... Cols>

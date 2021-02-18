@@ -82,7 +82,8 @@ add_executable(unit_tests
 	transaction_tests.cpp
     json.cpp
     tuple_helper_tests.cpp
-	row_id.cpp)
+	row_id.cpp
+    unique_cases/issue663.cpp)
 
 if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
