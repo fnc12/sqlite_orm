@@ -435,6 +435,8 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <ostream>  //  std::ostream
+// #include "tuple_helper.h"
+// internal::tuple_contains_type internal::tuple_contains_some_type
 
 namespace sqlite_orm {
 
@@ -880,6 +882,23 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct is_primary_key<constraints::primary_key_t<Cs...>> : public std::true_type {};
+
+        /**
+         * PRIMARY KEY INSERTABLE traits.
+         */
+        template<typename T>
+        struct is_primary_key_insertable {
+            using field_type = typename T::field_type;
+            using constraints_type = typename T::constraints_type;
+
+            static_assert((tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value),
+                          "an unexpected type was passed ");
+
+            static constexpr bool value =
+                (tuple_helper::tuple_contains_some_type<constraints::default_t, constraints_type>::value ||
+                 tuple_helper::tuple_contains_type<constraints::autoincrement_t, constraints_type>::value ||
+                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
+        };
     }
 
 }
@@ -1624,6 +1643,48 @@ namespace sqlite_orm {
             }
         };
 
+        // we are compelled to wrap all sfinae-implemented traits to prevent "error: type/value mismatch at argument 2 in template parameter list"
+        namespace sfinae {
+            /**
+             *  Column with insertable primary key traits. Common case.
+             */
+            template<class T, class SFINAE = void>
+            struct is_column_with_insertable_primary_key : public std::false_type {};
+
+            /**
+             *  Column with insertable primary key traits. Specialized case case.
+             */
+            template<class O, class T, class... Op>
+            struct is_column_with_insertable_primary_key<
+                column_t<O, T, Op...>,
+                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                                         constraints::primary_key_t<>,
+                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                using column_type = column_t<O, T, Op...>;
+                static constexpr bool value = is_primary_key_insertable<column_type>::value;
+            };
+
+            /**
+             *  Column with noninsertable primary key traits. Common case.
+             */
+            template<class T, class SFINAE = void>
+            struct is_column_with_noninsertable_primary_key : public std::false_type {};
+
+            /**
+             *  Column with noninsertable primary key traits. Specialized case case.
+             */
+            template<class O, class T, class... Op>
+            struct is_column_with_noninsertable_primary_key<
+                column_t<O, T, Op...>,
+                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                                         constraints::primary_key_t<>,
+                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                using column_type = column_t<O, T, Op...>;
+                static constexpr bool value = !is_primary_key_insertable<column_type>::value;
+            };
+
+        }
+
         /**
          *  Column traits. Common case.
          */
@@ -1635,6 +1696,18 @@ namespace sqlite_orm {
          */
         template<class O, class T, class... Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
+
+        /**
+         *  Column with insertable primary key traits.
+         */
+        template<class T>
+        struct is_column_with_insertable_primary_key : public sfinae::is_column_with_insertable_primary_key<T> {};
+
+        /**
+         *  Column with noninsertable primary key traits.
+         */
+        template<class T>
+        struct is_column_with_noninsertable_primary_key : public sfinae::is_column_with_noninsertable_primary_key<T> {};
 
         template<class T>
         struct column_field_type {
@@ -7086,6 +7159,10 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::find
+// #include "tuple_helper.h"
+// internal::count_tuple
+// #include "column.h"
+// internal::is_column_with_insertable_primary_key, internal::is_column_with_noninsertable_primary_key
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
@@ -11700,20 +11777,28 @@ namespace sqlite_orm {
             template<class O>
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
-                tImpl.table.for_each_column([&tImpl](auto& c) {
-                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                    using column_type = typename std::decay<decltype(c)>::type;
-                    using field_type = typename column_type::field_type;
-                    using constraints_type = typename column_type::constraints_type;
-                    static_assert(
-                        (is_table_without_rowid<table_type>::value ||
-                         !tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value ||
-                         tuple_helper::tuple_contains_some_type<constraints::default_t, constraints_type>::value ||
-                         tuple_helper::tuple_contains_type<constraints::autoincrement_t, constraints_type>::value ||
-                         std::is_base_of<integer_printer, type_printer<field_type>>::value),
-                        "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
-                        "key. Please use a 'replace' instead of an 'insert'.");
-                });
+                using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                using columns_type = typename std::decay<decltype(tImpl.table.columns)>::type;
+
+                static_if<is_table_without_rowid<table_type>{}>(
+                    [](auto& tImpl) {
+                        std::ignore = tImpl;
+
+                        // all right. it's a "without_rowid" table
+                    },
+                    [](auto& tImpl) {
+                        std::ignore = tImpl;
+                        static_assert(
+                            count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
+                            "an insertable table cannot contain > 1 primary keys. Please use 'replace' instead "
+                            "of 'insert'.");
+                        static_assert(
+                            count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
+                            "an insertable table cannot contain non-standard primary keys. Please use 'replace' "
+                            "instead of 'insert'.");
+
+                        // unfortunately, this static_assert can't see an composite keys((
+                    })(tImpl);
             }
 
             template<class O>

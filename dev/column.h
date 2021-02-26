@@ -109,6 +109,48 @@ namespace sqlite_orm {
             }
         };
 
+        // we are compelled to wrap all sfinae-implemented traits to prevent "error: type/value mismatch at argument 2 in template parameter list"
+        namespace sfinae {
+            /**
+             *  Column with insertable primary key traits. Common case.
+             */
+            template<class T, class SFINAE = void>
+            struct is_column_with_insertable_primary_key : public std::false_type {};
+
+            /**
+             *  Column with insertable primary key traits. Specialized case case.
+             */
+            template<class O, class T, class... Op>
+            struct is_column_with_insertable_primary_key<
+                column_t<O, T, Op...>,
+                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                                         constraints::primary_key_t<>,
+                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                using column_type = column_t<O, T, Op...>;
+                static constexpr bool value = is_primary_key_insertable<column_type>::value;
+            };
+
+            /**
+             *  Column with noninsertable primary key traits. Common case.
+             */
+            template<class T, class SFINAE = void>
+            struct is_column_with_noninsertable_primary_key : public std::false_type {};
+
+            /**
+             *  Column with noninsertable primary key traits. Specialized case case.
+             */
+            template<class O, class T, class... Op>
+            struct is_column_with_noninsertable_primary_key<
+                column_t<O, T, Op...>,
+                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                                         constraints::primary_key_t<>,
+                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                using column_type = column_t<O, T, Op...>;
+                static constexpr bool value = !is_primary_key_insertable<column_type>::value;
+            };
+
+        }
+
         /**
          *  Column traits. Common case.
          */
@@ -120,6 +162,18 @@ namespace sqlite_orm {
          */
         template<class O, class T, class... Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
+
+        /**
+         *  Column with insertable primary key traits.
+         */
+        template<class T>
+        struct is_column_with_insertable_primary_key : public sfinae::is_column_with_insertable_primary_key<T> {};
+
+        /**
+         *  Column with noninsertable primary key traits.
+         */
+        template<class T>
+        struct is_column_with_noninsertable_primary_key : public sfinae::is_column_with_noninsertable_primary_key<T> {};
 
         template<class T>
         struct column_field_type {

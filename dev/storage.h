@@ -13,6 +13,8 @@
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::find
+#include "tuple_helper.h"  // internal::count_tuple
+#include "column.h"  // internal::is_column_with_insertable_primary_key, internal::is_column_with_noninsertable_primary_key
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
@@ -147,20 +149,28 @@ namespace sqlite_orm {
             template<class O>
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
-                tImpl.table.for_each_column([&tImpl](auto& c) {
-                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                    using column_type = typename std::decay<decltype(c)>::type;
-                    using field_type = typename column_type::field_type;
-                    using constraints_type = typename column_type::constraints_type;
-                    static_assert(
-                        (is_table_without_rowid<table_type>::value ||
-                         !tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value ||
-                         tuple_helper::tuple_contains_some_type<constraints::default_t, constraints_type>::value ||
-                         tuple_helper::tuple_contains_type<constraints::autoincrement_t, constraints_type>::value ||
-                         std::is_base_of<integer_printer, type_printer<field_type>>::value),
-                        "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
-                        "key. Please use a 'replace' instead of an 'insert'.");
-                });
+                using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                using columns_type = typename std::decay<decltype(tImpl.table.columns)>::type;
+
+                static_if<is_table_without_rowid<table_type>{}>(
+                    [](auto& tImpl) {
+                        std::ignore = tImpl;
+
+                        // all right. it's a "without_rowid" table
+                    },
+                    [](auto& tImpl) {
+                        std::ignore = tImpl;
+                        static_assert(
+                            count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
+                            "an insertable table cannot contain > 1 primary keys. Please use 'replace' instead "
+                            "of 'insert'.");
+                        static_assert(
+                            count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
+                            "an insertable table cannot contain non-standard primary keys. Please use 'replace' "
+                            "instead of 'insert'.");
+
+                        // unfortunately, this static_assert can't see an composite keys((
+                    })(tImpl);
             }
 
             template<class O>

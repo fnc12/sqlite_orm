@@ -5,6 +5,7 @@
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <ostream>  //  std::ostream
+#include "tuple_helper.h"  // internal::tuple_contains_type internal::tuple_contains_some_type
 
 namespace sqlite_orm {
 
@@ -450,6 +451,23 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct is_primary_key<constraints::primary_key_t<Cs...>> : public std::true_type {};
+
+        /**
+         * PRIMARY KEY INSERTABLE traits.
+         */
+        template<typename T>
+        struct is_primary_key_insertable {
+            using field_type = typename T::field_type;
+            using constraints_type = typename T::constraints_type;
+
+            static_assert((tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value),
+                          "an unexpected type was passed ");
+
+            static constexpr bool value =
+                (tuple_helper::tuple_contains_some_type<constraints::default_t, constraints_type>::value ||
+                 tuple_helper::tuple_contains_type<constraints::autoincrement_t, constraints_type>::value ||
+                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
+        };
     }
 
 }
