@@ -36,7 +36,7 @@ Instructions:
 
 ## If you want to build the project locally ##
 
-See our detailed instructions on the [CMake README](/build/cmake/README.md).
+See our detailed instructions on the [CMake README](https://github.com/fnc12/sqlite_orm#usage).
 
 ## If you want to review open issues... ##
 

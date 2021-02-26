@@ -805,32 +805,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& rep, const C& context) const {
-                using expression_type = typename std::decay<decltype(rep)>::type;
-                using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
-                std::stringstream ss;
-                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
-                auto columnNames = tImpl.table.column_names();
-                auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                ss << "VALUES(";
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "?";
-                    if(i < columnNamesCount - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << ")";
-                    }
-                }
-                return ss.str();
+                return serialize_replace_range_impl(rep, context, 1);
             }
         };
 
@@ -971,57 +946,77 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class C>
+        std::string serialize_insert_range_impl(const T& statement, const C& context, const int valuesCount) {
+            using object_type = typename expression_object_type<T>::type;
+            auto& tImpl = context.impl.template get_impl<object_type>();
+
+            std::stringstream ss;
+            ss << "INSERT INTO '" << tImpl.table.name << "' ";
+            std::vector<std::string> columnNames;
+            auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
+
+            tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
+                using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                if(is_table_without_rowid<table_type>::value || !c.template has<constraints::primary_key_t<>>()) {
+                    auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
+                    if(it == compositeKeyColumnNames.end()) {
+                        columnNames.emplace_back(c.name);
+                    }
+                }
+            });
+
+            const auto columnNamesCount = columnNames.size();
+            if(columnNamesCount) {
+                ss << "(";
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss << "\"" << columnNames[i] << "\"";
+                    if(i < columnNamesCount - 1) {
+                        ss << ",";
+                    } else {
+                        ss << ")";
+                    }
+                    ss << " ";
+                }
+            } else {
+                ss << "DEFAULT ";
+            }
+            ss << "VALUES ";
+            if(columnNamesCount) {
+                auto valuesString = [columnNamesCount] {
+                    std::stringstream ss_;
+                    ss_ << "(";
+                    for(size_t i = 0; i < columnNamesCount; ++i) {
+                        ss_ << "?";
+                        if(i < columnNamesCount - 1) {
+                            ss_ << ", ";
+                        } else {
+                            ss_ << ")";
+                        }
+                    }
+                    return ss_.str();
+                }();
+                for(auto i = 0; i < valuesCount; ++i) {
+                    ss << valuesString;
+                    if(i < valuesCount - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+            } else if(valuesCount != 1) {
+                throw std::system_error(std::make_error_code(orm_error_code::cannot_use_default_value));
+            }
+
+            return ss.str();
+        }
+
         template<class T>
         struct statement_serializator<insert_t<T>, void> {
             using statement_type = insert_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type&, const C& context) const {
-                using object_type = typename expression_object_type<statement_type>::type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
-                std::stringstream ss;
-                ss << "INSERT INTO '" << tImpl.table.name << "' ";
-                std::vector<std::string> columnNames;
-                auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
-
-                tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
-                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                    if(is_table_without_rowid<table_type>::value || !c.template has<constraints::primary_key_t<>>()) {
-                        auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
-                        if(it == compositeKeyColumnNames.end()) {
-                            columnNames.emplace_back(c.name);
-                        }
-                    }
-                });
-
-                auto columnNamesCount = columnNames.size();
-                if(columnNamesCount) {
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "\"" << columnNames[i] << "\"";
-                        if(i < columnNamesCount - 1) {
-                            ss << ",";
-                        } else {
-                            ss << ")";
-                        }
-                        ss << " ";
-                    }
-                } else {
-                    ss << "DEFAULT ";
-                }
-                ss << "VALUES ";
-                if(columnNamesCount) {
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss << ", ";
-                        } else {
-                            ss << ")";
-                        }
-                    }
-                }
-                return ss.str();
+            std::string operator()(const statement_type& statement, const C& context) const {
+                return serialize_insert_range_impl(statement, context, 1);
             }
         };
 
@@ -1047,50 +1042,55 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class C>
+        std::string serialize_replace_range_impl(const T& rep, const C& context, const int valuesCount) {
+            using expression_type = typename std::decay<decltype(rep)>::type;
+            using object_type = typename expression_object_type<expression_type>::type;
+            auto& tImpl = context.impl.template get_impl<object_type>();
+            std::stringstream ss;
+            ss << "REPLACE INTO '" << tImpl.table.name << "' (";
+            auto columnNames = tImpl.table.column_names();
+            auto columnNamesCount = columnNames.size();
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << "\"" << columnNames[i] << "\"";
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                } else {
+                    ss << ") ";
+                }
+            }
+            ss << "VALUES ";
+            auto valuesString = [columnNamesCount] {
+                std::stringstream ss_;
+                ss_ << "(";
+                for(size_t i = 0; i < columnNamesCount; ++i) {
+                    ss_ << "?";
+                    if(i < columnNamesCount - 1) {
+                        ss_ << ", ";
+                    } else {
+                        ss_ << ")";
+                    }
+                }
+                return ss_.str();
+            }();
+            for(auto i = 0; i < valuesCount; ++i) {
+                ss << valuesString;
+                if(i < valuesCount - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            return ss.str();
+        }
+
         template<class It>
         struct statement_serializator<replace_range_t<It>, void> {
             using statement_type = replace_range_t<It>;
 
             template<class C>
             std::string operator()(const statement_type& rep, const C& context) const {
-                using expression_type = typename std::decay<decltype(rep)>::type;
-                using object_type = typename expression_type::object_type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
-                std::stringstream ss;
-                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
-                auto columnNames = tImpl.table.column_names();
-                auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << ") ";
-                    }
-                }
-                ss << "VALUES ";
-                auto valuesString = [columnNamesCount] {
-                    std::stringstream ss_;
-                    ss_ << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss_ << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss_ << ", ";
-                        } else {
-                            ss_ << ")";
-                        }
-                    }
-                    return ss_.str();
-                }();
                 auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
-                for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
+                return serialize_replace_range_impl(rep, context, valuesCount);
             }
         };
 
@@ -1100,53 +1100,8 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
-                using expression_type = typename std::decay<decltype(statement)>::type;
-                using object_type = typename expression_type::object_type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
-
-                std::stringstream ss;
-                ss << "INSERT INTO '" << tImpl.table.name << "' (";
-                std::vector<std::string> columnNames;
-                tImpl.table.for_each_column([&tImpl, &columnNames](auto& c) {
-                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                    if(is_table_without_rowid<table_type>::value || !c.template has<constraints::primary_key_t<>>()) {
-                        columnNames.emplace_back(c.name);
-                    }
-                });
-
-                auto columnNamesCount = columnNames.size();
-                for(size_t i = 0; i < columnNamesCount; ++i) {
-                    ss << "\"" << columnNames[i] << "\"";
-                    if(i < columnNamesCount - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
-                ss << "VALUES ";
-                auto valuesString = [columnNamesCount] {
-                    std::stringstream ss_;
-                    ss_ << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss_ << "?";
-                        if(i < columnNamesCount - 1) {
-                            ss_ << ", ";
-                        } else {
-                            ss_ << ")";
-                        }
-                    }
-                    return ss_.str();
-                }();
-                auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
-                for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
-                    }
-                    ss << " ";
-                }
-                return ss.str();
+                const auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
+                return serialize_insert_range_impl(statement, context, valuesCount);
             }
         };
 
