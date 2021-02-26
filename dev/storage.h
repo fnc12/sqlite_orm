@@ -155,6 +155,8 @@ namespace sqlite_orm {
                     static_assert(
                         (is_table_without_rowid<table_type>::value ||
                          !tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value ||
+                         tuple_helper::tuple_contains_some_type<constraints::default_t, constraints_type>::value ||
+                         tuple_helper::tuple_contains_type<constraints::autoincrement_t, constraints_type>::value ||
                          std::is_base_of<integer_printer, type_printer<field_type>>::value),
                         "An attempt was made to execute an 'insert' method on an object with a non-standard primary "
                         "key. Please use a 'replace' instead of an 'insert'.");

@@ -9,7 +9,9 @@ namespace sqlite_orm {
 
     //  got from here http://stackoverflow.com/questions/25958259/how-do-i-find-out-if-a-tuple-contains-a-type
     namespace tuple_helper {
-
+        /**
+         *  HAS_TYPE type trait
+         */
         template<typename T, typename Tuple>
         struct has_type;
 
@@ -24,6 +26,24 @@ namespace sqlite_orm {
 
         template<typename T, typename Tuple>
         using tuple_contains_type = typename has_type<T, Tuple>::type;
+
+        /**
+         *  HAS_SOME_TYPE type trait
+         */
+        template<template<class> class TT, typename Tuple>
+        struct has_some_type;
+
+        template<template<class> class TT>
+        struct has_some_type<TT, std::tuple<>> : std::false_type {};
+
+        template<template<class> class TT, typename U, typename... Ts>
+        struct has_some_type<TT, std::tuple<U, Ts...>> : has_some_type<TT, std::tuple<Ts...>> {};
+
+        template<template<class> class TT, typename T, typename... Ts>
+        struct has_some_type<TT, std::tuple<TT<T>, Ts...>> : std::true_type {};
+
+        template<template<class> class TT, typename Tuple>
+        using tuple_contains_some_type = typename has_some_type<TT, Tuple>::type;
 
         template<size_t N, class... Args>
         struct iterator {

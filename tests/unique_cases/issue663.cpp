@@ -157,7 +157,6 @@ TEST_CASE("Issue 663 - pk inside, with default") {
         std::string id;
     };
 
-#if 0  // TODO: fix
     auto storage = make_storage("",  ///
                                 make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
     storage.sync_schema();
@@ -176,7 +175,6 @@ TEST_CASE("Issue 663 - pk inside, with default") {
         REQUIRE(users.size() == 1);
         REQUIRE("200" == users.front().id);
     }
-#endif
 }
 
 TEST_CASE("Issue 663 - fail test") {
@@ -188,7 +186,6 @@ TEST_CASE("Issue 663 - fail test") {
                                 make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
     storage.sync_schema();
 
-#if 0  // TODO: fix
     std::vector<User> inputUsers = {{"_"}, {"_"}};
     try {
         storage.insert_range(inputUsers.begin(), inputUsers.end());
@@ -197,5 +194,4 @@ TEST_CASE("Issue 663 - fail test") {
         REQUIRE(e.code() == std::make_error_code(orm_error_code::cannot_use_default_value));
         REQUIRE(storage.count<User>() == 0);
     }
-#endif
 }
