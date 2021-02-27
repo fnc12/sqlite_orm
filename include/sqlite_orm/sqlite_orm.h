@@ -5696,6 +5696,22 @@ namespace sqlite_orm {
                                         sqlite3_errmsg(db));
             }
         }
+
+        template<class T>
+        inline auto call_insert_impl_and_catch_constraint_failed(const T& insert_impl) {
+            try {
+                return insert_impl();
+            } catch(const std::system_error& e) {
+                if(e.code() == std::error_code(SQLITE_CONSTRAINT, get_sqlite_error_category())) {
+                    std::stringstream ss;
+                    ss << "Attempting to execute 'insert' request resulted in an error like \"" << e.what()
+                       << "\". Perhaps ordinary 'insert' is not acceptable for this table and you should try "
+                          "'replace' or 'insert' with explicit column listing?";
+                    throw std::system_error(e.code(), ss.str());
+                }
+                throw;
+            }
+        }
     }
 }
 #pragma once
@@ -11790,12 +11806,14 @@ namespace sqlite_orm {
                         std::ignore = tImpl;
                         static_assert(
                             count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
-                            "an insertable table cannot contain > 1 primary keys. Please use 'replace' instead "
-                            "of 'insert'.");
+                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                            "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                            "'insert', or you can use 'insert' with explicit column listing.");
                         static_assert(
                             count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
-                            "an insertable table cannot contain non-standard primary keys. Please use 'replace' "
-                            "instead of 'insert'.");
+                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                            "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
+                            "of 'insert', or you can use 'insert' with explicit column listing.");
 
                         // unfortunately, this static_assert can't see an composite keys((
                     })(tImpl);
@@ -12260,8 +12278,11 @@ namespace sqlite_orm {
             int insert(const O& o) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
-                auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
-                return int(this->execute(statement));
+
+                return call_insert_impl_and_catch_constraint_failed([this, &o]() {
+                    auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
+                    return int(this->execute(statement));
+                });
             }
 
             template<class It>
@@ -12273,8 +12294,10 @@ namespace sqlite_orm {
                     return;
                 }
 
-                auto statement = this->prepare(sqlite_orm::insert_range(from, to));
-                this->execute(statement);
+                call_insert_impl_and_catch_constraint_failed([this, from, to]() {
+                    auto statement = this->prepare(sqlite_orm::insert_range(from, to));
+                    this->execute(statement);
+                });
             }
 
             /**
