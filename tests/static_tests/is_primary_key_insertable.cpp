@@ -22,10 +22,10 @@ TEST_CASE("is_primary_key_insertable") {
         make_column("", &User::password, primary_key()));
 
     iterate_tuple(insertable, [](auto& v) {
-        static_assert(internal::is_primary_key_insertable<typename std::decay<decltype(v)>::type>::value);
+        static_assert(internal::is_primary_key_insertable<typename std::decay<decltype(v)>::type>::value, "");
     });
 
     iterate_tuple(noninsertable, [](auto& v) {
-        static_assert(!internal::is_primary_key_insertable<typename std::decay<decltype(v)>::type>::value);
+        static_assert(!internal::is_primary_key_insertable<typename std::decay<decltype(v)>::type>::value, "");
     });
 }
