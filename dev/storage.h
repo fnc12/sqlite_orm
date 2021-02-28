@@ -105,7 +105,7 @@ namespace sqlite_orm {
                     index++;
                 });
                 ss << ") ";
-                if(is_table_without_rowid<table_type>::value) {
+                if(table_type::is_without_rowid) {
                     ss << "WITHOUT ROWID ";
                 }
                 perform_void_exec(db, ss.str());
@@ -152,27 +152,25 @@ namespace sqlite_orm {
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
                 using columns_type = typename std::decay<decltype(tImpl.table.columns)>::type;
 
-                static_if<is_table_without_rowid<table_type>{}>(
-                    [](auto& tImpl) {
-                        std::ignore = tImpl;
+                //static_if<is_table_without_rowid<table_type>{}>(
+                //    [](auto& tImpl) {
+                //        std::ignore = tImpl;
 
-                        // all right. it's a "without_rowid" table
-                    },
-                    [](auto& tImpl) {
-                        std::ignore = tImpl;
-                        static_assert(
-                            count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
-                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                            "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                            "'insert', or you can use 'insert' with explicit column listing.");
-                        static_assert(
-                            count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
-                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                            "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                            "of 'insert', or you can use 'insert' with explicit column listing.");
+                // all right. it's a "without_rowid" table
+                //     },
+                //    [](auto& tImpl) {
+                std::ignore = tImpl;
+                static_assert(count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
+                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                              "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                              "'insert', or you can use 'insert' with explicit column listing.");
+                static_assert(count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
+                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                              "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
+                              "of 'insert', or you can use 'insert' with explicit column listing.");
 
-                        // unfortunately, this static_assert can't see an composite keys((
-                    })(tImpl);
+                // unfortunately, this static_assert can't see an composite keys((
+                //    })(tImpl);
             }
 
             template<class O>
@@ -1017,8 +1015,7 @@ namespace sqlite_orm {
                 auto processObject = [&index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& o) {
                     tImpl.table.for_each_column([&](auto& c) {
                         using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                        if(is_table_without_rowid<table_type>::value ||
-                           !c.template has<constraints::primary_key_t<>>()) {
+                        if(table_type::is_without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                             auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                             if(it == compositeKeyColumnNames.end()) {
                                 using column_type = typename std::decay<decltype(c)>::type;

@@ -6427,24 +6427,37 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     namespace internal {
+
+        template<bool _without_rowid>
+        struct table_base {
+
+            /**
+             *  Table name.
+             */
+            std::string name;
+
+            static constexpr const bool is_without_rowid = _without_rowid;
+        };
+
         template<class T, class... Cs>
         struct table_without_rowid_t;
 
         /**
          *  Template for table interface class. Implementation is hidden in `table_impl` class.
          */
-        template<class T, bool, class... Cs>
-        struct table_template {
+        template<class T, bool _without_rowid, class... Cs>
+        struct table_template : table_base<_without_rowid> {
             using object_type = T;
             using columns_type = std::tuple<Cs...>;
+            using super = table_base<_without_rowid>;
 
             static constexpr const int columns_count = static_cast<int>(std::tuple_size<columns_type>::value);
 
-            std::string name;
+            using super::name;
             columns_type columns;
 
-            table_template(decltype(name) name_, columns_type columns_) :
-                name(std::move(name_)), columns(std::move(columns_)) {}
+            table_template(std::string name_, columns_type columns_) :
+                super{std::move(name_)}, columns{std::move(columns_)} {}
 
             table_without_rowid_t<T, Cs...> without_rowid() const {
                 return {name, columns};
@@ -6680,30 +6693,6 @@ namespace sqlite_orm {
         struct table_without_rowid_t : table_template<T, true, Cs...> {
             using table_template<T, true, Cs...>::table_template;
         };
-
-        /**
-         *  IS TABLE traits. Common case
-         */
-        template<class T>
-        struct is_table : std::false_type {};
-
-        /**
-         *  IS TABLE traits. Specialized case
-         */
-        template<class T, class... Cs>
-        struct is_table<table_t<T, Cs...>> : std::true_type {};
-
-        /**
-         *  IS TABLE WITHOUT ROWID traits. Common case
-         */
-        template<class T>
-        struct is_table_without_rowid : std::false_type {};
-
-        /**
-         *  IS TABLE WITHOUT ROWID traits. Specialized case
-         */
-        template<class T, class... Cs>
-        struct is_table_without_rowid<table_without_rowid_t<T, Cs...>> : std::true_type {};
     }
 
     /**
@@ -10938,7 +10927,7 @@ namespace sqlite_orm {
 
             tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                if(is_table_without_rowid<table_type>::value || !c.template has<constraints::primary_key_t<>>()) {
+                if(table_type::is_without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                     auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                     if(it == compositeKeyColumnNames.end()) {
                         columnNames.emplace_back(c.name);
@@ -11749,7 +11738,7 @@ namespace sqlite_orm {
                     index++;
                 });
                 ss << ") ";
-                if(is_table_without_rowid<table_type>::value) {
+                if(table_type::is_without_rowid) {
                     ss << "WITHOUT ROWID ";
                 }
                 perform_void_exec(db, ss.str());
@@ -11796,27 +11785,25 @@ namespace sqlite_orm {
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
                 using columns_type = typename std::decay<decltype(tImpl.table.columns)>::type;
 
-                static_if<is_table_without_rowid<table_type>{}>(
-                    [](auto& tImpl) {
-                        std::ignore = tImpl;
+                //static_if<is_table_without_rowid<table_type>{}>(
+                //    [](auto& tImpl) {
+                //        std::ignore = tImpl;
 
-                        // all right. it's a "without_rowid" table
-                    },
-                    [](auto& tImpl) {
-                        std::ignore = tImpl;
-                        static_assert(
-                            count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
-                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                            "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                            "'insert', or you can use 'insert' with explicit column listing.");
-                        static_assert(
-                            count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
-                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                            "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                            "of 'insert', or you can use 'insert' with explicit column listing.");
+                // all right. it's a "without_rowid" table
+                //     },
+                //    [](auto& tImpl) {
+                std::ignore = tImpl;
+                static_assert(count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
+                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                              "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                              "'insert', or you can use 'insert' with explicit column listing.");
+                static_assert(count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
+                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                              "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
+                              "of 'insert', or you can use 'insert' with explicit column listing.");
 
-                        // unfortunately, this static_assert can't see an composite keys((
-                    })(tImpl);
+                // unfortunately, this static_assert can't see an composite keys((
+                //    })(tImpl);
             }
 
             template<class O>
@@ -12661,8 +12648,7 @@ namespace sqlite_orm {
                 auto processObject = [&index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& o) {
                     tImpl.table.for_each_column([&](auto& c) {
                         using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                        if(is_table_without_rowid<table_type>::value ||
-                           !c.template has<constraints::primary_key_t<>>()) {
+                        if(table_type::is_without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                             auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                             if(it == compositeKeyColumnNames.end()) {
                                 using column_type = typename std::decay<decltype(c)>::type;

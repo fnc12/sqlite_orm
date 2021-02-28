@@ -18,24 +18,37 @@
 namespace sqlite_orm {
 
     namespace internal {
+
+        template<bool _without_rowid>
+        struct table_base {
+
+            /**
+             *  Table name.
+             */
+            std::string name;
+
+            static constexpr const bool is_without_rowid = _without_rowid;
+        };
+
         template<class T, class... Cs>
         struct table_without_rowid_t;
 
         /**
          *  Template for table interface class. Implementation is hidden in `table_impl` class.
          */
-        template<class T, bool, class... Cs>
-        struct table_template {
+        template<class T, bool _without_rowid, class... Cs>
+        struct table_template : table_base<_without_rowid> {
             using object_type = T;
             using columns_type = std::tuple<Cs...>;
+            using super = table_base<_without_rowid>;
 
             static constexpr const int columns_count = static_cast<int>(std::tuple_size<columns_type>::value);
 
-            std::string name;
+            using super::name;
             columns_type columns;
 
-            table_template(decltype(name) name_, columns_type columns_) :
-                name(std::move(name_)), columns(std::move(columns_)) {}
+            table_template(std::string name_, columns_type columns_) :
+                super{std::move(name_)}, columns{std::move(columns_)} {}
 
             table_without_rowid_t<T, Cs...> without_rowid() const {
                 return {name, columns};
@@ -271,30 +284,6 @@ namespace sqlite_orm {
         struct table_without_rowid_t : table_template<T, true, Cs...> {
             using table_template<T, true, Cs...>::table_template;
         };
-
-        /**
-         *  IS TABLE traits. Common case
-         */
-        template<class T>
-        struct is_table : std::false_type {};
-
-        /**
-         *  IS TABLE traits. Specialized case
-         */
-        template<class T, class... Cs>
-        struct is_table<table_t<T, Cs...>> : std::true_type {};
-
-        /**
-         *  IS TABLE WITHOUT ROWID traits. Common case
-         */
-        template<class T>
-        struct is_table_without_rowid : std::false_type {};
-
-        /**
-         *  IS TABLE WITHOUT ROWID traits. Specialized case
-         */
-        template<class T, class... Cs>
-        struct is_table_without_rowid<table_without_rowid_t<T, Cs...>> : std::true_type {};
     }
 
     /**

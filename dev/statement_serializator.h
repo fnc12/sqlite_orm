@@ -958,7 +958,7 @@ namespace sqlite_orm {
 
             tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                if(is_table_without_rowid<table_type>::value || !c.template has<constraints::primary_key_t<>>()) {
+                if(table_type::is_without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                     auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                     if(it == compositeKeyColumnNames.end()) {
                         columnNames.emplace_back(c.name);
