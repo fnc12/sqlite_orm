@@ -435,8 +435,8 @@ namespace sqlite_orm {
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <ostream>  //  std::ostream
+
 // #include "tuple_helper.h"
-// internal::tuple_contains_type internal::tuple_contains_some_type
 
 namespace sqlite_orm {
 
@@ -892,7 +892,7 @@ namespace sqlite_orm {
             using constraints_type = typename T::constraints_type;
 
             static_assert((tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value),
-                          "an unexpected type was passed ");
+                          "an unexpected type was passed");
 
             static constexpr bool value =
                 (tuple_helper::tuple_contains_some_type<constraints::default_t, constraints_type>::value ||
@@ -6443,7 +6443,7 @@ namespace sqlite_orm {
         struct table_without_rowid_t;
 
         /**
-         *  Template for table interface class. Implementation is hidden in `table_impl` class.
+         *  Template for table interface class.
          */
         template<class T, bool _without_rowid, class... Cs>
         struct table_template : table_base<_without_rowid> {
@@ -6679,7 +6679,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Table interface class. Implementation is hidden in `table_impl` class.
+         *  Table interface class.
          */
         template<class T, class... Cs>
         struct table_t : table_template<T, false, Cs...> {
@@ -6687,7 +6687,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Table interface class with 'without_rowid' tag. Implementation is hidden in `table_impl` class.
+         *  Table interface class with 'without_rowid' tag.
          */
         template<class T, class... Cs>
         struct table_without_rowid_t : table_template<T, true, Cs...> {
@@ -7164,10 +7164,6 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::find
-// #include "tuple_helper.h"
-// internal::count_tuple
-// #include "column.h"
-// internal::is_column_with_insertable_primary_key, internal::is_column_with_noninsertable_primary_key
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
@@ -11683,6 +11679,8 @@ namespace sqlite_orm {
 // #include "object_from_column_builder.h"
 
 // #include "table.h"
+
+// #include "column.h"
 
 namespace sqlite_orm {
 

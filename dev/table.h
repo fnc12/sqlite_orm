@@ -34,7 +34,7 @@ namespace sqlite_orm {
         struct table_without_rowid_t;
 
         /**
-         *  Template for table interface class. Implementation is hidden in `table_impl` class.
+         *  Template for table interface class.
          */
         template<class T, bool _without_rowid, class... Cs>
         struct table_template : table_base<_without_rowid> {
@@ -270,7 +270,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Table interface class. Implementation is hidden in `table_impl` class.
+         *  Table interface class.
          */
         template<class T, class... Cs>
         struct table_t : table_template<T, false, Cs...> {
@@ -278,7 +278,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Table interface class with 'without_rowid' tag. Implementation is hidden in `table_impl` class.
+         *  Table interface class with 'without_rowid' tag.
          */
         template<class T, class... Cs>
         struct table_without_rowid_t : table_template<T, true, Cs...> {

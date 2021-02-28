@@ -5,7 +5,8 @@
 #include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <ostream>  //  std::ostream
-#include "tuple_helper.h"  // internal::tuple_contains_type internal::tuple_contains_some_type
+
+#include "tuple_helper.h"
 
 namespace sqlite_orm {
 
@@ -461,7 +462,7 @@ namespace sqlite_orm {
             using constraints_type = typename T::constraints_type;
 
             static_assert((tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value),
-                          "an unexpected type was passed ");
+                          "an unexpected type was passed");
 
             static constexpr bool value =
                 (tuple_helper::tuple_contains_some_type<constraints::default_t, constraints_type>::value ||

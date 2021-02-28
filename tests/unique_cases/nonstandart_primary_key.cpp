@@ -17,8 +17,8 @@ TEST_CASE("Nonstandart primary key - fail test") {
         bool isActive;
     };
 
-    auto storage = make_storage({},  ///
-                                make_table("users",  ///
+    auto storage = make_storage({},
+                                make_table("users",
                                            make_column("username", &User::username),
                                            make_column("password", &User::password),
                                            make_column("isActive", &User::isActive),

@@ -13,8 +13,6 @@
 #include <tuple>  //  std::tuple_size, std::tuple, std::make_tuple
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::find
-#include "tuple_helper.h"  // internal::count_tuple
-#include "column.h"  // internal::is_column_with_insertable_primary_key, internal::is_column_with_noninsertable_primary_key
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
@@ -50,6 +48,7 @@
 #include "table_name_collector.h"
 #include "object_from_column_builder.h"
 #include "table.h"
+#include "column.h"
 
 namespace sqlite_orm {
 
