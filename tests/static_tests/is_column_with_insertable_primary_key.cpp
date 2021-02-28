@@ -19,7 +19,9 @@ TEST_CASE("is_column_with_insertable_primary_key") {
 
     auto noninsertable = std::make_tuple(  ///
         make_column("", &User::username, primary_key()),
-        make_column("", &User::password, primary_key()),
+        make_column("", &User::password, primary_key()));
+
+    auto outside = std::make_tuple(  ///
         make_column("", &User::id),  ///< not a primary key
         std::make_shared<int>()  ///< not a column
     );
@@ -29,6 +31,13 @@ TEST_CASE("is_column_with_insertable_primary_key") {
     });
 
     iterate_tuple(noninsertable, [](auto& v) {
+        static_assert(
+            internal::is_column_with_noninsertable_primary_key<typename std::decay<decltype(v)>::type>::value);
+    });
+
+    iterate_tuple(outside, [](auto& v) {
         static_assert(!internal::is_column_with_insertable_primary_key<typename std::decay<decltype(v)>::type>::value);
+        static_assert(
+            !internal::is_column_with_noninsertable_primary_key<typename std::decay<decltype(v)>::type>::value);
     });
 }
