@@ -11783,25 +11783,29 @@ namespace sqlite_orm {
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
                 using columns_type = typename std::decay<decltype(tImpl.table.columns)>::type;
 
-                //static_if<is_table_without_rowid<table_type>{}>(
-                //    [](auto& tImpl) {
-                //        std::ignore = tImpl;
+                using bool_type = std::integral_constant<bool, table_type::is_without_rowid>;
 
-                // all right. it's a "without_rowid" table
-                //     },
-                //    [](auto& tImpl) {
-                std::ignore = tImpl;
-                static_assert(count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
-                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                              "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                              "'insert', or you can use 'insert' with explicit column listing.");
-                static_assert(count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
-                              "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                              "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                              "of 'insert', or you can use 'insert' with explicit column listing.");
+                static_if<bool_type{}>(
+                    [](auto& tImpl) {
+                        std::ignore = tImpl;
 
-                // unfortunately, this static_assert can't see an composite keys((
-                //    })(tImpl);
+                        // all right. it's a "without_rowid" table
+                    },
+                    [](auto& tImpl) {
+                        std::ignore = tImpl;
+                        static_assert(
+                            count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
+                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                            "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                            "'insert', or you can use 'insert' with explicit column listing.");
+                        static_assert(
+                            count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
+                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                            "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
+                            "of 'insert', or you can use 'insert' with explicit column listing.");
+
+                        // unfortunately, this static_assert's can't see an composite keys((
+                    })(tImpl);
             }
 
             template<class O>
@@ -12523,6 +12527,7 @@ namespace sqlite_orm {
             prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
                 using object_type = typename expression_object_type<decltype(ins)>::type;
                 this->assert_mapped_type<object_type>();
+                this->assert_insertable_type<object_type>();
                 return prepare_impl<insert_t<T>>(std::move(ins));
             }
 
@@ -12535,6 +12540,9 @@ namespace sqlite_orm {
 
             template<class It>
             prepared_statement_t<insert_range_t<It>> prepare(insert_range_t<It> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                this->assert_insertable_type<object_type>();
                 return prepare_impl<insert_range_t<It>>(std::move(statement));
             }
 
