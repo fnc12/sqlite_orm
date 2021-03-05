@@ -19,6 +19,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<bool _without_rowid>
         struct table_base {
 
             /**
@@ -26,28 +27,31 @@ namespace sqlite_orm {
              */
             std::string name;
 
-            bool _without_rowid = false;
+            static constexpr const bool is_without_rowid = _without_rowid;
         };
 
-        /**
-         *  Table interface class. Implementation is hidden in `table_impl` class.
-         */
         template<class T, class... Cs>
-        struct table_t : table_base {
+        struct table_without_rowid_t;
+
+        /**
+         *  Template for table interface class.
+         */
+        template<class T, bool _without_rowid, class... Cs>
+        struct table_template : table_base<_without_rowid> {
             using object_type = T;
             using columns_type = std::tuple<Cs...>;
+            using super = table_base<_without_rowid>;
 
             static constexpr const int columns_count = static_cast<int>(std::tuple_size<columns_type>::value);
 
+            using super::name;
             columns_type columns;
 
-            table_t(decltype(name) name_, columns_type columns_) :
-                table_base{std::move(name_)}, columns(std::move(columns_)) {}
+            table_template(std::string name_, columns_type columns_) :
+                super{std::move(name_)}, columns{std::move(columns_)} {}
 
-            table_t<T, Cs...> without_rowid() const {
-                auto res = *this;
-                res._without_rowid = true;
-                return res;
+            table_without_rowid_t<T, Cs...> without_rowid() const {
+                return {name, columns};
             }
 
             /**
@@ -263,6 +267,22 @@ namespace sqlite_orm {
                 }
                 return res;
             }
+        };
+
+        /**
+         *  Table interface class.
+         */
+        template<class T, class... Cs>
+        struct table_t : table_template<T, false, Cs...> {
+            using table_template<T, false, Cs...>::table_template;
+        };
+
+        /**
+         *  Table interface class with 'without_rowid' tag.
+         */
+        template<class T, class... Cs>
+        struct table_without_rowid_t : table_template<T, true, Cs...> {
+            using table_template<T, true, Cs...>::table_template;
         };
     }
 

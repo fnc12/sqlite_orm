@@ -78,7 +78,7 @@ add_executable(unit_tests
 	backup_tests.cpp
 	transaction_tests.cpp
     json.cpp
-	row_id.cpp unique_cases/issue663.cpp)
+	row_id.cpp unique_cases/issue663.cpp unique_cases/nonstandart_primary_key.cpp static_tests/has_some_type.cpp static_tests/is_primary_key_insertable.cpp static_tests/is_column_with_insertable_primary_key.cpp)
 
 if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")

@@ -11,6 +11,9 @@ namespace sqlite_orm {
         template<class T, class... Args>
         struct table_t;
 
+        template<class T, class... Args>
+        struct table_without_rowid_t;
+
         namespace storage_traits {
 
             /**
@@ -92,6 +95,14 @@ namespace sqlite_orm {
              */
             template<class T, class... Args>
             struct table_types<table_t<T, Args...>> {
+                using type = std::tuple<typename Args::field_type...>;
+            };
+
+            /**
+             *  type is std::tuple of field types of mapped colums.
+             */
+            template<class T, class... Args>
+            struct table_types<table_without_rowid_t<T, Args...>> {
                 using type = std::tuple<typename Args::field_type...>;
             };
 
