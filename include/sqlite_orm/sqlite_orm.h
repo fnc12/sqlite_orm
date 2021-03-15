@@ -12399,7 +12399,7 @@ namespace sqlite_orm {
                 auto &tImpl = this->get_impl<object_type>();
                 sqlite3_reset(stmt);
                 for(auto it = statement.t.range.first; it != statement.t.range.second; ++it) {
-                    const auto &o = *it;
+                    auto &o = *it;
                     tImpl.table.for_each_column([&o, &index, &stmt, db](auto &c) {
                         if(!c.template has<constraints::primary_key_t<>>()) {
                             using column_type = typename std::decay<decltype(c)>::type;
