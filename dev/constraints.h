@@ -7,6 +7,7 @@
 #include <ostream>  //  std::ostream
 
 #include "table_type.h"
+#include "tuple_helper.h"
 
 namespace sqlite_orm {
 
@@ -463,6 +464,23 @@ namespace sqlite_orm {
          */
         template<class... Cs>
         struct is_primary_key<internal::primary_key_t<Cs...>> : public std::true_type {};
+
+        /**
+         * PRIMARY KEY INSERTABLE traits.
+         */
+        template<typename T>
+        struct is_primary_key_insertable {
+            using field_type = typename T::field_type;
+            using constraints_type = typename T::constraints_type;
+
+            static_assert((tuple_helper::tuple_contains_type<primary_key_t<>, constraints_type>::value),
+                          "an unexpected type was passed");
+
+            static constexpr bool value =
+                (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
+                 tuple_helper::tuple_contains_type<autoincrement_t, constraints_type>::value ||
+                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
+        };
     }
 
 }
