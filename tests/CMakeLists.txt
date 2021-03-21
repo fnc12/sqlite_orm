@@ -43,6 +43,7 @@ add_executable(unit_tests
 	pragma_tests.cpp
 	simple_query.cpp
 	static_tests/is_bindable.cpp
+	static_tests/iterator_t.cpp
 	static_tests/arithmetic_operators_result_type.cpp
 	static_tests/tuple_conc.cpp
 	static_tests/node_tuple.cpp

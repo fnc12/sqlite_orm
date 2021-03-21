@@ -1,19 +1,15 @@
 #pragma once
 
+#include <memory>  // std::unique_ptr
 #include <sqlite3.h>
+#include <type_traits>  // std::integral_constant
 
 namespace sqlite_orm {
 
     /**
      *  Guard class which finalizes `sqlite3_stmt` in dtor
      */
-    struct statement_finalizer {
-        sqlite3_stmt* stmt = nullptr;
+    using statement_finalizer =
+        std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
 
-        statement_finalizer(decltype(stmt) stmt_) : stmt(stmt_) {}
-
-        inline ~statement_finalizer() {
-            sqlite3_finalize(this->stmt);
-        }
-    };
 }

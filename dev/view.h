@@ -76,7 +76,7 @@ namespace sqlite_orm {
             }
 
             iterator_t<self> end() {
-                return {nullptr, *this};
+                return {};
             }
         };
     }
