@@ -5084,6 +5084,7 @@ namespace sqlite_orm {
      */
     using statement_finalizer =
         std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
+
 }
 #pragma once
 
@@ -10891,7 +10892,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class C>
-        std::string serialize_insert_range_impl(const T& statement, const C& context, const int valuesCount) {
+        std::string serialize_insert_range_impl(const T& /*statement*/, const C& context, const int valuesCount) {
             using object_type = typename expression_object_type<T>::type;
             auto& tImpl = context.impl.template get_impl<object_type>();
 
@@ -10900,7 +10901,7 @@ namespace sqlite_orm {
             std::vector<std::string> columnNames;
             auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
 
-            tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
+            tImpl.table.for_each_column([&columnNames, &compositeKeyColumnNames](auto& c) {
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
                 if(table_type::is_without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                     auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
@@ -12294,6 +12295,17 @@ namespace sqlite_orm {
 
           protected:
             template<class... Tss, class... Cols>
+            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
+                return sync_schema_result::already_in_sync;
+            }
+
+            template<template<class...> class TTable, class... Tss, class... Cs>
+            sync_schema_result
+            schema_status(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+                return tImpl.schema_status(db, preserve);
+            }
+
+            template<class... Tss, class... Cols>
             sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
                 using context_t = serializator_context<impl_type>;
@@ -12425,8 +12437,9 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
-                this->impl.for_each([&result, db, preserve](auto tableImpl) {
-                    result.insert({tableImpl.table.name, tableImpl.schema_status(db, preserve)});
+                this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
+                    auto schemaStatus = this->schema_status(tableImpl, db, preserve);
+                    result.insert({tableImpl.table.name, schemaStatus});
                 });
                 return result;
             }
