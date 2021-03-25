@@ -947,7 +947,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class C>
-        std::string serialize_insert_range_impl(const T& statement, const C& context, const int valuesCount) {
+        std::string serialize_insert_range_impl(const T& /*statement*/, const C& context, const int valuesCount) {
             using object_type = typename expression_object_type<T>::type;
             auto& tImpl = context.impl.template get_impl<object_type>();
 
@@ -956,7 +956,7 @@ namespace sqlite_orm {
             std::vector<std::string> columnNames;
             auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
 
-            tImpl.table.for_each_column([&tImpl, &columnNames, &compositeKeyColumnNames](auto& c) {
+            tImpl.table.for_each_column([&columnNames, &compositeKeyColumnNames](auto& c) {
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
                 if(table_type::is_without_rowid || !c.template has<constraints::primary_key_t<>>()) {
                     auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);

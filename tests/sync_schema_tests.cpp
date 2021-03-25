@@ -413,3 +413,15 @@ TEST_CASE("sync_schema") {
         }
     }
 }
+
+TEST_CASE("sync_schema_simulate") {
+    struct Cols {
+        int Col1;
+    };
+
+    auto storage =
+        make_storage("db", make_index("IX_Col1", &Cols::Col1), make_table("Table", make_column("Col1", &Cols::Col1)));
+
+    storage.sync_schema();
+    storage.sync_schema_simulate();
+}
