@@ -425,3 +425,73 @@ TEST_CASE("sync_schema_simulate") {
     storage.sync_schema();
     storage.sync_schema_simulate();
 }
+
+TEST_CASE("sync_schema fk fail") {
+    auto filename = "sync_schema_fk_fail.sqlite";
+    ::remove(filename);
+    {
+        struct Artist {
+            int id = 0;
+            std::string name;
+        };
+        struct Song {
+            int id = 0;
+            std::string name;
+            int artistId = 0;
+        };
+        auto storage = make_storage(
+            filename,
+            make_table("artists", make_column("id", &Artist::id, primary_key()), make_column("name", &Artist::name)),
+            make_table("songs",
+                       make_column("id", &Song::id, primary_key()),
+                       make_column("name", &Song::name),
+                       make_column("artist_id", &Song::artistId),
+                       foreign_key(&Song::artistId).references(&Artist::id)));
+        storage.sync_schema();
+
+        storage.replace(Artist{1, "Rita Ora"});
+
+        storage.replace(Song{1, "Bang Bang", 1});
+    }
+    {
+        struct Artist {
+            int id = 0;
+            std::string firstName;
+
+            bool operator==(const Artist& other) const {
+                return this->id == other.id && this->firstName == other.firstName;
+            }
+        };
+        struct Song {
+            int id = 0;
+            std::string name;
+            int artistId = 0;
+
+            bool operator==(const Song& other) const {
+                return this->id == other.id && this->name == other.name && this->artistId == other.artistId;
+            }
+        };
+        auto storage = make_storage(filename,
+                                    make_table("artists",
+                                               make_column("id", &Artist::id, primary_key()),
+                                               make_column("first_name", &Artist::firstName, default_value(""))),
+                                    make_table("songs",
+                                               make_column("id", &Song::id, primary_key()),
+                                               make_column("name", &Song::name),
+                                               make_column("artist_id", &Song::artistId),
+                                               foreign_key(&Song::artistId).references(&Artist::id)));
+        storage.sync_schema(true);
+
+        auto artists = storage.get_all<Artist>();
+        auto songs = storage.get_all<Song>();
+
+        decltype(artists) expectedArtists;
+        expectedArtists.push_back({1, ""});
+
+        decltype(songs) excpectedSongs;
+        excpectedSongs.push_back({1, "Bang Bang", 1});
+
+        REQUIRE(songs == excpectedSongs);
+        REQUIRE(artists == expectedArtists);
+    }
+}

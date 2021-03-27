@@ -809,10 +809,16 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
+                if(this->cachedForeignKeysCount) {
+                    this->foreign_keys(db, false);
+                }
                 this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
                     auto res = this->sync_table(tableImpl, db, preserve);
                     result.insert({tableImpl.table.name, res});
                 });
+                if(this->cachedForeignKeysCount) {
+                    this->foreign_keys(db, true);
+                }
                 return result;
             }
 
