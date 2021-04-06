@@ -1157,8 +1157,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise shift left << operator
-     */
+         * Result of bitwise shift left << operator
+         */
         template<class L, class R>
         using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
@@ -1169,8 +1169,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise shift right >> operator
-     */
+         * Result of bitwise shift right >> operator
+         */
         template<class L, class R>
         using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
@@ -1181,8 +1181,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise and & operator
-     */
+         * Result of bitwise and & operator
+         */
         template<class L, class R>
         using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
@@ -1193,8 +1193,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise or | operator
-     */
+         * Result of bitwise or | operator
+         */
         template<class L, class R>
         using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
@@ -1205,8 +1205,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise not ~ operator
-     */
+         * Result of bitwise not ~ operator
+         */
         template<class T>
         struct bitwise_not_t : bitwise_not_string, arithmetic_t, negatable_t {
             using argument_type = T;
@@ -1221,6 +1221,7 @@ namespace sqlite_orm {
                 return "=";
             }
         };
+
         /**
          *  Result of assign = operator
          */
@@ -1239,28 +1240,40 @@ namespace sqlite_orm {
         template<class L, class R>
         struct is_assign_t<assign_t<L, R>> : public std::true_type {};
 
+        template<class L, class... Args>
+        struct in_t;
+
         /**
          *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
          */
         template<class T>
         struct expression_t {
-            T t;
+            T value;
 
-            expression_t(T t_) : t(std::move(t_)) {}
+            expression_t(T value_) : value(std::move(value_)) {}
 
             template<class R>
             assign_t<T, R> operator=(R r) const {
-                return {this->t, std::move(r)};
+                return {this->value, std::move(r)};
             }
 
             assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
-                return {this->t, nullptr};
+                return {this->value, nullptr};
             }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             assign_t<T, std::nullopt_t> operator=(std::nullopt_t) const {
-                return {this->t, std::nullopt};
+                return {this->value, std::nullopt};
             }
 #endif
+            template<class... Args>
+            in_t<T, Args...> in(Args... args) const {
+                return {this->value, std::make_tuple(std::forward<Args>(args)...), false};
+            }
+
+            template<class... Args>
+            in_t<T, Args...> not_in(Args... args) const {
+                return {this->value, std::make_tuple(std::forward<Args>(args)...), true};
+            }
         };
 
     }
@@ -1270,8 +1283,8 @@ namespace sqlite_orm {
      * `storage.update(set(c(&User::name) = "Dua Lipa"));
      */
     template<class T>
-    internal::expression_t<T> c(T t) {
-        return {std::move(t)};
+    internal::expression_t<T> c(T value) {
+        return {std::move(value)};
     }
 
     /**
@@ -1292,23 +1305,34 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Public interface for - operator. Example: `select(add(&User::age, 1));` => SELECT age - 1 FROM users
+     *  Public interface for - operator. Example: `select(sub(&User::age, 1));` => SELECT age - 1 FROM users
      */
     template<class L, class R>
     internal::sub_t<L, R> sub(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for * operator. Example: `select(mul(&User::salary, 2));` => SELECT salary * 2 FROM users
+     */
     template<class L, class R>
     internal::mul_t<L, R> mul(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for / operator. Example: `select(div(&User::salary, 3));` => SELECT salary / 3 FROM users
+     *  @note Please notice that ::div function already exists in pure C standard library inside <cstdlib> header.
+     *  If you use `using namespace sqlite_orm` directive you an specify which `div` you call explicitly using  `::div` or `sqlite_orm::div` statements.
+     */
     template<class L, class R>
     internal::div_t<L, R> div(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for % operator. Example: `select(mod(&User::age, 5));` => SELECT age % 5 FROM users
+     */
     template<class L, class R>
     internal::mod_t<L, R> mod(L l, R r) {
         return {std::move(l), std::move(r)};
@@ -2309,13 +2333,23 @@ namespace sqlite_orm {
          *  IN operator object.
          */
         template<class L, class A>
-        struct in_t : condition_t, in_base, internal::negatable_t {
-            using self = in_t<L, A>;
+        struct dynamic_in_t : condition_t, in_base, negatable_t {
+            using self = dynamic_in_t<L, A>;
 
-            L l;  //  left expression
-            A arg;  //  in arg
+            L left;  //  left expression
+            A argument;  //  in arg
 
-            in_t(L l_, A arg_, bool negative_) : in_base{negative_}, l(l_), arg(std::move(arg_)) {}
+            dynamic_in_t(L left_, A argument_, bool negative_) :
+                in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
+        };
+
+        template<class L, class... Args>
+        struct in_t : condition_t, in_base, negatable_t {
+            L left;
+            std::tuple<Args...> argument;
+
+            in_t(L left_, decltype(argument) argument_, bool negative_) :
+                in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
         };
 
         struct is_null_string {
@@ -2821,7 +2855,7 @@ namespace sqlite_orm {
      */
     template<class T, class R>
     internal::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
@@ -2831,142 +2865,142 @@ namespace sqlite_orm {
 
     template<class T, class R>
     internal::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::conc_t<T, R> operator||(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::conc_t<L, T> operator||(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::conc_t<L, R> operator||(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::add_t<T, R> operator+(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::add_t<L, T> operator+(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::add_t<L, R> operator+(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::sub_t<T, R> operator-(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::sub_t<L, T> operator-(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::sub_t<L, R> operator-(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::mul_t<T, R> operator*(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::mul_t<L, T> operator*(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::mul_t<L, R> operator*(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::div_t<T, R> operator/(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::div_t<L, T> operator/(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::div_t<L, R> operator/(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::mod_t<T, R> operator%(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::mod_t<L, T> operator%(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::mod_t<L, R> operator%(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class F, class O>
@@ -3057,32 +3091,32 @@ namespace sqlite_orm {
     }
 
     template<class L, class E>
-    internal::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
+    internal::dynamic_in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values), false};
     }
 
     template<class L, class E>
-    internal::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
+    internal::dynamic_in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values), false};
     }
 
     template<class L, class A>
-    internal::in_t<L, A> in(L l, A arg) {
+    internal::dynamic_in_t<L, A> in(L l, A arg) {
         return {std::move(l), std::move(arg), false};
     }
 
     template<class L, class E>
-    internal::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
+    internal::dynamic_in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values), true};
     }
 
     template<class L, class E>
-    internal::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
+    internal::dynamic_in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values), true};
     }
 
     template<class L, class A>
-    internal::in_t<L, A> not_in(L l, A arg) {
+    internal::dynamic_in_t<L, A> not_in(L l, A arg) {
         return {std::move(l), std::move(arg), true};
     }
 
@@ -6175,6 +6209,16 @@ namespace sqlite_orm {
             using type = F;
         };
 
+        template<class St, class L, class A>
+        struct column_result_t<St, dynamic_in_t<L, A>, void> {
+            using type = bool;
+        };
+
+        template<class St, class L, class... Args>
+        struct column_result_t<St, in_t<L, Args...>, void> {
+            using type = bool;
+        };
+
         /**
          *  Common case for all getter types. Getter types are defined in column.h file
          */
@@ -8128,13 +8172,24 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct ast_iterator<in_t<L, A>, void> {
-            using node_type = in_t<L, A>;
+        struct ast_iterator<dynamic_in_t<L, A>, void> {
+            using node_type = dynamic_in_t<L, A>;
 
             template<class C>
             void operator()(const node_type& in, const C& l) const {
-                iterate_ast(in.l, l);
-                iterate_ast(in.arg, l);
+                iterate_ast(in.left, l);
+                iterate_ast(in.argument, l);
+            }
+        };
+
+        template<class L, class... Args>
+        struct ast_iterator<in_t<L, Args...>, void> {
+            using node_type = in_t<L, Args...>;
+
+            template<class C>
+            void operator()(const node_type& in, const C& l) const {
+                iterate_ast(in.left, l);
+                iterate_ast(in.argument, l);
             }
         };
 
@@ -10443,38 +10498,64 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct statement_serializator<in_t<L, A>, void> {
-            using statement_type = in_t<L, A>;
+        struct statement_serializator<dynamic_in_t<L, A>, void> {
+            using statement_type = dynamic_in_t<L, A>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.l, context);
+                auto leftString = serialize(c.left, context);
                 ss << leftString << " " << static_cast<std::string>(c) << " ";
                 auto newContext = context;
                 newContext.use_parentheses = true;
-                ss << serialize(c.arg, newContext);
+                ss << serialize(c.argument, newContext);
                 return ss.str();
             }
         };
 
         template<class L, class E>
-        struct statement_serializator<in_t<L, std::vector<E>>, void> {
-            using statement_type = in_t<L, std::vector<E>>;
+        struct statement_serializator<dynamic_in_t<L, std::vector<E>>, void> {
+            using statement_type = dynamic_in_t<L, std::vector<E>>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.l, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " ( ";
-                for(size_t index = 0; index < c.arg.size(); ++index) {
-                    auto& value = c.arg[index];
-                    ss << " " << serialize(value, context);
-                    if(index < c.arg.size() - 1) {
+                auto leftString = serialize(c.left, context);
+                ss << leftString << " " << static_cast<std::string>(c) << " (";
+                for(size_t index = 0; index < c.argument.size(); ++index) {
+                    auto& value = c.argument[index];
+                    ss << serialize(value, context);
+                    if(index < c.argument.size() - 1) {
                         ss << ", ";
                     }
                 }
-                ss << " )";
+                ss << ")";
+                return ss.str();
+            }
+        };
+
+        template<class L, class... Args>
+        struct statement_serializator<in_t<L, Args...>, void> {
+            using statement_type = in_t<L, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& c, const C& context) const {
+                std::stringstream ss;
+                auto leftString = serialize(c.left, context);
+                ss << leftString << " " << static_cast<std::string>(c) << " (";
+                std::vector<std::string> args;
+                using args_type = std::tuple<Args...>;
+                args.reserve(std::tuple_size<args_type>::value);
+                iterate_tuple(c.argument, [&args, &context](auto& v) {
+                    args.push_back(serialize(v, context));
+                });
+                for(size_t i = 0; i < args.size(); ++i) {
+                    ss << args[i];
+                    if(i < args.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << ")";
                 return ss.str();
             }
         };
@@ -13177,10 +13258,18 @@ __pragma(pop_macro("min"))
         };
 
         template<class L, class A>
-        struct node_tuple<in_t<L, A>, void> {
-            using node_type = in_t<L, A>;
+        struct node_tuple<dynamic_in_t<L, A>, void> {
+            using node_type = dynamic_in_t<L, A>;
             using left_tuple = typename node_tuple<L>::type;
             using right_tuple = typename node_tuple<A>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+
+        template<class L, class... Args>
+        struct node_tuple<in_t<L, Args...>, void> {
+            using node_type = in_t<L, Args...>;
+            using left_tuple = typename node_tuple<L>::type;
+            using right_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
