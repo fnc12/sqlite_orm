@@ -68,6 +68,7 @@ add_executable(unit_tests
 	statement_serializator_tests/check.cpp
 	statement_serializator_tests/index.cpp
 	statement_serializator_tests/indexed_column.cpp
+    statement_serializator_tests/logical_operators.cpp
 	unique_cases/get_all_with_two_tables.cpp
 	unique_cases/prepare_get_all_with_case.cpp
 	unique_cases/index_named_table_with_fk.cpp
@@ -79,7 +80,13 @@ add_executable(unit_tests
 	backup_tests.cpp
 	transaction_tests.cpp
     json.cpp
-	row_id.cpp unique_cases/issue663.cpp unique_cases/nonstandart_primary_key.cpp static_tests/has_some_type.cpp static_tests/is_primary_key_insertable.cpp static_tests/is_column_with_insertable_primary_key.cpp)
+	row_id.cpp
+    ast_iterator_tests.cpp
+    unique_cases/issue663.cpp
+    unique_cases/nonstandart_primary_key.cpp
+    static_tests/has_some_type.cpp
+    static_tests/is_primary_key_insertable.cpp
+    static_tests/is_column_with_insertable_primary_key.cpp)
 
 if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")

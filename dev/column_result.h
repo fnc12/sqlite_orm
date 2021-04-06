@@ -44,6 +44,16 @@ namespace sqlite_orm {
             using type = F;
         };
 
+        template<class St, class L, class A>
+        struct column_result_t<St, dynamic_in_t<L, A>, void> {
+            using type = bool;
+        };
+
+        template<class St, class L, class... Args>
+        struct column_result_t<St, in_t<L, Args...>, void> {
+            using type = bool;
+        };
+
         /**
          *  Common case for all getter types. Getter types are defined in column.h file
          */
