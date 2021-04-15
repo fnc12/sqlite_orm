@@ -11,7 +11,7 @@ namespace sqlite_orm {
             using column_type = C;
 
             indexed_column_t(column_type _column_or_expression) :
-                column_or_expression(std::move(_column_or_expression)) {}
+                    column_or_expression(std::move(_column_or_expression)) {}
 
             column_type column_or_expression;
             std::string _collation_name;

@@ -9754,6 +9754,7 @@ namespace sqlite_orm {
             mutable table_name_set table_names;
 
             table_name_collector() = default;
+
             table_name_collector(find_table_name_t _find_table_name) : find_table_name(std::move(_find_table_name)) {}
 
             template<class T>
