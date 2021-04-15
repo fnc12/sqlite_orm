@@ -5823,6 +5823,9 @@ namespace sqlite_orm {
         struct indexed_column_t {
             using column_type = C;
 
+            indexed_column_t(column_type _column_or_expression) :
+                column_or_expression(std::move(_column_or_expression)) {}
+
             column_type column_or_expression;
             std::string _collation_name;
             int _order = 0;  //  -1 = desc, 1 = asc, 0 = not specified
@@ -9749,6 +9752,9 @@ namespace sqlite_orm {
 
             find_table_name_t find_table_name;
             mutable table_name_set table_names;
+
+            table_name_collector() = default;
+            table_name_collector(find_table_name_t _find_table_name) : find_table_name(std::move(_find_table_name)) {}
 
             template<class T>
             table_name_set operator()(const T&) const {
