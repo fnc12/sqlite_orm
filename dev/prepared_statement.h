@@ -8,7 +8,6 @@
 
 #include "connection_holder.h"
 #include "select_constraints.h"
-#include "transformer_traits.h"
 
 namespace sqlite_orm {
 
