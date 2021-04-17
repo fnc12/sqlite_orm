@@ -7608,30 +7608,6 @@ namespace sqlite_orm {
     }
 }
 
-// #include "select_constraints.h"
-
-// #include "transformer_traits.h"
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        /**
-     * This class accepts template function (e.g. call operator) and allows return type extracting 
-     */
-        template<class T>
-        struct transformer_traits;
-
-        template<class O, class A, class R>
-        struct transformer_traits<const R& (O::*)(const A&) const> {
-            using return_type = R;
-            using argument_type = A;
-            using transformer_type = O;
-        };
-
-    }
-}
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -9353,7 +9329,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
