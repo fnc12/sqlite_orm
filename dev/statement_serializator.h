@@ -1109,9 +1109,9 @@ namespace sqlite_orm {
             return ss.str();
         }
 
-        template<class It>
-        struct statement_serializator<replace_range_t<It>, void> {
-            using statement_type = replace_range_t<It>;
+        template<class It, class L, class O>
+        struct statement_serializator<replace_range_t<It, L, O>, void> {
+            using statement_type = replace_range_t<It, L, O>;
 
             template<class C>
             std::string operator()(const statement_type& rep, const C& context) const {
@@ -1120,9 +1120,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class It>
-        struct statement_serializator<insert_range_t<It>, void> {
-            using statement_type = insert_range_t<It>;
+        template<class It, class L, class O>
+        struct statement_serializator<insert_range_t<It, L, O>, void> {
+            using statement_type = insert_range_t<It, L, O>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {

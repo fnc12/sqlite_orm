@@ -6825,7 +6825,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);
@@ -7610,6 +7610,28 @@ namespace sqlite_orm {
 
 // #include "select_constraints.h"
 
+// #include "transformer_traits.h"
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        /**
+     * This class accepts template function (e.g. call operator) and allows return type extracting 
+     */
+        template<class T>
+        struct transformer_traits;
+
+        template<class O, class A, class R>
+        struct transformer_traits<const R& (O::*)(const A&) const> {
+            using return_type = R;
+            using argument_type = A;
+            using transformer_type = O;
+        };
+
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -7786,6 +7808,12 @@ namespace sqlite_orm {
             type obj;
         };
 
+        template<class T>
+        struct is_insert : std::false_type {};
+
+        template<class T>
+        struct is_insert<insert_t<T>> : std::true_type {};
+
         template<class T, class... Cols>
         struct insert_explicit {
             using type = T;
@@ -7802,39 +7830,121 @@ namespace sqlite_orm {
             type obj;
         };
 
-        template<class It>
+        template<class T>
+        struct is_replace : std::false_type {};
+
+        template<class T>
+        struct is_replace<replace_t<T>> : std::true_type {};
+
+        template<class It, class L, class O>
         struct insert_range_t {
             using iterator_type = It;
-            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using transformer_type = L;
+            using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
+            transformer_type transformer;
         };
 
-        template<class It>
+        template<class T>
+        struct is_insert_range : std::false_type {};
+
+        template<class It, class L, class O>
+        struct is_insert_range<insert_range_t<It, L, O>> : std::true_type {};
+
+        template<class It, class L, class O>
         struct replace_range_t {
             using iterator_type = It;
-            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using transformer_type = L;
+            using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
+            transformer_type transformer;
+        };
+
+        template<class T>
+        struct is_replace_range : std::false_type {};
+
+        template<class It, class L, class O>
+        struct is_replace_range<replace_range_t<It, L, O>> : std::true_type {};
+
+        struct default_transformer {
+
+            template<class T>
+            const T& operator()(const T& object) const {
+                return object;
+            }
         };
     }
 
     /**
      *  Create a replace range statement
+     *  @example
+     *  ```
+     *  std::vector<User> users;
+     *  users.push_back(User{1, "Leony"});
+     *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+     *  storage.execute(statement);
      */
     template<class It>
-    internal::replace_range_t<It> replace_range(It from, It to) {
+    internal::replace_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
+    replace_range(It from, It to) {
         return {{std::move(from), std::move(to)}};
     }
 
     /**
-     *  Create an insert range statement
+     *  Create an replace range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
+     *  optionals or whatever.
+     *  @example
+     *  ```
+     *  std::vector<std::unique_ptr<User>> userPointers;
+     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
+     *  auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
+     *      return *userPointer;
+     *  }));
+     *  storage.execute(statement);
+     *  ```
      */
-    template<class It>
-    internal::insert_range_t<It> insert_range(It from, It to) {
-        return {{std::move(from), std::move(to)}};
+    template<class T, class It, class L>
+    internal::insert_range_t<It, L, T> replace_range(It from, It to, L transformer) {
+        return {{std::move(from), std::move(to)}, std::move(transformer)};
     }
 
+    /**
+     *  Create an insert range statement
+     *  @example
+     *  ```
+     *  std::vector<User> users;
+     *  users.push_back(User{1, "Leony"});
+     *  auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+     *  storage.execute(statement);
+     *  ```
+     */
+    template<class It>
+    internal::insert_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
+    insert_range(It from, It to) {
+        return {{std::move(from), std::move(to)}, internal::default_transformer{}};
+    }
+
+    /**
+     *  Create an insert range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
+     *  optionals or whatever.
+     *  @example
+     *  ```
+     *  std::vector<std::unique_ptr<User>> userPointers;
+     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
+     *  auto statement = storage.prepare(insert_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
+     *      return *userPointer;
+     *  }));
+     *  storage.execute(statement);
+     *  ```
+     */
+    template<class T, class It, class L>
+    internal::insert_range_t<It, L, T> insert_range(It from, It to, L transformer) {
+        return {{std::move(from), std::move(to)}, std::move(transformer)};
+    }
     /**
      *  Create a replace statement.
      *  T is an object type mapped to a storage.
@@ -9243,7 +9353,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
@@ -9593,14 +9703,14 @@ namespace sqlite_orm {
             using type = typename std::decay<T>::type;
         };
 
-        template<class It>
-        struct expression_object_type<replace_range_t<It>> {
-            using type = typename replace_range_t<It>::object_type;
+        template<class It, class L, class O>
+        struct expression_object_type<replace_range_t<It, L, O>> {
+            using type = typename replace_range_t<It, L, O>::object_type;
         };
 
-        template<class It>
-        struct expression_object_type<replace_range_t<std::reference_wrapper<It>>> {
-            using type = typename replace_range_t<std::reference_wrapper<It>>::object_type;
+        template<class It, class L, class O>
+        struct expression_object_type<replace_range_t<std::reference_wrapper<It>, L, O>> {
+            using type = typename replace_range_t<std::reference_wrapper<It>, L, O>::object_type;
         };
 
         template<class T>
@@ -9613,14 +9723,15 @@ namespace sqlite_orm {
             using type = typename std::decay<T>::type;
         };
 
-        template<class It>
-        struct expression_object_type<insert_range_t<It>> {
-            using type = typename insert_range_t<It>::object_type;
+        template<class It, class L, class O>
+        struct expression_object_type<insert_range_t<It, L, O>> {
+            using transformer_type = L;
+            using type = typename insert_range_t<It, L, O>::object_type;
         };
 
-        template<class It>
-        struct expression_object_type<insert_range_t<std::reference_wrapper<It>>> {
-            using type = typename insert_range_t<std::reference_wrapper<It>>::object_type;
+        template<class It, class L, class O>
+        struct expression_object_type<insert_range_t<std::reference_wrapper<It>, L, O>> {
+            using type = typename insert_range_t<std::reference_wrapper<It>, L, O>::object_type;
         };
 
         template<class T, class... Cols>
@@ -11109,9 +11220,9 @@ namespace sqlite_orm {
             return ss.str();
         }
 
-        template<class It>
-        struct statement_serializator<replace_range_t<It>, void> {
-            using statement_type = replace_range_t<It>;
+        template<class It, class L, class O>
+        struct statement_serializator<replace_range_t<It, L, O>, void> {
+            using statement_type = replace_range_t<It, L, O>;
 
             template<class C>
             std::string operator()(const statement_type& rep, const C& context) const {
@@ -11120,9 +11231,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class It>
-        struct statement_serializator<insert_range_t<It>, void> {
-            using statement_type = insert_range_t<It>;
+        template<class It, class L, class O>
+        struct statement_serializator<insert_range_t<It, L, O>, void> {
+            using statement_type = insert_range_t<It, L, O>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
@@ -12611,17 +12722,17 @@ namespace sqlite_orm {
                 return prepare_impl<replace_t<T>>(std::move(rep));
             }
 
-            template<class It>
-            prepared_statement_t<insert_range_t<It>> prepare(insert_range_t<It> statement) {
+            template<class It, class L, class O>
+            prepared_statement_t<insert_range_t<It, L, O>> prepare(insert_range_t<It, L, O> statement) {
                 using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_range_t<It>>(std::move(statement));
+                return prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
             }
 
-            template<class It>
-            prepared_statement_t<replace_range_t<It>> prepare(replace_range_t<It> rep) {
-                return prepare_impl<replace_range_t<It>>(std::move(rep));
+            template<class It, class L, class O>
+            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> rep) {
+                return prepare_impl<replace_range_t<It, L, O>>(std::move(rep));
             }
 
             template<class T, class... Cols>
@@ -12656,11 +12767,9 @@ namespace sqlite_orm {
                 return sqlite3_last_insert_rowid(db);
             }
 
-            template<template<class> class ST,
-                     class T,
-                     typename std::enable_if<(std::is_same<replace_range_t<T>, ST<T>>::value ||
-                                              std::is_same<replace_t<T>, ST<T>>::value)>::type* = nullptr>
-            void execute(const prepared_statement_t<ST<T>>& statement) {
+            template<class T,
+                     typename std::enable_if<(is_replace_range<T>::value || is_replace<T>::value)>::type* = nullptr>
+            void execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -12693,12 +12802,16 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<replace_range_t<T>, ST<T>>{}>(
+                static_if<is_replace_range<T>{}>(
                     [&processObject](auto& statement) {
+                        auto& transformer = statement.t.transformer;
                         std::for_each(  ///
                             statement.t.range.first,
                             statement.t.range.second,
-                            processObject);
+                            [&processObject, &transformer](auto& object) {
+                                auto& realObject = transformer(object);
+                                processObject(realObject);
+                            });
                     },
                     [&processObject](auto& statement) {
                         auto& o = get_object(statement.t);
@@ -12708,11 +12821,9 @@ namespace sqlite_orm {
                 perform_step(db, stmt);
             }
 
-            template<template<class> class ST,
-                     class T,
-                     typename std::enable_if<(std::is_same<insert_range_t<T>, ST<T>>::value ||
-                                              std::is_same<insert_t<T>, ST<T>>::value)>::type* = nullptr>
-            int64 execute(const prepared_statement_t<ST<T>>& statement) {
+            template<class T,
+                     typename std::enable_if<(is_insert_range<T>::value || is_insert<T>::value)>::type* = nullptr>
+            int64 execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -12754,12 +12865,16 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<insert_range_t<T>, ST<T>>{}>(
+                static_if<is_insert_range<T>{}>(
                     [&processObject](auto& statement) {
+                        auto& transformer = statement.t.transformer;
                         std::for_each(  ///
                             statement.t.range.first,
                             statement.t.range.second,
-                            processObject);
+                            [&processObject, &transformer](auto& object) {
+                                auto& realObject = transformer(object);
+                                processObject(realObject);
+                            });
                     },
                     [&processObject](auto& statement) {
                         auto& o = get_object(statement.t);
@@ -13497,23 +13612,23 @@ __pragma(pop_macro("min"))
 
 namespace sqlite_orm {
 
-    template<int N, class It>
-    auto& get(internal::prepared_statement_t<internal::insert_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    const auto& get(const internal::prepared_statement_t<internal::insert_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    const auto& get(const internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    auto& get(internal::prepared_statement_t<internal::replace_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    const auto& get(const internal::prepared_statement_t<internal::replace_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    const auto& get(const internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
