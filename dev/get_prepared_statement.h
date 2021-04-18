@@ -9,23 +9,23 @@
 
 namespace sqlite_orm {
 
-    template<int N, class It>
-    auto& get(internal::prepared_statement_t<internal::insert_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    const auto& get(const internal::prepared_statement_t<internal::insert_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    const auto& get(const internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    auto& get(internal::prepared_statement_t<internal::replace_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    const auto& get(const internal::prepared_statement_t<internal::replace_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    const auto& get(const internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 

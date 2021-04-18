@@ -918,17 +918,17 @@ namespace sqlite_orm {
                 return prepare_impl<replace_t<T>>(std::move(rep));
             }
 
-            template<class It>
-            prepared_statement_t<insert_range_t<It>> prepare(insert_range_t<It> statement) {
+            template<class It, class L, class O>
+            prepared_statement_t<insert_range_t<It, L, O>> prepare(insert_range_t<It, L, O> statement) {
                 using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_range_t<It>>(std::move(statement));
+                return prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
             }
 
-            template<class It>
-            prepared_statement_t<replace_range_t<It>> prepare(replace_range_t<It> rep) {
-                return prepare_impl<replace_range_t<It>>(std::move(rep));
+            template<class It, class L, class O>
+            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> rep) {
+                return prepare_impl<replace_range_t<It, L, O>>(std::move(rep));
             }
 
             template<class T, class... Cols>
@@ -963,11 +963,9 @@ namespace sqlite_orm {
                 return sqlite3_last_insert_rowid(db);
             }
 
-            template<template<class> class ST,
-                     class T,
-                     typename std::enable_if<(std::is_same<replace_range_t<T>, ST<T>>::value ||
-                                              std::is_same<replace_t<T>, ST<T>>::value)>::type* = nullptr>
-            void execute(const prepared_statement_t<ST<T>>& statement) {
+            template<class T,
+                     typename std::enable_if<(is_replace_range<T>::value || is_replace<T>::value)>::type* = nullptr>
+            void execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -1000,12 +998,16 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<replace_range_t<T>, ST<T>>{}>(
+                static_if<is_replace_range<T>{}>(
                     [&processObject](auto& statement) {
+                        auto& transformer = statement.t.transformer;
                         std::for_each(  ///
                             statement.t.range.first,
                             statement.t.range.second,
-                            processObject);
+                            [&processObject, &transformer](auto& object) {
+                                auto& realObject = transformer(object);
+                                processObject(realObject);
+                            });
                     },
                     [&processObject](auto& statement) {
                         auto& o = get_object(statement.t);
@@ -1015,11 +1017,9 @@ namespace sqlite_orm {
                 perform_step(db, stmt);
             }
 
-            template<template<class> class ST,
-                     class T,
-                     typename std::enable_if<(std::is_same<insert_range_t<T>, ST<T>>::value ||
-                                              std::is_same<insert_t<T>, ST<T>>::value)>::type* = nullptr>
-            int64 execute(const prepared_statement_t<ST<T>>& statement) {
+            template<class T,
+                     typename std::enable_if<(is_insert_range<T>::value || is_insert<T>::value)>::type* = nullptr>
+            int64 execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -1061,12 +1061,16 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<insert_range_t<T>, ST<T>>{}>(
+                static_if<is_insert_range<T>{}>(
                     [&processObject](auto& statement) {
+                        auto& transformer = statement.t.transformer;
                         std::for_each(  ///
                             statement.t.range.first,
                             statement.t.range.second,
-                            processObject);
+                            [&processObject, &transformer](auto& object) {
+                                auto& realObject = transformer(object);
+                                processObject(realObject);
+                            });
                     },
                     [&processObject](auto& statement) {
                         auto& o = get_object(statement.t);
