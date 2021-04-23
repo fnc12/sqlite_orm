@@ -65,7 +65,7 @@ TEST_CASE("Remove") {
 }
 
 TEST_CASE("Select") {
-    sqlite3* db;
+    sqlite3 *db;
     auto dbFileName = "test.db";
     auto rc = sqlite3_open(dbFileName, &db);
     assert(rc == SQLITE_OK);
@@ -76,11 +76,11 @@ TEST_CASE("Select") {
                "AFTER_WORD            TEXT     NOT NULL,"
                "OCCURANCES            INT      NOT NULL);";
 
-    char* errMsg = nullptr;
+    char *errMsg = nullptr;
     rc = sqlite3_exec(db, sql, nullptr, nullptr, &errMsg);
     REQUIRE(rc == SQLITE_OK);
 
-    sqlite3_stmt* stmt;
+    sqlite3_stmt *stmt;
 
     //  delete previous words. This command is excess in travis or other docker based CI tools
     //  but it is required on local machine
@@ -147,9 +147,9 @@ TEST_CASE("Select") {
             throw std::runtime_error(sqlite3_errmsg(db));
         }
         REQUIRE(sqlite3_column_int(stmt, 0) == firstId);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 1), "best") == 0);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 2), "behaviour") == 0);
-        REQUIRE(::strcmp((const char*)sqlite3_column_text(stmt, 3), "hey") == 0);
+        REQUIRE(::strcmp((const char *)sqlite3_column_text(stmt, 1), "best") == 0);
+        REQUIRE(::strcmp((const char *)sqlite3_column_text(stmt, 2), "behaviour") == 0);
+        REQUIRE(::strcmp((const char *)sqlite3_column_text(stmt, 3), "hey") == 0);
         REQUIRE(sqlite3_column_int(stmt, 4) == 5);
         sqlite3_finalize(stmt);
     }
@@ -195,7 +195,7 @@ TEST_CASE("Select") {
     REQUIRE(rawTuples.size() == 1);
 
     {
-        auto& firstTuple = rawTuples.front();
+        auto &firstTuple = rawTuples.front();
         REQUIRE(std::get<0>(firstTuple) == firstId);
         REQUIRE(std::get<1>(firstTuple) == "best");
         REQUIRE(std::get<2>(firstTuple) == "behaviour");
@@ -207,7 +207,7 @@ TEST_CASE("Select") {
     REQUIRE(rawTuples.size() == 1);
 
     {
-        auto& secondTuple = rawTuples.front();
+        auto &secondTuple = rawTuples.front();
         REQUIRE(std::get<0>(secondTuple) == secondId);
         REQUIRE(std::get<1>(secondTuple) == "corruption");
         REQUIRE(std::get<2>(secondTuple) == "blood");
@@ -322,23 +322,43 @@ TEST_CASE("Replace query") {
     REQUIRE(ototo.id == 100);
     REQUIRE(ototo.name == "Ototo");
 
-    auto initList = {
-        Object{
-            300,
-            "Iggy",
-        },
-        Object{
-            400,
-            "Azalea",
-        },
-    };
-    storage.replace_range(initList.begin(), initList.end());
-    REQUIRE(storage.count<Object>() == 4);
+    SECTION("straight") {
+        auto initList = {
+            Object{
+                300,
+                "Iggy",
+            },
+            Object{
+                400,
+                "Azalea",
+            },
+        };
+        storage.replace_range(initList.begin(), initList.end());
+        REQUIRE(storage.count<Object>() == 4);
 
-    //  test empty container
-    std::vector<Object> emptyVector;
-    storage.replace_range(emptyVector.begin(), emptyVector.end());
+        //  test empty container
+        std::vector<Object> emptyVector;
+        storage.replace_range(emptyVector.begin(), emptyVector.end());
+    }
+    SECTION("pointers") {
+        std::vector<std::unique_ptr<Object>> vector;
+        vector.push_back(std::make_unique<Object>(Object{300, "Iggy"}));
+        vector.push_back(std::make_unique<Object>(Object{400, "Azalea"}));
+        storage.replace_range<Object>(vector.begin(),
+                                      vector.end(),
+                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                          return *pointer;
+                                      });
+        REQUIRE(storage.count<Object>() == 4);
 
+        //  test empty container
+        std::vector<std::unique_ptr<Object>> emptyVector;
+        storage.replace_range<Object>(emptyVector.begin(),
+                                      emptyVector.end(),
+                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                          return *pointer;
+                                      });
+    }
     REQUIRE(storage.count<User>() == 0);
     storage.replace(User{10, "Daddy Yankee"});
 }
@@ -390,12 +410,34 @@ TEST_CASE("Insert") {
     };
 
     auto countBefore = storage.count<Object>();
-    storage.insert_range(initList.begin(), initList.end());
-    REQUIRE(storage.count<Object>() == countBefore + static_cast<int>(initList.size()));
+    SECTION("straight") {
+        storage.insert_range(initList.begin(), initList.end());
+        REQUIRE(storage.count<Object>() == countBefore + static_cast<int>(initList.size()));
 
-    //  test empty container
-    std::vector<Object> emptyVector;
-    storage.insert_range(emptyVector.begin(), emptyVector.end());
+        //  test empty container
+        std::vector<Object> emptyVector;
+        storage.insert_range(emptyVector.begin(), emptyVector.end());
+    }
+    SECTION("pointers") {
+        std::vector<std::unique_ptr<Object>> pointers;
+        pointers.reserve(initList.size());
+        std::transform(initList.begin(), initList.end(), std::back_inserter(pointers), [](const Object &object) {
+            return std::make_unique<Object>(Object{object});
+        });
+        storage.insert_range<Object>(pointers.begin(),
+                                     pointers.end(),
+                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                         return *pointer;
+                                     });
+
+        //  test empty container
+        std::vector<std::unique_ptr<Object>> emptyVector;
+        storage.insert_range<Object>(emptyVector.begin(),
+                                     emptyVector.end(),
+                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                         return *pointer;
+                                     });
+    }
 
     //  test insert without rowid
     storage.insert(ObjectWithoutRowid{10, "Life"});
@@ -427,24 +469,62 @@ TEST_CASE("InsertRange") {
     storage.remove_all<Object>();
     storage.remove_all<ObjectWithoutRowid>();
 
-    std::vector<Object> objects = {100,
-                                   Object{
-                                       0,
-                                       "Skillet",
-                                   }};
-    storage.insert_range(objects.begin(), objects.end());
-    REQUIRE(storage.count<Object>() == 100);
+    SECTION("straight") {
+        std::vector<Object> objects = {100,
+                                       Object{
+                                           0,
+                                           "Skillet",
+                                       }};
+        storage.insert_range(objects.begin(), objects.end());
+        REQUIRE(storage.count<Object>() == 100);
 
-    //  test empty container
-    std::vector<Object> emptyVector;
-    storage.insert_range(emptyVector.begin(), emptyVector.end());
+        //  test empty container
+        std::vector<Object> emptyVector;
+        storage.insert_range(emptyVector.begin(), emptyVector.end());
 
-    //  test insert_range without rowid
-    std::vector<ObjectWithoutRowid> objectsWR = {ObjectWithoutRowid{10, "Life"}, ObjectWithoutRowid{20, "Death"}};
-    REQUIRE(objectsWR.size() == 2);
-    storage.insert_range(objectsWR.begin(), objectsWR.end());
-    REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
-    REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
+        //  test insert_range without rowid
+        std::vector<ObjectWithoutRowid> objectsWR = {ObjectWithoutRowid{10, "Life"}, ObjectWithoutRowid{20, "Death"}};
+        REQUIRE(objectsWR.size() == 2);
+        storage.insert_range(objectsWR.begin(), objectsWR.end());
+        REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
+        REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
+    }
+    SECTION("pointers") {
+        std::vector<std::unique_ptr<Object>> objects;
+        objects.reserve(100);
+        for(auto i = 0; i < 100; ++i) {
+            objects.push_back(std::make_unique<Object>(Object{0, "Skillet"}));
+        }
+        storage.insert_range<Object>(objects.begin(),
+                                     objects.end(),
+                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                         return *pointer;
+                                     });
+        REQUIRE(storage.count<Object>() == 100);
+
+        //  test empty container
+        std::vector<std::unique_ptr<Object>> emptyVector;
+        storage.insert_range<Object>(emptyVector.begin(),
+                                     emptyVector.end(),
+                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                         return *pointer;
+                                     });
+
+        //  test insert_range without rowid
+        std::vector<std::unique_ptr<ObjectWithoutRowid>> objectsWR;
+        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(ObjectWithoutRowid{10, "Life"}));
+        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(ObjectWithoutRowid{20, "Death"}));
+
+        REQUIRE(objectsWR.size() == 2);
+        storage.insert_range<ObjectWithoutRowid>(
+            objectsWR.begin(),
+            objectsWR.end(),
+            [](const std::unique_ptr<ObjectWithoutRowid> &pointer) -> const ObjectWithoutRowid & {
+                return *pointer;
+            });
+        REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
+        REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
+    }
 }
 
 TEST_CASE("default value for string") {

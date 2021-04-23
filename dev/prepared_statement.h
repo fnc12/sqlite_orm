@@ -285,7 +285,7 @@ namespace sqlite_orm {
      *  ```
      */
     template<class T, class It, class L>
-    internal::insert_range_t<It, L, T> replace_range(It from, It to, L transformer) {
+    internal::replace_range_t<It, L, T> replace_range(It from, It to, L transformer) {
         return {{std::move(from), std::move(to)}, std::move(transformer)};
     }
 
