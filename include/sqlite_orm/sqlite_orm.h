@@ -6825,7 +6825,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);
@@ -7608,6 +7608,8 @@ namespace sqlite_orm {
     }
 }
 
+// #include "select_constraints.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -7884,7 +7886,7 @@ namespace sqlite_orm {
      *  ```
      */
     template<class T, class It, class L>
-    internal::insert_range_t<It, L, T> replace_range(It from, It to, L transformer) {
+    internal::replace_range_t<It, L, T> replace_range(It from, It to, L transformer) {
         return {{std::move(from), std::move(to)}, std::move(transformer)};
     }
 
@@ -9329,7 +9331,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
@@ -12397,6 +12399,17 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
+            template<class T, class It, class L>
+            void replace_range(It from, It to, L transformer) {
+                this->assert_mapped_type<T>();
+                if(from == to) {
+                    return;
+                }
+
+                auto statement = this->prepare(sqlite_orm::replace_range<T>(from, to, std::move(transformer)));
+                this->execute(statement);
+            }
+
             template<class O, class... Cols>
             int insert(const O& o, columns_t<Cols...> cols) {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
@@ -12433,6 +12446,19 @@ namespace sqlite_orm {
 
                 call_insert_impl_and_catch_constraint_failed([this, from, to]() {
                     auto statement = this->prepare(sqlite_orm::insert_range(from, to));
+                    this->execute(statement);
+                });
+            }
+
+            template<class T, class It, class L>
+            void insert_range(It from, It to, L transformer) {
+                this->assert_mapped_type<T>();
+                this->assert_insertable_type<T>();
+                if(from == to) {
+                    return;
+                }
+                call_insert_impl_and_catch_constraint_failed([this, from, to, transformer = std::move(transformer)]() {
+                    auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
                     this->execute(statement);
                 });
             }
