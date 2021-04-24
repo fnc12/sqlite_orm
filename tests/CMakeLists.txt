@@ -23,6 +23,7 @@ add_executable(unit_tests
 	operators/is_null.cpp
 	operators/not_operator.cpp
 	operators/bitwise.cpp
+    operators/binary_operators.cpp
 	dynamic_order_by.cpp
 	prepared_statement_tests/select.cpp
 	prepared_statement_tests/get_all.cpp

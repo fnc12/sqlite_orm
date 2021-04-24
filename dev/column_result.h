@@ -212,6 +212,11 @@ namespace sqlite_orm {
             using type = left_result;
         };
 
+        template<class St, class T>
+        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+            using type = bool;
+        };
+
         /**
          *  Result for the most simple queries like `SELECT 1`
          */
