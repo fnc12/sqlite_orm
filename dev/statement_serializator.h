@@ -1273,9 +1273,10 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& sel, const C& context) const {
                 std::stringstream ss;
-                if(!is_base_of_template<T, compound_operator>::value) {
+                const auto isCompoundOperator = is_base_of_template<T, compound_operator>::value;
+                if(!isCompoundOperator) {
                     if(!sel.highest_level) {
-                        ss << "( ";
+                        ss << "(";
                     }
                     ss << "SELECT ";
                 }
@@ -1286,16 +1287,15 @@ namespace sqlite_orm {
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << columnNames[i];
                     if(i < columnNames.size() - 1) {
-                        ss << ",";
+                        ss << ", ";
                     }
-                    ss << " ";
                 }
                 table_name_collector collector{[&context](std::type_index ti) {
                     return context.impl.find_table_name(ti);
                 }};
                 iterate_ast(sel.col, collector);
                 iterate_ast(sel.conditions, collector);
-                internal::join_iterator<Args...>()([&collector, &context](const auto& c) {
+                join_iterator<Args...>()([&collector, &context](const auto& c) {
                     using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
                     auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
@@ -1304,8 +1304,8 @@ namespace sqlite_orm {
                                                                            std::move(tableAliasString));
                     collector.table_names.erase(tableNameWithAlias);
                 });
-                if(!collector.table_names.empty()) {
-                    ss << "FROM ";
+                if(!collector.table_names.empty() && !isCompoundOperator) {
+                    ss << " FROM ";
                     std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
                                                                                 collector.table_names.end());
                     for(size_t i = 0; i < tableNames.size(); ++i) {
@@ -1315,9 +1315,8 @@ namespace sqlite_orm {
                             ss << tableNamePair.second << " ";
                         }
                         if(int(i) < int(tableNames.size()) - 1) {
-                            ss << ",";
+                            ss << ", ";
                         }
-                        ss << " ";
                     }
                 }
                 iterate_tuple(sel.conditions, [&context, &ss](auto& v) {
@@ -1325,7 +1324,7 @@ namespace sqlite_orm {
                 });
                 if(!is_base_of_template<T, compound_operator>::value) {
                     if(!sel.highest_level) {
-                        ss << ") ";
+                        ss << ")";
                     }
                 }
                 return ss.str();
