@@ -5397,7 +5397,7 @@ namespace sqlite_orm {
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <cstdlib>  //  atof, atoi, atoll
+#include <stdlib.h>  //  atof, atoi, atoll
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
@@ -6792,7 +6792,7 @@ namespace sqlite_orm {
 #include <cstddef>  //  std::nullptr_t
 #include <system_error>  //  std::system_error, std::error_code
 #include <sstream>  //  std::stringstream
-#include <cstdlib>  //  std::atoi
+#include <stdlib.h>  //  std::atoi
 #include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference, std::false_type, std::true_type
 #include <utility>  //  std::pair, std::make_pair
 #include <vector>  //  std::vector
