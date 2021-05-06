@@ -621,8 +621,8 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<constraints::autoincrement_t, void> {
-            using statement_type = constraints::autoincrement_t;
+        struct statement_serializator<autoincrement_t, void> {
+            using statement_type = autoincrement_t;
 
             template<class C>
             std::string operator()(const statement_type& c, const C&) const {
@@ -631,8 +631,8 @@ namespace sqlite_orm {
         };
 
         template<class... Cs>
-        struct statement_serializator<constraints::primary_key_t<Cs...>, void> {
-            using statement_type = constraints::primary_key_t<Cs...>;
+        struct statement_serializator<primary_key_t<Cs...>, void> {
+            using statement_type = primary_key_t<Cs...>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
@@ -656,8 +656,8 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<constraints::unique_t<Args...>, void> {
-            using statement_type = constraints::unique_t<Args...>;
+        struct statement_serializator<unique_t<Args...>, void> {
+            using statement_type = unique_t<Args...>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
@@ -681,8 +681,8 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<constraints::collate_t, void> {
-            using statement_type = constraints::collate_t;
+        struct statement_serializator<collate_constraint_t, void> {
+            using statement_type = collate_constraint_t;
 
             template<class C>
             std::string operator()(const statement_type& c, const C&) const {
@@ -691,8 +691,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<constraints::default_t<T>, void> {
-            using statement_type = constraints::default_t<T>;
+        struct statement_serializator<default_t<T>, void> {
+            using statement_type = default_t<T>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
@@ -701,8 +701,8 @@ namespace sqlite_orm {
         };
 
         template<class... Cs, class... Rs>
-        struct statement_serializator<constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
-            using statement_type = constraints::foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
+        struct statement_serializator<foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
+            using statement_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
 
             template<class C>
             std::string operator()(const statement_type& fk, const C& context) const {
@@ -754,8 +754,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<constraints::check_t<T>, void> {
-            using statement_type = constraints::check_t<T>;
+        struct statement_serializator<check_t<T>, void> {
+            using statement_type = check_t<T>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
@@ -789,7 +789,7 @@ namespace sqlite_orm {
                             constraintsStrings.push_back(serialize(v, context));
                             if(is_primary_key<constraint_type>::value) {
                                 primaryKeyIndex = tupleIndex;
-                            } else if(std::is_same<constraints::autoincrement_t, constraint_type>::value) {
+                            } else if(std::is_same<autoincrement_t, constraint_type>::value) {
                                 autoincrementIndex = tupleIndex;
                             }
                             ++tupleIndex;
@@ -900,7 +900,7 @@ namespace sqlite_orm {
                 ss << "UPDATE '" << tImpl.table.name << "' SET ";
                 std::vector<std::string> setColumnNames;
                 tImpl.table.for_each_column([&setColumnNames](auto& c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
+                    if(!c.template has<primary_key_t<>>()) {
                         setColumnNames.emplace_back(c.name);
                     }
                 });
@@ -984,7 +984,7 @@ namespace sqlite_orm {
 
             tImpl.table.for_each_column([&columnNames, &compositeKeyColumnNames](auto& c) {
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                if(table_type::is_without_rowid || !c.template has<constraints::primary_key_t<>>()) {
+                if(table_type::is_without_rowid || !c.template has<primary_key_t<>>()) {
                     auto it = find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                     if(it == compositeKeyColumnNames.end()) {
                         columnNames.emplace_back(c.name);

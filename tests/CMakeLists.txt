@@ -52,6 +52,9 @@ add_executable(unit_tests
 	static_tests/count_tuple.cpp
 	static_tests/member_traits_tests.cpp
 	static_tests/select_return_type.cpp
+    static_tests/column.cpp
+    static_tests/same_or_void.cpp
+    static_tests/foreign_key.cpp
 	constraints/default.cpp
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
@@ -81,7 +84,8 @@ add_executable(unit_tests
 	backup_tests.cpp
 	transaction_tests.cpp
     json.cpp
-	row_id.cpp
+    tuple_helper_tests.cpp
+    row_id.cpp
     ast_iterator_tests.cpp
     unique_cases/issue663.cpp
     unique_cases/nonstandart_primary_key.cpp

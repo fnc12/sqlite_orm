@@ -6,11 +6,12 @@
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 #include <ostream>  //  std::ostream
 
+#include "table_type.h"
 #include "tuple_helper.h"
 
 namespace sqlite_orm {
 
-    namespace constraints {
+    namespace internal {
 
         /**
          *  AUTOINCREMENT constraint class.
@@ -238,6 +239,16 @@ namespace sqlite_orm {
             using references_type = std::tuple<Rs...>;
             using self = foreign_key_t<columns_type, references_type>;
 
+            /**
+             * Holds obect type of all referenced columns.
+             */
+            using target_type = typename tuple_helper::same_or_void<typename table_type<Rs>::type...>::type;
+
+            /**
+             * Holds obect type of all source columns.
+             */
+            using source_type = typename tuple_helper::same_or_void<typename table_type<Cs>::type...>::type;
+
             columns_type columns;
             references_type references;
 
@@ -246,6 +257,7 @@ namespace sqlite_orm {
 
             static_assert(std::tuple_size<columns_type>::value == std::tuple_size<references_type>::value,
                           "Columns size must be equal to references tuple");
+            static_assert(!std::is_same<target_type, void>::value, "All references must have the same type");
 
             foreign_key_t(columns_type columns_, references_type references_) :
                 columns(std::move(columns_)), references(std::move(references_)),
@@ -292,10 +304,10 @@ namespace sqlite_orm {
         };
 #endif
 
-        struct collate_t {
+        struct collate_constraint_t {
             internal::collate_argument argument = internal::collate_argument::binary;
 
-            collate_t(internal::collate_argument argument_) : argument(argument_) {}
+            collate_constraint_t(internal::collate_argument argument_) : argument(argument_) {}
 
             operator std::string() const {
                 std::string res = "COLLATE " + this->string_from_collate_argument(this->argument);
@@ -349,7 +361,7 @@ namespace sqlite_orm {
         struct is_constraint<foreign_key_t<C, R>> : std::true_type {};
 
         template<>
-        struct is_constraint<collate_t> : std::true_type {};
+        struct is_constraint<collate_constraint_t> : std::true_type {};
 
         template<class T>
         struct is_constraint<check_t<T>> : std::true_type {};
@@ -375,7 +387,7 @@ namespace sqlite_orm {
      *  Available in SQLite 3.6.19 or higher
      */
     template<class... Cs>
-    constraints::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
+    internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
         return {std::make_tuple(std::forward<Cs>(columns)...)};
     }
 #endif
@@ -384,46 +396,46 @@ namespace sqlite_orm {
      *  UNIQUE constraint builder function.
      */
     template<class... Args>
-    constraints::unique_t<Args...> unique(Args... args) {
+    internal::unique_t<Args...> unique(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
-    inline constraints::unique_t<> unique() {
+    inline internal::unique_t<> unique() {
         return {{}};
     }
 
-    inline constraints::autoincrement_t autoincrement() {
+    inline internal::autoincrement_t autoincrement() {
         return {};
     }
 
     template<class... Cs>
-    constraints::primary_key_t<Cs...> primary_key(Cs... cs) {
+    internal::primary_key_t<Cs...> primary_key(Cs... cs) {
         return {std::make_tuple(std::forward<Cs>(cs)...)};
     }
 
-    inline constraints::primary_key_t<> primary_key() {
+    inline internal::primary_key_t<> primary_key() {
         return {{}};
     }
 
     template<class T>
-    constraints::default_t<T> default_value(T t) {
+    internal::default_t<T> default_value(T t) {
         return {std::move(t)};
     }
 
-    inline constraints::collate_t collate_nocase() {
+    inline internal::collate_constraint_t collate_nocase() {
         return {internal::collate_argument::nocase};
     }
 
-    inline constraints::collate_t collate_binary() {
+    inline internal::collate_constraint_t collate_binary() {
         return {internal::collate_argument::binary};
     }
 
-    inline constraints::collate_t collate_rtrim() {
+    inline internal::collate_constraint_t collate_rtrim() {
         return {internal::collate_argument::rtrim};
     }
 
     template<class T>
-    constraints::check_t<T> check(T t) {
+    internal::check_t<T> check(T t) {
         return {std::move(t)};
     }
 
@@ -439,7 +451,7 @@ namespace sqlite_orm {
          *  FOREIGN KEY traits. Specialized case
          */
         template<class C, class R>
-        struct is_foreign_key<constraints::foreign_key_t<C, R>> : std::true_type {};
+        struct is_foreign_key<internal::foreign_key_t<C, R>> : std::true_type {};
 
         /**
          *  PRIMARY KEY traits. Common case
@@ -451,7 +463,7 @@ namespace sqlite_orm {
          *  PRIMARY KEY traits. Specialized case
          */
         template<class... Cs>
-        struct is_primary_key<constraints::primary_key_t<Cs...>> : public std::true_type {};
+        struct is_primary_key<internal::primary_key_t<Cs...>> : public std::true_type {};
 
         /**
          * PRIMARY KEY INSERTABLE traits.
@@ -461,12 +473,12 @@ namespace sqlite_orm {
             using field_type = typename T::field_type;
             using constraints_type = typename T::constraints_type;
 
-            static_assert((tuple_helper::tuple_contains_type<constraints::primary_key_t<>, constraints_type>::value),
+            static_assert((tuple_helper::tuple_contains_type<primary_key_t<>, constraints_type>::value),
                           "an unexpected type was passed");
 
             static constexpr bool value =
-                (tuple_helper::tuple_contains_some_type<constraints::default_t, constraints_type>::value ||
-                 tuple_helper::tuple_contains_type<constraints::autoincrement_t, constraints_type>::value ||
+                (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
+                 tuple_helper::tuple_contains_type<autoincrement_t, constraints_type>::value ||
                  std::is_base_of<integer_printer, type_printer<field_type>>::value);
         };
     }

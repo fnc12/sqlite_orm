@@ -1037,7 +1037,6 @@ namespace sqlite_orm {
                         auto& o = get_object(statement.t);
                         processObject(o);
                     })(statement);
-
                 perform_step(db, stmt);
             }
 
@@ -1054,11 +1053,10 @@ namespace sqlite_orm {
                 auto& tImpl = this->get_impl<object_type>();
                 auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
-
                 auto processObject = [&index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& o) {
                     tImpl.table.for_each_column([&](auto& c) {
                         using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                        if(table_type::is_without_rowid || !c.template has<constraints::primary_key_t<>>()) {
+                        if(table_type::is_without_rowid || !c.template has<primary_key_t<>>()) {
                             auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
                             if(it == compositeKeyColumnNames.end()) {
                                 using column_type = typename std::decay<decltype(c)>::type;
@@ -1135,7 +1133,7 @@ namespace sqlite_orm {
                 auto& o = get_object(statement.t);
                 sqlite3_reset(stmt);
                 tImpl.table.for_each_column([&o, stmt, &index, db](auto& c) {
-                    if(!c.template has<constraints::primary_key_t<>>()) {
+                    if(!c.template has<primary_key_t<>>()) {
                         using column_type = typename std::decay<decltype(c)>::type;
                         using field_type = typename column_type::field_type;
                         if(c.member_pointer) {
@@ -1157,7 +1155,7 @@ namespace sqlite_orm {
                     }
                 });
                 tImpl.table.for_each_column([&o, stmt, &index, db](auto& c) {
-                    if(c.template has<constraints::primary_key_t<>>()) {
+                    if(c.template has<primary_key_t<>>()) {
                         using column_type = typename std::decay<decltype(c)>::type;
                         using field_type = typename column_type::field_type;
                         if(c.member_pointer) {
@@ -1482,6 +1480,23 @@ namespace sqlite_orm {
                 return res;
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+            /*template<class O>
+            bool has_dependent_rows(const O& object) {
+                auto res = false;
+                using TupleWithForeignKeyTypes = typename storage_traits::storage_fk_references<self, O>::type;
+                iterate_tuple<TupleWithForeignKeyTypes>([&res, this](auto *itemPointer){
+                    using ConstItem = typename std::remove_pointer<decltype(itemPointer)>::type;
+                    using Item = typename std::decay<ConstItem>::type;
+                    if(!res) {
+                        auto rows = this->select(count<Item>());
+                        if (!rows.empty()) {
+                            res = rows[0];
+                        }
+                    }
+                });
+                return res;
+            }*/
         };  // struct storage_t
 
         template<class T>
@@ -1493,7 +1508,7 @@ namespace sqlite_orm {
 
     template<class... Ts>
     internal::storage_t<Ts...> make_storage(const std::string& filename, Ts... tables) {
-        return {filename, internal::storage_impl<Ts...>(tables...)};
+        return {filename, internal::storage_impl<Ts...>(std::forward<Ts>(tables)...)};
     }
 
     /**

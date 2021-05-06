@@ -19,7 +19,6 @@
 		"dev/core_functions.h",
 		"dev/typed_comparator.h",
 		"dev/select_constraints.h",
-		"dev/table_type.h",
 		"dev/table_info.h",
 		"dev/statement_finalizer.h",
 		"dev/arithmetic_tag.h",

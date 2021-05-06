@@ -150,3 +150,26 @@ TEST_CASE("Storage copy") {
     storageCopy.sync_schema();
     storageCopy.remove_all<User>();
 }
+
+TEST_CASE("has_dependent_rows") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    struct Visit {
+        int id = 0;
+        int userId = 0;
+        int date = 0;
+    };
+    auto storage =
+        make_storage({},
+                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+                     make_table("visits",
+                                make_column("id", &Visit::id, primary_key()),
+                                make_column("user_id", &Visit::userId),
+                                make_column("date", &Visit::date),
+                                foreign_key(&Visit::userId).references(&User::id)));
+    storage.sync_schema();
+
+    //    storage.has_dependent_rows<User>(5);
+}
