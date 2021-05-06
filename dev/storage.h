@@ -617,6 +617,17 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
+            template<class T, class It, class L>
+            void replace_range(It from, It to, L transformer) {
+                this->assert_mapped_type<T>();
+                if(from == to) {
+                    return;
+                }
+
+                auto statement = this->prepare(sqlite_orm::replace_range<T>(from, to, std::move(transformer)));
+                this->execute(statement);
+            }
+
             template<class O, class... Cols>
             int insert(const O& o, columns_t<Cols...> cols) {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
@@ -657,6 +668,19 @@ namespace sqlite_orm {
                 });
             }
 
+            template<class T, class It, class L>
+            void insert_range(It from, It to, L transformer) {
+                this->assert_mapped_type<T>();
+                this->assert_insertable_type<T>();
+                if(from == to) {
+                    return;
+                }
+                call_insert_impl_and_catch_constraint_failed([this, from, to, transformer = std::move(transformer)]() {
+                    auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
+                    this->execute(statement);
+                });
+            }
+
             /**
              * Change table name inside storage's schema info. This function does not
              * affect database
@@ -682,6 +706,17 @@ namespace sqlite_orm {
             }
 
           protected:
+            template<class... Tss, class... Cols>
+            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
+                return sync_schema_result::already_in_sync;
+            }
+
+            template<template<class...> class TTable, class... Tss, class... Cs>
+            sync_schema_result
+            schema_status(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+                return tImpl.schema_status(db, preserve);
+            }
+
             template<class... Tss, class... Cols>
             sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
@@ -814,8 +849,9 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
-                this->impl.for_each([&result, db, preserve](auto tableImpl) {
-                    result.insert({tableImpl.table.name, tableImpl.schema_status(db, preserve)});
+                this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
+                    auto schemaStatus = this->schema_status(tableImpl, db, preserve);
+                    result.insert({tableImpl.table.name, schemaStatus});
                 });
                 return result;
             }
@@ -906,17 +942,17 @@ namespace sqlite_orm {
                 return prepare_impl<replace_t<T>>(std::move(rep));
             }
 
-            template<class It>
-            prepared_statement_t<insert_range_t<It>> prepare(insert_range_t<It> statement) {
+            template<class It, class L, class O>
+            prepared_statement_t<insert_range_t<It, L, O>> prepare(insert_range_t<It, L, O> statement) {
                 using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_range_t<It>>(std::move(statement));
+                return prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
             }
 
-            template<class It>
-            prepared_statement_t<replace_range_t<It>> prepare(replace_range_t<It> rep) {
-                return prepare_impl<replace_range_t<It>>(std::move(rep));
+            template<class It, class L, class O>
+            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> rep) {
+                return prepare_impl<replace_range_t<It, L, O>>(std::move(rep));
             }
 
             template<class T, class... Cols>
@@ -951,11 +987,9 @@ namespace sqlite_orm {
                 return sqlite3_last_insert_rowid(db);
             }
 
-            template<template<class> class ST,
-                     class T,
-                     typename std::enable_if<(std::is_same<replace_range_t<T>, ST<T>>::value ||
-                                              std::is_same<replace_t<T>, ST<T>>::value)>::type* = nullptr>
-            void execute(const prepared_statement_t<ST<T>>& statement) {
+            template<class T,
+                     typename std::enable_if<(is_replace_range<T>::value || is_replace<T>::value)>::type* = nullptr>
+            void execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -988,12 +1022,16 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<replace_range_t<T>, ST<T>>{}>(
+                static_if<is_replace_range<T>{}>(
                     [&processObject](auto& statement) {
+                        auto& transformer = statement.t.transformer;
                         std::for_each(  ///
                             statement.t.range.first,
                             statement.t.range.second,
-                            processObject);
+                            [&processObject, &transformer](auto& object) {
+                                auto& realObject = transformer(object);
+                                processObject(realObject);
+                            });
                     },
                     [&processObject](auto& statement) {
                         auto& o = get_object(statement.t);
@@ -1002,11 +1040,9 @@ namespace sqlite_orm {
                 perform_step(db, stmt);
             }
 
-            template<template<class> class ST,
-                     class T,
-                     typename std::enable_if<(std::is_same<insert_range_t<T>, ST<T>>::value ||
-                                              std::is_same<insert_t<T>, ST<T>>::value)>::type* = nullptr>
-            int64 execute(const prepared_statement_t<ST<T>>& statement) {
+            template<class T,
+                     typename std::enable_if<(is_insert_range<T>::value || is_insert<T>::value)>::type* = nullptr>
+            int64 execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -1047,12 +1083,16 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<insert_range_t<T>, ST<T>>{}>(
+                static_if<is_insert_range<T>{}>(
                     [&processObject](auto& statement) {
+                        auto& transformer = statement.t.transformer;
                         std::for_each(  ///
                             statement.t.range.first,
                             statement.t.range.second,
-                            processObject);
+                            [&processObject, &transformer](auto& object) {
+                                auto& realObject = transformer(object);
+                                processObject(realObject);
+                            });
                     },
                     [&processObject](auto& statement) {
                         auto& o = get_object(statement.t);

@@ -1485,8 +1485,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise shift left << operator
-     */
+         * Result of bitwise shift left << operator
+         */
         template<class L, class R>
         using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
@@ -1497,8 +1497,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise shift right >> operator
-     */
+         * Result of bitwise shift right >> operator
+         */
         template<class L, class R>
         using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
@@ -1509,8 +1509,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise and & operator
-     */
+         * Result of bitwise and & operator
+         */
         template<class L, class R>
         using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
@@ -1521,8 +1521,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise or | operator
-     */
+         * Result of bitwise or | operator
+         */
         template<class L, class R>
         using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
@@ -1533,8 +1533,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise not ~ operator
-     */
+         * Result of bitwise not ~ operator
+         */
         template<class T>
         struct bitwise_not_t : bitwise_not_string, arithmetic_t, negatable_t {
             using argument_type = T;
@@ -1549,6 +1549,7 @@ namespace sqlite_orm {
                 return "=";
             }
         };
+
         /**
          *  Result of assign = operator
          */
@@ -1567,28 +1568,40 @@ namespace sqlite_orm {
         template<class L, class R>
         struct is_assign_t<assign_t<L, R>> : public std::true_type {};
 
+        template<class L, class... Args>
+        struct in_t;
+
         /**
          *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
          */
         template<class T>
         struct expression_t {
-            T t;
+            T value;
 
-            expression_t(T t_) : t(std::move(t_)) {}
+            expression_t(T value_) : value(std::move(value_)) {}
 
             template<class R>
             assign_t<T, R> operator=(R r) const {
-                return {this->t, std::move(r)};
+                return {this->value, std::move(r)};
             }
 
             assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
-                return {this->t, nullptr};
+                return {this->value, nullptr};
             }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             assign_t<T, std::nullopt_t> operator=(std::nullopt_t) const {
-                return {this->t, std::nullopt};
+                return {this->value, std::nullopt};
             }
 #endif
+            template<class... Args>
+            in_t<T, Args...> in(Args... args) const {
+                return {this->value, std::make_tuple(std::forward<Args>(args)...), false};
+            }
+
+            template<class... Args>
+            in_t<T, Args...> not_in(Args... args) const {
+                return {this->value, std::make_tuple(std::forward<Args>(args)...), true};
+            }
         };
 
     }
@@ -1598,8 +1611,8 @@ namespace sqlite_orm {
      * `storage.update(set(c(&User::name) = "Dua Lipa"));
      */
     template<class T>
-    internal::expression_t<T> c(T t) {
-        return {std::move(t)};
+    internal::expression_t<T> c(T value) {
+        return {std::move(value)};
     }
 
     /**
@@ -1620,23 +1633,34 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Public interface for - operator. Example: `select(add(&User::age, 1));` => SELECT age - 1 FROM users
+     *  Public interface for - operator. Example: `select(sub(&User::age, 1));` => SELECT age - 1 FROM users
      */
     template<class L, class R>
     internal::sub_t<L, R> sub(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for * operator. Example: `select(mul(&User::salary, 2));` => SELECT salary * 2 FROM users
+     */
     template<class L, class R>
     internal::mul_t<L, R> mul(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for / operator. Example: `select(div(&User::salary, 3));` => SELECT salary / 3 FROM users
+     *  @note Please notice that ::div function already exists in pure C standard library inside <cstdlib> header.
+     *  If you use `using namespace sqlite_orm` directive you an specify which `div` you call explicitly using  `::div` or `sqlite_orm::div` statements.
+     */
     template<class L, class R>
     internal::div_t<L, R> div(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for % operator. Example: `select(mod(&User::age, 5));` => SELECT age % 5 FROM users
+     */
     template<class L, class R>
     internal::mod_t<L, R> mod(L l, R r) {
         return {std::move(l), std::move(r)};
@@ -2135,7 +2159,7 @@ namespace sqlite_orm {
         template<class T, bool has_offset, bool offset_is_implicit, class O>
         struct limit_t : limit_string {
             T lim;
-            internal::optional_container<O> off;
+            optional_container<O> off;
 
             limit_t() = default;
 
@@ -2175,9 +2199,9 @@ namespace sqlite_orm {
         template<class T>
         struct collate_t : public condition_t {
             T expr;
-            internal::collate_argument argument;
+            collate_argument argument;
 
-            collate_t(T expr_, internal::collate_argument argument_) : expr(std::move(expr_)), argument(argument_) {}
+            collate_t(T expr_, collate_argument argument_) : expr(std::move(expr_)), argument(argument_) {}
 
             operator std::string() const {
                 return collate_constraint_t{this->argument};
@@ -2220,9 +2244,12 @@ namespace sqlite_orm {
 
         /**
          *  Base class for binary conditions
+         *  L is left argument type
+         *  R is right argument type
+         *  S is 'string' class (a class which has cast to `std::string` operator)
          */
-        template<class L, class R>
-        struct binary_condition : public condition_t {
+        template<class L, class R, class S>
+        struct binary_condition : condition_t, S {
             using left_type = L;
             using right_type = R;
 
@@ -2244,8 +2271,8 @@ namespace sqlite_orm {
          *  Result of and operator
          */
         template<class L, class R>
-        struct and_condition_t : binary_condition<L, R>, and_condition_string {
-            using super = binary_condition<L, R>;
+        struct and_condition_t : binary_condition<L, R, and_condition_string> {
+            using super = binary_condition<L, R, and_condition_string>;
 
             using super::super;
         };
@@ -2260,8 +2287,8 @@ namespace sqlite_orm {
          *  Result of or operator
          */
         template<class L, class R>
-        struct or_condition_t : binary_condition<L, R>, or_condition_string {
-            using super = binary_condition<L, R>;
+        struct or_condition_t : binary_condition<L, R, or_condition_string> {
+            using super = binary_condition<L, R, or_condition_string>;
 
             using super::super;
         };
@@ -2276,21 +2303,21 @@ namespace sqlite_orm {
          *  = and == operators object
          */
         template<class L, class R>
-        struct is_equal_t : binary_condition<L, R>, is_equal_string, internal::negatable_t {
+        struct is_equal_t : binary_condition<L, R, is_equal_string>, negatable_t {
             using self = is_equal_t<L, R>;
 
-            using binary_condition<L, R>::binary_condition;
+            using binary_condition<L, R, is_equal_string>::binary_condition;
 
             collate_t<self> collate_binary() const {
-                return {*this, internal::collate_argument::binary};
+                return {*this, collate_argument::binary};
             }
 
             collate_t<self> collate_nocase() const {
-                return {*this, internal::collate_argument::nocase};
+                return {*this, collate_argument::nocase};
             }
 
             collate_t<self> collate_rtrim() const {
-                return {*this, internal::collate_argument::rtrim};
+                return {*this, collate_argument::rtrim};
             }
 
             named_collate<self> collate(std::string name) const {
@@ -2308,21 +2335,21 @@ namespace sqlite_orm {
          *  != operator object
          */
         template<class L, class R>
-        struct is_not_equal_t : binary_condition<L, R>, is_not_equal_string, internal::negatable_t {
+        struct is_not_equal_t : binary_condition<L, R, is_not_equal_string>, negatable_t {
             using self = is_not_equal_t<L, R>;
 
-            using binary_condition<L, R>::binary_condition;
+            using binary_condition<L, R, is_not_equal_string>::binary_condition;
 
             collate_t<self> collate_binary() const {
-                return {*this, internal::collate_argument::binary};
+                return {*this, collate_argument::binary};
             }
 
             collate_t<self> collate_nocase() const {
-                return {*this, internal::collate_argument::nocase};
+                return {*this, collate_argument::nocase};
             }
 
             collate_t<self> collate_rtrim() const {
-                return {*this, internal::collate_argument::rtrim};
+                return {*this, collate_argument::rtrim};
             }
         };
 
@@ -2336,21 +2363,21 @@ namespace sqlite_orm {
          *  > operator object.
          */
         template<class L, class R>
-        struct greater_than_t : binary_condition<L, R>, greater_than_string, internal::negatable_t {
+        struct greater_than_t : binary_condition<L, R, greater_than_string>, negatable_t {
             using self = greater_than_t<L, R>;
 
-            using binary_condition<L, R>::binary_condition;
+            using binary_condition<L, R, greater_than_string>::binary_condition;
 
             collate_t<self> collate_binary() const {
-                return {*this, internal::collate_argument::binary};
+                return {*this, collate_argument::binary};
             }
 
             collate_t<self> collate_nocase() const {
-                return {*this, internal::collate_argument::nocase};
+                return {*this, collate_argument::nocase};
             }
 
             collate_t<self> collate_rtrim() const {
-                return {*this, internal::collate_argument::rtrim};
+                return {*this, collate_argument::rtrim};
             }
         };
 
@@ -2364,21 +2391,21 @@ namespace sqlite_orm {
          *  >= operator object.
          */
         template<class L, class R>
-        struct greater_or_equal_t : binary_condition<L, R>, greater_or_equal_string, internal::negatable_t {
+        struct greater_or_equal_t : binary_condition<L, R, greater_or_equal_string>, negatable_t {
             using self = greater_or_equal_t<L, R>;
 
-            using binary_condition<L, R>::binary_condition;
+            using binary_condition<L, R, greater_or_equal_string>::binary_condition;
 
             collate_t<self> collate_binary() const {
-                return {*this, internal::collate_argument::binary};
+                return {*this, collate_argument::binary};
             }
 
             collate_t<self> collate_nocase() const {
-                return {*this, internal::collate_argument::nocase};
+                return {*this, collate_argument::nocase};
             }
 
             collate_t<self> collate_rtrim() const {
-                return {*this, internal::collate_argument::rtrim};
+                return {*this, collate_argument::rtrim};
             }
         };
 
@@ -2392,21 +2419,21 @@ namespace sqlite_orm {
          *  < operator object.
          */
         template<class L, class R>
-        struct lesser_than_t : binary_condition<L, R>, lesser_than_string, internal::negatable_t {
+        struct lesser_than_t : binary_condition<L, R, lesser_than_string>, negatable_t {
             using self = lesser_than_t<L, R>;
 
-            using binary_condition<L, R>::binary_condition;
+            using binary_condition<L, R, lesser_than_string>::binary_condition;
 
             collate_t<self> collate_binary() const {
-                return {*this, internal::collate_argument::binary};
+                return {*this, collate_argument::binary};
             }
 
             collate_t<self> collate_nocase() const {
-                return {*this, internal::collate_argument::nocase};
+                return {*this, collate_argument::nocase};
             }
 
             collate_t<self> collate_rtrim() const {
-                return {*this, internal::collate_argument::rtrim};
+                return {*this, collate_argument::rtrim};
             }
         };
 
@@ -2420,21 +2447,21 @@ namespace sqlite_orm {
          *  <= operator object.
          */
         template<class L, class R>
-        struct lesser_or_equal_t : binary_condition<L, R>, lesser_or_equal_string, internal::negatable_t {
+        struct lesser_or_equal_t : binary_condition<L, R, lesser_or_equal_string>, negatable_t {
             using self = lesser_or_equal_t<L, R>;
 
-            using binary_condition<L, R>::binary_condition;
+            using binary_condition<L, R, lesser_or_equal_string>::binary_condition;
 
             collate_t<self> collate_binary() const {
-                return {*this, internal::collate_argument::binary};
+                return {*this, collate_argument::binary};
             }
 
             collate_t<self> collate_nocase() const {
-                return {*this, internal::collate_argument::nocase};
+                return {*this, collate_argument::nocase};
             }
 
             collate_t<self> collate_rtrim() const {
-                return {*this, internal::collate_argument::rtrim};
+                return {*this, collate_argument::rtrim};
             }
         };
 
@@ -2454,13 +2481,23 @@ namespace sqlite_orm {
          *  IN operator object.
          */
         template<class L, class A>
-        struct in_t : condition_t, in_base, internal::negatable_t {
-            using self = in_t<L, A>;
+        struct dynamic_in_t : condition_t, in_base, negatable_t {
+            using self = dynamic_in_t<L, A>;
 
-            L l;  //  left expression
-            A arg;  //  in arg
+            L left;  //  left expression
+            A argument;  //  in arg
 
-            in_t(L l_, A arg_, bool negative_) : in_base{negative_}, l(l_), arg(std::move(arg_)) {}
+            dynamic_in_t(L left_, A argument_, bool negative_) :
+                in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
+        };
+
+        template<class L, class... Args>
+        struct in_t : condition_t, in_base, negatable_t {
+            L left;
+            std::tuple<Args...> argument;
+
+            in_t(L left_, decltype(argument) argument_, bool negative_) :
+                in_base{negative_}, left(std::move(left_)), argument(std::move(argument_)) {}
         };
 
         struct is_null_string {
@@ -2473,7 +2510,7 @@ namespace sqlite_orm {
          *  IS NULL operator object.
          */
         template<class T>
-        struct is_null_t : is_null_string, internal::negatable_t {
+        struct is_null_t : is_null_string, negatable_t {
             using self = is_null_t<T>;
 
             T t;
@@ -2491,7 +2528,7 @@ namespace sqlite_orm {
          *  IS NOT NULL operator object.
          */
         template<class T>
-        struct is_not_null_t : is_not_null_string, internal::negatable_t {
+        struct is_not_null_t : is_not_null_string, negatable_t {
             using self = is_not_null_t<T>;
 
             T t;
@@ -2707,7 +2744,7 @@ namespace sqlite_orm {
          *  LIKE operator object.
          */
         template<class A, class T, class E>
-        struct like_t : condition_t, like_string, internal::negatable_t {
+        struct like_t : condition_t, like_string, negatable_t {
             using self = like_t<A, T, E>;
             using arg_t = A;
             using pattern_t = T;
@@ -2715,15 +2752,14 @@ namespace sqlite_orm {
 
             arg_t arg;
             pattern_t pattern;
-            sqlite_orm::internal::optional_container<escape_t>
-                arg3;  //  not escape cause escape exists as a function here
+            optional_container<escape_t> arg3;  //  not escape cause escape exists as a function here
 
-            like_t(arg_t arg_, pattern_t pattern_, sqlite_orm::internal::optional_container<escape_t> escape_) :
+            like_t(arg_t arg_, pattern_t pattern_, optional_container<escape_t> escape_) :
                 arg(std::move(arg_)), pattern(std::move(pattern_)), arg3(std::move(escape_)) {}
 
             template<class C>
             like_t<A, T, C> escape(C c) const {
-                sqlite_orm::internal::optional_container<C> newArg3{std::move(c)};
+                optional_container<C> newArg3{std::move(c)};
                 return {std::move(this->arg), std::move(this->pattern), std::move(newArg3)};
             }
         };
@@ -2966,152 +3002,152 @@ namespace sqlite_orm {
      */
     template<class T, class R>
     internal::lesser_than_t<T, R> operator<(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::lesser_than_t<L, T> operator<(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::lesser_or_equal_t<T, R> operator<=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::lesser_or_equal_t<L, T> operator<=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::greater_than_t<T, R> operator>(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::greater_than_t<L, T> operator>(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::greater_or_equal_t<T, R> operator>=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::greater_or_equal_t<L, T> operator>=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::is_equal_t<T, R> operator==(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::is_equal_t<L, T> operator==(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::is_not_equal_t<T, R> operator!=(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::is_not_equal_t<L, T> operator!=(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class T, class R>
     internal::conc_t<T, R> operator||(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::conc_t<L, T> operator||(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::conc_t<L, R> operator||(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::add_t<T, R> operator+(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::add_t<L, T> operator+(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::add_t<L, R> operator+(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::sub_t<T, R> operator-(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::sub_t<L, T> operator-(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::sub_t<L, R> operator-(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::mul_t<T, R> operator*(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::mul_t<L, T> operator*(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::mul_t<L, R> operator*(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::div_t<T, R> operator/(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::div_t<L, T> operator/(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::div_t<L, R> operator/(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class T, class R>
     internal::mod_t<T, R> operator%(internal::expression_t<T> expr, R r) {
-        return {std::move(expr.t), std::move(r)};
+        return {std::move(expr.value), std::move(r)};
     }
 
     template<class L, class T>
     internal::mod_t<L, T> operator%(L l, internal::expression_t<T> expr) {
-        return {std::move(l), std::move(expr.t)};
+        return {std::move(l), std::move(expr.value)};
     }
 
     template<class L, class R>
     internal::mod_t<L, R> operator%(internal::expression_t<L> l, internal::expression_t<R> r) {
-        return {std::move(l.t), std::move(r.t)};
+        return {std::move(l.value), std::move(r.value)};
     }
 
     template<class F, class O>
@@ -3202,32 +3238,32 @@ namespace sqlite_orm {
     }
 
     template<class L, class E>
-    internal::in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
+    internal::dynamic_in_t<L, std::vector<E>> in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values), false};
     }
 
     template<class L, class E>
-    internal::in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
+    internal::dynamic_in_t<L, std::vector<E>> in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values), false};
     }
 
     template<class L, class A>
-    internal::in_t<L, A> in(L l, A arg) {
+    internal::dynamic_in_t<L, A> in(L l, A arg) {
         return {std::move(l), std::move(arg), false};
     }
 
     template<class L, class E>
-    internal::in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
+    internal::dynamic_in_t<L, std::vector<E>> not_in(L l, std::vector<E> values) {
         return {std::move(l), std::move(values), true};
     }
 
     template<class L, class E>
-    internal::in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
+    internal::dynamic_in_t<L, std::vector<E>> not_in(L l, std::initializer_list<E> values) {
         return {std::move(l), std::move(values), true};
     }
 
     template<class L, class A>
-    internal::in_t<L, A> not_in(L l, A arg) {
+    internal::dynamic_in_t<L, A> not_in(L l, A arg) {
         return {std::move(l), std::move(arg), true};
     }
 
@@ -5171,22 +5207,18 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <memory>  // std::unique_ptr
 #include <sqlite3.h>
+#include <type_traits>  // std::integral_constant
 
 namespace sqlite_orm {
 
     /**
      *  Guard class which finalizes `sqlite3_stmt` in dtor
      */
-    struct statement_finalizer {
-        sqlite3_stmt* stmt = nullptr;
+    using statement_finalizer =
+        std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
 
-        statement_finalizer(decltype(stmt) stmt_) : stmt(stmt_) {}
-
-        inline ~statement_finalizer() {
-            sqlite3_finalize(this->stmt);
-        }
-    };
 }
 #pragma once
 
@@ -5444,7 +5476,7 @@ namespace sqlite_orm {
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
-#include <cstdlib>  //  atof, atoi, atoll
+#include <stdlib.h>  //  atof, atoi, atoll
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
@@ -5890,6 +5922,9 @@ namespace sqlite_orm {
         template<class C>
         struct indexed_column_t {
             using column_type = C;
+
+            indexed_column_t(column_type _column_or_expression) :
+                column_or_expression(std::move(_column_or_expression)) {}
 
             column_type column_or_expression;
             std::string _collation_name;
@@ -6445,6 +6480,16 @@ namespace sqlite_orm {
             using type = F;
         };
 
+        template<class St, class L, class A>
+        struct column_result_t<St, dynamic_in_t<L, A>, void> {
+            using type = bool;
+        };
+
+        template<class St, class L, class... Args>
+        struct column_result_t<St, in_t<L, Args...>, void> {
+            using type = bool;
+        };
+
         /**
          *  Common case for all getter types. Getter types are defined in column.h file
          */
@@ -6601,6 +6646,11 @@ namespace sqlite_orm {
             static_assert(std::is_same<left_result, right_result>::value,
                           "Compound subselect queries must return same types");
             using type = left_result;
+        };
+
+        template<class St, class T>
+        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+            using type = bool;
         };
 
         /**
@@ -6982,7 +7032,7 @@ namespace sqlite_orm {
 #include <cstddef>  //  std::nullptr_t
 #include <system_error>  //  std::system_error, std::error_code
 #include <sstream>  //  std::stringstream
-#include <cstdlib>  //  std::atoi
+#include <stdlib.h>  //  std::atoi
 #include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference, std::false_type, std::true_type
 #include <utility>  //  std::pair, std::make_pair
 #include <vector>  //  std::vector
@@ -7051,7 +7101,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);
@@ -7646,8 +7696,10 @@ namespace sqlite_orm {
              *  call. When one finishes iterating it the pointer
              *  inside the shared_ptr is nulled out in all copies.
              */
-            std::shared_ptr<sqlite3_stmt*> stmt;
-            view_type& view;
+            std::shared_ptr<statement_finalizer> stmt;
+
+            // only null for the default constructed iterator
+            view_type* view;
 
             /**
              *  shared_ptr is used over unique_ptr here
@@ -7655,11 +7707,11 @@ namespace sqlite_orm {
              */
             std::shared_ptr<value_type> current;
 
-            void extract_value(std::unique_ptr<value_type>& temp) {
-                temp = std::make_unique<value_type>();
-                auto& storage = this->view.storage;
+            void extract_value() {
+                auto& storage = this->view->storage;
                 auto& impl = storage.template get_impl<value_type>();
-                object_from_column_builder<value_type> builder{*temp, *this->stmt};
+                this->current = std::make_shared<value_type>();
+                object_from_column_builder<value_type> builder{*this->current, this->stmt->get()};
                 impl.table.for_each_column(builder);
             }
 
@@ -7669,54 +7721,38 @@ namespace sqlite_orm {
             using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
 
+            iterator_t() : view(nullptr){};
+
             iterator_t(sqlite3_stmt* stmt_, view_type& view_) :
-                stmt(std::make_shared<sqlite3_stmt*>(stmt_)), view(view_) {
-                this->operator++();
+                stmt(std::make_shared<statement_finalizer>(stmt_)), view(&view_) {
+                next();
             }
 
-            iterator_t(const iterator_t&) = default;
-
-            iterator_t(iterator_t&&) = default;
-
-            iterator_t& operator=(iterator_t&&) = default;
-
-            iterator_t& operator=(const iterator_t&) = default;
-
-            ~iterator_t() {
-                if(this->stmt) {
-                    statement_finalizer f{*this->stmt};
-                }
-            }
-
-            value_type& operator*() {
-                if(!this->stmt) {
+            const value_type& operator*() const {
+                if(!this->stmt || !this->current) {
                     throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
-                }
-                if(!this->current) {
-                    std::unique_ptr<value_type> value;
-                    this->extract_value(value);
-                    this->current = move(value);
                 }
                 return *this->current;
             }
 
-            value_type* operator->() {
+            const value_type* operator->() const {
                 return &(this->operator*());
             }
 
-            void operator++() {
-                if(this->stmt && *this->stmt) {
-                    auto ret = sqlite3_step(*this->stmt);
+          private:
+            void next() {
+                this->current.reset();
+                if(this->stmt) {
+                    auto ret = sqlite3_step(this->stmt->get());
                     switch(ret) {
                         case SQLITE_ROW:
-                            this->current = nullptr;
+                            this->extract_value();
                             break;
-                        case SQLITE_DONE: {
-                            statement_finalizer f{*this->stmt};
-                            *this->stmt = nullptr;
-                        } break;
+                        case SQLITE_DONE:
+                            this->stmt.reset();
+                            break;
                         default: {
-                            auto db = this->view.connection.get();
+                            auto db = this->view->connection.get();
                             throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                                     sqlite3_errmsg(db));
                         }
@@ -7724,20 +7760,18 @@ namespace sqlite_orm {
                 }
             }
 
+          public:
+            iterator_t<V>& operator++() {
+                next();
+                return *this;
+            }
+
             void operator++(int) {
                 this->operator++();
             }
 
             bool operator==(const iterator_t& other) const {
-                if(this->stmt && other.stmt) {
-                    return *this->stmt == *other.stmt;
-                } else {
-                    if(!this->stmt && !other.stmt) {
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
+                return this->current == other.current;
             }
 
             bool operator!=(const iterator_t& other) const {
@@ -8028,6 +8062,12 @@ namespace sqlite_orm {
             type obj;
         };
 
+        template<class T>
+        struct is_insert : std::false_type {};
+
+        template<class T>
+        struct is_insert<insert_t<T>> : std::true_type {};
+
         template<class T, class... Cols>
         struct insert_explicit {
             using type = T;
@@ -8044,39 +8084,121 @@ namespace sqlite_orm {
             type obj;
         };
 
-        template<class It>
+        template<class T>
+        struct is_replace : std::false_type {};
+
+        template<class T>
+        struct is_replace<replace_t<T>> : std::true_type {};
+
+        template<class It, class L, class O>
         struct insert_range_t {
             using iterator_type = It;
-            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using transformer_type = L;
+            using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
+            transformer_type transformer;
         };
 
-        template<class It>
+        template<class T>
+        struct is_insert_range : std::false_type {};
+
+        template<class It, class L, class O>
+        struct is_insert_range<insert_range_t<It, L, O>> : std::true_type {};
+
+        template<class It, class L, class O>
         struct replace_range_t {
             using iterator_type = It;
-            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using transformer_type = L;
+            using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
+            transformer_type transformer;
+        };
+
+        template<class T>
+        struct is_replace_range : std::false_type {};
+
+        template<class It, class L, class O>
+        struct is_replace_range<replace_range_t<It, L, O>> : std::true_type {};
+
+        struct default_transformer {
+
+            template<class T>
+            const T& operator()(const T& object) const {
+                return object;
+            }
         };
     }
 
     /**
      *  Create a replace range statement
+     *  @example
+     *  ```
+     *  std::vector<User> users;
+     *  users.push_back(User{1, "Leony"});
+     *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+     *  storage.execute(statement);
      */
     template<class It>
-    internal::replace_range_t<It> replace_range(It from, It to) {
+    internal::replace_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
+    replace_range(It from, It to) {
         return {{std::move(from), std::move(to)}};
     }
 
     /**
-     *  Create an insert range statement
+     *  Create an replace range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
+     *  optionals or whatever.
+     *  @example
+     *  ```
+     *  std::vector<std::unique_ptr<User>> userPointers;
+     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
+     *  auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
+     *      return *userPointer;
+     *  }));
+     *  storage.execute(statement);
+     *  ```
      */
-    template<class It>
-    internal::insert_range_t<It> insert_range(It from, It to) {
-        return {{std::move(from), std::move(to)}};
+    template<class T, class It, class L>
+    internal::replace_range_t<It, L, T> replace_range(It from, It to, L transformer) {
+        return {{std::move(from), std::move(to)}, std::move(transformer)};
     }
 
+    /**
+     *  Create an insert range statement
+     *  @example
+     *  ```
+     *  std::vector<User> users;
+     *  users.push_back(User{1, "Leony"});
+     *  auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+     *  storage.execute(statement);
+     *  ```
+     */
+    template<class It>
+    internal::insert_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
+    insert_range(It from, It to) {
+        return {{std::move(from), std::move(to)}, internal::default_transformer{}};
+    }
+
+    /**
+     *  Create an insert range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
+     *  optionals or whatever.
+     *  @example
+     *  ```
+     *  std::vector<std::unique_ptr<User>> userPointers;
+     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
+     *  auto statement = storage.prepare(insert_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
+     *      return *userPointer;
+     *  }));
+     *  storage.execute(statement);
+     *  ```
+     */
+    template<class T, class It, class L>
+    internal::insert_range_t<It, L, T> insert_range(It from, It to, L transformer) {
+        return {{std::move(from), std::move(to)}, std::move(transformer)};
+    }
     /**
      *  Create a replace statement.
      *  T is an object type mapped to a storage.
@@ -8414,13 +8536,24 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct ast_iterator<in_t<L, A>, void> {
-            using node_type = in_t<L, A>;
+        struct ast_iterator<dynamic_in_t<L, A>, void> {
+            using node_type = dynamic_in_t<L, A>;
 
             template<class C>
             void operator()(const node_type& in, const C& l) const {
-                iterate_ast(in.l, l);
-                iterate_ast(in.arg, l);
+                iterate_ast(in.left, l);
+                iterate_ast(in.argument, l);
+            }
+        };
+
+        template<class L, class... Args>
+        struct ast_iterator<in_t<L, Args...>, void> {
+            using node_type = in_t<L, Args...>;
+
+            template<class C>
+            void operator()(const node_type& in, const C& l) const {
+                iterate_ast(in.left, l);
+                iterate_ast(in.argument, l);
             }
         };
 
@@ -8903,7 +9036,7 @@ namespace sqlite_orm {
             }
 
             iterator_t<self> end() {
-                return {nullptr, *this};
+                return {};
             }
         };
     }
@@ -9474,7 +9607,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
@@ -9824,14 +9957,14 @@ namespace sqlite_orm {
             using type = typename std::decay<T>::type;
         };
 
-        template<class It>
-        struct expression_object_type<replace_range_t<It>> {
-            using type = typename replace_range_t<It>::object_type;
+        template<class It, class L, class O>
+        struct expression_object_type<replace_range_t<It, L, O>> {
+            using type = typename replace_range_t<It, L, O>::object_type;
         };
 
-        template<class It>
-        struct expression_object_type<replace_range_t<std::reference_wrapper<It>>> {
-            using type = typename replace_range_t<std::reference_wrapper<It>>::object_type;
+        template<class It, class L, class O>
+        struct expression_object_type<replace_range_t<std::reference_wrapper<It>, L, O>> {
+            using type = typename replace_range_t<std::reference_wrapper<It>, L, O>::object_type;
         };
 
         template<class T>
@@ -9844,14 +9977,15 @@ namespace sqlite_orm {
             using type = typename std::decay<T>::type;
         };
 
-        template<class It>
-        struct expression_object_type<insert_range_t<It>> {
-            using type = typename insert_range_t<It>::object_type;
+        template<class It, class L, class O>
+        struct expression_object_type<insert_range_t<It, L, O>> {
+            using transformer_type = L;
+            using type = typename insert_range_t<It, L, O>::object_type;
         };
 
-        template<class It>
-        struct expression_object_type<insert_range_t<std::reference_wrapper<It>>> {
-            using type = typename insert_range_t<std::reference_wrapper<It>>::object_type;
+        template<class It, class L, class O>
+        struct expression_object_type<insert_range_t<std::reference_wrapper<It>, L, O>> {
+            using type = typename insert_range_t<std::reference_wrapper<It>, L, O>::object_type;
         };
 
         template<class T, class... Cols>
@@ -9980,6 +10114,10 @@ namespace sqlite_orm {
 
             find_table_name_t find_table_name;
             mutable table_name_set table_names;
+
+            table_name_collector() = default;
+
+            table_name_collector(find_table_name_t _find_table_name) : find_table_name(std::move(_find_table_name)) {}
 
             template<class T>
             table_name_set operator()(const T&) const {
@@ -10729,38 +10867,64 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct statement_serializator<in_t<L, A>, void> {
-            using statement_type = in_t<L, A>;
+        struct statement_serializator<dynamic_in_t<L, A>, void> {
+            using statement_type = dynamic_in_t<L, A>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.l, context);
+                auto leftString = serialize(c.left, context);
                 ss << leftString << " " << static_cast<std::string>(c) << " ";
                 auto newContext = context;
                 newContext.use_parentheses = true;
-                ss << serialize(c.arg, newContext);
+                ss << serialize(c.argument, newContext);
                 return ss.str();
             }
         };
 
         template<class L, class E>
-        struct statement_serializator<in_t<L, std::vector<E>>, void> {
-            using statement_type = in_t<L, std::vector<E>>;
+        struct statement_serializator<dynamic_in_t<L, std::vector<E>>, void> {
+            using statement_type = dynamic_in_t<L, std::vector<E>>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.l, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " ( ";
-                for(size_t index = 0; index < c.arg.size(); ++index) {
-                    auto& value = c.arg[index];
-                    ss << " " << serialize(value, context);
-                    if(index < c.arg.size() - 1) {
+                auto leftString = serialize(c.left, context);
+                ss << leftString << " " << static_cast<std::string>(c) << " (";
+                for(size_t index = 0; index < c.argument.size(); ++index) {
+                    auto& value = c.argument[index];
+                    ss << serialize(value, context);
+                    if(index < c.argument.size() - 1) {
                         ss << ", ";
                     }
                 }
-                ss << " )";
+                ss << ")";
+                return ss.str();
+            }
+        };
+
+        template<class L, class... Args>
+        struct statement_serializator<in_t<L, Args...>, void> {
+            using statement_type = in_t<L, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& c, const C& context) const {
+                std::stringstream ss;
+                auto leftString = serialize(c.left, context);
+                ss << leftString << " " << static_cast<std::string>(c) << " (";
+                std::vector<std::string> args;
+                using args_type = std::tuple<Args...>;
+                args.reserve(std::tuple_size<args_type>::value);
+                iterate_tuple(c.argument, [&args, &context](auto& v) {
+                    args.push_back(serialize(v, context));
+                });
+                for(size_t i = 0; i < args.size(); ++i) {
+                    ss << args[i];
+                    if(i < args.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << ")";
                 return ss.str();
             }
         };
@@ -11314,9 +11478,9 @@ namespace sqlite_orm {
             return ss.str();
         }
 
-        template<class It>
-        struct statement_serializator<replace_range_t<It>, void> {
-            using statement_type = replace_range_t<It>;
+        template<class It, class L, class O>
+        struct statement_serializator<replace_range_t<It, L, O>, void> {
+            using statement_type = replace_range_t<It, L, O>;
 
             template<class C>
             std::string operator()(const statement_type& rep, const C& context) const {
@@ -11325,9 +11489,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class It>
-        struct statement_serializator<insert_range_t<It>, void> {
-            using statement_type = insert_range_t<It>;
+        template<class It, class L, class O>
+        struct statement_serializator<insert_range_t<It, L, O>, void> {
+            using statement_type = insert_range_t<It, L, O>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
@@ -11478,9 +11642,10 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& sel, const C& context) const {
                 std::stringstream ss;
-                if(!is_base_of_template<T, compound_operator>::value) {
+                const auto isCompoundOperator = is_base_of_template<T, compound_operator>::value;
+                if(!isCompoundOperator) {
                     if(!sel.highest_level) {
-                        ss << "( ";
+                        ss << "(";
                     }
                     ss << "SELECT ";
                 }
@@ -11491,16 +11656,15 @@ namespace sqlite_orm {
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << columnNames[i];
                     if(i < columnNames.size() - 1) {
-                        ss << ",";
+                        ss << ", ";
                     }
-                    ss << " ";
                 }
                 table_name_collector collector{[&context](std::type_index ti) {
                     return context.impl.find_table_name(ti);
                 }};
                 iterate_ast(sel.col, collector);
                 iterate_ast(sel.conditions, collector);
-                internal::join_iterator<Args...>()([&collector, &context](const auto& c) {
+                join_iterator<Args...>()([&collector, &context](const auto& c) {
                     using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
                     auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
@@ -11509,8 +11673,8 @@ namespace sqlite_orm {
                                                                            std::move(tableAliasString));
                     collector.table_names.erase(tableNameWithAlias);
                 });
-                if(!collector.table_names.empty()) {
-                    ss << "FROM ";
+                if(!collector.table_names.empty() && !isCompoundOperator) {
+                    ss << " FROM ";
                     std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
                                                                                 collector.table_names.end());
                     for(size_t i = 0; i < tableNames.size(); ++i) {
@@ -11520,9 +11684,8 @@ namespace sqlite_orm {
                             ss << tableNamePair.second << " ";
                         }
                         if(int(i) < int(tableNames.size()) - 1) {
-                            ss << ",";
+                            ss << ", ";
                         }
-                        ss << " ";
                     }
                 }
                 iterate_tuple(sel.conditions, [&context, &ss](auto& v) {
@@ -11530,7 +11693,7 @@ namespace sqlite_orm {
                 });
                 if(!is_base_of_template<T, compound_operator>::value) {
                     if(!sel.highest_level) {
-                        ss << ") ";
+                        ss << ")";
                     }
                 }
                 return ss.str();
@@ -12515,6 +12678,17 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
+            template<class T, class It, class L>
+            void replace_range(It from, It to, L transformer) {
+                this->assert_mapped_type<T>();
+                if(from == to) {
+                    return;
+                }
+
+                auto statement = this->prepare(sqlite_orm::replace_range<T>(from, to, std::move(transformer)));
+                this->execute(statement);
+            }
+
             template<class O, class... Cols>
             int insert(const O& o, columns_t<Cols...> cols) {
                 constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
@@ -12555,6 +12729,19 @@ namespace sqlite_orm {
                 });
             }
 
+            template<class T, class It, class L>
+            void insert_range(It from, It to, L transformer) {
+                this->assert_mapped_type<T>();
+                this->assert_insertable_type<T>();
+                if(from == to) {
+                    return;
+                }
+                call_insert_impl_and_catch_constraint_failed([this, from, to, transformer = std::move(transformer)]() {
+                    auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
+                    this->execute(statement);
+                });
+            }
+
             /**
              * Change table name inside storage's schema info. This function does not
              * affect database
@@ -12580,6 +12767,17 @@ namespace sqlite_orm {
             }
 
           protected:
+            template<class... Tss, class... Cols>
+            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
+                return sync_schema_result::already_in_sync;
+            }
+
+            template<template<class...> class TTable, class... Tss, class... Cs>
+            sync_schema_result
+            schema_status(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+                return tImpl.schema_status(db, preserve);
+            }
+
             template<class... Tss, class... Cols>
             sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
@@ -12712,8 +12910,9 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
-                this->impl.for_each([&result, db, preserve](auto tableImpl) {
-                    result.insert({tableImpl.table.name, tableImpl.schema_status(db, preserve)});
+                this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
+                    auto schemaStatus = this->schema_status(tableImpl, db, preserve);
+                    result.insert({tableImpl.table.name, schemaStatus});
                 });
                 return result;
             }
@@ -12804,17 +13003,17 @@ namespace sqlite_orm {
                 return prepare_impl<replace_t<T>>(std::move(rep));
             }
 
-            template<class It>
-            prepared_statement_t<insert_range_t<It>> prepare(insert_range_t<It> statement) {
+            template<class It, class L, class O>
+            prepared_statement_t<insert_range_t<It, L, O>> prepare(insert_range_t<It, L, O> statement) {
                 using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_range_t<It>>(std::move(statement));
+                return prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
             }
 
-            template<class It>
-            prepared_statement_t<replace_range_t<It>> prepare(replace_range_t<It> rep) {
-                return prepare_impl<replace_range_t<It>>(std::move(rep));
+            template<class It, class L, class O>
+            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> rep) {
+                return prepare_impl<replace_range_t<It, L, O>>(std::move(rep));
             }
 
             template<class T, class... Cols>
@@ -12849,11 +13048,9 @@ namespace sqlite_orm {
                 return sqlite3_last_insert_rowid(db);
             }
 
-            template<template<class> class ST,
-                     class T,
-                     typename std::enable_if<(std::is_same<replace_range_t<T>, ST<T>>::value ||
-                                              std::is_same<replace_t<T>, ST<T>>::value)>::type* = nullptr>
-            void execute(const prepared_statement_t<ST<T>>& statement) {
+            template<class T,
+                     typename std::enable_if<(is_replace_range<T>::value || is_replace<T>::value)>::type* = nullptr>
+            void execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -12886,12 +13083,16 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<replace_range_t<T>, ST<T>>{}>(
+                static_if<is_replace_range<T>{}>(
                     [&processObject](auto& statement) {
+                        auto& transformer = statement.t.transformer;
                         std::for_each(  ///
                             statement.t.range.first,
                             statement.t.range.second,
-                            processObject);
+                            [&processObject, &transformer](auto& object) {
+                                auto& realObject = transformer(object);
+                                processObject(realObject);
+                            });
                     },
                     [&processObject](auto& statement) {
                         auto& o = get_object(statement.t);
@@ -12900,11 +13101,9 @@ namespace sqlite_orm {
                 perform_step(db, stmt);
             }
 
-            template<template<class> class ST,
-                     class T,
-                     typename std::enable_if<(std::is_same<insert_range_t<T>, ST<T>>::value ||
-                                              std::is_same<insert_t<T>, ST<T>>::value)>::type* = nullptr>
-            int64 execute(const prepared_statement_t<ST<T>>& statement) {
+            template<class T,
+                     typename std::enable_if<(is_insert_range<T>::value || is_insert<T>::value)>::type* = nullptr>
+            int64 execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -12945,12 +13144,16 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<std::is_same<insert_range_t<T>, ST<T>>{}>(
+                static_if<is_insert_range<T>{}>(
                     [&processObject](auto& statement) {
+                        auto& transformer = statement.t.transformer;
                         std::for_each(  ///
                             statement.t.range.first,
                             statement.t.range.second,
-                            processObject);
+                            [&processObject, &transformer](auto& object) {
+                                auto& realObject = transformer(object);
+                                processObject(realObject);
+                            });
                     },
                     [&processObject](auto& statement) {
                         auto& o = get_object(statement.t);
@@ -13466,10 +13669,18 @@ __pragma(pop_macro("min"))
         };
 
         template<class L, class A>
-        struct node_tuple<in_t<L, A>, void> {
-            using node_type = in_t<L, A>;
+        struct node_tuple<dynamic_in_t<L, A>, void> {
+            using node_type = dynamic_in_t<L, A>;
             using left_tuple = typename node_tuple<L>::type;
             using right_tuple = typename node_tuple<A>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+
+        template<class L, class... Args>
+        struct node_tuple<in_t<L, Args...>, void> {
+            using node_type = in_t<L, Args...>;
+            using left_tuple = typename node_tuple<L>::type;
+            using right_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
@@ -13697,23 +13908,23 @@ __pragma(pop_macro("min"))
 
 namespace sqlite_orm {
 
-    template<int N, class It>
-    auto& get(internal::prepared_statement_t<internal::insert_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    auto& get(internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    const auto& get(const internal::prepared_statement_t<internal::insert_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    const auto& get(const internal::prepared_statement_t<internal::insert_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    auto& get(internal::prepared_statement_t<internal::replace_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    auto& get(internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 
-    template<int N, class It>
-    const auto& get(const internal::prepared_statement_t<internal::replace_range_t<It>>& statement) {
+    template<int N, class It, class L, class O>
+    const auto& get(const internal::prepared_statement_t<internal::replace_range_t<It, L, O>>& statement) {
         return std::get<N>(statement.t.range);
     }
 

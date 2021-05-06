@@ -5,7 +5,7 @@
 #include <cstddef>  //  std::nullptr_t
 #include <system_error>  //  std::system_error, std::error_code
 #include <sstream>  //  std::stringstream
-#include <cstdlib>  //  std::atoi
+#include <stdlib.h>  //  std::atoi
 #include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference, std::false_type, std::true_type
 #include <utility>  //  std::pair, std::make_pair
 #include <vector>  //  std::vector

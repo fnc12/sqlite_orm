@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
+#include <algorithm>
 
 #include "prepared_common.h"
 
@@ -44,20 +45,53 @@ TEST_CASE("Prepared insert range") {
     expected.push_back(User{3, "Maître Gims"});
 
     SECTION("empty") {
-        try {
-            auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-            REQUIRE(false);
-        } catch(const std::system_error& e) {
-            //..
+        SECTION("strict") {
+            try {
+                auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+                REQUIRE(false);
+            } catch(const std::system_error &e) {
+                //..
+            }
+        }
+        SECTION("container with pointers") {
+            try {
+                std::vector<std::unique_ptr<User>> usersPointers;
+                auto statement = storage.prepare(insert_range<User>(usersPointers.begin(),
+                                                                    usersPointers.end(),
+                                                                    [](const std::unique_ptr<User> &pointer) {
+                                                                        return *pointer;
+                                                                    }));
+                REQUIRE(false);
+            } catch(const std::system_error &e) {
+                //..
+            }
         }
     }
     SECTION("one") {
         User user{4, "The Weeknd"};
         users.push_back(user);
-        auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-        REQUIRE(get<0>(statement) == users.begin());
-        REQUIRE(get<1>(statement) == users.end());
-        storage.execute(statement);
+        SECTION("strict container") {
+            auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+            REQUIRE(get<0>(statement) == users.begin());
+            REQUIRE(get<1>(statement) == users.end());
+            storage.execute(statement);
+        }
+        SECTION("container of pointers") {
+            std::vector<std::unique_ptr<User>> usersPointers;
+            usersPointers.reserve(users.size());
+            std::transform(users.begin(), users.end(), std::back_inserter(usersPointers), [](const User &user) {
+                return std::make_unique<User>(user);
+            });
+            auto statement =
+                storage.prepare(insert_range<User>(usersPointers.begin(),
+                                                   usersPointers.end(),
+                                                   [](const std::unique_ptr<User> &pointer) -> const User & {
+                                                       return *pointer;
+                                                   }));
+            REQUIRE(get<0>(statement) == usersPointers.begin());
+            REQUIRE(get<1>(statement) == usersPointers.end());
+            storage.execute(statement);
+        }
         expected.push_back(user);
     }
     SECTION("two") {
@@ -66,25 +100,57 @@ TEST_CASE("Prepared insert range") {
         users.push_back(user1);
         users.push_back(user2);
 
-        auto statement = storage.prepare(insert_range(users.begin(), users.end()));
-        REQUIRE(get<0>(statement) == users.begin());
-        REQUIRE(get<1>(statement) == users.end());
-        storage.execute(statement);
-        expected.push_back(user1);
-        expected.push_back(user2);
+        SECTION("strict") {
+            auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+            REQUIRE(get<0>(statement) == users.begin());
+            REQUIRE(get<1>(statement) == users.end());
+            storage.execute(statement);
+            expected.push_back(user1);
+            expected.push_back(user2);
 
-        decltype(users) otherUsers;
-        otherUsers.push_back(User{6, "DJ Alban"});
-        otherUsers.push_back(User{7, "Flo Rida"});
-        for(auto& user: otherUsers) {
-            expected.push_back(user);
+            decltype(users) otherUsers;
+            otherUsers.push_back(User{6, "DJ Alban"});
+            otherUsers.push_back(User{7, "Flo Rida"});
+            for(auto &user: otherUsers) {
+                expected.push_back(user);
+            }
+            get<0>(statement) = otherUsers.begin();
+            get<1>(statement) = otherUsers.end();
+            storage.execute(statement);
+
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
         }
-        get<0>(statement) = otherUsers.begin();
-        get<1>(statement) = otherUsers.end();
-        storage.execute(statement);
+        SECTION("container of pointers") {
+            std::vector<std::unique_ptr<User>> usersPointers;
+            std::transform(users.begin(), users.end(), std::back_inserter(usersPointers), [](const User &user) {
+                return std::make_unique<User>(user);
+            });
+            auto statement =
+                storage.prepare(insert_range<User>(usersPointers.begin(),
+                                                   usersPointers.end(),
+                                                   [](const std::unique_ptr<User> &pointer) -> const User & {
+                                                       return *pointer;
+                                                   }));
+            REQUIRE(get<0>(statement) == usersPointers.begin());
+            REQUIRE(get<1>(statement) == usersPointers.end());
+            storage.execute(statement);
+            expected.push_back(user1);
+            expected.push_back(user2);
 
-        std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
-        std::ignore = get<1>(static_cast<const decltype(statement)&>(statement));
+            decltype(usersPointers) otherUsers;
+            otherUsers.emplace_back(new User{6, "DJ Alban"});
+            otherUsers.emplace_back(new User{7, "Flo Rida"});
+            for(auto &user: otherUsers) {
+                expected.push_back(*user);
+            }
+            get<0>(statement) = otherUsers.begin();
+            get<1>(statement) = otherUsers.end();
+            storage.execute(statement);
+
+            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
+        }
     }
     auto rows = storage.get_all<User>();
     REQUIRE_THAT(rows, UnorderedEquals(expected));

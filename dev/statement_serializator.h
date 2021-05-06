@@ -498,38 +498,64 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct statement_serializator<in_t<L, A>, void> {
-            using statement_type = in_t<L, A>;
+        struct statement_serializator<dynamic_in_t<L, A>, void> {
+            using statement_type = dynamic_in_t<L, A>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.l, context);
+                auto leftString = serialize(c.left, context);
                 ss << leftString << " " << static_cast<std::string>(c) << " ";
                 auto newContext = context;
                 newContext.use_parentheses = true;
-                ss << serialize(c.arg, newContext);
+                ss << serialize(c.argument, newContext);
                 return ss.str();
             }
         };
 
         template<class L, class E>
-        struct statement_serializator<in_t<L, std::vector<E>>, void> {
-            using statement_type = in_t<L, std::vector<E>>;
+        struct statement_serializator<dynamic_in_t<L, std::vector<E>>, void> {
+            using statement_type = dynamic_in_t<L, std::vector<E>>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.l, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " ( ";
-                for(size_t index = 0; index < c.arg.size(); ++index) {
-                    auto& value = c.arg[index];
-                    ss << " " << serialize(value, context);
-                    if(index < c.arg.size() - 1) {
+                auto leftString = serialize(c.left, context);
+                ss << leftString << " " << static_cast<std::string>(c) << " (";
+                for(size_t index = 0; index < c.argument.size(); ++index) {
+                    auto& value = c.argument[index];
+                    ss << serialize(value, context);
+                    if(index < c.argument.size() - 1) {
                         ss << ", ";
                     }
                 }
-                ss << " )";
+                ss << ")";
+                return ss.str();
+            }
+        };
+
+        template<class L, class... Args>
+        struct statement_serializator<in_t<L, Args...>, void> {
+            using statement_type = in_t<L, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& c, const C& context) const {
+                std::stringstream ss;
+                auto leftString = serialize(c.left, context);
+                ss << leftString << " " << static_cast<std::string>(c) << " (";
+                std::vector<std::string> args;
+                using args_type = std::tuple<Args...>;
+                args.reserve(std::tuple_size<args_type>::value);
+                iterate_tuple(c.argument, [&args, &context](auto& v) {
+                    args.push_back(serialize(v, context));
+                });
+                for(size_t i = 0; i < args.size(); ++i) {
+                    ss << args[i];
+                    if(i < args.size() - 1) {
+                        ss << ", ";
+                    }
+                }
+                ss << ")";
                 return ss.str();
             }
         };
@@ -1083,9 +1109,9 @@ namespace sqlite_orm {
             return ss.str();
         }
 
-        template<class It>
-        struct statement_serializator<replace_range_t<It>, void> {
-            using statement_type = replace_range_t<It>;
+        template<class It, class L, class O>
+        struct statement_serializator<replace_range_t<It, L, O>, void> {
+            using statement_type = replace_range_t<It, L, O>;
 
             template<class C>
             std::string operator()(const statement_type& rep, const C& context) const {
@@ -1094,9 +1120,9 @@ namespace sqlite_orm {
             }
         };
 
-        template<class It>
-        struct statement_serializator<insert_range_t<It>, void> {
-            using statement_type = insert_range_t<It>;
+        template<class It, class L, class O>
+        struct statement_serializator<insert_range_t<It, L, O>, void> {
+            using statement_type = insert_range_t<It, L, O>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
@@ -1247,9 +1273,10 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& sel, const C& context) const {
                 std::stringstream ss;
-                if(!is_base_of_template<T, compound_operator>::value) {
+                const auto isCompoundOperator = is_base_of_template<T, compound_operator>::value;
+                if(!isCompoundOperator) {
                     if(!sel.highest_level) {
-                        ss << "( ";
+                        ss << "(";
                     }
                     ss << "SELECT ";
                 }
@@ -1260,16 +1287,15 @@ namespace sqlite_orm {
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << columnNames[i];
                     if(i < columnNames.size() - 1) {
-                        ss << ",";
+                        ss << ", ";
                     }
-                    ss << " ";
                 }
                 table_name_collector collector{[&context](std::type_index ti) {
                     return context.impl.find_table_name(ti);
                 }};
                 iterate_ast(sel.col, collector);
                 iterate_ast(sel.conditions, collector);
-                internal::join_iterator<Args...>()([&collector, &context](const auto& c) {
+                join_iterator<Args...>()([&collector, &context](const auto& c) {
                     using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
                     using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
                     auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
@@ -1278,8 +1304,8 @@ namespace sqlite_orm {
                                                                            std::move(tableAliasString));
                     collector.table_names.erase(tableNameWithAlias);
                 });
-                if(!collector.table_names.empty()) {
-                    ss << "FROM ";
+                if(!collector.table_names.empty() && !isCompoundOperator) {
+                    ss << " FROM ";
                     std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
                                                                                 collector.table_names.end());
                     for(size_t i = 0; i < tableNames.size(); ++i) {
@@ -1289,9 +1315,8 @@ namespace sqlite_orm {
                             ss << tableNamePair.second << " ";
                         }
                         if(int(i) < int(tableNames.size()) - 1) {
-                            ss << ",";
+                            ss << ", ";
                         }
-                        ss << " ";
                     }
                 }
                 iterate_tuple(sel.conditions, [&context, &ss](auto& v) {
@@ -1299,7 +1324,7 @@ namespace sqlite_orm {
                 });
                 if(!is_base_of_template<T, compound_operator>::value) {
                     if(!sel.highest_level) {
-                        ss << ") ";
+                        ss << ")";
                     }
                 }
                 return ss.str();

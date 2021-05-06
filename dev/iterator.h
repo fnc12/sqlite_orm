@@ -30,8 +30,10 @@ namespace sqlite_orm {
              *  call. When one finishes iterating it the pointer
              *  inside the shared_ptr is nulled out in all copies.
              */
-            std::shared_ptr<sqlite3_stmt*> stmt;
-            view_type& view;
+            std::shared_ptr<statement_finalizer> stmt;
+
+            // only null for the default constructed iterator
+            view_type* view;
 
             /**
              *  shared_ptr is used over unique_ptr here
@@ -39,11 +41,11 @@ namespace sqlite_orm {
              */
             std::shared_ptr<value_type> current;
 
-            void extract_value(std::unique_ptr<value_type>& temp) {
-                temp = std::make_unique<value_type>();
-                auto& storage = this->view.storage;
+            void extract_value() {
+                auto& storage = this->view->storage;
                 auto& impl = storage.template get_impl<value_type>();
-                object_from_column_builder<value_type> builder{*temp, *this->stmt};
+                this->current = std::make_shared<value_type>();
+                object_from_column_builder<value_type> builder{*this->current, this->stmt->get()};
                 impl.table.for_each_column(builder);
             }
 
@@ -53,54 +55,38 @@ namespace sqlite_orm {
             using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
 
+            iterator_t() : view(nullptr){};
+
             iterator_t(sqlite3_stmt* stmt_, view_type& view_) :
-                stmt(std::make_shared<sqlite3_stmt*>(stmt_)), view(view_) {
-                this->operator++();
+                stmt(std::make_shared<statement_finalizer>(stmt_)), view(&view_) {
+                next();
             }
 
-            iterator_t(const iterator_t&) = default;
-
-            iterator_t(iterator_t&&) = default;
-
-            iterator_t& operator=(iterator_t&&) = default;
-
-            iterator_t& operator=(const iterator_t&) = default;
-
-            ~iterator_t() {
-                if(this->stmt) {
-                    statement_finalizer f{*this->stmt};
-                }
-            }
-
-            value_type& operator*() {
-                if(!this->stmt) {
+            const value_type& operator*() const {
+                if(!this->stmt || !this->current) {
                     throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
-                }
-                if(!this->current) {
-                    std::unique_ptr<value_type> value;
-                    this->extract_value(value);
-                    this->current = move(value);
                 }
                 return *this->current;
             }
 
-            value_type* operator->() {
+            const value_type* operator->() const {
                 return &(this->operator*());
             }
 
-            void operator++() {
-                if(this->stmt && *this->stmt) {
-                    auto ret = sqlite3_step(*this->stmt);
+          private:
+            void next() {
+                this->current.reset();
+                if(this->stmt) {
+                    auto ret = sqlite3_step(this->stmt->get());
                     switch(ret) {
                         case SQLITE_ROW:
-                            this->current = nullptr;
+                            this->extract_value();
                             break;
-                        case SQLITE_DONE: {
-                            statement_finalizer f{*this->stmt};
-                            *this->stmt = nullptr;
-                        } break;
+                        case SQLITE_DONE:
+                            this->stmt.reset();
+                            break;
                         default: {
-                            auto db = this->view.connection.get();
+                            auto db = this->view->connection.get();
                             throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                                     sqlite3_errmsg(db));
                         }
@@ -108,20 +94,18 @@ namespace sqlite_orm {
                 }
             }
 
+          public:
+            iterator_t<V>& operator++() {
+                next();
+                return *this;
+            }
+
             void operator++(int) {
                 this->operator++();
             }
 
             bool operator==(const iterator_t& other) const {
-                if(this->stmt && other.stmt) {
-                    return *this->stmt == *other.stmt;
-                } else {
-                    if(!this->stmt && !other.stmt) {
-                        return true;
-                    } else {
-                        return false;
-                    }
-                }
+                return this->current == other.current;
             }
 
             bool operator!=(const iterator_t& other) const {

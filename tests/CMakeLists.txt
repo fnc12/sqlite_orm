@@ -23,6 +23,7 @@ add_executable(unit_tests
 	operators/is_null.cpp
 	operators/not_operator.cpp
 	operators/bitwise.cpp
+    operators/binary_operators.cpp
 	dynamic_order_by.cpp
 	prepared_statement_tests/select.cpp
 	prepared_statement_tests/get_all.cpp
@@ -43,6 +44,7 @@ add_executable(unit_tests
 	pragma_tests.cpp
 	simple_query.cpp
 	static_tests/is_bindable.cpp
+	static_tests/iterator_t.cpp
 	static_tests/arithmetic_operators_result_type.cpp
 	static_tests/tuple_conc.cpp
 	static_tests/node_tuple.cpp
@@ -70,6 +72,7 @@ add_executable(unit_tests
 	statement_serializator_tests/check.cpp
 	statement_serializator_tests/index.cpp
 	statement_serializator_tests/indexed_column.cpp
+    statement_serializator_tests/logical_operators.cpp
 	unique_cases/get_all_with_two_tables.cpp
 	unique_cases/prepare_get_all_with_case.cpp
 	unique_cases/index_named_table_with_fk.cpp
@@ -82,7 +85,8 @@ add_executable(unit_tests
 	transaction_tests.cpp
     json.cpp
     tuple_helper_tests.cpp
-	row_id.cpp
+    row_id.cpp
+    ast_iterator_tests.cpp
     unique_cases/issue663.cpp
     unique_cases/nonstandart_primary_key.cpp
     static_tests/has_some_type.cpp

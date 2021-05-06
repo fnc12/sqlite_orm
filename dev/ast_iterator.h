@@ -111,13 +111,24 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct ast_iterator<in_t<L, A>, void> {
-            using node_type = in_t<L, A>;
+        struct ast_iterator<dynamic_in_t<L, A>, void> {
+            using node_type = dynamic_in_t<L, A>;
 
             template<class C>
             void operator()(const node_type& in, const C& l) const {
-                iterate_ast(in.l, l);
-                iterate_ast(in.arg, l);
+                iterate_ast(in.left, l);
+                iterate_ast(in.argument, l);
+            }
+        };
+
+        template<class L, class... Args>
+        struct ast_iterator<in_t<L, Args...>, void> {
+            using node_type = in_t<L, Args...>;
+
+            template<class C>
+            void operator()(const node_type& in, const C& l) const {
+                iterate_ast(in.left, l);
+                iterate_ast(in.argument, l);
             }
         };
 

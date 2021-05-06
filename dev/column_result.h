@@ -44,6 +44,16 @@ namespace sqlite_orm {
             using type = F;
         };
 
+        template<class St, class L, class A>
+        struct column_result_t<St, dynamic_in_t<L, A>, void> {
+            using type = bool;
+        };
+
+        template<class St, class L, class... Args>
+        struct column_result_t<St, in_t<L, Args...>, void> {
+            using type = bool;
+        };
+
         /**
          *  Common case for all getter types. Getter types are defined in column.h file
          */
@@ -200,6 +210,11 @@ namespace sqlite_orm {
             static_assert(std::is_same<left_result, right_result>::value,
                           "Compound subselect queries must return same types");
             using type = left_result;
+        };
+
+        template<class St, class T>
+        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+            using type = bool;
         };
 
         /**

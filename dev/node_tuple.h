@@ -71,10 +71,18 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct node_tuple<in_t<L, A>, void> {
-            using node_type = in_t<L, A>;
+        struct node_tuple<dynamic_in_t<L, A>, void> {
+            using node_type = dynamic_in_t<L, A>;
             using left_tuple = typename node_tuple<L>::type;
             using right_tuple = typename node_tuple<A>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+
+        template<class L, class... Args>
+        struct node_tuple<in_t<L, Args...>, void> {
+            using node_type = in_t<L, Args...>;
+            using left_tuple = typename node_tuple<L>::type;
+            using right_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
