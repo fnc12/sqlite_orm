@@ -935,8 +935,9 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE ";
                 table_name_collector collector{[&context](std::type_index ti) {
-                    return context.impl.find_table_name(ti);
-                }, {}};
+                                                   return context.impl.find_table_name(ti);
+                                               },
+                                               {}};
                 iterate_ast(upd.set.assigns, collector);
                 if(!collector.table_names.empty()) {
                     if(collector.table_names.size() == 1) {
@@ -1291,8 +1292,9 @@ namespace sqlite_orm {
                     }
                 }
                 table_name_collector collector{[&context](std::type_index ti) {
-                    return context.impl.find_table_name(ti);
-                }, {}};
+                                                   return context.impl.find_table_name(ti);
+                                               },
+                                               {}};
                 iterate_ast(sel.col, collector);
                 iterate_ast(sel.conditions, collector);
                 join_iterator<Args...>()([&collector, &context](const auto& c) {
