@@ -3915,6 +3915,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct ifnull_string {
+            operator std::string() const {
+                return "IFNULL";
+            }
+        };
+
         struct date_string {
             operator std::string() const {
                 return "DATE";
@@ -4398,6 +4404,14 @@ namespace sqlite_orm {
     template<class R, class... Args>
     internal::core_function_t<R, internal::coalesce_string, Args...> coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
+     *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
+     */
+    template<class R, class X, class Y>
+    internal::core_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
+        return {std::make_tuple(std::move(x), std::move(y))};
     }
 
     /**
