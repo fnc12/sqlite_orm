@@ -3,7 +3,7 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::tuple_size
 
 #include "collate_argument.h"
 #include "constraints.h"
@@ -861,6 +861,26 @@ namespace sqlite_orm {
             cast_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
+        template<class... Args>
+        struct from_t {
+            using tuple_type = std::tuple<Args...>;
+        };
+
+        template<class T>
+        struct is_from : std::false_type {};
+    
+        template<class... Args>
+        struct is_from<from_t<Args...>> : std::true_type {};
+    }
+
+    /**
+     *  Explicit FROM function. Usage:
+     *  `storage.select(&User::id, from<User>());`
+     */
+    template<class... Args>
+    internal::from_t<Args...> from() {
+        static_assert(std::tuple_size<std::tuple<Args...>>::value > 0, "");
+        return {};
     }
 
     template<class T, typename = typename std::enable_if<std::is_base_of<internal::negatable_t, T>::value>::type>

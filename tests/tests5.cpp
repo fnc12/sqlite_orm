@@ -298,3 +298,32 @@ TEST_CASE("Dump") {
     REQUIRE(dumpUser2 == std::string{"{ id : '2', car_year : '2006' }"});
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+TEST_CASE("explicit from") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+    
+    storage.replace(User{1, "Bebe Rexha"});
+    
+    std::vector<decltype(User::id)> rows;
+    decltype(rows) expected;
+    SECTION("without conditions") {
+        rows = storage.select(&User::id, from<User>());
+        expected.push_back(1);
+    }
+    SECTION("with real conditions") {
+        rows = storage.select(&User::id, from<User>(), where(is_equal(&User::name, "Bebe Rexha")));
+        expected.push_back(1);
+    }
+    SECTION("with unreal conditions") {
+        rows = storage.select(&User::id, from<User>(), where(is_equal(&User::name, "Zara Larsson")));
+    }
+    REQUIRE(expected == rows);
+}

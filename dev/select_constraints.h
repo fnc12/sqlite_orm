@@ -40,17 +40,23 @@ namespace sqlite_orm {
 
             distinct_t(value_type value_) : value(std::move(value_)) {}
         };
+    
+        struct all_string {
+            operator std::string() const {
+                return "ALL";
+            }
+        };
 
         /**
          *  ALL generic container.
          */
         template<class T>
-        struct all_t {
-            T t;
-
-            operator std::string() const {
-                return "ALL";
-            }
+        struct all_t : all_string {
+            T value;
+            
+            all_t(T value_) :
+            value(std::move(value_))
+            {}
         };
 
         template<class... Args>
@@ -145,37 +151,40 @@ namespace sqlite_orm {
 
             union_t(left_type l, right_type r) : union_t(std::move(l), std::move(r), false) {}
         };
-
-        /**
-         *  EXCEPT object type.
-         */
-        template<class L, class R>
-        struct except_t : public compound_operator<L, R> {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
-
-            using super::super;
-
+    
+        struct except_string {
             operator std::string() const {
                 return "EXCEPT";
             }
         };
 
         /**
-         *  INTERSECT object type.
+         *  EXCEPT object type.
          */
         template<class L, class R>
-        struct intersect_t : public compound_operator<L, R> {
+        struct except_t : compound_operator<L, R>, except_string {
             using super = compound_operator<L, R>;
             using left_type = typename super::left_type;
             using right_type = typename super::right_type;
 
             using super::super;
+        };
 
+        struct intersect_string {
             operator std::string() const {
                 return "INTERSECT";
             }
+        };
+        /**
+         *  INTERSECT object type.
+         */
+        template<class L, class R>
+        struct intersect_t : compound_operator<L, R>, intersect_string {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+
+            using super::super;
         };
 
         /**
@@ -262,6 +271,7 @@ namespace sqlite_orm {
             static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
             static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
             static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
+            static_assert(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
         }
     }
 

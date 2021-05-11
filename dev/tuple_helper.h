@@ -184,7 +184,6 @@ namespace sqlite_orm {
 
         template<class T, class L>
         void iterate_tuple(const L& lambda) {
-            //            tuple_helper::iterator<T>()(lambda);
             tuple_helper::iterator<T>{}(lambda);
         }
 
