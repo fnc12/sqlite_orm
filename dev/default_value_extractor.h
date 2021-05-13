@@ -11,9 +11,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T>
-        std::string serialize(const T& t);
-
         /**
          *  This class is used in tuple interation to know whether tuple constains `default_value_t`
          *  constraint class and what it's value if it is

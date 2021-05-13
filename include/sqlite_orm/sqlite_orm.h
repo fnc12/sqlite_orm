@@ -362,7 +362,6 @@ namespace sqlite_orm {
 
         template<class T, class L>
         void iterate_tuple(const L& lambda) {
-            //            tuple_helper::iterator<T>()(lambda);
             tuple_helper::iterator<T>{}(lambda);
         }
 
@@ -1348,9 +1347,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T>
-        std::string serialize(const T& t);
-
         /**
          *  This class is used in tuple interation to know whether tuple constains `default_value_t`
          *  constraint class and what it's value if it is
@@ -2097,7 +2093,7 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::tuple_size
 
 // #include "collate_argument.h"
 
@@ -2990,6 +2986,26 @@ namespace sqlite_orm {
             cast_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
+        template<class... Args>
+        struct from_t {
+            using tuple_type = std::tuple<Args...>;
+        };
+
+        template<class T>
+        struct is_from : std::false_type {};
+
+        template<class... Args>
+        struct is_from<from_t<Args...>> : std::true_type {};
+    }
+
+    /**
+     *  Explicit FROM function. Usage:
+     *  `storage.select(&User::id, from<User>());`
+     */
+    template<class... Args>
+    internal::from_t<Args...> from() {
+        static_assert(std::tuple_size<std::tuple<Args...>>::value > 0, "");
+        return {};
     }
 
     template<class T, typename = typename std::enable_if<std::is_base_of<internal::negatable_t, T>::value>::type>
@@ -3508,6 +3524,9 @@ namespace sqlite_orm {
             }
         };
 
+        /**
+         * Used to store alias for expression
+         */
         template<class T, class E>
         struct as_t {
             using alias_type = T;
@@ -3605,19 +3624,13 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class... Args>
-        struct join_iterator {
-
-            template<class L>
-            void operator()(const L&) {
-                //..
-            }
-        };
+        struct join_iterator;
 
         template<>
         struct join_iterator<> {
 
             template<class L>
-            void operator()(const L&) {
+            void operator()(const L&) const {
                 //..
             }
         };
@@ -3627,7 +3640,7 @@ namespace sqlite_orm {
             using super = join_iterator<Tail...>;
 
             template<class L>
-            void operator()(const L& l) {
+            void operator()(const L& l) const {
                 this->super::operator()(l);
             }
         };
@@ -3638,7 +3651,7 @@ namespace sqlite_orm {
             using join_type = cross_join_t<T>;
 
             template<class L>
-            void operator()(const L& l) {
+            void operator()(const L& l) const {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -3650,7 +3663,7 @@ namespace sqlite_orm {
             using join_type = natural_join_t<T>;
 
             template<class L>
-            void operator()(const L& l) {
+            void operator()(const L& l) const {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -3662,7 +3675,7 @@ namespace sqlite_orm {
             using join_type = left_join_t<T, O>;
 
             template<class L>
-            void operator()(const L& l) {
+            void operator()(const L& l) const {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -3674,7 +3687,7 @@ namespace sqlite_orm {
             using join_type = join_t<T, O>;
 
             template<class L>
-            void operator()(const L& l) {
+            void operator()(const L& l) const {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -3686,7 +3699,7 @@ namespace sqlite_orm {
             using join_type = left_outer_join_t<T, O>;
 
             template<class L>
-            void operator()(const L& l) {
+            void operator()(const L& l) const {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -3698,7 +3711,7 @@ namespace sqlite_orm {
             using join_type = inner_join_t<T, O>;
 
             template<class L>
-            void operator()(const L& l) {
+            void operator()(const L& l) const {
                 l(*this);
                 this->super::operator()(l);
             }
@@ -4845,16 +4858,20 @@ namespace sqlite_orm {
             distinct_t(value_type value_) : value(std::move(value_)) {}
         };
 
+        struct all_string {
+            operator std::string() const {
+                return "ALL";
+            }
+        };
+
         /**
          *  ALL generic container.
          */
         template<class T>
-        struct all_t {
-            T t;
+        struct all_t : all_string {
+            T value;
 
-            operator std::string() const {
-                return "ALL";
-            }
+            all_t(T value_) : value(std::move(value_)) {}
         };
 
         template<class... Args>
@@ -4950,36 +4967,39 @@ namespace sqlite_orm {
             union_t(left_type l, right_type r) : union_t(std::move(l), std::move(r), false) {}
         };
 
-        /**
-         *  EXCEPT object type.
-         */
-        template<class L, class R>
-        struct except_t : public compound_operator<L, R> {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
-
-            using super::super;
-
+        struct except_string {
             operator std::string() const {
                 return "EXCEPT";
             }
         };
 
         /**
-         *  INTERSECT object type.
+         *  EXCEPT object type.
          */
         template<class L, class R>
-        struct intersect_t : public compound_operator<L, R> {
+        struct except_t : compound_operator<L, R>, except_string {
             using super = compound_operator<L, R>;
             using left_type = typename super::left_type;
             using right_type = typename super::right_type;
 
             using super::super;
+        };
 
+        struct intersect_string {
             operator std::string() const {
                 return "INTERSECT";
             }
+        };
+        /**
+         *  INTERSECT object type.
+         */
+        template<class L, class R>
+        struct intersect_t : compound_operator<L, R>, intersect_string {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+
+            using super::super;
         };
 
         /**
@@ -5066,6 +5086,7 @@ namespace sqlite_orm {
             static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
             static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
             static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
+            static_assert(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
         }
     }
 
@@ -8938,7 +8959,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, const L& l) const {
-                iterate_ast(a.t, l);
+                iterate_ast(a.value, l);
             }
         };
 
@@ -10086,7 +10107,7 @@ namespace sqlite_orm {
 
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
-#include <type_traits>  //  std::enable_if
+#include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -10709,7 +10730,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                auto expr = serialize(c.t, context);
+                auto expr = serialize(c.value, context);
                 ss << static_cast<std::string>(c) << "(" << expr << ")";
                 return ss.str();
             }
@@ -11676,34 +11697,37 @@ namespace sqlite_orm {
                 table_name_collector collector([&context](std::type_index ti) {
                     return context.impl.find_table_name(ti);
                 });
-                iterate_ast(sel.col, collector);
-                iterate_ast(sel.conditions, collector);
-                join_iterator<Args...>()([&collector, &context](const auto& c) {
-                    using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
-                    using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
-                    auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
-                    auto tableAliasString = alias_extractor<original_join_type>::get();
-                    std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
-                                                                           std::move(tableAliasString));
-                    collector.table_names.erase(tableNameWithAlias);
-                });
-                if(!collector.table_names.empty() && !isCompoundOperator) {
-                    ss << " FROM ";
-                    std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
-                                                                                collector.table_names.end());
-                    for(size_t i = 0; i < tableNames.size(); ++i) {
-                        auto& tableNamePair = tableNames[i];
-                        ss << "'" << tableNamePair.first << "' ";
-                        if(!tableNamePair.second.empty()) {
-                            ss << tableNamePair.second << " ";
-                        }
-                        if(int(i) < int(tableNames.size()) - 1) {
-                            ss << ", ";
+                const auto explicitFromItemsCount = count_tuple<std::tuple<Args...>, is_from>::value;
+                if(!explicitFromItemsCount) {
+                    iterate_ast(sel.col, collector);
+                    iterate_ast(sel.conditions, collector);
+                    join_iterator<Args...>()([&collector, &context](const auto& c) {
+                        using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
+                        using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
+                        auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
+                        auto tableAliasString = alias_extractor<original_join_type>::get();
+                        std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
+                                                                               std::move(tableAliasString));
+                        collector.table_names.erase(tableNameWithAlias);
+                    });
+                    if(!collector.table_names.empty() && !isCompoundOperator) {
+                        ss << " FROM ";
+                        std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
+                                                                                    collector.table_names.end());
+                        for(size_t i = 0; i < tableNames.size(); ++i) {
+                            auto& tableNamePair = tableNames[i];
+                            ss << "'" << tableNamePair.first << "' ";
+                            if(!tableNamePair.second.empty()) {
+                                ss << tableNamePair.second << " ";
+                            }
+                            if(int(i) < int(tableNames.size()) - 1) {
+                                ss << ", ";
+                            }
                         }
                     }
                 }
                 iterate_tuple(sel.conditions, [&context, &ss](auto& v) {
-                    ss << serialize(v, context);
+                    ss << ' ' << serialize(v, context);
                 });
                 if(!is_base_of_template<T, compound_operator>::value) {
                     if(!sel.highest_level) {
@@ -11772,15 +11796,44 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... Args>
+        struct statement_serializator<from_t<Args...>, void> {
+            using statement_type = from_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                using tuple = std::tuple<Args...>;
+
+                std::stringstream ss;
+                ss << "FROM ";
+                size_t index = 0;
+                iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
+                    using mapped_type = typename std::remove_pointer<decltype(itemPointer)>::type;
+
+                    auto aliasString = alias_extractor<mapped_type>::get();
+                    ss << "'" << context.impl.find_table_name(typeid(typename mapped_type_proxy<mapped_type>::type))
+                       << "'";
+                    if(aliasString.length()) {
+                        ss << " '" << aliasString << "'";
+                    }
+                    if(index < std::tuple_size<tuple>::value - 1) {
+                        ss << ", ";
+                    }
+                    ++index;
+                });
+                return ss.str();
+            }
+        };
+
         template<class T>
         struct statement_serializator<where_t<T>, void> {
             using statement_type = where_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& w, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(w) << " ";
-                auto whereString = serialize(w.c, context);
+                ss << static_cast<std::string>(statement) << " ";
+                auto whereString = serialize(statement.c, context);
                 ss << "( " << whereString << ") ";
                 return ss.str();
             }

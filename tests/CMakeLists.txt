@@ -73,6 +73,7 @@ add_executable(unit_tests
 	statement_serializator_tests/index.cpp
 	statement_serializator_tests/indexed_column.cpp
     statement_serializator_tests/logical_operators.cpp
+    statement_serializator_tests/select_constraints.cpp
 	unique_cases/get_all_with_two_tables.cpp
 	unique_cases/prepare_get_all_with_case.cpp
 	unique_cases/index_named_table_with_fk.cpp
