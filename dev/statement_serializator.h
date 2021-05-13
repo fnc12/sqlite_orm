@@ -1294,7 +1294,7 @@ namespace sqlite_orm {
                     return context.impl.find_table_name(ti);
                 });
                 const auto explicitFromItemsCount = count_tuple<std::tuple<Args...>, is_from>::value;
-                if(!explicitFromItemsCount){
+                if(!explicitFromItemsCount) {
                     iterate_ast(sel.col, collector);
                     iterate_ast(sel.conditions, collector);
                     join_iterator<Args...>()([&collector, &context](const auto& c) {
@@ -1395,31 +1395,32 @@ namespace sqlite_orm {
         template<class... Args>
         struct statement_serializator<from_t<Args...>, void> {
             using statement_type = from_t<Args...>;
-            
+
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 using tuple = std::tuple<Args...>;
-                
+
                 std::stringstream ss;
                 ss << "FROM ";
-                std::vector<std::string> tableNames;
-                tableNames.reserve(std::tuple_size<tuple>::value);
-                iterate_tuple<tuple>([&tableNames, &context](auto *itemPointer){
+                size_t index = 0;
+                iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
                     using mapped_type = typename std::remove_pointer<decltype(itemPointer)>::type;
-                    
-                    auto tableName = context.impl.find_table_name(typeid(mapped_type));
-                    tableNames.push_back(move(tableName));
-                });
-                for(size_t i = 0; i < tableNames.size(); ++i) {
-                    ss << tableNames[i];
-                    if(i < tableNames.size() - 1) {
+
+                    auto aliasString = alias_extractor<mapped_type>::get();
+                    ss << "'" << context.impl.find_table_name(typeid(typename mapped_type_proxy<mapped_type>::type))
+                       << "'";
+                    if(aliasString.length()) {
+                        ss << " '" << aliasString << "'";
+                    }
+                    if(index < std::tuple_size<tuple>::value - 1) {
                         ss << ", ";
                     }
-                }
+                    ++index;
+                });
                 return ss.str();
             }
         };
-    
+
         template<class T>
         struct statement_serializator<where_t<T>, void> {
             using statement_type = where_t<T>;

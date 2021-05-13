@@ -40,7 +40,7 @@ namespace sqlite_orm {
 
             distinct_t(value_type value_) : value(std::move(value_)) {}
         };
-    
+
         struct all_string {
             operator std::string() const {
                 return "ALL";
@@ -53,10 +53,8 @@ namespace sqlite_orm {
         template<class T>
         struct all_t : all_string {
             T value;
-            
-            all_t(T value_) :
-            value(std::move(value_))
-            {}
+
+            all_t(T value_) : value(std::move(value_)) {}
         };
 
         template<class... Args>
@@ -151,7 +149,7 @@ namespace sqlite_orm {
 
             union_t(left_type l, right_type r) : union_t(std::move(l), std::move(r), false) {}
         };
-    
+
         struct except_string {
             operator std::string() const {
                 return "EXCEPT";

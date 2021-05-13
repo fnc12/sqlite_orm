@@ -868,7 +868,7 @@ namespace sqlite_orm {
 
         template<class T>
         struct is_from : std::false_type {};
-    
+
         template<class... Args>
         struct is_from<from_t<Args...>> : std::true_type {};
     }

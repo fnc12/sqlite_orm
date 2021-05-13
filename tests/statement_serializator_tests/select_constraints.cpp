@@ -13,8 +13,18 @@ TEST_CASE("statement_serializator from_t") {
     auto storageImpl = storage_impl_t{table};
     using context_t = internal::serializator_context<storage_impl_t>;
     context_t context{storageImpl};
-    
-    auto expression = from<User>();
-    auto value = internal::serialize(expression, context);
-    REQUIRE(value == "FROM users");
+
+    std::string value;
+    decltype(value) expected;
+    SECTION("without alias") {
+        auto expression = from<User>();
+        value = internal::serialize(expression, context);
+        expected = "FROM 'users'";
+    }
+    SECTION("with alias") {
+        auto expression = from<alias_u<User>>();
+        value = internal::serialize(expression, context);
+        expected = "FROM 'users' 'u'";
+    }
+    REQUIRE(value == expected);
 }
