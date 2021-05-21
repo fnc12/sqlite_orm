@@ -8,7 +8,8 @@
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
-#include "negatable.h"
+#include "tags.h"
+#include "expression.h"
 
 namespace sqlite_orm {
 
@@ -58,11 +59,6 @@ namespace sqlite_orm {
 
         template<class T>
         struct is_offset<offset_t<T>> : std::true_type {};
-
-        /**
-         *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
-         */
-        struct condition_t {};
 
         /**
          *  Collated something
@@ -148,6 +144,11 @@ namespace sqlite_orm {
             using super::super;
         };
 
+        template<class L, class R>
+        and_condition_t<L, R> make_and_condition(L left, R right) {
+            return {std::move(left), std::move(right)};
+        }
+
         struct or_condition_string {
             operator std::string() const {
                 return "OR";
@@ -163,6 +164,11 @@ namespace sqlite_orm {
 
             using super::super;
         };
+
+        template<class L, class R>
+        or_condition_t<L, R> make_or_condition(L left, R right) {
+            return {std::move(left), std::move(right)};
+        }
 
         struct is_equal_string {
             operator std::string() const {
@@ -1106,16 +1112,30 @@ namespace sqlite_orm {
              class R,
              typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
                                                 std::is_base_of<internal::condition_t, R>::value>::type>
-    internal::and_condition_t<L, R> operator&&(L l, R r) {
-        return {std::move(l), std::move(r)};
+    auto operator&&(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
+    }
+
+    template<class L, class R>
+    auto and_(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
     }
 
     template<class L,
              class R,
              typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
                                                 std::is_base_of<internal::condition_t, R>::value>::type>
-    internal::or_condition_t<L, R> operator||(L l, R r) {
-        return {std::move(l), std::move(r)};
+    auto operator||(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
+    }
+
+    template<class L, class R>
+    auto or_(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
     }
 
     template<class T>

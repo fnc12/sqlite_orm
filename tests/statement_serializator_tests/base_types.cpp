@@ -5,28 +5,31 @@ using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator base types") {
     internal::serializator_context_base context;
+    std::string stringValue;
+    decltype(stringValue) expected;
     SECTION("std::string") {
         std::string str("calma");
         SECTION("no question") {
-            auto value = serialize(str, context);
-            REQUIRE(value == "\'calma\'");
+            stringValue = serialize(str, context);
+            expected = "\'calma\'";
         }
         SECTION("question") {
             context.replace_bindable_with_question = true;
-            auto value = serialize(str, context);
-            REQUIRE(value == "?");
+            stringValue = serialize(str, context);
+            expected = "?";
         }
     }
     SECTION("const char *") {
         const char* str = "baby";
         SECTION("no question") {
-            auto value = serialize(str, context);
-            REQUIRE(value == "\'baby\'");
+            stringValue = serialize(str, context);
+            expected = "\'baby\'";
         }
         SECTION("question") {
             context.replace_bindable_with_question = true;
-            auto value = serialize(str, context);
-            REQUIRE(value == "?");
+            stringValue = serialize(str, context);
+            expected = "?";
         }
     }
+    REQUIRE(stringValue == expected);
 }

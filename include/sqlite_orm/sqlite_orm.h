@@ -1374,11 +1374,16 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  //  std::nullopt
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
-// #include "negatable.h"
+// #include "tags.h"
 
 namespace sqlite_orm {
     namespace internal {
         struct negatable_t {};
+
+        /**
+         *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
+         */
+        struct condition_t {};
     }
 }
 
@@ -1567,48 +1572,6 @@ namespace sqlite_orm {
         template<class L, class... Args>
         struct in_t;
 
-        /**
-         *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
-         */
-        template<class T>
-        struct expression_t {
-            T value;
-
-            expression_t(T value_) : value(std::move(value_)) {}
-
-            template<class R>
-            assign_t<T, R> operator=(R r) const {
-                return {this->value, std::move(r)};
-            }
-
-            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
-                return {this->value, nullptr};
-            }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-            assign_t<T, std::nullopt_t> operator=(std::nullopt_t) const {
-                return {this->value, std::nullopt};
-            }
-#endif
-            template<class... Args>
-            in_t<T, Args...> in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), false};
-            }
-
-            template<class... Args>
-            in_t<T, Args...> not_in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), true};
-            }
-        };
-
-    }
-
-    /**
-     *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
-     * `storage.update(set(c(&User::name) = "Dua Lipa"));
-     */
-    template<class T>
-    internal::expression_t<T> c(T value) {
-        return {std::move(value)};
     }
 
     /**
@@ -2133,7 +2096,84 @@ namespace sqlite_orm {
     }
 }
 
-// #include "negatable.h"
+// #include "tags.h"
+
+// #include "expression.h"
+// #include "operators.h"
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<class L, class R>
+        struct and_condition_t;
+
+        template<class L, class R>
+        struct or_condition_t;
+
+        /**
+         *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
+         */
+        template<class T>
+        struct expression_t : condition_t {
+            T value;
+
+            expression_t(T value_) : value(std::move(value_)) {}
+
+            template<class R>
+            assign_t<T, R> operator=(R r) const {
+                return {this->value, std::move(r)};
+            }
+
+            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+                return {this->value, nullptr};
+            }
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+            assign_t<T, std::nullopt_t> operator=(std::nullopt_t) const {
+                return {this->value, std::nullopt};
+            }
+#endif
+            template<class... Args>
+            in_t<T, Args...> in(Args... args) const {
+                return {this->value, std::make_tuple(std::forward<Args>(args)...), false};
+            }
+
+            template<class... Args>
+            in_t<T, Args...> not_in(Args... args) const {
+                return {this->value, std::make_tuple(std::forward<Args>(args)...), true};
+            }
+
+            template<class R>
+            and_condition_t<T, R> and_(R right) const {
+                return {this->value, std::move(right)};
+            }
+
+            template<class R>
+            or_condition_t<T, R> or_(R right) const {
+                return {this->value, std::move(right)};
+            }
+        };
+
+        template<class T>
+        T get_from_expression(T value) {
+            return std::move(value);
+        }
+
+        template<class T>
+        T get_from_expression(expression_t<T> expression) {
+            return std::move(expression.value);
+        }
+    }
+
+    /**
+     *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
+     * `storage.update(set(c(&User::name) = "Dua Lipa"));
+     */
+    template<class T>
+    internal::expression_t<T> c(T value) {
+        return {std::move(value)};
+    }
+}
 
 namespace sqlite_orm {
 
@@ -2183,11 +2223,6 @@ namespace sqlite_orm {
 
         template<class T>
         struct is_offset<offset_t<T>> : std::true_type {};
-
-        /**
-         *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
-         */
-        struct condition_t {};
 
         /**
          *  Collated something
@@ -2273,6 +2308,11 @@ namespace sqlite_orm {
             using super::super;
         };
 
+        template<class L, class R>
+        and_condition_t<L, R> make_and_condition(L left, R right) {
+            return {std::move(left), std::move(right)};
+        }
+
         struct or_condition_string {
             operator std::string() const {
                 return "OR";
@@ -2288,6 +2328,11 @@ namespace sqlite_orm {
 
             using super::super;
         };
+
+        template<class L, class R>
+        or_condition_t<L, R> make_or_condition(L left, R right) {
+            return {std::move(left), std::move(right)};
+        }
 
         struct is_equal_string {
             operator std::string() const {
@@ -3231,16 +3276,30 @@ namespace sqlite_orm {
              class R,
              typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
                                                 std::is_base_of<internal::condition_t, R>::value>::type>
-    internal::and_condition_t<L, R> operator&&(L l, R r) {
-        return {std::move(l), std::move(r)};
+    auto operator&&(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
+    }
+
+    template<class L, class R>
+    auto and_(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
     }
 
     template<class L,
              class R,
              typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
                                                 std::is_base_of<internal::condition_t, R>::value>::type>
-    internal::or_condition_t<L, R> operator||(L l, R r) {
-        return {std::move(l), std::move(r)};
+    auto operator||(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
+    }
+
+    template<class L, class R>
+    auto or_(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
     }
 
     template<class T>
@@ -7136,7 +7195,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);
@@ -9642,7 +9701,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
