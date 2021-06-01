@@ -348,3 +348,27 @@ TEST_CASE("explicit from") {
     }
     REQUIRE(expected == rows);
 }
+
+TEST_CASE("issue730") {
+    struct Table {
+        int64_t id;
+        std::string a;
+        std::string b;
+        std::string c;
+    };
+    auto storage = make_storage({},
+                                make_table("table",
+                                           make_column("id", &Table::id),
+                                           make_column("a", &Table::a),
+                                           make_column("b", &Table::b),
+                                           make_column("c", &Table::c),
+                                           sqlite_orm::unique(&Table::a, &Table::b, &Table::c)));
+    storage.sync_schema();
+
+    auto rows = storage.select(asterisk<Table>());
+
+    using Rows = decltype(rows);
+    using ExpectedRows = std::vector<std::tuple<int64_t, std::string, std::string, std::string>>;
+
+    static_assert(std::is_same<Rows, ExpectedRows>::value, "");
+}

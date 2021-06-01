@@ -178,18 +178,29 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class SFINAE = void>
-        struct bindable_filter_single;
+        template<class T, template<class C> class F, class SFINAE = void>
+        struct tuple_filter_single;
 
-        template<class T>
-        struct bindable_filter_single<T, typename std::enable_if<is_bindable<T>::value>::type> {
+        template<class T, template<class C> class F>
+        struct tuple_filter_single<T, F, typename std::enable_if<F<T>::value>::type> {
             using type = std::tuple<T>;
         };
 
-        template<class T>
-        struct bindable_filter_single<T, typename std::enable_if<!is_bindable<T>::value>::type> {
+        template<class T, template<class C> class F>
+        struct tuple_filter_single<T, F, typename std::enable_if<!F<T>::value>::type> {
             using type = std::tuple<>;
         };
+
+        template<class T, template<class C> class F>
+        struct tuple_filter;
+
+        template<class... Args, template<class C> class F>
+        struct tuple_filter<std::tuple<Args...>, F> {
+            using type = typename conc_tuple<typename tuple_filter_single<Args, F>::type...>::type;
+        };
+
+        template<class T>
+        struct bindable_filter_single : tuple_filter_single<T, is_bindable> {};
 
         template<class T>
         struct bindable_filter;
