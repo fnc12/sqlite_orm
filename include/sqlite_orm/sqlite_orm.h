@@ -385,6 +385,15 @@ namespace sqlite_orm {
         struct count_tuple<std::tuple<H, Args...>, C> {
             static constexpr const int value = C<H>::value + count_tuple<std::tuple<Args...>, C>::value;
         };
+
+        template<class T, template<class C> class F>
+        struct tuple_transformer;
+
+        template<class... Args, template<class C> class F>
+        struct tuple_transformer<std::tuple<Args...>, F> {
+            using type = std::tuple<typename F<Args>::type...>;
+        };
+
     }
 }
 #pragma once
@@ -5544,18 +5553,29 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class SFINAE = void>
-        struct bindable_filter_single;
+        template<class T, template<class C> class F, class SFINAE = void>
+        struct tuple_filter_single;
 
-        template<class T>
-        struct bindable_filter_single<T, typename std::enable_if<is_bindable<T>::value>::type> {
+        template<class T, template<class C> class F>
+        struct tuple_filter_single<T, F, typename std::enable_if<F<T>::value>::type> {
             using type = std::tuple<T>;
         };
 
-        template<class T>
-        struct bindable_filter_single<T, typename std::enable_if<!is_bindable<T>::value>::type> {
+        template<class T, template<class C> class F>
+        struct tuple_filter_single<T, F, typename std::enable_if<!F<T>::value>::type> {
             using type = std::tuple<>;
         };
+
+        template<class T, template<class C> class F>
+        struct tuple_filter;
+
+        template<class... Args, template<class C> class F>
+        struct tuple_filter<std::tuple<Args...>, F> {
+            using type = typename conc_tuple<typename tuple_filter_single<Args, F>::type...>::type;
+        };
+
+        template<class T>
+        struct bindable_filter_single : tuple_filter_single<T, is_bindable> {};
 
         template<class T>
         struct bindable_filter;
@@ -6324,7 +6344,10 @@ namespace sqlite_orm {
              */
             template<class T, class... Args>
             struct table_types<table_t<T, Args...>> {
-                using type = std::tuple<typename Args::field_type...>;
+                using args_tuple = std::tuple<Args...>;
+                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
+
+                using type = typename tuple_transformer<columns_tuple, column_field_type>::type;
             };
 
             /**
@@ -6332,7 +6355,10 @@ namespace sqlite_orm {
              */
             template<class T, class... Args>
             struct table_types<table_without_rowid_t<T, Args...>> {
-                using type = std::tuple<typename Args::field_type...>;
+                using args_tuple = std::tuple<Args...>;
+                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
+
+                using type = typename tuple_transformer<columns_tuple, column_field_type>::type;
             };
 
             /**

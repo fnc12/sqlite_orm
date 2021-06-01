@@ -98,7 +98,10 @@ namespace sqlite_orm {
              */
             template<class T, class... Args>
             struct table_types<table_t<T, Args...>> {
-                using type = std::tuple<typename Args::field_type...>;
+                using args_tuple = std::tuple<Args...>;
+                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
+
+                using type = typename tuple_transformer<columns_tuple, column_field_type>::type;
             };
 
             /**
@@ -106,7 +109,10 @@ namespace sqlite_orm {
              */
             template<class T, class... Args>
             struct table_types<table_without_rowid_t<T, Args...>> {
-                using type = std::tuple<typename Args::field_type...>;
+                using args_tuple = std::tuple<Args...>;
+                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
+
+                using type = typename tuple_transformer<columns_tuple, column_field_type>::type;
             };
 
             /**

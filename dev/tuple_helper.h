@@ -207,5 +207,14 @@ namespace sqlite_orm {
         struct count_tuple<std::tuple<H, Args...>, C> {
             static constexpr const int value = C<H>::value + count_tuple<std::tuple<Args...>, C>::value;
         };
+
+        template<class T, template<class C> class F>
+        struct tuple_transformer;
+
+        template<class... Args, template<class C> class F>
+        struct tuple_transformer<std::tuple<Args...>, F> {
+            using type = std::tuple<typename F<Args>::type...>;
+        };
+
     }
 }
