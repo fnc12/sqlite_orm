@@ -140,7 +140,4 @@ TEST_CASE("Integrity Check") {
 
     REQUIRE(storage.pragma.integrity_check() == "ok");
     REQUIRE(storage.pragma.integrity_check<std::string>(tablename) == "ok");
-
-    std::string_view tablename_string_view{"users"};
-    REQUIRE(storage.pragma.integrity_check<std::string_view>(tablename_string_view) == "ok");
 }
