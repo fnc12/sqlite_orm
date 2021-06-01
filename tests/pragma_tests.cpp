@@ -128,16 +128,19 @@ TEST_CASE("Integrity Check") {
     };
 
     auto filename = "integrity.sqlite";
-    auto tablename = "users";
     ::remove(filename);
 
-    auto storage = make_storage(filename, make_table(tablename,
-                                make_column("id", &User::id, primary_key()),
-                                make_column("name", &User::name),
-                                make_column("age", &User::age),
-                                make_column("email", &User::email, default_value("dummy@email.com"))));
+    std::string tablename = "users";
+    auto storage = make_storage(filename,
+                                make_table(tablename,
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("age", &User::age),
+                                           make_column("email", &User::email, default_value("dummy@email.com"))));
 
     REQUIRE(storage.pragma.integrity_check() == "ok");
+    REQUIRE(storage.pragma.integrity_check<std::string>(tablename) == "ok");
 
-    REQUIRE(storage.pragma.integrity_check(tablename) == "ok");
+    std::string_view tablename_string_view{"users"};
+    REQUIRE(storage.pragma.integrity_check<std::string_view>(tablename_string_view) == "ok");
 }

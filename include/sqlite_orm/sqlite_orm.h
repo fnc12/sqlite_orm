@@ -8247,7 +8247,8 @@ namespace sqlite_orm {
             return this->get_pragma<std::string>("integrity_check");
         }
 
-        std::string integrity_check(std::string table_name) {
+        template<class T>
+        std::string integrity_check(T table_name) {
             std::ostringstream oss;
             oss << "integrity_check(" << table_name << ")";
             return this->get_pragma<std::string>(oss.str());
