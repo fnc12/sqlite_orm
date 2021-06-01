@@ -4,7 +4,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("tuple_helper") {
+TEST_CASE("tuple_helper static") {
     SECTION("tuple_transformer") {
         struct Table {
             int64_t id;
