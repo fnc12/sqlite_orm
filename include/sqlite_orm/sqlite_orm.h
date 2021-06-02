@@ -7221,7 +7221,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);
@@ -9250,6 +9250,17 @@ namespace sqlite_orm {
             this->set_pragma("auto_vacuum", value);
         }
 
+        std::string integrity_check() {
+            return this->get_pragma<std::string>("integrity_check");
+        }
+
+        template<class T>
+        std::string integrity_check(T table_name) {
+            std::ostringstream oss;
+            oss << "integrity_check(" << table_name << ")";
+            return this->get_pragma<std::string>(oss.str());
+        }
+
       protected:
         friend struct storage_base;
 
@@ -9727,7 +9738,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {

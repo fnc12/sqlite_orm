@@ -118,3 +118,26 @@ TEST_CASE("busy_timeout") {
     value = storage.pragma.busy_timeout();
     REQUIRE(value == 0);
 }
+
+TEST_CASE("Integrity Check") {
+    struct User {
+        int id;
+        std::string name;
+        int age;
+        std::string email;
+    };
+
+    auto filename = "integrity.sqlite";
+    ::remove(filename);
+
+    std::string tablename = "users";
+    auto storage = make_storage(filename,
+                                make_table(tablename,
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("age", &User::age),
+                                           make_column("email", &User::email, default_value("dummy@email.com"))));
+
+    REQUIRE(storage.pragma.integrity_check() == "ok");
+    REQUIRE(storage.pragma.integrity_check<std::string>(tablename) == "ok");
+}
