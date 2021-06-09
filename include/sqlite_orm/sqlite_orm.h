@@ -9250,6 +9250,17 @@ namespace sqlite_orm {
             this->set_pragma("auto_vacuum", value);
         }
 
+        std::string integrity_check() {
+            return this->get_pragma<std::string>("integrity_check");
+        }
+
+        template<class T>
+        std::string integrity_check(T table_name) {
+            std::ostringstream oss;
+            oss << "integrity_check(" << table_name << ")";
+            return this->get_pragma<std::string>(oss.str());
+        }
+
       protected:
         friend struct storage_base;
 
