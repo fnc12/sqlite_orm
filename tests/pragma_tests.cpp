@@ -138,7 +138,7 @@ TEST_CASE("Integrity Check") {
                                            make_column("age", &User::age),
                                            make_column("email", &User::email, default_value("dummy@email.com"))));
     storage.sync_schema();
-    
+
     REQUIRE(storage.pragma.integrity_check() == "ok");
     REQUIRE(storage.pragma.integrity_check<std::string>(tablename) == "ok");
 }
