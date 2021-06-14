@@ -5925,7 +5925,8 @@ namespace sqlite_orm {
 
     namespace internal {
         inline void perform_step(sqlite3* db, sqlite3_stmt* stmt) {
-            if(sqlite3_step(stmt) == SQLITE_DONE) {
+            auto rc = sqlite3_step(stmt);
+            if(rc == SQLITE_DONE) {
                 //  done..
             } else {
                 throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -7863,7 +7864,8 @@ namespace sqlite_orm {
             void next() {
                 this->current.reset();
                 if(this->stmt) {
-                    auto ret = sqlite3_step(this->stmt->get());
+                    auto statementPointer = this->stmt->get();
+                    auto ret = sqlite3_step(statementPointer);
                     switch(ret) {
                         case SQLITE_ROW:
                             this->extract_value();
