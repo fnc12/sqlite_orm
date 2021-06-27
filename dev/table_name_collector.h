@@ -20,8 +20,12 @@ namespace sqlite_orm {
             find_table_name_t find_table_name;
             mutable table_name_set table_names;
 
+            table_name_collector() = default;
+
+            table_name_collector(find_table_name_t _find_table_name) : find_table_name(std::move(_find_table_name)) {}
+
             template<class T>
-            table_name_set operator()(const T&) const {
+            table_name_set operator()(const T &) const {
                 return {};
             }
 
@@ -33,19 +37,19 @@ namespace sqlite_orm {
             }
 
             template<class T, class F>
-            void operator()(const column_pointer<T, F>&) const {
+            void operator()(const column_pointer<T, F> &) const {
                 if(this->find_table_name) {
                     table_names.insert({this->find_table_name(typeid(T)), ""});
                 }
             }
 
             template<class T, class C>
-            void operator()(const alias_column_t<T, C>& a) const {
+            void operator()(const alias_column_t<T, C> &a) const {
                 (*this)(a.column, alias_extractor<T>::get());
             }
 
             template<class T>
-            void operator()(const count_asterisk_t<T>&) const {
+            void operator()(const count_asterisk_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     if(!tableName.empty()) {
@@ -55,7 +59,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const asterisk_t<T>&) const {
+            void operator()(const asterisk_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -63,7 +67,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const object_t<T>&) const {
+            void operator()(const object_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -71,7 +75,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const table_rowid_t<T>&) const {
+            void operator()(const table_rowid_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -79,7 +83,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const table_oid_t<T>&) const {
+            void operator()(const table_oid_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -87,7 +91,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const table__rowid_t<T>&) const {
+            void operator()(const table__rowid_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));

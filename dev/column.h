@@ -124,7 +124,7 @@ namespace sqlite_orm {
             struct is_column_with_insertable_primary_key<
                 column_t<O, T, Op...>,
                 typename std::enable_if<(tuple_helper::tuple_contains_type<
-                                         constraints::primary_key_t<>,
+                                         primary_key_t<>,
                                          typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
                 static constexpr bool value = is_primary_key_insertable<column_type>::value;
@@ -143,7 +143,7 @@ namespace sqlite_orm {
             struct is_column_with_noninsertable_primary_key<
                 column_t<O, T, Op...>,
                 typename std::enable_if<(tuple_helper::tuple_contains_type<
-                                         constraints::primary_key_t<>,
+                                         primary_key_t<>,
                                          typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
                 static constexpr bool value = !is_primary_key_insertable<column_type>::value;
@@ -206,7 +206,7 @@ namespace sqlite_orm {
              class... Op>
     internal::column_t<O, T, const T& (O::*)() const, void (O::*)(T), Op...>
     make_column(const std::string& name, T O::*m, Op... constraints) {
-        static_assert(constraints::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         static_assert(internal::is_field_member_pointer<T O::*>::value,
                       "second argument expected as a member field pointer, not member function pointer");
@@ -230,7 +230,7 @@ namespace sqlite_orm {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(constraints::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
     }
@@ -253,7 +253,7 @@ namespace sqlite_orm {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(constraints::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
     }

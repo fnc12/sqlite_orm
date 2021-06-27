@@ -6,7 +6,6 @@
 * rest of core functions(https://sqlite.org/lang_corefunc.html)
 * `ATTACH`
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
-* explicit FROM for subqueries in FROM argument
 * CREATE VIEW and other view operations https://sqlite.org/lang_createview.html
 * triggers
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)

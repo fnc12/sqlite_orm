@@ -298,3 +298,77 @@ TEST_CASE("Dump") {
     REQUIRE(dumpUser2 == std::string{"{ id : '2', car_year : '2006' }"});
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+TEST_CASE("explicit from") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+
+    storage.replace(User{1, "Bebe Rexha"});
+
+    std::vector<decltype(User::id)> rows;
+    decltype(rows) expected;
+    SECTION("without conditions") {
+        SECTION("without alias") {
+            rows = storage.select(&User::id, from<User>());
+        }
+        SECTION("with alias") {
+            using als = alias_u<User>;
+            rows = storage.select(alias_column<als>(&User::id), from<als>());
+        }
+        expected.push_back(1);
+    }
+    SECTION("with real conditions") {
+        SECTION("without alias") {
+            rows = storage.select(&User::id, from<User>(), where(is_equal(&User::name, "Bebe Rexha")));
+        }
+        SECTION("with alias") {
+            using als = alias_u<User>;
+            rows = storage.select(alias_column<als>(&User::id),
+                                  from<als>(),
+                                  where(is_equal(alias_column<als>(&User::name), "Bebe Rexha")));
+        }
+        expected.push_back(1);
+    }
+    SECTION("with unreal conditions") {
+        SECTION("without alias") {
+            rows = storage.select(&User::id, from<User>(), where(is_equal(&User::name, "Zara Larsson")));
+        }
+        SECTION("with alias") {
+            using als = alias_u<User>;
+            rows = storage.select(alias_column<als>(&User::id),
+                                  from<als>(),
+                                  where(is_equal(alias_column<als>(&User::name), "Zara Larsson")));
+        }
+    }
+    REQUIRE(expected == rows);
+}
+
+TEST_CASE("issue730") {
+    struct Table {
+        int64_t id;
+        std::string a;
+        std::string b;
+        std::string c;
+    };
+    auto storage = make_storage({},
+                                make_table("table",
+                                           make_column("id", &Table::id),
+                                           make_column("a", &Table::a),
+                                           make_column("b", &Table::b),
+                                           make_column("c", &Table::c),
+                                           sqlite_orm::unique(&Table::a, &Table::b, &Table::c)));
+    storage.sync_schema();
+
+    auto rows = storage.select(asterisk<Table>());
+
+    using Rows = decltype(rows);
+    using ExpectedRows = std::vector<std::tuple<int64_t, std::string, std::string, std::string>>;
+
+    static_assert(std::is_same<Rows, ExpectedRows>::value, "");
+}

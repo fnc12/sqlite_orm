@@ -61,6 +61,9 @@ namespace sqlite_orm {
             }
         };
 
+        /**
+         * Used to store alias for expression
+         */
         template<class T, class E>
         struct as_t {
             using alias_type = T;

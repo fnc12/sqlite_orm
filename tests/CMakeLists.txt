@@ -23,6 +23,7 @@ add_executable(unit_tests
 	operators/is_null.cpp
 	operators/not_operator.cpp
 	operators/bitwise.cpp
+    operators/binary_operators.cpp
 	dynamic_order_by.cpp
 	prepared_statement_tests/select.cpp
 	prepared_statement_tests/get_all.cpp
@@ -51,6 +52,12 @@ add_executable(unit_tests
 	static_tests/count_tuple.cpp
 	static_tests/member_traits_tests.cpp
 	static_tests/select_return_type.cpp
+    static_tests/column.cpp
+    static_tests/same_or_void.cpp
+    static_tests/foreign_key.cpp
+    static_tests/tuple_filter_single.cpp
+    static_tests/storage_traits.cpp
+    static_tests/tuple_helper.cpp
 	constraints/default.cpp
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
@@ -69,6 +76,7 @@ add_executable(unit_tests
 	statement_serializator_tests/index.cpp
 	statement_serializator_tests/indexed_column.cpp
     statement_serializator_tests/logical_operators.cpp
+    statement_serializator_tests/select_constraints.cpp
 	unique_cases/get_all_with_two_tables.cpp
 	unique_cases/prepare_get_all_with_case.cpp
 	unique_cases/index_named_table_with_fk.cpp
@@ -80,7 +88,8 @@ add_executable(unit_tests
 	backup_tests.cpp
 	transaction_tests.cpp
     json.cpp
-	row_id.cpp
+    tuple_helper_tests.cpp
+    row_id.cpp
     ast_iterator_tests.cpp
     unique_cases/issue663.cpp
     unique_cases/nonstandart_primary_key.cpp
