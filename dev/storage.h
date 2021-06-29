@@ -705,6 +705,11 @@ namespace sqlite_orm {
                 return tImpl.table.name;
             }
 
+            template<class F, class O>
+            const std::string* column_name(F O::*memberPointer) const {
+                return this->impl.column_name(memberPointer);
+            }
+
           protected:
             template<class... Tss, class... Cols>
             sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {

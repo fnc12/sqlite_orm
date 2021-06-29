@@ -1330,7 +1330,11 @@ namespace sqlite_orm {
 
             template<class O, class F>
             std::string column_name(F O::*m) const {
-                return this->impl.column_name(m);
+                if(auto pointer = this->impl.column_name(m)) {
+                    return *pointer;
+                } else {
+                    return {};
+                }
             }
         };
 
@@ -7016,7 +7020,11 @@ namespace sqlite_orm {
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
                 iterate_tuple(pk.columns, [this, &res](auto& v) {
-                    res.push_back(this->find_column_name(v));
+                    if(auto columnName = this->find_column_name(v)) {
+                        res.push_back(*columnName);
+                    } else {
+                        res.push_back({});
+                    }
                 });
                 return res;
             }
@@ -7029,11 +7037,11 @@ namespace sqlite_orm {
                      class O,
                      typename = typename std::enable_if<std::is_member_pointer<F O::*>::value &&
                                                         !std::is_member_function_pointer<F O::*>::value>::type>
-            std::string find_column_name(F O::*m) const {
-                std::string res;
+            const std::string* find_column_name(F O::*m) const {
+                const std::string* res = nullptr;
                 this->template for_each_column_with_field_type<F>([&res, m](auto& c) {
                     if(c.member_pointer == m) {
-                        res = c.name;
+                        res = &c.name;
                     }
                 });
                 return res;
@@ -7044,13 +7052,13 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class G>
-            std::string find_column_name(G getter,
-                                         typename std::enable_if<is_getter<G>::value>::type* = nullptr) const {
-                std::string res;
+            const std::string* find_column_name(G getter,
+                                                typename std::enable_if<is_getter<G>::value>::type* = nullptr) const {
+                const std::string* res = nullptr;
                 using field_type = typename getter_traits<G>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, getter](auto& c) {
                     if(compare_any(c.getter, getter)) {
-                        res = c.name;
+                        res = &c.name;
                     }
                 });
                 return res;
@@ -7061,13 +7069,13 @@ namespace sqlite_orm {
              *  @return column name or empty string if nothing found.
              */
             template<class S>
-            std::string find_column_name(S setter,
-                                         typename std::enable_if<is_setter<S>::value>::type* = nullptr) const {
-                std::string res;
+            const std::string* find_column_name(S setter,
+                                                typename std::enable_if<is_setter<S>::value>::type* = nullptr) const {
+                const std::string* res = nullptr;
                 using field_type = typename setter_traits<S>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, setter](auto& c) {
                     if(compare_any(c.setter, setter)) {
-                        res = c.name;
+                        res = &c.name;
                     }
                 });
                 return res;
@@ -7389,7 +7397,7 @@ namespace sqlite_orm {
              *  `column_name` has SFINAE check for type equality but `column_name_simple` has not.
              */
             template<class O, class F>
-            std::string column_name_simple(F O::*m) const {
+            const std::string* column_name_simple(F O::*m) const {
                 return this->table.find_column_name(m);
             }
 
@@ -7398,8 +7406,8 @@ namespace sqlite_orm {
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m,
-                                    typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
+            const std::string* column_name(F O::*m,
+                                           typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
                 return this->table.find_column_name(m);
             }
 
@@ -7407,20 +7415,21 @@ namespace sqlite_orm {
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m,
-                                    typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
+            const std::string*
+            column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
                 return this->super::column_name(m);
             }
 
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F>& c,
-                                    typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
+            const std::string* column_name(const column_pointer<T, F>& c,
+                                           typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
                 return this->column_name_simple(c.field);
             }
 
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F>& c,
-                                    typename std::enable_if<!std::is_same<T, HH>::value>::type* = nullptr) const {
+            const std::string*
+            column_name(const column_pointer<T, F>& c,
+                        typename std::enable_if<!std::is_same<T, HH>::value>::type* = nullptr) const {
                 return this->super::column_name(c);
             }
 
@@ -10875,7 +10884,11 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << "'" << context.impl.find_table_name(typeid(T)) << "'.";
                 }
-                ss << "\"" << context.impl.column_name_simple(c.field) << "\"";
+                if(auto columnNamePointer = context.impl.column_name_simple(c.field)) {
+                    ss << "\"" << *columnNamePointer << "\"";
+                } else {
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                }
                 return ss.str();
             }
         };
@@ -11245,7 +11258,11 @@ namespace sqlite_orm {
                 constexpr const size_t columnsCount = std::tuple_size<columns_type_t>::value;
                 columnNames.reserve(columnsCount);
                 iterate_tuple(fk.columns, [&columnNames, &context](auto& v) {
-                    columnNames.push_back(context.impl.column_name(v));
+                    if(auto columnNamePointer = context.impl.column_name(v)) {
+                        columnNames.push_back(*columnNamePointer);
+                    } else {
+                        columnNames.push_back({});
+                    }
                 });
                 ss << "FOREIGN KEY(";
                 for(size_t i = 0; i < columnNames.size(); ++i) {
@@ -11266,7 +11283,11 @@ namespace sqlite_orm {
                     ss << '\'' << refTableName << '\'';
                 }
                 iterate_tuple(fk.references, [&referencesNames, &context](auto& v) {
-                    referencesNames.push_back(context.impl.column_name(v));
+                    if(auto columnNamePointer = context.impl.column_name(v)) {
+                        referencesNames.push_back(*columnNamePointer);
+                    } else {
+                        referencesNames.push_back({});
+                    }
                 });
                 ss << "(";
                 for(size_t i = 0; i < referencesNames.size(); ++i) {
@@ -12960,6 +12981,11 @@ namespace sqlite_orm {
                 this->assert_mapped_type<O>();
                 auto& tImpl = this->get_impl<O>();
                 return tImpl.table.name;
+            }
+
+            template<class F, class O>
+            const std::string* column_name(F O::*memberPointer) const {
+                return this->impl.column_name(memberPointer);
             }
 
           protected:

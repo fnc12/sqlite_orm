@@ -25,7 +25,11 @@ namespace sqlite_orm {
 
             template<class O, class F>
             std::string column_name(F O::*m) const {
-                return this->impl.column_name(m);
+                if(auto pointer = this->impl.column_name(m)) {
+                    return *pointer;
+                } else {
+                    return {};
+                }
             }
         };
 
