@@ -190,7 +190,11 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << "\"" << context.impl.find_table_name(typeid(O)) << "\".";
                 }
-                ss << "\"" << context.column_name(m) << "\"";
+                if(auto columnnamePointer = context.column_name(m)) {
+                    ss << "\"" << *columnnamePointer << "\"";
+                } else {
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                }
                 return ss.str();
             }
         };
@@ -342,7 +346,11 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << "'" << context.impl.find_table_name(typeid(T)) << "'.";
                 }
-                ss << "\"" << context.impl.column_name_simple(c.field) << "\"";
+                if(auto columnNamePointer = context.impl.column_name_simple(c.field)) {
+                    ss << "\"" << *columnNamePointer << "\"";
+                } else {
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                }
                 return ss.str();
             }
         };
@@ -643,11 +651,15 @@ namespace sqlite_orm {
                     res += "(";
                     decltype(columnsCount) columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
-                        res += context.column_name(column);
-                        if(columnIndex < columnsCount - 1) {
-                            res += ", ";
+                        if(auto columnNamePointer = context.column_name(column)) {
+                            res += *columnNamePointer;
+                            if(columnIndex < columnsCount - 1) {
+                                res += ", ";
+                            }
+                            ++columnIndex;
+                        } else {
+                            throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                         }
-                        ++columnIndex;
                     });
                     res += ")";
                 }
@@ -668,11 +680,15 @@ namespace sqlite_orm {
                     res += "(";
                     decltype(columnsCount) columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
-                        res += context.column_name(column);
-                        if(columnIndex < columnsCount - 1) {
-                            res += ", ";
+                        if(auto columnNamePointer = context.column_name(column)) {
+                            res += *columnNamePointer;
+                            if(columnIndex < columnsCount - 1) {
+                                res += ", ";
+                            }
+                            ++columnIndex;
+                        } else {
+                            throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                         }
-                        ++columnIndex;
                     });
                     res += ")";
                 }
@@ -712,7 +728,11 @@ namespace sqlite_orm {
                 constexpr const size_t columnsCount = std::tuple_size<columns_type_t>::value;
                 columnNames.reserve(columnsCount);
                 iterate_tuple(fk.columns, [&columnNames, &context](auto& v) {
-                    columnNames.push_back(context.impl.column_name(v));
+                    if(auto columnNamePointer = context.impl.column_name(v)) {
+                        columnNames.push_back(*columnNamePointer);
+                    } else {
+                        columnNames.push_back({});
+                    }
                 });
                 ss << "FOREIGN KEY(";
                 for(size_t i = 0; i < columnNames.size(); ++i) {
@@ -733,7 +753,11 @@ namespace sqlite_orm {
                     ss << '\'' << refTableName << '\'';
                 }
                 iterate_tuple(fk.references, [&referencesNames, &context](auto& v) {
-                    referencesNames.push_back(context.impl.column_name(v));
+                    if(auto columnNamePointer = context.impl.column_name(v)) {
+                        referencesNames.push_back(*columnNamePointer);
+                    } else {
+                        referencesNames.push_back({});
+                    }
                 });
                 ss << "(";
                 for(size_t i = 0; i < referencesNames.size(); ++i) {
@@ -1379,7 +1403,11 @@ namespace sqlite_orm {
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
                 iterate_tuple(statement.columns, [&columnNames, &context](auto& v) {
-                    columnNames.push_back(context.column_name(v.column_or_expression));
+                    if(auto columnNamePointer = context.column_name(v.column_or_expression)) {
+                        columnNames.push_back(*columnNamePointer);
+                    } else {
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    }
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << "'" << columnNames[i] << "'";
