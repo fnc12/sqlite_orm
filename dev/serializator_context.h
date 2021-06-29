@@ -10,8 +10,8 @@ namespace sqlite_orm {
             bool use_parentheses = true;
 
             template<class O, class F>
-            std::string column_name(F O::*) const {
-                return {};
+            const std::string* column_name(F O::*) const {
+                return nullptr;
             }
         };
 
@@ -24,12 +24,8 @@ namespace sqlite_orm {
             serializator_context(const impl_type& impl_) : impl(impl_) {}
 
             template<class O, class F>
-            std::string column_name(F O::*m) const {
-                if(auto pointer = this->impl.column_name(m)) {
-                    return *pointer;
-                } else {
-                    return {};
-                }
+            const std::string* column_name(F O::*m) const {
+                return this->impl.column_name(m);
             }
         };
 

@@ -1315,8 +1315,8 @@ namespace sqlite_orm {
             bool use_parentheses = true;
 
             template<class O, class F>
-            std::string column_name(F O::*) const {
-                return {};
+            const std::string* column_name(F O::*) const {
+                return nullptr;
             }
         };
 
@@ -1329,12 +1329,8 @@ namespace sqlite_orm {
             serializator_context(const impl_type& impl_) : impl(impl_) {}
 
             template<class O, class F>
-            std::string column_name(F O::*m) const {
-                if(auto pointer = this->impl.column_name(m)) {
-                    return *pointer;
-                } else {
-                    return {};
-                }
+            const std::string* column_name(F O::*m) const {
+                return this->impl.column_name(m);
             }
         };
 
@@ -10732,7 +10728,11 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << "\"" << context.impl.find_table_name(typeid(O)) << "\".";
                 }
-                ss << "\"" << context.column_name(m) << "\"";
+                if(auto columnnamePointer = context.column_name(m)) {
+                    ss << "\"" << *columnnamePointer << "\"";
+                } else {
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                }
                 return ss.str();
             }
         };
@@ -11189,11 +11189,15 @@ namespace sqlite_orm {
                     res += "(";
                     decltype(columnsCount) columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
-                        res += context.column_name(column);
-                        if(columnIndex < columnsCount - 1) {
-                            res += ", ";
+                        if(auto columnNamePointer = context.column_name(column)) {
+                            res += *columnNamePointer;
+                            if(columnIndex < columnsCount - 1) {
+                                res += ", ";
+                            }
+                            ++columnIndex;
+                        } else {
+                            throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                         }
-                        ++columnIndex;
                     });
                     res += ")";
                 }
@@ -11214,11 +11218,15 @@ namespace sqlite_orm {
                     res += "(";
                     decltype(columnsCount) columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
-                        res += context.column_name(column);
-                        if(columnIndex < columnsCount - 1) {
-                            res += ", ";
+                        if(auto columnNamePointer = context.column_name(column)) {
+                            res += *columnNamePointer;
+                            if(columnIndex < columnsCount - 1) {
+                                res += ", ";
+                            }
+                            ++columnIndex;
+                        } else {
+                            throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                         }
-                        ++columnIndex;
                     });
                     res += ")";
                 }
@@ -11933,7 +11941,11 @@ namespace sqlite_orm {
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
                 iterate_tuple(statement.columns, [&columnNames, &context](auto& v) {
-                    columnNames.push_back(context.column_name(v.column_or_expression));
+                    if(auto columnNamePointer = context.column_name(v.column_or_expression)) {
+                        columnNames.push_back(*columnNamePointer);
+                    } else {
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    }
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << "'" << columnNames[i] << "'";
