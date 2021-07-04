@@ -49,7 +49,7 @@ TEST_CASE("Iterate blob") {
     };
 
     struct TestComparator {
-        bool operator()(const Test &lhs, const Test &rhs) const {
+        bool operator()(const Test& lhs, const Test& rhs) const {
             return lhs.id == rhs.id && lhs.key == rhs.key;
         }
     };
@@ -67,11 +67,11 @@ TEST_CASE("Iterate blob") {
     db.replace(v);
 
     TestComparator testComparator;
-    for(auto &obj: db.iterate<Test>()) {
+    for(auto& obj: db.iterate<Test>()) {
         REQUIRE(testComparator(obj, v));
     }  //  test that view_t and iterator_t compile
 
-    for(const auto &obj: db.iterate<Test>()) {
+    for(const auto& obj: db.iterate<Test>()) {
         REQUIRE(testComparator(obj, v));
     }  //  test that view_t and iterator_t compile
 
@@ -85,7 +85,7 @@ TEST_CASE("Iterate blob") {
     }
     {
         int iterationsCount = 0;
-        for(auto &w: db.iterate<Test>(where(c(&Test::key) == key))) {
+        for(auto& w: db.iterate<Test>(where(c(&Test::key) == key))) {
             REQUIRE(testComparator(w, v));
             ++iterationsCount;
         }
@@ -114,23 +114,23 @@ TEST_CASE("Different getters and setters") {
             return this->name;
         }
 
-        void setNameByConstRef(const std::string &name_) {
+        void setNameByConstRef(const std::string& name_) {
             this->name = name_;
         }
 
-        const int &getConstIdByRefConst() const {
+        const int& getConstIdByRefConst() const {
             return this->id;
         }
 
-        void setIdByRef(int &id_) {
+        void setIdByRef(int& id_) {
             this->id = id_;
         }
 
-        const std::string &getConstNameByRefConst() const {
+        const std::string& getConstNameByRefConst() const {
             return this->name;
         }
 
-        void setNameByRef(std::string &name_) {
+        void setNameByRef(std::string& name_) {
             this->name = std::move(name_);
         }
     };
@@ -311,5 +311,79 @@ TEST_CASE("CustomFunctions") {
     };
     
     auto storage = make_storage({});
-    storage.create_scalar_function<Sqrt>();
+//    storage.create_scalar_function<Sqrt>();
+}
+
+TEST_CASE("explicit from") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)));
+    storage.sync_schema();
+
+    storage.replace(User{1, "Bebe Rexha"});
+
+    std::vector<decltype(User::id)> rows;
+    decltype(rows) expected;
+    SECTION("without conditions") {
+        SECTION("without alias") {
+            rows = storage.select(&User::id, from<User>());
+        }
+        SECTION("with alias") {
+            using als = alias_u<User>;
+            rows = storage.select(alias_column<als>(&User::id), from<als>());
+        }
+        expected.push_back(1);
+    }
+    SECTION("with real conditions") {
+        SECTION("without alias") {
+            rows = storage.select(&User::id, from<User>(), where(is_equal(&User::name, "Bebe Rexha")));
+        }
+        SECTION("with alias") {
+            using als = alias_u<User>;
+            rows = storage.select(alias_column<als>(&User::id),
+                                  from<als>(),
+                                  where(is_equal(alias_column<als>(&User::name), "Bebe Rexha")));
+        }
+        expected.push_back(1);
+    }
+    SECTION("with unreal conditions") {
+        SECTION("without alias") {
+            rows = storage.select(&User::id, from<User>(), where(is_equal(&User::name, "Zara Larsson")));
+        }
+        SECTION("with alias") {
+            using als = alias_u<User>;
+            rows = storage.select(alias_column<als>(&User::id),
+                                  from<als>(),
+                                  where(is_equal(alias_column<als>(&User::name), "Zara Larsson")));
+        }
+    }
+    REQUIRE(expected == rows);
+}
+
+TEST_CASE("issue730") {
+    struct Table {
+        int64_t id;
+        std::string a;
+        std::string b;
+        std::string c;
+    };
+    auto storage = make_storage({},
+                                make_table("table",
+                                           make_column("id", &Table::id),
+                                           make_column("a", &Table::a),
+                                           make_column("b", &Table::b),
+                                           make_column("c", &Table::c),
+                                           sqlite_orm::unique(&Table::a, &Table::b, &Table::c)));
+    storage.sync_schema();
+
+    auto rows = storage.select(asterisk<Table>());
+
+    using Rows = decltype(rows);
+    using ExpectedRows = std::vector<std::tuple<int64_t, std::string, std::string, std::string>>;
+
+    static_assert(std::is_same<Rows, ExpectedRows>::value, "");
 }

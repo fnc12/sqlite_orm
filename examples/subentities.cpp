@@ -42,7 +42,7 @@ auto storage =
                  make_table("marks", make_column("mark", &Mark::value), make_column("student_id", &Mark::student_id)));
 
 //  inserts or updates student and does the same with marks
-int addStudent(const Student &student) {
+int addStudent(const Student& student) {
     auto studentId = student.id;
     if(storage.count<Student>(where(c(&Student::id) == student.id))) {
         storage.update(student);
@@ -52,7 +52,7 @@ int addStudent(const Student &student) {
     //  insert all marks within a transaction
     storage.transaction([&] {
         storage.remove_all<Mark>(where(c(&Mark::student_id) == studentId));
-        for(auto &mark: student.marks) {
+        for(auto& mark: student.marks) {
             storage.insert(Mark{mark, studentId});
         }
         return true;
@@ -71,7 +71,7 @@ Student getStudent(int studentId) {
     return res;  //  must be moved automatically by compiler
 }
 
-int main(int, char **) {
+int main(int, char**) {
     decltype(Student::id) mikeId;
     decltype(Student::id) annaId;
 
@@ -97,7 +97,7 @@ int main(int, char **) {
         auto mike = getStudent(mikeId);
         cout << "mike = " << storage.dump(mike) << endl;
         cout << "mike.marks = ";
-        for(auto &m: mike.marks) {
+        for(auto& m: mike.marks) {
             cout << m << " ";
         }
         cout << endl;
@@ -105,7 +105,7 @@ int main(int, char **) {
         auto anna = getStudent(annaId);
         cout << "anna = " << storage.dump(anna) << endl;
         cout << "anna.marks = ";
-        for(auto &m: anna.marks) {
+        for(auto& m: anna.marks) {
             cout << m << " ";
         }
         cout << endl;

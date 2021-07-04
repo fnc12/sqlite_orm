@@ -4,7 +4,6 @@
 	"sources": [
 		"dev/start_macros.h",
 		"dev/error_code.h",
-		"dev/sqlite_type.h",
 		"dev/tuple_helper.h",
 		"dev/type_printer.h",
 		"dev/collate_argument.h",
@@ -20,12 +19,12 @@
 		"dev/core_functions.h",
 		"dev/typed_comparator.h",
 		"dev/select_constraints.h",
-		"dev/table_type.h",
 		"dev/table_info.h",
 		"dev/statement_finalizer.h",
 		"dev/arithmetic_tag.h",
 		"dev/statement_binder.h",
 		"dev/row_extractor.h",
+		"dev/util.h",
 		"dev/sync_schema_result.h",
 		"dev/index.h",
 		"dev/mapped_type_proxy.h",
@@ -35,8 +34,8 @@
 		"dev/storage_impl.h",
 		"dev/storage.h",
 		"dev/finish_macros.h",
-        "dev/node_tuple.h",
-        "dev/get_prepared_statement.h"
+		"dev/node_tuple.h",
+		"dev/get_prepared_statement.h"
 	],
 	"include_paths": ["dev"]
 }

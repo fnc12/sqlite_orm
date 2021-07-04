@@ -40,7 +40,7 @@ TEST_CASE("Prepared get pointer") {
     {
         auto statement = storage.prepare(get_pointer<User>(1));
         REQUIRE(get<0>(statement) == 1);
-        std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+        std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
         testSerializing(statement);
         SECTION("nothing") {
             //..
@@ -99,8 +99,8 @@ TEST_CASE("Prepared get pointer") {
     {
         storage.replace(Visit{1, /*userId*/ 2, 1000});
         auto statement = storage.prepare(get_pointer<UserAndVisit>(2, 1));
-        std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
-        std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
+        std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
+        std::ignore = get<1>(static_cast<const decltype(statement)&>(statement));
         REQUIRE(get<0>(statement) == 2);
         REQUIRE(get<1>(statement) == 1);
         {

@@ -44,7 +44,7 @@ init:
 
 install:
   - C:\Tools\vcpkg\vcpkg integrate install
-  - vcpkg install catch2:%PLATFORM%-windows
+  - vcpkg install sqlite3:%PLATFORM%-windows
 
 # scripts to run before build
 before_build:

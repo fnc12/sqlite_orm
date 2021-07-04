@@ -6,6 +6,7 @@
 #include <memory>  // std::shared_ptr
 
 #include "error_code.h"
+#include "util.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
 #include "connection_holder.h"
@@ -20,6 +21,14 @@ namespace sqlite_orm {
         using get_connection_t = std::function<internal::connection_ref()>;
 
         pragma_t(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
+
+        void busy_timeout(int value) {
+            this->set_pragma("busy_timeout", value);
+        }
+
+        int busy_timeout() {
+            return this->get_pragma<int>("busy_timeout");
+        }
 
         sqlite_orm::journal_mode journal_mode() {
             return this->get_pragma<sqlite_orm::journal_mode>("journal_mode");
@@ -57,6 +66,17 @@ namespace sqlite_orm {
             this->set_pragma("auto_vacuum", value);
         }
 
+        std::string integrity_check() {
+            return this->get_pragma<std::string>("integrity_check");
+        }
+
+        template<class T>
+        std::string integrity_check(T table_name) {
+            std::ostringstream oss;
+            oss << "integrity_check(" << table_name << ")";
+            return this->get_pragma<std::string>(oss.str());
+        }
+
       protected:
         friend struct storage_base;
 
@@ -66,25 +86,25 @@ namespace sqlite_orm {
         get_connection_t get_connection;
 
         template<class T>
-        T get_pragma(const std::string &name) {
+        T get_pragma(const std::string& name) {
             auto connection = this->get_connection();
             auto query = "PRAGMA " + name;
-            T res;
+            T result;
             auto db = connection.get();
             auto rc = sqlite3_exec(
                 db,
                 query.c_str(),
-                [](void *data, int argc, char **argv, char **) -> int {
-                    auto &res = *(T *)data;
+                [](void* data, int argc, char** argv, char**) -> int {
+                    auto& res = *(T*)data;
                     if(argc) {
                         res = row_extractor<T>().extract(argv[0]);
                     }
                     return 0;
                 },
-                &res,
+                &result,
                 nullptr);
             if(rc == SQLITE_OK) {
-                return res;
+                return result;
             } else {
                 throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                         sqlite3_errmsg(db));
@@ -96,34 +116,24 @@ namespace sqlite_orm {
          *  but it turns out that bindings in pragma statements are not supported.
          */
         template<class T>
-        void set_pragma(const std::string &name, const T &value, sqlite3 *db = nullptr) {
+        void set_pragma(const std::string& name, const T& value, sqlite3* db = nullptr) {
             auto con = this->get_connection();
             if(!db) {
                 db = con.get();
             }
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << value;
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
-            }
+            internal::perform_void_exec(db, ss.str());
         }
 
-        void set_pragma(const std::string &name, const sqlite_orm::journal_mode &value, sqlite3 *db = nullptr) {
+        void set_pragma(const std::string& name, const sqlite_orm::journal_mode& value, sqlite3* db = nullptr) {
             auto con = this->get_connection();
             if(!db) {
                 db = con.get();
             }
             std::stringstream ss;
             ss << "PRAGMA " << name << " = " << internal::to_string(value);
-            auto query = ss.str();
-            auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-            if(rc != SQLITE_OK) {
-                throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
-            }
+            internal::perform_void_exec(db, ss.str());
         }
     };
 }

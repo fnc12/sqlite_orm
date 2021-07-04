@@ -22,14 +22,14 @@ TEST_CASE("Cast") {
     {
         auto rows = storage.select(columns(cast<int>(&Student::scoreFloat), cast<int>(&Student::scoreString)));
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(std::get<0>(row) == 10);
         REQUIRE(std::get<1>(row) == 14);
     }
     {
         auto rows = storage.select(cast<std::string>(5));
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(row == "5");
     }
 }

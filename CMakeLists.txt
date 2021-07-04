@@ -1,5 +1,12 @@
-cmake_minimum_required (VERSION 3.2)
-cmake_policy(SET CMP0057 NEW)
+cmake_minimum_required (VERSION 3.14.0)
+
+# PACKAGE_VERSION is used by cpack scripts currently
+# Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
+
+set(sqlite_orm_VERSION "1.6.0")
+set(PACKAGE_VERSION ${sqlite_orm_VERSION})
+
+project("sqlite_orm" VERSION ${PACKAGE_VERSION})
 
 # Handling C++ standard version to use
 option(SQLITE_ORM_ENABLE_CXX_17 "Enable C++ 17" OFF)
@@ -15,40 +22,28 @@ endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 
-# PACKAGE_VERSION is used by cpack scripts currently
-# Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
-
-set(sqlite_orm_VERSION "1.3.0")
-set(PACKAGE_VERSION ${sqlite_orm_VERSION})
-
-project("sqlite_orm" VERSION ${PACKAGE_VERSION})
-
 set(CMAKE_VERBOSE_MAKEFILE ON)
 
 message(STATUS "Configuring ${CMAKE_PROJECT_NAME} ${sqlite_orm_VERSION}")
 
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/build/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
-# Build time options are defined here
-include(DefineInstallationPaths)
+include(CTest)
 
-# Generate the SqliteOrmConfig.cmake module
-include(GenerateConfigModule)
+### Dependencies
+add_subdirectory(dependencies)
 
-set(ProjectName "SqliteOrm")
-
-option(SqliteOrm_BuildTests "Build sqlite_orm unit tests" ON)
-
+### Main Build Targets
 set(SqliteOrm_INCLUDE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 add_library(sqlite_orm INTERFACE)
+add_library(sqlite_orm::sqlite_orm ALIAS sqlite_orm)
 
-target_sources(sqlite_orm INTERFACE
-	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>
-	$<INSTALL_INTERFACE:include/sqlite_orm/sqlite_orm.h>)
+find_package(SQLite3 REQUIRED)
+target_link_libraries(sqlite_orm INTERFACE SQLite::SQLite3)
 
-target_include_directories(sqlite_orm INTERFACE
-	$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-	$<INSTALL_INTERFACE:include>)
+target_sources(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include/sqlite_orm/sqlite_orm.h>)
+
+target_include_directories(sqlite_orm INTERFACE $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>)
 
 include(ucm)
 
@@ -58,6 +53,7 @@ if (MSVC)
 	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")	
 	add_compile_options(/EHsc)
 	add_compile_options(/Zc:__cplusplus)
+	add_compile_options(/MP) # Allow multi parrallel build
 
 	if ("${CMAKE_GENERATOR}" MATCHES "(Win64|x64)")
 		message(STATUS "Add /bigobj flag to compiler")
@@ -69,26 +65,14 @@ ucm_print_flags()
 message(STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
 
 # Tests
-include(CTest)
-if(SqliteOrm_BuildTests AND BUILD_TESTING)
-    enable_testing()
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
-add_subdirectory(examples)
+option(BUILD_EXAMPLES ON)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_EXAMPLES)
+	add_subdirectory(examples)
+endif()
 
-install(TARGETS sqlite_orm EXPORT "${ProjectName}Targets"
-	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development
-	PUBLIC_HEADER DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development)
-
-install(FILES "include/sqlite_orm/sqlite_orm.h"
-	DESTINATION "${INCLUDE_INSTALL_DIR}" COMPONENT Development)
-
-export(EXPORT "${ProjectName}Targets"
-	FILE "${CMAKE_CURRENT_BINARY_DIR}/${ProjectName}/${ProjectName}Targets.cmake"
-	NAMESPACE "sqlite_orm::")
-
-install(EXPORT "${ProjectName}Targets"
-	FILE "${ProjectName}Targets.cmake"
-	NAMESPACE "sqlite_orm::"
-	DESTINATION "${CMAKE_INSTALL_DIR}/sqlite_orm")
+### Packaging
+add_subdirectory(packaging)

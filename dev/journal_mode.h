@@ -4,7 +4,7 @@
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
 #include <algorithm>  //  std::transform
-#include <locale>  // std::toupper
+#include <cctype>  // std::toupper
 
 namespace sqlite_orm {
 
@@ -25,7 +25,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        inline const std::string &to_string(journal_mode j) {
+        inline const std::string& to_string(journal_mode j) {
             static std::string res[] = {
                 "DELETE",
                 "TRUNCATE",
@@ -37,19 +37,19 @@ namespace sqlite_orm {
             return res[static_cast<int>(j)];
         }
 
-        inline std::unique_ptr<journal_mode> journal_mode_from_string(const std::string &str) {
+        inline std::unique_ptr<journal_mode> journal_mode_from_string(const std::string& str) {
             std::string upper_str;
             std::transform(str.begin(), str.end(), std::back_inserter(upper_str), [](char c) {
                 return static_cast<char>(std::toupper(static_cast<int>(c)));
             });
-            static std::array<journal_mode, 6> all = {
+            static std::array<journal_mode, 6> all = {{
                 journal_mode::DELETE,
                 journal_mode::TRUNCATE,
                 journal_mode::PERSIST,
                 journal_mode::MEMORY,
                 journal_mode::WAL,
                 journal_mode::OFF,
-            };
+            }};
             for(auto j: all) {
                 if(to_string(j) == upper_str) {
                     return std::make_unique<journal_mode>(j);

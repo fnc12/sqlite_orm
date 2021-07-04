@@ -14,42 +14,6 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("Join iterator ctor compilation error") {
-    //  TODO: move to static tests
-    struct Tag {
-        int objectId;
-        std::string text;
-    };
-
-    auto storage =
-        make_storage("join_error.sqlite",
-                     make_table("tags", make_column("object_id", &Tag::objectId), make_column("text", &Tag::text)));
-    storage.sync_schema();
-
-    auto offs = 0;
-    auto lim = 5;
-    storage.select(columns(&Tag::text, count(&Tag::text)),
-                   group_by(&Tag::text),
-                   order_by(count(&Tag::text)).desc(),
-                   limit(offs, lim));
-    {
-        auto statement = storage.prepare(select(columns(&Tag::text, count(&Tag::text)),
-                                                group_by(&Tag::text),
-                                                order_by(count(&Tag::text)).desc(),
-                                                limit(offs, lim)));
-        REQUIRE(get<0>(statement) == offs);
-        REQUIRE(get<1>(statement) == lim);
-    }
-    {
-        auto statement = storage.prepare(select(columns(&Tag::text, count(&Tag::text)),
-                                                group_by(&Tag::text),
-                                                order_by(count(&Tag::text)).desc(),
-                                                limit(lim, offset(offs))));
-        REQUIRE(get<0>(statement) == lim);
-        REQUIRE(get<1>(statement) == offs);
-    }
-}
-
 TEST_CASE("Limits") {
     auto storage2 = make_storage("limits.sqlite");
     auto storage = storage2;
@@ -153,7 +117,7 @@ TEST_CASE("Explicit insert") {
 
     class Visit {
       public:
-        const int &id() const {
+        const int& id() const {
             return _id;
         }
 
@@ -161,7 +125,7 @@ TEST_CASE("Explicit insert") {
             _id = newValue;
         }
 
-        const time_t &createdAt() const {
+        const time_t& createdAt() const {
             return _createdAt;
         }
 
@@ -169,7 +133,7 @@ TEST_CASE("Explicit insert") {
             _createdAt = newValue;
         }
 
-        const int &usedId() const {
+        const int& usedId() const {
             return _usedId;
         }
 
@@ -238,7 +202,7 @@ TEST_CASE("Explicit insert") {
         storage.insert(user4, columns(&User::name));
         REQUIRE(false);
         //                throw std::runtime_error("Must not fire");
-    } catch(const std::system_error &) {
+    } catch(const std::system_error&) {
         //        cout << e.what() << endl;
     }
 }
@@ -292,14 +256,14 @@ TEST_CASE("Explicit insert") {
             try {
                 storage.insert(visit3, columns(&Visit::id));
                 REQUIRE(false);
-            } catch(const std::system_error &) {
+            } catch(const std::system_error&) {
                 //        cout << e.what() << endl;
             }
 
             try {
                 storage.insert(visit3, columns(&Visit::setId));
                 REQUIRE(false);
-            } catch(const std::system_error &) {
+            } catch(const std::system_error&) {
                 //        cout << e.what() << endl;
             }
         }
@@ -321,10 +285,10 @@ TEST_CASE("Custom collate") {
     storage.remove_all<Item>();
     storage.insert(Item{0, "Mercury"});
     storage.insert(Item{0, "Mars"});
-    storage.create_collation("ototo", [](int, const void *lhs, int, const void *rhs) {
-        return strcmp((const char *)lhs, (const char *)rhs);
+    storage.create_collation("ototo", [](int, const void* lhs, int, const void* rhs) {
+        return strcmp((const char*)lhs, (const char*)rhs);
     });
-    storage.create_collation("alwaysequal", [](int, const void *, int, const void *) {
+    storage.create_collation("alwaysequal", [](int, const void*, int, const void*) {
         return 0;
     });
     auto rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
@@ -339,13 +303,13 @@ TEST_CASE("Custom collate") {
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
         REQUIRE(false);
-    } catch(const std::system_error &e) {
+    } catch(const std::system_error& e) {
         //        cout << e.what() << endl;
     }
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
         REQUIRE(false);
-    } catch(const std::system_error &e) {
+    } catch(const std::system_error& e) {
         //        cout << e.what() << endl;
     }
     rows = storage.select(&Item::name,
@@ -356,6 +320,32 @@ TEST_CASE("Custom collate") {
                           where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                           order_by(&Item::name).collate("alwaysequal"));
     REQUIRE(rows.size() == static_cast<size_t>(storage.count<Item>()));
+}
+
+TEST_CASE("collate") {
+    struct User {
+        int id = 0;
+        std::string firstName;
+
+        bool operator==(const User& user) const {
+            return this->id == user.id && this->firstName == user.firstName;
+        }
+    };
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("first_name", &User::firstName)));
+    storage.sync_schema();
+    User user1{1, "HELLO"};
+    User user2{2, "Hello"};
+    User user3{3, "HEllo"};
+
+    storage.replace(user1);
+    storage.replace(user2);
+    storage.replace(user3);
+
+    auto rows = storage.get_all<User>(where(is_equal(&User::firstName, "hello").collate_nocase()));
+    std::vector<User> expected = {user1, user2, user3};
+    REQUIRE(rows == expected);
 }
 
 TEST_CASE("Vacuum") {

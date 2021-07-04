@@ -12,7 +12,7 @@ namespace GetAllWithTwoTablesInternal {
         std::string attributes;
     };
 
-    inline bool operator==(const Item &lhs, const Item &rhs) {
+    inline bool operator==(const Item& lhs, const Item& rhs) {
         return lhs.id == rhs.id && lhs.attributes == rhs.attributes;
     }
 }
@@ -36,12 +36,26 @@ TEST_CASE("get_all with two tables") {
     storage.replace(item2);
     storage.replace(item3);
 
-    std::vector<Pattern> patterns;
-    patterns.push_back({"n"});
-    patterns.push_back({"w"});
+    SECTION("straight insert") {
+        std::vector<Pattern> patterns;
+        patterns.push_back({"n"});
+        patterns.push_back({"w"});
 
-    storage.begin_transaction();
-    storage.insert_range(patterns.begin(), patterns.end());
+        storage.begin_transaction();
+        storage.insert_range(patterns.begin(), patterns.end());
+    }
+    SECTION("pointers insert") {
+        std::vector<std::unique_ptr<Pattern>> patterns;
+        patterns.push_back(std::make_unique<Pattern>(Pattern{"n"}));
+        patterns.push_back(std::make_unique<Pattern>(Pattern{"w"}));
+
+        storage.begin_transaction();
+        storage.insert_range<Pattern>(patterns.begin(),
+                                      patterns.end(),
+                                      [](const std::unique_ptr<Pattern>& pointer) -> const Pattern& {
+                                          return *pointer;
+                                      });
+    }
     {
         auto rows = storage.select(&Item::id, where(like(&Item::attributes, conc(conc("%", &Pattern::value), "%"))));
         REQUIRE_THAT(rows, UnorderedEquals<int>({1, 2}));

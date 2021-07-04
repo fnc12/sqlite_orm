@@ -16,8 +16,6 @@ SQLite ORM light header only library for modern C++
 | [`master`](https://github.com/fnc12/sqlite_orm/tree/master) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=master&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/) |
 | [`dev`](https://github.com/fnc12/sqlite_orm/tree/dev) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=dev)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=dev&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/tree/dev) |
 
-<a href="https://tracking.gitads.io/?repo=sqlite_orm"><img src="https://images.gitads.io/sqlite_orm" alt="GitAds"/></a>
-
 # Advantages
 
 * **No raw string queries**
@@ -44,7 +42,6 @@ SQLite ORM light header only library for modern C++
 * **Easy integration** - single header only lib.
 * **The only dependency** - libsqlite3
 * **C++ standard code style**
-* **No undefined behaviour** - if something goes wrong lib throws an exception
 * **In memory database support** - provide `:memory:` or empty filename
 * **COLLATE support**
 * **Limits setting/getting support**
@@ -756,37 +753,56 @@ For more details please check the project [wiki](https://github.com/fnc12/sqlite
 
 # Installation
 
-Use popular package manager like [vcpkg](https://github.com/Microsoft/vcpkg) and just install it with `vcpkg install sqlite-orm` command.
+**Note**: Installation is not necessary if you plan to use the fetchContent method, see below in Usage.
 
-Or you can use below instructions  
-Note: If you build on Mac OSX, you need to install Catch2 project prior to the following installation  
+Use a popular package manager like [vcpkg](https://github.com/Microsoft/vcpkg) and just install it with the `vcpkg install sqlite-orm` command.
+
+Or you build it from source:
 
 ```bash
 git clone https://github.com/fnc12/sqlite_orm.git sqlite_orm
 cd sqlite_orm
-mkdir compile
-cd compile
-cmake ..
-cmake --build .
-sudo make install
+cmake -B build
+cmake --build build --target install
 ```
+You might need admin rights for the last command.
 
-then you can just include `sqlite_orm.h` that is installed in system-wide header files location or in case you use cmake build system you can just add below commands in CMakeLists.txt
+# Usage
+
+## CMake
+
+If you use cmake, there are two supported ways how to use it with cmake (if another works as well or should be supported, open an issue). 
+
+Either way you choose, the include path as well as the dependency sqlite3 will be set automatically on your target. So usage is straight forward, but you need to have installed sqlite3 on your system (see Requirements below)
+
+## Find Package
+
+If you have installed the lib system wide and it's in your PATH, you can use find_package to include it in cmake. It will make a target `sqlite_orm::sqlite_orm` available which you can link against. Have a look at examples/find_package for a full example.
 
 ```cmake
-find_package(sqlite_orm CONFIG REQUIRED)
+find_package(SqliteOrm REQUIRED)
+
 target_link_libraries(main PRIVATE sqlite_orm::sqlite_orm)
-target_include_directories(main PRIVATE ${SQLITE_ORM_INCLUDE_DIR})
 ```
 
-Or just put `include/sqlite_orm/sqlite_orm.h` into you folder with headers. Also it is recommended to keep project libraries' sources in separate folders cause there is no dominant normal dependency manager for C++ yet.
+## Fetch Content (Recommended)
+
+Alternatively, cmake can download the project directly from github during configure stage and therefore you don't need to install the lib before.
+Againt a target `sqlite_orm::sqlite_orm` will be available which you can link against. Have a look at examples/fetch_content for a full example.
+
+## No CMake
+
+If you want to use the lib directly with Make or something else, just set the inlcude path correctly (should be correct on Linux already), so `sqlite_orm/sqlite_orm.h` is found. As this is a header only lib, there is nothing more you have to do.
 
 # Requirements
 
 * C++14 compatible compiler (not C++11 cause of templated lambdas in the lib).
-* libsqlite3 linked to your binary
+* Sqlite3 installed on your system and in the path, so cmake can find it (or linked to you project if you don't use cmake)
 
-## Support on Beerpay
-Hey dude! Help me out for a couple of :beers:!
+# Video from conference
 
-[![Beerpay](https://beerpay.io/fnc12/sqlite_orm/badge.svg?style=beer-square)](https://beerpay.io/fnc12/sqlite_orm)  [![Beerpay](https://beerpay.io/fnc12/sqlite_orm/make-wish.svg?style=flat-square)](https://beerpay.io/fnc12/sqlite_orm?focus=wish)
+[![Video from conference](https://img.youtube.com/vi/ngsilquWgpo/0.jpg)](https://www.youtube.com/watch?v=ngsilquWgpo)
+
+# SqliteMan
+
+In case you need a native SQLite client for macOS or Windows 10 you can use SqliteMan https://sqliteman.dev. It is not a commercial. It is a free native client being developed by the maintainer of this repo.

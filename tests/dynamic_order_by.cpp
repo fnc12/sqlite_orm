@@ -116,7 +116,7 @@ TEST_CASE("Dynamic order by") {
     auto rows = storage.get_all<User>(orderBy);
     REQUIRE(rows.size() == 4);
     for(auto i = 0; i < int(rows.size()); ++i) {
-        auto &row = rows[i];
+        auto& row = rows[i];
         REQUIRE(row.id == expectedIds[i]);
     }
     orderBy.clear();

@@ -46,7 +46,7 @@ std::string GenderToString(Gender gender) {
  *  that's why I placed it separatedly. You can use any transformation type/form
  *  (for example BETTER_ENUM https://github.com/aantron/better-enums)
  */
-std::unique_ptr<Gender> GenderFromString(const std::string &s) {
+std::unique_ptr<Gender> GenderFromString(const std::string& s) {
     if(s == "female") {
         return std::make_unique<Gender>(Gender::Female);
     } else if(s == "male") {
@@ -83,7 +83,7 @@ namespace sqlite_orm {
     template<>
     struct statement_binder<Gender> {
 
-        int bind(sqlite3_stmt *stmt, int index, const Gender &value) {
+        int bind(sqlite3_stmt* stmt, int index, const Gender& value) {
             return statement_binder<std::string>().bind(stmt, index, GenderToString(value));
             //  or return sqlite3_bind_text(stmt, index++, GenderToString(value).c_str(), -1, SQLITE_TRANSIENT);
         }
@@ -95,7 +95,7 @@ namespace sqlite_orm {
      */
     template<>
     struct field_printer<Gender> {
-        std::string operator()(const Gender &t) const {
+        std::string operator()(const Gender& t) const {
             return GenderToString(t);
         }
     };
@@ -108,7 +108,7 @@ namespace sqlite_orm {
      */
     template<>
     struct row_extractor<Gender> {
-        Gender extract(const char *row_value) {
+        Gender extract(const char* row_value) {
             if(auto gender = GenderFromString(row_value)) {
                 return *gender;
             } else {
@@ -116,14 +116,14 @@ namespace sqlite_orm {
             }
         }
 
-        Gender extract(sqlite3_stmt *stmt, int columnIndex) {
+        Gender extract(sqlite3_stmt* stmt, int columnIndex) {
             auto str = sqlite3_column_text(stmt, columnIndex);
-            return this->extract((const char *)str);
+            return this->extract((const char*)str);
         }
     };
 }
 
-int main(int /* argc*/, char ** /*argv*/) {
+int main(int /* argc*/, char** /*argv*/) {
     using namespace sqlite_orm;
     auto storage = make_storage("",
                                 make_table("superheros",
@@ -150,7 +150,7 @@ int main(int /* argc*/, char ** /*argv*/) {
 
     //  print all superheros
     cout << "allSuperHeros = " << allSuperHeros.size() << endl;
-    for(auto &superHero: allSuperHeros) {
+    for(auto& superHero: allSuperHeros) {
         cout << storage.dump(superHero) << endl;
     }
 
@@ -161,7 +161,7 @@ int main(int /* argc*/, char ** /*argv*/) {
     auto males = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Male));
     cout << "males = " << males.size() << endl;
     assert(males.size() == 2);
-    for(auto &superHero: males) {
+    for(auto& superHero: males) {
         cout << storage.dump(superHero) << endl;
     }
 
@@ -169,7 +169,7 @@ int main(int /* argc*/, char ** /*argv*/) {
     auto females = storage.get_all<SuperHero>(where(c(&SuperHero::gender) == Gender::Female));
     assert(females.size() == 1);
     cout << "females = " << females.size() << endl;
-    for(auto &superHero: females) {
+    for(auto& superHero: females) {
         cout << storage.dump(superHero) << endl;
     }
 

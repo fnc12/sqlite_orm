@@ -49,7 +49,7 @@ int main() {
         //  HAVING count(name) < 2;
         auto rows =
             storage.get_all<Employee>(group_by(&Employee::name), having(lesser_than(count(&Employee::name), 2)));
-        for(auto &employee: rows) {
+        for(auto& employee: rows) {
             cout << storage.dump(employee) << endl;
         }
         cout << endl;
@@ -61,7 +61,7 @@ int main() {
         //  HAVING count(name) > 2;
         auto rows =
             storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
-        for(auto &employee: rows) {
+        for(auto& employee: rows) {
             cout << storage.dump(employee) << endl;
         }
         cout << endl;

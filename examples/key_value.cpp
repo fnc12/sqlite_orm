@@ -29,7 +29,7 @@ struct KeyValue {
     std::string value;
 };
 
-auto &getStorage() {
+auto& getStorage() {
     using namespace sqlite_orm;
     static auto storage = make_storage("key_value_example.sqlite",
                                        make_table("key_value",
@@ -38,13 +38,13 @@ auto &getStorage() {
     return storage;
 }
 
-void setValue(const std::string &key, const std::string &value) {
+void setValue(const std::string& key, const std::string& value) {
     using namespace sqlite_orm;
     KeyValue kv{key, value};
     getStorage().replace(kv);
 }
 
-std::string getValue(const std::string &key) {
+std::string getValue(const std::string& key) {
     using namespace sqlite_orm;
     if(auto kv = getStorage().get_pointer<KeyValue>(key)) {
         return kv->value;
@@ -57,7 +57,7 @@ int storedKeysCount() {
     return getStorage().count<KeyValue>();
 }
 
-int main(int, char **argv) {
+int main(int, char** argv) {
 
     cout << argv[0]
          << endl;  //  to know executable path in case if you need to access sqlite directly from sqlite client

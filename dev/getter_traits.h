@@ -32,16 +32,16 @@ namespace sqlite_orm {
         using getter_by_value = T (O::*)();
 
         template<class O, class T>
-        using getter_by_ref_const = T &(O::*)() const;
+        using getter_by_ref_const = T& (O::*)() const;
 
         template<class O, class T>
-        using getter_by_ref = T &(O::*)();
+        using getter_by_ref = T& (O::*)();
 
         template<class O, class T>
-        using getter_by_const_ref_const = const T &(O::*)() const;
+        using getter_by_const_ref_const = const T& (O::*)() const;
 
         template<class O, class T>
-        using getter_by_const_ref = const T &(O::*)();
+        using getter_by_const_ref = const T& (O::*)();
 
         /**
      *  Setters aliases
@@ -50,10 +50,10 @@ namespace sqlite_orm {
         using setter_by_value = void (O::*)(T);
 
         template<class O, class T>
-        using setter_by_ref = void (O::*)(T &);
+        using setter_by_ref = void (O::*)(T&);
 
         template<class O, class T>
-        using setter_by_const_ref = void (O::*)(const T &);
+        using setter_by_const_ref = void (O::*)(const T&);
 
         template<class T>
         struct is_getter : std::false_type {};

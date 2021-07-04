@@ -23,7 +23,7 @@ struct DetailedEmployee : public Employee {
     std::string birthDate;
 };
 
-int main(int, char **) {
+int main(int, char**) {
     using namespace sqlite_orm;
 
     auto storage = make_storage("insert.sqlite",
@@ -90,7 +90,7 @@ int main(int, char **) {
     //  and closes database. So triple insert will open and close the db three times.
     //  Transaction openes and closes the db only once.
     storage.transaction([&] {
-        for(auto &employee: otherEmployees) {
+        for(auto& employee: otherEmployees) {
             storage.insert(employee);
         }
         return true;  //  commit
@@ -106,7 +106,7 @@ int main(int, char **) {
     james.id = storage.insert(james);
 
     cout << "---------------------" << endl;
-    for(auto &employee: storage.iterate<Employee>()) {
+    for(auto& employee: storage.iterate<Employee>()) {
         cout << storage.dump(employee) << endl;
     }
 

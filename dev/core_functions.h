@@ -12,6 +12,9 @@
 
 namespace sqlite_orm {
 
+    using int64 = sqlite_int64;
+    using uint64 = sqlite_uint64;
+
     namespace internal {
 
         template<class T>
@@ -33,7 +36,19 @@ namespace sqlite_orm {
 
             args_type args;
 
-            core_function_t(args_type &&args_) : args(std::move(args_)) {}
+            core_function_t(args_type&& args_) : args(std::move(args_)) {}
+        };
+
+        struct typeof_string {
+            operator std::string() const {
+                return "TYPEOF";
+            }
+        };
+
+        struct unicode_string {
+            operator std::string() const {
+                return "UNICODE";
+            }
         };
 
         struct length_string {
@@ -57,6 +72,18 @@ namespace sqlite_orm {
         struct upper_string {
             operator std::string() const {
                 return "UPPER";
+            }
+        };
+
+        struct last_insert_rowid_string {
+            operator std::string() const {
+                return "LAST_INSERT_ROWID";
+            }
+        };
+
+        struct total_changes_string {
+            operator std::string() const {
+                return "TOTAL_CHANGES";
             }
         };
 
@@ -139,6 +166,12 @@ namespace sqlite_orm {
         struct coalesce_string {
             operator std::string() const {
                 return "COALESCE";
+            }
+        };
+
+        struct ifnull_string {
+            operator std::string() const {
+                return "IFNULL";
             }
         };
 
@@ -263,7 +296,97 @@ namespace sqlite_orm {
                 return "GROUP_CONCAT";
             }
         };
+#ifdef SQLITE_ENABLE_JSON1
+        struct json_string {
+            operator std::string() const {
+                return "JSON";
+            }
+        };
 
+        struct json_array_string {
+            operator std::string() const {
+                return "JSON_ARRAY";
+            }
+        };
+
+        struct json_array_length_string {
+            operator std::string() const {
+                return "JSON_ARRAY_LENGTH";
+            }
+        };
+
+        struct json_extract_string {
+            operator std::string() const {
+                return "JSON_EXTRACT";
+            }
+        };
+
+        struct json_insert_string {
+            operator std::string() const {
+                return "JSON_INSERT";
+            }
+        };
+
+        struct json_replace_string {
+            operator std::string() const {
+                return "JSON_REPLACE";
+            }
+        };
+
+        struct json_set_string {
+            operator std::string() const {
+                return "JSON_SET";
+            }
+        };
+
+        struct json_object_string {
+            operator std::string() const {
+                return "JSON_OBJECT";
+            }
+        };
+
+        struct json_patch_string {
+            operator std::string() const {
+                return "JSON_PATCH";
+            }
+        };
+
+        struct json_remove_string {
+            operator std::string() const {
+                return "JSON_REMOVE";
+            }
+        };
+
+        struct json_type_string {
+            operator std::string() const {
+                return "JSON_TYPE";
+            }
+        };
+
+        struct json_valid_string {
+            operator std::string() const {
+                return "JSON_VALID";
+            }
+        };
+
+        struct json_quote_string {
+            operator std::string() const {
+                return "JSON_QUOTE";
+            }
+        };
+
+        struct json_group_array_string {
+            operator std::string() const {
+                return "JSON_GROUP_ARRAY";
+            }
+        };
+
+        struct json_group_object_string {
+            operator std::string() const {
+                return "JSON_GROUP_OBJECT";
+            }
+        };
+#endif  //  SQLITE_ENABLE_JSON1
     }
 
     /**
@@ -319,6 +442,24 @@ namespace sqlite_orm {
     }
 
     /**
+     *  TYPEOF(x) function https://sqlite.org/lang_corefunc.html#typeof
+     */
+    template<class T>
+    internal::core_function_t<std::string, internal::typeof_string, T> typeof_(T t) {
+        std::tuple<T> args{std::forward<T>(t)};
+        return {move(args)};
+    }
+
+    /**
+     *  UNICODE(x) function https://sqlite.org/lang_corefunc.html#unicode
+     */
+    template<class T>
+    internal::core_function_t<int, internal::unicode_string, T> unicode(T t) {
+        std::tuple<T> args{std::forward<T>(t)};
+        return {move(args)};
+    }
+
+    /**
      *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
      */
     template<class T>
@@ -352,6 +493,20 @@ namespace sqlite_orm {
     internal::core_function_t<std::string, internal::upper_string, T> upper(T t) {
         std::tuple<T> args{std::forward<T>(t)};
         return {move(args)};
+    }
+
+    /**
+     *  LAST_INSERT_ROWID(x) function https://www.sqlite.org/lang_corefunc.html#last_insert_rowid
+     */
+    inline internal::core_function_t<int64, internal::last_insert_rowid_string> last_insert_rowid() {
+        return {{}};
+    }
+
+    /**
+     *  TOTAL_CHANGES() function https://sqlite.org/lang_corefunc.html#total_changes
+     */
+    inline internal::core_function_t<int, internal::total_changes_string> total_changes() {
+        return {{}};
     }
 
     /**
@@ -503,6 +658,14 @@ namespace sqlite_orm {
     template<class R, class... Args>
     internal::core_function_t<R, internal::coalesce_string, Args...> coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
+     *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
+     */
+    template<class R, class X, class Y>
+    internal::core_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
+        return {std::make_tuple(std::move(x), std::move(y))};
     }
 
     /**
@@ -675,7 +838,148 @@ namespace sqlite_orm {
         std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
         return {move(args)};
     }
+#ifdef SQLITE_ENABLE_JSON1
+    template<class X>
+    internal::core_function_t<std::string, internal::json_string, X> json(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
 
+    template<class... Args>
+    internal::core_function_t<std::string, internal::json_array_string, Args...> json_array(Args... args) {
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    template<class X>
+    internal::core_function_t<int, internal::json_array_length_string, X> json_array_length(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    template<class R, class X>
+    internal::core_function_t<R, internal::json_array_length_string, X> json_array_length(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    template<class X, class Y>
+    internal::core_function_t<int, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
+
+    template<class R, class X, class Y>
+    internal::core_function_t<R, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
+
+    template<class R, class X, class... Args>
+    internal::core_function_t<R, internal::json_extract_string, X, Args...> json_extract(X x, Args... args) {
+        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    template<class X, class... Args>
+    internal::core_function_t<std::string, internal::json_insert_string, X, Args...> json_insert(X x, Args... args) {
+        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                      "number of arguments in json_insert must be odd");
+        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    template<class X, class... Args>
+    internal::core_function_t<std::string, internal::json_replace_string, X, Args...> json_replace(X x, Args... args) {
+        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                      "number of arguments in json_replace must be odd");
+        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    template<class X, class... Args>
+    internal::core_function_t<std::string, internal::json_set_string, X, Args...> json_set(X x, Args... args) {
+        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                      "number of arguments in json_set must be odd");
+        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    template<class... Args>
+    internal::core_function_t<std::string, internal::json_object_string, Args...> json_object(Args... args) {
+        static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
+                      "number of arguments in json_object must be even");
+        std::tuple<Args...> t{std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    template<class X, class Y>
+    internal::core_function_t<std::string, internal::json_patch_string, X, Y> json_patch(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
+
+    template<class X, class... Args>
+    internal::core_function_t<std::string, internal::json_remove_string, X, Args...> json_remove(X x, Args... args) {
+        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    template<class R, class X, class... Args>
+    internal::core_function_t<R, internal::json_remove_string, X, Args...> json_remove(X x, Args... args) {
+        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
+        return {move(t)};
+    }
+
+    template<class X>
+    internal::core_function_t<std::string, internal::json_type_string, X> json_type(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    template<class R, class X>
+    internal::core_function_t<R, internal::json_type_string, X> json_type(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    template<class X, class Y>
+    internal::core_function_t<std::string, internal::json_type_string, X, Y> json_type(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
+
+    template<class R, class X, class Y>
+    internal::core_function_t<R, internal::json_type_string, X, Y> json_type(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
+
+    template<class X>
+    internal::core_function_t<bool, internal::json_valid_string, X> json_valid(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    template<class R, class X>
+    internal::core_function_t<R, internal::json_quote_string, X> json_quote(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    template<class X>
+    internal::core_function_t<std::string, internal::json_group_array_string, X> json_group_array(X x) {
+        std::tuple<X> args{std::forward<X>(x)};
+        return {move(args)};
+    }
+
+    template<class X, class Y>
+    internal::core_function_t<std::string, internal::json_group_object_string, X, Y> json_group_object(X x, Y y) {
+        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
+        return {move(args)};
+    }
+
+#endif  //  SQLITE_ENABLE_JSON1
     template<class L,
              class R,
              typename = typename std::enable_if<(std::is_base_of<internal::arithmetic_t, L>::value +

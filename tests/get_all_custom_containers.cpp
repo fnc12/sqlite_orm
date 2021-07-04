@@ -13,11 +13,11 @@ struct User {
 
 struct Comparator {
 
-    bool operator()(const User &lhs, const User &rhs) const {
+    bool operator()(const User& lhs, const User& rhs) const {
         return lhs.id == rhs.id && lhs.name == rhs.name;
     }
 
-    bool operator()(const std::unique_ptr<User> &lhs, const User &rhs) const {
+    bool operator()(const std::unique_ptr<User>& lhs, const User& rhs) const {
         if(lhs) {
             return this->operator()(*lhs, rhs);
         } else {
@@ -25,7 +25,7 @@ struct Comparator {
         }
     }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    bool operator()(const std::optional<User> &lhs, const User &rhs) const {
+    bool operator()(const std::optional<User>& lhs, const User& rhs) const {
         if(lhs.has_value()) {
             return this->operator()(*lhs, rhs);
         } else {
@@ -36,16 +36,16 @@ struct Comparator {
 };
 
 struct Tester {
-    const std::vector<User> &expected;
+    const std::vector<User>& expected;
 
     template<class E, class T>
-    void testContainer(const T &users) const {
+    void testContainer(const T& users) const {
         REQUIRE(std::equal(users.begin(), users.end(), this->expected.begin(), this->expected.end(), Comparator{}));
         static_assert(std::is_same<T, E>::value, "");
     }
 
     template<class E, class S, class T>
-    void testPreparedStatement(S &storage, const T &statement) const {
+    void testPreparedStatement(S& storage, const T& statement) const {
         this->testContainer<E>(storage.execute(statement));
     }
 };

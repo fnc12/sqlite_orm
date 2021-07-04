@@ -10,7 +10,7 @@ namespace BackupTests {
         std::string name;
     };
 
-    bool operator==(const User &lhs, const User &rhs) {
+    bool operator==(const User& lhs, const User& rhs) {
         return lhs.id == rhs.id && lhs.name == rhs.name;
     }
 
@@ -20,7 +20,7 @@ namespace BackupTests {
         std::string abilities;
     };
 
-    inline auto initStorageMarvel(const std::string &path) {
+    inline auto initStorageMarvel(const std::string& path) {
         using namespace sqlite_orm;
         auto storage = make_storage(path,
                                     make_table("marvel",
@@ -35,7 +35,7 @@ TEST_CASE("backup") {
     using namespace BackupTests;
     using Catch::Matchers::UnorderedEquals;
     const std::string usersTableName = "users";
-    auto makeStorage = [&usersTableName](const std::string &filename) {
+    auto makeStorage = [&usersTableName](const std::string& filename) {
         return make_storage(
             filename,
             make_table(usersTableName, make_column("id", &User::id, primary_key()), make_column("name", &User::name)));

@@ -5,8 +5,9 @@ using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator comparison operators") {
     internal::serializator_context_base context;
+    std::string value;
+    std::string expected;
     SECTION("lesser_than") {
-        std::string value;
         SECTION("func") {
             value = serialize(lesser_than(4, 5), context);
         }
@@ -16,10 +17,9 @@ TEST_CASE("statement_serializator comparison operators") {
         SECTION("operator") {
             value = serialize(c(4) < 5, context);
         }
-        REQUIRE(value == "(4 < 5)");
+        expected = "(4 < 5)";
     }
     SECTION("lesser_or_equal") {
-        std::string value;
         SECTION("func") {
             value = serialize(lesser_or_equal(10, 15), context);
         }
@@ -29,10 +29,9 @@ TEST_CASE("statement_serializator comparison operators") {
         SECTION("operator") {
             value = serialize(c(10) <= 15, context);
         }
-        REQUIRE(value == "(10 <= 15)");
+        expected = "(10 <= 15)";
     }
     SECTION("greater_than") {
-        std::string value;
         SECTION("func") {
             value = serialize(greater_than(1, 0.5), context);
         }
@@ -42,10 +41,9 @@ TEST_CASE("statement_serializator comparison operators") {
         SECTION("operator") {
             value = serialize(c(1) > 0.5, context);
         }
-        REQUIRE(value == "(1 > 0.5)");
+        expected = "(1 > 0.5)";
     }
     SECTION("greater_or_equal") {
-        std::string value;
         SECTION("func") {
             value = serialize(greater_or_equal(10, -5), context);
         }
@@ -55,10 +53,9 @@ TEST_CASE("statement_serializator comparison operators") {
         SECTION("operator") {
             value = serialize(c(10) >= -5, context);
         }
-        REQUIRE(value == "(10 >= -5)");
+        expected = "(10 >= -5)";
     }
     SECTION("is_equal") {
-        std::string value;
         SECTION("func") {
             value = serialize(is_equal("ototo", "Hey"), context);
         }
@@ -68,10 +65,9 @@ TEST_CASE("statement_serializator comparison operators") {
         SECTION("operator") {
             value = serialize(c("ototo") == "Hey", context);
         }
-        REQUIRE(value == "('ototo' = 'Hey')");
+        expected = "('ototo' = 'Hey')";
     }
     SECTION("is_not_equal") {
-        std::string value;
         SECTION("func") {
             value = serialize(is_not_equal("lala", 7), context);
         }
@@ -81,6 +77,7 @@ TEST_CASE("statement_serializator comparison operators") {
         SECTION("operator") {
             value = serialize(c("lala") != 7, context);
         }
-        REQUIRE(value == "('lala' != 7)");
+        expected = "('lala' != 7)";
     }
+    REQUIRE(value == expected);
 }
