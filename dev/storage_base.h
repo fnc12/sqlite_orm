@@ -215,11 +215,11 @@ namespace sqlite_orm {
             };
             
             template<class F>
-            int create_scalar_function(std::string name, std::function<F> function) {
+            int create_scalar_function() {
 //                auto function = new std::function<F>(F{});
-                auto functionRawPointer = (scalarFunctions[move(name)] = std::shared_ptr<void>(new std::function<F>(move(function)))).get();
+                auto functionRawPointer = (scalarFunctions[name] = std::shared_ptr<void>(new F())).get();
                 
-                //  create collations if db is open
+                //  create functions if db is open
                 if(this->connection->retain_count() > 0) {
                     auto db = this->connection->get();
                     return create_function_impl<F>()(db, functionRawPointer, name);
