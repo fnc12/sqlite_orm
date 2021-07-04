@@ -34,7 +34,7 @@ int main() {
     });
 
     //  list all students
-    for(auto &student: storage.iterate<Student>()) {
+    for(auto& student: storage.iterate<Student>()) {
         cout << storage.dump(student) << endl;
     }
     cout << endl;
@@ -60,7 +60,7 @@ int main() {
                                                .when(greater_or_equal(&Student::marks, 50), then("C"))
                                                .else_("Sorry!! Failed")
                                                .end()));
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << ' ' << std::get<1>(row) << ' ' << std::get<2>(row) << ' ' << std::get<3>(row)
                  << endl;
         }
@@ -69,7 +69,7 @@ int main() {
     {  // with alias
 
         struct GradeAlias : alias_tag {
-            static const std::string &get() {
+            static const std::string& get() {
                 static const std::string res = "Grade";
                 return res;
             }
@@ -94,7 +94,7 @@ int main() {
                                                               .when(greater_or_equal(&Student::marks, 50), then("C"))
                                                               .else_("Sorry!! Failed")
                                                               .end())));
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << ' ' << std::get<1>(row) << ' ' << std::get<2>(row) << ' ' << std::get<3>(row)
                  << endl;
         }

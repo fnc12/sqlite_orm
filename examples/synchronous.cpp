@@ -12,7 +12,7 @@ struct Query {
     uint16_t type;
 };
 
-int main(int, char **) {
+int main(int, char**) {
 
     using namespace sqlite_orm;
 

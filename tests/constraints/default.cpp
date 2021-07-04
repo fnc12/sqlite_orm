@@ -33,7 +33,7 @@ TEST_CASE("Default value") {
 
     auto emailDefault = emailColumn.default_value();
     REQUIRE(emailDefault);
-    auto &emailDefaultString = *emailDefault;
+    auto& emailDefaultString = *emailDefault;
     REQUIRE(emailDefaultString == "'example@email.com'");
 }
 

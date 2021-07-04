@@ -61,41 +61,6 @@ TEST_CASE("Issue 105") {
     storage.insert(d);
 }
 
-TEST_CASE("Row id") {
-    struct SimpleTable {
-        std::string letter;
-        std::string desc;
-    };
-
-    auto storage = make_storage(
-        "rowid.sqlite",
-        make_table("tbl1", make_column("letter", &SimpleTable::letter), make_column("desc", &SimpleTable::desc)));
-    storage.sync_schema();
-    storage.remove_all<SimpleTable>();
-
-    storage.insert(SimpleTable{"A", "first letter"});
-    storage.insert(SimpleTable{"B", "second letter"});
-    storage.insert(SimpleTable{"C", "third letter"});
-
-    auto rows = storage.select(columns(rowid(),
-                                       oid(),
-                                       _rowid_(),
-                                       rowid<SimpleTable>(),
-                                       oid<SimpleTable>(),
-                                       _rowid_<SimpleTable>(),
-                                       &SimpleTable::letter,
-                                       &SimpleTable::desc));
-    for(size_t i = 0; i < rows.size(); ++i) {
-        auto &row = rows[i];
-        REQUIRE(std::get<0>(row) == std::get<1>(row));
-        REQUIRE(std::get<1>(row) == std::get<2>(row));
-        REQUIRE(std::get<2>(row) == static_cast<int>(i + 1));
-        REQUIRE(std::get<2>(row) == std::get<3>(row));
-        REQUIRE(std::get<3>(row) == std::get<4>(row));
-        REQUIRE(std::get<4>(row) == std::get<5>(row));
-    }
-}
-
 TEST_CASE("Issue 87") {
     struct Data {
         uint8_t mDefault = 0; /**< 0=User or 1=Default*/
@@ -150,7 +115,7 @@ TEST_CASE("Wide string") {
         L"АаБбВвГгДдЕеЁёЖжЗзИиЙйКкЛлМмНнОоППРрСсТтУуФфХхЦцЧчШшЩщЪъЫыЬьЭэЮюЯя",  //  russian
         L"AaBbCcÇçDdEeFFGgĞğHhIıİiJjKkLlMmNnOoÖöPpRrSsŞşTtUuÜüVvYyZz",  //  turkish
     };
-    for(auto &expectedString: expectedStrings) {
+    for(auto& expectedString: expectedStrings) {
         auto id = storage.insert(Alphabet{0, expectedString});
         REQUIRE(storage.get<Alphabet>(id).letters == expectedString);
     }
@@ -193,7 +158,7 @@ TEST_CASE("Aggregate functions") {
             this->id = newValue;
         }
 
-        const int &getId() const {
+        const int& getId() const {
             return this->id;
         }
 
@@ -201,7 +166,7 @@ TEST_CASE("Aggregate functions") {
             this->name = newValue;
         }
 
-        const std::string &getName() const {
+        const std::string& getName() const {
             return this->name;
         }
 
@@ -209,7 +174,7 @@ TEST_CASE("Aggregate functions") {
             this->age = newValue;
         }
 
-        const int &getAge() const {
+        const int& getAge() const {
             return this->age;
         }
     };
@@ -348,8 +313,8 @@ TEST_CASE("Blob") {
     };
     using byte = char;
 
-    auto generateData = [](size_t size) -> byte * {
-        auto data = (byte *)::malloc(size * sizeof(byte));
+    auto generateData = [](size_t size) -> byte* {
+        auto data = (byte*)::malloc(size * sizeof(byte));
         for(int i = 0; i < static_cast<int>(size); ++i) {
             if((i + 1) % 10 == 0) {
                 data[i] = 0;
@@ -377,7 +342,7 @@ TEST_CASE("Blob") {
     {
         auto vd = storage.get_all<BlobData>();
         assert(vd.size() == 1);
-        auto &blob = vd.front();
+        auto& blob = vd.front();
         REQUIRE(blob.data.size() == size);
         REQUIRE(std::equal(data, data + size, blob.data.begin()));
     }
@@ -386,7 +351,7 @@ TEST_CASE("Blob") {
     {
         auto blobData = storage.select(&BlobData::data);
         assert(blobData.size() == 1);
-        auto &blob = blobData.front();
+        auto& blob = blobData.front();
         REQUIRE(blob.size() == size);
         REQUIRE(std::equal(data, data + size, blob.begin()));
     }
@@ -395,7 +360,7 @@ TEST_CASE("Blob") {
     {
         auto blobData = storage.select(columns(&BlobData::data));
         REQUIRE(blobData.size() == 1);
-        auto &blob = std::get<0>(blobData.front());
+        auto& blob = std::get<0>(blobData.front());
         REQUIRE(blob.size() == size);
         REQUIRE(std::equal(data, data + size, blob.begin()));
     }
@@ -449,94 +414,4 @@ TEST_CASE("Escape chars") {
     selena.name = "Gomez";
     storage.update(selena);
     storage.remove<Employee>(10);
-}
-
-TEST_CASE("Transaction guard") {
-    struct Object {
-        int id;
-        std::string name;
-    };
-
-    auto storage = make_storage(
-        "test_transaction_guard.sqlite",
-        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
-
-    storage.sync_schema();
-    storage.remove_all<Object>();
-
-    storage.insert(Object{0, "Jack"});
-
-    //  insert, call make a storage to cakk an exception and check that rollback was fired
-    auto countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-
-        storage.insert(Object{0, "John"});
-
-        storage.get<Object>(-1);
-
-        REQUIRE(false);
-    } catch(...) {
-        auto countNow = storage.count<Object>();
-
-        REQUIRE(countBefore == countNow);
-    }
-
-    //  check that one can call other transaction functions without exceptions
-    storage.transaction([&] {
-        return false;
-    });
-
-    //  commit explicitly and check that after exception data was saved
-    countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-        storage.insert(Object{0, "John"});
-        guard.commit();
-        storage.get<Object>(-1);
-        REQUIRE(false);
-    } catch(...) {
-        auto countNow = storage.count<Object>();
-
-        REQUIRE(countNow == countBefore + 1);
-    }
-
-    //  rollback explicitly
-    countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-        storage.insert(Object{0, "Michael"});
-        guard.rollback();
-        storage.get<Object>(-1);
-        REQUIRE(false);
-    } catch(...) {
-        auto countNow = storage.count<Object>();
-        REQUIRE(countNow == countBefore);
-    }
-
-    //  commit on exception
-    countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-        guard.commit_on_destroy = true;
-        storage.insert(Object{0, "Michael"});
-        storage.get<Object>(-1);
-        REQUIRE(false);
-    } catch(...) {
-        auto countNow = storage.count<Object>();
-        REQUIRE(countNow == countBefore + 1);
-    }
-
-    //  work witout exception
-    countBefore = storage.count<Object>();
-    try {
-        auto guard = storage.transaction_guard();
-        guard.commit_on_destroy = true;
-        storage.insert(Object{0, "Lincoln"});
-
-    } catch(...) {
-        throw std::runtime_error("Must not fire");
-    }
-    auto countNow = storage.count<Object>();
-    REQUIRE(countNow == countBefore + 1);
 }

@@ -9,7 +9,7 @@ TEST_CASE("Journal mode") {
     ::remove(filename);
     auto storage = make_storage(filename);
     auto storageCopy = storage;
-    decltype(storage) *stor = nullptr;
+    decltype(storage)* stor = nullptr;
     SECTION("Storage as is") {
         stor = &storage;
     };
@@ -63,7 +63,7 @@ TEST_CASE("Synchronous") {
     try {
         storage.pragma.synchronous(newValue);
         throw std::runtime_error("Must not fire");
-    } catch(const std::system_error &) {
+    } catch(const std::system_error&) {
         //  Safety level may not be changed inside a transaction
         REQUIRE(storage.pragma.synchronous() == value);
     }
@@ -98,4 +98,47 @@ TEST_CASE("Auto vacuum") {
 
     storage.pragma.auto_vacuum(2);
     REQUIRE(storage.pragma.auto_vacuum() == 2);
+}
+
+TEST_CASE("busy_timeout") {
+    auto storage = make_storage({});
+
+    auto value = storage.pragma.busy_timeout();
+    REQUIRE(value == 0);
+
+    storage.pragma.busy_timeout(10);
+    value = storage.pragma.busy_timeout();
+    REQUIRE(value == 10);
+
+    storage.pragma.busy_timeout(20);
+    value = storage.pragma.busy_timeout();
+    REQUIRE(value == 20);
+
+    storage.pragma.busy_timeout(-1);
+    value = storage.pragma.busy_timeout();
+    REQUIRE(value == 0);
+}
+
+TEST_CASE("Integrity Check") {
+    struct User {
+        int id;
+        std::string name;
+        int age;
+        std::string email;
+    };
+
+    auto filename = "integrity.sqlite";
+    ::remove(filename);
+
+    std::string tablename = "users";
+    auto storage = make_storage(filename,
+                                make_table(tablename,
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("name", &User::name),
+                                           make_column("age", &User::age),
+                                           make_column("email", &User::email, default_value("dummy@email.com"))));
+    storage.sync_schema();
+
+    REQUIRE(storage.pragma.integrity_check() == "ok");
+    REQUIRE(storage.pragma.integrity_check<std::string>(tablename) == "ok");
 }

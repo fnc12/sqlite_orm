@@ -322,23 +322,43 @@ TEST_CASE("Replace query") {
     REQUIRE(ototo.id == 100);
     REQUIRE(ototo.name == "Ototo");
 
-    auto initList = {
-        Object{
-            300,
-            "Iggy",
-        },
-        Object{
-            400,
-            "Azalea",
-        },
-    };
-    storage.replace_range(initList.begin(), initList.end());
-    REQUIRE(storage.count<Object>() == 4);
+    SECTION("straight") {
+        auto initList = {
+            Object{
+                300,
+                "Iggy",
+            },
+            Object{
+                400,
+                "Azalea",
+            },
+        };
+        storage.replace_range(initList.begin(), initList.end());
+        REQUIRE(storage.count<Object>() == 4);
 
-    //  test empty container
-    std::vector<Object> emptyVector;
-    storage.replace_range(emptyVector.begin(), emptyVector.end());
+        //  test empty container
+        std::vector<Object> emptyVector;
+        storage.replace_range(emptyVector.begin(), emptyVector.end());
+    }
+    SECTION("pointers") {
+        std::vector<std::unique_ptr<Object>> vector;
+        vector.push_back(std::make_unique<Object>(Object{300, "Iggy"}));
+        vector.push_back(std::make_unique<Object>(Object{400, "Azalea"}));
+        storage.replace_range<Object>(vector.begin(),
+                                      vector.end(),
+                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                          return *pointer;
+                                      });
+        REQUIRE(storage.count<Object>() == 4);
 
+        //  test empty container
+        std::vector<std::unique_ptr<Object>> emptyVector;
+        storage.replace_range<Object>(emptyVector.begin(),
+                                      emptyVector.end(),
+                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                          return *pointer;
+                                      });
+    }
     REQUIRE(storage.count<User>() == 0);
     storage.replace(User{10, "Daddy Yankee"});
 }
@@ -390,12 +410,34 @@ TEST_CASE("Insert") {
     };
 
     auto countBefore = storage.count<Object>();
-    storage.insert_range(initList.begin(), initList.end());
-    REQUIRE(storage.count<Object>() == countBefore + static_cast<int>(initList.size()));
+    SECTION("straight") {
+        storage.insert_range(initList.begin(), initList.end());
+        REQUIRE(storage.count<Object>() == countBefore + static_cast<int>(initList.size()));
 
-    //  test empty container
-    std::vector<Object> emptyVector;
-    storage.insert_range(emptyVector.begin(), emptyVector.end());
+        //  test empty container
+        std::vector<Object> emptyVector;
+        storage.insert_range(emptyVector.begin(), emptyVector.end());
+    }
+    SECTION("pointers") {
+        std::vector<std::unique_ptr<Object>> pointers;
+        pointers.reserve(initList.size());
+        std::transform(initList.begin(), initList.end(), std::back_inserter(pointers), [](const Object &object) {
+            return std::make_unique<Object>(Object{object});
+        });
+        storage.insert_range<Object>(pointers.begin(),
+                                     pointers.end(),
+                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                         return *pointer;
+                                     });
+
+        //  test empty container
+        std::vector<std::unique_ptr<Object>> emptyVector;
+        storage.insert_range<Object>(emptyVector.begin(),
+                                     emptyVector.end(),
+                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                         return *pointer;
+                                     });
+    }
 
     //  test insert without rowid
     storage.insert(ObjectWithoutRowid{10, "Life"});
@@ -447,5 +489,105 @@ TEST_CASE("custom functions") {
                                            make_column("COORD_TYPE", &SemanticObject::coordType),
                                            make_column("PHYSICAL", &SemanticObject::physical)));
     storage.sync_schema();
-    storage
+//    storage
+}
+
+TEST_CASE("InsertRange") {
+    struct Object {
+        int id;
+        std::string name;
+    };
+
+    struct ObjectWithoutRowid {
+        int id;
+        std::string name;
+    };
+
+    auto storage = make_storage(
+        "test_insert_range.sqlite",
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)),
+        make_table("objects_without_rowid",
+                   make_column("id", &ObjectWithoutRowid::id, primary_key()),
+                   make_column("name", &ObjectWithoutRowid::name))
+            .without_rowid());
+
+    storage.sync_schema();
+    storage.remove_all<Object>();
+    storage.remove_all<ObjectWithoutRowid>();
+
+    SECTION("straight") {
+        std::vector<Object> objects = {100,
+                                       Object{
+                                           0,
+                                           "Skillet",
+                                       }};
+        storage.insert_range(objects.begin(), objects.end());
+        REQUIRE(storage.count<Object>() == 100);
+
+        //  test empty container
+        std::vector<Object> emptyVector;
+        storage.insert_range(emptyVector.begin(), emptyVector.end());
+
+        //  test insert_range without rowid
+        std::vector<ObjectWithoutRowid> objectsWR = {ObjectWithoutRowid{10, "Life"}, ObjectWithoutRowid{20, "Death"}};
+        REQUIRE(objectsWR.size() == 2);
+        storage.insert_range(objectsWR.begin(), objectsWR.end());
+        REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
+        REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
+    }
+    SECTION("pointers") {
+        std::vector<std::unique_ptr<Object>> objects;
+        objects.reserve(100);
+        for(auto i = 0; i < 100; ++i) {
+            objects.push_back(std::make_unique<Object>(Object{0, "Skillet"}));
+        }
+        storage.insert_range<Object>(objects.begin(),
+                                     objects.end(),
+                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                         return *pointer;
+                                     });
+        REQUIRE(storage.count<Object>() == 100);
+
+        //  test empty container
+        std::vector<std::unique_ptr<Object>> emptyVector;
+        storage.insert_range<Object>(emptyVector.begin(),
+                                     emptyVector.end(),
+                                     [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                         return *pointer;
+                                     });
+
+        //  test insert_range without rowid
+        std::vector<std::unique_ptr<ObjectWithoutRowid>> objectsWR;
+        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(ObjectWithoutRowid{10, "Life"}));
+        objectsWR.push_back(std::make_unique<ObjectWithoutRowid>(ObjectWithoutRowid{20, "Death"}));
+
+        REQUIRE(objectsWR.size() == 2);
+        storage.insert_range<ObjectWithoutRowid>(
+            objectsWR.begin(),
+            objectsWR.end(),
+            [](const std::unique_ptr<ObjectWithoutRowid> &pointer) -> const ObjectWithoutRowid & {
+                return *pointer;
+            });
+        REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
+        REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
+    }
+}
+
+TEST_CASE("default value for string") {
+    struct Contact {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+        std::string phone;
+    };
+
+    using namespace sqlite_orm;
+    auto storage =
+        make_storage({},
+                     make_table("contacts",
+                                make_column("contact_id", &Contact::id, primary_key()),
+                                make_column("first_name", &Contact::firstName, default_value<std::string>("")),
+                                make_column("last_name", &Contact::lastName, default_value<std::string>("")),
+                                make_column("phone", &Contact::phone)));
+    storage.sync_schema();
 }

@@ -14,7 +14,7 @@ namespace sqlite_orm {
     namespace internal {
 
         struct prepared_statement_base {
-            sqlite3_stmt *stmt = nullptr;
+            sqlite3_stmt* stmt = nullptr;
             connection_ref con;
 
             ~prepared_statement_base() {
@@ -72,9 +72,15 @@ namespace sqlite_orm {
 
             expression_type t;
 
-            prepared_statement_t(T t_, sqlite3_stmt *stmt, connection_ref con_) :
-                prepared_statement_base{stmt, std::move(con_)}, t(std::move(t_)) {}
+            prepared_statement_t(T t_, sqlite3_stmt* stmt_, connection_ref con_) :
+                prepared_statement_base{stmt_, std::move(con_)}, t(std::move(t_)) {}
         };
+
+        template<class T>
+        struct is_prepared_statement : std::false_type {};
+
+        template<class T>
+        struct is_prepared_statement<prepared_statement_t<T>> : std::true_type {};
 
         /**
          *  T - type of object to obtain from a database
@@ -179,6 +185,12 @@ namespace sqlite_orm {
             type obj;
         };
 
+        template<class T>
+        struct is_insert : std::false_type {};
+
+        template<class T>
+        struct is_insert<insert_t<T>> : std::true_type {};
+
         template<class T, class... Cols>
         struct insert_explicit {
             using type = T;
@@ -195,39 +207,121 @@ namespace sqlite_orm {
             type obj;
         };
 
-        template<class It>
+        template<class T>
+        struct is_replace : std::false_type {};
+
+        template<class T>
+        struct is_replace<replace_t<T>> : std::true_type {};
+
+        template<class It, class L, class O>
         struct insert_range_t {
             using iterator_type = It;
-            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using transformer_type = L;
+            using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
+            transformer_type transformer;
         };
 
-        template<class It>
+        template<class T>
+        struct is_insert_range : std::false_type {};
+
+        template<class It, class L, class O>
+        struct is_insert_range<insert_range_t<It, L, O>> : std::true_type {};
+
+        template<class It, class L, class O>
         struct replace_range_t {
             using iterator_type = It;
-            using object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using container_object_type = typename std::iterator_traits<iterator_type>::value_type;
+            using transformer_type = L;
+            using object_type = O;
 
             std::pair<iterator_type, iterator_type> range;
+            transformer_type transformer;
+        };
+
+        template<class T>
+        struct is_replace_range : std::false_type {};
+
+        template<class It, class L, class O>
+        struct is_replace_range<replace_range_t<It, L, O>> : std::true_type {};
+
+        struct default_transformer {
+
+            template<class T>
+            const T& operator()(const T& object) const {
+                return object;
+            }
         };
     }
 
     /**
      *  Create a replace range statement
+     *  @example
+     *  ```
+     *  std::vector<User> users;
+     *  users.push_back(User{1, "Leony"});
+     *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+     *  storage.execute(statement);
      */
     template<class It>
-    internal::replace_range_t<It> replace_range(It from, It to) {
+    internal::replace_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
+    replace_range(It from, It to) {
         return {{std::move(from), std::move(to)}};
     }
 
     /**
-     *  Create an insert range statement
+     *  Create an replace range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
+     *  optionals or whatever.
+     *  @example
+     *  ```
+     *  std::vector<std::unique_ptr<User>> userPointers;
+     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
+     *  auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
+     *      return *userPointer;
+     *  }));
+     *  storage.execute(statement);
+     *  ```
      */
-    template<class It>
-    internal::insert_range_t<It> insert_range(It from, It to) {
-        return {{std::move(from), std::move(to)}};
+    template<class T, class It, class L>
+    internal::replace_range_t<It, L, T> replace_range(It from, It to, L transformer) {
+        return {{std::move(from), std::move(to)}, std::move(transformer)};
     }
 
+    /**
+     *  Create an insert range statement
+     *  @example
+     *  ```
+     *  std::vector<User> users;
+     *  users.push_back(User{1, "Leony"});
+     *  auto statement = storage.prepare(insert_range(users.begin(), users.end()));
+     *  storage.execute(statement);
+     *  ```
+     */
+    template<class It>
+    internal::insert_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
+    insert_range(It from, It to) {
+        return {{std::move(from), std::move(to)}, internal::default_transformer{}};
+    }
+
+    /**
+     *  Create an insert range statement with explicit transformer. Transformer is used to apply containers with no strict objects with other kind of objects like pointers,
+     *  optionals or whatever.
+     *  @example
+     *  ```
+     *  std::vector<std::unique_ptr<User>> userPointers;
+     *  userPointers.push_back(std::make_unique<User>(1, "Eneli"));
+     *  auto statement = storage.prepare(insert_range<User>(userPointers.begin(), userPointers.end(), [](const std::unique_ptr<User> &userPointer) -> const User & {
+     *      return *userPointer;
+     *  }));
+     *  storage.execute(statement);
+     *  ```
+     */
+    template<class T, class It, class L>
+    internal::insert_range_t<It, L, T> insert_range(It from, It to, L transformer) {
+        return {{std::move(from), std::move(to)}, std::move(transformer)};
+    }
     /**
      *  Create a replace statement.
      *  T is an object type mapped to a storage.

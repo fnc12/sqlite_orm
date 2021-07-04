@@ -40,6 +40,7 @@ TEST_CASE("Prepared select") {
     {//  one simple argument
      {//  by val
       auto statement = storage.prepare(select(10));
+    auto str = storage.dump(statement);
     REQUIRE(get<0>(statement) == 10);
     {
         auto rows = storage.execute(statement);
@@ -55,6 +56,7 @@ TEST_CASE("Prepared select") {
 {  //  by ref
     auto id = 10;
     auto statement = storage.prepare(select(std::ref(id)));
+    auto str = storage.dump(statement);
     REQUIRE(get<0>(statement) == 10);
     REQUIRE(&get<0>(statement) == &id);
     {
@@ -63,6 +65,7 @@ TEST_CASE("Prepared select") {
     }
     id = 20;
     REQUIRE(get<0>(statement) == 20);
+    str = storage.dump(statement);
     REQUIRE(&get<0>(statement) == &id);
     {
         auto rows = storage.execute(statement);
@@ -73,21 +76,23 @@ TEST_CASE("Prepared select") {
 {//  two simple arguments
  {//  by val
   auto statement = storage.prepare(select(columns("ototo", 25)));
+auto str = storage.dump(statement);
 REQUIRE(strcmp(get<0>(statement), "ototo") == 0);
 REQUIRE(get<1>(statement) == 25);
 {
     auto rows = storage.execute(statement);
     REQUIRE(rows.size() == 1);
-    auto &row = rows.front();
+    auto& row = rows.front();
     REQUIRE(get<0>(row) == "ototo");
     REQUIRE(get<1>(row) == 25);
 }
 get<0>(statement) = "Rock";
 get<1>(statement) = -15;
+str = storage.dump(statement);
 {
     auto rows = storage.execute(statement);
     REQUIRE(rows.size() == 1);
-    auto &row = rows.front();
+    auto& row = rows.front();
     REQUIRE(get<0>(row) == "Rock");
     REQUIRE(get<1>(row) == -15);
 }
@@ -96,6 +101,7 @@ get<1>(statement) = -15;
     std::string ototo = "ototo";
     auto id = 25;
     auto statement = storage.prepare(select(columns(std::ref(ototo), std::ref(id))));
+    auto str = storage.dump(statement);
     REQUIRE(get<0>(statement) == "ototo");
     REQUIRE(&get<0>(statement) == &ototo);
     REQUIRE(get<1>(statement) == 25);
@@ -103,7 +109,7 @@ get<1>(statement) = -15;
     {
         auto rows = storage.execute(statement);
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(get<0>(row) == "ototo");
         REQUIRE(get<1>(row) == 25);
     }
@@ -116,7 +122,7 @@ get<1>(statement) = -15;
     {
         auto rows = storage.execute(statement);
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(get<0>(row) == "Rock");
         REQUIRE(get<1>(row) == -15);
     }
@@ -126,21 +132,23 @@ get<1>(statement) = -15;
  {//  by val
   auto statement =
       storage.prepare(select(columns(5.0, &User::id, count(&User::name)), where(lesser_than(&User::id, 10))));
+auto str = storage.dump(statement);
 REQUIRE(get<0>(statement) == 5.0);
 REQUIRE(get<1>(statement) == 10);
 {
     auto rows = storage.execute(statement);
     REQUIRE(rows.size() == 1);
-    auto &row = rows.front();
+    auto& row = rows.front();
     REQUIRE(get<0>(row) == 5.0);
     REQUIRE(get<2>(row) == 3);
 }
 get<0>(statement) = 4;
 get<1>(statement) = 2;
+str = storage.dump(statement);
 {
     auto rows = storage.execute(statement);
     REQUIRE(rows.size() == 1);
-    auto &row = rows.front();
+    auto& row = rows.front();
     REQUIRE(get<0>(row) == 4.0);
     REQUIRE(get<2>(row) == 1);
 }
@@ -150,6 +158,7 @@ get<1>(statement) = 2;
     auto id = 10;
     auto statement = storage.prepare(
         select(columns(std::ref(first), &User::id, count(&User::name)), where(lesser_than(&User::id, std::ref(id)))));
+    auto str = storage.dump(statement);
     REQUIRE(get<0>(statement) == 5.0);
     REQUIRE(&get<0>(statement) == &first);
     REQUIRE(get<1>(statement) == 10);
@@ -157,17 +166,18 @@ get<1>(statement) = 2;
     {
         auto rows = storage.execute(statement);
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(get<0>(row) == 5.0);
         REQUIRE(get<2>(row) == 3);
     }
     first = 4;
     REQUIRE(&get<0>(statement) == &first);
     id = 2;
+    str = storage.dump(statement);
     {
         auto rows = storage.execute(statement);
         REQUIRE(rows.size() == 1);
-        auto &row = rows.front();
+        auto& row = rows.front();
         REQUIRE(get<0>(row) == 4.0);
         REQUIRE(get<2>(row) == 1);
     }
@@ -189,6 +199,7 @@ get<1>(statement) = 2;
 {
     for(auto i = 0; i < 2; ++i) {
         auto statement = storage.prepare(select(&User::name, order_by(&User::id)));
+        auto str = storage.dump(statement);
         testSerializing(statement);
         SECTION("nothing") {
             //..
@@ -201,6 +212,7 @@ get<1>(statement) = 2;
 }
 {{//  by val
   auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5)));
+auto str = storage.dump(statement);
 REQUIRE(get<0>(statement) == 5);
 testSerializing(statement);
 SECTION("nothing") {
@@ -214,6 +226,7 @@ SECTION("execute") {
 {  //  by ref
     auto len = 5;
     auto statement = storage.prepare(select(&User::id, where(length(&User::name) > std::ref(len))));
+    auto str = storage.dump(statement);
     REQUIRE(get<0>(statement) == len);
     REQUIRE(&get<0>(statement) == &len);
     testSerializing(statement);
@@ -228,6 +241,7 @@ SECTION("execute") {
 }
 {{//  by val
   auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5 and like(&User::name, "T%"))));
+auto str = storage.dump(statement);
 REQUIRE(get<0>(statement) == 5);
 REQUIRE(strcmp(get<1>(statement), "T%") == 0);
 testSerializing(statement);
@@ -244,6 +258,7 @@ SECTION("execute") {
     std::string pattern = "T%";
     auto statement = storage.prepare(
         select(&User::id, where(length(&User::name) > std::ref(len) and like(&User::name, std::ref(pattern)))));
+    auto str = storage.dump(statement);
     REQUIRE(get<0>(statement) == len);
     REQUIRE(&get<0>(statement) == &len);
     REQUIRE(get<1>(statement) == pattern);
@@ -260,6 +275,7 @@ SECTION("execute") {
 }
 {
     auto statement = storage.prepare(select(columns(&User::id, &User::name)));
+    auto str = storage.dump(statement);
     testSerializing(statement);
     SECTION("nothing") {
         //..
@@ -277,6 +293,7 @@ SECTION("execute") {
     {  //  by val
         auto statement = storage.prepare(
             select(columns(&User::name, &User::id), where(is_equal(mod(&User::id, 2), 0)), order_by(&User::name)));
+        auto str = storage.dump(statement);
         testSerializing(statement);
         SECTION("nothing") {
             //..
@@ -294,6 +311,7 @@ SECTION("execute") {
         auto statement = storage.prepare(select(columns(&User::name, &User::id),
                                                 where(is_equal(mod(&User::id, std::ref(m)), std::ref(v))),
                                                 order_by(&User::name)));
+        auto str = storage.dump(statement);
         testSerializing(statement);
         REQUIRE(get<0>(statement) == m);
         REQUIRE(&get<0>(statement) == &m);

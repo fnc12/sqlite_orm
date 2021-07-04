@@ -3,6 +3,9 @@
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "conditions.h"
 #include "operators.h"
@@ -24,7 +27,12 @@ namespace sqlite_orm {
         struct node_tuple<void, void> {
             using type = std::tuple<>;
         };
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct node_tuple<as_optional_t<T>, void> {
+            using type = typename node_tuple<T>::type;
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
             using type = typename node_tuple<T>::type;
@@ -63,10 +71,18 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct node_tuple<in_t<L, A>, void> {
-            using node_type = in_t<L, A>;
+        struct node_tuple<dynamic_in_t<L, A>, void> {
+            using node_type = dynamic_in_t<L, A>;
             using left_tuple = typename node_tuple<L>::type;
             using right_tuple = typename node_tuple<A>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+
+        template<class L, class... Args>
+        struct node_tuple<in_t<L, Args...>, void> {
+            using node_type = in_t<L, Args...>;
+            using left_tuple = typename node_tuple<L>::type;
+            using right_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 

@@ -16,11 +16,11 @@ TEST_CASE("member_traits_tests") {
     struct User {
         int id;
 
-        const int &getIdByRefConst() const {
+        const int& getIdByRefConst() const {
             return this->id;
         }
 
-        const int &getIdByRef() {
+        const int& getIdByRef() {
             return this->id;
         }
 
@@ -32,11 +32,11 @@ TEST_CASE("member_traits_tests") {
             this->id = id;
         }
 
-        void setIdByConstRef(const int &id) {
+        void setIdByConstRef(const int& id) {
             this->id = id;
         }
 
-        void setIdByRef(int &id) {
+        void setIdByRef(int& id) {
             this->id = id;
         }
     };

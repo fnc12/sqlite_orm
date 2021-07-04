@@ -35,7 +35,7 @@ TEST_CASE("Case") {
     storage.sync_schema();
 
     struct GradeAlias : alias_tag {
-        static const std::string &get() {
+        static const std::string& get() {
             static const std::string res = "Grade";
             return res;
         }
@@ -51,7 +51,7 @@ TEST_CASE("Case") {
         auto rows = storage.select(
             columns(case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end()),
             multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
-        auto verifyRows = [&storage](auto &rows) {
+        auto verifyRows = [&storage](auto& rows) {
             REQUIRE(rows.size() == storage.count<User>());
             REQUIRE(std::get<0>(rows[0]) == "Foreign");
             REQUIRE(std::get<0>(rows[1]) == "Foreign");
@@ -82,7 +82,7 @@ TEST_CASE("Case") {
                 .else_("long")
                 .end(),
             order_by(&Track::name));
-        auto verifyRows = [&storage](auto &rows) {
+        auto verifyRows = [&storage](auto& rows) {
             REQUIRE(rows.size() == storage.count<Track>());
             REQUIRE(rows[0] == "long");
             REQUIRE(rows[1] == "medium");
@@ -132,7 +132,7 @@ TEST_CASE("Unique ptr in update") {
 }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-TEST_CASE("Optional in update") {
+TEST_CASE("optional in update") {
 
     struct User {
         int id = 0;
@@ -166,7 +166,7 @@ TEST_CASE("Optional in update") {
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-TEST_CASE("Join") {
+TEST_CASE("join") {
 
     struct User {
         int id = 0;
@@ -231,35 +231,152 @@ TEST_CASE("Join") {
     }
 }
 
-TEST_CASE("Storage copy") {
-    struct User {
-        int id = 0;
+TEST_CASE("two joins") {
+    struct Statement {
+        int id_statement;
+        long date;
     };
 
-    int calledCount = 0;
+    struct Concepto {
+        int id_concepto;
+        std::string name;  // TFT-SINPE A: 15103-02**-****-8467
+        int fkey_account;  // { 15103-02**-****-8467, ...}
+    };
 
-    auto storage = make_storage({}, make_table("users", make_column("id", &User::id)));
+    struct Account {
+        int id_account;
+        std::string number;  // 15103-02**-****-8467
+        int fkey_bank;  // { BAC San Jose, "Barrio Dent", { Costa Rica} }
+        int fkey_account_owner;  // { Juan Dent Herrera, ... }
+        std::string description;  // AMEX Cashback Premium
+        bool is_tarjeta;  // true
+    };
+
+    struct Pais {
+        int id_pais;
+        std::string name;
+    };
+
+    struct Banco {
+        int id_bank;
+        std::string nombre;
+        std::string ubicacion;
+        int fkey_pais;
+    };
+
+    struct AccountOwner {
+        int id_owner;
+        std::string name;
+    };
+
+    struct Transaccion {
+        int id_transaccion;
+        double amount_colones;
+        double amount_dolares;
+        int fkey_account_own;  // Account
+        int fkey_account_other = 0;  // Account optional
+
+        long line_date;
+        std::string descripcion;
+        int fkey_category;
+        int fkey_concepto;
+        int fkey_statement;
+        int row;  // fkey_statement + row is unique
+    };
+
+    struct Categoria {
+        int id_categoria;
+        std::string name;
+        bool is_expense_or_income;
+    };
+
+    auto storage = make_storage(
+        {},
+        make_table("Statement",
+                   make_column("id_statement", &Statement::id_statement, autoincrement(), primary_key()),
+                   make_column("date", &Statement::date)),
+        make_table("Categoria",
+                   make_column("id_category", &Categoria::id_categoria, autoincrement(), primary_key()),
+                   make_column("name", &Categoria::name, collate_nocase()),
+                   make_column("is_expense_or_income", &Categoria::is_expense_or_income)),
+        make_table("Concepto",
+                   make_column("id_concepto", &Concepto::id_concepto, autoincrement(), primary_key()),
+                   make_column("name", &Concepto::name, collate_nocase()),
+                   make_column("fkey_account", &Concepto::fkey_account),
+                   foreign_key(&Concepto::fkey_account).references(&Account::id_account)),
+        make_table("Account",
+                   make_column("id_account", &Account::id_account, autoincrement(), primary_key()),
+                   make_column("number", &Account::number, collate_nocase()),
+                   make_column("fkey_bank", &Account::fkey_bank),
+                   make_column("fkey_account_owner", &Account::fkey_account_owner),
+                   make_column("description", &Account::description, collate_nocase()),
+                   make_column("is_tarjeta", &Account::is_tarjeta),
+                   foreign_key(&Account::fkey_account_owner).references(&AccountOwner::id_owner),
+                   foreign_key(&Account::fkey_bank).references(&Banco::id_bank)),
+        make_table("Banco",
+                   make_column("id_bank", &Banco::id_bank, autoincrement(), primary_key()),
+                   make_column("nombre", &Banco::nombre, collate_nocase()),
+                   make_column("ubicacion", &Banco::ubicacion, collate_nocase()),
+                   make_column("fkey_Pais", &Banco::fkey_pais),
+                   foreign_key(&Banco::fkey_pais).references(&Pais::id_pais)),
+        make_table("AccountOwner",
+                   make_column("id_owner", &AccountOwner::id_owner, autoincrement(), primary_key()),
+                   make_column("name", &AccountOwner::name, collate_nocase())),
+        make_table("Transaccion",
+                   make_column("id_transaccion", &Transaccion::id_transaccion, autoincrement(), primary_key()),
+                   make_column("colones", &Transaccion::amount_colones),
+                   make_column("dolares", &Transaccion::amount_dolares),
+                   make_column("fkey_account_own", &Transaccion::fkey_account_own),
+                   make_column("fkey_account_other", &Transaccion::fkey_account_other),
+                   make_column("line_date", &Transaccion::line_date),
+                   make_column("descripcion", &Transaccion::descripcion),
+                   make_column("fkey_category", &Transaccion::fkey_category),
+                   make_column("concepto", &Transaccion::fkey_concepto),
+                   make_column("fkey_statement", &Transaccion::fkey_statement),
+                   make_column("row", &Transaccion::row),
+                   foreign_key(&Transaccion::fkey_account_own).references(&Account::id_account),
+                   foreign_key(&Transaccion::fkey_account_other).references(&Account::id_account),
+                   foreign_key(&Transaccion::fkey_category).references(&Categoria::id_categoria),
+                   foreign_key(&Transaccion::fkey_concepto).references(&Concepto::id_concepto),
+                   foreign_key(&Transaccion::fkey_statement).references(&Statement::id_statement)),
+        make_table("Pais",
+                   make_column("id_pais", &Pais::id_pais, autoincrement(), primary_key()),
+                   make_column("name", &Pais::name, collate_nocase())));
     storage.sync_schema();
-    storage.remove_all<User>();
 
-    storage.on_open = [&calledCount](sqlite3 *) {
-        ++calledCount;
-    };
+    using als_t = alias_t<Transaccion>;
+    using als_a = alias_a<Account>;
+    using als_b = alias_b<Account>;
 
-    storage.on_open(nullptr);
-    REQUIRE(calledCount == 1);
+    std::ignore = storage.select(columns(alias_column<als_t>(&Transaccion::fkey_account_other),
+                                         alias_column<als_t>(&Transaccion::fkey_account_own),
+                                         alias_column<als_a>(&Account::id_account),
+                                         alias_column<als_b>(&Account::id_account)),
+                                 left_outer_join<als_a>(on(c(alias_column<als_t>(&Transaccion::fkey_account_other)) ==
+                                                           alias_column<als_a>(&Account::id_account))),
+                                 inner_join<als_b>(on(c(alias_column<als_t>(&Transaccion::fkey_account_own)) ==
+                                                      alias_column<als_b>(&Account::id_account))));
 
-    auto storageCopy = storage;
-    REQUIRE(storageCopy.on_open);
-    REQUIRE(calledCount == 2);
-    storageCopy.on_open(nullptr);
-    REQUIRE(calledCount == 3);
+    std::ignore = storage.select(columns(alias_column<als_t>(&Transaccion::fkey_account_other),
+                                         alias_column<als_t>(&Transaccion::fkey_account_own),
+                                         alias_column<als_a>(&Account::id_account),
+                                         alias_column<als_b>(&Account::id_account)),
+                                 left_join<als_a>(on(c(alias_column<als_t>(&Transaccion::fkey_account_other)) ==
+                                                     alias_column<als_a>(&Account::id_account))),
+                                 inner_join<als_b>(on(c(alias_column<als_t>(&Transaccion::fkey_account_own)) ==
+                                                      alias_column<als_b>(&Account::id_account))));
 
-    storageCopy.sync_schema();
-    storageCopy.remove_all<User>();
+    std::ignore = storage.select(columns(alias_column<als_t>(&Transaccion::fkey_account_other),
+                                         alias_column<als_t>(&Transaccion::fkey_account_own),
+                                         alias_column<als_a>(&Account::id_account),
+                                         alias_column<als_b>(&Account::id_account)),
+                                 join<als_a>(on(c(alias_column<als_t>(&Transaccion::fkey_account_other)) ==
+                                                alias_column<als_a>(&Account::id_account))),
+                                 inner_join<als_b>(on(c(alias_column<als_t>(&Transaccion::fkey_account_own)) ==
+                                                      alias_column<als_b>(&Account::id_account))));
 }
 
-TEST_CASE("Set null") {
+TEST_CASE("update set null") {
 
     struct User {
         int id = 0;

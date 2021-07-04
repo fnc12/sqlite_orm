@@ -1,6 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
 
+#include <type_traits>  //  std::is_same
+
 using namespace sqlite_orm;
 
 TEST_CASE("Foreign key") {
@@ -36,6 +38,19 @@ TEST_CASE("Foreign key") {
                                            make_column("visited_at", &Visit::visited_at),
                                            make_column("mark", &Visit::mark),
                                            foreign_key(&Visit::location).references(&Location::id)));
+    {
+        using namespace internal::storage_traits;
+
+        using Storage = decltype(storage);
+        static_assert(storage_foreign_keys_count<Storage, Location>::value == 1, "");
+        static_assert(storage_foreign_keys_count<Storage, Visit>::value == 0, "");
+
+        using LocationFks = storage_fk_references<Storage, Location>::type;
+        static_assert(std::is_same<LocationFks, std::tuple<Visit>>::value, "");
+
+        using VisitFks = storage_fk_references<Storage, Visit>::type;
+        static_assert(std::is_same<VisitFks, std::tuple<>>::value, "");
+    }
     storage.sync_schema();
 
     int fromDate = int(std::time(nullptr));

@@ -23,15 +23,15 @@ namespace PreparedStatementTests {
         std::string description;
     };
 
-    inline bool operator==(const User &lhs, const User &rhs) {
+    inline bool operator==(const User& lhs, const User& rhs) {
         return lhs.id == rhs.id && lhs.name == rhs.name;
     }
 
-    inline bool operator!=(const User &lhs, const User &rhs) {
+    inline bool operator!=(const User& lhs, const User& rhs) {
         return !(lhs == rhs);
     }
 
-    inline void testSerializing(const sqlite_orm::internal::prepared_statement_base &statement) {
+    inline void testSerializing(const sqlite_orm::internal::prepared_statement_base& statement) {
         auto sql = statement.sql();
         std::ignore = sql;
 #if SQLITE_VERSION_NUMBER >= 3014000
@@ -44,7 +44,7 @@ namespace PreparedStatementTests {
 #endif
     }
 
-    inline std::ostream &operator<<(std::ostream &os, const User &user) {
+    inline std::ostream& operator<<(std::ostream& os, const User& user) {
         return os << "{" << user.id << ", " << user.name << "}";
     }
 }

@@ -57,7 +57,7 @@ TEST_CASE("Prepared insert") {
             }
             REQUIRE(insertedId == 4);
             user.name = "Sia";
-            std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
+            std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
             REQUIRE(get<0>(statement) == user);
             REQUIRE(&get<0>(statement) == &user);
             insertedId = storage.execute(statement);

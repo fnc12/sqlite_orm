@@ -17,7 +17,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct type_is_nullable : public std::false_type {
-        bool operator()(const T &) const {
+        bool operator()(const T&) const {
             return true;
         }
     };
@@ -27,7 +27,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct type_is_nullable<std::shared_ptr<T>> : public std::true_type {
-        bool operator()(const std::shared_ptr<T> &t) const {
+        bool operator()(const std::shared_ptr<T>& t) const {
             return static_cast<bool>(t);
         }
     };
@@ -37,7 +37,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct type_is_nullable<std::unique_ptr<T>> : public std::true_type {
-        bool operator()(const std::unique_ptr<T> &t) const {
+        bool operator()(const std::unique_ptr<T>& t) const {
             return static_cast<bool>(t);
         }
     };
@@ -48,7 +48,7 @@ namespace sqlite_orm {
      */
     template<class T>
     struct type_is_nullable<std::optional<T>> : public std::true_type {
-        bool operator()(const std::optional<T> &t) const {
+        bool operator()(const std::optional<T>& t) const {
             return t.has_value();
         }
     };
