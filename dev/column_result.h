@@ -11,6 +11,7 @@
 #include "alias.h"
 #include "column.h"
 #include "storage_traits.h"
+#include "function.h"
 
 namespace sqlite_orm {
 
@@ -71,8 +72,13 @@ namespace sqlite_orm {
         };
 
         template<class St, class R, class S, class... Args>
-        struct column_result_t<St, internal::core_function_t<R, S, Args...>, void> {
+        struct column_result_t<St, core_function_t<R, S, Args...>, void> {
             using type = R;
+        };
+
+        template<class St, class F, class... Args>
+        struct column_result_t<St, function_call<F, Args...>, void> {
+            using type = typename callable_arguments<F>::return_type;
         };
 
         template<class St, class X, class S>

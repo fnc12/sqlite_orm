@@ -8,11 +8,11 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
- * This builder is used to construct different row extractors depending on type.
- * It has two specializations: for mapped to storage types (e.g. User, Visit etc) and
- * for non-mapped (e.g. std::string, QString, int etc). For non mapped its operator() returns
- * generic `row_extractor`, for mapped it returns `mapped_row_extractor` instance.
- */
+         * This builder is used to construct different row extractors depending on type.
+         * It has two specializations: for mapped to storage types (e.g. User, Visit etc) and
+         * for non-mapped (e.g. std::string, QString, int etc). For non mapped its operator() returns
+         * generic `row_extractor`, for mapped it returns `mapped_row_extractor` instance.
+         */
         template<class T, bool IsMapped, class I>
         struct row_extractor_builder;
 

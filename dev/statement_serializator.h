@@ -21,6 +21,7 @@
 #include "values.h"
 #include "table_type.h"
 #include "indexed_column.h"
+#include "function.h"
 
 namespace sqlite_orm {
 
@@ -119,6 +120,30 @@ namespace sqlite_orm {
                         ss << ", ";
                     }
                 }
+                ss << ")";
+                return ss.str();
+            }
+        };
+
+        template<class F, class... Args>
+        struct statement_serializator<function_call<F, Args...>, void> {
+            using statement_type = function_call<F, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                using args_tuple = std::tuple<Args...>;
+
+                std::stringstream ss;
+                ss << F::name() << "(";
+                auto index = 0;
+                iterate_tuple(statement.args, [&context, &ss, &index](auto& v) {
+                    auto value = serialize(v, context);
+                    ss << value;
+                    if(index < std::tuple_size<args_tuple>::value - 1) {
+                        ss << ", ";
+                    }
+                    ++index;
+                });
                 ss << ")";
                 return ss.str();
             }

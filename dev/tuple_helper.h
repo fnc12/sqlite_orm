@@ -1,6 +1,6 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::get, std::tuple_element
+#include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::false_type, std::true_type
 
 #include "static_magic.h"
@@ -164,6 +164,17 @@ namespace sqlite_orm {
             using type = typename same_or_void<A, Args...>::type;
         };
 
+        //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
+        template<typename Function, typename Tuple, size_t... I>
+        auto call(Function f, Tuple t, std::index_sequence<I...>) {
+            return f(std::get<I>(t)...);
+        }
+
+        template<typename Function, typename Tuple>
+        auto call(Function f, Tuple t) {
+            static constexpr auto size = std::tuple_size<Tuple>::value;
+            return call(f, t, std::make_index_sequence<size>{});
+        }
     }
 
     namespace internal {
@@ -215,6 +226,5 @@ namespace sqlite_orm {
         struct tuple_transformer<std::tuple<Args...>, F> {
             using type = std::tuple<typename F<Args>::type...>;
         };
-
     }
 }

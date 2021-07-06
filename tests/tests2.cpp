@@ -446,50 +446,103 @@ TEST_CASE("Insert") {
     REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
 }
 
+struct SqrtFunction {
+    static int callsCount;
+
+    double operator()(double arg) const {
+        ++callsCount;
+        return std::sqrt(arg);
+    }
+
+    static const char *name() {
+        return "SQRT";
+    }
+};
+
+int SqrtFunction::callsCount = 0;
+
+struct HasPrefixFunction {
+    static int callsCount;
+
+    bool operator()(const std::string &str, const std::string &prefix) const {
+        ++callsCount;
+        return str.compare(0, prefix.size(), prefix) == 0;
+    }
+
+    static std::string name() {
+        return "HAS_PREFIX";
+    }
+};
+
+int HasPrefixFunction::callsCount = 0;
+
 TEST_CASE("custom functions") {
-    struct SqrtFunction {
-        double operator()(double arg) const {
-            return std::sqrt(arg);
+    SqrtFunction::callsCount = 0;
+    HasPrefixFunction::callsCount = 0;
+
+    auto makeStorage = [](const std::string &path) {
+        return make_storage(path);
+    };
+    using Storage = decltype(makeStorage({}));
+    std::unique_ptr<Storage> storage;
+    SECTION("in memory") {
+        storage.reset(new Storage(makeStorage({})));
+    }
+    SECTION("file") {
+        auto filename = "custom_function.sqlite";
+        ::remove(filename);
+        storage.reset(new Storage(makeStorage(filename)));
+    }
+    storage->sync_schema();
+    {  //   call before creation
+        try {
+            auto rows = storage->select(func<SqrtFunction>(4));
+            REQUIRE(false);
+        } catch(const std::system_error &) {
+            //..
         }
-    };
-//    auto storage = make_storage("",
-//                                make_table(<#const std::string &name#>, <#Cs args...#>))
-    
-    struct Member {
-        int pid = 0;
-        int ref = 0;
-        int role = 0;
-    };
-    struct SemanticObject {
-        int id = 0;
-        std::string name;
-        std::string type;
-        float x = 0;
-        float y = 0;
-        float z = 0;
-        float yaw = 0;
-        int etype = 0;
-        int coordType = 0;
-        bool physical = false;
-    };
-    auto storage = make_storage({},
-                                make_table("MEMBER",
-                                           make_column("PID", &Member::pid),
-                                           make_column("REF", &Member::ref),
-                                           make_column("ROLE", &Member::role)),
-                                make_table("SEMANTIC_OBJECT",
-                                           make_column("ID", &SemanticObject::id, primary_key()),
-                                           make_column("NAME", &SemanticObject::name),
-                                           make_column("TYPE", &SemanticObject::type),
-                                           make_column("X", &SemanticObject::x),
-                                           make_column("Y", &SemanticObject::y),
-                                           make_column("Z", &SemanticObject::z),
-                                           make_column("YAW", &SemanticObject::yaw),
-                                           make_column("ETYPE", &SemanticObject::etype),
-                                           make_column("COORD_TYPE", &SemanticObject::coordType),
-                                           make_column("PHYSICAL", &SemanticObject::physical)));
-    storage.sync_schema();
-//    storage
+    }
+
+    //  create function
+    REQUIRE(SqrtFunction::callsCount == 0);
+    storage->create_scalar_function<SqrtFunction>();
+    REQUIRE(SqrtFunction::callsCount == 0);
+
+    //  call after creation
+    {
+        auto rows = storage->select(func<SqrtFunction>(4));
+        REQUIRE(SqrtFunction::callsCount == 1);
+        decltype(rows) expected;
+        expected.push_back(2);
+        REQUIRE(rows == expected);
+    }
+
+    //  create function
+    REQUIRE(HasPrefixFunction::callsCount == 0);
+    storage->create_scalar_function<HasPrefixFunction>();
+    REQUIRE(HasPrefixFunction::callsCount == 0);
+
+    //  call after creation
+    {
+        auto rows = storage->select(func<HasPrefixFunction>("one", "o"));
+        decltype(rows) expected;
+        expected.push_back(true);
+        REQUIRE(rows == expected);
+    }
+    REQUIRE(HasPrefixFunction::callsCount == 1);
+    {
+        auto rows = storage->select(func<HasPrefixFunction>("two", "b"));
+        decltype(rows) expected;
+        expected.push_back(false);
+        REQUIRE(rows == expected);
+    }
+    REQUIRE(HasPrefixFunction::callsCount == 2);
+
+    //  delete function
+    storage->delete_scalar_function<HasPrefixFunction>();
+
+    //  delete function
+    storage->delete_scalar_function<SqrtFunction>();
 }
 
 TEST_CASE("InsertRange") {

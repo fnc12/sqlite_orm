@@ -10,6 +10,7 @@
 #include "core_functions.h"
 #include "prepared_statement.h"
 #include "values.h"
+#include "function.h"
 
 namespace sqlite_orm {
 
@@ -355,6 +356,16 @@ namespace sqlite_orm {
             template<class L>
             void operator()(const node_type& i, const L& l) const {
                 iterate_ast(i.t, l);
+            }
+        };
+
+        template<class F, class... Args>
+        struct ast_iterator<function_call<F, Args...>, void> {
+            using node_type = function_call<F, Args...>;
+
+            template<class L>
+            void operator()(const node_type& f, const L& l) const {
+                iterate_ast(f.args, l);
             }
         };
 

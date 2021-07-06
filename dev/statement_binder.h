@@ -26,23 +26,40 @@ namespace sqlite_orm {
      */
     template<class V>
     struct statement_binder<V, std::enable_if_t<std::is_arithmetic<V>::value>> {
-        int bind(sqlite3_stmt* stmt, int index, const V& value) {
-            return bind(stmt, index, value, tag());
+
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+            return this->bind(stmt, index, value, tag());
+        }
+
+        void result(sqlite3_context* context, const V& value) const {
+            this->result(context, value, tag());
         }
 
       private:
         using tag = arithmetic_tag_t<V>;
 
-        int bind(sqlite3_stmt* stmt, int index, const V& value, const int_or_smaller_tag&) {
+        int bind(sqlite3_stmt* stmt, int index, const V& value, const int_or_smaller_tag&) const {
             return sqlite3_bind_int(stmt, index, static_cast<int>(value));
         }
 
-        int bind(sqlite3_stmt* stmt, int index, const V& value, const bigint_tag&) {
+        void result(sqlite3_context* context, const V& value, const int_or_smaller_tag&) const {
+            sqlite3_result_int(context, static_cast<int>(value));
+        }
+
+        int bind(sqlite3_stmt* stmt, int index, const V& value, const bigint_tag&) const {
             return sqlite3_bind_int64(stmt, index, static_cast<sqlite3_int64>(value));
         }
 
-        int bind(sqlite3_stmt* stmt, int index, const V& value, const real_tag&) {
+        void result(sqlite3_context* context, const V& value, const bigint_tag&) const {
+            sqlite3_result_int64(context, static_cast<sqlite3_int64>(value));
+        }
+
+        int bind(sqlite3_stmt* stmt, int index, const V& value, const real_tag&) const {
             return sqlite3_bind_double(stmt, index, static_cast<double>(value));
+        }
+
+        void result(sqlite3_context* context, const V& value, const real_tag&) const {
+            sqlite3_result_double(context, static_cast<double>(value));
         }
     };
 
@@ -53,8 +70,13 @@ namespace sqlite_orm {
     struct statement_binder<
         V,
         std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char*>::value>> {
-        int bind(sqlite3_stmt* stmt, int index, const V& value) {
-            return sqlite3_bind_text(stmt, index, string_data(value), -1, SQLITE_TRANSIENT);
+
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+            return sqlite3_bind_text(stmt, index, this->string_data(value), -1, SQLITE_TRANSIENT);
+        }
+
+        void result(sqlite3_context* context, const V& value) const {
+            sqlite3_result_text(context, this->string_data(value));
         }
 
       private:
@@ -75,10 +97,15 @@ namespace sqlite_orm {
     struct statement_binder<
         V,
         std::enable_if_t<std::is_same<V, std::wstring>::value || std::is_same<V, const wchar_t*>::value>> {
-        int bind(sqlite3_stmt* stmt, int index, const V& value) {
+
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             std::string utf8Str = converter.to_bytes(value);
             return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
+        }
+
+        void result(sqlite3_context* context, const V& value) const {
+            sqlite3_result_text16(context, (const void*)value.data(), int(value.length()), nullptr);
         }
     };
 #endif  //  SQLITE_ORM_OMITS_CODECVT
@@ -88,16 +115,27 @@ namespace sqlite_orm {
      */
     template<>
     struct statement_binder<std::nullptr_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) {
+        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) const {
             return sqlite3_bind_null(stmt, index);
+        }
+
+        void result(sqlite3_context* context, const std::nullptr_t&) const {
+            sqlite3_result_null(context);
         }
     };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    /**
+     *  Specialization for std::nullopt_t.
+     */
     template<>
     struct statement_binder<std::nullopt_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::nullopt_t&) {
+        int bind(sqlite3_stmt* stmt, int index, const std::nullopt_t&) const {
             return sqlite3_bind_null(stmt, index);
+        }
+
+        void result(sqlite3_context* context, const std::nullopt_t&) const {
+            sqlite3_result_null(context);
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -106,11 +144,19 @@ namespace sqlite_orm {
     struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
         using value_type = typename is_std_ptr<V>::element_type;
 
-        int bind(sqlite3_stmt* stmt, int index, const V& value) {
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             if(value) {
                 return statement_binder<value_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+            }
+        }
+
+        void result(sqlite3_context* context, const V& value) const {
+            if(value) {
+                statement_binder<value_type>().result(context, value);
+            } else {
+                statement_binder<std::nullptr_t>().result(context, nullptr);
             }
         }
     };
@@ -120,11 +166,19 @@ namespace sqlite_orm {
      */
     template<>
     struct statement_binder<std::vector<char>, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) {
+        int bind(sqlite3_stmt* stmt, int index, const std::vector<char>& value) const {
             if(value.size()) {
                 return sqlite3_bind_blob(stmt, index, (const void*)&value.front(), int(value.size()), SQLITE_TRANSIENT);
             } else {
                 return sqlite3_bind_blob(stmt, index, "", 0, SQLITE_TRANSIENT);
+            }
+        }
+
+        void result(sqlite3_context* context, const std::vector<char>& value) const {
+            if(value.size()) {
+                sqlite3_result_blob(context, (const void*)&value.front(), int(value.size()), nullptr);
+            } else {
+                sqlite3_result_blob(context, "", 0, nullptr);
             }
         }
     };
@@ -134,11 +188,19 @@ namespace sqlite_orm {
     struct statement_binder<std::optional<T>, void> {
         using value_type = T;
 
-        int bind(sqlite3_stmt* stmt, int index, const std::optional<T>& value) {
+        int bind(sqlite3_stmt* stmt, int index, const std::optional<T>& value) const {
             if(value) {
                 return statement_binder<value_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullopt_t>().bind(stmt, index, std::nullopt);
+            }
+        }
+
+        void result(sqlite3_context* context, const std::optional<T>& value) const {
+            if(value) {
+                statement_binder<value_type>().result(context, value);
+            } else {
+                statement_binder<std::nullopt_t>().result(context, std::nullopt);
             }
         }
     };
