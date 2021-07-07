@@ -6747,10 +6747,10 @@ namespace sqlite_orm {
         struct scalar_function_t {
             std::string name;
             int argumentsCount = 0;
-            std::function<void*()> create;
+            std::function<int*()> create;
             std::function<void(sqlite3_context* context, void* functionPointer, int argsCount, sqlite3_value** values)>
                 run;
-            std::function<void(void*)> destroy;
+            void (*destroy)(int*) = nullptr;
         };
 
         template<class F>
@@ -6764,6 +6764,13 @@ namespace sqlite_orm {
         template<class O, class R, class... Args>
         struct member_function_arguments<R (O::*)(Args...) const> {
             using member_function_type = R (O::*)(Args...) const;
+            using tuple_type = std::tuple<typename std::decay<Args>::type...>;
+            using return_type = R;
+        };
+
+        template<class O, class R, class... Args>
+        struct member_function_arguments<R (O::*)(Args...)> {
+            using member_function_type = R (O::*)(Args...);
             using tuple_type = std::tuple<typename std::decay<Args>::type...>;
             using return_type = R;
         };
@@ -6784,6 +6791,9 @@ namespace sqlite_orm {
         };
     }
 
+    /**
+     *  Used to call user defined function: `func<MyFunc>(...);`
+     */
     template<class F, class... Args>
     internal::function_call<F, Args...> func(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
@@ -7453,7 +7463,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);
@@ -10021,7 +10031,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
@@ -10058,8 +10068,8 @@ namespace sqlite_orm {
                 this->scalarFunctions.emplace_back(new scalar_function_t{
                     move(name),
                     int(std::tuple_size<args_tuple>::value),
-                    []() -> void* {
-                        return new F();
+                    []() -> int* {
+                        return (int*)(new F());
                     },
                     [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
@@ -10069,10 +10079,7 @@ namespace sqlite_orm {
                         auto result = tuple_helper::call(functionPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
-                    [](void* pointer) {
-                        auto fPointer = static_cast<F*>(pointer);
-                        delete fPointer;
-                    },
+                    delete_function<F>,
                 });
 
                 if(this->connection->retain_count() > 0) {
@@ -10362,13 +10369,19 @@ namespace sqlite_orm {
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto functionVoidPointer = sqlite3_user_data(context);
                 auto functionPointer = static_cast<scalar_function_t*>(functionVoidPointer);
-                auto callablePointer = functionPointer->create();
+                std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
+                                                                     functionPointer->destroy);
                 if(functionPointer->argumentsCount != argsCount) {
                     throw std::system_error(std::make_error_code(orm_error_code::arguments_count_does_not_match));
                 }
                 functionPointer->run(context, functionPointer, argsCount, values);
+            }
 
-                functionPointer->destroy(callablePointer);
+            template<class F>
+            static void delete_function(int* pointer) {
+                auto voidPointer = static_cast<void*>(pointer);
+                auto fPointer = static_cast<F*>(voidPointer);
+                delete fPointer;
             }
 
             std::string current_timestamp(sqlite3* db) {

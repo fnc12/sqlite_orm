@@ -183,8 +183,8 @@ namespace sqlite_orm {
                 this->scalarFunctions.emplace_back(new scalar_function_t{
                     move(name),
                     int(std::tuple_size<args_tuple>::value),
-                    []() -> void* {
-                        return new F();
+                    []() -> int* {
+                        return (int*)(new F());
                     },
                     [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
@@ -194,10 +194,7 @@ namespace sqlite_orm {
                         auto result = tuple_helper::call(functionPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
-                    [](void* pointer) {
-                        auto fPointer = static_cast<F*>(pointer);
-                        delete fPointer;
-                    },
+                    delete_function<F>,
                 });
 
                 if(this->connection->retain_count() > 0) {
@@ -487,13 +484,19 @@ namespace sqlite_orm {
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto functionVoidPointer = sqlite3_user_data(context);
                 auto functionPointer = static_cast<scalar_function_t*>(functionVoidPointer);
-                auto callablePointer = functionPointer->create();
+                std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
+                                                                     functionPointer->destroy);
                 if(functionPointer->argumentsCount != argsCount) {
                     throw std::system_error(std::make_error_code(orm_error_code::arguments_count_does_not_match));
                 }
                 functionPointer->run(context, functionPointer, argsCount, values);
+            }
 
-                functionPointer->destroy(callablePointer);
+            template<class F>
+            static void delete_function(int* pointer) {
+                auto voidPointer = static_cast<void*>(pointer);
+                auto fPointer = static_cast<F*>(voidPointer);
+                delete fPointer;
             }
 
             std::string current_timestamp(sqlite3* db) {

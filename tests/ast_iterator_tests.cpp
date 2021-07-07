@@ -8,18 +8,19 @@ TEST_CASE("ast_iterator") {
         int id = 0;
         std::string name;
     };
+    std::vector<std::type_index> typeIndexes;
+    decltype(typeIndexes) expected;
+    auto lambda = [&typeIndexes](auto &value) {
+        typeIndexes.push_back(typeid(value));
+    };
     SECTION("in") {
-        std::vector<std::type_index> typeIndexes;
-        decltype(typeIndexes) expected;
         SECTION("static") {
             auto node = c(&User::id).in(1, 2, 3);
             expected.push_back(typeid(&User::id));
             expected.push_back(typeid(int));
             expected.push_back(typeid(int));
             expected.push_back(typeid(int));
-            internal::iterate_ast(node, [&typeIndexes](auto &value) {
-                typeIndexes.push_back(typeid(value));
-            });
+            internal::iterate_ast(node, lambda);
         }
         SECTION("dynamic") {
             auto node = in(&User::id, {1, 2, 3});
@@ -27,10 +28,18 @@ TEST_CASE("ast_iterator") {
             expected.push_back(typeid(int));
             expected.push_back(typeid(int));
             expected.push_back(typeid(int));
-            internal::iterate_ast(node, [&typeIndexes](auto &value) {
-                typeIndexes.push_back(typeid(value));
-            });
+            internal::iterate_ast(node, lambda);
         }
-        REQUIRE(typeIndexes == expected);
     }
+    SECTION("function_call") {
+        struct Func {
+            bool operator()(int value) const {
+                return value % 2 == 0;
+            }
+        };
+        auto node = func<Func>(&User::id);
+        expected.push_back(typeid(&User::id));
+        internal::iterate_ast(node, lambda);
+    }
+    REQUIRE(typeIndexes == expected);
 }

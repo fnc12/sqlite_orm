@@ -20,6 +20,21 @@ TEST_CASE("function static") {
         using ExpectedArgumentsTuple = std::tuple<double>;
         static_assert(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value, "");
     }
+    SECTION("double(double)") {
+        struct Function {
+            double operator()(double arg) {
+                return std::sqrt(arg);
+            }
+        };
+
+        using RunMemberFunctionPointer = internal::run_member_pointer<Function>::type;
+        using ExpectedType = double (Function::*)(double);
+        static_assert(std::is_same<RunMemberFunctionPointer, ExpectedType>::value, "");
+
+        using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+        using ExpectedArgumentsTuple = std::tuple<double>;
+        static_assert(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value, "");
+    }
     SECTION("int(std::string) const") {
         struct Function {
             int operator()(std::string arg) const {
@@ -35,6 +50,21 @@ TEST_CASE("function static") {
         using ExpectedArgumentsTuple = std::tuple<std::string>;
         static_assert(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value, "");
     }
+    SECTION("int(std::string)") {
+        struct Function {
+            int operator()(std::string arg) {
+                return int(arg.length());
+            }
+        };
+
+        using RunMemberFunctionPointer = internal::run_member_pointer<Function>::type;
+        using ExpectedType = int (Function::*)(std::string);
+        static_assert(std::is_same<RunMemberFunctionPointer, ExpectedType>::value, "");
+
+        using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+        using ExpectedArgumentsTuple = std::tuple<std::string>;
+        static_assert(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value, "");
+    }
     SECTION("std::string(const std::string &, const std::string &) const") {
         struct Function {
             std::string operator()(const std::string &arg1, const std::string &arg2) const {
@@ -44,6 +74,21 @@ TEST_CASE("function static") {
 
         using RunMemberFunctionPointer = internal::run_member_pointer<Function>::type;
         using ExpectedType = std::string (Function::*)(const std::string &, const std::string &) const;
+        static_assert(std::is_same<RunMemberFunctionPointer, ExpectedType>::value, "");
+
+        using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;
+        using ExpectedArgumentsTuple = std::tuple<std::string, std::string>;
+        static_assert(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value, "");
+    }
+    SECTION("std::string(const std::string &, const std::string &)") {
+        struct Function {
+            std::string operator()(const std::string &arg1, const std::string &arg2) {
+                return arg1 + arg2;
+            }
+        };
+
+        using RunMemberFunctionPointer = internal::run_member_pointer<Function>::type;
+        using ExpectedType = std::string (Function::*)(const std::string &, const std::string &);
         static_assert(std::is_same<RunMemberFunctionPointer, ExpectedType>::value, "");
 
         using ArgumentsTuple = internal::member_function_arguments<RunMemberFunctionPointer>::tuple_type;

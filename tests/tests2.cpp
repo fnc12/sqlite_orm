@@ -463,8 +463,25 @@ int SqrtFunction::callsCount = 0;
 
 struct HasPrefixFunction {
     static int callsCount;
+    static int objectsCount;
 
-    bool operator()(const std::string &str, const std::string &prefix) const {
+    HasPrefixFunction() {
+        ++objectsCount;
+    }
+
+    HasPrefixFunction(const HasPrefixFunction &) {
+        ++objectsCount;
+    }
+
+    HasPrefixFunction(HasPrefixFunction &&) {
+        ++objectsCount;
+    }
+
+    ~HasPrefixFunction() {
+        --objectsCount;
+    }
+
+    bool operator()(const std::string &str, const std::string &prefix) {
         ++callsCount;
         return str.compare(0, prefix.size(), prefix) == 0;
     }
@@ -475,28 +492,25 @@ struct HasPrefixFunction {
 };
 
 int HasPrefixFunction::callsCount = 0;
+int HasPrefixFunction::objectsCount = 0;
 
 TEST_CASE("custom functions") {
     SqrtFunction::callsCount = 0;
     HasPrefixFunction::callsCount = 0;
 
-    auto makeStorage = [](const std::string &path) {
-        return make_storage(path);
-    };
-    using Storage = decltype(makeStorage({}));
-    std::unique_ptr<Storage> storage;
+    std::string path;
     SECTION("in memory") {
-        storage.reset(new Storage(makeStorage({})));
+        path = {};
     }
     SECTION("file") {
-        auto filename = "custom_function.sqlite";
-        ::remove(filename);
-        storage.reset(new Storage(makeStorage(filename)));
+        path = "custom_function.sqlite";
+        ::remove(path.c_str());
     }
-    storage->sync_schema();
+    auto storage = make_storage(path);
+    storage.sync_schema();
     {  //   call before creation
         try {
-            auto rows = storage->select(func<SqrtFunction>(4));
+            auto rows = storage.select(func<SqrtFunction>(4));
             REQUIRE(false);
         } catch(const std::system_error &) {
             //..
@@ -505,12 +519,12 @@ TEST_CASE("custom functions") {
 
     //  create function
     REQUIRE(SqrtFunction::callsCount == 0);
-    storage->create_scalar_function<SqrtFunction>();
+    storage.create_scalar_function<SqrtFunction>();
     REQUIRE(SqrtFunction::callsCount == 0);
 
     //  call after creation
     {
-        auto rows = storage->select(func<SqrtFunction>(4));
+        auto rows = storage.select(func<SqrtFunction>(4));
         REQUIRE(SqrtFunction::callsCount == 1);
         decltype(rows) expected;
         expected.push_back(2);
@@ -519,30 +533,34 @@ TEST_CASE("custom functions") {
 
     //  create function
     REQUIRE(HasPrefixFunction::callsCount == 0);
-    storage->create_scalar_function<HasPrefixFunction>();
+    REQUIRE(HasPrefixFunction::objectsCount == 0);
+    storage.create_scalar_function<HasPrefixFunction>();
     REQUIRE(HasPrefixFunction::callsCount == 0);
+    REQUIRE(HasPrefixFunction::objectsCount == 0);
 
     //  call after creation
     {
-        auto rows = storage->select(func<HasPrefixFunction>("one", "o"));
+        auto rows = storage.select(func<HasPrefixFunction>("one", "o"));
         decltype(rows) expected;
         expected.push_back(true);
         REQUIRE(rows == expected);
     }
     REQUIRE(HasPrefixFunction::callsCount == 1);
+    REQUIRE(HasPrefixFunction::objectsCount == 0);
     {
-        auto rows = storage->select(func<HasPrefixFunction>("two", "b"));
+        auto rows = storage.select(func<HasPrefixFunction>("two", "b"));
         decltype(rows) expected;
         expected.push_back(false);
         REQUIRE(rows == expected);
     }
     REQUIRE(HasPrefixFunction::callsCount == 2);
+    REQUIRE(HasPrefixFunction::objectsCount == 0);
 
     //  delete function
-    storage->delete_scalar_function<HasPrefixFunction>();
+    storage.delete_scalar_function<HasPrefixFunction>();
 
     //  delete function
-    storage->delete_scalar_function<SqrtFunction>();
+    storage.delete_scalar_function<SqrtFunction>();
 }
 
 TEST_CASE("InsertRange") {

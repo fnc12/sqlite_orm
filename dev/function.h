@@ -12,10 +12,10 @@ namespace sqlite_orm {
         struct scalar_function_t {
             std::string name;
             int argumentsCount = 0;
-            std::function<void *()> create;
+            std::function<int *()> create;
             std::function<void(sqlite3_context *context, void *functionPointer, int argsCount, sqlite3_value **values)>
                 run;
-            std::function<void(void *)> destroy;
+            void (*destroy)(int *) = nullptr;
         };
 
         template<class F>
@@ -29,6 +29,13 @@ namespace sqlite_orm {
         template<class O, class R, class... Args>
         struct member_function_arguments<R (O::*)(Args...) const> {
             using member_function_type = R (O::*)(Args...) const;
+            using tuple_type = std::tuple<typename std::decay<Args>::type...>;
+            using return_type = R;
+        };
+
+        template<class O, class R, class... Args>
+        struct member_function_arguments<R (O::*)(Args...)> {
+            using member_function_type = R (O::*)(Args...);
             using tuple_type = std::tuple<typename std::decay<Args>::type...>;
             using return_type = R;
         };
@@ -49,6 +56,9 @@ namespace sqlite_orm {
         };
     }
 
+    /**
+     *  Used to call user defined function: `func<MyFunc>(...);`
+     */
     template<class F, class... Args>
     internal::function_call<F, Args...> func(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
