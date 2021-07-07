@@ -16,15 +16,31 @@ TEST_CASE("statement_serializator from_t") {
 
     std::string value;
     decltype(value) expected;
-    SECTION("without alias") {
-        auto expression = from<User>();
-        value = internal::serialize(expression, context);
-        expected = "FROM 'users'";
+    SECTION("from") {
+        SECTION("without alias") {
+            auto expression = from<User>();
+            value = internal::serialize(expression, context);
+            expected = "FROM 'users'";
+        }
+        SECTION("with alias") {
+            auto expression = from<alias_u<User>>();
+            value = internal::serialize(expression, context);
+            expected = "FROM 'users' 'u'";
+        }
     }
-    SECTION("with alias") {
-        auto expression = from<alias_u<User>>();
+    SECTION("function_call") {
+        struct Func {
+            bool operator()(int arg) const {
+                return arg % 2;
+            }
+
+            static const char* name() {
+                return "EVEN";
+            }
+        };
+        auto expression = func<Func>(&User::id);
         value = internal::serialize(expression, context);
-        expected = "FROM 'users' 'u'";
+        expected = "EVEN(\"id\")";
     }
     REQUIRE(value == expected);
 }

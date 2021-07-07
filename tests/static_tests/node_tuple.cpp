@@ -656,20 +656,26 @@ static_assert(is_same<Tuple, Expected>::value, "left_join");
     auto a = as<GradeAlias>(&User::name);
     using A = decltype(a);
     using Tuple = node_tuple<A>::type;
-    static_assert(is_same<Tuple, std::tuple<decltype(&User::name)>>::value, "");
+    using ExpectedTuple = std::tuple<decltype(&User::name)>;
+    static_assert(is_same<Tuple, ExpectedTuple>::value, "");
 }
 {
     auto statement = select(columns("ototo", 25));
     using Statement = decltype(statement);
     using Tuple = node_tuple<Statement>::type;
-    static_assert(std::tuple_size<Tuple>::value == 2, "");
-    {
-        using Arg0 = std::tuple_element<0, Tuple>::type;
-        static_assert(is_same<Arg0, const char*>::value, "");
-    }
-    {
-        using Arg1 = std::tuple_element<1, Tuple>::type;
-        static_assert(is_same<Arg1, int>::value, "");
-    }
+    using ExpectedTuple = std::tuple<const char*, int>;
+    static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
+}
+{  //  function_call
+    struct Func {
+        bool operator()(int value) const {
+            return value % 2;
+        }
+    };
+    auto statement = func<Func>(8);
+    using Statement = decltype(statement);
+    using Tuple = node_tuple<Statement>::type;
+    using ExpectedTuple = std::tuple<int>;
+    static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
 }
 }

@@ -58,6 +58,7 @@ add_executable(unit_tests
     static_tests/tuple_filter_single.cpp
     static_tests/storage_traits.cpp
     static_tests/tuple_helper.cpp
+    static_tests/function_static_tests.cpp
 	constraints/default.cpp
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
