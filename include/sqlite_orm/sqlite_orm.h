@@ -6796,6 +6796,10 @@ namespace sqlite_orm {
      */
     template<class F, class... Args>
     internal::function_call<F, Args...> func(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        constexpr auto argsCount = std::tuple_size<args_tuple>::value;
+        constexpr auto functionArgsCount = std::tuple_size<typename internal::callable_arguments<F>::args_tuple>::value;
+        static_assert(argsCount == functionArgsCount, "Arguments amount does not match");
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
