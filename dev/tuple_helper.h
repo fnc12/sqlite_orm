@@ -165,15 +165,20 @@ namespace sqlite_orm {
         };
 
         //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
-        template<typename Function, typename Tuple, size_t... I>
-        auto call(Function f, Tuple t, std::index_sequence<I...>) {
-            return f(std::get<I>(t)...);
+        template<class Function, class FunctionPointer, class Tuple, size_t... I>
+        auto call_impl(Function& f, FunctionPointer functionPointer, Tuple t, std::index_sequence<I...>) {
+            return (f.*functionPointer)(std::get<I>(t)...);
         }
 
-        template<typename Function, typename Tuple>
-        auto call(Function f, Tuple t) {
+        template<class Function, class FunctionPointer, class Tuple>
+        auto call(Function& f, FunctionPointer functionPointer, Tuple t) {
             static constexpr auto size = std::tuple_size<Tuple>::value;
-            return call(f, t, std::make_index_sequence<size>{});
+            return call_impl(f, functionPointer, move(t), std::make_index_sequence<size>{});
+        }
+
+        template<class Function, class Tuple>
+        auto call(Function& f, Tuple t) {
+            return call(f, &Function::operator(), move(t));
         }
     }
 
