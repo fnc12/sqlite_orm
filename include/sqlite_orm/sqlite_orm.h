@@ -10163,7 +10163,7 @@ namespace sqlite_orm {
             }
 
             /**
-             * Call this to create user defined scalar function. Can be called at any time no matter connection is openede or no.
+             * Call this to create user defined scalar function. Can be called at any time no matter connection is opened or no.
              * T - function class. T must have operator() overload and static name function like this:
              * ```
              *  struct SqrtFunction {
@@ -10212,7 +10212,7 @@ namespace sqlite_orm {
             }
 
             /**
-             * Call this to create user defined aggregate function. Can be called at any time no matter connection is openede or no.
+             * Call this to create user defined aggregate function. Can be called at any time no matter connection is opened or no.
              * T - function class. T must have step member function, fin member function and static name function like this:
              * ```
              *   struct MeanFunction {
