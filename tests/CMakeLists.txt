@@ -96,7 +96,8 @@ add_executable(unit_tests
     unique_cases/nonstandart_primary_key.cpp
     static_tests/has_some_type.cpp
     static_tests/is_primary_key_insertable.cpp
-    static_tests/is_column_with_insertable_primary_key.cpp)
+    static_tests/is_column_with_insertable_primary_key.cpp
+	generated.cpp)
 
 if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")

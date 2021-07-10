@@ -850,6 +850,70 @@ namespace sqlite_orm {
             }
         };
 
+        struct generated_always_string {
+            operator std::string() const {
+                return "GENERATED ALWAYS";
+            }
+        };
+
+        struct generated_always_as_base {
+            enum class type { unspecified, virtual_, stored };
+
+            type gen_type = type::unspecified;
+
+            operator std::string() const {
+                std::string res = generated_always_string{}.operator std::string() + " AS";
+                switch(this->gen_type) {
+                    case type::virtual_:
+                        res += " VIRTUAL";
+                        break;
+                    case type::stored:
+                        res += " STORED";
+                        break;
+                    default:
+                        break;
+                }
+                return res;
+            }
+        };
+
+        /**
+         *  GENERATED ALWAYS AS constraint class.
+         */
+        template<class T>
+        struct generated_always_as_t : generated_always_as_base {
+            using expression_type = T;
+
+            expression_type expression;
+
+            generated_always_as_t(expression_type expression_) : expression(std::move(expression_)) {}
+
+            generated_always_as_t<T> virtual_() const {
+                auto obj = generated_always_as_t<T>{expression};
+                obj.gen_type = type::virtual_;
+                return obj;
+            }
+
+            generated_always_as_t<T> stored() const {
+                auto obj = generated_always_as_t<T>{expression};
+                obj.gen_type = type::stored;
+                return obj;
+            }
+        };
+
+        /**
+         *  GENERATED ALWAYS constraint class.
+         */
+        struct generated_always_t : generated_always_string {
+
+            generated_always_t() {}
+
+            template<class T>
+            internal::generated_always_as_t<T> as(T t) {
+                return {std::move(t)};
+            }
+        };
+
         struct unique_base {
             operator std::string() const {
                 return "UNIQUE";
@@ -1123,6 +1187,9 @@ namespace sqlite_orm {
         template<>
         struct is_constraint<autoincrement_t> : std::true_type {};
 
+        template<class T>
+        struct is_constraint<generated_always_as_t<T>> : std::true_type {};
+
         template<class... Cs>
         struct is_constraint<primary_key_t<Cs...>> : std::true_type {};
 
@@ -1191,6 +1258,12 @@ namespace sqlite_orm {
     inline internal::primary_key_t<> primary_key() {
         return {{}};
     }
+
+    inline internal::generated_always_t generated_always() {
+        return {};
+    }
+
+    // TODO: add 'as'
 
     template<class T>
     internal::default_t<T> default_value(T t) {
@@ -11950,6 +12023,16 @@ namespace sqlite_orm {
         template<class T>
         struct statement_serializator<check_t<T>, void> {
             using statement_type = check_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& c, const C& context) const {
+                return static_cast<std::string>(c) + " " + serialize(c.expression, context);
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<generated_always_as_t<T>, void> {
+            using statement_type = generated_always_as_t<T>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
