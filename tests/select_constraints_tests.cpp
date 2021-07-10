@@ -217,3 +217,41 @@ TEST_CASE("select constraints") {
     }
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 }
+
+TEST_CASE("Exists") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+
+    struct Visit {
+        int id = 0;
+        int userId = 0;
+        time_t time = 0;
+    };
+
+    auto storage =
+        make_storage("",
+                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+                     make_table("visits",
+                                make_column("id", &Visit::id, primary_key()),
+                                make_column("userId", &Visit::userId),
+                                make_column("time", &Visit::time),
+                                foreign_key(&Visit::userId).references(&User::id)));
+    storage.sync_schema();
+
+    storage.replace(User{1, "Daddy Yankee"});
+    storage.replace(User{2, "Don Omar"});
+
+    storage.replace(Visit{1, 1, 100000});
+    storage.replace(Visit{2, 1, 100001});
+    storage.replace(Visit{3, 1, 100002});
+    storage.replace(Visit{4, 1, 200000});
+
+    storage.replace(Visit{5, 2, 100000});
+
+    auto rows = storage.select(
+        &User::id,
+        where(exists(select(&Visit::id, where(c(&Visit::time) == 200000 and eq(&Visit::userId, &User::id))))));
+    REQUIRE(!rows.empty() == 1);
+}

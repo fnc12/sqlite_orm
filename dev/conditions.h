@@ -14,10 +14,6 @@
 namespace sqlite_orm {
 
     namespace internal {
-        struct arithmetic_t;
-    }
-
-    namespace internal {
 
         struct limit_string {
             operator std::string() const {

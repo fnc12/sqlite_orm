@@ -494,6 +494,44 @@ struct HasPrefixFunction {
 int HasPrefixFunction::callsCount = 0;
 int HasPrefixFunction::objectsCount = 0;
 
+struct MeanFunction {
+    double total = 0;
+    int count = 0;
+
+    static int objectsCount;
+
+    MeanFunction() {
+        ++objectsCount;
+    }
+
+    MeanFunction(const MeanFunction &) {
+        ++objectsCount;
+    }
+
+    MeanFunction(MeanFunction &&) {
+        ++objectsCount;
+    }
+
+    ~MeanFunction() {
+        --objectsCount;
+    }
+
+    void step(double value) {
+        total += value;
+        ++count;
+    }
+
+    int fin() const {
+        return total / count;
+    }
+
+    static std::string name() {
+        return "MEAN";
+    }
+};
+
+int MeanFunction::objectsCount = 0;
+
 TEST_CASE("custom functions") {
     SqrtFunction::callsCount = 0;
     HasPrefixFunction::callsCount = 0;
@@ -506,7 +544,10 @@ TEST_CASE("custom functions") {
         path = "custom_function.sqlite";
         ::remove(path.c_str());
     }
-    auto storage = make_storage(path);
+    struct User {
+        int id = 0;
+    };
+    auto storage = make_storage(path, make_table("users", make_column("id", &User::id)));
     storage.sync_schema();
     {  //   call before creation
         try {
@@ -519,7 +560,9 @@ TEST_CASE("custom functions") {
 
     //  create function
     REQUIRE(SqrtFunction::callsCount == 0);
+
     storage.create_scalar_function<SqrtFunction>();
+
     REQUIRE(SqrtFunction::callsCount == 0);
 
     //  call after creation
@@ -561,6 +604,22 @@ TEST_CASE("custom functions") {
 
     //  delete function
     storage.delete_scalar_function<SqrtFunction>();
+
+    storage.create_aggregate_function<MeanFunction>();
+
+    storage.replace(User{1});
+    storage.replace(User{2});
+    storage.replace(User{3});
+    REQUIRE(storage.count<User>() == 3);
+    {
+        REQUIRE(MeanFunction::objectsCount == 0);
+        auto rows = storage.select(func<MeanFunction>(&User::id));
+        REQUIRE(MeanFunction::objectsCount == 0);
+        decltype(rows) expected;
+        expected.push_back(2);
+        REQUIRE(rows == expected);
+    }
+    storage.delete_aggregate_function<MeanFunction>();
 }
 
 TEST_CASE("InsertRange") {
@@ -642,23 +701,4 @@ TEST_CASE("InsertRange") {
         REQUIRE(storage.get<ObjectWithoutRowid>(10).name == "Life");
         REQUIRE(storage.get<ObjectWithoutRowid>(20).name == "Death");
     }
-}
-
-TEST_CASE("default value for string") {
-    struct Contact {
-        int id = 0;
-        std::string firstName;
-        std::string lastName;
-        std::string phone;
-    };
-
-    using namespace sqlite_orm;
-    auto storage =
-        make_storage({},
-                     make_table("contacts",
-                                make_column("contact_id", &Contact::id, primary_key()),
-                                make_column("first_name", &Contact::firstName, default_value<std::string>("")),
-                                make_column("last_name", &Contact::lastName, default_value<std::string>("")),
-                                make_column("phone", &Contact::phone)));
-    storage.sync_schema();
 }
