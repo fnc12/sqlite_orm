@@ -6,8 +6,7 @@
 #include <iostream>
 #include <string>
 
-int main()
-{
+int main() {
     // TODO: implement this
     return 0;
 }
