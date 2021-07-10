@@ -82,11 +82,7 @@ namespace sqlite_orm {
         };
 
         struct generated_always_as_base {
-            enum class type {
-                unspecified,
-                virtual_,
-                stored
-            };
+            enum class type { unspecified, virtual_, stored };
 
             type gen_type = type::unspecified;
 
@@ -491,8 +487,6 @@ namespace sqlite_orm {
     inline internal::generated_always_t generated_always() {
         return {};
     }
-
-
 
     // TODO: add 'as'
 
