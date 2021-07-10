@@ -173,8 +173,26 @@ namespace sqlite_orm {
                 }
             }
 
+            /**
+             * Call this to create user defined scalar function. Can be called at any time no matter connection is openede or no.
+             * T - function class. T must have operator() overload and static name function like this:
+             * ```
+             *  struct SqrtFunction {
+             *
+             *      double operator()(double arg) const {
+             *          return std::sqrt(arg);
+             *      }
+             *
+             *      static const char *name() {
+             *          return "SQRT";
+             *      }
+             *  };
+             * ```
+             */
             template<class F>
             void create_scalar_function() {
+                static_assert(is_scalar_function<F>::value, "F cannot be a scalar function");
+
                 std::stringstream ss;
                 ss << F::name();
                 auto name = ss.str();
@@ -204,8 +222,33 @@ namespace sqlite_orm {
                 }
             }
 
+            /**
+             * Call this to create user defined aggregate function. Can be called at any time no matter connection is openede or no.
+             * T - function class. T must have step member function, fin member function and static name function like this:
+             * ```
+             *   struct MeanFunction {
+             *       double total = 0;
+             *       int count = 0;
+             *
+             *       void step(double value) {
+             *           total += value;
+             *           ++count;
+             *       }
+             *
+             *       int fin() const {
+             *           return total / count;
+             *       }
+             *
+             *       static std::string name() {
+             *           return "MEAN";
+             *       }
+             *   };
+             * ```
+             */
             template<class F>
             void create_aggregate_function() {
+                static_assert(is_aggregate_function<F>::value, "F cannot be an aggregate function");
+
                 std::stringstream ss;
                 ss << F::name();
                 auto name = ss.str();
@@ -241,16 +284,24 @@ namespace sqlite_orm {
                 }
             }
 
+            /**
+             *  Use it to delete scalar function you created before. Can be called at any time no matter connection is open or no.
+             */
             template<class F>
             void delete_scalar_function() {
+                static_assert(is_scalar_function<F>::value, "F cannot be a scalar function");
                 std::stringstream ss;
                 ss << F::name();
                 auto name = ss.str();
                 this->delete_function_impl(name, this->scalarFunctions);
             }
 
+            /**
+             *  Use it to delete aggregate function you created before. Can be called at any time no matter connection is open or no.
+             */
             template<class F>
             void delete_aggregate_function() {
+                static_assert(is_aggregate_function<F>::value, "F cannot be an aggregate function");
                 std::stringstream ss;
                 ss << F::name();
                 auto name = ss.str();

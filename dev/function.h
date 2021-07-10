@@ -66,7 +66,36 @@ namespace sqlite_orm {
         };
 
         template<class F>
+        struct is_aggregate_function_impl {
+
+            template<class U, class T>
+            struct SFINAE;
+
+            template<class U, class R>
+            struct SFINAE<U, R (U::*)() const> {};
+
+            template<class U>
+            static char test(SFINAE<U, decltype(&U::step)> *);
+
+            template<class U>
+            static int test(...);
+
+            template<class U>
+            static char test2(SFINAE<U, decltype(&U::fin)> *);
+
+            template<class U>
+            static int test2(...);
+
+            static constexpr bool has = sizeof(test<F>(0)) == sizeof(char);
+            static constexpr bool has2 = sizeof(test2<F>(0)) == sizeof(char);
+            static constexpr bool has_both = has && has2;
+        };
+
+        template<class F>
         struct is_scalar_function : std::integral_constant<bool, is_scalar_function_impl<F>::has> {};
+
+        template<class F>
+        struct is_aggregate_function : std::integral_constant<bool, is_aggregate_function_impl<F>::has_both> {};
 
         template<class F>
         struct scalar_run_member_pointer {
