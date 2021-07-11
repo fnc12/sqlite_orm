@@ -259,9 +259,13 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
+                auto argsCount = int(std::tuple_size<args_tuple>::value);
+                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
+                    argsCount = -1;
+                }
                 this->aggregateFunctions.emplace_back(new aggregate_function_t{
                     move(name),
-                    int(std::tuple_size<args_tuple>::value),
+                    argsCount,
                     /* create = */
                     []() -> int* {
                         return (int*)(new F());

@@ -570,6 +570,46 @@ struct FirstFunction {
     }
 };
 
+struct MultiSum {
+    double sum = 0;
+
+    static int objectsCount;
+
+    MultiSum() {
+        ++objectsCount;
+    }
+
+    MultiSum(const MeanFunction &) {
+        ++objectsCount;
+    }
+
+    MultiSum(MeanFunction &&) {
+        ++objectsCount;
+    }
+
+    ~MultiSum() {
+        --objectsCount;
+    }
+
+    void step(const arg_values &args) {
+        for(auto it = args.begin(); it != args.end(); ++it) {
+            if(!it->empty() && (it->is_integer() || it->is_float())) {
+                this->sum += it->get<double>();
+            }
+        }
+    }
+
+    double fin() const {
+        return this->sum;
+    }
+
+    static const char *name() {
+        return "MULTI_SUM";
+    }
+};
+
+int MultiSum::objectsCount = 0;
+
 int FirstFunction::objectsCount = 0;
 int FirstFunction::callsCount = 0;
 
@@ -697,6 +737,17 @@ TEST_CASE("custom functions") {
         REQUIRE(FirstFunction::callsCount == 4);
     }
     storage.delete_scalar_function<FirstFunction>();
+
+    storage.create_aggregate_function<MultiSum>();
+    {
+        REQUIRE(MultiSum::objectsCount == 0);
+        auto rows = storage.select(func<MultiSum>(&User::id, 5));
+        decltype(rows) expected;
+        expected.push_back(21);
+        REQUIRE(rows == expected);
+        REQUIRE(MultiSum::objectsCount == 0);
+    }
+    storage.delete_aggregate_function<MultiSum>();
 }
 
 TEST_CASE("InsertRange") {
