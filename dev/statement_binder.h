@@ -76,7 +76,7 @@ namespace sqlite_orm {
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_text(context, this->string_data(value));
+            sqlite3_result_text(context, this->string_data(value), -1, nullptr);
         }
 
       private:

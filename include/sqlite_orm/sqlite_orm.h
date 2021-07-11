@@ -47,6 +47,7 @@ __pragma(push_macro("min"))
         cannot_use_default_value,
         arguments_count_does_not_match,
         function_not_found,
+        index_is_out_of_bounds,
     };
 }
 
@@ -92,6 +93,8 @@ namespace sqlite_orm {
                     return "Arguments count does not match";
                 case orm_error_code::function_not_found:
                     return "Function not found";
+                case orm_error_code::index_is_out_of_bounds:
+                    return "Index is out of bounds";
                 default:
                     return "unknown error";
             }
@@ -5499,7 +5502,7 @@ namespace sqlite_orm {
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_text(context, this->string_data(value));
+            sqlite3_result_text(context, this->string_data(value), -1, nullptr);
         }
 
       private:
@@ -5791,6 +5794,9 @@ namespace sqlite_orm {
 
         //  used in sqlite_column (iteration, get_all)
         V extract(sqlite3_stmt* stmt, int columnIndex) const;
+
+        //  used in user defined functions
+        V extract(sqlite3_value* value) const;
     };
 
     /**
@@ -6743,6 +6749,8 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
+    struct arg_values;
+
     namespace internal {
 
         struct function_base {
@@ -6897,9 +6905,13 @@ namespace sqlite_orm {
     template<class F, class... Args>
     internal::function_call<F, Args...> func(Args... args) {
         using args_tuple = std::tuple<Args...>;
+        using function_args_tuple = typename internal::callable_arguments<F>::args_tuple;
         constexpr auto argsCount = std::tuple_size<args_tuple>::value;
-        constexpr auto functionArgsCount = std::tuple_size<typename internal::callable_arguments<F>::args_tuple>::value;
-        static_assert(argsCount == functionArgsCount, "Arguments amount does not match");
+        constexpr auto functionArgsCount = std::tuple_size<function_args_tuple>::value;
+        static_assert(
+            (argsCount == functionArgsCount && !std::is_same<function_args_tuple, std::tuple<arg_values>>::value) ||
+                std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+            "Arguments amount does not match");
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -9986,6 +9998,152 @@ namespace sqlite_orm {
 
 // #include "row_extractor.h"
 
+// #include "arg_values.h"
+
+#include <sqlite3.h>
+
+// #include "row_extractor.h"
+
+namespace sqlite_orm {
+
+    struct arg_value {
+
+        arg_value() : arg_value(nullptr) {}
+
+        arg_value(sqlite3_value* value_) : value(value_) {}
+
+        template<class T>
+        T get() const {
+            return row_extractor<T>().extract(this->value);
+        }
+
+        bool is_null() const {
+            auto type = sqlite3_value_type(this->value);
+            return type == SQLITE_NULL;
+        }
+
+        bool is_text() const {
+            auto type = sqlite3_value_type(this->value);
+            return type == SQLITE_TEXT;
+        }
+
+        bool is_integer() const {
+            auto type = sqlite3_value_type(this->value);
+            return type == SQLITE_INTEGER;
+        }
+
+        bool is_float() const {
+            auto type = sqlite3_value_type(this->value);
+            return type == SQLITE_FLOAT;
+        }
+
+        bool is_blob() const {
+            auto type = sqlite3_value_type(this->value);
+            return type == SQLITE_BLOB;
+        }
+
+        bool empty() const {
+            return this->value == nullptr;
+        }
+
+      private:
+        sqlite3_value* value = nullptr;
+    };
+
+    struct arg_values {
+
+        struct iterator {
+
+            iterator(const arg_values& container_, int index_) :
+                container(container_), index(index_),
+                currentValue(index_ < container_.size() ? container_[index_] : arg_value()) {}
+
+            iterator& operator++() {
+                ++this->index;
+                if(this->index < this->container.size()) {
+                    this->currentValue = this->container[this->index];
+                } else {
+                    this->currentValue = {};
+                }
+                return *this;
+            }
+
+            iterator operator++(int) {
+                auto res = *this;
+                ++this->index;
+                if(this->index < this->container.size()) {
+                    this->currentValue = this->container[this->index];
+                } else {
+                    this->currentValue = {};
+                }
+                return res;
+            }
+
+            arg_value operator*() const {
+                if(this->index < this->container.size() && this->index >= 0) {
+                    return this->currentValue;
+                } else {
+                    throw std::system_error(std::make_error_code(orm_error_code::index_is_out_of_bounds));
+                }
+            }
+
+            arg_value* operator->() const {
+                return &this->currentValue;
+            }
+
+            bool operator==(const iterator& other) const {
+                return &other.container == &this->container && other.index == this->index;
+            }
+
+            bool operator!=(const iterator& other) const {
+                return !(*this == other);
+            }
+
+          private:
+            const arg_values& container;
+            int index = 0;
+            mutable arg_value currentValue;
+        };
+
+        arg_values() : arg_values(0, nullptr) {}
+
+        arg_values(int argsCount_, sqlite3_value** values_) : argsCount(argsCount_), values(values_) {}
+
+        size_t size() const {
+            return this->argsCount;
+        }
+
+        bool empty() const {
+            return 0 == this->argsCount;
+        }
+
+        arg_value operator[](int index) const {
+            if(index < this->argsCount && index >= 0) {
+                auto valuePointer = this->values[index];
+                return {valuePointer};
+            } else {
+                throw std::system_error(std::make_error_code(orm_error_code::index_is_out_of_bounds));
+            }
+        }
+
+        arg_value at(int index) const {
+            return this->operator[](index);
+        }
+
+        iterator begin() const {
+            return {*this, 0};
+        }
+
+        iterator end() const {
+            return {*this, this->argsCount};
+        }
+
+      private:
+        int argsCount = 0;
+        sqlite3_value** values = nullptr;
+    };
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -9997,22 +10155,31 @@ namespace sqlite_orm {
         template<class T, int I>
         struct values_to_tuple {
 
-            void extract(sqlite3_value** values, T& tuple) const {
+            void extract(sqlite3_value** values, T& tuple, int argsCount) const {
                 using element_type = typename std::tuple_element<I, T>::type;
                 std::get<I>(tuple) = row_extractor<element_type>().extract(values[I]);
 
-                values_to_tuple<T, I - 1>().extract(values, tuple);
+                values_to_tuple<T, I - 1>().extract(values, tuple, argsCount);
             }
         };
 
         template<class T>
         struct values_to_tuple<T, -1> {
-            void extract(sqlite3_value** values, T& tuple) const {
+            void extract(sqlite3_value** values, T& tuple, int argsCount) const {
                 //..
+            }
+        };
+
+        template<>
+        struct values_to_tuple<std::tuple<arg_values>, 0> {
+            void extract(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
+                std::get<0>(tuple) = arg_values(argsCount, values);
             }
         };
     }
 }
+
+// #include "arg_values.h"
 
 namespace sqlite_orm {
 
@@ -10187,9 +10354,13 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
+                auto argsCount = int(std::tuple_size<args_tuple>::value);
+                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
+                    argsCount = -1;
+                }
                 this->scalarFunctions.emplace_back(new scalar_function_t{
                     move(name),
-                    int(std::tuple_size<args_tuple>::value),
+                    argsCount,
                     []() -> int* {
                         return (int*)(new F());
                     },
@@ -10198,7 +10369,7 @@ namespace sqlite_orm {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple);
+                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
                         auto result = tuple_helper::call(functionPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
@@ -10255,7 +10426,7 @@ namespace sqlite_orm {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple);
+                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
                         tuple_helper::call(functionPointer, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
@@ -10615,7 +10786,7 @@ namespace sqlite_orm {
                 auto functionPointer = static_cast<scalar_function_t*>(functionVoidPointer);
                 std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
                                                                      functionPointer->destroy);
-                if(functionPointer->argumentsCount != argsCount) {
+                if(functionPointer->argumentsCount != -1 && functionPointer->argumentsCount != argsCount) {
                     throw std::system_error(std::make_error_code(orm_error_code::arguments_count_does_not_match));
                 }
                 functionPointer->run(context, functionPointer, argsCount, values);

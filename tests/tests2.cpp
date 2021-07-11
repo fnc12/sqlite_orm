@@ -532,9 +532,51 @@ struct MeanFunction {
 
 int MeanFunction::objectsCount = 0;
 
+struct FirstFunction {
+    static int objectsCount;
+    static int callsCount;
+
+    FirstFunction() {
+        ++objectsCount;
+    }
+
+    FirstFunction(const MeanFunction &) {
+        ++objectsCount;
+    }
+
+    FirstFunction(MeanFunction &&) {
+        ++objectsCount;
+    }
+
+    ~FirstFunction() {
+        --objectsCount;
+    }
+
+    std::string operator()(const arg_values &args) const {
+        ++callsCount;
+        std::string res;
+        res.reserve(args.size());
+        for(auto value: args) {
+            auto stringValue = value.get<std::string>();
+            if(!stringValue.empty()) {
+                res += stringValue.front();
+            }
+        }
+        return res;
+    }
+
+    static const char *name() {
+        return "FIRST";
+    }
+};
+
+int FirstFunction::objectsCount = 0;
+int FirstFunction::callsCount = 0;
+
 TEST_CASE("custom functions") {
     SqrtFunction::callsCount = 0;
     HasPrefixFunction::callsCount = 0;
+    FirstFunction::callsCount = 0;
 
     std::string path;
     SECTION("in memory") {
@@ -620,6 +662,41 @@ TEST_CASE("custom functions") {
         REQUIRE(rows == expected);
     }
     storage.delete_aggregate_function<MeanFunction>();
+
+    storage.create_scalar_function<FirstFunction>();
+    {
+        auto rows = storage.select(func<FirstFunction>("Vanotek", "Tinashe", "Pitbull"));
+        decltype(rows) expected;
+        expected.push_back("VTP");
+        REQUIRE(rows == expected);
+        REQUIRE(FirstFunction::objectsCount == 0);
+        REQUIRE(FirstFunction::callsCount == 1);
+    }
+    {
+        auto rows = storage.select(func<FirstFunction>("Charli XCX", "Rita Ora"));
+        decltype(rows) expected;
+        expected.push_back("CR");
+        REQUIRE(rows == expected);
+        REQUIRE(FirstFunction::objectsCount == 0);
+        REQUIRE(FirstFunction::callsCount == 2);
+    }
+    {
+        auto rows = storage.select(func<FirstFunction>("Ted"));
+        decltype(rows) expected;
+        expected.push_back("T");
+        REQUIRE(rows == expected);
+        REQUIRE(FirstFunction::objectsCount == 0);
+        REQUIRE(FirstFunction::callsCount == 3);
+    }
+    {
+        auto rows = storage.select(func<FirstFunction>());
+        decltype(rows) expected;
+        expected.push_back("");
+        REQUIRE(rows == expected);
+        REQUIRE(FirstFunction::objectsCount == 0);
+        REQUIRE(FirstFunction::callsCount == 4);
+    }
+    storage.delete_scalar_function<FirstFunction>();
 }
 
 TEST_CASE("InsertRange") {
