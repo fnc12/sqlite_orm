@@ -303,13 +303,13 @@ TEST_CASE("Custom collate") {
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
         REQUIRE(false);
-    } catch(const std::system_error& e) {
+    } catch(const std::system_error&) {
         //        cout << e.what() << endl;
     }
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
         REQUIRE(false);
-    } catch(const std::system_error& e) {
+    } catch(const std::system_error&) {
         //        cout << e.what() << endl;
     }
     rows = storage.select(&Item::name,

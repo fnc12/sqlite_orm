@@ -115,7 +115,7 @@ TEST_CASE("Prepared remove all") {
                     REQUIRE_THAT(ids, UnorderedEquals(expected));
                 }
                 get<0>(statement) = "Team BS";
-                get<1>(statement) = 20.0;  //  assign double to int
+                get<1>(statement) = 20.0;  //  assign double to int, sorry for warning
                 REQUIRE(strcmp(get<0>(statement), "Team BS") == 0);
                 REQUIRE(get<1>(statement) == 20);
                 storage.execute(statement);

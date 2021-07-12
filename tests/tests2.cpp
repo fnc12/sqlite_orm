@@ -525,7 +525,7 @@ struct MeanFunction {
         ++count;
     }
 
-    int fin() const {
+    double fin() const {
         return total / count;
     }
 
@@ -535,6 +535,17 @@ struct MeanFunction {
 };
 
 int MeanFunction::objectsCount = 0;
+
+void printArray(const std::vector<std::string> &array, const char *title) {
+    cout << title << endl;
+    for(auto &row: array) {
+        cout << row << " ( ";
+        for(auto c: row) {
+            cout << int(c) << ' ';
+        }
+        cout << ")" << endl;
+    }
+};
 
 struct FirstFunction {
     static int objectsCount;
@@ -562,6 +573,7 @@ struct FirstFunction {
         res.reserve(args.size());
         for(auto value: args) {
             auto stringValue = value.get<std::string>();
+            cout << "FirstFunction::operator() *" << stringValue << "*" << endl;
             if(!stringValue.empty()) {
                 res += stringValue.front();
             }
@@ -712,16 +724,6 @@ TEST_CASE("custom functions") {
         auto rows = storage.select(func<FirstFunction>("Vanotek", "Tinashe", "Pitbull"));
         decltype(rows) expected;
         expected.push_back("VTP");
-        auto printArray = [](decltype(rows) array, const char *title) {
-            cout << title << endl;
-            for(auto &row: array) {
-                cout << row << " ( ";
-                for(auto c: row) {
-                    cout << int(c) << ' ';
-                }
-                cout << ")" << endl;
-            }
-        };
         printArray(rows, "rows");
         printArray(expected, "expected");
         REQUIRE(rows == expected);
