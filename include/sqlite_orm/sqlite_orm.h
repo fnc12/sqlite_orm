@@ -10056,11 +10056,11 @@ namespace sqlite_orm {
 
             iterator(const arg_values& container_, int index_) :
                 container(container_), index(index_),
-                currentValue(index_ < container_.size() ? container_[index_] : arg_value()) {}
+                currentValue(index_ < int(container_.size()) ? container_[index_] : arg_value()) {}
 
             iterator& operator++() {
                 ++this->index;
-                if(this->index < this->container.size()) {
+                if(this->index < int(this->container.size())) {
                     this->currentValue = this->container[this->index];
                 } else {
                     this->currentValue = {};
@@ -10071,7 +10071,7 @@ namespace sqlite_orm {
             iterator operator++(int) {
                 auto res = *this;
                 ++this->index;
-                if(this->index < this->container.size()) {
+                if(this->index < int(this->container.size())) {
                     this->currentValue = this->container[this->index];
                 } else {
                     this->currentValue = {};

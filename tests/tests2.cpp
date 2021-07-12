@@ -3,8 +3,12 @@
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <iostream>
 
 using namespace sqlite_orm;
+
+using std::cout;
+using std::endl;
 
 TEST_CASE("Empty storage") {
     auto storage = make_storage("empty.sqlite");
@@ -708,6 +712,18 @@ TEST_CASE("custom functions") {
         auto rows = storage.select(func<FirstFunction>("Vanotek", "Tinashe", "Pitbull"));
         decltype(rows) expected;
         expected.push_back("VTP");
+        auto printArray = [](decltype(rows) array, const char *title) {
+            cout << title << endl;
+            for(auto &row: array) {
+                cout << row << " ( ";
+                for(auto c: row) {
+                    cout << int(c) << ' ';
+                }
+                cout << ")" << endl;
+            }
+        };
+        printArray(rows, "rows");
+        printArray(expected, "expected");
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 1);
