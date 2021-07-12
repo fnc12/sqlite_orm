@@ -80,7 +80,7 @@ namespace sqlite_orm {
             }
 
             arg_value operator*() const {
-                if(this->index < this->container.size() && this->index >= 0) {
+                if(this->index < int(this->container.size()) && this->index >= 0) {
                     return this->currentValue;
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::index_is_out_of_bounds));
