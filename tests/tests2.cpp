@@ -536,14 +536,18 @@ struct MeanFunction {
 
 int MeanFunction::objectsCount = 0;
 
+void printString(const std::string &row) {
+    cout << row << " ( ";
+    for(auto c: row) {
+        cout << int(c) << ' ';
+    }
+    cout << ")" << endl;
+}
+
 void printArray(const std::vector<std::string> &array, const char *title) {
     cout << title << endl;
     for(auto &row: array) {
-        cout << row << " ( ";
-        for(auto c: row) {
-            cout << int(c) << ' ';
-        }
-        cout << ")" << endl;
+        printString(row);
     }
 };
 
@@ -574,6 +578,7 @@ struct FirstFunction {
         for(auto value: args) {
             auto stringValue = value.get<std::string>();
             cout << "FirstFunction::operator() *" << stringValue << "*" << endl;
+            printString(stringValue);
             if(!stringValue.empty()) {
                 res += stringValue.front();
             }
