@@ -583,6 +583,7 @@ struct FirstFunction {
                 res += stringValue.front();
             }
         }
+        cout << "FirstFunction::operator() result =*" << res << "*" << endl;
         return res;
     }
 
