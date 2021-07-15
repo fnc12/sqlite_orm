@@ -727,9 +727,9 @@ TEST_CASE("custom functions") {
 
     storage.create_scalar_function<FirstFunction>();
     {
-        auto rows = storage.select(func<FirstFunction>("Vanotek", "Tinashe", "Pitbull"));
+        auto rows = storage.select(func<FirstFunction>(u8"Vanotek", u8"Tinashe", u8"Pitbull"));
         decltype(rows) expected;
-        expected.push_back("VTP");
+        expected.push_back(u8"VTP");
         printArray(rows, "rows");
         printArray(expected, "expected");
         REQUIRE(rows == expected);
@@ -737,17 +737,17 @@ TEST_CASE("custom functions") {
         REQUIRE(FirstFunction::callsCount == 1);
     }
     {
-        auto rows = storage.select(func<FirstFunction>("Charli XCX", "Rita Ora"));
+        auto rows = storage.select(func<FirstFunction>(u8"Charli XCX", u8"Rita Ora"));
         decltype(rows) expected;
-        expected.push_back("CR");
+        expected.push_back(u8"CR");
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 2);
     }
     {
-        auto rows = storage.select(func<FirstFunction>("Ted"));
+        auto rows = storage.select(func<FirstFunction>(u8"Ted"));
         decltype(rows) expected;
-        expected.push_back("T");
+        expected.push_back(u8"T");
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 3);
