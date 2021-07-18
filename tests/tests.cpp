@@ -11,8 +11,11 @@
 #include <cstdio>  //  remove
 #include <numeric>  //  std::iota
 #include <algorithm>  //  std::fill
+#include <iostream>
 
 using namespace sqlite_orm;
+using std::cout;
+using std::endl;
 
 TEST_CASE("Limits") {
     auto storage2 = make_storage("limits.sqlite");
@@ -288,7 +291,13 @@ TEST_CASE("Custom collate") {
     storage.insert(Item{0, "Mercury"});
     storage.insert(Item{0, "Mars"});
     storage.create_collation("ototo", [](int, const void* lhs, int, const void* rhs) {
-        return strcmp((const char*)lhs, (const char*)rhs);
+        auto left = (const char*)lhs;
+        cout << "left = *" << left << "*" << endl;
+        auto right = (const char*)rhs;
+        cout << "right = *" << right << "*" << endl;
+        auto result = strcmp(left, right);
+        cout << "result = " << result << endl;
+        return result;
     });
     storage.create_collation("alwaysequal", [](int, const void*, int, const void*) {
         return 0;
