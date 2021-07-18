@@ -277,8 +277,10 @@ TEST_CASE("Custom collate") {
         std::string name;
     };
 
+    auto filename = "custom_collate.sqlite";
+    ::remove(filename);
     auto storage = make_storage(
-        {},
+        filename,
         make_table("items", make_column("id", &Item::id, primary_key()), make_column("name", &Item::name)));
     //    storage.open_forever();
     storage.sync_schema();
