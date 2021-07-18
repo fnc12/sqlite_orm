@@ -10484,7 +10484,8 @@ namespace sqlite_orm {
 
             void create_collation(const std::string& name, collating_function f) {
                 collating_function* functionPointer = nullptr;
-                if(f) {
+                const auto functionExists = bool(f);
+                if(functionExists) {
                     functionPointer = &(collatingFunctions[name] = std::move(f));
                 } else {
                     collatingFunctions.erase(name);
@@ -10497,7 +10498,7 @@ namespace sqlite_orm {
                                                                name.c_str(),
                                                                SQLITE_UTF8,
                                                                functionPointer,
-                                                               f ? collate_callback : nullptr);
+                                                               functionExists ? collate_callback : nullptr);
                     if(resultCode != SQLITE_OK) {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                                 sqlite3_errmsg(db));
