@@ -3,12 +3,8 @@
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <iostream>
 
 using namespace sqlite_orm;
-
-using std::cout;
-using std::endl;
 
 TEST_CASE("Empty storage") {
     auto storage = make_storage("empty.sqlite");
@@ -94,7 +90,6 @@ TEST_CASE("Select") {
 
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE) {
-        //        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -111,7 +106,6 @@ TEST_CASE("Select") {
     sqlite3_bind_int(stmt, 4, 5);
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE) {
-        //        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -128,7 +122,6 @@ TEST_CASE("Select") {
     sqlite3_bind_int(stmt, 4, 15);
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE) {
-        //        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -147,7 +140,6 @@ TEST_CASE("Select") {
         sqlite3_bind_int64(stmt, 1, firstId);
         rc = sqlite3_step(stmt);
         if(rc != SQLITE_ROW) {
-            //            cout << sqlite3_errmsg(db) << endl;
             throw std::runtime_error(sqlite3_errmsg(db));
         }
         REQUIRE(sqlite3_column_int(stmt, 0) == firstId);
@@ -536,21 +528,6 @@ struct MeanFunction {
 
 int MeanFunction::objectsCount = 0;
 
-void printString(const std::string &row) {
-    cout << row << " ( ";
-    for(auto c: row) {
-        cout << int(c) << ' ';
-    }
-    cout << ")" << endl;
-}
-
-void printArray(const std::vector<std::string> &array, const char *title) {
-    cout << title << endl;
-    for(auto &row: array) {
-        printString(row);
-    }
-};
-
 struct FirstFunction {
     static int objectsCount;
     static int callsCount;
@@ -577,13 +554,10 @@ struct FirstFunction {
         res.reserve(args.size());
         for(auto value: args) {
             auto stringValue = value.get<std::string>();
-            cout << "FirstFunction::operator() *" << stringValue << "*" << endl;
-            printString(stringValue);
             if(!stringValue.empty()) {
                 res += stringValue.front();
             }
         }
-        cout << "FirstFunction::operator() result =*" << res << "*" << endl;
         return res;
     }
 
@@ -730,8 +704,6 @@ TEST_CASE("custom functions") {
         auto rows = storage.select(func<FirstFunction>(u8"Vanotek", u8"Tinashe", u8"Pitbull"));
         decltype(rows) expected;
         expected.push_back(u8"VTP");
-        printArray(rows, "rows");
-        printArray(expected, "expected");
         REQUIRE(rows == expected);
         REQUIRE(FirstFunction::objectsCount == 0);
         REQUIRE(FirstFunction::callsCount == 1);

@@ -278,7 +278,7 @@ TEST_CASE("Custom collate") {
     };
 
     auto storage = make_storage(
-        "custom_collate.sqlite",
+        {},
         make_table("items", make_column("id", &Item::id, primary_key()), make_column("name", &Item::name)));
     //    storage.open_forever();
     storage.sync_schema();
