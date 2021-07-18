@@ -290,14 +290,8 @@ TEST_CASE("Custom collate") {
     storage.remove_all<Item>();
     storage.insert(Item{0, "Mercury"});
     storage.insert(Item{0, "Mars"});
-    storage.create_collation("ototo", [](int, const void* lhs, int, const void* rhs) {
-        auto left = (const char*)lhs;
-        cout << "left = *" << left << "*" << endl;
-        auto right = (const char*)rhs;
-        cout << "right = *" << right << "*" << endl;
-        auto result = strcmp(left, right);
-        cout << "result = " << result << endl;
-        return result;
+    storage.create_collation("ototo", [](int length, const void* lhs, int, const void* rhs) {
+        return ::strncmp((const char *)lhs, (const char *)rhs, length);
     });
     storage.create_collation("alwaysequal", [](int, const void*, int, const void*) {
         return 0;
