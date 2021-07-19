@@ -291,7 +291,7 @@ TEST_CASE("Custom collate") {
     storage.insert(Item{0, "Mercury"});
     storage.insert(Item{0, "Mars"});
     storage.create_collation("ototo", [](int length, const void* lhs, int, const void* rhs) {
-        return ::strncmp((const char *)lhs, (const char *)rhs, length);
+        return ::strncmp((const char*)lhs, (const char*)rhs, length);
     });
     storage.create_collation("alwaysequal", [](int, const void*, int, const void*) {
         return 0;
