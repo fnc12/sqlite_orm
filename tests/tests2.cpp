@@ -90,7 +90,6 @@ TEST_CASE("Select") {
 
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE) {
-        //        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -107,7 +106,6 @@ TEST_CASE("Select") {
     sqlite3_bind_int(stmt, 4, 5);
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE) {
-        //        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -124,7 +122,6 @@ TEST_CASE("Select") {
     sqlite3_bind_int(stmt, 4, 15);
     rc = sqlite3_step(stmt);
     if(rc != SQLITE_DONE) {
-        //        cout << sqlite3_errmsg(db) << endl;
         throw std::runtime_error(sqlite3_errmsg(db));
     }
     sqlite3_finalize(stmt);
@@ -143,7 +140,6 @@ TEST_CASE("Select") {
         sqlite3_bind_int64(stmt, 1, firstId);
         rc = sqlite3_step(stmt);
         if(rc != SQLITE_ROW) {
-            //            cout << sqlite3_errmsg(db) << endl;
             throw std::runtime_error(sqlite3_errmsg(db));
         }
         REQUIRE(sqlite3_column_int(stmt, 0) == firstId);
@@ -521,7 +517,7 @@ struct MeanFunction {
         ++count;
     }
 
-    int fin() const {
+    double fin() const {
         return total / count;
     }
 
@@ -532,9 +528,91 @@ struct MeanFunction {
 
 int MeanFunction::objectsCount = 0;
 
+struct FirstFunction {
+    static int objectsCount;
+    static int callsCount;
+
+    FirstFunction() {
+        ++objectsCount;
+    }
+
+    FirstFunction(const MeanFunction &) {
+        ++objectsCount;
+    }
+
+    FirstFunction(MeanFunction &&) {
+        ++objectsCount;
+    }
+
+    ~FirstFunction() {
+        --objectsCount;
+    }
+
+    std::string operator()(const arg_values &args) const {
+        ++callsCount;
+        std::string res;
+        res.reserve(args.size());
+        for(auto value: args) {
+            auto stringValue = value.get<std::string>();
+            if(!stringValue.empty()) {
+                res += stringValue.front();
+            }
+        }
+        return res;
+    }
+
+    static const char *name() {
+        return "FIRST";
+    }
+};
+
+struct MultiSum {
+    double sum = 0;
+
+    static int objectsCount;
+
+    MultiSum() {
+        ++objectsCount;
+    }
+
+    MultiSum(const MeanFunction &) {
+        ++objectsCount;
+    }
+
+    MultiSum(MeanFunction &&) {
+        ++objectsCount;
+    }
+
+    ~MultiSum() {
+        --objectsCount;
+    }
+
+    void step(const arg_values &args) {
+        for(auto it = args.begin(); it != args.end(); ++it) {
+            if(!it->empty() && (it->is_integer() || it->is_float())) {
+                this->sum += it->get<double>();
+            }
+        }
+    }
+
+    double fin() const {
+        return this->sum;
+    }
+
+    static const char *name() {
+        return "MULTI_SUM";
+    }
+};
+
+int MultiSum::objectsCount = 0;
+
+int FirstFunction::objectsCount = 0;
+int FirstFunction::callsCount = 0;
+
 TEST_CASE("custom functions") {
     SqrtFunction::callsCount = 0;
     HasPrefixFunction::callsCount = 0;
+    FirstFunction::callsCount = 0;
 
     std::string path;
     SECTION("in memory") {
@@ -620,6 +698,52 @@ TEST_CASE("custom functions") {
         REQUIRE(rows == expected);
     }
     storage.delete_aggregate_function<MeanFunction>();
+
+    storage.create_scalar_function<FirstFunction>();
+    {
+        auto rows = storage.select(func<FirstFunction>(u8"Vanotek", u8"Tinashe", u8"Pitbull"));
+        decltype(rows) expected;
+        expected.push_back(u8"VTP");
+        REQUIRE(rows == expected);
+        REQUIRE(FirstFunction::objectsCount == 0);
+        REQUIRE(FirstFunction::callsCount == 1);
+    }
+    {
+        auto rows = storage.select(func<FirstFunction>(u8"Charli XCX", u8"Rita Ora"));
+        decltype(rows) expected;
+        expected.push_back(u8"CR");
+        REQUIRE(rows == expected);
+        REQUIRE(FirstFunction::objectsCount == 0);
+        REQUIRE(FirstFunction::callsCount == 2);
+    }
+    {
+        auto rows = storage.select(func<FirstFunction>(u8"Ted"));
+        decltype(rows) expected;
+        expected.push_back(u8"T");
+        REQUIRE(rows == expected);
+        REQUIRE(FirstFunction::objectsCount == 0);
+        REQUIRE(FirstFunction::callsCount == 3);
+    }
+    {
+        auto rows = storage.select(func<FirstFunction>());
+        decltype(rows) expected;
+        expected.push_back("");
+        REQUIRE(rows == expected);
+        REQUIRE(FirstFunction::objectsCount == 0);
+        REQUIRE(FirstFunction::callsCount == 4);
+    }
+    storage.delete_scalar_function<FirstFunction>();
+
+    storage.create_aggregate_function<MultiSum>();
+    {
+        REQUIRE(MultiSum::objectsCount == 0);
+        auto rows = storage.select(func<MultiSum>(&User::id, 5));
+        decltype(rows) expected;
+        expected.push_back(21);
+        REQUIRE(rows == expected);
+        REQUIRE(MultiSum::objectsCount == 0);
+    }
+    storage.delete_aggregate_function<MultiSum>();
 }
 
 TEST_CASE("InsertRange") {
