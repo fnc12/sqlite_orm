@@ -11,11 +11,8 @@
 #include <cstdio>  //  remove
 #include <numeric>  //  std::iota
 #include <algorithm>  //  std::fill
-#include <iostream>
 
 using namespace sqlite_orm;
-using std::cout;
-using std::endl;
 
 TEST_CASE("Limits") {
     auto storage2 = make_storage("limits.sqlite");
