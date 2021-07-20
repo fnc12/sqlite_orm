@@ -31,6 +31,9 @@ namespace sqlite_orm {
 
         //  used in sqlite_column (iteration, get_all)
         V extract(sqlite3_stmt* stmt, int columnIndex) const;
+
+        //  used in user defined functions
+        V extract(sqlite3_value* value) const;
     };
 
     /**

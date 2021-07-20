@@ -277,16 +277,18 @@ TEST_CASE("Custom collate") {
         std::string name;
     };
 
+    auto filename = "custom_collate.sqlite";
+    ::remove(filename);
     auto storage = make_storage(
-        "custom_collate.sqlite",
+        filename,
         make_table("items", make_column("id", &Item::id, primary_key()), make_column("name", &Item::name)));
-    //    storage.open_forever();
+    storage.open_forever();
     storage.sync_schema();
     storage.remove_all<Item>();
     storage.insert(Item{0, "Mercury"});
     storage.insert(Item{0, "Mars"});
-    storage.create_collation("ototo", [](int, const void* lhs, int, const void* rhs) {
-        return strcmp((const char*)lhs, (const char*)rhs);
+    storage.create_collation("ototo", [](int length, const void* lhs, int, const void* rhs) {
+        return ::strncmp((const char*)lhs, (const char*)rhs, length);
     });
     storage.create_collation("alwaysequal", [](int, const void*, int, const void*) {
         return 0;
@@ -303,13 +305,13 @@ TEST_CASE("Custom collate") {
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
         REQUIRE(false);
-    } catch(const std::system_error& e) {
+    } catch(const std::system_error&) {
         //        cout << e.what() << endl;
     }
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
         REQUIRE(false);
-    } catch(const std::system_error& e) {
+    } catch(const std::system_error&) {
         //        cout << e.what() << endl;
     }
     rows = storage.select(&Item::name,
