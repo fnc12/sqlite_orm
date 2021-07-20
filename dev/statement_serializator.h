@@ -812,6 +812,16 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<generated_always_as_t<T>, void> {
+            using statement_type = generated_always_as_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& c, const C& context) const {
+                return static_cast<std::string>(c) + " " + serialize(c.expression, context);
+            }
+        };
+
         template<class O, class T, class G, class S, class... Op>
         struct statement_serializator<column_t<O, T, G, S, Op...>, void> {
             using statement_type = column_t<O, T, G, S, Op...>;
