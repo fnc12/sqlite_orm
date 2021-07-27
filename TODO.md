@@ -20,5 +20,6 @@
 * improve DROP COLUMN in `sync_schema` https://sqlite.org/lang_altertable.html#altertabdropcol
 * `UPDATE FROM` support https://sqlite.org/lang_update.html#upfrom
 * `iif()` function https://sqlite.org/lang_corefunc.html#iif
+* add strong typed collate syntax (more info [here](https://github.com/fnc12/sqlite_orm/issues/767#issuecomment-887689672))
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
