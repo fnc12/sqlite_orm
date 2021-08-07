@@ -317,6 +317,19 @@ namespace sqlite_orm {
                 this->delete_function_impl(name, this->aggregateFunctions);
             }
 
+            template<class C>
+            void create_collation() {
+                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
+                    C collatingObject;
+                    return collatingObject(leftLength, lhs, rightLength, rhs);
+                };
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                this->create_collation(name, move(func));
+            }
+
             void create_collation(const std::string& name, collating_function f) {
                 collating_function* functionPointer = nullptr;
                 const auto functionExists = bool(f);
@@ -339,6 +352,15 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 }
+            }
+
+            template<class C>
+            void delete_collation() {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                this->create_collation(name, {});
             }
 
             void begin_transaction() {
