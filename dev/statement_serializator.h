@@ -818,7 +818,16 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
-                return static_cast<std::string>(c) + " " + serialize(c.expression, context);
+                std::string output;
+                std::stringstream ss;
+                ss << (c.hasGeneratedAlways ? "GENERATED ALWAYS AS(" : "AS(");
+                ss << serialize(c.expression, context);
+                ss << ") ";
+                ss << c.gen_type;
+                output = ss.str();
+                if (output.back() == ' ')
+                    output.pop_back();
+                return output;
             }
         };
 

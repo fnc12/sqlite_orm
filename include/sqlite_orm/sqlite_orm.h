@@ -850,53 +850,49 @@ namespace sqlite_orm {
             }
         };
 
-        struct generated_always_string {
-            operator std::string() const {
-                return "GENERATED ALWAYS";
-            }
-        };
-
-        struct generated_always_as_base {
-            enum class type { unspecified, virtual_, stored };
-
-            type gen_type = type::unspecified;
-
-            operator std::string() const {
-                std::string res = generated_always_string{}.operator std::string() + " AS";
-                switch(this->gen_type) {
-                    case type::virtual_:
-                        res += " VIRTUAL";
-                        break;
-                    case type::stored:
-                        res += " STORED";
-                        break;
-                    default:
-                        break;
-                }
-                return res;
-            }
-        };
-
         /**
          *  GENERATED ALWAYS AS constraint class.
          */
+        enum class generated_always_as_type {
+            none,  //  not specified
+            virtual_,
+            stored
+        };
+
+        inline std::ostream& operator<<(std::ostream& os, generated_always_as_type type) {
+            switch(type) {
+                case generated_always_as_type::virtual_:
+                    os << "VIRTUAL";
+                    break;
+                case generated_always_as_type::stored:
+                    os << "STORED";
+                    break;
+                default:
+                    break;
+            }
+            return os;
+        }
+
         template<class T>
-        struct generated_always_as_t : generated_always_as_base {
+        struct generated_always_as_t {
             using expression_type = T;
 
+            bool hasGeneratedAlways;
             expression_type expression;
+            generated_always_as_type gen_type = generated_always_as_type::none;
 
-            generated_always_as_t(expression_type expression_) : expression(std::move(expression_)) {}
+            generated_always_as_t(bool hasGeneratedAlways_, expression_type expression_) :
+                hasGeneratedAlways(hasGeneratedAlways_), expression(std::move(expression_)) {}
 
             generated_always_as_t<T> virtual_() const {
-                auto obj = generated_always_as_t<T>{expression};
-                obj.gen_type = type::virtual_;
+                auto obj = generated_always_as_t<T>{hasGeneratedAlways, expression};
+                obj.gen_type = generated_always_as_type::virtual_;
                 return obj;
             }
 
             generated_always_as_t<T> stored() const {
-                auto obj = generated_always_as_t<T>{expression};
-                obj.gen_type = type::stored;
+                auto obj = generated_always_as_t<T>{hasGeneratedAlways, expression};
+                obj.gen_type = generated_always_as_type::stored;
                 return obj;
             }
         };
@@ -904,13 +900,13 @@ namespace sqlite_orm {
         /**
          *  GENERATED ALWAYS constraint class.
          */
-        struct generated_always_t : generated_always_string {
+        struct generated_always_t {
 
             generated_always_t() {}
 
             template<class T>
             internal::generated_always_as_t<T> as(T t) {
-                return {std::move(t)};
+                return {true, std::move(t)};
             }
         };
 
@@ -1225,9 +1221,9 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3006019
 
     /**
-     *  FOREIGN KEY constraint construction function that takes member pointer as argument
-     *  Available in SQLite 3.6.19 or higher
-     */
+ *  FOREIGN KEY constraint construction function that takes member pointer as argument
+ *  Available in SQLite 3.6.19 or higher
+ */
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
         return {std::make_tuple(std::forward<Cs>(columns)...)};
@@ -1235,8 +1231,8 @@ namespace sqlite_orm {
 #endif
 
     /**
-     *  UNIQUE constraint builder function.
-     */
+ *  UNIQUE constraint builder function.
+ */
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
@@ -1263,7 +1259,10 @@ namespace sqlite_orm {
         return {};
     }
 
-    // TODO: add 'as'
+    template<class T>
+    internal::generated_always_as_t<T> as(T t) {
+        return {false, std::move(t)};
+    }
 
     template<class T>
     internal::default_t<T> default_value(T t) {
@@ -1290,32 +1289,32 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  FOREIGN KEY traits. Common case
-         */
+     *  FOREIGN KEY traits. Common case
+     */
         template<class T>
         struct is_foreign_key : std::false_type {};
 
         /**
-         *  FOREIGN KEY traits. Specialized case
-         */
+     *  FOREIGN KEY traits. Specialized case
+     */
         template<class C, class R>
         struct is_foreign_key<internal::foreign_key_t<C, R>> : std::true_type {};
 
         /**
-         *  PRIMARY KEY traits. Common case
-         */
+     *  PRIMARY KEY traits. Common case
+     */
         template<class T>
         struct is_primary_key : public std::false_type {};
 
         /**
-         *  PRIMARY KEY traits. Specialized case
-         */
+     *  PRIMARY KEY traits. Specialized case
+     */
         template<class... Cs>
         struct is_primary_key<internal::primary_key_t<Cs...>> : public std::true_type {};
 
         /**
-         * PRIMARY KEY INSERTABLE traits.
-         */
+     * PRIMARY KEY INSERTABLE traits.
+     */
         template<typename T>
         struct is_primary_key_insertable {
             using field_type = typename T::field_type;
@@ -12036,7 +12035,16 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
-                return static_cast<std::string>(c) + " " + serialize(c.expression, context);
+                std::string output;
+                std::stringstream ss;
+                ss << (c.hasGeneratedAlways ? "GENERATED ALWAYS AS(" : "AS(");
+                ss << serialize(c.expression, context);
+                ss << ") ";
+                ss << c.gen_type;
+                output = ss.str();
+                if(output.back() == ' ')
+                    output.pop_back();
+                return output;
             }
         };
 
