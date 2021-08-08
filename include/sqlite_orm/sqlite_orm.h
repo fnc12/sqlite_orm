@@ -2090,6 +2090,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple, std::tuple_size
+#include <sstream>  //  std::stringstream
 
 // #include "collate_argument.h"
 
@@ -2393,6 +2394,15 @@ namespace sqlite_orm {
             named_collate<self> collate(std::string name) const {
                 return {*this, std::move(name)};
             }
+
+            template<class C>
+            named_collate<self> collate() const {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                return {*this, std::move(name)};
+            }
         };
 
         struct is_not_equal_string {
@@ -2688,6 +2698,15 @@ namespace sqlite_orm {
                 auto res = *this;
                 res._collate_argument = std::move(name);
                 return res;
+            }
+
+            template<class C>
+            self collate() const {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                return this->collate(move(name));
             }
         };
 
@@ -10482,6 +10501,19 @@ namespace sqlite_orm {
                 this->delete_function_impl(name, this->aggregateFunctions);
             }
 
+            template<class C>
+            void create_collation() {
+                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
+                    C collatingObject;
+                    return collatingObject(leftLength, lhs, rightLength, rhs);
+                };
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                this->create_collation(name, move(func));
+            }
+
             void create_collation(const std::string& name, collating_function f) {
                 collating_function* functionPointer = nullptr;
                 const auto functionExists = bool(f);
@@ -10504,6 +10536,15 @@ namespace sqlite_orm {
                                                 sqlite3_errmsg(db));
                     }
                 }
+            }
+
+            template<class C>
+            void delete_collation() {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                this->create_collation(name, {});
             }
 
             void begin_transaction() {

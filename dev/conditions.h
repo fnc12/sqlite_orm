@@ -4,6 +4,7 @@
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple, std::tuple_size
+#include <sstream>  //  std::stringstream
 
 #include "collate_argument.h"
 #include "constraints.h"
@@ -194,6 +195,15 @@ namespace sqlite_orm {
             }
 
             named_collate<self> collate(std::string name) const {
+                return {*this, std::move(name)};
+            }
+
+            template<class C>
+            named_collate<self> collate() const {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
                 return {*this, std::move(name)};
             }
         };
@@ -491,6 +501,15 @@ namespace sqlite_orm {
                 auto res = *this;
                 res._collate_argument = std::move(name);
                 return res;
+            }
+
+            template<class C>
+            self collate() const {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                return this->collate(move(name));
             }
         };
 
