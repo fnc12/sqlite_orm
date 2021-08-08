@@ -825,7 +825,7 @@ namespace sqlite_orm {
                 ss << ") ";
                 ss << c.gen_type;
                 output = ss.str();
-                if (output.back() == ' ')
+                if(output.back() == ' ')
                     output.pop_back();
                 return output;
             }
