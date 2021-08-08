@@ -10,6 +10,7 @@
 #include <cstddef>  //  std::nullptr_t
 #include <utility>  //  std::declval
 #include <locale>  //  std::wstring_convert
+#include <cstring>  //  ::strncpy, ::strlen
 
 #include "is_std_ptr.h"
 
@@ -94,7 +95,7 @@ namespace sqlite_orm {
         }
 
         std::tuple<const char*, int> string_data(const char* s) const {
-            auto length = int(strlen(s));
+            auto length = int(::strlen(s));
             return {s, length};
         }
     };
