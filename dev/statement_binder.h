@@ -11,7 +11,7 @@
 #include <utility>  //  std::declval
 #include <locale>  //  std::wstring_convert
 
-#include "is_std_ptr.h"
+#include "common_traits.h"
 
 namespace sqlite_orm {
 

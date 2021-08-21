@@ -446,9 +446,9 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3006019
 
     /**
- *  FOREIGN KEY constraint construction function that takes member pointer as argument
- *  Available in SQLite 3.6.19 or higher
- */
+*  FOREIGN KEY constraint construction function that takes member pointer as argument
+*  Available in SQLite 3.6.19 or higher
+*/
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
         return {std::make_tuple(std::forward<Cs>(columns)...)};
@@ -456,8 +456,8 @@ namespace sqlite_orm {
 #endif
 
     /**
- *  UNIQUE constraint builder function.
- */
+*  UNIQUE constraint builder function.
+*/
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
@@ -538,21 +538,44 @@ namespace sqlite_orm {
         struct is_primary_key<internal::primary_key_t<Cs...>> : public std::true_type {};
 
         /**
-     * PRIMARY KEY INSERTABLE traits.
+     *  GENERATED ALWAYS AS traits. Common case
      */
+        template<class T>
+        struct is_generated_always_as : public std::false_type {};
+
+        /**
+     *  GENERATED ALWAYS AS traits. Specialized case
+     */
+        template<class Expr>
+        struct is_generated_always_as<internal::generated_always_as_t<Expr>> : public std::true_type {};
+
+        /**
+    * PRIMARY KEY INSERTABLE traits.
+    */
         template<typename T>
         struct is_primary_key_insertable {
             using field_type = typename T::field_type;
             using constraints_type = typename T::constraints_type;
 
-            static_assert((tuple_helper::tuple_contains_type<primary_key_t<>, constraints_type>::value),
+            static_assert((internal::tuple_contains_type<primary_key_t<>, constraints_type>::value),
                           "an unexpected type was passed");
 
-            static constexpr bool value =
-                (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
-                 tuple_helper::tuple_contains_type<autoincrement_t, constraints_type>::value ||
-                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
+            static constexpr bool value = (internal::tuple_contains_some_type<default_t, constraints_type>::value ||
+                                           internal::tuple_contains_type<autoincrement_t, constraints_type>::value ||
+                                           std::is_base_of<integer_printer, type_printer<field_type>>::value);
         };
+
+        // TODO: remove is_nongenerated_column
+        /**
+     * NONGENERATED COLUMN traits.
+     */
+        template<typename T>
+        struct is_nongenerated_column {
+            using constraints_type = typename T::constraints_type;
+            static constexpr bool value =
+                !(internal::tuple_contains_some_type<generated_always_as_t, constraints_type>::value);
+        };
+
     }
 
 }

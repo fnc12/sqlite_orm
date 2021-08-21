@@ -76,7 +76,7 @@ namespace sqlite_orm {
 
             template<class Opt>
             constexpr bool has() const {
-                return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
+                return internal::tuple_contains_type<Opt, constraints_type>::value;
             }
 
             template<class O1, class O2, class... Opts>
@@ -99,7 +99,7 @@ namespace sqlite_orm {
              */
             std::unique_ptr<std::string> default_value() const {
                 std::unique_ptr<std::string> res;
-                iterate_tuple(this->constraints, [&res](auto& v) {
+                iterate_tuple(this->constraints, [&res](auto &v) {
                     auto dft = internal::default_value_extractor()(v);
                     if(dft) {
                         res = std::move(dft);
@@ -123,9 +123,9 @@ namespace sqlite_orm {
             template<class O, class T, class... Op>
             struct is_column_with_insertable_primary_key<
                 column_t<O, T, Op...>,
-                typename std::enable_if<(tuple_helper::tuple_contains_type<
-                                         primary_key_t<>,
-                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                typename std::enable_if<(
+                    internal::tuple_contains_type<primary_key_t<>,
+                                                  typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
                 static constexpr bool value = is_primary_key_insertable<column_type>::value;
             };
@@ -142,13 +142,12 @@ namespace sqlite_orm {
             template<class O, class T, class... Op>
             struct is_column_with_noninsertable_primary_key<
                 column_t<O, T, Op...>,
-                typename std::enable_if<(tuple_helper::tuple_contains_type<
-                                         primary_key_t<>,
-                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                typename std::enable_if<(
+                    internal::tuple_contains_type<primary_key_t<>,
+                                                  typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
                 static constexpr bool value = !is_primary_key_insertable<column_type>::value;
             };
-
         }
 
         /**
@@ -174,6 +173,23 @@ namespace sqlite_orm {
          */
         template<class T>
         struct is_column_with_noninsertable_primary_key : public sfinae::is_column_with_noninsertable_primary_key<T> {};
+
+        /**
+         * Column non-generated traits. Common case.
+         */
+        template<class T>
+        struct is_column_nongenerated : public std::false_type {};
+
+        /**
+         *  Column non-generated traits. Specialized case case.
+         */
+        template<class O, class T, class... Op>
+        struct is_column_nongenerated<column_t<O, T, Op...>> {
+            using column_type = column_t<O, T, Op...>;
+            using constraints_type = typename column_type::constraints_type;
+            static constexpr bool value =
+                !(internal::tuple_contains_type_if<is_generated_always_as, constraints_type>::value);
+        };
 
         template<class T>
         struct column_field_type {
@@ -204,8 +220,8 @@ namespace sqlite_orm {
              class T,
              typename = typename std::enable_if<!std::is_member_function_pointer<T O::*>::value>::type,
              class... Op>
-    internal::column_t<O, T, const T& (O::*)() const, void (O::*)(T), Op...>
-    make_column(const std::string& name, T O::*m, Op... constraints) {
+    internal::column_t<O, T, const T &(O::*)() const, void (O::*)(T), Op...>
+    make_column(const std::string &name, T O::*m, Op... constraints) {
         static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         static_assert(internal::is_field_member_pointer<T O::*>::value,
@@ -226,7 +242,7 @@ namespace sqlite_orm {
                        G,
                        S,
                        Op...>
-    make_column(const std::string& name, S setter, G getter, Op... constraints) {
+    make_column(const std::string &name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
@@ -249,7 +265,7 @@ namespace sqlite_orm {
                        G,
                        S,
                        Op...>
-    make_column(const std::string& name, G getter, S setter, Op... constraints) {
+    make_column(const std::string &name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");

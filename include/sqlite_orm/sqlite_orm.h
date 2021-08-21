@@ -189,45 +189,106 @@ namespace sqlite_orm {
 
 }
 
+// #include "valuebased_metaprogramming.h"
+
+#include <tuple>
+
+namespace sqlite_orm {
+    namespace internal {
+        template<typename T>
+        struct just_type {
+            using type = T;
+        };
+
+        template<typename... T>
+        using tuple_t = std::tuple<just_type<T>...>;
+
+        template<typename... T>
+        struct valuebased_tuple;
+
+        template<typename... Ts>
+        struct valuebased_tuple<std::tuple<Ts...>> {
+            using type = tuple_t<Ts...>;
+        };
+    }
+}
+
+// #include "common_traits.h"
+
+#include <type_traits>  //  std::true_type, std::false_type, std::declval
+#include <memory>  // std::shared_ptr, std::unique_ptr, make functions..
+
 namespace sqlite_orm {
 
-    //  got from here http://stackoverflow.com/questions/25958259/how-do-i-find-out-if-a-tuple-contains-a-type
+    namespace internal {
+
+        /*
+         * This is because of bug in MSVC, for more information, please visit
+         * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
+         */
+#if defined(_MSC_VER)
+        template<template<typename...> class Base, typename Derived>
+        struct is_base_of_template_impl {
+            template<typename... Ts>
+            static constexpr std::true_type test(const Base<Ts...>*);
+
+            static constexpr std::false_type test(...);
+
+            using type = decltype(test(std::declval<Derived*>()));
+        };
+
+        template<typename Derived, template<typename...> class Base>
+        using is_base_of_template = typename is_base_of_template_impl<Base, Derived>::type;
+
+#else
+
+        template<template<typename...> class C, typename... Ts>
+        std::true_type is_base_of_template_impl(const C<Ts...>*);
+
+        template<template<typename...> class C>
+        std::false_type is_base_of_template_impl(...);
+
+        template<typename T, template<typename...> class C>
+        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
+#endif
+    }
+
+    /**
+     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
+     */
+    template<typename T>
+    struct is_std_ptr : std::false_type {};
+
+    template<typename T>
+    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
+        using element_type = T;
+
+        static std::shared_ptr<T> make(const T& v) {
+            return std::make_shared<T>(v);
+        }
+    };
+
+    template<typename T>
+    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
+        using element_type = T;
+
+        static std::unique_ptr<T> make(const T& v) {
+            return std::make_unique<T>(v);
+        }
+    };
+
+    namespace internal {
+        template<template<class...> class TT, class U>
+        struct is_template_matches_type : std::false_type {};
+
+        template<template<class...> class TT, class... Args>
+        struct is_template_matches_type<TT, TT<Args...>> : std::true_type {};
+    }
+}
+
+namespace sqlite_orm {
+
     namespace tuple_helper {
-        /**
-         *  HAS_TYPE type trait
-         */
-        template<typename T, typename Tuple>
-        struct has_type;
-
-        template<typename T>
-        struct has_type<T, std::tuple<>> : std::false_type {};
-
-        template<typename T, typename U, typename... Ts>
-        struct has_type<T, std::tuple<U, Ts...>> : has_type<T, std::tuple<Ts...>> {};
-
-        template<typename T, typename... Ts>
-        struct has_type<T, std::tuple<T, Ts...>> : std::true_type {};
-
-        template<typename T, typename Tuple>
-        using tuple_contains_type = typename has_type<T, Tuple>::type;
-
-        /**
-         *  HAS_SOME_TYPE type trait
-         */
-        template<template<class> class TT, typename Tuple>
-        struct has_some_type;
-
-        template<template<class> class TT>
-        struct has_some_type<TT, std::tuple<>> : std::false_type {};
-
-        template<template<class> class TT, typename U, typename... Ts>
-        struct has_some_type<TT, std::tuple<U, Ts...>> : has_some_type<TT, std::tuple<Ts...>> {};
-
-        template<template<class> class TT, typename T, typename... Ts>
-        struct has_some_type<TT, std::tuple<TT<T>, Ts...>> : std::true_type {};
-
-        template<template<class> class TT, typename Tuple>
-        using tuple_contains_some_type = typename has_some_type<TT, Tuple>::type;
 
         template<size_t N, class... Args>
         struct iterator_impl {
@@ -367,6 +428,63 @@ namespace sqlite_orm {
     }
 
     namespace internal {
+        /**
+         *  HAS_TYPE value-based metafunction
+         */
+        template<typename T, typename... Args>
+        constexpr bool has_type(sqlite_orm::internal::tuple_t<Args...>) noexcept {
+            bool result[] = {(std::is_same<T, Args>::value)...};
+            for(bool value: result) {
+                if(value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        template<typename T, typename Tuple>
+        using tuple_contains_type =
+            std::integral_constant<bool, has_type<T>(typename sqlite_orm::internal::valuebased_tuple<Tuple>::type{})>;
+
+        /**
+         *  HAS_SOME_TYPE value-based metafunction
+         */
+        template<template<class...> class TT, typename... Args>
+        constexpr bool has_some_type(sqlite_orm::internal::tuple_t<Args...>) noexcept {
+            bool result[] = {(sqlite_orm::internal::is_template_matches_type<TT, Args>::value)...};
+            for(bool value: result) {
+                if(value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        template<template<class...> class TT, typename Tuple>
+        using tuple_contains_some_type =
+            std::integral_constant<bool,
+                                   has_some_type<TT>(typename sqlite_orm::internal::valuebased_tuple<Tuple>::type{})>;
+
+        // TODO: static test for has_type_if
+
+        /**
+         *  HAS_TYPE_IF value-based metafunction
+         */
+        template<template<class...> class Cond, typename... Args>
+        constexpr bool has_type_if(sqlite_orm::internal::tuple_t<Args...>) noexcept {
+            bool result[] = {(Cond<Args>::value)...};
+            for(bool value: result) {
+                if(value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        template<template<class...> class Cond, typename Tuple>
+        using tuple_contains_type_if =
+            std::integral_constant<bool,
+                                   has_type_if<Cond>(typename sqlite_orm::internal::valuebased_tuple<Tuple>::type{})>;
 
         template<size_t N, class L, class R>
         void move_tuple(L& lhs, R& rhs) {
@@ -1221,9 +1339,9 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3006019
 
     /**
- *  FOREIGN KEY constraint construction function that takes member pointer as argument
- *  Available in SQLite 3.6.19 or higher
- */
+*  FOREIGN KEY constraint construction function that takes member pointer as argument
+*  Available in SQLite 3.6.19 or higher
+*/
     template<class... Cs>
     internal::foreign_key_intermediate_t<Cs...> foreign_key(Cs... columns) {
         return {std::make_tuple(std::forward<Cs>(columns)...)};
@@ -1231,8 +1349,8 @@ namespace sqlite_orm {
 #endif
 
     /**
- *  UNIQUE constraint builder function.
- */
+*  UNIQUE constraint builder function.
+*/
     template<class... Args>
     internal::unique_t<Args...> unique(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
@@ -1313,21 +1431,44 @@ namespace sqlite_orm {
         struct is_primary_key<internal::primary_key_t<Cs...>> : public std::true_type {};
 
         /**
-     * PRIMARY KEY INSERTABLE traits.
+     *  GENERATED ALWAYS AS traits. Common case
      */
+        template<class T>
+        struct is_generated_always_as : public std::false_type {};
+
+        /**
+     *  GENERATED ALWAYS AS traits. Specialized case
+     */
+        template<class Expr>
+        struct is_generated_always_as<internal::generated_always_as_t<Expr>> : public std::true_type {};
+
+        /**
+    * PRIMARY KEY INSERTABLE traits.
+    */
         template<typename T>
         struct is_primary_key_insertable {
             using field_type = typename T::field_type;
             using constraints_type = typename T::constraints_type;
 
-            static_assert((tuple_helper::tuple_contains_type<primary_key_t<>, constraints_type>::value),
+            static_assert((internal::tuple_contains_type<primary_key_t<>, constraints_type>::value),
                           "an unexpected type was passed");
 
-            static constexpr bool value =
-                (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
-                 tuple_helper::tuple_contains_type<autoincrement_t, constraints_type>::value ||
-                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
+            static constexpr bool value = (internal::tuple_contains_some_type<default_t, constraints_type>::value ||
+                                           internal::tuple_contains_type<autoincrement_t, constraints_type>::value ||
+                                           std::is_base_of<integer_printer, type_printer<field_type>>::value);
         };
+
+        // TODO: remove is_nongenerated_column
+        /**
+     * NONGENERATED COLUMN traits.
+     */
+        template<typename T>
+        struct is_nongenerated_column {
+            using constraints_type = typename T::constraints_type;
+            static constexpr bool value =
+                !(internal::tuple_contains_some_type<generated_always_as_t, constraints_type>::value);
+        };
+
     }
 
 }
@@ -1840,7 +1981,7 @@ namespace sqlite_orm {
 
             template<class Opt>
             constexpr bool has() const {
-                return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
+                return internal::tuple_contains_type<Opt, constraints_type>::value;
             }
 
             template<class O1, class O2, class... Opts>
@@ -1887,9 +2028,9 @@ namespace sqlite_orm {
             template<class O, class T, class... Op>
             struct is_column_with_insertable_primary_key<
                 column_t<O, T, Op...>,
-                typename std::enable_if<(tuple_helper::tuple_contains_type<
-                                         primary_key_t<>,
-                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                typename std::enable_if<(
+                    internal::tuple_contains_type<primary_key_t<>,
+                                                  typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
                 static constexpr bool value = is_primary_key_insertable<column_type>::value;
             };
@@ -1906,13 +2047,12 @@ namespace sqlite_orm {
             template<class O, class T, class... Op>
             struct is_column_with_noninsertable_primary_key<
                 column_t<O, T, Op...>,
-                typename std::enable_if<(tuple_helper::tuple_contains_type<
-                                         primary_key_t<>,
-                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                typename std::enable_if<(
+                    internal::tuple_contains_type<primary_key_t<>,
+                                                  typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
                 static constexpr bool value = !is_primary_key_insertable<column_type>::value;
             };
-
         }
 
         /**
@@ -1938,6 +2078,23 @@ namespace sqlite_orm {
          */
         template<class T>
         struct is_column_with_noninsertable_primary_key : public sfinae::is_column_with_noninsertable_primary_key<T> {};
+
+        /**
+         * Column non-generated traits. Common case.
+         */
+        template<class T>
+        struct is_column_nongenerated : public std::false_type {};
+
+        /**
+         *  Column non-generated traits. Specialized case case.
+         */
+        template<class O, class T, class... Op>
+        struct is_column_nongenerated<column_t<O, T, Op...>> {
+            using column_type = column_t<O, T, Op...>;
+            using constraints_type = typename column_type::constraints_type;
+            static constexpr bool value =
+                !(internal::tuple_contains_type_if<is_generated_always_as, constraints_type>::value);
+        };
 
         template<class T>
         struct column_field_type {
@@ -3887,44 +4044,7 @@ namespace sqlite_orm {
 
 // #include "operators.h"
 
-// #include "is_base_of_template.h"
-
-#include <type_traits>  //  std::true_type, std::false_type, std::declval
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        /*
-         * This is because of bug in MSVC, for more information, please visit
-         * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
-         */
-#if defined(_MSC_VER)
-        template<template<typename...> class Base, typename Derived>
-        struct is_base_of_template_impl {
-            template<typename... Ts>
-            static constexpr std::true_type test(const Base<Ts...>*);
-
-            static constexpr std::false_type test(...);
-
-            using type = decltype(test(std::declval<Derived*>()));
-        };
-
-        template<typename Derived, template<typename...> class Base>
-        using is_base_of_template = typename is_base_of_template_impl<Base, Derived>::type;
-
-#else
-        template<template<typename...> class C, typename... Ts>
-        std::true_type is_base_of_template_impl(const C<Ts...>*);
-
-        template<template<typename...> class C>
-        std::false_type is_base_of_template_impl(...);
-
-        template<typename T, template<typename...> class C>
-        using is_base_of_template = decltype(is_base_of_template_impl<C>(std::declval<T*>()));
-#endif
-    }
-}
+// #include "common_traits.h"
 
 namespace sqlite_orm {
 
@@ -4979,7 +5099,7 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-// #include "is_base_of_template.h"
+// #include "common_traits.h"
 
 // #include "tuple_helper.h"
 
@@ -5479,34 +5599,7 @@ namespace sqlite_orm {
 #include <utility>  //  std::declval
 #include <locale>  //  std::wstring_convert
 
-// #include "is_std_ptr.h"
-
-namespace sqlite_orm {
-
-    /**
-     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
-     */
-    template<typename T>
-    struct is_std_ptr : std::false_type {};
-
-    template<typename T>
-    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
-        using element_type = T;
-
-        static std::shared_ptr<T> make(const T& v) {
-            return std::make_shared<T>(v);
-        }
-    };
-
-    template<typename T>
-    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
-        using element_type = T;
-
-        static std::unique_ptr<T> make(const T& v) {
-            return std::make_unique<T>(v);
-        }
-    };
-}
+// #include "common_traits.h"
 
 namespace sqlite_orm {
 
@@ -7313,6 +7406,10 @@ namespace sqlite_orm {
                 return {name, columns};
             }
 
+            // TODO: make this static asserts testable
+            static_assert(tuple_contains_type_if<is_column_nongenerated, columns_type>::value,
+                          "Every table must have at least one non-generated column.");
+
             /**
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
@@ -7491,7 +7588,7 @@ namespace sqlite_orm {
              */
             template<class Op, class L>
             void for_each_column_with(const L& l) const {
-                using tuple_helper::tuple_contains_type;
+                using internal::tuple_contains_type;
                 iterate_tuple(this->columns, [&l](auto& column) {
                     using column_type = typename std::decay<decltype(column)>::type;
                     using constraints_type = typename column_constraints_type<column_type>::type;
@@ -13155,7 +13252,8 @@ namespace sqlite_orm {
             template<class O>
             void assert_mapped_type() const {
                 using mapped_types_tuples = std::tuple<typename Ts::object_type...>;
-                static_assert(tuple_helper::has_type<O, mapped_types_tuples>::value, "type is not mapped to a storage");
+                static_assert(internal::tuple_contains_type<O, mapped_types_tuples>::value,
+                              "type is not mapped to a storage");
             }
 
             template<class O>
@@ -13725,7 +13823,11 @@ namespace sqlite_orm {
 
           protected:
             template<class... Tss, class... Cols>
-            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
+            sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...
+
+                                                                >&,
+                                             sqlite3*,
+                                             bool) {
                 return sync_schema_result::already_in_sync;
             }
 
@@ -13736,7 +13838,11 @@ namespace sqlite_orm {
             }
 
             template<class... Tss, class... Cols>
-            sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
+            sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...
+
+                                                             >& tableImpl,
+                                          sqlite3* db,
+                                          bool) {
                 auto res = sync_schema_result::already_in_sync;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
