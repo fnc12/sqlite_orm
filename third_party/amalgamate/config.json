@@ -42,6 +42,7 @@
 		"dev/finish_macros.h",
 		"dev/node_tuple.h",
 		"dev/get_prepared_statement.h",
+		"dev/triggers.h",
 		"dev/carray.h"
 	],
 	"include_paths": ["dev"]
