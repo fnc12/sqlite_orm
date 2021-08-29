@@ -395,32 +395,6 @@ TEST_CASE("Custom collate") {
     REQUIRE(rows.size() == static_cast<size_t>(storage.count<Item>()));
 }
 
-TEST_CASE("collate") {
-    struct User {
-        int id = 0;
-        std::string firstName;
-
-        bool operator==(const User& user) const {
-            return this->id == user.id && this->firstName == user.firstName;
-        }
-    };
-    auto storage = make_storage(
-        {},
-        make_table("users", make_column("id", &User::id, primary_key()), make_column("first_name", &User::firstName)));
-    storage.sync_schema();
-    User user1{1, "HELLO"};
-    User user2{2, "Hello"};
-    User user3{3, "HEllo"};
-
-    storage.replace(user1);
-    storage.replace(user2);
-    storage.replace(user3);
-
-    auto rows = storage.get_all<User>(where(is_equal(&User::firstName, "hello").collate_nocase()));
-    std::vector<User> expected = {user1, user2, user3};
-    REQUIRE(rows == expected);
-}
-
 TEST_CASE("Vacuum") {
     struct Item {
         int id;
