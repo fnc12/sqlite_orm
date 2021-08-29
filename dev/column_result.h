@@ -220,7 +220,7 @@ namespace sqlite_orm {
 
         template<class St, class T>
         struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
-            using type = bool;
+            using type = typename T::result_type;
         };
 
         /**

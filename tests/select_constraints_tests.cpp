@@ -389,3 +389,158 @@ TEST_CASE("Where") {
     auto users6 = storage.get_all<User>(where((false or c(&User::id) == 4) and (false or c(&User::age) == 18)));
     REQUIRE(users6.empty());
 }
+
+TEST_CASE("collate") {
+    struct User {
+        int id = 0;
+        std::string firstName;
+
+        bool operator==(const User& user) const {
+            return this->id == user.id && this->firstName == user.firstName;
+        }
+    };
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("first_name", &User::firstName)));
+    storage.sync_schema();
+    User user1{1, "HELLO"};
+    User user2{2, "Hello"};
+    User user3{3, "HEllo"};
+
+    storage.replace(user1);
+    storage.replace(user2);
+    storage.replace(user3);
+
+    auto rows = storage.get_all<User>(where(is_equal(&User::firstName, "hello").collate_nocase()));
+    std::vector<User> expected = {user1, user2, user3};
+    REQUIRE(rows == expected);
+}
+
+TEST_CASE("Dynamic order by") {
+    struct User {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+        long registerTime = 0;
+    };
+
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("first_name", &User::firstName),
+                                           make_column("last_name", &User::lastName),
+                                           make_column("register_time", &User::registerTime)));
+    storage.sync_schema();
+
+    storage.replace(User{1, "Jack", "Johnson", 100});
+    storage.replace(User{2, "John", "Jackson", 90});
+    storage.replace(User{3, "Elena", "Alexandra", 80});
+    storage.replace(User{4, "Kaye", "Styles", 70});
+
+    auto orderBy = dynamic_order_by(storage);
+    std::vector<decltype(User::id)> expectedIds;
+
+    SECTION("id") {
+        auto ob = order_by(&User::id);
+        orderBy.push_back(ob);
+        expectedIds = {
+            1,
+            2,
+            3,
+            4,
+        };
+    }
+
+    SECTION("id desc") {
+        orderBy.push_back(order_by(&User::id).desc());
+        expectedIds = {
+            4,
+            3,
+            2,
+            1,
+        };
+    }
+
+    SECTION("firstName") {
+        orderBy.push_back(order_by(&User::firstName));
+        expectedIds = {
+            3,
+            1,
+            2,
+            4,
+        };
+    }
+
+    SECTION("firstName asc") {
+        orderBy.push_back(order_by(&User::firstName).asc());
+        expectedIds = {
+            3,
+            1,
+            2,
+            4,
+        };
+    }
+
+    SECTION("firstName desc") {
+        orderBy.push_back(order_by(&User::firstName).desc());
+        expectedIds = {
+            4,
+            2,
+            1,
+            3,
+        };
+    }
+
+    SECTION("firstName asc + id desc") {
+        orderBy.push_back(order_by(&User::firstName).asc());
+        orderBy.push_back(order_by(&User::id).desc());
+        expectedIds = {
+            3,
+            1,
+            2,
+            4,
+        };
+    }
+
+    SECTION("lastName + firstName + id") {
+        orderBy.push_back(order_by(&User::lastName));
+        orderBy.push_back(order_by(&User::firstName));
+        orderBy.push_back(order_by(&User::id));
+        expectedIds = {
+            3,
+            2,
+            1,
+            4,
+        };
+    }
+
+    SECTION("lastName + firstName desc + id") {
+        orderBy.push_back(order_by(&User::lastName));
+        orderBy.push_back(order_by(&User::firstName).desc());
+        orderBy.push_back(order_by(&User::id));
+        expectedIds = {
+            3,
+            2,
+            1,
+            4,
+        };
+    }
+
+    auto rows = storage.get_all<User>(orderBy);
+    REQUIRE(rows.size() == 4);
+    for(auto i = 0; i < int(rows.size()); ++i) {
+        auto& row = rows[i];
+        REQUIRE(row.id == expectedIds[i]);
+    }
+    orderBy.clear();
+}
+
+TEST_CASE("rows") {
+    //  https://www.sqlite.org/rowvalue.html
+    auto storage = make_storage({});
+
+    auto rows = storage.select(is_equal(std::make_tuple(1, 2, 3), std::make_tuple(1, 2, 3)));
+    decltype(rows) expected;
+    expected.push_back(true);
+    REQUIRE(rows == expected);
+}

@@ -14,7 +14,6 @@ add_executable(unit_tests
 	core_functions_tests.cpp
 	index_tests.cpp
 	constraints/composite_key.cpp
-	static_tests.cpp
 	operators/arithmetic_operators.cpp
 	operators/like.cpp
 	operators/glob.cpp
@@ -24,7 +23,6 @@ add_executable(unit_tests
 	operators/not_operator.cpp
 	operators/bitwise.cpp
     operators/binary_operators.cpp
-	dynamic_order_by.cpp
 	prepared_statement_tests/select.cpp
 	prepared_statement_tests/get_all.cpp
 	prepared_statement_tests/get_all_pointer.cpp
@@ -59,6 +57,8 @@ add_executable(unit_tests
     static_tests/storage_traits.cpp
     static_tests/tuple_helper.cpp
     static_tests/function_static_tests.cpp
+    static_tests/aggregate_function_return_types.cpp
+    static_tests/column_result_t.cpp
 	constraints/default.cpp
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
