@@ -14,7 +14,6 @@ add_executable(unit_tests
 	core_functions_tests.cpp
 	index_tests.cpp
 	constraints/composite_key.cpp
-	static_tests.cpp
 	operators/arithmetic_operators.cpp
 	operators/like.cpp
 	operators/glob.cpp
