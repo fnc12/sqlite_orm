@@ -210,68 +210,70 @@ str = storage.dump(statement);
         }
     }
 }
-{{//  by val
-  auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5)));
-auto str = storage.dump(statement);
-REQUIRE(get<0>(statement) == 5);
-testSerializing(statement);
-SECTION("nothing") {
-    //..
-}
-SECTION("execute") {
-    auto rows = storage.execute(statement);
-    REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
-}
-}
-{  //  by ref
-    auto len = 5;
-    auto statement = storage.prepare(select(&User::id, where(length(&User::name) > std::ref(len))));
-    auto str = storage.dump(statement);
-    REQUIRE(get<0>(statement) == len);
-    REQUIRE(&get<0>(statement) == &len);
-    testSerializing(statement);
-    SECTION("nothing") {
-        //..
+{
+    {  //  by val
+        auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5)));
+        auto str = storage.dump(statement);
+        REQUIRE(get<0>(statement) == 5);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
+        }
     }
-    SECTION("execute") {
-        auto rows = storage.execute(statement);
-        REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
-    }
-}
-}
-{{//  by val
-  auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5 and like(&User::name, "T%"))));
-auto str = storage.dump(statement);
-REQUIRE(get<0>(statement) == 5);
-REQUIRE(strcmp(get<1>(statement), "T%") == 0);
-testSerializing(statement);
-SECTION("nothing") {
-    //..
-}
-SECTION("execute") {
-    auto rows = storage.execute(statement);
-    REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
-}
-}
-{  //  by ref
-    auto len = 5;
-    std::string pattern = "T%";
-    auto statement = storage.prepare(
-        select(&User::id, where(length(&User::name) > std::ref(len) and like(&User::name, std::ref(pattern)))));
-    auto str = storage.dump(statement);
-    REQUIRE(get<0>(statement) == len);
-    REQUIRE(&get<0>(statement) == &len);
-    REQUIRE(get<1>(statement) == pattern);
-    REQUIRE(&get<1>(statement) == &pattern);
-    testSerializing(statement);
-    SECTION("nothing") {
-        //..
-    }
-    SECTION("execute") {
-        auto rows = storage.execute(statement);
-        REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
+    {  //  by ref
+        auto len = 5;
+        auto statement = storage.prepare(select(&User::id, where(length(&User::name) > std::ref(len))));
+        auto str = storage.dump(statement);
+        REQUIRE(get<0>(statement) == len);
+        REQUIRE(&get<0>(statement) == &len);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            REQUIRE_THAT(rows, UnorderedEquals<int>({1, 3}));
+        }
     }
 }
+{
+    {  //  by val
+        auto statement = storage.prepare(select(&User::id, where(length(&User::name) > 5 and like(&User::name, "T%"))));
+        auto str = storage.dump(statement);
+        REQUIRE(get<0>(statement) == 5);
+        REQUIRE(strcmp(get<1>(statement), "T%") == 0);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
+        }
+    }
+    {  //  by ref
+        auto len = 5;
+        std::string pattern = "T%";
+        auto statement = storage.prepare(
+            select(&User::id, where(length(&User::name) > std::ref(len) and like(&User::name, std::ref(pattern)))));
+        auto str = storage.dump(statement);
+        REQUIRE(get<0>(statement) == len);
+        REQUIRE(&get<0>(statement) == &len);
+        REQUIRE(get<1>(statement) == pattern);
+        REQUIRE(&get<1>(statement) == &pattern);
+        testSerializing(statement);
+        SECTION("nothing") {
+            //..
+        }
+        SECTION("execute") {
+            auto rows = storage.execute(statement);
+            REQUIRE_THAT(rows, UnorderedEquals<int>({1}));
+        }
+    }
 }
 {
     auto statement = storage.prepare(select(columns(&User::id, &User::name)));

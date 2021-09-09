@@ -12,7 +12,11 @@ TEST_CASE("Default value") {
         std::string email;
     };
 
-    auto storage1 = make_storage("test_db.sqlite",
+    auto filename = "test_db.sqlite";
+
+    ::remove(filename);
+
+    auto storage1 = make_storage(filename,
                                  make_table("User",
                                             make_column("Id", &User::userId, primary_key()),
                                             make_column("Name", &User::name),
@@ -22,7 +26,7 @@ TEST_CASE("Default value") {
 
     auto emailColumn = make_column("Email", &User::email, default_value("example@email.com"));
 
-    auto storage2 = make_storage("test_db.sqlite",
+    auto storage2 = make_storage(filename,
                                  make_table("User",
                                             make_column("Id", &User::userId, primary_key()),
                                             make_column("Name", &User::name),
