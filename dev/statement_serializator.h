@@ -1428,14 +1428,11 @@ namespace sqlite_orm {
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
                 iterate_tuple(statement.columns, [&columnNames, &context](auto& v) {
-                    if(auto columnNamePointer = context.column_name(v.column_or_expression)) {
-                        columnNames.push_back(*columnNamePointer);
-                    } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                    }
+                    auto columnName = serialize(v, context);
+                    columnNames.push_back(move(columnName));
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "'" << columnNames[i] << "'";
+                    ss << columnNames[i];
                     if(i < columnNames.size() - 1) {
                         ss << ", ";
                     }

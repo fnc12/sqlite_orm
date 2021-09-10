@@ -103,9 +103,9 @@ namespace sqlite_orm {
                     }
                     index++;
                 });
-                ss << ") ";
+                ss << ")";
                 if(table_type::is_without_rowid) {
-                    ss << "WITHOUT ROWID ";
+                    ss << " WITHOUT ROWID ";
                 }
                 perform_void_exec(db, ss.str());
             }
@@ -756,7 +756,7 @@ namespace sqlite_orm {
                             //  this vector will contain pointers to columns that gotta be added..
                             std::vector<table_info*> columnsToAdd;
 
-                            tImpl.get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                            tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                             if(schema_stat == sync_schema_result::old_columns_removed) {
 
