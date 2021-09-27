@@ -3,6 +3,7 @@
 #include <vector>  //  std::vector
 #include <initializer_list>
 #include <tuple>  //  std::tuple
+#include <type_traits>  //  std::false_type, std::true_type
 
 namespace sqlite_orm {
 
@@ -10,8 +11,16 @@ namespace sqlite_orm {
 
         template<class... Args>
         struct values_t {
-            std::tuple<Args...> tuple;
+            using args_tuple = std::tuple<Args...>;
+
+            args_tuple tuple;
         };
+
+        template<class T>
+        struct is_values : std::false_type {};
+
+        template<class... Args>
+        struct is_values<values_t<Args...>> : std::true_type {};
 
         template<class T>
         struct dynamic_values_t {

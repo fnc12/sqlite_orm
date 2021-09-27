@@ -147,7 +147,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
@@ -215,7 +215,7 @@ namespace sqlite_orm {
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        auto result = tuple_helper::call(functionPointer, std::move(argsTuple));
+                        auto result = call(functionPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -276,7 +276,7 @@ namespace sqlite_orm {
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        tuple_helper::call(functionPointer, &F::step, move(argsTuple));
+                        call(functionPointer, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
                     [](sqlite3_context* context, void* functionVoidPointer) {

@@ -314,6 +314,26 @@ namespace sqlite_orm {
                 iterator_impl2<Args...>{}(lambda);
             }
         };
+    }
+
+    namespace internal {
+
+        //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
+        template<class Function, class FunctionPointer, class Tuple, size_t... I>
+        auto call_impl(Function& f, FunctionPointer functionPointer, Tuple t, std::index_sequence<I...>) {
+            return (f.*functionPointer)(std::get<I>(t)...);
+        }
+
+        template<class Function, class FunctionPointer, class Tuple>
+        auto call(Function& f, FunctionPointer functionPointer, Tuple t) {
+            static constexpr auto size = std::tuple_size<Tuple>::value;
+            return call_impl(f, functionPointer, move(t), std::make_index_sequence<size>{});
+        }
+
+        template<class Function, class Tuple>
+        auto call(Function& f, Tuple t) {
+            return call(f, &Function::operator(), move(t));
+        }
 
         template<size_t N, size_t I, class L, class R>
         void move_tuple_impl(L& lhs, R& rhs) {
@@ -322,6 +342,103 @@ namespace sqlite_orm {
                 move_tuple_impl<N, I + 1>(l, r);
             })(lhs, rhs);
         }
+
+        template<size_t N, class L, class R>
+        void move_tuple(L& lhs, R& rhs) {
+            using bool_type = std::integral_constant<bool, N != 0>;
+            static_if<bool_type{}>([](auto& l, auto& r) {
+                move_tuple_impl<N, 0>(l, r);
+            })(lhs, rhs);
+        }
+
+        template<class L, class... Args>
+        void iterate_tuple(const std::tuple<Args...>& tuple, const L& lambda) {
+            using tuple_type = std::tuple<Args...>;
+            tuple_helper::iterator_impl<std::tuple_size<tuple_type>::value - 1, Args...>()(tuple, lambda, false);
+        }
+
+        template<class T, class L>
+        void iterate_tuple(const L& lambda) {
+            tuple_helper::iterator<T>{}(lambda);
+        }
+
+        template<typename... input_t>
+        using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
+
+        template<class... Args>
+        struct conc_tuple {
+            using type = tuple_cat_t<Args...>;
+        };
+    }
+}
+#pragma once
+
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::enable_if
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, template<class> class C, class SFINAE = void>
+        struct find_in_tuple;
+
+        template<template<class> class C>
+        struct find_in_tuple<std::tuple<>, C, void> {
+            using type = void;
+        };
+
+        template<class H, class... Args, template<class> class C>
+        struct find_in_tuple<std::tuple<H, Args...>, C, typename std::enable_if<C<H>::value>::type> {
+            using type = H;
+        };
+
+        template<class H, class... Args, template<class> class C>
+        struct find_in_tuple<std::tuple<H, Args...>, C, typename std::enable_if<!C<H>::value>::type> {
+            using type = typename find_in_tuple<std::tuple<Args...>, C>::type;
+        };
+    }
+}
+#pragma once
+
+#include <tuple>  //  std::tuple
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, template<class C> class F>
+        struct tuple_transformer;
+
+        template<class... Args, template<class C> class F>
+        struct tuple_transformer<std::tuple<Args...>, F> {
+            using type = std::tuple<typename F<Args>::type...>;
+        };
+    }
+}
+#pragma once
+
+#include <tuple>  //  std::tuple
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, template<class> class C>
+        struct count_tuple;
+
+        template<template<class> class C>
+        struct count_tuple<std::tuple<>, C> {
+            static constexpr const int value = 0;
+        };
+
+        template<class H, class... Args, template<class> class C>
+        struct count_tuple<std::tuple<H, Args...>, C> {
+            static constexpr const int value = C<H>::value + count_tuple<std::tuple<Args...>, C>::value;
+        };
+    }
+}
+#pragma once
+
+namespace sqlite_orm {
+    namespace internal {
 
         /**
          *  Accepts any number of arguments and evaluates `type` alias as T if all arguments are the same or void otherwise
@@ -351,73 +468,6 @@ namespace sqlite_orm {
             using type = typename same_or_void<A, Args...>::type;
         };
 
-        //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
-        template<class Function, class FunctionPointer, class Tuple, size_t... I>
-        auto call_impl(Function& f, FunctionPointer functionPointer, Tuple t, std::index_sequence<I...>) {
-            return (f.*functionPointer)(std::get<I>(t)...);
-        }
-
-        template<class Function, class FunctionPointer, class Tuple>
-        auto call(Function& f, FunctionPointer functionPointer, Tuple t) {
-            static constexpr auto size = std::tuple_size<Tuple>::value;
-            return call_impl(f, functionPointer, move(t), std::make_index_sequence<size>{});
-        }
-
-        template<class Function, class Tuple>
-        auto call(Function& f, Tuple t) {
-            return call(f, &Function::operator(), move(t));
-        }
-    }
-
-    namespace internal {
-
-        template<size_t N, class L, class R>
-        void move_tuple(L& lhs, R& rhs) {
-            using bool_type = std::integral_constant<bool, N != 0>;
-            static_if<bool_type{}>([](auto& l, auto& r) {
-                tuple_helper::move_tuple_impl<N, 0>(l, r);
-            })(lhs, rhs);
-        }
-
-        template<class L, class... Args>
-        void iterate_tuple(const std::tuple<Args...>& tuple, const L& lambda) {
-            using tuple_type = std::tuple<Args...>;
-            tuple_helper::iterator_impl<std::tuple_size<tuple_type>::value - 1, Args...>()(tuple, lambda, false);
-        }
-
-        template<class T, class L>
-        void iterate_tuple(const L& lambda) {
-            tuple_helper::iterator<T>{}(lambda);
-        }
-
-        template<typename... input_t>
-        using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
-
-        template<class... Args>
-        struct conc_tuple {
-            using type = tuple_cat_t<Args...>;
-        };
-
-        template<class T, template<class> class C>
-        struct count_tuple;
-
-        template<template<class> class C>
-        struct count_tuple<std::tuple<>, C> {
-            static constexpr const int value = 0;
-        };
-
-        template<class H, class... Args, template<class> class C>
-        struct count_tuple<std::tuple<H, Args...>, C> {
-            static constexpr const int value = C<H>::value + count_tuple<std::tuple<Args...>, C>::value;
-        };
-
-        template<class T, template<class C> class F>
-        struct tuple_transformer;
-
-        template<class... Args, template<class C> class F>
-        struct tuple_transformer<std::tuple<Args...>, F> {
-            using type = std::tuple<typename F<Args>::type...>;
-        };
     }
 }
 #pragma once
@@ -785,7 +835,7 @@ namespace sqlite_orm {
     }
 }
 
-// #include "tuple_helper.h"
+#include "tuple_helper.h"
 
 namespace sqlite_orm {
 
@@ -1020,12 +1070,12 @@ namespace sqlite_orm {
             /**
              * Holds obect type of all referenced columns.
              */
-            using target_type = typename tuple_helper::same_or_void<typename table_type<Rs>::type...>::type;
+            using target_type = typename same_or_void<typename table_type<Rs>::type...>::type;
 
             /**
              * Holds obect type of all source columns.
              */
-            using source_type = typename tuple_helper::same_or_void<typename table_type<Cs>::type...>::type;
+            using source_type = typename same_or_void<typename table_type<Cs>::type...>::type;
 
             columns_type columns;
             references_type references;
@@ -1698,8 +1748,7 @@ namespace sqlite_orm {
 
 // #include "type_is_nullable.h"
 
-// #include "tuple_helper.h"
-
+#include "tuple_helper.h"
 // #include "default_value_extractor.h"
 
 // #include "constraints.h"
@@ -4933,8 +4982,7 @@ namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
-// #include "tuple_helper.h"
-
+#include "tuple_helper.h"
 // #include "optional_container.h"
 
 namespace sqlite_orm {
@@ -4992,6 +5040,12 @@ namespace sqlite_orm {
 
             static constexpr const int count = std::tuple_size<columns_type>::value;
         };
+
+        template<class T>
+        struct is_columns : std::false_type {};
+
+        template<class... Args>
+        struct is_columns<columns_t<Args...>> : std::true_type {};
 
         struct set_string {
             operator std::string() const {
@@ -5063,6 +5117,12 @@ namespace sqlite_orm {
             conditions_type conditions;
             bool highest_level = false;
         };
+
+        template<class T>
+        struct is_select : std::false_type {};
+
+        template<class T, class... Args>
+        struct is_select<select_t<T, Args...>> : std::true_type {};
 
         /**
          *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
@@ -7238,8 +7298,7 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
-// #include "tuple_helper.h"
-
+#include "tuple_helper.h"
 // #include "table_info.h"
 
 // #include "type_printer.h"
@@ -7611,7 +7670,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);
@@ -8120,8 +8179,7 @@ namespace sqlite_orm {
 
 // #include "type_printer.h"
 
-// #include "tuple_helper.h"
-
+#include "tuple_helper.h"
 // #include "constraints.h"
 
 // #include "type_is_nullable.h"
@@ -8301,8 +8359,7 @@ namespace sqlite_orm {
 
 // #include "operators.h"
 
-// #include "tuple_helper.h"
-
+#include "tuple_helper.h"
 // #include "core_functions.h"
 
 // #include "prepared_statement.h"
@@ -8394,6 +8451,49 @@ namespace sqlite_orm {
 }
 
 // #include "select_constraints.h"
+
+// #include "values.h"
+
+#include <vector>  //  std::vector
+#include <initializer_list>
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::false_type, std::true_type
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<class... Args>
+        struct values_t {
+            using args_tuple = std::tuple<Args...>;
+
+            args_tuple tuple;
+        };
+
+        template<class T>
+        struct is_values : std::false_type {};
+
+        template<class... Args>
+        struct is_values<values_t<Args...>> : std::true_type {};
+
+        template<class T>
+        struct dynamic_values_t {
+            std::vector<T> vector;
+        };
+
+    }
+
+    template<class... Args>
+    internal::values_t<Args...> values(Args... args) {
+        return {{std::forward<Args>(args)...}};
+    }
+
+    template<class T>
+    internal::dynamic_values_t<T> values(std::vector<T> vector) {
+        return {{move(vector)}};
+    }
+
+}
 
 namespace sqlite_orm {
 
@@ -8633,6 +8733,24 @@ namespace sqlite_orm {
         template<class It, class L, class O>
         struct is_replace_range<replace_range_t<It, L, O>> : std::true_type {};
 
+        template<class... Args>
+        struct insert_raw_t {
+            using args_tuple = std::tuple<Args...>;
+
+            args_tuple args;
+        };
+
+        template<class T>
+        struct into_t {
+            using type = T;
+        };
+
+        template<class T>
+        struct is_into : std::false_type {};
+
+        template<class T>
+        struct is_into<into_t<T>> : std::true_type {};
+
         struct default_transformer {
 
             template<class T>
@@ -8640,16 +8758,64 @@ namespace sqlite_orm {
                 return object;
             }
         };
+
+        struct default_values_t {};
+
+        template<class T>
+        using is_default_values = std::is_same<internal::default_values_t, T>;
+    }
+
+    inline internal::default_values_t default_values() {
+        return {};
+    }
+
+    template<class T>
+    internal::into_t<T> into() {
+        return {};
+    }
+
+    template<class... Args>
+    internal::insert_raw_t<Args...> insert(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        using internal::count_tuple;
+        using internal::is_columns;
+        using internal::is_into;
+        using internal::is_values;
+
+        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
+        static_assert(intoArgsCount != 0, "Raw insert must have into<T> argument");
+        static_assert(intoArgsCount < 2, "Raw insert must have only one into<T> argument");
+
+        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
+        static_assert(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
+
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        static_assert(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
+
+        constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
+        static_assert(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
+
+        constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
+        static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
+
+        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
+        static_assert(argsCount ==
+                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
+                      "Raw insert has invalid arguments");
+
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
      *  Create a replace range statement
+     *
      *  @example
      *  ```
      *  std::vector<User> users;
      *  users.push_back(User{1, "Leony"});
      *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
      *  storage.execute(statement);
+     *  ```
      */
     template<class It>
     internal::replace_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>
@@ -8912,38 +9078,6 @@ namespace sqlite_orm {
 }
 
 // #include "values.h"
-
-#include <vector>  //  std::vector
-#include <initializer_list>
-#include <tuple>  //  std::tuple
-
-namespace sqlite_orm {
-
-    namespace internal {
-
-        template<class... Args>
-        struct values_t {
-            std::tuple<Args...> tuple;
-        };
-
-        template<class T>
-        struct dynamic_values_t {
-            std::vector<T> vector;
-        };
-
-    }
-
-    template<class... Args>
-    internal::values_t<Args...> values(Args... args) {
-        return {{std::forward<Args>(args)...}};
-    }
-
-    template<class T>
-    internal::dynamic_values_t<T> values(std::vector<T> vector) {
-        return {{move(vector)}};
-    }
-
-}
 
 // #include "function.h"
 
@@ -9935,8 +10069,7 @@ namespace sqlite_orm {
 
 // #include "type_printer.h"
 
-// #include "tuple_helper.h"
-
+#include "tuple_helper.h"
 // #include "row_extractor.h"
 
 // #include "util.h"
@@ -10331,7 +10464,7 @@ namespace sqlite_orm {
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*columnName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
@@ -10399,7 +10532,7 @@ namespace sqlite_orm {
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        auto result = tuple_helper::call(functionPointer, std::move(argsTuple));
+                        auto result = call(functionPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -10460,7 +10593,7 @@ namespace sqlite_orm {
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        tuple_helper::call(functionPointer, &F::step, move(argsTuple));
+                        call(functionPointer, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
                     [](sqlite3_context* context, void* functionVoidPointer) {
@@ -12467,6 +12600,72 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<into_t<T>, void> {
+            using statement_type = into_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                auto& tImpl = context.impl.template get_impl<T>();
+                ss << "INTO " << tImpl.table.name;
+                return ss.str();
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<columns_t<Args...>, void> {
+            using statement_type = columns_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                auto index = 0;
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
+                iterate_tuple(statement.columns, [&context, &ss, &index](auto& value) {
+                    ss << serialize(value, context);
+                    if(index < int(std::tuple_size<std::tuple<Args...>>::value) - 1) {
+                        ss << ", ";
+                    }
+                    ++index;
+                });
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
+                return ss.str();
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<insert_raw_t<Args...>, void> {
+            using statement_type = insert_raw_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "INSERT";
+                iterate_tuple(statement.args, [&context, &ss](auto& value) {
+                    using value_type = typename std::decay<decltype(value)>::type;
+                    ss << ' ';
+                    if(is_columns<value_type>::value) {
+                        auto newContext = context;
+                        newContext.skip_table_name = true;
+                        newContext.use_parentheses = true;
+                        ss << serialize(value, newContext);
+                    } else if(is_values<value_type>::value || is_select<value_type>::value) {
+                        auto newContext = context;
+                        newContext.use_parentheses = false;
+                        ss << serialize(value, newContext);
+                    } else {
+                        ss << serialize(value, context);
+                    }
+                });
+                return ss.str();
+            }
+        };
+
         template<class T, class... Ids>
         struct statement_serializator<remove_t<T, Ids...>, void> {
             using statement_type = remove_t<T, Ids...>;
@@ -12696,7 +12895,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 const auto isCompoundOperator = is_base_of_template<T, compound_operator>::value;
                 if(!isCompoundOperator) {
-                    if(!sel.highest_level) {
+                    if(!sel.highest_level && context.use_parentheses) {
                         ss << "(";
                     }
                     ss << "SELECT ";
@@ -12747,7 +12946,7 @@ namespace sqlite_orm {
                     ss << ' ' << serialize(v, context);
                 });
                 if(!is_base_of_template<T, compound_operator>::value) {
-                    if(!sel.highest_level) {
+                    if(!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }
                 }
@@ -13089,6 +13288,16 @@ namespace sqlite_orm {
                     ss << serialize(limt.lim, newContext);
                 }
                 return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializator<default_values_t, void> {
+            using statement_type = default_values_t;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                return "DEFAULT VALUES";
             }
         };
 
@@ -13539,6 +13748,7 @@ namespace sqlite_orm {
             /**
              *  SELECT COUNT(X) https://www.sqlite.org/lang_aggfunc.html#count
              *  @param m member pointer to class mapped to the storage.
+             *  @return count of `m` values from database.
              */
             template<class F, class O, class... Args>
             int count(F O::*m, Args&&... args) {
@@ -13554,7 +13764,7 @@ namespace sqlite_orm {
             /**
              *  AVG(X) query.   https://www.sqlite.org/lang_aggfunc.html#avg
              *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return average value from db.
+             *  @return average value from database.
              */
             template<class F, class O, class... Args>
             double avg(F O::*m, Args&&... args) {
@@ -13799,6 +14009,40 @@ namespace sqlite_orm {
                 });
             }
 
+            /**
+             *  Raw insert routine. Use this if `insert` with object does not fit you. This insert is designed to be able
+             *  to call any type of `INSERT` query with no limitations.
+             *  @example
+             *  ```sql
+             *  INSERT INTO users (id, name) VALUES(5, 'Little Mix')
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.insert(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix")));
+             *  ```
+             *  One more example:
+             *  ```sql
+             *  INSERT INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.insert(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs")));
+             *  ```
+             *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+             *  ```sql
+             *  INSERT INTO users DEFAULT VALUES
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.insert(into<Singer>(), default_values());
+             *  ```
+             */
+            template<class... Args>
+            void insert(Args... args) {
+                auto statement = this->prepare(sqlite_orm::insert(std::forward<Args>(args)...));
+                this->execute(statement);
+            }
+
             template<class It>
             void insert_range(It from, It to) {
                 using O = typename std::iterator_traits<It>::value_type;
@@ -14033,6 +14277,11 @@ namespace sqlite_orm {
                 return prepare_impl<get_all_pointer_t<T, Args...>>(std::move(get_));
             }
 
+            template<class... Args>
+            prepared_statement_t<insert_raw_t<Args...>> prepare(insert_raw_t<Args...> ins) {
+                return prepare_impl<insert_raw_t<Args...>>(std::move(ins));
+            }
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class R, class... Args>
             prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> get_) {
@@ -14111,6 +14360,24 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<decltype(ins)>::type;
                 this->assert_mapped_type<object_type>();
                 return prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
+            }
+
+            template<class... Args>
+            void execute(const prepared_statement_t<insert_raw_t<Args...>>& statement) {
+                auto con = this->get_connection();
+                auto db = con.get();
+                auto stmt = statement.stmt;
+                sqlite3_reset(stmt);
+                auto index = 1;
+                iterate_ast(statement.t.args, [stmt, &index, db](auto& node) {
+                    using node_type = typename std::decay<decltype(node)>::type;
+                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                    if(SQLITE_OK != binder(node)) {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
+                    }
+                });
+                perform_step(db, stmt);
             }
 
             template<class T, class... Cols>
