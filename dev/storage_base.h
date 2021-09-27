@@ -17,7 +17,7 @@
 #include "transaction_guard.h"
 #include "statement_finalizer.h"
 #include "type_printer.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "row_extractor.h"
 #include "util.h"
 #include "connection_holder.h"

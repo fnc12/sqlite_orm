@@ -22,7 +22,7 @@
 #include "row_extractor_builder.h"
 #include "error_code.h"
 #include "type_printer.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "constraints.h"
 #include "type_is_nullable.h"
 #include "field_printer.h"

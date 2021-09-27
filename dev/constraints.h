@@ -7,7 +7,7 @@
 #include <ostream>  //  std::ostream
 
 #include "table_type.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 
 namespace sqlite_orm {
 
