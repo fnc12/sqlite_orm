@@ -10,3 +10,5 @@ jobs:
     - uses: actions/checkout@v1
     - name: clang-format lint
       uses: DoozyX/clang-format-lint-action@v0.12
+      with:
+        clangFormatVersion: 12
