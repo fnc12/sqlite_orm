@@ -3,7 +3,8 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("statement_serializator from_t") {
+TEST_CASE("statement_serializator select constraints") {
+    using internal::serialize;
     struct User {
         int id = 0;
         std::string name;
@@ -16,15 +17,32 @@ TEST_CASE("statement_serializator from_t") {
 
     std::string value;
     decltype(value) expected;
+    SECTION("columns") {
+        auto expression = columns(&User::id, &User::name);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(\"id\", \"name\")";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "\"id\", \"name\"";
+        }
+        value = serialize(expression, context);
+    }
+    SECTION("into") {
+        auto expression = into<User>();
+        value = serialize(expression, context);
+        expected = "INTO users";
+    }
     SECTION("from") {
         SECTION("without alias") {
             auto expression = from<User>();
-            value = internal::serialize(expression, context);
+            value = serialize(expression, context);
             expected = "FROM 'users'";
         }
         SECTION("with alias") {
             auto expression = from<alias_u<User>>();
-            value = internal::serialize(expression, context);
+            value = serialize(expression, context);
             expected = "FROM 'users' 'u'";
         }
     }
@@ -39,7 +57,7 @@ TEST_CASE("statement_serializator from_t") {
             }
         };
         auto expression = func<Func>(&User::id);
-        value = internal::serialize(expression, context);
+        value = serialize(expression, context);
         expected = "EVEN(\"id\")";
     }
     REQUIRE(value == expected);
