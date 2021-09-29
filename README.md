@@ -2,13 +2,12 @@
   <img src="https://github.com/fnc12/sqlite_orm/blob/master/logo.png" alt="Sublime's custom image" width="557"/>
 </p>
 
-[![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Donate using PayPal](https://img.shields.io/badge/donate-PayPal-brightgreen.svg)](https://paypal.me/fnc12)
 [![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/fold_left.svg?style=social&label=Follow%20%40sqlite_orm)](https://twitter.com/sqlite_orm)
 
 
 # SQLite ORM
-SQLite ORM light header only library for modern C++
+SQLite ORM light header only library for modern C++. Please read the license precisely. The project has AGPL license for open source project and MIT license after purchasing it for 50$ (using [PayPal](https://paypal.me/fnc12) or any different way (contact using email fnc12@me.com)).
 
 # Status
 | Branch | Travis | Appveyor |
