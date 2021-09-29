@@ -2,7 +2,8 @@
 
 #include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_member_function_pointer
 
-#include "getter_traits.h"
+#include "member_traits/getter_traits.h"
+#include "member_traits/setter_traits.h"
 
 namespace sqlite_orm {
 

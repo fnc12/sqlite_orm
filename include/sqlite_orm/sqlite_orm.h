@@ -607,33 +607,13 @@ namespace sqlite_orm {
 
 #include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_member_function_pointer
 
-// #include "getter_traits.h"
+// #include "member_traits/getter_traits.h"
+
+// #include "getters.h"
 
 namespace sqlite_orm {
-
     namespace internal {
 
-        template<class T, class SFINAE = void>
-        struct is_field_member_pointer : std::false_type {};
-
-        template<class T>
-        struct is_field_member_pointer<T,
-                                       typename std::enable_if<std::is_member_pointer<T>::value &&
-                                                               !std::is_member_function_pointer<T>::value>::type>
-            : std::true_type {};
-
-        template<class T, class SFINAE = void>
-        struct field_member_traits;
-
-        template<class O, class F>
-        struct field_member_traits<F O::*, typename std::enable_if<is_field_member_pointer<F O::*>::value>::type> {
-            using object_type = O;
-            using field_type = F;
-        };
-
-        /**
-     *  Getters aliases
-     */
         template<class O, class T>
         using getter_by_value_const = T (O::*)() const;
 
@@ -652,50 +632,28 @@ namespace sqlite_orm {
         template<class O, class T>
         using getter_by_const_ref = const T& (O::*)();
 
-        /**
-     *  Setters aliases
-     */
         template<class O, class T>
-        using setter_by_value = void (O::*)(T);
+        using getter_by_value_const_noexcept = T (O::*)() const noexcept;
 
         template<class O, class T>
-        using setter_by_ref = void (O::*)(T&);
+        using getter_by_value_noexcept = T (O::*)() noexcept;
 
         template<class O, class T>
-        using setter_by_const_ref = void (O::*)(const T&);
-
-        template<class T>
-        struct is_getter : std::false_type {};
+        using getter_by_ref_const_noexcept = T& (O::*)() const noexcept;
 
         template<class O, class T>
-        struct is_getter<getter_by_value_const<O, T>> : std::true_type {};
+        using getter_by_ref_noexcept = T& (O::*)() noexcept;
 
         template<class O, class T>
-        struct is_getter<getter_by_value<O, T>> : std::true_type {};
+        using getter_by_const_ref_const_noexcept = const T& (O::*)() const noexcept;
 
         template<class O, class T>
-        struct is_getter<getter_by_ref_const<O, T>> : std::true_type {};
+        using getter_by_const_ref_noexcept = const T& (O::*)() noexcept;
+    }
+}
 
-        template<class O, class T>
-        struct is_getter<getter_by_ref<O, T>> : std::true_type {};
-
-        template<class O, class T>
-        struct is_getter<getter_by_const_ref_const<O, T>> : std::true_type {};
-
-        template<class O, class T>
-        struct is_getter<getter_by_const_ref<O, T>> : std::true_type {};
-
-        template<class T>
-        struct is_setter : std::false_type {};
-
-        template<class O, class T>
-        struct is_setter<setter_by_value<O, T>> : std::true_type {};
-
-        template<class O, class T>
-        struct is_setter<setter_by_ref<O, T>> : std::true_type {};
-
-        template<class O, class T>
-        struct is_setter<setter_by_const_ref<O, T>> : std::true_type {};
+namespace sqlite_orm {
+    namespace internal {
 
         template<class T>
         struct getter_traits;
@@ -748,6 +706,86 @@ namespace sqlite_orm {
             static constexpr const bool returns_lvalue = true;
         };
 
+        template<class O, class T>
+        struct getter_traits<getter_by_value_const_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
+
+            static constexpr const bool returns_lvalue = false;
+        };
+
+        template<class O, class T>
+        struct getter_traits<getter_by_value_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
+
+            static constexpr const bool returns_lvalue = false;
+        };
+
+        template<class O, class T>
+        struct getter_traits<getter_by_ref_const_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
+
+            static constexpr const bool returns_lvalue = true;
+        };
+
+        template<class O, class T>
+        struct getter_traits<getter_by_ref_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
+
+            static constexpr const bool returns_lvalue = true;
+        };
+
+        template<class O, class T>
+        struct getter_traits<getter_by_const_ref_const_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
+
+            static constexpr const bool returns_lvalue = true;
+        };
+
+        template<class O, class T>
+        struct getter_traits<getter_by_const_ref_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
+
+            static constexpr const bool returns_lvalue = true;
+        };
+    }
+}
+
+// #include "member_traits/setter_traits.h"
+
+// #include "setters.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class O, class T>
+        using setter_by_value = void (O::*)(T);
+
+        template<class O, class T>
+        using setter_by_ref = void (O::*)(T&);
+
+        template<class O, class T>
+        using setter_by_const_ref = void (O::*)(const T&);
+
+        template<class O, class T>
+        using setter_by_value_noexcept = void (O::*)(T) noexcept;
+
+        template<class O, class T>
+        using setter_by_ref_noexcept = void (O::*)(T&) noexcept;
+
+        template<class O, class T>
+        using setter_by_const_ref_noexcept = void (O::*)(const T&) noexcept;
+    }
+}
+
+namespace sqlite_orm {
+    namespace internal {
+
         template<class T>
         struct setter_traits;
 
@@ -769,25 +807,22 @@ namespace sqlite_orm {
             using field_type = T;
         };
 
-        template<class T, class SFINAE = void>
-        struct member_traits;
-
-        template<class T>
-        struct member_traits<T, typename std::enable_if<is_field_member_pointer<T>::value>::type> {
-            using object_type = typename field_member_traits<T>::object_type;
-            using field_type = typename field_member_traits<T>::field_type;
+        template<class O, class T>
+        struct setter_traits<setter_by_value_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
         };
 
-        template<class T>
-        struct member_traits<T, typename std::enable_if<is_getter<T>::value>::type> {
-            using object_type = typename getter_traits<T>::object_type;
-            using field_type = typename getter_traits<T>::field_type;
+        template<class O, class T>
+        struct setter_traits<setter_by_ref_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
         };
 
-        template<class T>
-        struct member_traits<T, typename std::enable_if<is_setter<T>::value>::type> {
-            using object_type = typename setter_traits<T>::object_type;
-            using field_type = typename setter_traits<T>::field_type;
+        template<class O, class T>
+        struct setter_traits<setter_by_const_ref_noexcept<O, T>> {
+            using object_type = O;
+            using field_type = T;
         };
     }
 }
@@ -1754,7 +1789,157 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
+// #include "member_traits/member_traits.h"
+
+#include <type_traits>  //  std::enable_if
+
+// #include "is_field_member_pointer.h"
+
+#include <type_traits>  //  std::false_type, std::true_type, std::is_member_pointer, std::is_member_function_pointer
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, class SFINAE = void>
+        struct is_field_member_pointer : std::false_type {};
+
+        template<class T>
+        struct is_field_member_pointer<T,
+                                       typename std::enable_if<std::is_member_pointer<T>::value &&
+                                                               !std::is_member_function_pointer<T>::value>::type>
+            : std::true_type {};
+    }
+}
+
+// #include "is_getter.h"
+
+#include <type_traits>  //  std::false_type, std::true_type
+
+// #include "getters.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T>
+        struct is_getter : std::false_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_value_const<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_value<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_ref_const<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_ref<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_const_ref_const<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_const_ref<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_value_const_noexcept<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_value_noexcept<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_ref_const_noexcept<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_ref_noexcept<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_const_ref_const_noexcept<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_getter<getter_by_const_ref_noexcept<O, T>> : std::true_type {};
+    }
+}
+
+// #include "field_member_traits.h"
+
+#include <type_traits>  //  std::enable_if
+
+// #include "is_field_member_pointer.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, class SFINAE = void>
+        struct field_member_traits;
+
+        template<class O, class F>
+        struct field_member_traits<F O::*, typename std::enable_if<is_field_member_pointer<F O::*>::value>::type> {
+            using object_type = O;
+            using field_type = F;
+        };
+    }
+}
+
+// #include "is_setter.h"
+
+// #include "setters.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T>
+        struct is_setter : std::false_type {};
+
+        template<class O, class T>
+        struct is_setter<setter_by_value<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_setter<setter_by_ref<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_setter<setter_by_const_ref<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_setter<setter_by_value_noexcept<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_setter<setter_by_ref_noexcept<O, T>> : std::true_type {};
+
+        template<class O, class T>
+        struct is_setter<setter_by_const_ref_noexcept<O, T>> : std::true_type {};
+    }
+}
+
 // #include "getter_traits.h"
+
+// #include "setter_traits.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, class SFINAE = void>
+        struct member_traits;
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_field_member_pointer<T>::value>::type> {
+            using object_type = typename field_member_traits<T>::object_type;
+            using field_type = typename field_member_traits<T>::field_type;
+        };
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_getter<T>::value>::type> {
+            using object_type = typename getter_traits<T>::object_type;
+            using field_type = typename getter_traits<T>::field_type;
+        };
+
+        template<class T>
+        struct member_traits<T, typename std::enable_if<is_setter<T>::value>::type> {
+            using object_type = typename setter_traits<T>::object_type;
+            using field_type = typename setter_traits<T>::field_type;
+        };
+    }
+}
 
 namespace sqlite_orm {
 
