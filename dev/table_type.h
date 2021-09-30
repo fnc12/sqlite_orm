@@ -4,6 +4,8 @@
 
 #include "member_traits/getter_traits.h"
 #include "member_traits/setter_traits.h"
+#include "member_traits/is_getter.h"
+#include "member_traits/is_setter.h"
 
 namespace sqlite_orm {
 
