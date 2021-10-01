@@ -9,7 +9,7 @@
 #include "tuple_helper/tuple_helper.h"
 #include "default_value_extractor.h"
 #include "constraints.h"
-#include "getter_traits.h"
+#include "member_traits/member_traits.h"
 
 namespace sqlite_orm {
 
