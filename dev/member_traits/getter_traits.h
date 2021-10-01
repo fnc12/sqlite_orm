@@ -55,7 +55,7 @@ namespace sqlite_orm {
 
             static constexpr const bool returns_lvalue = true;
         };
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         struct getter_traits<getter_by_value_const_noexcept<O, T>> {
             using object_type = O;
@@ -103,5 +103,6 @@ namespace sqlite_orm {
 
             static constexpr const bool returns_lvalue = true;
         };
+#endif
     }
 }

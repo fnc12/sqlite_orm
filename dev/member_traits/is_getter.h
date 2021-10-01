@@ -27,7 +27,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         struct is_getter<getter_by_const_ref<O, T>> : std::true_type {};
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         struct is_getter<getter_by_value_const_noexcept<O, T>> : std::true_type {};
 
@@ -45,5 +45,6 @@ namespace sqlite_orm {
 
         template<class O, class T>
         struct is_getter<getter_by_const_ref_noexcept<O, T>> : std::true_type {};
+#endif
     }
 }

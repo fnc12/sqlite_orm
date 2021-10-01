@@ -20,7 +20,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         using getter_by_const_ref = const T& (O::*)();
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         using getter_by_value_const_noexcept = T (O::*)() const noexcept;
 
@@ -38,5 +38,6 @@ namespace sqlite_orm {
 
         template<class O, class T>
         using getter_by_const_ref_noexcept = const T& (O::*)() noexcept;
+#endif
     }
 }

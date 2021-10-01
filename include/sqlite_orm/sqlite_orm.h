@@ -18,6 +18,7 @@ __pragma(push_macro("min"))
 #if __cplusplus >= 201703L  // use of C++17 or higher
 // Enables use of std::optional in SQLITE_ORM.
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
+#define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #endif
 #pragma once
 
@@ -631,7 +632,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         using getter_by_const_ref = const T& (O::*)();
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         using getter_by_value_const_noexcept = T (O::*)() const noexcept;
 
@@ -649,6 +650,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         using getter_by_const_ref_noexcept = const T& (O::*)() noexcept;
+#endif
     }
 }
 
@@ -705,7 +707,7 @@ namespace sqlite_orm {
 
             static constexpr const bool returns_lvalue = true;
         };
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         struct getter_traits<getter_by_value_const_noexcept<O, T>> {
             using object_type = O;
@@ -753,6 +755,7 @@ namespace sqlite_orm {
 
             static constexpr const bool returns_lvalue = true;
         };
+#endif
     }
 }
 
@@ -771,7 +774,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         using setter_by_const_ref = void (O::*)(const T&);
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         using setter_by_value_noexcept = void (O::*)(T) noexcept;
 
@@ -780,6 +783,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         using setter_by_const_ref_noexcept = void (O::*)(const T&) noexcept;
+#endif
     }
 }
 
@@ -806,7 +810,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
         };
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         struct setter_traits<setter_by_value_noexcept<O, T>> {
             using object_type = O;
@@ -824,6 +828,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
         };
+#endif
     }
 }
 
@@ -856,7 +861,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         struct is_getter<getter_by_const_ref<O, T>> : std::true_type {};
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         struct is_getter<getter_by_value_const_noexcept<O, T>> : std::true_type {};
 
@@ -874,6 +879,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         struct is_getter<getter_by_const_ref_noexcept<O, T>> : std::true_type {};
+#endif
     }
 }
 
@@ -895,7 +901,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         struct is_setter<setter_by_const_ref<O, T>> : std::true_type {};
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         struct is_setter<setter_by_value_noexcept<O, T>> : std::true_type {};
 
@@ -904,6 +910,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         struct is_setter<setter_by_const_ref_noexcept<O, T>> : std::true_type {};
+#endif
     }
 }
 

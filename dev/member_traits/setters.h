@@ -11,7 +11,7 @@ namespace sqlite_orm {
 
         template<class O, class T>
         using setter_by_const_ref = void (O::*)(const T&);
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
         using setter_by_value_noexcept = void (O::*)(T) noexcept;
 
@@ -20,5 +20,6 @@ namespace sqlite_orm {
 
         template<class O, class T>
         using setter_by_const_ref_noexcept = void (O::*)(const T&) noexcept;
+#endif
     }
 }

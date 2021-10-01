@@ -127,12 +127,14 @@ TEST_CASE("member_traits_tests") {
     static_assert(is_getter<decltype(&User::getIdByRef)>::value, "");
     static_assert(is_getter<decltype(&User::getIdByConstRefConst)>::value, "");
     static_assert(is_getter<decltype(&User::getIdByConstRef)>::value, "");
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
     static_assert(is_getter<decltype(&User::getIdByValConstNoexcept)>::value, "");
     static_assert(is_getter<decltype(&User::getIdByValNoexcept)>::value, "");
     static_assert(is_getter<decltype(&User::getIdByRefConstNoexcept)>::value, "");
     static_assert(is_getter<decltype(&User::getIdByRefNoexcept)>::value, "");
     static_assert(is_getter<decltype(&User::getIdByConstRefConstNoexcept)>::value, "");
     static_assert(is_getter<decltype(&User::getIdByConstRefNoExcept)>::value, "");
+#endif
     static_assert(!is_getter<decltype(&User::setIdByVal)>::value, "");
     static_assert(!is_getter<decltype(&User::setIdByRef)>::value, "");
     static_assert(!is_getter<decltype(&User::setIdByConstRef)>::value, "");
@@ -155,9 +157,11 @@ TEST_CASE("member_traits_tests") {
     static_assert(is_setter<decltype(&User::setIdByVal)>::value, "");
     static_assert(is_setter<decltype(&User::setIdByRef)>::value, "");
     static_assert(is_setter<decltype(&User::setIdByConstRef)>::value, "");
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
     static_assert(is_setter<decltype(&User::setIdByValueNoexcept)>::value, "");
     static_assert(is_setter<decltype(&User::setIdByRefNoExcept)>::value, "");
     static_assert(is_setter<decltype(&User::setIdByConstRefNoexcept)>::value, "");
+#endif
 
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByValConst)>::object_type, User>::value, "");
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByValConst)>::field_type, int>::value, "");
@@ -173,7 +177,7 @@ TEST_CASE("member_traits_tests") {
 
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByConstRef)>::object_type, User>::value, "");
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByConstRef)>::field_type, int>::value, "");
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByValConstNoexcept)>::object_type, User>::value,
                   "");
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByValConstNoexcept)>::field_type, int>::value,
@@ -201,7 +205,7 @@ TEST_CASE("member_traits_tests") {
                   "");
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByConstRefNoExcept)>::field_type, int>::value,
                   "");
-
+#endif
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByVal)>::object_type, User>::value, "");
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByVal)>::field_type, int>::value, "");
 
@@ -210,7 +214,7 @@ TEST_CASE("member_traits_tests") {
 
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByConstRef)>::object_type, User>::value, "");
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByConstRef)>::field_type, int>::value, "");
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByValueNoexcept)>::object_type, User>::value, "");
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByValueNoexcept)>::field_type, int>::value, "");
 
@@ -221,7 +225,7 @@ TEST_CASE("member_traits_tests") {
                   "");
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByConstRefNoexcept)>::field_type, int>::value,
                   "");
-
+#endif
     static_assert(is_same<typename field_member_traits<decltype(&User::id)>::object_type, User>::value, "");
     static_assert(is_same<typename field_member_traits<decltype(&User::id)>::field_type, int>::value, "");
 
@@ -242,7 +246,7 @@ TEST_CASE("member_traits_tests") {
 
     static_assert(is_same<typename member_traits<decltype(&User::getIdByConstRef)>::object_type, User>::value, "");
     static_assert(is_same<typename member_traits<decltype(&User::getIdByConstRef)>::field_type, int>::value, "");
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
     static_assert(is_same<typename member_traits<decltype(&User::getIdByValConstNoexcept)>::object_type, User>::value,
                   "");
     static_assert(is_same<typename member_traits<decltype(&User::getIdByValConstNoexcept)>::field_type, int>::value,
@@ -270,7 +274,7 @@ TEST_CASE("member_traits_tests") {
                   "");
     static_assert(is_same<typename member_traits<decltype(&User::getIdByConstRefNoExcept)>::field_type, int>::value,
                   "");
-
+#endif
     static_assert(is_same<typename member_traits<decltype(&User::setIdByVal)>::object_type, User>::value, "");
     static_assert(is_same<typename member_traits<decltype(&User::setIdByVal)>::field_type, int>::value, "");
 
@@ -279,7 +283,7 @@ TEST_CASE("member_traits_tests") {
 
     static_assert(is_same<typename member_traits<decltype(&User::setIdByConstRef)>::object_type, User>::value, "");
     static_assert(is_same<typename member_traits<decltype(&User::setIdByConstRef)>::field_type, int>::value, "");
-
+#ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
     static_assert(is_same<typename member_traits<decltype(&User::setIdByValueNoexcept)>::object_type, User>::value, "");
     static_assert(is_same<typename member_traits<decltype(&User::setIdByValueNoexcept)>::field_type, int>::value, "");
 
@@ -290,4 +294,5 @@ TEST_CASE("member_traits_tests") {
                   "");
     static_assert(is_same<typename member_traits<decltype(&User::setIdByConstRefNoexcept)>::field_type, int>::value,
                   "");
+#endif
 }
