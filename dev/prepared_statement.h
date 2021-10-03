@@ -8,6 +8,7 @@
 
 #include "connection_holder.h"
 #include "select_constraints.h"
+#include "values.h"
 
 namespace sqlite_orm {
 
@@ -247,6 +248,24 @@ namespace sqlite_orm {
         template<class It, class L, class O>
         struct is_replace_range<replace_range_t<It, L, O>> : std::true_type {};
 
+        template<class... Args>
+        struct insert_raw_t {
+            using args_tuple = std::tuple<Args...>;
+
+            args_tuple args;
+        };
+
+        template<class T>
+        struct into_t {
+            using type = T;
+        };
+
+        template<class T>
+        struct is_into : std::false_type {};
+
+        template<class T>
+        struct is_into<into_t<T>> : std::true_type {};
+
         struct default_transformer {
 
             template<class T>
@@ -254,16 +273,64 @@ namespace sqlite_orm {
                 return object;
             }
         };
+
+        struct default_values_t {};
+
+        template<class T>
+        using is_default_values = std::is_same<internal::default_values_t, T>;
+    }
+
+    inline internal::default_values_t default_values() {
+        return {};
+    }
+
+    template<class T>
+    internal::into_t<T> into() {
+        return {};
+    }
+
+    template<class... Args>
+    internal::insert_raw_t<Args...> insert(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        using internal::count_tuple;
+        using internal::is_columns;
+        using internal::is_into;
+        using internal::is_values;
+
+        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
+        static_assert(intoArgsCount != 0, "Raw insert must have into<T> argument");
+        static_assert(intoArgsCount < 2, "Raw insert must have only one into<T> argument");
+
+        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
+        static_assert(columnsArgsCount < 2, "Raw insert must have only one columns(...) argument");
+
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        static_assert(valuesArgsCount < 2, "Raw insert must have only one values(...) argument");
+
+        constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
+        static_assert(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
+
+        constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
+        static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
+
+        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
+        static_assert(argsCount ==
+                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
+                      "Raw insert has invalid arguments");
+
+        return {{std::forward<Args>(args)...}};
     }
 
     /**
      *  Create a replace range statement
+     *
      *  @example
      *  ```
      *  std::vector<User> users;
      *  users.push_back(User{1, "Leony"});
      *  auto statement = storage.prepare(replace_range(users.begin(), users.end()));
      *  storage.execute(statement);
+     *  ```
      */
     template<class It>
     internal::replace_range_t<It, internal::default_transformer, typename std::iterator_traits<It>::value_type>

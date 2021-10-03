@@ -6,7 +6,7 @@
 #include "conditions.h"
 #include "select_constraints.h"
 #include "operators.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "core_functions.h"
 #include "prepared_statement.h"
 #include "values.h"

@@ -20,5 +20,7 @@
 * improve DROP COLUMN in `sync_schema` https://sqlite.org/lang_altertable.html#altertabdropcol
 * `UPDATE FROM` support https://sqlite.org/lang_update.html#upfrom
 * `iif()` function https://sqlite.org/lang_corefunc.html#iif
+* add strong typed collate syntax (more info [here](https://github.com/fnc12/sqlite_orm/issues/767#issuecomment-887689672))
+* raw `INSERT`: `storage.insert_into<User>(&User::id, values(5));` or `storage.insert_into<User>(columns(&User::id, &User::name), values(5, "Puff Diddy"));` or `storage.insert_into<User>(columns(), default_values());`
 
 Please feel free to add any feature that isn't listed here and not implemented yet.

@@ -61,9 +61,9 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 
-            static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                               std::vector<table_info>& storageTableInfo,
-                                               std::vector<table_info>& dbTableInfo) {
+            static bool calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
+                                                     std::vector<table_info>& storageTableInfo,
+                                                     std::vector<table_info>& dbTableInfo) {
                 bool notEqual = false;
 
                 //  iterate through storage columns
@@ -252,16 +252,16 @@ namespace sqlite_orm {
 
             void add_column(const table_info& ti, sqlite3* db) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name << " ";
-                ss << ti.type << " ";
+                ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name;
+                ss << " " << ti.type;
                 if(ti.pk) {
-                    ss << "PRIMARY KEY ";
+                    ss << " PRIMARY KEY";
                 }
                 if(ti.notnull) {
-                    ss << "NOT NULL ";
+                    ss << " NOT NULL";
                 }
                 if(ti.dflt_value.length()) {
-                    ss << "DEFAULT " << ti.dflt_value << " ";
+                    ss << " DEFAULT " << ti.dflt_value;
                 }
                 perform_void_exec(db, ss.str());
             }
@@ -272,8 +272,6 @@ namespace sqlite_orm {
              */
             void
             copy_table(sqlite3* db, const std::string& name, const std::vector<table_info*>& columnsToIgnore) const {
-                std::ignore = columnsToIgnore;
-
                 std::stringstream ss;
                 std::vector<std::string> columnNames;
                 this->table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
@@ -301,11 +299,10 @@ namespace sqlite_orm {
                 for(size_t i = 0; i < columnNamesCount; ++i) {
                     ss << columnNames[i];
                     if(i < columnNamesCount - 1) {
-                        ss << ",";
+                        ss << ", ";
                     }
-                    ss << " ";
                 }
-                ss << "FROM '" << this->table.name << "' ";
+                ss << " FROM '" << this->table.name << "' ";
                 perform_void_exec(db, ss.str());
             }
 
@@ -326,7 +323,7 @@ namespace sqlite_orm {
                     //  this vector will contain pointers to columns that gotta be added..
                     std::vector<table_info*> columnsToAdd;
 
-                    if(this->get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
+                    if(this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;
                     }
 

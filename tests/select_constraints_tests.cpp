@@ -255,3 +255,292 @@ TEST_CASE("Exists") {
         where(exists(select(&Visit::id, where(c(&Visit::time) == 200000 and eq(&Visit::userId, &User::id))))));
     REQUIRE(!rows.empty() == 1);
 }
+
+TEST_CASE("Case") {
+
+    struct User {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+        std::string country;
+    };
+
+    struct Track {
+        int id = 0;
+        std::string name;
+        long milliseconds = 0;
+    };
+
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, autoincrement(), primary_key()),
+                                           make_column("first_name", &User::firstName),
+                                           make_column("last_name", &User::lastName),
+                                           make_column("country", &User::country)),
+                                make_table("tracks",
+                                           make_column("trackid", &Track::id, autoincrement(), primary_key()),
+                                           make_column("name", &Track::name),
+                                           make_column("milliseconds", &Track::milliseconds)));
+    storage.sync_schema();
+
+    struct GradeAlias : alias_tag {
+        static const std::string& get() {
+            static const std::string res = "Grade";
+            return res;
+        }
+    };
+
+    {
+        storage.insert(User{0, "Roberto", "Almeida", "Mexico"});
+        storage.insert(User{0, "Julia", "Bernett", "USA"});
+        storage.insert(User{0, "Camille", "Bernard", "Argentina"});
+        storage.insert(User{0, "Michelle", "Brooks", "USA"});
+        storage.insert(User{0, "Robet", "Brown", "USA"});
+
+        auto rows = storage.select(
+            columns(case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end()),
+            multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
+        auto verifyRows = [&storage](auto& rows) {
+            REQUIRE(rows.size() == storage.count<User>());
+            REQUIRE(std::get<0>(rows[0]) == "Foreign");
+            REQUIRE(std::get<0>(rows[1]) == "Foreign");
+            REQUIRE(std::get<0>(rows[2]) == "Dosmetic");
+            REQUIRE(std::get<0>(rows[3]) == "Dosmetic");
+            REQUIRE(std::get<0>(rows[4]) == "Dosmetic");
+        };
+        verifyRows(rows);
+
+        rows = storage.select(
+            columns(as<GradeAlias>(
+                case_<std::string>(&User::country).when("USA", then("Dosmetic")).else_("Foreign").end())),
+            multi_order_by(order_by(&User::lastName), order_by(&User::firstName)));
+
+        verifyRows(rows);
+    }
+    {
+        storage.insert(Track{0, "For Those About To Rock", 400000});
+        storage.insert(Track{0, "Balls to the Wall", 500000});
+        storage.insert(Track{0, "Fast as a Shark", 200000});
+        storage.insert(Track{0, "Restless and Wild", 100000});
+        storage.insert(Track{0, "Princess of the Dawn", 50000});
+
+        auto rows = storage.select(
+            case_<std::string>()
+                .when(c(&Track::milliseconds) < 60000, then("short"))
+                .when(c(&Track::milliseconds) >= 60000 and c(&Track::milliseconds) < 300000, then("medium"))
+                .else_("long")
+                .end(),
+            order_by(&Track::name));
+        auto verifyRows = [&storage](auto& rows) {
+            REQUIRE(rows.size() == storage.count<Track>());
+            REQUIRE(rows[0] == "long");
+            REQUIRE(rows[1] == "medium");
+            REQUIRE(rows[2] == "long");
+            REQUIRE(rows[3] == "short");
+            REQUIRE(rows[4] == "medium");
+        };
+        verifyRows(rows);
+
+        rows = storage.select(
+            as<GradeAlias>(
+                case_<std::string>()
+                    .when(c(&Track::milliseconds) < 60000, then("short"))
+                    .when(c(&Track::milliseconds) >= 60000 and c(&Track::milliseconds) < 300000, then("medium"))
+                    .else_("long")
+                    .end()),
+            order_by(&Track::name));
+        verifyRows(rows);
+    }
+}
+
+TEST_CASE("Where") {
+    struct User {
+        int id = 0;
+        int age = 0;
+        std::string name;
+    };
+
+    auto storage = make_storage("",
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("age", &User::age),
+                                           make_column("name", &User::name)));
+    storage.sync_schema();
+
+    storage.replace(User{1, 4, "Jeremy"});
+    storage.replace(User{2, 18, "Nataly"});
+
+    auto users = storage.get_all<User>();
+    REQUIRE(users.size() == 2);
+
+    auto users2 = storage.get_all<User>(where(true));
+    REQUIRE(users2.size() == 2);
+
+    auto users3 = storage.get_all<User>(where(false));
+    REQUIRE(users3.size() == 0);
+
+    auto users4 = storage.get_all<User>(where(true and c(&User::id) == 1));
+    REQUIRE(users4.size() == 1);
+    REQUIRE(users4.front().id == 1);
+
+    auto users5 = storage.get_all<User>(where(false and c(&User::id) == 1));
+    REQUIRE(users5.size() == 0);
+
+    auto users6 = storage.get_all<User>(where((false or c(&User::id) == 4) and (false or c(&User::age) == 18)));
+    REQUIRE(users6.empty());
+}
+
+TEST_CASE("collate") {
+    struct User {
+        int id = 0;
+        std::string firstName;
+
+        bool operator==(const User& user) const {
+            return this->id == user.id && this->firstName == user.firstName;
+        }
+    };
+    auto storage = make_storage(
+        {},
+        make_table("users", make_column("id", &User::id, primary_key()), make_column("first_name", &User::firstName)));
+    storage.sync_schema();
+    User user1{1, "HELLO"};
+    User user2{2, "Hello"};
+    User user3{3, "HEllo"};
+
+    storage.replace(user1);
+    storage.replace(user2);
+    storage.replace(user3);
+
+    auto rows = storage.get_all<User>(where(is_equal(&User::firstName, "hello").collate_nocase()));
+    std::vector<User> expected = {user1, user2, user3};
+    REQUIRE(rows == expected);
+}
+
+TEST_CASE("Dynamic order by") {
+    struct User {
+        int id = 0;
+        std::string firstName;
+        std::string lastName;
+        long registerTime = 0;
+    };
+
+    auto storage = make_storage({},
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key()),
+                                           make_column("first_name", &User::firstName),
+                                           make_column("last_name", &User::lastName),
+                                           make_column("register_time", &User::registerTime)));
+    storage.sync_schema();
+
+    storage.replace(User{1, "Jack", "Johnson", 100});
+    storage.replace(User{2, "John", "Jackson", 90});
+    storage.replace(User{3, "Elena", "Alexandra", 80});
+    storage.replace(User{4, "Kaye", "Styles", 70});
+
+    auto orderBy = dynamic_order_by(storage);
+    std::vector<decltype(User::id)> expectedIds;
+
+    SECTION("id") {
+        auto ob = order_by(&User::id);
+        orderBy.push_back(ob);
+        expectedIds = {
+            1,
+            2,
+            3,
+            4,
+        };
+    }
+
+    SECTION("id desc") {
+        orderBy.push_back(order_by(&User::id).desc());
+        expectedIds = {
+            4,
+            3,
+            2,
+            1,
+        };
+    }
+
+    SECTION("firstName") {
+        orderBy.push_back(order_by(&User::firstName));
+        expectedIds = {
+            3,
+            1,
+            2,
+            4,
+        };
+    }
+
+    SECTION("firstName asc") {
+        orderBy.push_back(order_by(&User::firstName).asc());
+        expectedIds = {
+            3,
+            1,
+            2,
+            4,
+        };
+    }
+
+    SECTION("firstName desc") {
+        orderBy.push_back(order_by(&User::firstName).desc());
+        expectedIds = {
+            4,
+            2,
+            1,
+            3,
+        };
+    }
+
+    SECTION("firstName asc + id desc") {
+        orderBy.push_back(order_by(&User::firstName).asc());
+        orderBy.push_back(order_by(&User::id).desc());
+        expectedIds = {
+            3,
+            1,
+            2,
+            4,
+        };
+    }
+
+    SECTION("lastName + firstName + id") {
+        orderBy.push_back(order_by(&User::lastName));
+        orderBy.push_back(order_by(&User::firstName));
+        orderBy.push_back(order_by(&User::id));
+        expectedIds = {
+            3,
+            2,
+            1,
+            4,
+        };
+    }
+
+    SECTION("lastName + firstName desc + id") {
+        orderBy.push_back(order_by(&User::lastName));
+        orderBy.push_back(order_by(&User::firstName).desc());
+        orderBy.push_back(order_by(&User::id));
+        expectedIds = {
+            3,
+            2,
+            1,
+            4,
+        };
+    }
+
+    auto rows = storage.get_all<User>(orderBy);
+    REQUIRE(rows.size() == 4);
+    for(auto i = 0; i < int(rows.size()); ++i) {
+        auto& row = rows[i];
+        REQUIRE(row.id == expectedIds[i]);
+    }
+    orderBy.clear();
+}
+
+TEST_CASE("rows") {
+    //  https://www.sqlite.org/rowvalue.html
+    auto storage = make_storage({});
+
+    auto rows = storage.select(is_equal(std::make_tuple(1, 2, 3), std::make_tuple(1, 2, 3)));
+    decltype(rows) expected;
+    expected.push_back(true);
+    REQUIRE(rows == expected);
+}

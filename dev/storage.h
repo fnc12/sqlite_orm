@@ -22,7 +22,7 @@
 #include "row_extractor_builder.h"
 #include "error_code.h"
 #include "type_printer.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "constraints.h"
 #include "type_is_nullable.h"
 #include "field_printer.h"
@@ -103,9 +103,9 @@ namespace sqlite_orm {
                     }
                     index++;
                 });
-                ss << ") ";
+                ss << ")";
                 if(table_type::is_without_rowid) {
-                    ss << "WITHOUT ROWID ";
+                    ss << " WITHOUT ROWID ";
                 }
                 perform_void_exec(db, ss.str());
             }
@@ -394,6 +394,7 @@ namespace sqlite_orm {
             /**
              *  SELECT COUNT(X) https://www.sqlite.org/lang_aggfunc.html#count
              *  @param m member pointer to class mapped to the storage.
+             *  @return count of `m` values from database.
              */
             template<class F, class O, class... Args>
             int count(F O::*m, Args &&... args) {
@@ -409,7 +410,7 @@ namespace sqlite_orm {
             /**
              *  AVG(X) query.   https://www.sqlite.org/lang_aggfunc.html#avg
              *  @param m is a class member pointer (the same you passed into make_column).
-             *  @return average value from db.
+             *  @return average value from database.
              */
             template<class F, class O, class... Args>
             double avg(F O::*m, Args &&... args) {
@@ -654,6 +655,40 @@ namespace sqlite_orm {
                 });
             }
 
+            /**
+             *  Raw insert routine. Use this if `insert` with object does not fit you. This insert is designed to be able
+             *  to call any type of `INSERT` query with no limitations.
+             *  @example
+             *  ```sql
+             *  INSERT INTO users (id, name) VALUES(5, 'Little Mix')
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.insert(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix")));
+             *  ```
+             *  One more example:
+             *  ```sql
+             *  INSERT INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.insert(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs")));
+             *  ```
+             *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+             *  ```sql
+             *  INSERT INTO users DEFAULT VALUES
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.insert(into<Singer>(), default_values());
+             *  ```
+             */
+            template<class... Args>
+            void insert(Args... args) {
+                auto statement = this->prepare(sqlite_orm::insert(std::forward<Args>(args)...));
+                this->execute(statement);
+            }
+
             template<class It>
             void insert_range(It from, It to) {
                 using O = typename std::iterator_traits<It>::value_type;
@@ -765,7 +800,7 @@ namespace sqlite_orm {
                             //  this vector will contain pointers to columns that gotta be added..
                             std::vector<table_info *> columnsToAdd;
 
-                            tImpl.get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                            tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                             if(schema_stat == sync_schema_result::old_columns_removed) {
 
@@ -896,6 +931,11 @@ namespace sqlite_orm {
                 return prepare_impl<get_all_pointer_t<T, Args...>>(std::move(get_));
             }
 
+            template<class... Args>
+            prepared_statement_t<insert_raw_t<Args...>> prepare(insert_raw_t<Args...> ins) {
+                return prepare_impl<insert_raw_t<Args...>>(std::move(ins));
+            }
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class R, class... Args>
             prepared_statement_t<get_all_optional_t<T, R, Args...>> prepare(get_all_optional_t<T, R, Args...> get_) {
@@ -974,6 +1014,24 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<decltype(ins)>::type;
                 this->assert_mapped_type<object_type>();
                 return prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
+            }
+
+            template<class... Args>
+            void execute(const prepared_statement_t<insert_raw_t<Args...>> &statement) {
+                auto con = this->get_connection();
+                auto db = con.get();
+                auto stmt = statement.stmt;
+                sqlite3_reset(stmt);
+                auto index = 1;
+                iterate_ast(statement.t.args, [stmt, &index, db](auto &node) {
+                    using node_type = typename std::decay<decltype(node)>::type;
+                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                    if(SQLITE_OK != binder(node)) {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
+                    }
+                });
+                perform_step(db, stmt);
             }
 
             template<class T, class... Cols>

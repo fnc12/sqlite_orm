@@ -26,6 +26,7 @@ namespace sqlite_orm {
         cannot_use_default_value,
         arguments_count_does_not_match,
         function_not_found,
+        index_is_out_of_bounds,
     };
 
 }
@@ -72,6 +73,8 @@ namespace sqlite_orm {
                     return "Arguments count does not match";
                 case orm_error_code::function_not_found:
                     return "Function not found";
+                case orm_error_code::index_is_out_of_bounds:
+                    return "Index is out of bounds";
                 default:
                     return "unknown error";
             }

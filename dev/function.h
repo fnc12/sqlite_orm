@@ -7,6 +7,8 @@
 
 namespace sqlite_orm {
 
+    struct arg_values;
+
     namespace internal {
 
         struct function_base {
@@ -161,9 +163,13 @@ namespace sqlite_orm {
     template<class F, class... Args>
     internal::function_call<F, Args...> func(Args... args) {
         using args_tuple = std::tuple<Args...>;
+        using function_args_tuple = typename internal::callable_arguments<F>::args_tuple;
         constexpr auto argsCount = std::tuple_size<args_tuple>::value;
-        constexpr auto functionArgsCount = std::tuple_size<typename internal::callable_arguments<F>::args_tuple>::value;
-        static_assert(argsCount == functionArgsCount, "Arguments amount does not match");
+        constexpr auto functionArgsCount = std::tuple_size<function_args_tuple>::value;
+        static_assert(
+            (argsCount == functionArgsCount && !std::is_same<function_args_tuple, std::tuple<arg_values>>::value) ||
+                std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+            "Arguments amount does not match");
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 

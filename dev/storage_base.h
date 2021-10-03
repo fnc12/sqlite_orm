@@ -17,13 +17,14 @@
 #include "transaction_guard.h"
 #include "statement_finalizer.h"
 #include "type_printer.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "row_extractor.h"
 #include "util.h"
 #include "connection_holder.h"
 #include "backup.h"
 #include "function.h"
 #include "values_to_tuple.h"
+#include "arg_values.h"
 
 namespace sqlite_orm {
 
@@ -198,9 +199,13 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
+                auto argsCount = int(std::tuple_size<args_tuple>::value);
+                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
+                    argsCount = -1;
+                }
                 this->scalarFunctions.emplace_back(new scalar_function_t{
                     move(name),
-                    int(std::tuple_size<args_tuple>::value),
+                    argsCount,
                     []() -> int* {
                         return (int*)(new F());
                     },
@@ -209,8 +214,8 @@ namespace sqlite_orm {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple);
-                        auto result = tuple_helper::call(functionPointer, std::move(argsTuple));
+                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
+                        auto result = call(functionPointer, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -254,9 +259,13 @@ namespace sqlite_orm {
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
+                auto argsCount = int(std::tuple_size<args_tuple>::value);
+                if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
+                    argsCount = -1;
+                }
                 this->aggregateFunctions.emplace_back(new aggregate_function_t{
                     move(name),
-                    int(std::tuple_size<args_tuple>::value),
+                    argsCount,
                     /* create = */
                     []() -> int* {
                         return (int*)(new F());
@@ -266,8 +275,8 @@ namespace sqlite_orm {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
-                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple);
-                        tuple_helper::call(functionPointer, &F::step, move(argsTuple));
+                        values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
+                        call(functionPointer, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
                     [](sqlite3_context* context, void* functionVoidPointer) {
@@ -308,9 +317,23 @@ namespace sqlite_orm {
                 this->delete_function_impl(name, this->aggregateFunctions);
             }
 
+            template<class C>
+            void create_collation() {
+                collating_function func = [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
+                    C collatingObject;
+                    return collatingObject(leftLength, lhs, rightLength, rhs);
+                };
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                this->create_collation(name, move(func));
+            }
+
             void create_collation(const std::string& name, collating_function f) {
                 collating_function* functionPointer = nullptr;
-                if(f) {
+                const auto functionExists = bool(f);
+                if(functionExists) {
                     functionPointer = &(collatingFunctions[name] = std::move(f));
                 } else {
                     collatingFunctions.erase(name);
@@ -323,12 +346,21 @@ namespace sqlite_orm {
                                                                name.c_str(),
                                                                SQLITE_UTF8,
                                                                functionPointer,
-                                                               f ? collate_callback : nullptr);
+                                                               functionExists ? collate_callback : nullptr);
                     if(resultCode != SQLITE_OK) {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                                 sqlite3_errmsg(db));
                     }
                 }
+            }
+
+            template<class C>
+            void delete_collation() {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                this->create_collation(name, {});
             }
 
             void begin_transaction() {
@@ -626,7 +658,7 @@ namespace sqlite_orm {
                 auto functionPointer = static_cast<scalar_function_t*>(functionVoidPointer);
                 std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
                                                                      functionPointer->destroy);
-                if(functionPointer->argumentsCount != argsCount) {
+                if(functionPointer->argumentsCount != -1 && functionPointer->argumentsCount != argsCount) {
                     throw std::system_error(std::make_error_code(orm_error_code::arguments_count_does_not_match));
                 }
                 functionPointer->run(context, functionPointer, argsCount, values);

@@ -1114,6 +1114,72 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<into_t<T>, void> {
+            using statement_type = into_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                auto& tImpl = context.impl.template get_impl<T>();
+                ss << "INTO " << tImpl.table.name;
+                return ss.str();
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<columns_t<Args...>, void> {
+            using statement_type = columns_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                auto index = 0;
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
+                iterate_tuple(statement.columns, [&context, &ss, &index](auto& value) {
+                    ss << serialize(value, context);
+                    if(index < int(std::tuple_size<std::tuple<Args...>>::value) - 1) {
+                        ss << ", ";
+                    }
+                    ++index;
+                });
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
+                return ss.str();
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<insert_raw_t<Args...>, void> {
+            using statement_type = insert_raw_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "INSERT";
+                iterate_tuple(statement.args, [&context, &ss](auto& value) {
+                    using value_type = typename std::decay<decltype(value)>::type;
+                    ss << ' ';
+                    if(is_columns<value_type>::value) {
+                        auto newContext = context;
+                        newContext.skip_table_name = true;
+                        newContext.use_parentheses = true;
+                        ss << serialize(value, newContext);
+                    } else if(is_values<value_type>::value || is_select<value_type>::value) {
+                        auto newContext = context;
+                        newContext.use_parentheses = false;
+                        ss << serialize(value, newContext);
+                    } else {
+                        ss << serialize(value, context);
+                    }
+                });
+                return ss.str();
+            }
+        };
+
         template<class T, class... Ids>
         struct statement_serializator<remove_t<T, Ids...>, void> {
             using statement_type = remove_t<T, Ids...>;
@@ -1343,7 +1409,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 const auto isCompoundOperator = is_base_of_template<T, compound_operator>::value;
                 if(!isCompoundOperator) {
-                    if(!sel.highest_level) {
+                    if(!sel.highest_level && context.use_parentheses) {
                         ss << "(";
                     }
                     ss << "SELECT ";
@@ -1394,7 +1460,7 @@ namespace sqlite_orm {
                     ss << ' ' << serialize(v, context);
                 });
                 if(!is_base_of_template<T, compound_operator>::value) {
-                    if(!sel.highest_level) {
+                    if(!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }
                 }
@@ -1447,14 +1513,11 @@ namespace sqlite_orm {
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
                 iterate_tuple(statement.columns, [&columnNames, &context](auto& v) {
-                    if(auto columnNamePointer = context.column_name(v.column_or_expression)) {
-                        columnNames.push_back(*columnNamePointer);
-                    } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                    }
+                    auto columnName = serialize(v, context);
+                    columnNames.push_back(move(columnName));
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "'" << columnNames[i] << "'";
+                    ss << columnNames[i];
                     if(i < columnNames.size() - 1) {
                         ss << ", ";
                     }
@@ -1739,6 +1802,16 @@ namespace sqlite_orm {
                     ss << serialize(limt.lim, newContext);
                 }
                 return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializator<default_values_t, void> {
+            using statement_type = default_values_t;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                return "DEFAULT VALUES";
             }
         };
 

@@ -75,7 +75,7 @@ TEST_CASE("Prepared get") {
                     auto user = storage.execute(statement);
                     std::ignore = user;
                     REQUIRE(false);
-                } catch(const std::system_error& e) {
+                } catch(const std::system_error&) {
                     REQUIRE(true);
                 }
             }
@@ -102,7 +102,7 @@ TEST_CASE("Prepared get") {
             try {
                 auto user = storage.execute(statement);
                 REQUIRE(false);
-            } catch(const std::system_error& e) {
+            } catch(const std::system_error&) {
                 //..
             }
         }

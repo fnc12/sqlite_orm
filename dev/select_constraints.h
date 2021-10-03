@@ -8,7 +8,7 @@
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "common_traits.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "optional_container.h"
 
 namespace sqlite_orm {
@@ -66,6 +66,12 @@ namespace sqlite_orm {
 
             static constexpr const int count = std::tuple_size<columns_type>::value;
         };
+
+        template<class T>
+        struct is_columns : std::false_type {};
+
+        template<class... Args>
+        struct is_columns<columns_t<Args...>> : std::true_type {};
 
         struct set_string {
             operator std::string() const {
@@ -137,6 +143,12 @@ namespace sqlite_orm {
             conditions_type conditions;
             bool highest_level = false;
         };
+
+        template<class T>
+        struct is_select : std::false_type {};
+
+        template<class T, class... Args>
+        struct is_select<select_t<T, Args...>> : std::true_type {};
 
         /**
          *  Base for UNION, UNION ALL, EXCEPT and INTERSECT

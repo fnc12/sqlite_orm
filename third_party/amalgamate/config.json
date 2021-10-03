@@ -4,7 +4,11 @@
 	"sources": [
 		"dev/start_macros.h",
 		"dev/error_code.h",
-		"dev/tuple_helper.h",
+		"dev/tuple_helper/tuple_helper.h",
+        "dev/tuple_helper/find_in_tuple.h",
+        "dev/tuple_helper/tuple_transformer.h",
+        "dev/tuple_helper/count_tuple.h",
+        "dev/tuple_helper/same_or_void.h",
 		"dev/type_printer.h",
 		"dev/collate_argument.h",
 		"dev/constraints.h",

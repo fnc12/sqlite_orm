@@ -127,42 +127,9 @@ namespace sqlite_orm {
                 iterator_impl2<Args...>{}(lambda);
             }
         };
+    }
 
-        template<size_t N, size_t I, class L, class R>
-        void move_tuple_impl(L& lhs, R& rhs) {
-            std::get<I>(lhs) = std::move(std::get<I>(rhs));
-            internal::static_if<std::integral_constant<bool, N != I + 1>{}>([](auto& l, auto& r) {
-                move_tuple_impl<N, I + 1>(l, r);
-            })(lhs, rhs);
-        }
-
-        /**
-         *  Accepts any number of arguments and evaluates `type` alias as T if all arguments are the same or void otherwise
-         */
-        template<class... Args>
-        struct same_or_void {
-            using type = void;
-        };
-
-        template<class A>
-        struct same_or_void<A> {
-            using type = A;
-        };
-
-        template<class A, class B>
-        struct same_or_void<A, B> {
-            using type = void;
-        };
-
-        template<class A>
-        struct same_or_void<A, A> {
-            using type = A;
-        };
-
-        template<class A, class... Args>
-        struct same_or_void<A, A, Args...> {
-            using type = typename same_or_void<A, Args...>::type;
-        };
+    namespace internal {
 
         //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
         template<class Function, class FunctionPointer, class Tuple, size_t... I>
@@ -180,15 +147,20 @@ namespace sqlite_orm {
         auto call(Function& f, Tuple t) {
             return call(f, &Function::operator(), move(t));
         }
-    }
 
-    namespace internal {
+        template<size_t N, size_t I, class L, class R>
+        void move_tuple_impl(L& lhs, R& rhs) {
+            std::get<I>(lhs) = std::move(std::get<I>(rhs));
+            internal::static_if<std::integral_constant<bool, N != I + 1>{}>([](auto& l, auto& r) {
+                move_tuple_impl<N, I + 1>(l, r);
+            })(lhs, rhs);
+        }
 
         template<size_t N, class L, class R>
         void move_tuple(L& lhs, R& rhs) {
             using bool_type = std::integral_constant<bool, N != 0>;
             static_if<bool_type{}>([](auto& l, auto& r) {
-                tuple_helper::move_tuple_impl<N, 0>(l, r);
+                move_tuple_impl<N, 0>(l, r);
             })(lhs, rhs);
         }
 
@@ -209,27 +181,6 @@ namespace sqlite_orm {
         template<class... Args>
         struct conc_tuple {
             using type = tuple_cat_t<Args...>;
-        };
-
-        template<class T, template<class> class C>
-        struct count_tuple;
-
-        template<template<class> class C>
-        struct count_tuple<std::tuple<>, C> {
-            static constexpr const int value = 0;
-        };
-
-        template<class H, class... Args, template<class> class C>
-        struct count_tuple<std::tuple<H, Args...>, C> {
-            static constexpr const int value = C<H>::value + count_tuple<std::tuple<Args...>, C>::value;
-        };
-
-        template<class T, template<class C> class F>
-        struct tuple_transformer;
-
-        template<class... Args, template<class C> class F>
-        struct tuple_transformer<std::tuple<Args...>, F> {
-            using type = std::tuple<typename F<Args>::type...>;
         };
     }
 }

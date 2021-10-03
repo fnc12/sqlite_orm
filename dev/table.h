@@ -10,7 +10,7 @@
 #include "static_magic.h"
 #include "typed_comparator.h"
 #include "constraints.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "table_info.h"
 #include "type_printer.h"
 #include "column.h"

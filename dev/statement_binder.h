@@ -10,6 +10,7 @@
 #include <cstddef>  //  std::nullptr_t
 #include <utility>  //  std::declval
 #include <locale>  //  std::wstring_convert
+#include <cstring>  //  ::strncpy, ::strlen
 
 #include "common_traits.h"
 
@@ -72,20 +73,30 @@ namespace sqlite_orm {
         std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char*>::value>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            return sqlite3_bind_text(stmt, index, this->string_data(value), -1, SQLITE_TRANSIENT);
+            auto stringData = this->string_data(value);
+            return sqlite3_bind_text(stmt, index, std::get<0>(stringData), std::get<1>(stringData), SQLITE_TRANSIENT);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_text(context, this->string_data(value));
+            auto stringData = this->string_data(value);
+            auto stringDataLength = std::get<1>(stringData);
+            auto dataCopy = new char[stringDataLength + 1];
+            auto stringChars = std::get<0>(stringData);
+            ::strncpy(dataCopy, stringChars, stringDataLength + 1);
+            sqlite3_result_text(context, dataCopy, stringDataLength, [](void* pointer) {
+                auto charPointer = (char*)pointer;
+                delete[] charPointer;
+            });
         }
 
       private:
-        const char* string_data(const std::string& s) const {
-            return s.c_str();
+        std::tuple<const char*, int> string_data(const std::string& s) const {
+            return {s.c_str(), int(s.size())};
         }
 
-        const char* string_data(const char* s) const {
-            return s;
+        std::tuple<const char*, int> string_data(const char* s) const {
+            auto length = int(::strlen(s));
+            return {s, length};
         }
     };
 
