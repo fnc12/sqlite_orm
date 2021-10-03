@@ -43,6 +43,10 @@ init:
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2013" (set generator="Visual Studio 12 2013" %architecture%)
 
 install:
+  - cd C:\Tools\vcpkg
+  - git pull
+  - .\bootstrap-vcpkg.bat
+  - cd %APPVEYOR_BUILD_FOLDER%
   - C:\Tools\vcpkg\vcpkg integrate install
   - vcpkg install sqlite3:%PLATFORM%-windows
 
