@@ -433,7 +433,7 @@ namespace sqlite_orm {
          */
         template<typename T, typename... Args>
         constexpr bool has_type(sqlite_orm::internal::tuple_t<Args...>) noexcept {
-            bool result[] = {(std::is_same<T, Args>::value)...};
+            bool result[] = {(std::is_same<T, Args>::value)..., false};
             for(bool value: result) {
                 if(value) {
                     return true;
@@ -451,7 +451,7 @@ namespace sqlite_orm {
          */
         template<template<class...> class TT, typename... Args>
         constexpr bool has_some_type(sqlite_orm::internal::tuple_t<Args...>) noexcept {
-            bool result[] = {(sqlite_orm::internal::is_template_matches_type<TT, Args>::value)...};
+            bool result[] = {(sqlite_orm::internal::is_template_matches_type<TT, Args>::value)..., false};
             for(bool value: result) {
                 if(value) {
                     return true;
@@ -472,7 +472,7 @@ namespace sqlite_orm {
          */
         template<template<class...> class Cond, typename... Args>
         constexpr bool has_type_if(sqlite_orm::internal::tuple_t<Args...>) noexcept {
-            bool result[] = {(Cond<Args>::value)...};
+            bool result[] = {(Cond<Args>::value)..., false};
             for(bool value: result) {
                 if(value) {
                     return true;
