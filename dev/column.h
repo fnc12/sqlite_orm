@@ -76,7 +76,7 @@ namespace sqlite_orm {
 
             template<class Opt>
             constexpr bool has() const {
-                return internal::tuple_contains_type<Opt, constraints_type>::value;
+                return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
             }
 
             template<class O1, class O2, class... Opts>
@@ -123,9 +123,9 @@ namespace sqlite_orm {
             template<class O, class T, class... Op>
             struct is_column_with_insertable_primary_key<
                 column_t<O, T, Op...>,
-                typename std::enable_if<(
-                    internal::tuple_contains_type<primary_key_t<>,
-                                                  typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                                         primary_key_t<>,
+                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
                 static constexpr bool value = is_primary_key_insertable<column_type>::value;
             };
@@ -142,9 +142,9 @@ namespace sqlite_orm {
             template<class O, class T, class... Op>
             struct is_column_with_noninsertable_primary_key<
                 column_t<O, T, Op...>,
-                typename std::enable_if<(
-                    internal::tuple_contains_type<primary_key_t<>,
-                                                  typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                                         primary_key_t<>,
+                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
                 static constexpr bool value = !is_primary_key_insertable<column_type>::value;
             };
@@ -187,8 +187,7 @@ namespace sqlite_orm {
         struct is_column_nongenerated<column_t<O, T, Op...>> {
             using column_type = column_t<O, T, Op...>;
             using constraints_type = typename column_type::constraints_type;
-            static constexpr bool value =
-                !(internal::tuple_contains_type_if<is_generated_always_as, constraints_type>::value);
+            static constexpr bool value = (internal::count_tuple<constraints_type, is_generated_always_as>::value == 0);
         };
 
         template<class T>

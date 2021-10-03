@@ -557,12 +557,13 @@ namespace sqlite_orm {
             using field_type = typename T::field_type;
             using constraints_type = typename T::constraints_type;
 
-            static_assert((internal::tuple_contains_type<primary_key_t<>, constraints_type>::value),
+            static_assert((tuple_helper::tuple_contains_type<primary_key_t<>, constraints_type>::value),
                           "an unexpected type was passed");
 
-            static constexpr bool value = (internal::tuple_contains_some_type<default_t, constraints_type>::value ||
-                                           internal::tuple_contains_type<autoincrement_t, constraints_type>::value ||
-                                           std::is_base_of<integer_printer, type_printer<field_type>>::value);
+            static constexpr bool value =
+                (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
+                 tuple_helper::tuple_contains_type<autoincrement_t, constraints_type>::value ||
+                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
         };
 
         // TODO: remove is_nongenerated_column
@@ -573,7 +574,7 @@ namespace sqlite_orm {
         struct is_nongenerated_column {
             using constraints_type = typename T::constraints_type;
             static constexpr bool value =
-                !(internal::tuple_contains_some_type<generated_always_as_t, constraints_type>::value);
+                !(tuple_helper::tuple_contains_some_type<generated_always_as_t, constraints_type>::value);
         };
 
     }

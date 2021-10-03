@@ -55,7 +55,7 @@ namespace sqlite_orm {
             }
 
             // TODO: make this static asserts testable
-            static_assert(tuple_contains_type_if<is_column_nongenerated, columns_type>::value,
+            static_assert(internal::count_tuple<columns_type, is_column_nongenerated>::value >= 1,
                           "Every table must have at least one non-generated column.");
 
             /**
@@ -236,7 +236,7 @@ namespace sqlite_orm {
              */
             template<class Op, class L>
             void for_each_column_with(const L &l) const {
-                using internal::tuple_contains_type;
+                using tuple_helper::tuple_contains_type;
                 iterate_tuple(this->columns, [&l](auto &column) {
                     using column_type = typename std::decay<decltype(column)>::type;
                     using constraints_type = typename column_constraints_type<column_type>::type;
