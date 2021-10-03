@@ -45,6 +45,7 @@ SQLite ORM light header only library for modern C++. Please read the license pre
 * **COLLATE support**
 * **Limits setting/getting support**
 * **User defined functions support**
+* **Generated columns**
 
 `sqlite_orm` library allows to create easy data model mappings to your database schema. It is built to manage (CRUD) objects with a primary key and without it. It also allows you to specify table names and column names explicitly no matter how your classes actually named. Take a look at example:
 
@@ -90,7 +91,7 @@ auto storage = make_storage("db.sqlite",
                                        make_column("name", &UserType::name, default_value("name_placeholder"))));
 ```
 
-Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like `primary_key`, `autoincrement`, `default_value` or `unique`(order isn't important; `not_null` is deduced from type automatically).
+Too easy isn't it? You do not have to specify mapped type explicitly - it is deduced from your member pointers you pass during making a column (for example: `&User::id`). To create a column you have to pass two arguments at least: its name in the table and your mapped class member pointer. You can also add extra arguments to tell your storage about column's constraints like `primary_key`, `autoincrement`, `default_value`, `unique`, `as` or `generated_always().as`(order isn't important; `not_null` is deduced from type automatically).
 
 More details about making storage can be found in [tutorial](https://github.com/fnc12/sqlite_orm/wiki/Making-a-storage).
 
@@ -638,7 +639,7 @@ Please beware that `sync_schema` doesn't guarantee that data will be saved. It *
     * if table doesn't exist it is created
     * if table exists its colums are being compared with table_info from db and
         * if there are columns in db that do not exist in storage (excess) table will be dropped and recreated if `preserve` is `false`, and table will be copied into temporary table without excess columns, source table will be dropped, copied table will be renamed to source table (sqlite remove column technique) if `preserve` is `true`. `preserve` is the first argument in `sync_schema` function. It's default value is `false`. Beware that setting it to `true` may take time for copying table rows.
-        * if there are columns in storage that do not exist in db they will be added using 'ALTER TABLE ... ADD COLUMN ...' command and table data will not be dropped but if any of added columns is null but has not default value table will be dropped and recreated
+        * if there are columns in storage that do not exist in db they will be added using 'ALTER TABLE ... ADD COLUMN ...' command and table data will not be dropped. Also, if any of added columns is null, this column must be generated or with default value. Otherwise - table will be dropped and recreated.
         * if there is any column existing in both db and storage but differs by any of properties (type, pk, notnull) table will be dropped and recreated (dflt_value isn't checked cause there can be ambiguity in default values, please beware).
 
 The best practice is to call this function right after storage creation.
