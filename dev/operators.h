@@ -1,8 +1,10 @@
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type
-
-#include "negatable.h"
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  //  std::nullopt
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+#include "tags.h"
 
 namespace sqlite_orm {
 
@@ -103,8 +105,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise shift left << operator
-     */
+         * Result of bitwise shift left << operator
+         */
         template<class L, class R>
         using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
@@ -115,8 +117,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise shift right >> operator
-     */
+         * Result of bitwise shift right >> operator
+         */
         template<class L, class R>
         using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
@@ -127,8 +129,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise and & operator
-     */
+         * Result of bitwise and & operator
+         */
         template<class L, class R>
         using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
@@ -139,8 +141,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise or | operator
-     */
+         * Result of bitwise or | operator
+         */
         template<class L, class R>
         using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
@@ -151,8 +153,8 @@ namespace sqlite_orm {
         };
 
         /**
-     * Result of bitwise not ~ operator
-     */
+         * Result of bitwise not ~ operator
+         */
         template<class T>
         struct bitwise_not_t : bitwise_not_string, arithmetic_t, negatable_t {
             using argument_type = T;
@@ -167,6 +169,7 @@ namespace sqlite_orm {
                 return "=";
             }
         };
+
         /**
          *  Result of assign = operator
          */
@@ -185,34 +188,9 @@ namespace sqlite_orm {
         template<class L, class R>
         struct is_assign_t<assign_t<L, R>> : public std::true_type {};
 
-        /**
-         *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
-         */
-        template<class T>
-        struct expression_t {
-            T t;
+        template<class L, class... Args>
+        struct in_t;
 
-            expression_t(T t_) : t(std::move(t_)) {}
-
-            template<class R>
-            assign_t<T, R> operator=(R r) const {
-                return {this->t, std::move(r)};
-            }
-
-            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
-                return {this->t, nullptr};
-            }
-        };
-
-    }
-
-    /**
-     *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
-     * `storage.update(set(c(&User::name) = "Dua Lipa"));
-     */
-    template<class T>
-    internal::expression_t<T> c(T t) {
-        return {std::move(t)};
     }
 
     /**
@@ -233,23 +211,34 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Public interface for - operator. Example: `select(add(&User::age, 1));` => SELECT age - 1 FROM users
+     *  Public interface for - operator. Example: `select(sub(&User::age, 1));` => SELECT age - 1 FROM users
      */
     template<class L, class R>
     internal::sub_t<L, R> sub(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for * operator. Example: `select(mul(&User::salary, 2));` => SELECT salary * 2 FROM users
+     */
     template<class L, class R>
     internal::mul_t<L, R> mul(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for / operator. Example: `select(div(&User::salary, 3));` => SELECT salary / 3 FROM users
+     *  @note Please notice that ::div function already exists in pure C standard library inside <cstdlib> header.
+     *  If you use `using namespace sqlite_orm` directive you an specify which `div` you call explicitly using  `::div` or `sqlite_orm::div` statements.
+     */
     template<class L, class R>
     internal::div_t<L, R> div(L l, R r) {
         return {std::move(l), std::move(r)};
     }
 
+    /**
+     *  Public interface for % operator. Example: `select(mod(&User::age, 5));` => SELECT age % 5 FROM users
+     */
     template<class L, class R>
     internal::mod_t<L, R> mod(L l, R r) {
         return {std::move(l), std::move(r)};

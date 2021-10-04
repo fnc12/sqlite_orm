@@ -75,7 +75,7 @@ TEST_CASE("Prepared get") {
                     auto user = storage.execute(statement);
                     std::ignore = user;
                     REQUIRE(false);
-                } catch(const std::system_error &e) {
+                } catch(const std::system_error&) {
                     REQUIRE(true);
                 }
             }
@@ -102,7 +102,7 @@ TEST_CASE("Prepared get") {
             try {
                 auto user = storage.execute(statement);
                 REQUIRE(false);
-            } catch(const std::system_error &e) {
+            } catch(const std::system_error&) {
                 //..
             }
         }
@@ -110,8 +110,8 @@ TEST_CASE("Prepared get") {
     {
         storage.replace(Visit{1, /*userId*/ 2, 1000});
         auto statement = storage.prepare(get<UserAndVisit>(2, 1));
-        std::ignore = get<0>(static_cast<const decltype(statement) &>(statement));
-        std::ignore = get<1>(static_cast<const decltype(statement) &>(statement));
+        std::ignore = get<0>(static_cast<const decltype(statement)&>(statement));
+        std::ignore = get<1>(static_cast<const decltype(statement)&>(statement));
         REQUIRE(get<0>(statement) == 2);
         REQUIRE(get<1>(statement) == 1);
         {

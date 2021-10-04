@@ -11,11 +11,9 @@
 #include "alias.h"
 #include "column.h"
 #include "storage_traits.h"
+#include "function.h"
 
 namespace sqlite_orm {
-
-    using int64 = sqlite_int64;
-    using uint64 = sqlite_uint64;
 
     namespace internal {
 
@@ -31,12 +29,30 @@ namespace sqlite_orm {
         template<class St, class T, class SFINAE = void>
         struct column_result_t;
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class St, class T>
+        struct column_result_t<St, as_optional_t<T>, void> {
+            using type = std::optional<typename column_result_t<St, T>::type>;
+        };
+
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
         template<class St, class O, class F>
         struct column_result_t<St,
                                F O::*,
                                typename std::enable_if<std::is_member_pointer<F O::*>::value &&
                                                        !std::is_member_function_pointer<F O::*>::value>::type> {
             using type = F;
+        };
+
+        template<class St, class L, class A>
+        struct column_result_t<St, dynamic_in_t<L, A>, void> {
+            using type = bool;
+        };
+
+        template<class St, class L, class... Args>
+        struct column_result_t<St, in_t<L, Args...>, void> {
+            using type = bool;
         };
 
         /**
@@ -56,8 +72,13 @@ namespace sqlite_orm {
         };
 
         template<class St, class R, class S, class... Args>
-        struct column_result_t<St, internal::core_function_t<R, S, Args...>, void> {
+        struct column_result_t<St, core_function_t<R, S, Args...>, void> {
             using type = R;
+        };
+
+        template<class St, class F, class... Args>
+        struct column_result_t<St, function_call<F, Args...>, void> {
+            using type = typename callable_arguments<F>::return_type;
         };
 
         template<class St, class X, class S>
@@ -197,6 +218,11 @@ namespace sqlite_orm {
             using type = left_result;
         };
 
+        template<class St, class T>
+        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+            using type = typename T::result_type;
+        };
+
         /**
          *  Result for the most simple queries like `SELECT 1`
          */
@@ -209,7 +235,7 @@ namespace sqlite_orm {
          *  Result for the most simple queries like `SELECT 'ototo'`
          */
         template<class St>
-        struct column_result_t<St, const char *, void> {
+        struct column_result_t<St, const char*, void> {
             using type = std::string;
         };
 

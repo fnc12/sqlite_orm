@@ -118,9 +118,9 @@ TEST_CASE("Node tuple") {
             auto c = is_equal("ototo", &User::name);
             using C = decltype(c);
             using Tuple = node_tuple<C>::type;
-            using Expected = std::tuple<const char *, decltype(&User::name)>;
+            using Expected = std::tuple<const char*, decltype(&User::name)>;
             static_assert(is_same<Tuple, Expected>::value, "is_equal_t");
-            static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<const char *>>::value, "");
+            static_assert(is_same<bindable_filter<Tuple>::type, std::tuple<const char*>>::value, "");
         }
         {  //  5 != 6.0f
             auto c = is_not_equal(5, 6.0f);
@@ -201,7 +201,7 @@ TEST_CASE("Node tuple") {
     using Tuple = node_tuple<Union>::type;
     using Expected = std::tuple<decltype(&User::id),
                                 decltype(&User::name),
-                                const char *,
+                                const char*,
                                 decltype(&User::id),
                                 std::string,
                                 decltype(&User::name)>;
@@ -226,7 +226,7 @@ TEST_CASE("Node tuple") {
     auto un = intersect(select(&User::name), select(&User::name, where(is_equal(&User::name, "Anny"))));
     using Union = decltype(un);
     using Tuple = node_tuple<Union>::type;
-    using Expected = std::tuple<decltype(&User::name), decltype(&User::name), decltype(&User::name), const char *>;
+    using Expected = std::tuple<decltype(&User::name), decltype(&User::name), decltype(&User::name), const char*>;
     static_assert(is_same<Tuple, Expected>::value, "intersect");
 }
 }
@@ -327,27 +327,27 @@ using NodeTuple = node_tuple<Like>;
 using ArgTuple = NodeTuple::arg_tuple;
 static_assert(is_same<ArgTuple, std::tuple<decltype(&User::name)>>::value, "arg_tuple");
 using PatternTuple = NodeTuple::pattern_tuple;
-static_assert(is_same<PatternTuple, std::tuple<const char *>>::value, "pattern_tuple");
+static_assert(is_same<PatternTuple, std::tuple<const char*>>::value, "pattern_tuple");
 using EscapeTuple = NodeTuple::escape_tuple;
 static_assert(is_same<EscapeTuple, std::tuple<>>::value, "escape_tuple");
 using Tuple = NodeTuple::type;
 static_assert(std::tuple_size<Tuple>::value == 2, "like(&User::name, \"S%\") size");
 using Tuple0 = std::tuple_element<0, Tuple>::type;
 static_assert(is_same<Tuple0, decltype(&User::name)>::value, "like(&User::name, \"S%\") type 0");
-static_assert(is_same<Tuple, std::tuple<decltype(&User::name), const char *>>::value, "like(&User::name, \"S%\")");
+static_assert(is_same<Tuple, std::tuple<decltype(&User::name), const char*>>::value, "like(&User::name, \"S%\")");
 }
 {  // like(&User::name, std::string("pattern"), "%")
     auto lk = like(&User::name, std::string("pattern"), "%");
     using Like = decltype(lk);
     using NodeTuple = node_tuple<Like>::type;
-    using Expected = std::tuple<decltype(&User::name), std::string, const char *>;
+    using Expected = std::tuple<decltype(&User::name), std::string, const char*>;
     static_assert(is_same<NodeTuple, Expected>::value, "like(&User::name, std::string(\"pattern\"), \"%\")");
 }
 {  // like(&User::name, std::string("pattern")).escape("%")
     auto lk = like(&User::name, std::string("pattern")).escape("%");
     using Like = decltype(lk);
     using NodeTuple = node_tuple<Like>::type;
-    using Expected = std::tuple<decltype(&User::name), std::string, const char *>;
+    using Expected = std::tuple<decltype(&User::name), std::string, const char*>;
     static_assert(is_same<NodeTuple, Expected>::value, "like(&User::name, std::string(\"pattern\")).escape(\"%\")");
 }
 }
@@ -355,7 +355,7 @@ static_assert(is_same<Tuple, std::tuple<decltype(&User::name), const char *>>::v
     auto gl = glob(&User::name, "H*");
     using Glob = decltype(gl);
     using Tuple = node_tuple<Glob>::type;
-    static_assert(is_same<Tuple, std::tuple<decltype(&User::name), const char *>>::value, "glob(&User::name, \"H*\")");
+    static_assert(is_same<Tuple, std::tuple<decltype(&User::name), const char*>>::value, "glob(&User::name, \"H*\")");
 }
 {  // between_t
     auto bet = between(&User::id, 10, 20);
@@ -367,7 +367,7 @@ static_assert(is_same<Tuple, std::tuple<decltype(&User::name), const char *>>::v
     auto sel = select(&User::name, where(is_equal(&User::name, "Mercury").collate("ototo")));
     using Select = decltype(sel);
     using Tuple = node_tuple<Select>::type;
-    using Expected = std::tuple<decltype(&User::name), decltype(&User::name), const char *>;
+    using Expected = std::tuple<decltype(&User::name), decltype(&User::name), const char*>;
     static_assert(is_same<Tuple, Expected>::value, "named_collate");
 }
 {// negated_condition_t
@@ -375,7 +375,7 @@ static_assert(is_same<Tuple, std::tuple<decltype(&User::name), const char *>>::v
   auto c = not is_equal(20, "20");
 using Con = decltype(c);
 using Tuple = node_tuple<Con>::type;
-using Expected = std::tuple<int, const char *>;
+using Expected = std::tuple<int, const char*>;
 static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
 }
 {  // not is_not_equal(&User::id, 15.0)
@@ -438,7 +438,7 @@ static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
     auto c = not like(&User::name, "*D*");
     using Con = decltype(c);
     using Tuple = node_tuple<Con>::type;
-    using Expected = std::tuple<decltype(&User::name), const char *>;
+    using Expected = std::tuple<decltype(&User::name), const char*>;
     static_assert(is_same<Tuple, Expected>::value, "not like(&User::name, \"*D*\")");
 }
 {  // not glob(&User::name, std::string("_A_"))
@@ -469,9 +469,16 @@ static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
         using Fun = decltype(f);
         using Tuple = node_tuple<Fun>::type;
         using ArgType = std::tuple_element<0, Fun::args_type>::type;
-        static_assert(is_same<ArgType, const char *>::value, "upper arg[0]");
-        using Expected = std::tuple<const char *>;
+        static_assert(is_same<ArgType, const char*>::value, "upper arg[0]");
+        using Expected = std::tuple<const char*>;
         static_assert(is_same<Tuple, Expected>::value, "upper");
+    }
+    {  // total_changes
+        auto f = total_changes();
+        using Fun = decltype(f);
+        using Tuple = node_tuple<Fun>::type;
+        using Expected = std::tuple<>;
+        static_assert(is_same<Tuple, Expected>::value, "total_changes");
     }
     {  // changes
         auto f = changes();
@@ -505,7 +512,7 @@ static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
         auto f = ltrim(&User::id, "see");
         using Fun = decltype(f);
         using Tuple = node_tuple<Fun>::type;
-        using Expected = std::tuple<decltype(&User::id), const char *>;
+        using Expected = std::tuple<decltype(&User::id), const char*>;
         static_assert(is_same<Tuple, Expected>::value, "ltrim(2)");
     }
     {  // rtrim(1)
@@ -550,14 +557,14 @@ static_assert(is_same<Tuple, Expected>::value, "not is_equal(20, \"20\")");
         auto f = datetime("now");
         using Fun = decltype(f);
         using Tuple = node_tuple<Fun>::type;
-        using Expected = std::tuple<const char *>;
+        using Expected = std::tuple<const char*>;
         static_assert(is_same<Tuple, Expected>::value, "datetime");
     }
     {  // julianday
         auto f = julianday("now");
         using Fun = decltype(f);
         using Tuple = node_tuple<Fun>::type;
-        using Expected = std::tuple<const char *>;
+        using Expected = std::tuple<const char*>;
         static_assert(is_same<Tuple, Expected>::value, "julianday");
     }
     {  // zeroblob
@@ -631,17 +638,17 @@ static_assert(is_same<Tuple, Expected>::value, "left_join");
     using Arg0 = std::tuple_element<0, ArgsType>::type;
     static_assert(is_pair<Arg0>::value, "");
     using Arg0First = Arg0::first_type;
-    static_assert(is_same<Arg0First, const char *>::value, "");
+    static_assert(is_same<Arg0First, const char*>::value, "");
     using Arg0Second = Arg0::second_type;
-    static_assert(is_same<Arg0Second, const char *>::value, "");
-    static_assert(is_same<ArgsType, std::tuple<std::pair<const char *, const char *>>>::value, "");
+    static_assert(is_same<Arg0Second, const char*>::value, "");
+    static_assert(is_same<ArgsType, std::tuple<std::pair<const char*, const char*>>>::value, "");
 
     using ElseExpressionTuple = node_tuple<Case::else_expression_type>::type;
-    static_assert(is_same<ElseExpressionTuple, std::tuple<const char *>>::value, "");
+    static_assert(is_same<ElseExpressionTuple, std::tuple<const char*>>::value, "");
 }
 {  // as
     struct GradeAlias : alias_tag {
-        static const std::string &get() {
+        static const std::string& get() {
             static const std::string res = "Grade";
             return res;
         }
@@ -649,20 +656,26 @@ static_assert(is_same<Tuple, Expected>::value, "left_join");
     auto a = as<GradeAlias>(&User::name);
     using A = decltype(a);
     using Tuple = node_tuple<A>::type;
-    static_assert(is_same<Tuple, std::tuple<decltype(&User::name)>>::value, "");
+    using ExpectedTuple = std::tuple<decltype(&User::name)>;
+    static_assert(is_same<Tuple, ExpectedTuple>::value, "");
 }
 {
     auto statement = select(columns("ototo", 25));
     using Statement = decltype(statement);
     using Tuple = node_tuple<Statement>::type;
-    static_assert(std::tuple_size<Tuple>::value == 2, "");
-    {
-        using Arg0 = std::tuple_element<0, Tuple>::type;
-        static_assert(is_same<Arg0, const char *>::value, "");
-    }
-    {
-        using Arg1 = std::tuple_element<1, Tuple>::type;
-        static_assert(is_same<Arg1, int>::value, "");
-    }
+    using ExpectedTuple = std::tuple<const char*, int>;
+    static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
+}
+{  //  function_call
+    struct Func {
+        bool operator()(int value) const {
+            return value % 2;
+        }
+    };
+    auto statement = func<Func>(8);
+    using Statement = decltype(statement);
+    using Tuple = node_tuple<Statement>::type;
+    using ExpectedTuple = std::tuple<int>;
+    static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
 }
 }

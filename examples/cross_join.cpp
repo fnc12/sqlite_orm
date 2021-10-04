@@ -20,7 +20,7 @@ namespace DataModel {
     };
 }
 
-static auto initStorage(const std::string &path) {
+static auto initStorage(const std::string& path) {
     using namespace DataModel;
     using namespace sqlite_orm;
     return make_storage(path,
@@ -28,7 +28,7 @@ static auto initStorage(const std::string &path) {
                         make_table("suits", make_column("suit", &Suit::suit)));
 }
 
-int main(int, char **) {
+int main(int, char**) {
     using namespace DataModel;
 
     using Storage = decltype(initStorage(""));

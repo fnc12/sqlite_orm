@@ -35,7 +35,7 @@ struct Track {
     double unitPrice;
 };
 
-inline auto initStorage(const std::string &path) {
+inline auto initStorage(const std::string& path) {
     using namespace sqlite_orm;
     return make_storage(path,
                         make_table("artists",
@@ -57,7 +57,7 @@ inline auto initStorage(const std::string &path) {
                                    make_column("UnitPrice", &Track::unitPrice)));
 }
 
-int main(int, char **) {
+int main(int, char**) {
 
     auto storage = initStorage("chinook.db");
 
@@ -75,15 +75,15 @@ int main(int, char **) {
                                left_join<Album>(on(c(&Album::artistId) == &Artist::artistId)),
                                order_by(&Album::albumId));
     cout << "rows count = " << rows.size() << endl;
-    for(auto &row: rows) {
-        auto &artistId = std::get<0>(row);
+    for(auto& row: rows) {
+        auto& artistId = std::get<0>(row);
         if(artistId) {
             cout << *artistId;
         } else {
             cout << "null";
         }
         cout << '\t';
-        auto &albumId = std::get<1>(row);
+        auto& albumId = std::get<1>(row);
         if(albumId) {
             cout << *albumId;
         } else {
@@ -106,15 +106,15 @@ int main(int, char **) {
                           left_join<Album>(on(c(&Album::artistId) == &Artist::artistId)),
                           where(is_null(&Album::albumId)));
     cout << "rows count = " << rows.size() << endl;
-    for(auto &row: rows) {
-        auto &artistId = std::get<0>(row);
+    for(auto& row: rows) {
+        auto& artistId = std::get<0>(row);
         if(artistId) {
             cout << *artistId;
         } else {
             cout << "null";
         }
         cout << '\t';
-        auto &albumId = std::get<1>(row);
+        auto& albumId = std::get<1>(row);
         if(albumId) {
             cout << *albumId;
         } else {
@@ -135,7 +135,7 @@ int main(int, char **) {
     auto innerJoinRows0 = storage.select(columns(&Track::trackId, &Track::name, &Album::title),
                                          inner_join<Album>(on(c(&Track::albumId) == &Album::albumId)));
     cout << "innerJoinRows0 count = " << innerJoinRows0.size() << endl;
-    for(auto &row: innerJoinRows0) {
+    for(auto& row: innerJoinRows0) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t';
         if(std::get<2>(row)) {
             cout << *std::get<2>(row);
@@ -159,7 +159,7 @@ int main(int, char **) {
         storage.select(columns(&Track::trackId, &Track::name, &Track::albumId, &Album::albumId, &Album::title),
                        inner_join<Album>(on(c(&Album::albumId) == &Track::trackId)));
     cout << "innerJoinRows1 count = " << innerJoinRows1.size() << endl;
-    for(auto &row: innerJoinRows1) {
+    for(auto& row: innerJoinRows1) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t';
         if(std::get<2>(row)) {
             cout << *std::get<2>(row);
@@ -196,7 +196,7 @@ int main(int, char **) {
                                          inner_join<Album>(on(c(&Album::albumId) == &Track::albumId)),
                                          inner_join<Artist>(on(c(&Artist::artistId) == &Album::artistId)));
     cout << "innerJoinRows2 count = " << innerJoinRows2.size() << endl;
-    for(auto &row: innerJoinRows2) {
+    for(auto& row: innerJoinRows2) {
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t';
         if(std::get<2>(row)) {
             cout << *std::get<2>(row);
@@ -293,7 +293,7 @@ int main(int, char **) {
         //  ON a.doctor_id=c.doctor_id;
         auto rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
                                     left_join<Visit>(on(c(&Doctor::id) == &Visit::doctorId)));
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -306,7 +306,7 @@ int main(int, char **) {
         //  ON a.doctor_id=c.doctor_id;
         rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
                                join<Visit>(on(c(&Doctor::id) == &Visit::doctorId)));
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }
@@ -319,7 +319,7 @@ int main(int, char **) {
         //  USING(doctor_id);
         rows = storage2.select(columns(&Doctor::id, &Doctor::name, &Visit::patientName, &Visit::vdate),
                                left_join<Visit>(using_(&Visit::doctorId)));  //  or using_(&Doctor::id)
-        for(auto &row: rows) {
+        for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
         }

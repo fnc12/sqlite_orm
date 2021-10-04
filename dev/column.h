@@ -6,10 +6,10 @@
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if, std::is_member_pointer, std::is_member_function_pointer
 
 #include "type_is_nullable.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "default_value_extractor.h"
 #include "constraints.h"
-#include "getter_traits.h"
+#include "member_traits/member_traits.h"
 
 namespace sqlite_orm {
 
@@ -99,7 +99,7 @@ namespace sqlite_orm {
              */
             std::unique_ptr<std::string> default_value() const {
                 std::unique_ptr<std::string> res;
-                iterate_tuple(this->constraints, [&res](auto &v) {
+                iterate_tuple(this->constraints, [&res](auto& v) {
                     auto dft = internal::default_value_extractor()(v);
                     if(dft) {
                         res = std::move(dft);
@@ -108,6 +108,48 @@ namespace sqlite_orm {
                 return res;
             }
         };
+
+        // we are compelled to wrap all sfinae-implemented traits to prevent "error: type/value mismatch at argument 2 in template parameter list"
+        namespace sfinae {
+            /**
+             *  Column with insertable primary key traits. Common case.
+             */
+            template<class T, class SFINAE = void>
+            struct is_column_with_insertable_primary_key : public std::false_type {};
+
+            /**
+             *  Column with insertable primary key traits. Specialized case case.
+             */
+            template<class O, class T, class... Op>
+            struct is_column_with_insertable_primary_key<
+                column_t<O, T, Op...>,
+                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                                         primary_key_t<>,
+                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                using column_type = column_t<O, T, Op...>;
+                static constexpr bool value = is_primary_key_insertable<column_type>::value;
+            };
+
+            /**
+             *  Column with noninsertable primary key traits. Common case.
+             */
+            template<class T, class SFINAE = void>
+            struct is_column_with_noninsertable_primary_key : public std::false_type {};
+
+            /**
+             *  Column with noninsertable primary key traits. Specialized case case.
+             */
+            template<class O, class T, class... Op>
+            struct is_column_with_noninsertable_primary_key<
+                column_t<O, T, Op...>,
+                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                                         primary_key_t<>,
+                                         typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
+                using column_type = column_t<O, T, Op...>;
+                static constexpr bool value = !is_primary_key_insertable<column_type>::value;
+            };
+
+        }
 
         /**
          *  Column traits. Common case.
@@ -120,6 +162,18 @@ namespace sqlite_orm {
          */
         template<class O, class T, class... Op>
         struct is_column<column_t<O, T, Op...>> : public std::true_type {};
+
+        /**
+         *  Column with insertable primary key traits.
+         */
+        template<class T>
+        struct is_column_with_insertable_primary_key : public sfinae::is_column_with_insertable_primary_key<T> {};
+
+        /**
+         *  Column with noninsertable primary key traits.
+         */
+        template<class T>
+        struct is_column_with_noninsertable_primary_key : public sfinae::is_column_with_noninsertable_primary_key<T> {};
 
         template<class T>
         struct column_field_type {
@@ -150,9 +204,9 @@ namespace sqlite_orm {
              class T,
              typename = typename std::enable_if<!std::is_member_function_pointer<T O::*>::value>::type,
              class... Op>
-    internal::column_t<O, T, const T &(O::*)() const, void (O::*)(T), Op...>
-    make_column(const std::string &name, T O::*m, Op... constraints) {
-        static_assert(constraints::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+    internal::column_t<O, T, const T& (O::*)() const, void (O::*)(T), Op...>
+    make_column(const std::string& name, T O::*m, Op... constraints) {
+        static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         static_assert(internal::is_field_member_pointer<T O::*>::value,
                       "second argument expected as a member field pointer, not member function pointer");
@@ -172,11 +226,11 @@ namespace sqlite_orm {
                        G,
                        S,
                        Op...>
-    make_column(const std::string &name, S setter, G getter, Op... constraints) {
+    make_column(const std::string& name, S setter, G getter, Op... constraints) {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(constraints::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
     }
@@ -195,11 +249,11 @@ namespace sqlite_orm {
                        G,
                        S,
                        Op...>
-    make_column(const std::string &name, G getter, S setter, Op... constraints) {
+    make_column(const std::string& name, G getter, S setter, Op... constraints) {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(constraints::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {name, nullptr, getter, setter, std::make_tuple(constraints...)};
     }

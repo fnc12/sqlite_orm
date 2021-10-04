@@ -16,7 +16,7 @@ struct Employee {
     double salary;
 };
 
-auto initStorage(const std::string &path) {
+auto initStorage(const std::string& path) {
     using namespace sqlite_orm;
     return make_storage(path,
                         make_table("COMPANY",
@@ -28,7 +28,7 @@ auto initStorage(const std::string &path) {
 }
 using Storage = decltype(initStorage(""));
 
-int main(int, char **) {
+int main(int, char**) {
 
     Storage storage = initStorage("distinct.sqlite");
 
@@ -117,7 +117,7 @@ int main(int, char **) {
     auto pureNames = storage.select(&Employee::name);
     cout << "NAME" << endl;
     cout << "----------" << endl;
-    for(auto &name: pureNames) {
+    for(auto& name: pureNames) {
         cout << name << endl;
     }
     cout << endl;
@@ -127,7 +127,7 @@ int main(int, char **) {
     auto distinctNames = storage.select(distinct(&Employee::name));
     cout << "NAME" << endl;
     cout << "----------" << endl;
-    for(auto &name: distinctNames) {
+    for(auto& name: distinctNames) {
         cout << name << endl;
     }
     cout << endl;
@@ -136,7 +136,7 @@ int main(int, char **) {
     auto severalColumns = storage.select(distinct(columns(&Employee::address, &Employee::name)));
     cout << "ADDRESS" << '\t' << "NAME" << endl;
     cout << "----------" << endl;
-    for(auto &t: severalColumns) {
+    for(auto& t: severalColumns) {
         cout << std::get<0>(t) << '\t' << std::get<1>(t) << endl;
     }
     return 0;

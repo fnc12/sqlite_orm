@@ -19,9 +19,9 @@ namespace sqlite_orm {
          */
         struct backup_t {
             backup_t(connection_ref to_,
-                     const std::string &zDestName,
+                     const std::string& zDestName,
                      connection_ref from_,
-                     const std::string &zSourceName,
+                     const std::string& zSourceName,
                      std::unique_ptr<connection_holder> holder_) :
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
                 to(to_), from(from_), holder(move(holder_)) {
@@ -30,7 +30,7 @@ namespace sqlite_orm {
                 }
             }
 
-            backup_t(backup_t &&other) :
+            backup_t(backup_t&& other) :
                 handle(other.handle), to(other.to), from(other.from), holder(move(other.holder)) {
                 other.handle = nullptr;
             }
@@ -64,7 +64,7 @@ namespace sqlite_orm {
             }
 
           protected:
-            sqlite3_backup *handle = nullptr;
+            sqlite3_backup* handle = nullptr;
             connection_ref to;
             connection_ref from;
             std::unique_ptr<connection_holder> holder;

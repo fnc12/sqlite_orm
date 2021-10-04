@@ -43,7 +43,7 @@ class Player {
     }
 };
 
-int main(int, char **) {
+int main(int, char**) {
     using namespace sqlite_orm;
     auto storage = make_storage(
         "private.sqlite",
@@ -81,7 +81,7 @@ int main(int, char **) {
     auto somePlayers = storage.get_all<Player>(where(lesser_than(length(&Player::getName), 5)));
     cout << "players with length(name) < 5 = " << somePlayers.size() << endl;
     assert(somePlayers.size() == 1);
-    for(auto &player: somePlayers) {
+    for(auto& player: somePlayers) {
         cout << storage.dump(player) << endl;
     }
 }

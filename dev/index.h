@@ -28,13 +28,13 @@ namespace sqlite_orm {
     }
 
     template<class... Cols>
-    internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_index(const std::string &name,
+    internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_index(const std::string& name,
                                                                                          Cols... cols) {
         return {name, false, std::make_tuple(internal::make_indexed_column(cols)...)};
     }
 
     template<class... Cols>
-    internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_unique_index(const std::string &name,
+    internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_unique_index(const std::string& name,
                                                                                                 Cols... cols) {
         return {name, true, std::make_tuple(internal::make_indexed_column(cols)...)};
     }

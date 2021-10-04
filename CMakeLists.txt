@@ -1,4 +1,12 @@
-cmake_minimum_required (VERSION 3.16.0)
+cmake_minimum_required (VERSION 3.14.0)
+
+# PACKAGE_VERSION is used by cpack scripts currently
+# Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
+
+set(sqlite_orm_VERSION "1.6.0")
+set(PACKAGE_VERSION ${sqlite_orm_VERSION})
+
+project("sqlite_orm" VERSION ${PACKAGE_VERSION})
 
 # Handling C++ standard version to use
 option(SQLITE_ORM_ENABLE_CXX_17 "Enable C++ 17" OFF)
@@ -12,15 +20,6 @@ else()
 	message(STATUS "SQLITE_ORM: Build with C++14 features")
 endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-
-# PACKAGE_VERSION is used by cpack scripts currently
-# Both sqlite_orm_VERSION and PACKAGE_VERSION should be the same for now
-
-set(sqlite_orm_VERSION "1.3.0")
-set(PACKAGE_VERSION ${sqlite_orm_VERSION})
-
-project("sqlite_orm" VERSION ${PACKAGE_VERSION})
 
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
@@ -54,6 +53,7 @@ if (MSVC)
 	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")	
 	add_compile_options(/EHsc)
 	add_compile_options(/Zc:__cplusplus)
+	add_compile_options(/MP) # Allow multi parrallel build
 
 	if ("${CMAKE_GENERATOR}" MATCHES "(Win64|x64)")
 		message(STATUS "Add /bigobj flag to compiler")

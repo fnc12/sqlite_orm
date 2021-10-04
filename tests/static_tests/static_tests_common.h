@@ -3,11 +3,11 @@
 struct User {
     int id;
 
-    const int &getIdByRefConst() const {
+    const int& getIdByRefConst() const {
         return this->id;
     }
 
-    const int &getIdByRef() {
+    const int& getIdByRef() {
         return this->id;
     }
 
@@ -19,11 +19,11 @@ struct User {
         this->id = id_;
     }
 
-    void setIdByConstRef(const int &id_) {
+    void setIdByConstRef(const int& id_) {
         this->id = id_;
     }
 
-    void setIdByRef(int &id_) {
+    void setIdByRef(int& id_) {
         this->id = id_;
     }
 };

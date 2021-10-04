@@ -58,10 +58,10 @@ TEST_CASE("is_bindable") {
         bool falseCalled = false;
         auto dummy = 5;  //  for gcc compilation
         internal::static_if<internal::is_bindable<decltype(func)>{}>(
-            [&trueCalled](int &) {
+            [&trueCalled](int&) {
                 trueCalled = true;
             },
-            [&falseCalled](int &) {
+            [&falseCalled](int&) {
                 falseCalled = true;
             })(dummy);
         REQUIRE(!trueCalled);

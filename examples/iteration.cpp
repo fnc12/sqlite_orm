@@ -12,7 +12,7 @@ struct MarvelHero {
     std::string abilities;
 };
 
-int main(int, char **) {
+int main(int, char**) {
     using namespace sqlite_orm;
     auto storage = make_storage("iteration.sqlite",
                                 make_table("marvel",
@@ -40,19 +40,19 @@ int main(int, char **) {
     //  iterate through heros - iteration takes less memory than `get_all` because
     //  iteration fetches row by row once it is needed. If you break at any iteration
     //  statement will be cleared without fetching remaining rows.
-    for(auto &hero: storage.iterate<MarvelHero>()) {
+    for(auto& hero: storage.iterate<MarvelHero>()) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
 
     cout << "====" << endl;
 
     //  one can iterate with custom WHERE conditions..
-    for(auto &hero: storage.iterate<MarvelHero>(where(c(&MarvelHero::name) == "Thor"))) {
+    for(auto& hero: storage.iterate<MarvelHero>(where(c(&MarvelHero::name) == "Thor"))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
 
     cout << "Heros with LENGTH(name) < 6 :" << endl;
-    for(auto &hero: storage.iterate<MarvelHero>(where(length(&MarvelHero::name) < 6))) {
+    for(auto& hero: storage.iterate<MarvelHero>(where(length(&MarvelHero::name) < 6))) {
         cout << "hero = " << storage.dump(hero) << endl;
     }
 
