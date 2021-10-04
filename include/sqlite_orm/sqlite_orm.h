@@ -7186,6 +7186,12 @@ namespace sqlite_orm {
 
             prepared_statement_t(T t_, sqlite3_stmt *stmt_, connection_ref con_) :
                 prepared_statement_base{stmt_, std::move(con_)}, t(std::move(t_)) {}
+
+            prepared_statement_t(prepared_statement_t && prepared_stmt) :
+                prepared_statement_base{prepared_stmt.stmt, std::move(prepared_stmt.con)}, t(std::move(prepared_stmt.t))
+            {
+                prepared_stmt.stmt = nullptr;
+            }
         };
 
         template<class T>
@@ -11395,6 +11401,17 @@ namespace sqlite_orm {
             }
 
           public:
+
+            template<class T>
+            std::vector<table_info> get_table_info() const
+            {
+                this->assert_mapped_type<T>();
+
+                auto & tInfo = this->get_impl<T>();
+
+                return tInfo.table.get_table_info();
+            }
+
             template<class T, class... Args>
             view_t<T, self, Args...> iterate(Args &&... args) {
                 this->assert_mapped_type<T>();
