@@ -681,6 +681,12 @@ namespace sqlite_orm {
              *  ```c++
              *  storage.insert(into<Singer>(), default_values());
              *  ```
+             *  Also one can use `INSERT OR ABORT`/`INSERT OR FAIL`/`INSERT OR IGNORE`/`INSERT OR REPLACE`/`INSERT ROLLBACK`:
+             *  ```c++
+             *  storage.insert(or_ignore(), into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs")));
+             *  storage.insert(or_rollback(), into<Singer>(), default_values());
+             *  storage.insert(or_abort(), into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix")));
+             *  ```
              */
             template<class... Args>
             void insert(Args... args) {
