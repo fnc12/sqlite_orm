@@ -277,9 +277,48 @@ namespace sqlite_orm {
         struct default_values_t {};
 
         template<class T>
-        using is_default_values = std::is_same<internal::default_values_t, T>;
+        using is_default_values = std::is_same<default_values_t, T>;
+
+        enum class insert_constraint {
+            abort,
+            fail,
+            ignore,
+            replace,
+            rollback,
+        };
+
+        template<class T>
+        using is_insert_constraint = std::is_same<insert_constraint, T>;
     }
 
+    inline internal::insert_constraint or_rollback() {
+        return internal::insert_constraint::rollback;
+    }
+
+    inline internal::insert_constraint or_replace() {
+        return internal::insert_constraint::replace;
+    }
+
+    inline internal::insert_constraint or_ignore() {
+        return internal::insert_constraint::ignore;
+    }
+
+    inline internal::insert_constraint or_fail() {
+        return internal::insert_constraint::fail;
+    }
+
+    inline internal::insert_constraint or_abort() {
+        return internal::insert_constraint::abort;
+    }
+
+    /**
+     *  Use this function to add `DEFAULT VALUES` modifier to raw `INSERT`.
+     *
+     *  @example
+     *  ```
+     *  storage.insert(into<Singer>(), default_values());
+     *  ```
+     */
     inline internal::default_values_t default_values() {
         return {};
     }
@@ -289,13 +328,54 @@ namespace sqlite_orm {
         return {};
     }
 
+    /**
+     *  Raw insert statement creation routine. Use this if `insert` with object does not fit you. This insert is designed to be able
+     *  to call any type of `INSERT` query with no limitations.
+     *  @example
+     *  ```sql
+     *  INSERT INTO users (id, name) VALUES(5, 'Little Mix')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(insert(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One more example:
+     *  ```sql
+     *  INSERT INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(insert(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+     *  ```sql
+     *  INSERT INTO users DEFAULT VALUES
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(insert(into<Singer>(), default_values()));
+     *  storage.execute(statement));
+     *  ```
+     *  Also one can use `INSERT OR ABORT`/`INSERT OR FAIL`/`INSERT OR IGNORE`/`INSERT OR REPLACE`/`INSERT ROLLBACK`:
+     *  ```c++
+     *  auto statement = storage.prepare(insert(or_ignore(), into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+     *  auto statement2 = storage.prepare(insert(or_rollback(), into<Singer>(), default_values()));
+     *  auto statement3 = storage.prepare(insert(or_abort(), into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+     *  ```
+     */
     template<class... Args>
     internal::insert_raw_t<Args...> insert(Args... args) {
         using args_tuple = std::tuple<Args...>;
         using internal::count_tuple;
         using internal::is_columns;
+        using internal::is_insert_constraint;
         using internal::is_into;
         using internal::is_values;
+
+        constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
+        static_assert(orArgsCount < 2, "Raw insert must have only one OR... argument");
 
         constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
         static_assert(intoArgsCount != 0, "Raw insert must have into<T> argument");
@@ -314,8 +394,8 @@ namespace sqlite_orm {
         static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
 
         constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
-        static_assert(argsCount ==
-                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
+        static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
+                                       selectsArgsCount + orArgsCount,
                       "Raw insert has invalid arguments");
 
         return {{std::forward<Args>(args)...}};

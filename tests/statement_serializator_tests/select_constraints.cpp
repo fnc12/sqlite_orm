@@ -34,6 +34,33 @@ TEST_CASE("statement_serializator select constraints") {
         value = serialize(expression, context);
         expected = "INTO users";
     }
+    SECTION("insert constraint") {
+        SECTION("abort") {
+            auto expression = or_abort();
+            value = serialize(expression, context);
+            expected = "OR ABORT";
+        }
+        SECTION("fail") {
+            auto expression = or_fail();
+            value = serialize(expression, context);
+            expected = "OR FAIL";
+        }
+        SECTION("ignore") {
+            auto expression = or_ignore();
+            value = serialize(expression, context);
+            expected = "OR IGNORE";
+        }
+        SECTION("replace") {
+            auto expression = or_replace();
+            value = serialize(expression, context);
+            expected = "OR REPLACE";
+        }
+        SECTION("rollback") {
+            auto expression = or_rollback();
+            value = serialize(expression, context);
+            expected = "OR ROLLBACK";
+        }
+    }
     SECTION("from") {
         SECTION("without alias") {
             auto expression = from<User>();

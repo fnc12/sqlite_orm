@@ -1365,8 +1365,29 @@ namespace sqlite_orm {
             using statement_type = get_pointer_t<T, Ids...>;
 
             template<class C>
-            std::string operator()(const statement_type& get, const C& context) const {
-                return serialize_get_impl(get, context);
+            std::string operator()(const statement_type& statement, const C& context) const {
+                return serialize_get_impl(statement, context);
+            }
+        };
+
+        template<>
+        struct statement_serializator<insert_constraint, void> {
+            using statement_type = insert_constraint;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case insert_constraint::abort:
+                        return "OR ABORT";
+                    case insert_constraint::fail:
+                        return "OR FAIL";
+                    case insert_constraint::ignore:
+                        return "OR IGNORE";
+                    case insert_constraint::replace:
+                        return "OR REPLACE";
+                    case insert_constraint::rollback:
+                        return "OR ROLLBACK";
+                }
             }
         };
 
@@ -1427,9 +1448,9 @@ namespace sqlite_orm {
                                                                                     collector.table_names.end());
                         for(size_t i = 0; i < tableNames.size(); ++i) {
                             auto& tableNamePair = tableNames[i];
-                            ss << "'" << tableNamePair.first << "' ";
+                            ss << "'" << tableNamePair.first << "'";
                             if(!tableNamePair.second.empty()) {
-                                ss << tableNamePair.second << " ";
+                                ss << ' ' << tableNamePair.second;
                             }
                             if(int(i) < int(tableNames.size()) - 1) {
                                 ss << ", ";
