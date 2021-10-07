@@ -13,6 +13,40 @@ TEST_CASE("ast_iterator") {
     auto lambda = [&typeIndexes](auto &value) {
         typeIndexes.push_back(typeid(value));
     };
+    SECTION("into") {
+        auto node = into<User>();
+        internal::iterate_ast(node, lambda);
+    }
+    SECTION("replace") {
+        auto node =
+            replace(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, std::string("Ellie"))));
+        expected.push_back(typeid(&User::id));
+        expected.push_back(typeid(&User::name));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        internal::iterate_ast(node, lambda);
+    }
+    SECTION("insert") {
+        auto node =
+            insert(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, std::string("Ellie"))));
+        expected.push_back(typeid(&User::id));
+        expected.push_back(typeid(&User::name));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        internal::iterate_ast(node, lambda);
+    }
+    SECTION("values") {
+        auto node = values(std::make_tuple(1, std::string("hi")));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        internal::iterate_ast(node, lambda);
+    }
+    SECTION("tuple") {
+        auto node = std::make_tuple(1, std::string("hi"));
+        expected.push_back(typeid(int));
+        expected.push_back(typeid(std::string));
+        internal::iterate_ast(node, lambda);
+    }
     SECTION("in") {
         SECTION("static") {
             auto node = c(&User::id).in(1, 2, 3);

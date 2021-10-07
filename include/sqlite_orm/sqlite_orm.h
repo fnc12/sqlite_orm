@@ -4132,6 +4132,9 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
+        struct is_into;
+
+        template<class T>
         struct unique_ptr_result_of {};
 
         /**
@@ -4724,7 +4727,9 @@ namespace sqlite_orm {
      *  REPLACE(X) function https://sqlite.org/lang_corefunc.html#replace
      */
     template<class X, class Y, class Z>
-    internal::core_function_t<std::string, internal::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
+    typename std::enable_if<internal::count_tuple<std::tuple<X, Y, Z>, internal::is_into>::value == 0,
+                            internal::core_function_t<std::string, internal::replace_string, X, Y, Z>>::type
+    replace(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
         return {move(args)};
     }
@@ -8942,6 +8947,25 @@ namespace sqlite_orm {
         };
 
         template<class T>
+        struct is_insert_raw : std::false_type {};
+
+        template<class... Args>
+        struct is_insert_raw<insert_raw_t<Args...>> : std::true_type {};
+
+        template<class... Args>
+        struct replace_raw_t {
+            using args_tuple = std::tuple<Args...>;
+
+            args_tuple args;
+        };
+
+        template<class T>
+        struct is_replace_raw : std::false_type {};
+
+        template<class... Args>
+        struct is_replace_raw<replace_raw_t<Args...>> : std::true_type {};
+
+        template<class T>
         struct into_t {
             using type = T;
         };
@@ -9083,6 +9107,69 @@ namespace sqlite_orm {
         static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
                                        selectsArgsCount + orArgsCount,
                       "Raw insert has invalid arguments");
+
+        return {{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  Raw replace statement creation routine. Use this if `replace` with object does not fit you. This replace is designed to be able
+     *  to call any type of `REPLACE` query with no limitations. Actually this is the same query as raw insert except `OR...` option existance.
+     *  @example
+     *  ```sql
+     *  REPLACE INTO users (id, name) VALUES(5, 'Little Mix')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One more example:
+     *  ```sql
+     *  REPLACE INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+     *  ```sql
+     *  REPLACE INTO users DEFAULT VALUES
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<Singer>(), default_values()));
+     *  storage.execute(statement));
+     *  ```
+     */
+    template<class... Args>
+    internal::replace_raw_t<Args...> replace(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        using internal::count_tuple;
+        using internal::is_columns;
+        using internal::is_into;
+        using internal::is_values;
+
+        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
+        static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
+        static_assert(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
+
+        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
+        static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
+
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
+
+        constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
+        static_assert(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
+
+        constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
+        static_assert(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
+
+        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
+        static_assert(argsCount ==
+                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
+                      "Raw replace has invalid arguments");
 
         return {{std::forward<Args>(args)...}};
     }
@@ -9513,6 +9600,36 @@ namespace sqlite_orm {
             void operator()(const node_type& c, const L& l) const {
                 iterate_ast(c.left, l);
                 iterate_ast(c.right, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<into_t<T>, void> {
+            using node_type = into_t<T>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                //..
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<insert_raw_t<Args...>, void> {
+            using node_type = insert_raw_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                iterate_ast(node.args, l);
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<replace_raw_t<Args...>, void> {
+            using node_type = replace_raw_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                iterate_ast(node.args, l);
             }
         };
 
@@ -12920,14 +13037,20 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args>
-        struct statement_serializator<insert_raw_t<Args...>, void> {
-            using statement_type = insert_raw_t<Args...>;
+        template<class T>
+        struct statement_serializator<
+            T,
+            typename std::enable_if<is_insert_raw<T>::value || is_replace_raw<T>::value>::type> {
+            using statement_type = T;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << "INSERT";
+                if(is_insert_raw<T>::value) {
+                    ss << "INSERT";
+                } else {
+                    ss << "REPLACE";
+                }
                 iterate_tuple(statement.args, [&context, &ss](auto& value) {
                     using value_type = typename std::decay<decltype(value)>::type;
                     ss << ' ';
@@ -14352,6 +14475,40 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
+            /**
+             *  Raw replace statement creation routine. Use this if `replace` with object does not fit you. This replace is designed to be able
+             *  to call any type of `REPLACE` query with no limitations. Actually this is the same query as raw insert except `OR...` option existance.
+             *  @example
+             *  ```sql
+             *  REPLACE INTO users (id, name) VALUES(5, 'Little Mix')
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.prepare(replace(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+             *  ```
+             *  One more example:
+             *  ```sql
+             *  REPLACE INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.prepare(replace(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+             *  ```
+             *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+             *  ```sql
+             *  REPLACE INTO users DEFAULT VALUES
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.prepare(replace(into<Singer>(), default_values()));
+             *  ```
+             */
+            template<class... Args>
+            void replace(Args... args) {
+                auto statement = this->prepare(sqlite_orm::replace(std::forward<Args>(args)...));
+                this->execute(statement);
+            }
+
             template<class It>
             void insert_range(It from, It to) {
                 using O = typename std::iterator_traits<It>::value_type;
@@ -14587,6 +14744,11 @@ namespace sqlite_orm {
             }
 
             template<class... Args>
+            prepared_statement_t<replace_raw_t<Args...>> prepare(replace_raw_t<Args...> ins) {
+                return prepare_impl<replace_raw_t<Args...>>(std::move(ins));
+            }
+
+            template<class... Args>
             prepared_statement_t<insert_raw_t<Args...>> prepare(insert_raw_t<Args...> ins) {
                 return prepare_impl<insert_raw_t<Args...>>(std::move(ins));
             }
@@ -14669,6 +14831,24 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<decltype(ins)>::type;
                 this->assert_mapped_type<object_type>();
                 return prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
+            }
+
+            template<class... Args>
+            void execute(const prepared_statement_t<replace_raw_t<Args...>>& statement) {
+                auto con = this->get_connection();
+                auto db = con.get();
+                auto stmt = statement.stmt;
+                sqlite3_reset(stmt);
+                auto index = 1;
+                iterate_ast(statement.t.args, [stmt, &index, db](auto& node) {
+                    using node_type = typename std::decay<decltype(node)>::type;
+                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                    if(SQLITE_OK != binder(node)) {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
+                    }
+                });
+                perform_step(db, stmt);
             }
 
             template<class... Args>
@@ -15368,6 +15548,36 @@ __pragma(pop_macro("min"))
             using columns_tuple = typename node_tuple<T>::type;
             using args_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
             using type = typename conc_tuple<columns_tuple, args_tuple>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<insert_raw_t<Args...>, void> {
+            using node_type = insert_raw_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<replace_raw_t<Args...>, void> {
+            using node_type = replace_raw_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class T>
+        struct node_tuple<into_t<T>, void> {
+            using node_type = into_t<T>;
+            using type = std::tuple<>;
+        };
+
+        template<class... Args>
+        struct node_tuple<values_t<Args...>, void> {
+            using node_type = values_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<std::tuple<Args...>, void> {
+            using node_type = std::tuple<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 
         template<class T, class R, class... Args>

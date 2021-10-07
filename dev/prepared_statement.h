@@ -256,6 +256,25 @@ namespace sqlite_orm {
         };
 
         template<class T>
+        struct is_insert_raw : std::false_type {};
+
+        template<class... Args>
+        struct is_insert_raw<insert_raw_t<Args...>> : std::true_type {};
+
+        template<class... Args>
+        struct replace_raw_t {
+            using args_tuple = std::tuple<Args...>;
+
+            args_tuple args;
+        };
+
+        template<class T>
+        struct is_replace_raw : std::false_type {};
+
+        template<class... Args>
+        struct is_replace_raw<replace_raw_t<Args...>> : std::true_type {};
+
+        template<class T>
         struct into_t {
             using type = T;
         };
@@ -397,6 +416,69 @@ namespace sqlite_orm {
         static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
                                        selectsArgsCount + orArgsCount,
                       "Raw insert has invalid arguments");
+
+        return {{std::forward<Args>(args)...}};
+    }
+
+    /**
+     *  Raw replace statement creation routine. Use this if `replace` with object does not fit you. This replace is designed to be able
+     *  to call any type of `REPLACE` query with no limitations. Actually this is the same query as raw insert except `OR...` option existance.
+     *  @example
+     *  ```sql
+     *  REPLACE INTO users (id, name) VALUES(5, 'Little Mix')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One more example:
+     *  ```sql
+     *  REPLACE INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+     *  storage.execute(statement));
+     *  ```
+     *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+     *  ```sql
+     *  REPLACE INTO users DEFAULT VALUES
+     *  ```
+     *  will be
+     *  ```c++
+     *  auto statement = storage.prepare(replace(into<Singer>(), default_values()));
+     *  storage.execute(statement));
+     *  ```
+     */
+    template<class... Args>
+    internal::replace_raw_t<Args...> replace(Args... args) {
+        using args_tuple = std::tuple<Args...>;
+        using internal::count_tuple;
+        using internal::is_columns;
+        using internal::is_into;
+        using internal::is_values;
+
+        constexpr int intoArgsCount = count_tuple<args_tuple, is_into>::value;
+        static_assert(intoArgsCount != 0, "Raw replace must have into<T> argument");
+        static_assert(intoArgsCount < 2, "Raw replace must have only one into<T> argument");
+
+        constexpr int columnsArgsCount = count_tuple<args_tuple, is_columns>::value;
+        static_assert(columnsArgsCount < 2, "Raw replace must have only one columns(...) argument");
+
+        constexpr int valuesArgsCount = count_tuple<args_tuple, is_values>::value;
+        static_assert(valuesArgsCount < 2, "Raw replace must have only one values(...) argument");
+
+        constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
+        static_assert(defaultValuesCount < 2, "Raw replace must have only one default_values() argument");
+
+        constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
+        static_assert(selectsArgsCount < 2, "Raw replace must have only one select(...) argument");
+
+        constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
+        static_assert(argsCount ==
+                          intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount + selectsArgsCount,
+                      "Raw replace has invalid arguments");
 
         return {{std::forward<Args>(args)...}};
     }

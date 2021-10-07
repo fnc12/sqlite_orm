@@ -18,6 +18,9 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
+        struct is_into;
+
+        template<class T>
         struct unique_ptr_result_of {};
 
         /**
@@ -610,7 +613,9 @@ namespace sqlite_orm {
      *  REPLACE(X) function https://sqlite.org/lang_corefunc.html#replace
      */
     template<class X, class Y, class Z>
-    internal::core_function_t<std::string, internal::replace_string, X, Y, Z> replace(X x, Y y, Z z) {
+    typename std::enable_if<internal::count_tuple<std::tuple<X, Y, Z>, internal::is_into>::value == 0,
+                            internal::core_function_t<std::string, internal::replace_string, X, Y, Z>>::type
+    replace(X x, Y y, Z z) {
         std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
         return {move(args)};
     }
