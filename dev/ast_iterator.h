@@ -166,6 +166,36 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct ast_iterator<into_t<T>, void> {
+            using node_type = into_t<T>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                //..
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<insert_raw_t<Args...>, void> {
+            using node_type = insert_raw_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                iterate_ast(node.args, l);
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<replace_raw_t<Args...>, void> {
+            using node_type = replace_raw_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                iterate_ast(node.args, l);
+            }
+        };
+
         template<class T, class... Args>
         struct ast_iterator<select_t<T, Args...>, void> {
             using node_type = select_t<T, Args...>;

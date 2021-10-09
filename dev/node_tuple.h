@@ -105,6 +105,36 @@ namespace sqlite_orm {
             using type = typename conc_tuple<columns_tuple, args_tuple>::type;
         };
 
+        template<class... Args>
+        struct node_tuple<insert_raw_t<Args...>, void> {
+            using node_type = insert_raw_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<replace_raw_t<Args...>, void> {
+            using node_type = replace_raw_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class T>
+        struct node_tuple<into_t<T>, void> {
+            using node_type = into_t<T>;
+            using type = std::tuple<>;
+        };
+
+        template<class... Args>
+        struct node_tuple<values_t<Args...>, void> {
+            using node_type = values_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<std::tuple<Args...>, void> {
+            using node_type = std::tuple<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
         template<class T, class R, class... Args>
         struct node_tuple<get_all_t<T, R, Args...>, void> {
             using node_type = get_all_t<T, R, Args...>;

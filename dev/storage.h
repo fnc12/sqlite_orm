@@ -694,6 +694,40 @@ namespace sqlite_orm {
                 this->execute(statement);
             }
 
+            /**
+             *  Raw replace statement creation routine. Use this if `replace` with object does not fit you. This replace is designed to be able
+             *  to call any type of `REPLACE` query with no limitations. Actually this is the same query as raw insert except `OR...` option existance.
+             *  @example
+             *  ```sql
+             *  REPLACE INTO users (id, name) VALUES(5, 'Little Mix')
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.prepare(replace(into<User>, columns(&User::id, &User::name), values(std::make_tuple(5, "Little Mix"))));
+             *  ```
+             *  One more example:
+             *  ```sql
+             *  REPLACE INTO singers (name) VALUES ('Sofia Reyes')('Kungs')
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.prepare(replace(into<Singer>(), columns(&Singer::name), values(std::make_tuple("Sofia Reyes"), std::make_tuple("Kungs"))));
+             *  ```
+             *  One can use `default_values` to add `DEFAULT VALUES` modifier:
+             *  ```sql
+             *  REPLACE INTO users DEFAULT VALUES
+             *  ```
+             *  will be
+             *  ```c++
+             *  storage.prepare(replace(into<Singer>(), default_values()));
+             *  ```
+             */
+            template<class... Args>
+            void replace(Args... args) {
+                auto statement = this->prepare(sqlite_orm::replace(std::forward<Args>(args)...));
+                this->execute(statement);
+            }
+
             template<class It>
             void insert_range(It from, It to) {
                 using O = typename std::iterator_traits<It>::value_type;
@@ -929,6 +963,11 @@ namespace sqlite_orm {
             }
 
             template<class... Args>
+            prepared_statement_t<replace_raw_t<Args...>> prepare(replace_raw_t<Args...> ins) {
+                return prepare_impl<replace_raw_t<Args...>>(std::move(ins));
+            }
+
+            template<class... Args>
             prepared_statement_t<insert_raw_t<Args...>> prepare(insert_raw_t<Args...> ins) {
                 return prepare_impl<insert_raw_t<Args...>>(std::move(ins));
             }
@@ -1011,6 +1050,24 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<decltype(ins)>::type;
                 this->assert_mapped_type<object_type>();
                 return prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
+            }
+
+            template<class... Args>
+            void execute(const prepared_statement_t<replace_raw_t<Args...>>& statement) {
+                auto con = this->get_connection();
+                auto db = con.get();
+                auto stmt = statement.stmt;
+                sqlite3_reset(stmt);
+                auto index = 1;
+                iterate_ast(statement.t.args, [stmt, &index, db](auto& node) {
+                    using node_type = typename std::decay<decltype(node)>::type;
+                    conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
+                    if(SQLITE_OK != binder(node)) {
+                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
+                    }
+                });
+                perform_step(db, stmt);
             }
 
             template<class... Args>

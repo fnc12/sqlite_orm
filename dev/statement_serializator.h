@@ -1133,14 +1133,20 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Args>
-        struct statement_serializator<insert_raw_t<Args...>, void> {
-            using statement_type = insert_raw_t<Args...>;
+        template<class T>
+        struct statement_serializator<
+            T,
+            typename std::enable_if<is_insert_raw<T>::value || is_replace_raw<T>::value>::type> {
+            using statement_type = T;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << "INSERT";
+                if(is_insert_raw<T>::value) {
+                    ss << "INSERT";
+                } else {
+                    ss << "REPLACE";
+                }
                 iterate_tuple(statement.args, [&context, &ss](auto& value) {
                     using value_type = typename std::decay<decltype(value)>::type;
                     ss << ' ';
