@@ -8,7 +8,7 @@
 
 #include "conditions.h"
 #include "operators.h"
-#include "is_base_of_template.h"
+#include "common_traits.h"
 
 namespace sqlite_orm {
 

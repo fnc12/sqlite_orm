@@ -12,7 +12,7 @@
 #include <locale>  //  std::wstring_convert
 #include <cstring>  //  ::strncpy, ::strlen
 
-#include "is_std_ptr.h"
+#include "common_traits.h"
 
 namespace sqlite_orm {
 

@@ -39,7 +39,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);

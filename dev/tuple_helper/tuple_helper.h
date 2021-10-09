@@ -4,6 +4,7 @@
 #include <type_traits>  //  std::false_type, std::true_type
 
 #include "static_magic.h"
+#include "common_traits.h"
 #include "valuebased_metaprogramming.h"
 
 namespace sqlite_orm {
@@ -44,7 +45,7 @@ namespace sqlite_orm {
         using tuple_contains_some_type =
             std::integral_constant<bool,
                                    has_some_type<TT>(typename sqlite_orm::internal::valuebased_tuple<Tuple>::type{})>;
-		
+
         //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer
         template<class Function, class FunctionPointer, class Tuple, size_t... I>
         auto call_impl(Function& f, FunctionPointer functionPointer, Tuple t, std::index_sequence<I...>) {
@@ -62,40 +63,33 @@ namespace sqlite_orm {
             return call(f, &Function::operator(), move(t));
         }
 
-		// inspired by https://github.com/boostorg/pfr/blob/master/include/boost/pfr/detail/for_each_field_impl.hpp
-		template <class T, class L, std::size_t... I>
-		void iterate_tuple_impl(const T& t, const L& l, std::index_sequence<I...>) {
-			const int v[] = {0, ( l(std::get<I>(t)), 0 )...};
-			(void)v;
-		}
+        // inspired by https://github.com/boostorg/pfr/blob/master/include/boost/pfr/detail/for_each_field_impl.hpp
+        template<class T, class L, std::size_t... I>
+        void iterate_tuple_impl(const T& t, const L& l, std::index_sequence<I...>) {
+            const int v[] = {0, (l(std::get<I>(t)), 0)...};
+            (void)v;
+        }
 
-		template <class T, class L, std::size_t... I>
-		void iterate_tuple_impl(const L& l, std::index_sequence<I...>) {
-			const int v[] = {0, ( l((const typename std::tuple_element<I, T>::type*)nullptr), 0 )...};
-			(void)v;
-		}
+        template<class T, class L, std::size_t... I>
+        void iterate_tuple_impl(const L& l, std::index_sequence<I...>) {
+            const int v[] = {0, (l((const typename std::tuple_element<I, T>::type*)nullptr), 0)...};
+            (void)v;
+        }
 
-		template<class L, class... Args>
-		void iterate_tuple(const std::tuple<Args...>& tuple, const L& lambda) {
-			using tuple_type = std::tuple<Args...>;	
-			static constexpr auto size = std::tuple_size<tuple_type>::value;
-			
-			iterate_tuple_impl(
-				tuple,
-				lambda,
-				std::make_index_sequence<size>{}
-			);
-		}
+        template<class L, class... Args>
+        void iterate_tuple(const std::tuple<Args...>& tuple, const L& lambda) {
+            using tuple_type = std::tuple<Args...>;
+            static constexpr auto size = std::tuple_size<tuple_type>::value;
 
-		template<class T, class L>
-		void iterate_tuple(const L& lambda) {
-			static constexpr auto size = std::tuple_size<T>::value;
-			
-			iterate_tuple_impl<T>(
-				lambda,
-				std::make_index_sequence<size>{}
-			);
-		}
+            iterate_tuple_impl(tuple, lambda, std::make_index_sequence<size>{});
+        }
+
+        template<class T, class L>
+        void iterate_tuple(const L& lambda) {
+            static constexpr auto size = std::tuple_size<T>::value;
+
+            iterate_tuple_impl<T>(lambda, std::make_index_sequence<size>{});
+        }
 
         template<typename... input_t>
         using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));

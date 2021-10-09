@@ -142,7 +142,8 @@ namespace sqlite_orm {
             template<class O>
             void assert_mapped_type() const {
                 using mapped_types_tuples = std::tuple<typename Ts::object_type...>;
-                static_assert(internal::tuple_contains_type<O, mapped_types_tuples>::value, "type is not mapped to a storage");
+                static_assert(internal::tuple_contains_type<O, mapped_types_tuples>::value,
+                              "type is not mapped to a storage");
             }
 
             template<class O>
