@@ -76,7 +76,7 @@ namespace sqlite_orm {
 
             template<class Opt>
             constexpr bool has() const {
-                return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
+                return internal::tuple_contains_type<Opt, constraints_type>::value;
             }
 
             template<class O1, class O2, class... Opts>
@@ -123,7 +123,7 @@ namespace sqlite_orm {
             template<class O, class T, class... Op>
             struct is_column_with_insertable_primary_key<
                 column_t<O, T, Op...>,
-                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                typename std::enable_if<(internal::tuple_contains_type<
                                          primary_key_t<>,
                                          typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;
@@ -142,7 +142,7 @@ namespace sqlite_orm {
             template<class O, class T, class... Op>
             struct is_column_with_noninsertable_primary_key<
                 column_t<O, T, Op...>,
-                typename std::enable_if<(tuple_helper::tuple_contains_type<
+                typename std::enable_if<(internal::tuple_contains_type<
                                          primary_key_t<>,
                                          typename column_t<O, T, Op...>::constraints_type>::value)>::type> {
                 using column_type = column_t<O, T, Op...>;

@@ -232,7 +232,7 @@ namespace sqlite_orm {
              */
             template<class Op, class L>
             void for_each_column_with(const L& l) const {
-                using tuple_helper::tuple_contains_type;
+                using internal::tuple_contains_type;
                 iterate_tuple(this->columns, [&l](auto& column) {
                     using column_type = typename std::decay<decltype(column)>::type;
                     using constraints_type = typename column_constraints_type<column_type>::type;
