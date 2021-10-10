@@ -6,6 +6,13 @@
 
 using namespace sqlite_orm;
 
+TEST_CASE("same_or_void empty") {
+	using internal::same_or_void;
+	
+    // zero argument
+	static_assert(std::is_same<same_or_void<>::type, void>::value, "void");
+}
+
 TEST_CASE("same_or_void") {
     using internal::same_or_void;
 

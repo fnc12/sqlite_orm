@@ -26,4 +26,10 @@ TEST_CASE("tuple_helper static") {
         using Expected = std::tuple<int64_t, std::string, std::string, std::string>;
         static_assert(std::is_same<ColumnsMappedTypes, Expected>::value, "");
     }
+	SECTION("tuple_transformer empty") {
+		using EmptyTuple = std::tuple<>;
+		using EmptyMappedTypes = internal::tuple_transformer<EmptyTuple, internal::column_field_type>::type;
+		using Expected = std::tuple<>;
+		static_assert(std::is_same<EmptyMappedTypes, Expected>::value, "");
+	}
 }

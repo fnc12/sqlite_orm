@@ -26,3 +26,24 @@ TEST_CASE("find_in_tuple") {
         static_assert(std::is_same<found, void>::value, "");
     }
 }
+
+TEST_CASE("find_in_tuple empty") {
+	using namespace internal;
+	using tuple = std::tuple<>;
+	{
+        using found = find_in_tuple<tuple, is_into>::type;
+        static_assert(std::is_same<found, void>::value, "");
+    }
+    {
+        using found = find_in_tuple<tuple, is_columns>::type;
+        static_assert(std::is_same<found, void>::value, "");
+    }
+    {
+        using found = find_in_tuple<tuple, is_column>::type;
+        static_assert(std::is_same<found, void>::value, "");
+    }
+    {
+        using found = find_in_tuple<tuple, is_primary_key>::type;
+        static_assert(std::is_same<found, void>::value, "");
+    }
+}

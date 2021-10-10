@@ -54,3 +54,17 @@ TEST_CASE("count_tuple") {
         static_assert(count_tuple<T, internal::is_limit>::value == 0, "");
     }
 }
+
+TEST_CASE("count_tuple empty")
+{
+	using internal::count_tuple;
+	{
+        auto t = std::tuple{};
+        using T = decltype(t);
+        static_assert(count_tuple<T, internal::is_where>::value == 0, "");
+        static_assert(count_tuple<T, internal::is_group_by>::value == 0, "");
+        static_assert(count_tuple<T, internal::is_order_by>::value == 0, "");
+        static_assert(count_tuple<T, internal::is_limit>::value == 0, "");
+    }
+}
+
