@@ -140,5 +140,8 @@ TEST_CASE("Integrity Check") {
     storage.sync_schema();
 
     REQUIRE(storage.pragma.integrity_check() == "ok");
+    REQUIRE(storage.pragma.integrity_check<std::string>(5) == "ok");
+    REQUIRE(storage.pragma.integrity_check<std::vector<std::string>>(5) == std::vector<std::string>{"ok"});
     REQUIRE(storage.pragma.integrity_check<std::string>(tablename) == "ok");
+    REQUIRE(storage.pragma.integrity_check<std::vector<std::string>>() == std::vector<std::string>{"ok"});
 }
