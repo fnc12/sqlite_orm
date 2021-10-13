@@ -17,6 +17,26 @@ namespace sqlite_orm {
     namespace internal {
         struct storage_base;
 
+        template<class T>
+        int getPragmaCallback(void* data, int argc, char** argv, char**) {
+            auto& res = *(T*)data;
+            if(argc) {
+                res = row_extractor<T>().extract(argv[0]);
+            }
+            return 0;
+        }
+
+        template<>
+        inline int getPragmaCallback<std::vector<std::string>>(void* data, int argc, char** argv, char**) {
+            auto& res = *(std::vector<std::string>*)data;
+            res.reserve(argc);
+            for(decltype(argc) i = 0; i < argc; ++i) {
+                auto rowString = row_extractor<std::string>().extract(argv[i]);
+                res.push_back(move(rowString));
+            }
+            return 0;
+        }
+
         struct pragma_t {
             using get_connection_t = std::function<internal::connection_ref()>;
 
@@ -93,15 +113,6 @@ namespace sqlite_orm {
             get_connection_t get_connection;
 
             template<class T>
-            static int getPragmaCallback(void* data, int argc, char** argv, char**) {
-                auto& res = *(T*)data;
-                if(argc) {
-                    res = row_extractor<T>().extract(argv[0]);
-                }
-                return 0;
-            }
-
-            template<class T>
             T get_pragma(const std::string& name) {
                 auto connection = this->get_connection();
                 auto query = "PRAGMA " + name;
@@ -116,36 +127,8 @@ namespace sqlite_orm {
                 }
             }
 
-            template<>
-            std::vector<std::string> get_pragma<std::vector<std::string>>(const std::string& name) {
-                auto connection = this->get_connection();
-                auto query = "PRAGMA " + name;
-                std::vector<std::string> result;
-                auto db = connection.get();
-                auto rc = sqlite3_exec(
-                    db,
-                    query.c_str(),
-                    [](void* data, int argc, char** argv, char**) -> int {
-                        auto& res = *(std::vector<std::string>*)data;
-                        res.reserve(argc);
-                        for(decltype(argc) i = 0; i < argc; ++i) {
-                            auto rowString = row_extractor<std::string>().extract(argv[i]);
-                            res.push_back(move(rowString));
-                        }
-                        return 0;
-                    },
-                    &result,
-                    nullptr);
-                if(rc == SQLITE_OK) {
-                    return result;
-                } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                }
-            }
-
             /**
-             *  Yevgeniy Zakharov: I wanted to refactore this function with statements and value bindings
+             *  Yevgeniy Zakharov: I wanted to refactor this function with statements and value bindings
              *  but it turns out that bindings in pragma statements are not supported.
              */
             template<class T>
