@@ -451,7 +451,7 @@ struct SqrtFunction {
     }
 
     static const char *name() {
-        return "SQRT";
+        return "SQRT_CUSTOM";
     }
 };
 

@@ -11,7 +11,8 @@ add_executable(unit_tests
 	private_getters_tests.cpp
 	pragma_tests.cpp
 	explicit_columns.cpp
-	core_functions_tests.cpp
+	built_in_functions_tests/core_functions_tests.cpp
+    built_in_functions_tests/datetime_function_tests.cpp
 	index_tests.cpp
 	constraints/composite_key.cpp
 	operators/arithmetic_operators.cpp
