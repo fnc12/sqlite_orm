@@ -13,6 +13,7 @@ add_executable(unit_tests
 	explicit_columns.cpp
 	built_in_functions_tests/core_functions_tests.cpp
     built_in_functions_tests/datetime_function_tests.cpp
+    built_in_functions_tests/math_functions.cpp
 	index_tests.cpp
 	constraints/composite_key.cpp
 	operators/arithmetic_operators.cpp
