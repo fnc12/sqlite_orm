@@ -447,6 +447,11 @@ namespace sqlite_orm {
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
+
+            order_by_base() = default;
+
+            order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
+                asc_desc(asc_desc_), _collate_argument(move(_collate_argument_)) {}
         };
 
         struct order_by_string {
@@ -460,11 +465,12 @@ namespace sqlite_orm {
          */
         template<class O>
         struct order_by_t : order_by_base, order_by_string {
-            using self = order_by_t<O>;
+            using expression_type = O;
+            using self = order_by_t<expression_type>;
 
-            O o;
+            expression_type expression;
 
-            order_by_t(O o_) : o(std::move(o_)) {}
+            order_by_t(expression_type expression_) : order_by_base(), expression(std::move(expression_)) {}
 
             self asc() {
                 auto res = *this;
@@ -549,7 +555,7 @@ namespace sqlite_orm {
             void push_back(order_by_t<O> order_by) {
                 auto newContext = this->context;
                 newContext.skip_table_name = true;
-                auto columnName = serialize(order_by.o, newContext);
+                auto columnName = serialize(order_by.expression, newContext);
                 entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
             }
 
