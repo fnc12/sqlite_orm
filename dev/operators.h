@@ -86,7 +86,7 @@ namespace sqlite_orm {
         template<class L, class R>
         using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
-        struct mod_string {
+        struct mod_operator_string {
             operator std::string() const {
                 return "%";
             }
@@ -96,7 +96,7 @@ namespace sqlite_orm {
          *  Result of mod % operator
          */
         template<class L, class R>
-        using mod_t = binary_operator<L, R, mod_string, arithmetic_t, negatable_t>;
+        using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
         struct bitwise_shift_left_string {
             operator std::string() const {

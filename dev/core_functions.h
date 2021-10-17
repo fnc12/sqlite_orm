@@ -17,6 +17,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        using serialize_result_type = std::string;
+
         template<class T>
         struct is_into;
 
@@ -30,7 +32,7 @@ namespace sqlite_orm {
          *  Args - function arguments types
          */
         template<class R, class S, class... Args>
-        struct core_function_t : S, internal::arithmetic_t {
+        struct built_in_function_t : S, arithmetic_t {
             using return_type = R;
             using string_type = S;
             using args_type = std::tuple<Args...>;
@@ -39,7 +41,7 @@ namespace sqlite_orm {
 
             args_type args;
 
-            core_function_t(args_type&& args_) : args(std::move(args_)) {}
+            built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
         };
 
         struct typeof_string {
@@ -299,6 +301,182 @@ namespace sqlite_orm {
                 return "GROUP_CONCAT";
             }
         };
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
+        struct acos_string {
+            operator std::string() const {
+                return "ACOS";
+            }
+        };
+
+        struct acosh_string {
+            operator std::string() const {
+                return "ACOSH";
+            }
+        };
+
+        struct asin_string {
+            operator std::string() const {
+                return "ASIN";
+            }
+        };
+
+        struct asinh_string {
+            operator std::string() const {
+                return "ASINH";
+            }
+        };
+
+        struct atan_string {
+            operator std::string() const {
+                return "ATAN";
+            }
+        };
+
+        struct atan2_string {
+            operator std::string() const {
+                return "ATAN2";
+            }
+        };
+
+        struct atanh_string {
+            operator std::string() const {
+                return "ATANH";
+            }
+        };
+
+        struct ceil_string {
+            operator std::string() const {
+                return "CEIL";
+            }
+        };
+
+        struct ceiling_string {
+            operator std::string() const {
+                return "CEILING";
+            }
+        };
+
+        struct cos_string {
+            operator std::string() const {
+                return "COS";
+            }
+        };
+
+        struct cosh_string {
+            operator std::string() const {
+                return "COSH";
+            }
+        };
+
+        struct degrees_string {
+            operator std::string() const {
+                return "DEGREES";
+            }
+        };
+
+        struct exp_string {
+            operator std::string() const {
+                return "EXP";
+            }
+        };
+
+        struct floor_string {
+            operator std::string() const {
+                return "FLOOR";
+            }
+        };
+
+        struct ln_string {
+            operator std::string() const {
+                return "LN";
+            }
+        };
+
+        struct log_string {
+            operator std::string() const {
+                return "LOG";
+            }
+        };
+
+        struct log10_string {
+            operator std::string() const {
+                return "LOG10";
+            }
+        };
+
+        struct log2_string {
+            operator std::string() const {
+                return "LOG2";
+            }
+        };
+
+        struct mod_string {
+            operator std::string() const {
+                return "MOD";
+            }
+        };
+
+        struct pi_string {
+            operator std::string() const {
+                return "PI";
+            }
+        };
+
+        struct pow_string {
+            operator std::string() const {
+                return "POW";
+            }
+        };
+
+        struct power_string {
+            operator std::string() const {
+                return "POWER";
+            }
+        };
+
+        struct radians_string {
+            operator std::string() const {
+                return "RADIANS";
+            }
+        };
+
+        struct sin_string {
+            operator std::string() const {
+                return "SIN";
+            }
+        };
+
+        struct sinh_string {
+            operator std::string() const {
+                return "SINH";
+            }
+        };
+
+        struct sqrt_string {
+            operator std::string() const {
+                return "SQRT";
+            }
+        };
+
+        struct tan_string {
+            operator std::string() const {
+                return "TAN";
+            }
+        };
+
+        struct tanh_string {
+            operator std::string() const {
+                return "TANH";
+            }
+        };
+
+        struct trunc_string {
+            operator std::string() const {
+                return "TRUNC";
+            }
+        };
+
+#endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
 #ifdef SQLITE_ENABLE_JSON1
         struct json_string {
             operator std::string() const {
@@ -395,127 +573,960 @@ namespace sqlite_orm {
     /**
      *  Cute operators for core functions
      */
-
-    template<
-        class F,
-        class R,
-        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
+    template<class F,
+             class R,
+             typename =
+                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
     internal::lesser_than_t<F, R> operator<(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<
-        class F,
-        class R,
-        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
+    template<class F,
+             class R,
+             typename =
+                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
     internal::lesser_or_equal_t<F, R> operator<=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<
-        class F,
-        class R,
-        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
+    template<class F,
+             class R,
+             typename =
+                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
     internal::greater_than_t<F, R> operator>(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<
-        class F,
-        class R,
-        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
+    template<class F,
+             class R,
+             typename =
+                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
     internal::greater_or_equal_t<F, R> operator>=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<
-        class F,
-        class R,
-        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
+    template<class F,
+             class R,
+             typename =
+                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
     internal::is_equal_t<F, R> operator==(F f, R r) {
         return {std::move(f), std::move(r)};
     }
 
-    template<
-        class F,
-        class R,
-        typename = typename std::enable_if<internal::is_base_of_template<F, internal::core_function_t>::value>::type>
+    template<class F,
+             class R,
+             typename =
+                 typename std::enable_if<internal::is_base_of_template<F, internal::built_in_function_t>::value>::type>
     internal::is_not_equal_t<F, R> operator!=(F f, R r) {
         return {std::move(f), std::move(r)};
     }
+#ifdef SQLITE_ENABLE_MATH_FUNCTIONS
 
+    /**
+     *  ACOS(X) function https://www.sqlite.org/lang_mathfunc.html#acos
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::acos(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::acos_string, X> acos(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ACOS(X) function https://www.sqlite.org/lang_mathfunc.html#acos
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::acos<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::acos_string, X> acos(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ACOSH(X) function https://www.sqlite.org/lang_mathfunc.html#acosh
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::acosh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::acosh_string, X> acosh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ACOSH(X) function https://www.sqlite.org/lang_mathfunc.html#acosh
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::acosh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::acosh_string, X> acosh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ASIN(X) function https://www.sqlite.org/lang_mathfunc.html#asin
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::asin(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::asin_string, X> asin(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ASIN(X) function https://www.sqlite.org/lang_mathfunc.html#asin
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::asin<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::asin_string, X> asin(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ASINH(X) function https://www.sqlite.org/lang_mathfunc.html#asinh
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::asinh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::asinh_string, X> asinh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ASINH(X) function https://www.sqlite.org/lang_mathfunc.html#asinh
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::asinh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::asinh_string, X> asinh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ATAN(X) function https://www.sqlite.org/lang_mathfunc.html#atan
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::atan(1));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::atan_string, X> atan(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ATAN(X) function https://www.sqlite.org/lang_mathfunc.html#atan
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::atan<std::optional<double>>(1));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::atan_string, X> atan(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ATAN2(X, Y) function https://www.sqlite.org/lang_mathfunc.html#atan2
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::atan2(1, 3));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X, class Y>
+    internal::built_in_function_t<double, internal::atan2_string, X, Y> atan2(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  ATAN2(X, Y) function https://www.sqlite.org/lang_mathfunc.html#atan2
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::atan2<std::optional<double>>(1, 3));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::atan2_string, X, Y> atan2(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  ATANH(X) function https://www.sqlite.org/lang_mathfunc.html#atanh
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::atanh(1));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::atanh_string, X> atanh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  ATANH(X) function https://www.sqlite.org/lang_mathfunc.html#atanh
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::atanh<std::optional<double>>(1));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::atanh_string, X> atanh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  CEIL(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::ceil(&User::rating));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::ceil_string, X> ceil(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  CEIL(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::ceil<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::ceil_string, X> ceil(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  CEILING(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::ceiling(&User::rating));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::ceiling_string, X> ceiling(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  CEILING(X) function https://www.sqlite.org/lang_mathfunc.html#ceil
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::ceiling<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::ceiling_string, X> ceiling(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  COS(X) function https://www.sqlite.org/lang_mathfunc.html#cos
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::cos(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::cos_string, X> cos(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  COS(X) function https://www.sqlite.org/lang_mathfunc.html#cos
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::cos<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::cos_string, X> cos(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  COSH(X) function https://www.sqlite.org/lang_mathfunc.html#cosh
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::cosh(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::cosh_string, X> cosh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  COSH(X)  function https://www.sqlite.org/lang_mathfunc.html#cosh
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::cosh<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::cosh_string, X> cosh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  DEGREES(X) function https://www.sqlite.org/lang_mathfunc.html#degrees
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::degrees(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::degrees_string, X> degrees(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  DEGREES(X) function https://www.sqlite.org/lang_mathfunc.html#degrees
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::degrees<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::degrees_string, X> degrees(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  EXP(X) function https://www.sqlite.org/lang_mathfunc.html#exp
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::exp(&Triangle::cornerB));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::exp_string, X> exp(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  EXP(X) function https://www.sqlite.org/lang_mathfunc.html#exp
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::exp<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::exp_string, X> exp(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  FLOOR(X) function https://www.sqlite.org/lang_mathfunc.html#floor
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::floor(&User::rating));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::floor_string, X> floor(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  FLOOR(X) function https://www.sqlite.org/lang_mathfunc.html#floor
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::floor<std::optional<double>>(&User::rating));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::floor_string, X> floor(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  LN(X) function https://www.sqlite.org/lang_mathfunc.html#ln
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::ln(200));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::ln_string, X> ln(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  LN(X) function https://www.sqlite.org/lang_mathfunc.html#ln
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::ln<std::optional<double>>(200));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::ln_string, X> ln(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  LOG(X) function https://www.sqlite.org/lang_mathfunc.html#log
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::log(100));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::log_string, X> log(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  LOG(X) function https://www.sqlite.org/lang_mathfunc.html#log
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::log<std::optional<double>>(100));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::log_string, X> log(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  LOG10(X) function https://www.sqlite.org/lang_mathfunc.html#log
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::log10(100));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::log10_string, X> log10(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  LOG10(X) function https://www.sqlite.org/lang_mathfunc.html#log
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::log10<std::optional<double>>(100));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::log10_string, X> log10(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  LOG(B, X) function https://www.sqlite.org/lang_mathfunc.html#log
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::log(10, 100));   //  decltype(rows) is std::vector<double>
+     */
+    template<class B, class X>
+    internal::built_in_function_t<double, internal::log_string, B, X> log(B b, X x) {
+        return {std::tuple<B, X>{std::forward<B>(b), std::forward<X>(x)}};
+    }
+
+    /**
+     *  LOG(B, X) function https://www.sqlite.org/lang_mathfunc.html#log
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::log<std::optional<double>>(10, 100));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class B, class X>
+    internal::built_in_function_t<R, internal::log_string, B, X> log(B b, X x) {
+        return {std::tuple<B, X>{std::forward<B>(b), std::forward<X>(x)}};
+    }
+
+    /**
+     *  LOG2(X) function https://www.sqlite.org/lang_mathfunc.html#log2
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::log2(64));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::log2_string, X> log2(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  LOG2(X) function https://www.sqlite.org/lang_mathfunc.html#log2
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::log2<std::optional<double>>(64));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::log2_string, X> log2(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  MOD(X, Y) function https://www.sqlite.org/lang_mathfunc.html#mod
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::mod_f(6, 5));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X, class Y>
+    internal::built_in_function_t<double, internal::mod_string, X, Y> mod_f(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  MOD(X, Y) function https://www.sqlite.org/lang_mathfunc.html#mod
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::mod_f<std::optional<double>>(6, 5));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::mod_string, X, Y> mod_f(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  PI() function https://www.sqlite.org/lang_mathfunc.html#pi
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::pi());   //  decltype(rows) is std::vector<double>
+     */
+    inline internal::built_in_function_t<double, internal::pi_string> pi() {
+        return {{}};
+    }
+
+    /**
+     *  PI() function https://www.sqlite.org/lang_mathfunc.html#pi
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, etc.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::pi<float>());   //  decltype(rows) is std::vector<float>
+     */
+    template<class R>
+    internal::built_in_function_t<R, internal::pi_string> pi() {
+        return {{}};
+    }
+
+    /**
+     *  POW(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::pow(2, 5));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X, class Y>
+    internal::built_in_function_t<double, internal::pow_string, X, Y> pow(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  POW(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::pow<std::optional<double>>(2, 5));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::pow_string, X, Y> pow(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  POWER(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::power(2, 5));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X, class Y>
+    internal::built_in_function_t<double, internal::power_string, X, Y> power(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  POWER(X, Y) function https://www.sqlite.org/lang_mathfunc.html#pow
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::power<std::optional<double>>(2, 5));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::power_string, X, Y> power(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
+    }
+
+    /**
+     *  RADIANS(X) function https://www.sqlite.org/lang_mathfunc.html#radians
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::radians(&Triangle::cornerAInDegrees));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::radians_string, X> radians(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  RADIANS(X) function https://www.sqlite.org/lang_mathfunc.html#radians
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::radians<std::optional<double>>(&Triangle::cornerAInDegrees));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::radians_string, X> radians(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  SIN(X) function https://www.sqlite.org/lang_mathfunc.html#sin
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::sin(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::sin_string, X> sin(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  SIN(X) function https://www.sqlite.org/lang_mathfunc.html#sin
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::sin<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::sin_string, X> sin(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  SINH(X) function https://www.sqlite.org/lang_mathfunc.html#sinh
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::sinh(&Triangle::cornerA));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::sinh_string, X> sinh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  SINH(X) function https://www.sqlite.org/lang_mathfunc.html#sinh
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::sinh<std::optional<double>>(&Triangle::cornerA));   //  decltype(rows) is std::vector<std::optional<double>>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::sinh_string, X> sinh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  SQRT(X) function https://www.sqlite.org/lang_mathfunc.html#sqrt
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::sqrt(25));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::sqrt_string, X> sqrt(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  SQRT(X) function https://www.sqlite.org/lang_mathfunc.html#sqrt
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::sqrt<int>(25));   //  decltype(rows) is std::vector<int>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::sqrt_string, X> sqrt(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  TAN(X) function https://www.sqlite.org/lang_mathfunc.html#tan
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::tan(&Triangle::cornerC));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::tan_string, X> tan(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  TAN(X) function https://www.sqlite.org/lang_mathfunc.html#tan
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::tan<float>(&Triangle::cornerC));   //  decltype(rows) is std::vector<float>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::tan_string, X> tan(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  TANH(X) function https://www.sqlite.org/lang_mathfunc.html#tanh
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::tanh(&Triangle::cornerC));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::tanh_string, X> tanh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  TANH(X) function https://www.sqlite.org/lang_mathfunc.html#tanh
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::tanh<float>(&Triangle::cornerC));   //  decltype(rows) is std::vector<float>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::tanh_string, X> tanh(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  TRUNC(X) function https://www.sqlite.org/lang_mathfunc.html#trunc
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::trunc(5.5));   //  decltype(rows) is std::vector<double>
+     */
+    template<class X>
+    internal::built_in_function_t<double, internal::trunc_string, X> trunc(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+
+    /**
+     *  TRUNC(X) function https://www.sqlite.org/lang_mathfunc.html#trunc
+     *
+     *  Difference with the previous function is that previous override has `double` as return type but this
+     *  override accepts return type from you as a template argument. You can use any bindable type:
+     *  `float`, `int`, `std::optional<double>` etc. This override is handy when you expect `null` as result.
+     *
+     *  Example:
+     *
+     *  auto rows = storage.select(sqlite_orm::trunc<float>(5.5));   //  decltype(rows) is std::vector<float>
+     */
+    template<class R, class X>
+    internal::built_in_function_t<R, internal::trunc_string, X> trunc(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
+    }
+#endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
     /**
      *  TYPEOF(x) function https://sqlite.org/lang_corefunc.html#typeof
      */
     template<class T>
-    internal::core_function_t<std::string, internal::typeof_string, T> typeof_(T t) {
-        std::tuple<T> args{std::forward<T>(t)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::typeof_string, T> typeof_(T t) {
+        return {std::tuple<T>{std::forward<T>(t)}};
     }
 
     /**
      *  UNICODE(x) function https://sqlite.org/lang_corefunc.html#unicode
      */
     template<class T>
-    internal::core_function_t<int, internal::unicode_string, T> unicode(T t) {
-        std::tuple<T> args{std::forward<T>(t)};
-        return {move(args)};
+    internal::built_in_function_t<int, internal::unicode_string, T> unicode(T t) {
+        return {std::tuple<T>{std::forward<T>(t)}};
     }
 
     /**
      *  LENGTH(x) function https://sqlite.org/lang_corefunc.html#length
      */
     template<class T>
-    internal::core_function_t<int, internal::length_string, T> length(T t) {
-        std::tuple<T> args{std::forward<T>(t)};
-        return {move(args)};
+    internal::built_in_function_t<int, internal::length_string, T> length(T t) {
+        return {std::tuple<T>{std::forward<T>(t)}};
     }
 
     /**
      *  ABS(x) function https://sqlite.org/lang_corefunc.html#abs
      */
     template<class T>
-    internal::core_function_t<std::unique_ptr<double>, internal::abs_string, T> abs(T t) {
-        std::tuple<T> args{std::forward<T>(t)};
-        return {move(args)};
+    internal::built_in_function_t<std::unique_ptr<double>, internal::abs_string, T> abs(T t) {
+        return {std::tuple<T>{std::forward<T>(t)}};
     }
 
     /**
      *  LOWER(x) function https://sqlite.org/lang_corefunc.html#lower
      */
     template<class T>
-    internal::core_function_t<std::string, internal::lower_string, T> lower(T t) {
-        std::tuple<T> args{std::forward<T>(t)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::lower_string, T> lower(T t) {
+        return {std::tuple<T>{std::forward<T>(t)}};
     }
 
     /**
      *  UPPER(x) function https://sqlite.org/lang_corefunc.html#upper
      */
     template<class T>
-    internal::core_function_t<std::string, internal::upper_string, T> upper(T t) {
-        std::tuple<T> args{std::forward<T>(t)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::upper_string, T> upper(T t) {
+        return {std::tuple<T>{std::forward<T>(t)}};
     }
 
     /**
      *  LAST_INSERT_ROWID(x) function https://www.sqlite.org/lang_corefunc.html#last_insert_rowid
      */
-    inline internal::core_function_t<int64, internal::last_insert_rowid_string> last_insert_rowid() {
+    inline internal::built_in_function_t<int64, internal::last_insert_rowid_string> last_insert_rowid() {
         return {{}};
     }
 
     /**
      *  TOTAL_CHANGES() function https://sqlite.org/lang_corefunc.html#total_changes
      */
-    inline internal::core_function_t<int, internal::total_changes_string> total_changes() {
+    inline internal::built_in_function_t<int, internal::total_changes_string> total_changes() {
         return {{}};
     }
 
     /**
      *  CHANGES() function https://sqlite.org/lang_corefunc.html#changes
      */
-    inline internal::core_function_t<int, internal::changes_string> changes() {
+    inline internal::built_in_function_t<int, internal::changes_string> changes() {
         return {{}};
     }
 
@@ -523,90 +1534,80 @@ namespace sqlite_orm {
      *  TRIM(X) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class T>
-    internal::core_function_t<std::string, internal::trim_string, T> trim(T t) {
-        std::tuple<T> args{std::forward<T>(t)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::trim_string, T> trim(T t) {
+        return {std::tuple<T>{std::forward<T>(t)}};
     }
 
     /**
      *  TRIM(X,Y) function https://sqlite.org/lang_corefunc.html#trim
      */
     template<class X, class Y>
-    internal::core_function_t<std::string, internal::trim_string, X, Y> trim(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::trim_string, X, Y> trim(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
      *  LTRIM(X) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X>
-    internal::core_function_t<std::string, internal::ltrim_string, X> ltrim(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::ltrim_string, X> ltrim(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  LTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#ltrim
      */
     template<class X, class Y>
-    internal::core_function_t<std::string, internal::ltrim_string, X, Y> ltrim(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::ltrim_string, X, Y> ltrim(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
      *  RTRIM(X) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X>
-    internal::core_function_t<std::string, internal::rtrim_string, X> rtrim(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::rtrim_string, X> rtrim(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  RTRIM(X,Y) function https://sqlite.org/lang_corefunc.html#rtrim
      */
     template<class X, class Y>
-    internal::core_function_t<std::string, internal::rtrim_string, X, Y> rtrim(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::rtrim_string, X, Y> rtrim(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
      *  HEX(X) function https://sqlite.org/lang_corefunc.html#hex
      */
     template<class X>
-    internal::core_function_t<std::string, internal::hex_string, X> hex(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::hex_string, X> hex(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  QUOTE(X) function https://sqlite.org/lang_corefunc.html#quote
      */
     template<class X>
-    internal::core_function_t<std::string, internal::quote_string, X> quote(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::quote_string, X> quote(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  RANDOMBLOB(X) function https://sqlite.org/lang_corefunc.html#randomblob
      */
     template<class X>
-    internal::core_function_t<std::vector<char>, internal::randomblob_string, X> randomblob(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::vector<char>, internal::randomblob_string, X> randomblob(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  INSTR(X) function https://sqlite.org/lang_corefunc.html#instr
      */
     template<class X, class Y>
-    internal::core_function_t<int, internal::instr_string, X, Y> instr(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<int, internal::instr_string, X, Y> instr(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
@@ -614,28 +1615,25 @@ namespace sqlite_orm {
      */
     template<class X, class Y, class Z>
     typename std::enable_if<internal::count_tuple<std::tuple<X, Y, Z>, internal::is_into>::value == 0,
-                            internal::core_function_t<std::string, internal::replace_string, X, Y, Z>>::type
+                            internal::built_in_function_t<std::string, internal::replace_string, X, Y, Z>>::type
     replace(X x, Y y, Z z) {
-        std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
-        return {move(args)};
+        return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 
     /**
      *  ROUND(X) function https://sqlite.org/lang_corefunc.html#round
      */
     template<class X>
-    internal::core_function_t<double, internal::round_string, X> round(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<double, internal::round_string, X> round(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  ROUND(X, Y) function https://sqlite.org/lang_corefunc.html#round
      */
     template<class X, class Y>
-    internal::core_function_t<double, internal::round_string, X, Y> round(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<double, internal::round_string, X, Y> round(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
 #if SQLITE_VERSION_NUMBER >= 3007016
@@ -644,14 +1642,14 @@ namespace sqlite_orm {
      *  CHAR(X1,X2,...,XN) function https://sqlite.org/lang_corefunc.html#char
      */
     template<class... Args>
-    internal::core_function_t<std::string, internal::char_string, Args...> char_(Args... args) {
+    internal::built_in_function_t<std::string, internal::char_string, Args...> char_(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
     /**
      *  RANDOM() function https://www.sqlite.org/lang_corefunc.html#random
      */
-    inline internal::core_function_t<int, internal::random_string> random() {
+    inline internal::built_in_function_t<int, internal::random_string> random() {
         return {{}};
     }
 
@@ -661,7 +1659,7 @@ namespace sqlite_orm {
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
     template<class R, class... Args>
-    internal::core_function_t<R, internal::coalesce_string, Args...> coalesce(Args... args) {
+    internal::built_in_function_t<R, internal::coalesce_string, Args...> coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
@@ -669,7 +1667,7 @@ namespace sqlite_orm {
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R, class X, class Y>
-    internal::core_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
+    internal::built_in_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
 
@@ -677,72 +1675,64 @@ namespace sqlite_orm {
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    internal::core_function_t<std::string, internal::date_string, Args...> date(Args... args) {
-        std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<std::string, internal::date_string, Args...> date(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
     /**
      *  TIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    internal::core_function_t<std::string, internal::time_string, Args...> time(Args... args) {
-        std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<std::string, internal::time_string, Args...> time(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
     /**
      *  DATETIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    internal::core_function_t<std::string, internal::datetime_string, Args...> datetime(Args... args) {
-        std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<std::string, internal::datetime_string, Args...> datetime(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
     /**
      *  JULIANDAY(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    internal::core_function_t<double, internal::julianday_string, Args...> julianday(Args... args) {
-        std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<double, internal::julianday_string, Args...> julianday(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
     /**
      *  STRFTIME(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
      */
     template<class... Args>
-    internal::core_function_t<std::string, internal::strftime_string, Args...> strftime(Args... args) {
-        std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<std::string, internal::strftime_string, Args...> strftime(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
     /**
      *  ZEROBLOB(N) function https://www.sqlite.org/lang_corefunc.html#zeroblob
      */
     template<class N>
-    internal::core_function_t<std::vector<char>, internal::zeroblob_string, N> zeroblob(N n) {
-        std::tuple<N> args{std::forward<N>(n)};
-        return {move(args)};
+    internal::built_in_function_t<std::vector<char>, internal::zeroblob_string, N> zeroblob(N n) {
+        return {std::tuple<N>{std::forward<N>(n)}};
     }
 
     /**
      *  SUBSTR(X,Y) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y>
-    internal::core_function_t<std::string, internal::substr_string, X, Y> substr(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::substr_string, X, Y> substr(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     /**
      *  SUBSTR(X,Y,Z) function https://www.sqlite.org/lang_corefunc.html#substr
      */
     template<class X, class Y, class Z>
-    internal::core_function_t<std::string, internal::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
-        std::tuple<X, Y, Z> args{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::substr_string, X, Y, Z> substr(X x, Y y, Z z) {
+        return {std::tuple<X, Y, Z>{std::forward<X>(x), std::forward<Y>(y), std::forward<Z>(z)}};
     }
 
 #ifdef SQLITE_SOUNDEX
@@ -751,8 +1741,7 @@ namespace sqlite_orm {
      */
     template<class X>
     internal::core_function_t<std::string, internal::soundex_string, X> soundex(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
 
@@ -760,27 +1749,24 @@ namespace sqlite_orm {
      *  TOTAL(X) aggregate function.
      */
     template<class X>
-    internal::core_function_t<double, internal::total_string, X> total(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<double, internal::total_string, X> total(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  SUM(X) aggregate function.
      */
     template<class X>
-    internal::core_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  COUNT(X) aggregate function.
      */
     template<class X>
-    internal::core_function_t<int, internal::count_string, X> count(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<int, internal::count_string, X> count(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
@@ -803,185 +1789,161 @@ namespace sqlite_orm {
      *  AVG(X) aggregate function.
      */
     template<class X>
-    internal::core_function_t<double, internal::avg_string, X> avg(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<double, internal::avg_string, X> avg(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  MAX(X) aggregate function.
      */
     template<class X>
-    internal::core_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  MIN(X) aggregate function.
      */
     template<class X>
-    internal::core_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  GROUP_CONCAT(X) aggregate function.
      */
     template<class X>
-    internal::core_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     /**
      *  GROUP_CONCAT(X, Y) aggregate function.
      */
     template<class X, class Y>
-    internal::core_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #ifdef SQLITE_ENABLE_JSON1
     template<class X>
-    internal::core_function_t<std::string, internal::json_string, X> json(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::json_string, X> json(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class... Args>
-    internal::core_function_t<std::string, internal::json_array_string, Args...> json_array(Args... args) {
-        std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<std::string, internal::json_array_string, Args...> json_array(Args... args) {
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
     template<class X>
-    internal::core_function_t<int, internal::json_array_length_string, X> json_array_length(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<int, internal::json_array_length_string, X> json_array_length(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class R, class X>
-    internal::core_function_t<R, internal::json_array_length_string, X> json_array_length(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<R, internal::json_array_length_string, X> json_array_length(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class X, class Y>
-    internal::core_function_t<int, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<int, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class R, class X, class Y>
-    internal::core_function_t<R, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<R, internal::json_array_length_string, X, Y> json_array_length(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class R, class X, class... Args>
-    internal::core_function_t<R, internal::json_extract_string, X, Args...> json_extract(X x, Args... args) {
-        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<R, internal::json_extract_string, X, Args...> json_extract(X x, Args... args) {
+        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
-    internal::core_function_t<std::string, internal::json_insert_string, X, Args...> json_insert(X x, Args... args) {
+    internal::built_in_function_t<std::string, internal::json_insert_string, X, Args...> json_insert(X x,
+                                                                                                     Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_insert must be odd");
-        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
-        return {move(t)};
+        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
-    internal::core_function_t<std::string, internal::json_replace_string, X, Args...> json_replace(X x, Args... args) {
+    internal::built_in_function_t<std::string, internal::json_replace_string, X, Args...> json_replace(X x,
+                                                                                                       Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_replace must be odd");
-        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
-        return {move(t)};
+        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X, class... Args>
-    internal::core_function_t<std::string, internal::json_set_string, X, Args...> json_set(X x, Args... args) {
+    internal::built_in_function_t<std::string, internal::json_set_string, X, Args...> json_set(X x, Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_set must be odd");
-        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
-        return {move(t)};
+        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class... Args>
-    internal::core_function_t<std::string, internal::json_object_string, Args...> json_object(Args... args) {
+    internal::built_in_function_t<std::string, internal::json_object_string, Args...> json_object(Args... args) {
         static_assert(std::tuple_size<std::tuple<Args...>>::value % 2 == 0,
                       "number of arguments in json_object must be even");
-        std::tuple<Args...> t{std::forward<Args>(args)...};
-        return {move(t)};
+        return {std::tuple<Args...>{std::forward<Args>(args)...}};
     }
 
     template<class X, class Y>
-    internal::core_function_t<std::string, internal::json_patch_string, X, Y> json_patch(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::json_patch_string, X, Y> json_patch(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class X, class... Args>
-    internal::core_function_t<std::string, internal::json_remove_string, X, Args...> json_remove(X x, Args... args) {
-        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<std::string, internal::json_remove_string, X, Args...> json_remove(X x,
+                                                                                                     Args... args) {
+        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class R, class X, class... Args>
-    internal::core_function_t<R, internal::json_remove_string, X, Args...> json_remove(X x, Args... args) {
-        std::tuple<X, Args...> t{std::forward<X>(x), std::forward<Args>(args)...};
-        return {move(t)};
+    internal::built_in_function_t<R, internal::json_remove_string, X, Args...> json_remove(X x, Args... args) {
+        return {std::tuple<X, Args...>{std::forward<X>(x), std::forward<Args>(args)...}};
     }
 
     template<class X>
-    internal::core_function_t<std::string, internal::json_type_string, X> json_type(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::json_type_string, X> json_type(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class R, class X>
-    internal::core_function_t<R, internal::json_type_string, X> json_type(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<R, internal::json_type_string, X> json_type(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class X, class Y>
-    internal::core_function_t<std::string, internal::json_type_string, X, Y> json_type(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::json_type_string, X, Y> json_type(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class R, class X, class Y>
-    internal::core_function_t<R, internal::json_type_string, X, Y> json_type(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<R, internal::json_type_string, X, Y> json_type(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
     template<class X>
-    internal::core_function_t<bool, internal::json_valid_string, X> json_valid(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<bool, internal::json_valid_string, X> json_valid(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class R, class X>
-    internal::core_function_t<R, internal::json_quote_string, X> json_quote(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<R, internal::json_quote_string, X> json_quote(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class X>
-    internal::core_function_t<std::string, internal::json_group_array_string, X> json_group_array(X x) {
-        std::tuple<X> args{std::forward<X>(x)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::json_group_array_string, X> json_group_array(X x) {
+        return {std::tuple<X>{std::forward<X>(x)}};
     }
 
     template<class X, class Y>
-    internal::core_function_t<std::string, internal::json_group_object_string, X, Y> json_group_object(X x, Y y) {
-        std::tuple<X, Y> args{std::forward<X>(x), std::forward<Y>(y)};
-        return {move(args)};
+    internal::built_in_function_t<std::string, internal::json_group_object_string, X, Y> json_group_object(X x, Y y) {
+        return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 
 #endif  //  SQLITE_ENABLE_JSON1
