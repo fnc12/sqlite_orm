@@ -2890,6 +2890,11 @@ namespace sqlite_orm {
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
+
+            order_by_base() = default;
+
+            order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
+                asc_desc(asc_desc_), _collate_argument(move(_collate_argument_)) {}
         };
 
         struct order_by_string {
@@ -2903,11 +2908,12 @@ namespace sqlite_orm {
          */
         template<class O>
         struct order_by_t : order_by_base, order_by_string {
-            using self = order_by_t<O>;
+            using expression_type = O;
+            using self = order_by_t<expression_type>;
 
-            O o;
+            expression_type expression;
 
-            order_by_t(O o_) : o(std::move(o_)) {}
+            order_by_t(expression_type expression_) : order_by_base(), expression(std::move(expression_)) {}
 
             self asc() {
                 auto res = *this;
@@ -2992,7 +2998,7 @@ namespace sqlite_orm {
             void push_back(order_by_t<O> order_by) {
                 auto newContext = this->context;
                 newContext.skip_table_name = true;
-                auto columnName = serialize(order_by.o, newContext);
+                auto columnName = serialize(order_by.expression, newContext);
                 entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
             }
 
@@ -6602,6 +6608,15 @@ namespace sqlite_orm {
         bool notnull = false;
         std::string dflt_value;
         int pk = 0;
+
+        table_info(decltype(cid) cid_,
+                   decltype(name) name_,
+                   decltype(type) type_,
+                   decltype(notnull) notnull_,
+                   decltype(dflt_value) dflt_value_,
+                   decltype(pk) pk_) :
+            cid(cid_),
+            name(move(name_)), type(move(type_)), notnull(notnull_), dflt_value(move(dflt_value_)), pk(pk_) {}
     };
 
 }
@@ -8019,6 +8034,13 @@ namespace sqlite_orm {
             int argumentsCount = 0;
             std::function<int*()> create;
             void (*destroy)(int*) = nullptr;
+
+            function_base(decltype(name) name_,
+                          decltype(argumentsCount) argumentsCount_,
+                          decltype(create) create_,
+                          decltype(destroy) destroy_) :
+                name(move(name_)),
+                argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
         };
 
         struct scalar_function_t : function_base {
@@ -8914,7 +8936,7 @@ namespace sqlite_orm {
                             std::string dflt_value = argv[index] ? argv[index] : "";
                             index++;
                             auto pk = std::atoi(argv[index++]);
-                            res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
+                            res.push_back(table_info(cid, name, type, notnull, dflt_value, pk));
                         }
                         return 0;
                     },
@@ -12838,7 +12860,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                auto columnName = serialize(orderBy.o, newContext);
+                auto columnName = serialize(orderBy.expression, newContext);
                 ss << columnName << " ";
                 if(orderBy._collate_argument.length()) {
                     ss << "COLLATE " << orderBy._collate_argument << " ";

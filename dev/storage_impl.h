@@ -117,7 +117,7 @@ namespace sqlite_orm {
                             std::string dflt_value = argv[index] ? argv[index] : "";
                             index++;
                             auto pk = std::atoi(argv[index++]);
-                            res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
+                            res.push_back(table_info(cid, name, type, notnull, dflt_value, pk));
                         }
                         return 0;
                     },

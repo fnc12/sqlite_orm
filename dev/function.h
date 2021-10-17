@@ -20,6 +20,13 @@ namespace sqlite_orm {
             int argumentsCount = 0;
             std::function<int *()> create;
             void (*destroy)(int *) = nullptr;
+
+            function_base(decltype(name) name_,
+                          decltype(argumentsCount) argumentsCount_,
+                          decltype(create) create_,
+                          decltype(destroy) destroy_) :
+                name(move(name_)),
+                argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
         };
 
         struct scalar_function_t : function_base {

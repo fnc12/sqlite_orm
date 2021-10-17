@@ -26,7 +26,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                auto columnName = serialize(orderBy.o, newContext);
+                auto columnName = serialize(orderBy.expression, newContext);
                 ss << columnName << " ";
                 if(orderBy._collate_argument.length()) {
                     ss << "COLLATE " << orderBy._collate_argument << " ";
