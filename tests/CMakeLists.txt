@@ -81,6 +81,8 @@ add_executable(unit_tests
     statement_serializator_tests/logical_operators.cpp
     statement_serializator_tests/select_constraints.cpp
     statement_serializator_tests/insert_replace.cpp
+    storage_tests.cpp
+    storage_non_crud_tests.cpp
 	unique_cases/get_all_with_two_tables.cpp
 	unique_cases/prepare_get_all_with_case.cpp
 	unique_cases/index_named_table_with_fk.cpp

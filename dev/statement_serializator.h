@@ -107,7 +107,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << "(";
+                ss << c.serialize() << "(";
                 std::vector<std::string> args;
                 using args_type = typename std::decay<decltype(c)>::type::args_type;
                 args.reserve(std::tuple_size<args_type>::value);
@@ -330,7 +330,8 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C&) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << "(*)";
+                auto functionName = c.serialize();
+                ss << functionName << "(*)";
                 return ss.str();
             }
         };
