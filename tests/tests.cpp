@@ -413,24 +413,3 @@ TEST_CASE("Vacuum") {
     storage.remove_all<Item>();
     storage.vacuum();
 }
-
-TEST_CASE("Remove all") {
-    struct Object {
-        int id;
-        std::string name;
-    };
-
-    auto storage = make_storage(
-        "",
-        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
-    storage.sync_schema();
-
-    storage.replace(Object{1, "Ototo"});
-    storage.replace(Object{2, "Contigo"});
-
-    REQUIRE(storage.count<Object>() == 2);
-
-    storage.remove_all<Object>(where(c(&Object::id) == 1));
-
-    REQUIRE(storage.count<Object>() == 1);
-}

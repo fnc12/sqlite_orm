@@ -5,6 +5,9 @@
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>
+#endif
 
 #include "conditions.h"
 #include "operators.h"
@@ -16,8 +19,11 @@ namespace sqlite_orm {
     using uint64 = sqlite_uint64;
 
     namespace internal {
-
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        using serialize_result_type = std::string_view;
+#else
         using serialize_result_type = std::string;
+#endif
 
         template<class T>
         struct is_into;
@@ -45,109 +51,109 @@ namespace sqlite_orm {
         };
 
         struct typeof_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "TYPEOF";
             }
         };
 
         struct unicode_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "UNICODE";
             }
         };
 
         struct length_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "LENGTH";
             }
         };
 
         struct abs_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ABS";
             }
         };
 
         struct lower_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "LOWER";
             }
         };
 
         struct upper_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "UPPER";
             }
         };
 
         struct last_insert_rowid_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "LAST_INSERT_ROWID";
             }
         };
 
         struct total_changes_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "TOTAL_CHANGES";
             }
         };
 
         struct changes_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "CHANGES";
             }
         };
 
         struct trim_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "TRIM";
             }
         };
 
         struct ltrim_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "LTRIM";
             }
         };
 
         struct rtrim_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "RTRIM";
             }
         };
 
         struct hex_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "HEX";
             }
         };
 
         struct quote_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "QUOTE";
             }
         };
 
         struct randomblob_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "RANDOMBLOB";
             }
         };
 
         struct instr_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "INSTR";
             }
         };
 
         struct replace_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "REPLACE";
             }
         };
 
         struct round_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ROUND";
             }
         };
@@ -155,13 +161,13 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3007016
 
         struct char_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "CHAR";
             }
         };
 
         struct random_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "RANDOM";
             }
         };
@@ -169,79 +175,79 @@ namespace sqlite_orm {
 #endif
 
         struct coalesce_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "COALESCE";
             }
         };
 
         struct ifnull_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "IFNULL";
             }
         };
 
         struct date_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "DATE";
             }
         };
 
         struct time_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "TIME";
             }
         };
 
         struct datetime_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "DATETIME";
             }
         };
 
         struct julianday_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JULIANDAY";
             }
         };
 
         struct strftime_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "STRFTIME";
             }
         };
 
         struct zeroblob_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ZEROBLOB";
             }
         };
 
         struct substr_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "SUBSTR";
             }
         };
 #ifdef SQLITE_SOUNDEX
         struct soundex_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "SOUNDEX";
             }
         };
 #endif
         struct total_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "TOTAL";
             }
         };
 
         struct sum_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "SUM";
             }
         };
 
         struct count_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "COUNT";
             }
         };
@@ -279,199 +285,199 @@ namespace sqlite_orm {
         struct count_asterisk_without_type : count_string {};
 
         struct avg_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "AVG";
             }
         };
 
         struct max_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "MAX";
             }
         };
 
         struct min_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "MIN";
             }
         };
 
         struct group_concat_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "GROUP_CONCAT";
             }
         };
 #ifdef SQLITE_ENABLE_MATH_FUNCTIONS
         struct acos_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ACOS";
             }
         };
 
         struct acosh_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ACOSH";
             }
         };
 
         struct asin_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ASIN";
             }
         };
 
         struct asinh_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ASINH";
             }
         };
 
         struct atan_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ATAN";
             }
         };
 
         struct atan2_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ATAN2";
             }
         };
 
         struct atanh_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "ATANH";
             }
         };
 
         struct ceil_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "CEIL";
             }
         };
 
         struct ceiling_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "CEILING";
             }
         };
 
         struct cos_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "COS";
             }
         };
 
         struct cosh_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "COSH";
             }
         };
 
         struct degrees_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "DEGREES";
             }
         };
 
         struct exp_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "EXP";
             }
         };
 
         struct floor_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "FLOOR";
             }
         };
 
         struct ln_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "LN";
             }
         };
 
         struct log_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "LOG";
             }
         };
 
         struct log10_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "LOG10";
             }
         };
 
         struct log2_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "LOG2";
             }
         };
 
         struct mod_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "MOD";
             }
         };
 
         struct pi_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "PI";
             }
         };
 
         struct pow_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "POW";
             }
         };
 
         struct power_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "POWER";
             }
         };
 
         struct radians_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "RADIANS";
             }
         };
 
         struct sin_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "SIN";
             }
         };
 
         struct sinh_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "SINH";
             }
         };
 
         struct sqrt_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "SQRT";
             }
         };
 
         struct tan_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "TAN";
             }
         };
 
         struct tanh_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "TANH";
             }
         };
 
         struct trunc_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "TRUNC";
             }
         };
@@ -479,91 +485,91 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_MATH_FUNCTIONS
 #ifdef SQLITE_ENABLE_JSON1
         struct json_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON";
             }
         };
 
         struct json_array_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_ARRAY";
             }
         };
 
         struct json_array_length_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_ARRAY_LENGTH";
             }
         };
 
         struct json_extract_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_EXTRACT";
             }
         };
 
         struct json_insert_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_INSERT";
             }
         };
 
         struct json_replace_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_REPLACE";
             }
         };
 
         struct json_set_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_SET";
             }
         };
 
         struct json_object_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_OBJECT";
             }
         };
 
         struct json_patch_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_PATCH";
             }
         };
 
         struct json_remove_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_REMOVE";
             }
         };
 
         struct json_type_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_TYPE";
             }
         };
 
         struct json_valid_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_VALID";
             }
         };
 
         struct json_quote_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_QUOTE";
             }
         };
 
         struct json_group_array_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_GROUP_ARRAY";
             }
         };
 
         struct json_group_object_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "JSON_GROUP_OBJECT";
             }
         };
