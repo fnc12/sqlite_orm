@@ -391,6 +391,8 @@ namespace sqlite_orm {
         using internal::is_columns;
         using internal::is_insert_constraint;
         using internal::is_into;
+        using internal::is_select;
+        using internal::is_upsert_clause;
         using internal::is_values;
 
         constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
@@ -409,12 +411,15 @@ namespace sqlite_orm {
         constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
         static_assert(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
 
-        constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
+        constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
         static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
+
+        constexpr int upsertClausesCount = count_tuple<args_tuple, is_upsert_clause>::value;
+        static_assert(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
 
         constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
         static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
-                                       selectsArgsCount + orArgsCount,
+                                       selectsArgsCount + orArgsCount + upsertClausesCount,
                       "Raw insert has invalid arguments");
 
         return {{std::forward<Args>(args)...}};

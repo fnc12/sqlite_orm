@@ -22,6 +22,8 @@
 #include "table_type.h"
 #include "indexed_column.h"
 #include "function.h"
+#include "ast/upsert_clause.h"
+#include "ast/excluded.h"
 
 namespace sqlite_orm {
 
@@ -47,6 +49,23 @@ namespace sqlite_orm {
                 } else {
                     return field_printer<T>{}(statement);
                 }
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<excluded_t<T>, void> {
+            using statement_type = excluded_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) {
+                std::stringstream ss;
+                ss << "excluded.";
+                if(auto columnNamePointer = context.impl.column_name(statement.expression)) {
+                    ss << "\"" << *columnNamePointer << "\"";
+                } else {
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                }
+                return ss.str();
             }
         };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -100,18 +119,53 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... TargetArgs, class... ActionsArgs>
+        struct statement_serializator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+            using statement_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "ON CONFLICT";
+                iterate_tuple(statement.target_args, [&ss, &context](auto& value) {
+                    using value_type = typename std::decay<decltype(value)>::type;
+                    auto needParenthesis = std::is_member_pointer<value_type>::value;
+                    ss << ' ';
+                    if(needParenthesis) {
+                        ss << '(';
+                    }
+                    ss << serialize(value, context);
+                    if(needParenthesis) {
+                        ss << ')';
+                    }
+                });
+                ss << ' ' << "DO";
+                if(std::tuple_size<typename statement_type::actions_tuple>::value == 0) {
+                    ss << " NOTHING";
+                } else {
+                    ss << " UPDATE";
+                    auto updateContext = context;
+                    updateContext.use_parentheses = false;
+                    iterate_tuple(statement.actions, [&ss, &updateContext](auto& value) {
+                        ss << ' ' << serialize(value, updateContext);
+                    });
+                }
+                return ss.str();
+            }
+        };
+
         template<class R, class S, class... Args>
         struct statement_serializator<built_in_function_t<R, S, Args...>, void> {
             using statement_type = built_in_function_t<R, S, Args...>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << c.serialize() << "(";
+                ss << statement.serialize() << "(";
                 std::vector<std::string> args;
-                using args_type = typename std::decay<decltype(c)>::type::args_type;
+                using args_type = typename std::decay<decltype(statement)>::type::args_type;
                 args.reserve(std::tuple_size<args_type>::value);
-                iterate_tuple(c.args, [&args, &context](auto& v) {
+                iterate_tuple(statement.args, [&args, &context](auto& v) {
                     args.push_back(serialize(v, context));
                 });
                 for(size_t i = 0; i < args.size(); ++i) {
@@ -308,7 +362,13 @@ namespace sqlite_orm {
                 auto lhs = serialize(c.lhs, context);
                 auto rhs = serialize(c.rhs, context);
                 std::stringstream ss;
-                ss << "(" << lhs << " " << static_cast<std::string>(c) << " " << rhs << ")";
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
+                ss << lhs << " " << static_cast<std::string>(c) << " " << rhs;
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
                 return ss.str();
             }
         };
@@ -972,6 +1032,32 @@ namespace sqlite_orm {
                     }
                     ss << " ";
                 }
+                return ss.str();
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<set_t<Args...>, void> {
+            using statement_type = set_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(statement);
+                auto assignsCount = std::tuple_size<typename statement_type::assigns_type>::value;
+                decltype(assignsCount) assignIndex = 0;
+                auto leftContext = context;
+                leftContext.skip_table_name = true;
+                iterate_tuple(statement.assigns,
+                              [&ss, &context, &leftContext, &assignIndex, assignsCount](auto& value) {
+                                  ss << ' ' << serialize(value.lhs, leftContext);
+                                  ss << ' ' << static_cast<std::string>(value) << ' ';
+                                  ss << serialize(value.rhs, context);
+                                  if(assignIndex < assignsCount - 1) {
+                                      ss << ",";
+                                  }
+                                  ++assignIndex;
+                              });
                 return ss.str();
             }
         };

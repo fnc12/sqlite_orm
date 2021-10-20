@@ -14,6 +14,8 @@
 #include "optional_container.h"
 #include "core_functions.h"
 #include "function.h"
+#include "ast/excluded.h"
+#include "ast/upsert_clause.h"
 
 namespace sqlite_orm {
 
@@ -36,6 +38,21 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class... TargetArgs, class... ActionsArgs>
+        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+            using type = typename node_tuple<std::tuple<ActionsArgs...>>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<set_t<Args...>, void> {
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class T>
+        struct node_tuple<excluded_t<T>, void> {
             using type = typename node_tuple<T>::type;
         };
 

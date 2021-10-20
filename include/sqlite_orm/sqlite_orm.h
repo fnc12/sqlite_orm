@@ -10073,6 +10073,8 @@ namespace sqlite_orm {
         using internal::is_columns;
         using internal::is_insert_constraint;
         using internal::is_into;
+        using internal::is_select;
+        using internal::is_upsert_clause;
         using internal::is_values;
 
         constexpr int orArgsCount = count_tuple<args_tuple, is_insert_constraint>::value;
@@ -10091,12 +10093,15 @@ namespace sqlite_orm {
         constexpr int defaultValuesCount = count_tuple<args_tuple, internal::is_default_values>::value;
         static_assert(defaultValuesCount < 2, "Raw insert must have only one default_values() argument");
 
-        constexpr int selectsArgsCount = count_tuple<args_tuple, internal::is_select>::value;
+        constexpr int selectsArgsCount = count_tuple<args_tuple, is_select>::value;
         static_assert(selectsArgsCount < 2, "Raw insert must have only one select(...) argument");
+
+        constexpr int upsertClausesCount = count_tuple<args_tuple, is_upsert_clause>::value;
+        static_assert(upsertClausesCount <= 2, "Raw insert can contain 2 instances of upsert clause maximum");
 
         constexpr int argsCount = int(std::tuple_size<args_tuple>::value);
         static_assert(argsCount == intoArgsCount + columnsArgsCount + valuesArgsCount + defaultValuesCount +
-                                       selectsArgsCount + orArgsCount,
+                                       selectsArgsCount + orArgsCount + upsertClausesCount,
                       "Raw insert has invalid arguments");
 
         return {{std::forward<Args>(args)...}};
@@ -10440,6 +10445,87 @@ namespace sqlite_orm {
 
 // #include "function.h"
 
+// #include "ast/excluded.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T>
+        struct excluded_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
+    }
+
+    template<class T>
+    internal::excluded_t<T> excluded(T expression) {
+        return {std::move(expression)};
+    }
+}
+
+// #include "ast/upsert_clause.h"
+
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::false_type, std::true_type
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, class A>
+        struct upsert_clause;
+
+        template<class... Args>
+        struct conflict_target {
+            using args_tuple = std::tuple<Args...>;
+
+            args_tuple args;
+
+            upsert_clause<args_tuple, std::tuple<>> do_nothing() {
+                return {std::move(this->args), {}};
+            }
+
+            template<class... ActionsArgs>
+            upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
+                return {std::move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
+            }
+        };
+
+        template<class... TargetArgs, class... ActionsArgs>
+        struct upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>> {
+            using target_args_tuple = std::tuple<TargetArgs...>;
+            using actions_tuple = std::tuple<ActionsArgs...>;
+
+            target_args_tuple target_args;
+
+            actions_tuple actions;
+        };
+
+        template<class T>
+        struct is_upsert_clause : std::false_type {};
+
+        template<class T, class A>
+        struct is_upsert_clause<upsert_clause<T, A>> : std::true_type {};
+    }
+
+    /**
+     *  ON CONFLICT upsert clause builder function.
+     *  @example
+     *  storage.insert(into<Employee>(),
+     *            columns(&Employee::id, &Employee::name, &Employee::age, &Employee::address, &Employee::salary),
+     *            values(std::make_tuple(3, "Sofia", 26, "Madrid", 15000.0),
+     *                 std::make_tuple(4, "Doja", 26, "LA", 25000.0)),
+     *            on_conflict(&Employee::id).do_update(set(c(&Employee::name) = excluded(&Employee::name),
+     *                                           c(&Employee::age) = excluded(&Employee::age),
+     *                                           c(&Employee::address) = excluded(&Employee::address),
+     *                                           c(&Employee::salary) = excluded(&Employee::salary))));
+     */
+    template<class... Args>
+    internal::conflict_target<Args...> on_conflict(Args... args) {
+        return {std::tuple<Args...>(std::forward<Args>(args)...)};
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -10492,8 +10578,28 @@ namespace sqlite_orm {
             using node_type = std::reference_wrapper<T>;
 
             template<class L>
-            void operator()(const node_type& r, const L& l) const {
-                iterate_ast(r.get(), l);
+            void operator()(const node_type& r, const L& lambda) const {
+                iterate_ast(r.get(), lambda);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<excluded_t<T>, void> {
+            using node_type = excluded_t<T>;
+
+            template<class L>
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.expression, lambda);
+            }
+        };
+
+        template<class... TargetArgs, class... ActionsArgs>
+        struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+            using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+
+            template<class L>
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.actions, lambda);
             }
         };
 
@@ -12935,6 +13041,10 @@ namespace sqlite_orm {
 
 // #include "function.h"
 
+// #include "ast/upsert_clause.h"
+
+// #include "ast/excluded.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -12959,6 +13069,23 @@ namespace sqlite_orm {
                 } else {
                     return field_printer<T>{}(statement);
                 }
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<excluded_t<T>, void> {
+            using statement_type = excluded_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) {
+                std::stringstream ss;
+                ss << "excluded.";
+                if(auto columnNamePointer = context.impl.column_name(statement.expression)) {
+                    ss << "\"" << *columnNamePointer << "\"";
+                } else {
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                }
+                return ss.str();
             }
         };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -13012,18 +13139,53 @@ namespace sqlite_orm {
             }
         };
 
+        template<class... TargetArgs, class... ActionsArgs>
+        struct statement_serializator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+            using statement_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "ON CONFLICT";
+                iterate_tuple(statement.target_args, [&ss, &context](auto& value) {
+                    using value_type = typename std::decay<decltype(value)>::type;
+                    auto needParenthesis = std::is_member_pointer<value_type>::value;
+                    ss << ' ';
+                    if(needParenthesis) {
+                        ss << '(';
+                    }
+                    ss << serialize(value, context);
+                    if(needParenthesis) {
+                        ss << ')';
+                    }
+                });
+                ss << ' ' << "DO";
+                if(std::tuple_size<typename statement_type::actions_tuple>::value == 0) {
+                    ss << " NOTHING";
+                } else {
+                    ss << " UPDATE";
+                    auto updateContext = context;
+                    updateContext.use_parentheses = false;
+                    iterate_tuple(statement.actions, [&ss, &updateContext](auto& value) {
+                        ss << ' ' << serialize(value, updateContext);
+                    });
+                }
+                return ss.str();
+            }
+        };
+
         template<class R, class S, class... Args>
         struct statement_serializator<built_in_function_t<R, S, Args...>, void> {
             using statement_type = built_in_function_t<R, S, Args...>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << c.serialize() << "(";
+                ss << statement.serialize() << "(";
                 std::vector<std::string> args;
-                using args_type = typename std::decay<decltype(c)>::type::args_type;
+                using args_type = typename std::decay<decltype(statement)>::type::args_type;
                 args.reserve(std::tuple_size<args_type>::value);
-                iterate_tuple(c.args, [&args, &context](auto& v) {
+                iterate_tuple(statement.args, [&args, &context](auto& v) {
                     args.push_back(serialize(v, context));
                 });
                 for(size_t i = 0; i < args.size(); ++i) {
@@ -13220,7 +13382,13 @@ namespace sqlite_orm {
                 auto lhs = serialize(c.lhs, context);
                 auto rhs = serialize(c.rhs, context);
                 std::stringstream ss;
-                ss << "(" << lhs << " " << static_cast<std::string>(c) << " " << rhs << ")";
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
+                ss << lhs << " " << static_cast<std::string>(c) << " " << rhs;
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
                 return ss.str();
             }
         };
@@ -13884,6 +14052,32 @@ namespace sqlite_orm {
                     }
                     ss << " ";
                 }
+                return ss.str();
+            }
+        };
+
+        template<class... Args>
+        struct statement_serializator<set_t<Args...>, void> {
+            using statement_type = set_t<Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << static_cast<std::string>(statement);
+                auto assignsCount = std::tuple_size<typename statement_type::assigns_type>::value;
+                decltype(assignsCount) assignIndex = 0;
+                auto leftContext = context;
+                leftContext.skip_table_name = true;
+                iterate_tuple(statement.assigns,
+                              [&ss, &context, &leftContext, &assignIndex, assignsCount](auto& value) {
+                                  ss << ' ' << serialize(value.lhs, leftContext);
+                                  ss << ' ' << static_cast<std::string>(value) << ' ';
+                                  ss << serialize(value.rhs, context);
+                                  if(assignIndex < assignsCount - 1) {
+                                      ss << ",";
+                                  }
+                                  ++assignIndex;
+                              });
                 return ss.str();
             }
         };
@@ -16469,6 +16663,10 @@ __pragma(pop_macro("min"))
 
     // #include "function.h"
 
+    // #include "ast/excluded.h"
+
+    // #include "ast/upsert_clause.h"
+
     namespace sqlite_orm {
 
     namespace internal {
@@ -16490,6 +16688,21 @@ __pragma(pop_macro("min"))
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class... TargetArgs, class... ActionsArgs>
+        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+            using type = typename node_tuple<std::tuple<ActionsArgs...>>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<set_t<Args...>, void> {
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class T>
+        struct node_tuple<excluded_t<T>, void> {
             using type = typename node_tuple<T>::type;
         };
 
@@ -16955,5 +17168,84 @@ namespace sqlite_orm {
             }
         });
         return internal::get_ref(*result);
+    }
+}
+#pragma once
+
+#include <tuple>  //  std::tuple
+#include <type_traits>  //  std::false_type, std::true_type
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, class A>
+        struct upsert_clause;
+
+        template<class... Args>
+        struct conflict_target {
+            using args_tuple = std::tuple<Args...>;
+
+            args_tuple args;
+
+            upsert_clause<args_tuple, std::tuple<>> do_nothing() {
+                return {std::move(this->args), {}};
+            }
+
+            template<class... ActionsArgs>
+            upsert_clause<args_tuple, std::tuple<ActionsArgs...>> do_update(ActionsArgs... actions) {
+                return {std::move(this->args), {std::make_tuple(std::forward<ActionsArgs>(actions)...)}};
+            }
+        };
+
+        template<class... TargetArgs, class... ActionsArgs>
+        struct upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>> {
+            using target_args_tuple = std::tuple<TargetArgs...>;
+            using actions_tuple = std::tuple<ActionsArgs...>;
+
+            target_args_tuple target_args;
+
+            actions_tuple actions;
+        };
+
+        template<class T>
+        struct is_upsert_clause : std::false_type {};
+
+        template<class T, class A>
+        struct is_upsert_clause<upsert_clause<T, A>> : std::true_type {};
+    }
+
+    /**
+     *  ON CONFLICT upsert clause builder function.
+     *  @example
+     *  storage.insert(into<Employee>(),
+     *            columns(&Employee::id, &Employee::name, &Employee::age, &Employee::address, &Employee::salary),
+     *            values(std::make_tuple(3, "Sofia", 26, "Madrid", 15000.0),
+     *                 std::make_tuple(4, "Doja", 26, "LA", 25000.0)),
+     *            on_conflict(&Employee::id).do_update(set(c(&Employee::name) = excluded(&Employee::name),
+     *                                           c(&Employee::age) = excluded(&Employee::age),
+     *                                           c(&Employee::address) = excluded(&Employee::address),
+     *                                           c(&Employee::salary) = excluded(&Employee::salary))));
+     */
+    template<class... Args>
+    internal::conflict_target<Args...> on_conflict(Args... args) {
+        return {std::tuple<Args...>(std::forward<Args>(args)...)};
+    }
+}
+#pragma once
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T>
+        struct excluded_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
+    }
+
+    template<class T>
+    internal::excluded_t<T> excluded(T expression) {
+        return {std::move(expression)};
     }
 }
