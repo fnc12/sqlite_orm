@@ -39,9 +39,7 @@
 		"dev/storage.h",
 		"dev/finish_macros.h",
 		"dev/node_tuple.h",
-		"dev/get_prepared_statement.h",
-        "dev/ast/upsert_clause.h",
-        "dev/ast/excluded.h"
+		"dev/get_prepared_statement.h"
 	],
 	"include_paths": ["dev"]
 }
