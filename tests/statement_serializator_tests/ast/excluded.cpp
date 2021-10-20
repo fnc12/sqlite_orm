@@ -16,7 +16,7 @@ TEST_CASE("excluded") {
     auto storageImpl = storage_impl_t{table};
     using context_t = internal::serializator_context<storage_impl_t>;
     context_t context{storageImpl};
-    
+
     std::string value;
     decltype(value) expected;
     SECTION("word") {
@@ -29,6 +29,6 @@ TEST_CASE("excluded") {
         value = serialize(statement, context);
         expected = "excluded.\"count\"";
     }
-    
+
     REQUIRE(value == expected);
 }
