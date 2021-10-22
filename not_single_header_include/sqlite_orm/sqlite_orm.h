@@ -2,6 +2,8 @@
 
 #include "../../dev/start_macros.h"
 #include "../../dev/error_code.h"
+#include "../../dev/ast/upsert_clause.h"
+#include "../../dev/ast/excluded.h"
 #include "../../dev/tuple_helper/tuple_helper.h"
 #include "../../dev/tuple_helper/find_in_tuple.h"
 #include "../../dev/tuple_helper/tuple_transformer.h"

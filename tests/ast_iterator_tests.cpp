@@ -13,6 +13,17 @@ TEST_CASE("ast_iterator") {
     auto lambda = [&typeIndexes](auto &value) {
         typeIndexes.push_back(typeid(value));
     };
+    SECTION("excluded") {
+        auto node = excluded(&User::id);
+        expected.push_back(typeid(&User::id));
+        internal::iterate_ast(node, lambda);
+    }
+    SECTION("upsert_clause") {
+        auto node = on_conflict(&User::id).do_update(set(c(&User::name) = excluded(&User::name)));
+        expected.push_back(typeid(&User::name));
+        expected.push_back(typeid(&User::name));
+        internal::iterate_ast(node, lambda);
+    }
     SECTION("into") {
         auto node = into<User>();
         internal::iterate_ast(node, lambda);

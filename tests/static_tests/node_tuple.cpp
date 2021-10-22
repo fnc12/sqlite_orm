@@ -727,4 +727,18 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = std::tuple<int>;
         static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
     }
+    SECTION("excluded") {
+        auto statement = excluded(&User::id);
+        using Statement = decltype(statement);
+        using Tuple = node_tuple<Statement>::type;
+        using ExpectedTuple = std::tuple<decltype(&User::id)>;
+        static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
+    }
+    SECTION("upsert_clause") {
+        auto statement = on_conflict(&User::id).do_update(set(c(&User::name) = excluded(&User::name)));
+        using Statement = decltype(statement);
+        using Tuple = node_tuple<Statement>::type;
+        using ExpectedTuple = std::tuple<decltype(&User::name), decltype(&User::name)>;
+        static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
+    }
 }

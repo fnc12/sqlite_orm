@@ -11,6 +11,8 @@
 #include "prepared_statement.h"
 #include "values.h"
 #include "function.h"
+#include "ast/excluded.h"
+#include "ast/upsert_clause.h"
 
 namespace sqlite_orm {
 
@@ -64,8 +66,28 @@ namespace sqlite_orm {
             using node_type = std::reference_wrapper<T>;
 
             template<class L>
-            void operator()(const node_type& r, const L& l) const {
-                iterate_ast(r.get(), l);
+            void operator()(const node_type& r, const L& lambda) const {
+                iterate_ast(r.get(), lambda);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<excluded_t<T>, void> {
+            using node_type = excluded_t<T>;
+
+            template<class L>
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.expression, lambda);
+            }
+        };
+
+        template<class... TargetArgs, class... ActionsArgs>
+        struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+            using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+
+            template<class L>
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.actions, lambda);
             }
         };
 
