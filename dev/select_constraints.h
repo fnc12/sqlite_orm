@@ -10,6 +10,7 @@
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_helper.h"
 #include "optional_container.h"
+#include "ast/where.h"
 
 namespace sqlite_orm {
 

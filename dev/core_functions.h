@@ -5,13 +5,11 @@
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>
-#endif
 
 #include "conditions.h"
 #include "operators.h"
 #include "is_base_of_template.h"
+#include "serialize_result_type.h"
 
 namespace sqlite_orm {
 
@@ -19,11 +17,6 @@ namespace sqlite_orm {
     using uint64 = sqlite_uint64;
 
     namespace internal {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        using serialize_result_type = std::string_view;
-#else
-        using serialize_result_type = std::string;
-#endif
 
         template<class T>
         struct is_into;

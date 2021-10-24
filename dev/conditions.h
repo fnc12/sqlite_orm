@@ -421,29 +421,6 @@ namespace sqlite_orm {
             is_not_null_t(T t_) : t(std::move(t_)) {}
         };
 
-        struct where_string {
-            operator std::string() const {
-                return "WHERE";
-            }
-        };
-
-        /**
-         *  WHERE argument holder.
-         *  C is conditions type. Can be any condition like: is_equal_t, is_null_t, exists_t etc
-         */
-        template<class C>
-        struct where_t : where_string {
-            C c;
-
-            where_t(C c_) : c(std::move(c_)) {}
-        };
-
-        template<class T>
-        struct is_where : std::false_type {};
-
-        template<class T>
-        struct is_where<where_t<T>> : std::true_type {};
-
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
@@ -1259,11 +1236,6 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::lesser_or_equal_t<L, R> le(L l, R r) {
         return {std::move(l), std::move(r)};
-    }
-
-    template<class C>
-    internal::where_t<C> where(C c) {
-        return {std::move(c)};
     }
 
     /**

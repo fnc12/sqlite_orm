@@ -13,6 +13,7 @@
 #include "function.h"
 #include "ast/excluded.h"
 #include "ast/upsert_clause.h"
+#include "ast/where.h"
 
 namespace sqlite_orm {
 
@@ -96,8 +97,8 @@ namespace sqlite_orm {
             using node_type = where_t<C>;
 
             template<class L>
-            void operator()(const node_type& where, const L& l) const {
-                iterate_ast(where.c, l);
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.expression, lambda);
             }
         };
 
