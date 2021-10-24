@@ -2865,29 +2865,6 @@ namespace sqlite_orm {
             is_not_null_t(T t_) : t(std::move(t_)) {}
         };
 
-        struct where_string {
-            operator std::string() const {
-                return "WHERE";
-            }
-        };
-
-        /**
-         *  WHERE argument holder.
-         *  C is conditions type. Can be any condition like: is_equal_t, is_null_t, exists_t etc
-         */
-        template<class C>
-        struct where_t : where_string {
-            C c;
-
-            where_t(C c_) : c(std::move(c_)) {}
-        };
-
-        template<class T>
-        struct is_where : std::false_type {};
-
-        template<class T>
-        struct is_where<where_t<T>> : std::true_type {};
-
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
@@ -3705,11 +3682,6 @@ namespace sqlite_orm {
         return {std::move(l), std::move(r)};
     }
 
-    template<class C>
-    internal::where_t<C> where(C c) {
-        return {std::move(c)};
-    }
-
     /**
      * ORDER BY column
      * Example: storage.select(&User::name, order_by(&User::id))
@@ -4087,9 +4059,6 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::forward, std::is_base_of, std::enable_if
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>
-#endif
 
 // #include "conditions.h"
 
@@ -4134,17 +4103,30 @@ namespace sqlite_orm {
     }
 }
 
+// #include "serialize_result_type.h"
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>  //  string_view
+#else
+#include <string>  //  std::string
+#endif
+
 namespace sqlite_orm {
-
-    using int64 = sqlite_int64;
-    using uint64 = sqlite_uint64;
-
     namespace internal {
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
         using serialize_result_type = std::string_view;
 #else
         using serialize_result_type = std::string;
 #endif
+    }
+}
+
+namespace sqlite_orm {
+
+    using int64 = sqlite_int64;
+    using uint64 = sqlite_uint64;
+
+    namespace internal {
 
         template<class T>
         struct is_into;
@@ -6162,6 +6144,71 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_helper.h"
 
 // #include "optional_container.h"
+
+// #include "ast/where.h"
+
+// #include "../serialize_result_type.h"
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>  //  string_view
+#else
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        using serialize_result_type = std::string_view;
+#else
+        using serialize_result_type = std::string;
+#endif
+    }
+}
+
+namespace sqlite_orm {
+    namespace internal {
+
+        struct where_string {
+            serialize_result_type serialize() const {
+                return "WHERE";
+            }
+        };
+
+        /**
+         *  WHERE argument holder.
+         *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
+         *  Don't construct it manually. Call `where(...)` function instead.
+         */
+        template<class C>
+        struct where_t : where_string {
+            using expression_type = C;
+
+            expression_type expression;
+
+            where_t(expression_type expression_) : expression(std::move(expression_)) {}
+        };
+
+        template<class T>
+        struct is_where : std::false_type {};
+
+        template<class T>
+        struct is_where<where_t<T>> : std::true_type {};
+    }
+
+    /**
+     *  WHERE clause. Use it to add WHERE conditions wherever you like.
+     *  C is expression type. Can be any expression like: is_equal_t, is_null_t, exists_t etc
+     *  @example
+     *  //  SELECT name
+     *  //  FROM letters
+     *  //  WHERE id > 3
+     *  auto rows = storage.select(&Letter::name, where(greater_than(&Letter::id, 3)));
+     */
+    template<class C>
+    internal::where_t<C> where(C expression) {
+        return {std::move(expression)};
+    }
+}
 
 namespace sqlite_orm {
 
@@ -10526,6 +10573,8 @@ namespace sqlite_orm {
     }
 }
 
+// #include "ast/where.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -10608,8 +10657,8 @@ namespace sqlite_orm {
             using node_type = where_t<C>;
 
             template<class L>
-            void operator()(const node_type& where, const L& l) const {
-                iterate_ast(where.c, l);
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.expression, lambda);
             }
         };
 
@@ -14678,8 +14727,8 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(statement) << " ";
-                auto whereString = serialize(statement.c, context);
+                ss << statement.serialize() << " ";
+                auto whereString = serialize(statement.expression, context);
                 ss << "( " << whereString << ") ";
                 return ss.str();
             }
@@ -16666,6 +16715,8 @@ __pragma(pop_macro("min"))
     // #include "ast/excluded.h"
 
     // #include "ast/upsert_clause.h"
+
+    // #include "ast/where.h"
 
     namespace sqlite_orm {
 

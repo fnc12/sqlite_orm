@@ -1658,8 +1658,8 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(statement) << " ";
-                auto whereString = serialize(statement.c, context);
+                ss << statement.serialize() << " ";
+                auto whereString = serialize(statement.expression, context);
                 ss << "( " << whereString << ") ";
                 return ss.str();
             }

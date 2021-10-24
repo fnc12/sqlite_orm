@@ -16,6 +16,7 @@
 #include "function.h"
 #include "ast/excluded.h"
 #include "ast/upsert_clause.h"
+#include "ast/where.h"
 
 namespace sqlite_orm {
 
