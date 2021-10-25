@@ -139,9 +139,7 @@ TEST_CASE("Integrity Check") {
                                            make_column("email", &User::email, default_value("dummy@email.com"))));
     storage.sync_schema();
 
-    REQUIRE(storage.pragma.integrity_check() == "ok");
-    REQUIRE(storage.pragma.integrity_check<std::string>(5) == "ok");
-    REQUIRE(storage.pragma.integrity_check<std::vector<std::string>>(5) == std::vector<std::string>{"ok"});
-    REQUIRE(storage.pragma.integrity_check<std::string>(tablename) == "ok");
-    REQUIRE(storage.pragma.integrity_check<std::vector<std::string>>() == std::vector<std::string>{"ok"});
+    REQUIRE(storage.pragma.integrity_check() == std::vector<std::string>{"ok"});
+    REQUIRE(storage.pragma.integrity_check(5) == std::vector<std::string>{"ok"});
+    REQUIRE(storage.pragma.integrity_check(tablename) == std::vector<std::string>{"ok"});
 }

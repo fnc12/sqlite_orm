@@ -11349,23 +11349,21 @@ namespace sqlite_orm {
                 this->set_pragma("auto_vacuum", value);
             }
 
-            template<class R = std::string>
-            R integrity_check() {
-                return this->get_pragma<R>("integrity_check");
+            std::vector<std::string> integrity_check() {
+                return this->get_pragma<std::vector<std::string>>("integrity_check");
             }
 
-            template<class R, class T>
-            R integrity_check(T table_name) {
+            template<class T>
+            std::vector<std::string> integrity_check(T table_name) {
                 std::ostringstream oss;
                 oss << "integrity_check(" << table_name << ")";
-                return this->get_pragma<R>(oss.str());
+                return this->get_pragma<std::vector<std::string>>(oss.str());
             }
 
-            template<class R>
-            R integrity_check(int n) {
+            std::vector<std::string> integrity_check(int n) {
                 std::ostringstream oss;
                 oss << "integrity_check(" << n << ")";
-                return this->get_pragma<R>(oss.str());
+                return this->get_pragma<std::vector<std::string>>(oss.str());
             }
 
           private:
