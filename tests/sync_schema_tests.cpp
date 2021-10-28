@@ -56,7 +56,7 @@ TEST_CASE("Sync schema") {
     usersToInsert.push_back({-1, "Brad", std::make_unique<int>(65), nullptr});
     usersToInsert.push_back({-1, "Paul", std::make_unique<int>(65), nullptr});
 
-    for(auto &user: usersToInsert) {
+    for(auto& user: usersToInsert) {
         auto insertedId = storage.insert(user);
         user.id = insertedId;
     }
@@ -84,8 +84,8 @@ TEST_CASE("Sync schema") {
     REQUIRE(usersFromDb.size() == usersToInsert.size());
 
     for(size_t i = 0; i < usersFromDb.size(); ++i) {
-        auto &userFromDb = usersFromDb[i];
-        auto &oldUser = usersToInsert[i];
+        auto& userFromDb = usersFromDb[i];
+        auto& oldUser = usersToInsert[i];
         REQUIRE(userFromDb.id == oldUser.id);
         REQUIRE(userFromDb.name == oldUser.name);
     }
@@ -104,7 +104,7 @@ TEST_CASE("Sync schema") {
     auto users = newStorage.get_all<UserAfter>();
     decltype(ids) idsFromGetAll;
     idsFromGetAll.reserve(users.size());
-    std::transform(users.begin(), users.end(), std::back_inserter(idsFromGetAll), [=](auto &user) {
+    std::transform(users.begin(), users.end(), std::back_inserter(idsFromGetAll), [=](auto& user) {
         return user.id;
     });
     REQUIRE(std::equal(ids.begin(), ids.end(), idsFromGetAll.begin(), idsFromGetAll.end()));
@@ -141,7 +141,7 @@ TEST_CASE("issue521") {
         pocosToInsert.push_back({-1, "Michael", 10, 10.10});
         pocosToInsert.push_back({-1, "Joyce", 20, 20.20});
 
-        for(auto &poco: pocosToInsert) {
+        for(auto& poco: pocosToInsert) {
             auto insertedId = storage.insert(poco);
             poco.id = insertedId;
         }
@@ -152,8 +152,8 @@ TEST_CASE("issue521") {
         using namespace sqlite_orm;
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
         for(size_t i = 0; i < pocosFromDb.size(); ++i) {
-            auto &pocoFromDb = pocosFromDb[i];
-            auto &oldPoco = pocosToInsert[i];
+            auto& pocoFromDb = pocosFromDb[i];
+            auto& oldPoco = pocosToInsert[i];
 
             REQUIRE(pocoFromDb.id == oldPoco.id);
             REQUIRE(pocoFromDb.name == oldPoco.name);
@@ -176,8 +176,8 @@ TEST_CASE("issue521") {
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
         for(size_t i = 0; i < pocosFromDb.size(); ++i) {
-            auto &pocoFromDb = pocosFromDb[i];
-            auto &oldPoco = pocosToInsert[i];
+            auto& pocoFromDb = pocosFromDb[i];
+            auto& oldPoco = pocosToInsert[i];
             REQUIRE(pocoFromDb.id == oldPoco.id);
             REQUIRE(pocoFromDb.name == oldPoco.name);
         }
@@ -201,8 +201,8 @@ TEST_CASE("issue521") {
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
         for(size_t i = 0; i < pocosFromDb.size(); ++i) {
-            auto &pocoFromDb = pocosFromDb[i];
-            auto &oldPoco = pocosToInsert[i];
+            auto& pocoFromDb = pocosFromDb[i];
+            auto& oldPoco = pocosToInsert[i];
             REQUIRE(pocoFromDb.id == oldPoco.id);
             REQUIRE(pocoFromDb.name == oldPoco.name);
             REQUIRE(pocoFromDb.alpha == 1);
@@ -228,8 +228,8 @@ TEST_CASE("issue521") {
 
         auto pocosFromDb = storage.get_all<MockDatabasePoco>(order_by(&MockDatabasePoco::id));
         for(size_t i = 0; i < pocosFromDb.size(); ++i) {
-            auto &pocoFromDb = pocosFromDb[i];
-            auto &oldPoco = pocosToInsert[i];
+            auto& pocoFromDb = pocosFromDb[i];
+            auto& oldPoco = pocosToInsert[i];
 
             REQUIRE(pocoFromDb.id == oldPoco.id);
             REQUIRE(pocoFromDb.name == oldPoco.name);
@@ -238,7 +238,7 @@ TEST_CASE("issue521") {
     }
 }
 
-bool compareUniquePointers(const std::unique_ptr<int> &lhs, const std::unique_ptr<int> &rhs) {
+bool compareUniquePointers(const std::unique_ptr<int>& lhs, const std::unique_ptr<int>& rhs) {
     if(!lhs && !rhs) {
         return true;
     } else {
@@ -266,11 +266,11 @@ TEST_CASE("sync_schema") {
 
         User(int id_, int age_) : id(id_), age(age_) {}
 
-        User(const User &other) :
+        User(const User& other) :
             id(other.id), name(other.name), age(other.age),
             ageNullable(other.ageNullable ? std::make_unique<int>(*other.ageNullable) : nullptr) {}
 
-        bool operator==(const User &other) const {
+        bool operator==(const User& other) const {
             return this->id == other.id && this->name == other.name && this->age == other.age;
         }
     };
@@ -412,4 +412,16 @@ TEST_CASE("sync_schema") {
             REQUIRE(users.empty());
         }
     }
+}
+
+TEST_CASE("sync_schema_simulate") {
+    struct Cols {
+        int Col1;
+    };
+
+    auto storage =
+        make_storage("db", make_index("IX_Col1", &Cols::Col1), make_table("Table", make_column("Col1", &Cols::Col1)));
+
+    storage.sync_schema();
+    storage.sync_schema_simulate();
 }

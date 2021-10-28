@@ -12,7 +12,7 @@ namespace sqlite_orm {
         struct order_by_serializator;
 
         template<class T, class C>
-        std::string serialize_order_by(const T &t, const C &context) {
+        std::string serialize_order_by(const T& t, const C& context) {
             order_by_serializator<T> serializator;
             return serializator(t, context);
         }
@@ -22,11 +22,11 @@ namespace sqlite_orm {
             using statement_type = order_by_t<O>;
 
             template<class C>
-            std::string operator()(const statement_type &orderBy, const C &context) const {
+            std::string operator()(const statement_type& orderBy, const C& context) const {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                auto columnName = serialize(orderBy.o, newContext);
+                auto columnName = serialize(orderBy.expression, newContext);
                 ss << columnName << " ";
                 if(orderBy._collate_argument.length()) {
                     ss << "COLLATE " << orderBy._collate_argument << " ";
@@ -48,9 +48,9 @@ namespace sqlite_orm {
             using statement_type = dynamic_order_by_t<S>;
 
             template<class C>
-            std::string operator()(const statement_type &orderBy, const C &) const {
+            std::string operator()(const statement_type& orderBy, const C&) const {
                 std::vector<std::string> expressions;
-                for(auto &entry: orderBy) {
+                for(auto& entry: orderBy) {
                     std::string entryString;
                     {
                         std::stringstream ss;

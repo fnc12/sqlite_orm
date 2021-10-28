@@ -4,44 +4,6 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("Exists") {
-    struct User {
-        int id = 0;
-        std::string name;
-    };
-
-    struct Visit {
-        int id = 0;
-        int userId = 0;
-        time_t time = 0;
-    };
-
-    auto storage =
-        make_storage("",
-                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-                     make_table("visits",
-                                make_column("id", &Visit::id, primary_key()),
-                                make_column("userId", &Visit::userId),
-                                make_column("time", &Visit::time),
-                                foreign_key(&Visit::userId).references(&User::id)));
-    storage.sync_schema();
-
-    storage.replace(User{1, "Daddy Yankee"});
-    storage.replace(User{2, "Don Omar"});
-
-    storage.replace(Visit{1, 1, 100000});
-    storage.replace(Visit{2, 1, 100001});
-    storage.replace(Visit{3, 1, 100002});
-    storage.replace(Visit{4, 1, 200000});
-
-    storage.replace(Visit{5, 2, 100000});
-
-    auto rows = storage.select(
-        &User::id,
-        where(exists(select(&Visit::id, where(c(&Visit::time) == 200000 and eq(&Visit::userId, &User::id))))));
-    REQUIRE(!rows.empty() == 1);
-}
-
 TEST_CASE("Iterate blob") {
     struct Test {
         int64_t id;
@@ -49,7 +11,7 @@ TEST_CASE("Iterate blob") {
     };
 
     struct TestComparator {
-        bool operator()(const Test &lhs, const Test &rhs) const {
+        bool operator()(const Test& lhs, const Test& rhs) const {
             return lhs.id == rhs.id && lhs.key == rhs.key;
         }
     };
@@ -67,11 +29,11 @@ TEST_CASE("Iterate blob") {
     db.replace(v);
 
     TestComparator testComparator;
-    for(auto &obj: db.iterate<Test>()) {
+    for(auto& obj: db.iterate<Test>()) {
         REQUIRE(testComparator(obj, v));
     }  //  test that view_t and iterator_t compile
 
-    for(const auto &obj: db.iterate<Test>()) {
+    for(const auto& obj: db.iterate<Test>()) {
         REQUIRE(testComparator(obj, v));
     }  //  test that view_t and iterator_t compile
 
@@ -85,7 +47,7 @@ TEST_CASE("Iterate blob") {
     }
     {
         int iterationsCount = 0;
-        for(auto &w: db.iterate<Test>(where(c(&Test::key) == key))) {
+        for(auto& w: db.iterate<Test>(where(c(&Test::key) == key))) {
             REQUIRE(testComparator(w, v));
             ++iterationsCount;
         }
@@ -114,23 +76,23 @@ TEST_CASE("Different getters and setters") {
             return this->name;
         }
 
-        void setNameByConstRef(const std::string &name_) {
+        void setNameByConstRef(const std::string& name_) {
             this->name = name_;
         }
 
-        const int &getConstIdByRefConst() const {
+        const int& getConstIdByRefConst() const {
             return this->id;
         }
 
-        void setIdByRef(int &id_) {
+        void setIdByRef(int& id_) {
             this->id = id_;
         }
 
-        const std::string &getConstNameByRefConst() const {
+        const std::string& getConstNameByRefConst() const {
             return this->name;
         }
 
-        void setNameByRef(std::string &name_) {
+        void setNameByRef(std::string& name_) {
             this->name = std::move(name_);
         }
     };
@@ -298,3 +260,27 @@ TEST_CASE("Dump") {
     REQUIRE(dumpUser2 == std::string{"{ id : '2', car_year : '2006' }"});
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+TEST_CASE("issue730") {
+    struct Table {
+        int64_t id;
+        std::string a;
+        std::string b;
+        std::string c;
+    };
+    auto storage = make_storage({},
+                                make_table("table",
+                                           make_column("id", &Table::id),
+                                           make_column("a", &Table::a),
+                                           make_column("b", &Table::b),
+                                           make_column("c", &Table::c),
+                                           sqlite_orm::unique(&Table::a, &Table::b, &Table::c)));
+    storage.sync_schema();
+
+    auto rows = storage.select(asterisk<Table>());
+
+    using Rows = decltype(rows);
+    using ExpectedRows = std::vector<std::tuple<int64_t, std::string, std::string, std::string>>;
+
+    static_assert(std::is_same<Rows, ExpectedRows>::value, "");
+}

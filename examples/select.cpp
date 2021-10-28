@@ -19,7 +19,7 @@ using namespace sqlite_orm;
 using std::cout;
 using std::endl;
 
-int main(int, char **) {
+int main(int, char**) {
     auto storage = make_storage("select.sqlite",
                                 make_table("COMPANY",
                                            make_column("ID", &Employee::id, primary_key()),
@@ -66,7 +66,7 @@ int main(int, char **) {
     //  now let's select id, name and salary..
     auto idsNamesSalarys = storage.select(columns(&Employee::id, &Employee::name, &Employee::salary));
     //  decltype(idsNamesSalarys) = vector<tuple<int, string, unique_ptr<double>>>
-    for(auto &tpl: idsNamesSalarys) {
+    for(auto& tpl: idsNamesSalarys) {
         cout << "id = " << std::get<0>(tpl) << ", name = " << std::get<1>(tpl) << ", salary = ";
         if(std::get<2>(tpl)) {
             cout << *std::get<2>(tpl);
@@ -80,16 +80,16 @@ int main(int, char **) {
 
     auto allEmployeesTuples = storage.select(asterisk<Employee>());
     cout << "allEmployeesTuples count = " << allEmployeesTuples.size() << endl;
-    for(auto &row: allEmployeesTuples) {  //  row is std::tuple<int, std::string, int, std::unique_ptr<std::string>,
+    for(auto& row: allEmployeesTuples) {  //  row is std::tuple<int, std::string, int, std::unique_ptr<std::string>,
         //  std::unique_ptr<double>>
         cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t';
-        if(auto &value = std::get<3>(row)) {
+        if(auto& value = std::get<3>(row)) {
             cout << *value;
         } else {
             cout << "null";
         }
         cout << '\t';
-        if(auto &value = std::get<4>(row)) {
+        if(auto& value = std::get<4>(row)) {
             cout << *value;
         } else {
             cout << "null";

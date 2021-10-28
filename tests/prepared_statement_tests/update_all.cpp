@@ -46,7 +46,7 @@ TEST_CASE("Prepared update all") {
         static_assert(std::tuple_size<SetBind>::value == 1, "");
         {
             using Arg0 = std::tuple_element<0, SetBind>::type;
-            static_assert(std::is_same<Arg0, const char *>::value, "");
+            static_assert(std::is_same<Arg0, const char*>::value, "");
         }
         REQUIRE(strcmp(get<0>(statement), "_") == 0);
         testSerializing(statement);

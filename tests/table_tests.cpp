@@ -29,12 +29,12 @@ TEST_CASE("table") {
                                 make_column("country_code", &Contact::countryCode),
                                 make_column("phone_number", &Contact::phoneNumber),
                                 make_column("visits_count", &Contact::visitsCount));
-        REQUIRE(table.find_column_name(&Contact::id) == "contact_id");
-        REQUIRE(table.find_column_name(&Contact::firstName) == "first_name");
-        REQUIRE(table.find_column_name(&Contact::lastName) == "last_name");
-        REQUIRE(table.find_column_name(&Contact::countryCode) == "country_code");
-        REQUIRE(table.find_column_name(&Contact::phoneNumber) == "phone_number");
-        REQUIRE(table.find_column_name(&Contact::visitsCount) == "visits_count");
+        REQUIRE(*table.find_column_name(&Contact::id) == "contact_id");
+        REQUIRE(*table.find_column_name(&Contact::firstName) == "first_name");
+        REQUIRE(*table.find_column_name(&Contact::lastName) == "last_name");
+        REQUIRE(*table.find_column_name(&Contact::countryCode) == "country_code");
+        REQUIRE(*table.find_column_name(&Contact::phoneNumber) == "phone_number");
+        REQUIRE(*table.find_column_name(&Contact::visitsCount) == "visits_count");
     }
     {
         struct Contact {
@@ -55,7 +55,7 @@ TEST_CASE("table") {
                 this->_id = value;
             }
 
-            const std::string &firstName() const {
+            const std::string& firstName() const {
                 return this->_firstName;
             }
 
@@ -63,7 +63,7 @@ TEST_CASE("table") {
                 this->_firstName = move(value);
             }
 
-            const std::string &lastName() const {
+            const std::string& lastName() const {
                 return this->_lastName;
             }
 
@@ -79,7 +79,7 @@ TEST_CASE("table") {
                 this->_countryCode = value;
             }
 
-            const std::string &phoneNumber() const {
+            const std::string& phoneNumber() const {
                 return this->_phoneNumber;
             }
 
@@ -104,23 +104,23 @@ TEST_CASE("table") {
                        make_column("phone_number", &Contact::phoneNumber, &Contact::setPhoneNumber),
                        make_column("visits_count", &Contact::visitsCount, &Contact::setVisitsCount));
 
-        REQUIRE(table.find_column_name(&Contact::id) == "contact_id");
-        REQUIRE(table.find_column_name(&Contact::setId) == "contact_id");
+        REQUIRE(*table.find_column_name(&Contact::id) == "contact_id");
+        REQUIRE(*table.find_column_name(&Contact::setId) == "contact_id");
 
-        REQUIRE(table.find_column_name(&Contact::firstName) == "first_name");
-        REQUIRE(table.find_column_name(&Contact::setFirstName) == "first_name");
+        REQUIRE(*table.find_column_name(&Contact::firstName) == "first_name");
+        REQUIRE(*table.find_column_name(&Contact::setFirstName) == "first_name");
 
-        REQUIRE(table.find_column_name(&Contact::lastName) == "last_name");
-        REQUIRE(table.find_column_name(&Contact::setLastName) == "last_name");
+        REQUIRE(*table.find_column_name(&Contact::lastName) == "last_name");
+        REQUIRE(*table.find_column_name(&Contact::setLastName) == "last_name");
 
-        REQUIRE(table.find_column_name(&Contact::countryCode) == "country_code");
-        REQUIRE(table.find_column_name(&Contact::setCountryCode) == "country_code");
+        REQUIRE(*table.find_column_name(&Contact::countryCode) == "country_code");
+        REQUIRE(*table.find_column_name(&Contact::setCountryCode) == "country_code");
 
-        REQUIRE(table.find_column_name(&Contact::phoneNumber) == "phone_number");
-        REQUIRE(table.find_column_name(&Contact::setPhoneNumber) == "phone_number");
+        REQUIRE(*table.find_column_name(&Contact::phoneNumber) == "phone_number");
+        REQUIRE(*table.find_column_name(&Contact::setPhoneNumber) == "phone_number");
 
-        REQUIRE(table.find_column_name(&Contact::visitsCount) == "visits_count");
-        REQUIRE(table.find_column_name(&Contact::setVisitsCount) == "visits_count");
+        REQUIRE(*table.find_column_name(&Contact::visitsCount) == "visits_count");
+        REQUIRE(*table.find_column_name(&Contact::setVisitsCount) == "visits_count");
     }
 }
 

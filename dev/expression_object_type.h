@@ -32,6 +32,16 @@ namespace sqlite_orm {
             using type = typename std::decay<T>::type;
         };
 
+        template<class It, class L, class O>
+        struct expression_object_type<replace_range_t<It, L, O>> {
+            using type = typename replace_range_t<It, L, O>::object_type;
+        };
+
+        template<class It, class L, class O>
+        struct expression_object_type<replace_range_t<std::reference_wrapper<It>, L, O>> {
+            using type = typename replace_range_t<std::reference_wrapper<It>, L, O>::object_type;
+        };
+
         template<class T>
         struct expression_object_type<insert_t<T>> {
             using type = typename std::decay<T>::type;
@@ -40,6 +50,17 @@ namespace sqlite_orm {
         template<class T>
         struct expression_object_type<insert_t<std::reference_wrapper<T>>> {
             using type = typename std::decay<T>::type;
+        };
+
+        template<class It, class L, class O>
+        struct expression_object_type<insert_range_t<It, L, O>> {
+            using transformer_type = L;
+            using type = typename insert_range_t<It, L, O>::object_type;
+        };
+
+        template<class It, class L, class O>
+        struct expression_object_type<insert_range_t<std::reference_wrapper<It>, L, O>> {
+            using type = typename insert_range_t<std::reference_wrapper<It>, L, O>::object_type;
         };
 
         template<class T, class... Cols>
@@ -56,7 +77,7 @@ namespace sqlite_orm {
         struct get_ref_t {
 
             template<class O>
-            auto &operator()(O &t) const {
+            auto& operator()(O& t) const {
                 return t;
             }
         };
@@ -65,13 +86,13 @@ namespace sqlite_orm {
         struct get_ref_t<std::reference_wrapper<T>> {
 
             template<class O>
-            auto &operator()(O &t) const {
+            auto& operator()(O& t) const {
                 return t.get();
             }
         };
 
         template<class T>
-        auto &get_ref(T &t) {
+        auto& get_ref(T& t) {
             using arg_type = typename std::decay<T>::type;
             get_ref_t<arg_type> g;
             return g(t);
@@ -84,7 +105,7 @@ namespace sqlite_orm {
         struct get_object_t<const T> : get_object_t<T> {};
 
         template<class T>
-        auto &get_object(T &t) {
+        auto& get_object(T& t) {
             using expression_type = typename std::decay<T>::type;
             get_object_t<expression_type> obj;
             return obj(t);
@@ -95,7 +116,7 @@ namespace sqlite_orm {
             using expression_type = replace_t<T>;
 
             template<class O>
-            auto &operator()(O &e) const {
+            auto& operator()(O& e) const {
                 return get_ref(e.obj);
             }
         };
@@ -105,7 +126,7 @@ namespace sqlite_orm {
             using expression_type = insert_t<T>;
 
             template<class O>
-            auto &operator()(O &e) const {
+            auto& operator()(O& e) const {
                 return get_ref(e.obj);
             }
         };
@@ -115,7 +136,7 @@ namespace sqlite_orm {
             using expression_type = update_t<T>;
 
             template<class O>
-            auto &operator()(O &e) const {
+            auto& operator()(O& e) const {
                 return get_ref(e.obj);
             }
         };

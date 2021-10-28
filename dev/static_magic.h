@@ -9,27 +9,27 @@ namespace sqlite_orm {
     namespace internal {
 
         static inline decltype(auto) empty_callable() {
-            static auto res = [](auto &&...) {};
+            static auto res = [](auto&&...) {};
             return (res);
         }
 
         template<typename T, typename F>
-        decltype(auto) static_if(std::true_type, const T &t, const F &) {
+        decltype(auto) static_if(std::true_type, const T& t, const F&) {
             return (t);
         }
 
         template<typename T, typename F>
-        decltype(auto) static_if(std::false_type, const T &, const F &f) {
+        decltype(auto) static_if(std::false_type, const T&, const F& f) {
             return (f);
         }
 
         template<bool B, typename T, typename F>
-        decltype(auto) static_if(const T &t, const F &f) {
+        decltype(auto) static_if(const T& t, const F& f) {
             return static_if(std::integral_constant<bool, B>{}, t, f);
         }
 
         template<bool B, typename T>
-        decltype(auto) static_if(const T &t) {
+        decltype(auto) static_if(const T& t) {
             return static_if(std::integral_constant<bool, B>{}, t, empty_callable());
         }
 

@@ -38,16 +38,30 @@ TEST_CASE("Prepared replace range") {
     storage.replace(UserAndVisit{3, 1, "Shine on"});
 
     std::vector<User> users;
+    std::vector<std::unique_ptr<User>> userPointers;
     std::vector<User> expected;
+    auto lambda = [](const std::unique_ptr<User>& pointer) -> const User& {
+        return *pointer;
+    };
     SECTION("empty") {
         expected.push_back(User{1, "Team BS"});
         expected.push_back(User{2, "Shy'm"});
         expected.push_back(User{3, "Maître Gims"});
-        try {
-            auto statement = storage.prepare(replace_range(users.begin(), users.end()));
-            REQUIRE(false);
-        } catch(const std::system_error &e) {
-            //..
+        SECTION("straight") {
+            try {
+                auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+                REQUIRE(false);
+            } catch(const std::system_error& e) {
+                //..
+            }
+        }
+        SECTION("pointers") {
+            try {
+                auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda));
+                REQUIRE(false);
+            } catch(const std::system_error& e) {
+                //..
+            }
         }
     }
     SECTION("one existing") {
@@ -55,11 +69,20 @@ TEST_CASE("Prepared replace range") {
         expected.push_back(user);
         expected.push_back(User{2, "Shy'm"});
         expected.push_back(User{3, "Maître Gims"});
-        users.push_back(user);
-        auto statement = storage.prepare(replace_range(users.begin(), users.end()));
-        REQUIRE(get<0>(statement) == users.begin());
-        REQUIRE(get<1>(statement) == users.end());
-        storage.execute(statement);
+        SECTION("straight") {
+            users.push_back(user);
+            auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+            REQUIRE(get<0>(statement) == users.begin());
+            REQUIRE(get<1>(statement) == users.end());
+            storage.execute(statement);
+        }
+        SECTION("pointers") {
+            userPointers.push_back(std::make_unique<User>(user));
+            auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda));
+            REQUIRE(get<0>(statement) == userPointers.begin());
+            REQUIRE(get<1>(statement) == userPointers.end());
+            storage.execute(statement);
+        }
     }
     SECTION("one existing and one new") {
         User user{2, "Raye"};
@@ -68,22 +91,46 @@ TEST_CASE("Prepared replace range") {
         expected.push_back(user);
         expected.push_back(User{3, "Maître Gims"});
         expected.push_back(user2);
-        users.push_back(user);
-        users.push_back(user2);
-        auto statement = storage.prepare(replace_range(users.begin(), users.end()));
-        REQUIRE(get<0>(statement) == users.begin());
-        REQUIRE(get<1>(statement) == users.end());
-        storage.execute(statement);
+        SECTION("straight") {
+            users.push_back(user);
+            users.push_back(user2);
+            auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+            REQUIRE(get<0>(statement) == users.begin());
+            REQUIRE(get<1>(statement) == users.end());
+            storage.execute(statement);
+        }
+        SECTION("pointers") {
+            userPointers.push_back(std::make_unique<User>(user));
+            userPointers.push_back(std::make_unique<User>(user2));
+            auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda));
+            REQUIRE(get<0>(statement) == userPointers.begin());
+            REQUIRE(get<1>(statement) == userPointers.end());
+            storage.execute(statement);
+        }
     }
     SECTION("All existing") {
-        users.push_back(User{1, "Selena Gomez"});
-        users.push_back(User{2, "Polina"});
-        users.push_back(User{3, "Polina"});
+        User user{1, "Selena Gomez"};
+        User user2{2, "Polina"};
+        User user3{3, "Polina"};
+        users.push_back(user);
+        users.push_back(user2);
+        users.push_back(user3);
         expected = users;
-        auto statement = storage.prepare(replace_range(users.begin(), users.end()));
-        REQUIRE(get<0>(statement) == users.begin());
-        REQUIRE(get<1>(statement) == users.end());
-        storage.execute(statement);
+        SECTION("straight") {
+            auto statement = storage.prepare(replace_range(users.begin(), users.end()));
+            REQUIRE(get<0>(statement) == users.begin());
+            REQUIRE(get<1>(statement) == users.end());
+            storage.execute(statement);
+        }
+        SECTION("pointers") {
+            userPointers.push_back(std::make_unique<User>(user));
+            userPointers.push_back(std::make_unique<User>(user2));
+            userPointers.push_back(std::make_unique<User>(user3));
+            auto statement = storage.prepare(replace_range<User>(userPointers.begin(), userPointers.end(), lambda));
+            REQUIRE(get<0>(statement) == userPointers.begin());
+            REQUIRE(get<1>(statement) == userPointers.end());
+            storage.execute(statement);
+        }
     }
     auto rows = storage.get_all<User>();
     REQUIRE_THAT(rows, UnorderedEquals(expected));

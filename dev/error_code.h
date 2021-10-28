@@ -23,6 +23,10 @@ namespace sqlite_orm {
         failed_to_init_a_backup,
         unknown_member_value,
         incorrect_order,
+        cannot_use_default_value,
+        arguments_count_does_not_match,
+        function_not_found,
+        index_is_out_of_bounds,
     };
 
 }
@@ -31,7 +35,7 @@ namespace sqlite_orm {
 
     class orm_error_category : public std::error_category {
       public:
-        const char *name() const noexcept override final {
+        const char* name() const noexcept override final {
             return "ORM error";
         }
 
@@ -63,6 +67,14 @@ namespace sqlite_orm {
                     return "Unknown member value";
                 case orm_error_code::incorrect_order:
                     return "Incorrect order";
+                case orm_error_code::cannot_use_default_value:
+                    return "The statement 'INSERT INTO * DEFAULT VALUES' can be used with only one row";
+                case orm_error_code::arguments_count_does_not_match:
+                    return "Arguments count does not match";
+                case orm_error_code::function_not_found:
+                    return "Function not found";
+                case orm_error_code::index_is_out_of_bounds:
+                    return "Index is out of bounds";
                 default:
                     return "unknown error";
             }
@@ -71,7 +83,7 @@ namespace sqlite_orm {
 
     class sqlite_error_category : public std::error_category {
       public:
-        const char *name() const noexcept override final {
+        const char* name() const noexcept override final {
             return "SQLite error";
         }
 
@@ -80,18 +92,18 @@ namespace sqlite_orm {
         }
     };
 
-    inline const orm_error_category &get_orm_error_category() {
+    inline const orm_error_category& get_orm_error_category() {
         static orm_error_category res;
         return res;
     }
 
-    inline const sqlite_error_category &get_sqlite_error_category() {
+    inline const sqlite_error_category& get_sqlite_error_category() {
         static sqlite_error_category res;
         return res;
     }
 
     template<typename... T>
-    std::string get_error_message(sqlite3 *db, T &&... args) {
+    std::string get_error_message(sqlite3* db, T&&... args) {
         std::ostringstream stream;
         using unpack = int[];
         static_cast<void>(unpack{0, (static_cast<void>(static_cast<void>(stream << args)), 0)...});
@@ -100,7 +112,7 @@ namespace sqlite_orm {
     }
 
     template<typename... T>
-    [[noreturn]] void throw_error(sqlite3 *db, T &&... args) {
+    [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                 get_error_message(db, std::forward<T>(args)...));
     }

@@ -43,7 +43,7 @@ TEST_CASE("statement_serializator column names") {
                 this->id = value;
             }
 
-            const std::string &getName() const {
+            const std::string& getName() const {
                 return this->name;
             }
 

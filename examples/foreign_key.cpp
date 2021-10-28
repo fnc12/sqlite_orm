@@ -23,7 +23,7 @@ struct Track {
     std::unique_ptr<int> trackArtist;  //  must map to &Artist::artistId
 };
 
-int main(int, char **argv) {
+int main(int, char** argv) {
     cout << "path = " << argv[0] << endl;
 
     using namespace sqlite_orm;
@@ -38,7 +38,7 @@ int main(int, char **argv) {
                                                make_column("trackartist", &Track::trackArtist),
                                                foreign_key(&Track::trackArtist).references(&Artist::artistId)));
         auto syncSchemaRes = storage.sync_schema();
-        for(auto &p: syncSchemaRes) {
+        for(auto& p: syncSchemaRes) {
             cout << p.first << " " << p.second << endl;
         }
 
@@ -57,7 +57,7 @@ int main(int, char **argv) {
             //  does not correspond to row in the artist table.
             storage.replace(Track{14, "Mr. Bojangles", std::make_unique<int>(3)});
             assert(0);
-        } catch(const std::system_error &e) {
+        } catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
 
@@ -72,7 +72,7 @@ int main(int, char **argv) {
             storage.update_all(set(assign(&Track::trackArtist, 3)),
                                where(is_equal(&Track::trackName, "Mr. Bojangles")));
             assert(0);
-        } catch(const std::system_error &e) {
+        } catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
 
@@ -92,7 +92,7 @@ int main(int, char **argv) {
             //  the track table contains a row that refer to it.
             storage.remove_all<Artist>(where(is_equal(&Artist::artistName, "Frank Sinatra")));
             assert(0);
-        } catch(const std::system_error &e) {
+        } catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
 
@@ -106,7 +106,7 @@ int main(int, char **argv) {
             //  exists records in the track table that refer to it.
             storage.update_all(set(assign(&Artist::artistId, 4)), where(is_equal(&Artist::artistName, "Dean Martin")));
             assert(0);
-        } catch(const std::system_error &e) {
+        } catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
 
@@ -127,7 +127,7 @@ int main(int, char **argv) {
                        make_column("trackartist", &Track::trackArtist),
                        foreign_key(&Track::trackArtist).references(&Artist::artistId).on_update.cascade()));
         auto syncSchemaRes = storage.sync_schema();
-        for(auto &p: syncSchemaRes) {
+        for(auto& p: syncSchemaRes) {
             cout << p.first << " " << p.second << endl;
         }
 
@@ -150,13 +150,13 @@ int main(int, char **argv) {
         storage.update_all(set(c(&Artist::artistId) = 100), where(c(&Artist::artistName) == "Dean Martin"));
 
         cout << "artists:" << endl;
-        for(auto &artist: storage.iterate<Artist>()) {
+        for(auto& artist: storage.iterate<Artist>()) {
             cout << artist.artistId << '\t' << artist.artistName << endl;
         }
         cout << endl;
 
         cout << "tracks:" << endl;
-        for(auto &track: storage.iterate<Track>()) {
+        for(auto& track: storage.iterate<Track>()) {
             cout << track.trackId << '\t' << track.trackName << '\t';
             if(track.trackArtist) {
                 cout << *track.trackArtist;
@@ -179,7 +179,7 @@ int main(int, char **argv) {
                        make_column("trackartist", &Track::trackArtist, default_value(0)),
                        foreign_key(&Track::trackArtist).references(&Artist::artistId).on_delete.set_default()));
         auto syncSchemaRes = storage.sync_schema();
-        for(auto &p: syncSchemaRes) {
+        for(auto& p: syncSchemaRes) {
             cout << p.first << " " << p.second << endl;
         }
 
@@ -198,7 +198,7 @@ int main(int, char **argv) {
         try {
             storage.remove_all<Artist>(where(c(&Artist::artistName) == "Sammy Davis Jr."));
             assert(0);
-        } catch(const std::system_error &e) {
+        } catch(const std::system_error& e) {
             cout << e.what() << endl;
         }
 
@@ -211,13 +211,13 @@ int main(int, char **argv) {
         storage.remove_all<Artist>(where(c(&Artist::artistName) == "Sammy Davis Jr."));
 
         cout << "artists:" << endl;
-        for(auto &artist: storage.iterate<Artist>()) {
+        for(auto& artist: storage.iterate<Artist>()) {
             cout << artist.artistId << '\t' << artist.artistName << endl;
         }
         cout << endl;
 
         cout << "tracks:" << endl;
-        for(auto &track: storage.iterate<Track>()) {
+        for(auto& track: storage.iterate<Track>()) {
             cout << track.trackId << '\t' << track.trackName << '\t';
             if(track.trackArtist) {
                 cout << *track.trackArtist;

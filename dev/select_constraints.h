@@ -3,24 +3,48 @@
 #include <string>  //  std::string
 #include <utility>  //  std::declval
 #include <tuple>  //  std::tuple, std::get, std::tuple_size
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>  // std::optional
+#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "is_base_of_template.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "optional_container.h"
+#include "ast/where.h"
 
 namespace sqlite_orm {
 
     namespace internal {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        template<class T>
+        struct as_optional_t {
+            using value_type = T;
+
+            value_type value;
+        };
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+        struct distinct_string {
+            operator std::string() const {
+                return "DISTINCT";
+            }
+        };
 
         /**
          *  DISCTINCT generic container.
          */
         template<class T>
-        struct distinct_t {
-            T t;
+        struct distinct_t : distinct_string {
+            using value_type = T;
 
+            value_type value;
+
+            distinct_t(value_type value_) : value(std::move(value_)) {}
+        };
+
+        struct all_string {
             operator std::string() const {
-                return "DISTINCT";
+                return "ALL";
             }
         };
 
@@ -28,12 +52,10 @@ namespace sqlite_orm {
          *  ALL generic container.
          */
         template<class T>
-        struct all_t {
-            T t;
+        struct all_t : all_string {
+            T value;
 
-            operator std::string() const {
-                return "ALL";
-            }
+            all_t(T value_) : value(std::move(value_)) {}
         };
 
         template<class... Args>
@@ -45,6 +67,12 @@ namespace sqlite_orm {
 
             static constexpr const int count = std::tuple_size<columns_type>::value;
         };
+
+        template<class T>
+        struct is_columns : std::false_type {};
+
+        template<class... Args>
+        struct is_columns<columns_t<Args...>> : std::true_type {};
 
         struct set_string {
             operator std::string() const {
@@ -67,10 +95,41 @@ namespace sqlite_orm {
          */
         template<class T, class F>
         struct column_pointer {
+            using self = column_pointer<T, F>;
             using type = T;
             using field_type = F;
 
             field_type field;
+
+            template<class R>
+            internal::is_equal_t<self, R> operator==(R rhs) const {
+                return {*this, std::move(rhs)};
+            }
+
+            template<class R>
+            internal::is_not_equal_t<self, R> operator!=(R rhs) const {
+                return {*this, std::move(rhs)};
+            }
+
+            template<class R>
+            internal::lesser_than_t<self, R> operator<(R rhs) const {
+                return {*this, std::move(rhs)};
+            }
+
+            template<class R>
+            internal::lesser_or_equal_t<self, R> operator<=(R rhs) const {
+                return {*this, std::move(rhs)};
+            }
+
+            template<class R>
+            internal::greater_than_t<self, R> operator>(R rhs) const {
+                return {*this, std::move(rhs)};
+            }
+
+            template<class R>
+            internal::greater_or_equal_t<self, R> operator>=(R rhs) const {
+                return {*this, std::move(rhs)};
+            }
         };
 
         /**
@@ -85,6 +144,12 @@ namespace sqlite_orm {
             conditions_type conditions;
             bool highest_level = false;
         };
+
+        template<class T>
+        struct is_select : std::false_type {};
+
+        template<class T, class... Args>
+        struct is_select<select_t<T, Args...>> : std::true_type {};
 
         /**
          *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
@@ -129,48 +194,51 @@ namespace sqlite_orm {
             union_t(left_type l, right_type r) : union_t(std::move(l), std::move(r), false) {}
         };
 
-        /**
-         *  EXCEPT object type.
-         */
-        template<class L, class R>
-        struct except_t : public compound_operator<L, R> {
-            using super = compound_operator<L, R>;
-            using left_type = typename super::left_type;
-            using right_type = typename super::right_type;
-
-            using super::super;
-
+        struct except_string {
             operator std::string() const {
                 return "EXCEPT";
             }
         };
 
         /**
-         *  INTERSECT object type.
+         *  EXCEPT object type.
          */
         template<class L, class R>
-        struct intersect_t : public compound_operator<L, R> {
+        struct except_t : compound_operator<L, R>, except_string {
             using super = compound_operator<L, R>;
             using left_type = typename super::left_type;
             using right_type = typename super::right_type;
 
             using super::super;
+        };
 
+        struct intersect_string {
             operator std::string() const {
                 return "INTERSECT";
             }
+        };
+        /**
+         *  INTERSECT object type.
+         */
+        template<class L, class R>
+        struct intersect_t : compound_operator<L, R>, intersect_string {
+            using super = compound_operator<L, R>;
+            using left_type = typename super::left_type;
+            using right_type = typename super::right_type;
+
+            using super::super;
         };
 
         /**
          *  Generic way to get DISTINCT value from any type.
          */
         template<class T>
-        bool get_distinct(const T &) {
+        bool get_distinct(const T&) {
             return false;
         }
 
         template<class... Args>
-        bool get_distinct(const columns_t<Args...> &cols) {
+        bool get_distinct(const columns_t<Args...>& cols) {
             return cols.distinct;
         }
 
@@ -245,9 +313,16 @@ namespace sqlite_orm {
             static_assert(count_tuple<T, is_group_by>::value <= 1, "a single query cannot contain > 1 GROUP BY blocks");
             static_assert(count_tuple<T, is_order_by>::value <= 1, "a single query cannot contain > 1 ORDER BY blocks");
             static_assert(count_tuple<T, is_limit>::value <= 1, "a single query cannot contain > 1 LIMIT blocks");
+            static_assert(count_tuple<T, is_from>::value <= 1, "a single query cannot contain > 1 FROM blocks");
         }
     }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    template<class T>
+    internal::as_optional_t<T> as_optional(T value) {
+        return {std::move(value)};
+    }
+#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     internal::then_t<T> then(T t) {
         return {std::move(t)};

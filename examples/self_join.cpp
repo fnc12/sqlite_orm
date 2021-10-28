@@ -36,7 +36,7 @@ template<class T>
 struct custom_alias : sqlite_orm::alias_tag {
     using type = T;
 
-    static const std::string &get() {
+    static const std::string& get() {
         static const std::string res = "emp";
         return res;
     }
@@ -205,7 +205,7 @@ int main() {
                     c(&Employee::firstName) || " " || c(&Employee::lastName)),
             inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
         cout << "firstNames count = " << firstNames.size() << endl;
-        for(auto &row: firstNames) {
+        for(auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
         }
 
@@ -225,7 +225,7 @@ int main() {
                     c(&Employee::firstName) || " " || c(&Employee::lastName)),
             inner_join<als>(on(alias_column<als>(&Employee::reportsTo) == c(&Employee::employeeId))));
         cout << "firstNames count = " << firstNames.size() << endl;
-        for(auto &row: firstNames) {
+        for(auto& row: firstNames) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << endl;
         }
     }
