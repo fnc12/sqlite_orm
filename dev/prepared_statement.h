@@ -308,6 +308,9 @@ namespace sqlite_orm {
 
         template<class T>
         using is_insert_constraint = std::is_same<insert_constraint, T>;
+
+        template<class T>
+        struct is_upsert_clause;
     }
 
     inline internal::insert_constraint or_rollback() {
