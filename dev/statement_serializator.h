@@ -1283,23 +1283,25 @@ namespace sqlite_orm {
             auto& tImpl = context.impl.template get_impl<object_type>();
             std::stringstream ss;
             ss << "REPLACE INTO '" << tImpl.table.name << "' (";
-            auto columnNames = tImpl.table.column_names();
-            auto columnNamesCount = columnNames.size();
-            for(size_t i = 0; i < columnNamesCount; ++i) {
-                ss << "\"" << columnNames[i] << "\"";
-                if(i < columnNamesCount - 1) {
-                    ss << ", ";
+
+            auto columnIndex = 0;
+            auto columnsCount = tImpl.table.count_columns_amount();
+            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                ss << " \"" << column.name << "\"";
+                if(columnIndex < columnsCount - 1) {
+                    ss << ",";
                 } else {
-                    ss << ") ";
+                    ss << ")";
                 }
-            }
-            ss << "VALUES ";
-            auto valuesString = [columnNamesCount] {
+                ++columnIndex;
+            });
+            ss << " VALUES ";
+            auto valuesString = [columnsCount] {
                 std::stringstream ss_;
                 ss_ << "(";
-                for(size_t i = 0; i < columnNamesCount; ++i) {
+                for(auto i = 0; i < columnsCount; ++i) {
                     ss_ << "?";
-                    if(i < columnNamesCount - 1) {
+                    if(i < columnsCount - 1) {
                         ss_ << ", ";
                     } else {
                         ss_ << ")";
@@ -1348,19 +1350,19 @@ namespace sqlite_orm {
                 std::make_pair(context.impl.find_table_name(typeid(primary_type)), std::string{}));
             iterate_ast(get.conditions, collector);
             std::stringstream ss;
-            ss << "SELECT ";
+            ss << "SELECT";
             auto& tImpl = context.impl.template get_impl<primary_type>();
-            auto columnNames = tImpl.table.column_names();
-            for(size_t i = 0; i < columnNames.size(); ++i) {
-                ss << "\"" << tImpl.table.name << "\"."
-                   << "\"" << columnNames[i] << "\"";
-                if(i < columnNames.size() - 1) {
-                    ss << ", ";
-                } else {
-                    ss << " ";
+            auto columnIndex = 0;
+            auto columnsCount = tImpl.table.count_columns_amount();
+            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount, &tImpl](auto& column) {
+                ss << " \"" << tImpl.table.name << "\"."
+                   << "\"" << column.name << "\"";
+                if(columnIndex < columnsCount - 1) {
+                    ss << ",";
                 }
-            }
-            ss << "FROM ";
+                ++columnIndex;
+            });
+            ss << " FROM ";
             std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
                                                                         collector.table_names.end());
             for(size_t i = 0; i < tableNames.size(); ++i) {
@@ -1417,25 +1419,25 @@ namespace sqlite_orm {
             using primary_type = typename T::type;
             auto& tImpl = context.impl.template get_impl<primary_type>();
             std::stringstream ss;
-            ss << "SELECT ";
-            auto columnNames = tImpl.table.column_names();
-            for(size_t i = 0; i < columnNames.size(); ++i) {
-                ss << "\"" << columnNames[i] << "\"";
-                if(i < columnNames.size() - 1) {
-                    ss << ",";
+            ss << "SELECT";
+            auto columnIndex = 0;
+            auto columnsCount = tImpl.table.count_columns_amount();
+            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                ss << " \"" << column.name << "\"";
+                if(columnIndex < columnsCount - 1) {
+                    ss << ", ";
                 }
-                ss << " ";
-            }
-            ss << "FROM '" << tImpl.table.name << "' WHERE ";
+                ++columnIndex;
+            });
+            ss << " FROM '" << tImpl.table.name << "' WHERE ";
             auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
             if(!primaryKeyColumnNames.empty()) {
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ? ";
+                    ss << " \"" << primaryKeyColumnNames[i] << "\""
+                       << " = ?";
                     if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << "AND";
+                        ss << " AND";
                     }
-                    ss << ' ';
                 }
                 return ss.str();
             } else {

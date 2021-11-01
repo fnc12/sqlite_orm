@@ -72,7 +72,7 @@ add_executable(unit_tests
 	statement_serializator_tests/arithmetic_operators.cpp
 	statement_serializator_tests/core_functions.cpp
 	statement_serializator_tests/comparison_operators.cpp
-	statement_serializator_tests/unique.cpp
+	statement_serializator_tests/column_constraints/unique.cpp
 	statement_serializator_tests/foreign_key.cpp
 	statement_serializator_tests/collate.cpp
 	statement_serializator_tests/check.cpp

@@ -284,3 +284,67 @@ TEST_CASE("issue730") {
 
     static_assert(std::is_same<Rows, ExpectedRows>::value, "");
 }
+
+TEST_CASE("issue822") {
+    class A {
+      public:
+        A() = default;
+        A(const uint8_t& address, const uint8_t& type, const uint8_t& idx, std::shared_ptr<double> value) :
+            address(address), type(type), idx(idx), value(std::move(value)){};
+
+        const uint8_t& getAddress() const {
+            return this->address;
+        }
+
+        void setAddress(const uint8_t& address) {
+            this->address = address;
+        }
+
+        const uint8_t& getType() const {
+            return this->type;
+        }
+
+        void setType(const uint8_t& type) {
+            this->type = type;
+        }
+
+        const uint8_t& getIndex() const {
+            return this->idx;
+        }
+
+        void setIndex(const uint8_t& index) {
+            this->idx = index;
+        }
+
+        std::shared_ptr<double> getValue() const {
+            return this->value;
+        }
+
+        void setValue(std::shared_ptr<double> value) {
+            this->value = std::move(value);
+        }
+
+      private:
+        uint8_t address;
+        uint8_t type;
+        uint8_t idx;
+        std::shared_ptr<double> value;
+    };
+    auto storage = make_storage("",
+                                make_table("A",
+                                           make_column("address", &A::getAddress, &A::setAddress),
+                                           make_column("type", &A::getType, &A::setType),
+                                           make_column("idx", &A::getIndex, &A::setIndex),
+                                           make_column("value", &A::getValue, &A::setValue),
+                                           primary_key(&A::getAddress, &A::getType, &A::getIndex)));
+    storage.sync_schema();
+    storage.replace(A(1, 1, 0, std::make_shared<double>(55.5)));
+    auto records = storage.get_all<A>(where(c(&A::getAddress) == 1 and c(&A::getType) == 1 and c(&A::getIndex) == 0));
+    if(records.size() != 0) {
+        A a = records[0];
+        a.setValue(std::make_shared<double>(10));
+        storage.update(a);
+        records = storage.get_all<A>(where(c(&A::getAddress) == 1 and c(&A::getType) == 1 and c(&A::getIndex) == 0));
+        std::ignore = records;
+    }
+}
