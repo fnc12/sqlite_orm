@@ -4,13 +4,15 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator primary key") {
-    {  //  empty pk
+    std::string value;
+    decltype(value) expected;
+    SECTION("empty") {
         internal::serializator_context_base context;
         auto pk = primary_key();
-        auto value = serialize(pk, context);
-        REQUIRE(value == "PRIMARY KEY");
+        value = serialize(pk, context);
+        expected = "PRIMARY KEY";
     }
-    {
+    SECTION("not empty") {
         struct User {
             int id = 0;
             std::string name;
@@ -20,25 +22,26 @@ TEST_CASE("statement_serializator primary key") {
         auto storageImpl = storage_impl_t{table};
         using context_t = internal::serializator_context<storage_impl_t>;
         context_t context{storageImpl};
-        {  //  single column pk
+        SECTION("single column pk") {
             auto pk = primary_key(&User::id);
-            auto value = serialize(pk, context);
-            REQUIRE(value == "PRIMARY KEY(id)");
+            value = serialize(pk, context);
+            expected = "PRIMARY KEY(id)";
         }
-        {  //  double column pk
+        SECTION("double column pk") {
             auto pk = primary_key(&User::id, &User::name);
-            auto value = serialize(pk, context);
-            REQUIRE(value == "PRIMARY KEY(id, name)");
+            value = serialize(pk, context);
+            expected = "PRIMARY KEY(id, name)";
         }
-        {  //  empty pk asc
+        SECTION("empty pk asc") {
             auto pk = primary_key().asc();
-            auto value = serialize(pk, context);
-            REQUIRE(value == "PRIMARY KEY ASC");
+            value = serialize(pk, context);
+            expected = "PRIMARY KEY ASC";
         }
-        {  //  empty pk desc
+        SECTION("empty pk desc") {
             auto pk = primary_key().desc();
-            auto value = serialize(pk, context);
-            REQUIRE(value == "PRIMARY KEY DESC");
+            value = serialize(pk, context);
+            expected = "PRIMARY KEY DESC";
         }
     }
+    REQUIRE(value == expected);
 }

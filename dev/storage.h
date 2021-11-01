@@ -92,20 +92,20 @@ namespace sqlite_orm {
                 using table_type = typename std::decay<decltype(tableImpl.table)>::type;
                 std::stringstream ss;
                 ss << "CREATE TABLE '" << tableName << "' ( ";
-                auto columnsCount = tableImpl.table.columns_count;
+                auto elementsCount = tableImpl.table.elements_count;
                 auto index = 0;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                iterate_tuple(tableImpl.table.columns, [columnsCount, &index, &ss, &context](auto& c) {
+                iterate_tuple(tableImpl.table.columns, [elementsCount, &index, &ss, &context](auto& c) {
                     ss << serialize(c, context);
-                    if(index < columnsCount - 1) {
+                    if(index < elementsCount - 1) {
                         ss << ", ";
                     }
                     index++;
                 });
                 ss << ")";
                 if(table_type::is_without_rowid) {
-                    ss << " WITHOUT ROWID ";
+                    ss << " WITHOUT ROWID";
                 }
                 perform_void_exec(db, ss.str());
             }
@@ -791,9 +791,10 @@ namespace sqlite_orm {
                 return sync_schema_result::already_in_sync;
             }
 
-            template<template<class...> class TTable, class... Tss, class... Cs>
-            sync_schema_result
-            schema_status(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+            template<class T, bool WithoutRowId, class... Cs, class... Tss>
+            sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
+                                             sqlite3* db,
+                                             bool preserve) {
                 return tImpl.schema_status(db, preserve);
             }
 
@@ -807,9 +808,10 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<template<class...> class TTable, class... Tss, class... Cs>
-            sync_schema_result
-            sync_table(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+            template<class T, bool WithoutRowId, class... Args, class... Tss>
+            sync_schema_result sync_table(const storage_impl<table_t<T, WithoutRowId, Args...>, Tss...>& tImpl,
+                                          sqlite3* db,
+                                          bool preserve) {
                 auto res = sync_schema_result::already_in_sync;
 
                 auto schema_stat = tImpl.schema_status(db, preserve);

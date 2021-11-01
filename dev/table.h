@@ -19,39 +19,32 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<bool _without_rowid>
-        struct table_base {
+        struct basic_table {
 
             /**
              *  Table name.
              */
             std::string name;
-
-            static constexpr const bool is_without_rowid = _without_rowid;
         };
 
-        template<class T, class... Cs>
-        struct table_without_rowid_t;
-
         /**
-         *  Template for table interface class.
+         *  Table class.
          */
-        template<class T, bool _without_rowid, class... Cs>
-        struct table_template : table_base<_without_rowid> {
+        template<class T, bool WithoutRowId, class... Cs>
+        struct table_t : basic_table {
+            using super = basic_table;
             using object_type = T;
-            using columns_type = std::tuple<Cs...>;
-            using super = table_base<_without_rowid>;
+            using elements_type = std::tuple<Cs...>;
 
-            static constexpr const int columns_count = static_cast<int>(std::tuple_size<columns_type>::value);
+            static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
+            static constexpr const bool is_without_rowid = WithoutRowId;
 
-            using super::name;
-            columns_type columns;
+            elements_type columns;
 
-            table_template(std::string name_, columns_type columns_) :
-                super{std::move(name_)}, columns{std::move(columns_)} {}
+            table_t(std::string name_, elements_type columns_) : super{move(name_)}, columns{move(columns_)} {}
 
-            table_without_rowid_t<T, Cs...> without_rowid() const {
-                return {name, columns};
+            table_t<T, true, Cs...> without_rowid() const {
+                return {this->name, this->columns};
             }
 
             /**
@@ -88,17 +81,6 @@ namespace sqlite_orm {
                             }
                         })(c);
                     }
-                });
-                return res;
-            }
-
-            /**
-             *  @return vector of column names of table.
-             */
-            std::vector<std::string> column_names() const {
-                std::vector<std::string> res;
-                this->for_each_column([&res](auto& c) {
-                    res.push_back(c.name);
                 });
                 return res;
             }
@@ -200,6 +182,14 @@ namespace sqlite_orm {
                 return res;
             }
 
+            int count_columns_amount() const {
+                auto res = 0;
+                this->for_each_column([&res](auto&) {
+                    ++res;
+                });
+                return res;
+            }
+
             /**
              *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise
              * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
@@ -242,7 +232,7 @@ namespace sqlite_orm {
 
             std::vector<table_info> get_table_info() const {
                 std::vector<table_info> res;
-                res.reserve(size_t(this->columns_count));
+                res.reserve(size_t(this->elements_count));
                 this->for_each_column([&res](auto& col) {
                     std::string dft;
                     using field_type = typename std::decay<decltype(col)>::type::field_type;
@@ -272,22 +262,6 @@ namespace sqlite_orm {
                 return res;
             }
         };
-
-        /**
-         *  Table interface class.
-         */
-        template<class T, class... Cs>
-        struct table_t : table_template<T, false, Cs...> {
-            using table_template<T, false, Cs...>::table_template;
-        };
-
-        /**
-         *  Table interface class with 'without_rowid' tag.
-         */
-        template<class T, class... Cs>
-        struct table_without_rowid_t : table_template<T, true, Cs...> {
-            using table_template<T, true, Cs...>::table_template;
-        };
     }
 
     /**
@@ -295,12 +269,12 @@ namespace sqlite_orm {
      *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
     template<class... Cs, class T = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
-    internal::table_t<T, Cs...> make_table(const std::string& name, Cs... args) {
+    internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
 
     template<class T, class... Cs>
-    internal::table_t<T, Cs...> make_table(const std::string& name, Cs... args) {
+    internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
 }

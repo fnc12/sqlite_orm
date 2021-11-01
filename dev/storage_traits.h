@@ -8,14 +8,11 @@ namespace sqlite_orm {
         template<class... Ts>
         struct storage_impl;
 
-        template<class T, class... Args>
+        template<class T, bool WithoutRowId, class... Cs>
         struct table_t;
 
         template<class A, class B>
         struct foreign_key_t;
-
-        template<class T, class... Args>
-        struct table_without_rowid_t;
 
         namespace storage_traits {
 
@@ -78,7 +75,7 @@ namespace sqlite_orm {
                 S,
                 T,
                 typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type>
-                : std::integral_constant<int, S::table_type::columns_count> {};
+                : std::integral_constant<int, S::table_type::elements_count> {};
 
             template<class S, class T>
             struct storage_columns_count_impl<
@@ -96,19 +93,8 @@ namespace sqlite_orm {
             /**
              *  type is std::tuple of field types of mapped colums.
              */
-            template<class T, class... Args>
-            struct table_types<table_t<T, Args...>> {
-                using args_tuple = std::tuple<Args...>;
-                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
-
-                using type = typename tuple_transformer<columns_tuple, column_field_type>::type;
-            };
-
-            /**
-             *  type is std::tuple of field types of mapped colums.
-             */
-            template<class T, class... Args>
-            struct table_types<table_without_rowid_t<T, Args...>> {
+            template<class T, bool WithoutRowId, class... Args>
+            struct table_types<table_t<T, WithoutRowId, Args...>> {
                 using args_tuple = std::tuple<Args...>;
                 using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
 
@@ -193,8 +179,8 @@ namespace sqlite_orm {
             struct table_foreign_keys_count;
 
             template<class T, class... Cs, class O>
-            struct table_foreign_keys_count<table_t<T, Cs...>, O> {
-                using table_type = table_t<T, Cs...>;
+            struct table_foreign_keys_count<table_t<T, false, Cs...>, O> {
+                using table_type = table_t<T, false, Cs...>;
 
                 static constexpr const int value = table_foreign_keys_count_impl<O, Cs...>::value;
             };
@@ -280,9 +266,9 @@ namespace sqlite_orm {
             template<class T, class O>
             struct table_fk_references;
 
-            template<class T, class... Cs, class O>
-            struct table_fk_references<table_t<T, Cs...>, O> {
-                using table_type = table_t<T, Cs...>;
+            template<class T, bool WithoutRowId, class... Cs, class O>
+            struct table_fk_references<table_t<T, WithoutRowId, Cs...>, O> {
+                using table_type = table_t<T, WithoutRowId, Cs...>;
 
                 using type = typename table_fk_references_impl<O, Cs...>::type;
             };

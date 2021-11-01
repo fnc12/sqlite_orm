@@ -7752,14 +7752,11 @@ namespace sqlite_orm {
         template<class... Ts>
         struct storage_impl;
 
-        template<class T, class... Args>
+        template<class T, bool WithoutRowId, class... Cs>
         struct table_t;
 
         template<class A, class B>
         struct foreign_key_t;
-
-        template<class T, class... Args>
-        struct table_without_rowid_t;
 
         namespace storage_traits {
 
@@ -7822,7 +7819,7 @@ namespace sqlite_orm {
                 S,
                 T,
                 typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type>
-                : std::integral_constant<int, S::table_type::columns_count> {};
+                : std::integral_constant<int, S::table_type::elements_count> {};
 
             template<class S, class T>
             struct storage_columns_count_impl<
@@ -7840,19 +7837,8 @@ namespace sqlite_orm {
             /**
              *  type is std::tuple of field types of mapped colums.
              */
-            template<class T, class... Args>
-            struct table_types<table_t<T, Args...>> {
-                using args_tuple = std::tuple<Args...>;
-                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
-
-                using type = typename tuple_transformer<columns_tuple, column_field_type>::type;
-            };
-
-            /**
-             *  type is std::tuple of field types of mapped colums.
-             */
-            template<class T, class... Args>
-            struct table_types<table_without_rowid_t<T, Args...>> {
+            template<class T, bool WithoutRowId, class... Args>
+            struct table_types<table_t<T, WithoutRowId, Args...>> {
                 using args_tuple = std::tuple<Args...>;
                 using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
 
@@ -7937,8 +7923,8 @@ namespace sqlite_orm {
             struct table_foreign_keys_count;
 
             template<class T, class... Cs, class O>
-            struct table_foreign_keys_count<table_t<T, Cs...>, O> {
-                using table_type = table_t<T, Cs...>;
+            struct table_foreign_keys_count<table_t<T, false, Cs...>, O> {
+                using table_type = table_t<T, false, Cs...>;
 
                 static constexpr const int value = table_foreign_keys_count_impl<O, Cs...>::value;
             };
@@ -8024,9 +8010,9 @@ namespace sqlite_orm {
             template<class T, class O>
             struct table_fk_references;
 
-            template<class T, class... Cs, class O>
-            struct table_fk_references<table_t<T, Cs...>, O> {
-                using table_type = table_t<T, Cs...>;
+            template<class T, bool WithoutRowId, class... Cs, class O>
+            struct table_fk_references<table_t<T, WithoutRowId, Cs...>, O> {
+                using table_type = table_t<T, WithoutRowId, Cs...>;
 
                 using type = typename table_fk_references_impl<O, Cs...>::type;
             };
@@ -8551,39 +8537,32 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<bool _without_rowid>
-        struct table_base {
+        struct basic_table {
 
             /**
              *  Table name.
              */
             std::string name;
-
-            static constexpr const bool is_without_rowid = _without_rowid;
         };
 
-        template<class T, class... Cs>
-        struct table_without_rowid_t;
-
         /**
-         *  Template for table interface class.
+         *  Table class.
          */
-        template<class T, bool _without_rowid, class... Cs>
-        struct table_template : table_base<_without_rowid> {
+        template<class T, bool WithoutRowId, class... Cs>
+        struct table_t : basic_table {
+            using super = basic_table;
             using object_type = T;
-            using columns_type = std::tuple<Cs...>;
-            using super = table_base<_without_rowid>;
+            using elements_type = std::tuple<Cs...>;
 
-            static constexpr const int columns_count = static_cast<int>(std::tuple_size<columns_type>::value);
+            static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
+            static constexpr const bool is_without_rowid = WithoutRowId;
 
-            using super::name;
-            columns_type columns;
+            elements_type columns;
 
-            table_template(std::string name_, columns_type columns_) :
-                super{std::move(name_)}, columns{std::move(columns_)} {}
+            table_t(std::string name_, elements_type columns_) : super{move(name_)}, columns{move(columns_)} {}
 
-            table_without_rowid_t<T, Cs...> without_rowid() const {
-                return {name, columns};
+            table_t<T, true, Cs...> without_rowid() const {
+                return {this->name, this->columns};
             }
 
             /**
@@ -8620,17 +8599,6 @@ namespace sqlite_orm {
                             }
                         })(c);
                     }
-                });
-                return res;
-            }
-
-            /**
-             *  @return vector of column names of table.
-             */
-            std::vector<std::string> column_names() const {
-                std::vector<std::string> res;
-                this->for_each_column([&res](auto& c) {
-                    res.push_back(c.name);
                 });
                 return res;
             }
@@ -8732,6 +8700,14 @@ namespace sqlite_orm {
                 return res;
             }
 
+            int count_columns_amount() const {
+                auto res = 0;
+                this->for_each_column([&res](auto&) {
+                    ++res;
+                });
+                return res;
+            }
+
             /**
              *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise
              * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
@@ -8774,7 +8750,7 @@ namespace sqlite_orm {
 
             std::vector<table_info> get_table_info() const {
                 std::vector<table_info> res;
-                res.reserve(size_t(this->columns_count));
+                res.reserve(size_t(this->elements_count));
                 this->for_each_column([&res](auto& col) {
                     std::string dft;
                     using field_type = typename std::decay<decltype(col)>::type::field_type;
@@ -8804,22 +8780,6 @@ namespace sqlite_orm {
                 return res;
             }
         };
-
-        /**
-         *  Table interface class.
-         */
-        template<class T, class... Cs>
-        struct table_t : table_template<T, false, Cs...> {
-            using table_template<T, false, Cs...>::table_template;
-        };
-
-        /**
-         *  Table interface class with 'without_rowid' tag.
-         */
-        template<class T, class... Cs>
-        struct table_without_rowid_t : table_template<T, true, Cs...> {
-            using table_template<T, true, Cs...>::table_template;
-        };
     }
 
     /**
@@ -8827,12 +8787,12 @@ namespace sqlite_orm {
      *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
     template<class... Cs, class T = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
-    internal::table_t<T, Cs...> make_table(const std::string& name, Cs... args) {
+    internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
 
     template<class T, class... Cs>
-    internal::table_t<T, Cs...> make_table(const std::string& name, Cs... args) {
+    internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
 }
@@ -14353,23 +14313,25 @@ namespace sqlite_orm {
             auto& tImpl = context.impl.template get_impl<object_type>();
             std::stringstream ss;
             ss << "REPLACE INTO '" << tImpl.table.name << "' (";
-            auto columnNames = tImpl.table.column_names();
-            auto columnNamesCount = columnNames.size();
-            for(size_t i = 0; i < columnNamesCount; ++i) {
-                ss << "\"" << columnNames[i] << "\"";
-                if(i < columnNamesCount - 1) {
-                    ss << ", ";
+
+            auto columnIndex = 0;
+            auto columnsCount = tImpl.table.count_columns_amount();
+            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                ss << " \"" << column.name << "\"";
+                if(columnIndex < columnsCount - 1) {
+                    ss << ",";
                 } else {
-                    ss << ") ";
+                    ss << ")";
                 }
-            }
-            ss << "VALUES ";
-            auto valuesString = [columnNamesCount] {
+                ++columnIndex;
+            });
+            ss << " VALUES ";
+            auto valuesString = [columnsCount] {
                 std::stringstream ss_;
                 ss_ << "(";
-                for(size_t i = 0; i < columnNamesCount; ++i) {
+                for(auto i = 0; i < columnsCount; ++i) {
                     ss_ << "?";
-                    if(i < columnNamesCount - 1) {
+                    if(i < columnsCount - 1) {
                         ss_ << ", ";
                     } else {
                         ss_ << ")";
@@ -14418,19 +14380,19 @@ namespace sqlite_orm {
                 std::make_pair(context.impl.find_table_name(typeid(primary_type)), std::string{}));
             iterate_ast(get.conditions, collector);
             std::stringstream ss;
-            ss << "SELECT ";
+            ss << "SELECT";
             auto& tImpl = context.impl.template get_impl<primary_type>();
-            auto columnNames = tImpl.table.column_names();
-            for(size_t i = 0; i < columnNames.size(); ++i) {
-                ss << "\"" << tImpl.table.name << "\"."
-                   << "\"" << columnNames[i] << "\"";
-                if(i < columnNames.size() - 1) {
-                    ss << ", ";
-                } else {
-                    ss << " ";
+            auto columnIndex = 0;
+            auto columnsCount = tImpl.table.count_columns_amount();
+            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount, &tImpl](auto& column) {
+                ss << " \"" << tImpl.table.name << "\"."
+                   << "\"" << column.name << "\"";
+                if(columnIndex < columnsCount - 1) {
+                    ss << ",";
                 }
-            }
-            ss << "FROM ";
+                ++columnIndex;
+            });
+            ss << " FROM ";
             std::vector<std::pair<std::string, std::string>> tableNames(collector.table_names.begin(),
                                                                         collector.table_names.end());
             for(size_t i = 0; i < tableNames.size(); ++i) {
@@ -14487,25 +14449,25 @@ namespace sqlite_orm {
             using primary_type = typename T::type;
             auto& tImpl = context.impl.template get_impl<primary_type>();
             std::stringstream ss;
-            ss << "SELECT ";
-            auto columnNames = tImpl.table.column_names();
-            for(size_t i = 0; i < columnNames.size(); ++i) {
-                ss << "\"" << columnNames[i] << "\"";
-                if(i < columnNames.size() - 1) {
-                    ss << ",";
+            ss << "SELECT";
+            auto columnIndex = 0;
+            auto columnsCount = tImpl.table.count_columns_amount();
+            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                ss << " \"" << column.name << "\"";
+                if(columnIndex < columnsCount - 1) {
+                    ss << ", ";
                 }
-                ss << " ";
-            }
-            ss << "FROM '" << tImpl.table.name << "' WHERE ";
+                ++columnIndex;
+            });
+            ss << " FROM '" << tImpl.table.name << "' WHERE ";
             auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
             if(!primaryKeyColumnNames.empty()) {
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ? ";
+                    ss << " \"" << primaryKeyColumnNames[i] << "\""
+                       << " = ?";
                     if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << "AND";
+                        ss << " AND";
                     }
-                    ss << ' ';
                 }
                 return ss.str();
             } else {
@@ -15126,20 +15088,20 @@ namespace sqlite_orm {
                 using table_type = typename std::decay<decltype(tableImpl.table)>::type;
                 std::stringstream ss;
                 ss << "CREATE TABLE '" << tableName << "' ( ";
-                auto columnsCount = tableImpl.table.columns_count;
+                auto elementsCount = tableImpl.table.elements_count;
                 auto index = 0;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                iterate_tuple(tableImpl.table.columns, [columnsCount, &index, &ss, &context](auto& c) {
+                iterate_tuple(tableImpl.table.columns, [elementsCount, &index, &ss, &context](auto& c) {
                     ss << serialize(c, context);
-                    if(index < columnsCount - 1) {
+                    if(index < elementsCount - 1) {
                         ss << ", ";
                     }
                     index++;
                 });
                 ss << ")";
                 if(table_type::is_without_rowid) {
-                    ss << " WITHOUT ROWID ";
+                    ss << " WITHOUT ROWID";
                 }
                 perform_void_exec(db, ss.str());
             }
@@ -15825,9 +15787,10 @@ namespace sqlite_orm {
                 return sync_schema_result::already_in_sync;
             }
 
-            template<template<class...> class TTable, class... Tss, class... Cs>
-            sync_schema_result
-            schema_status(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+            template<class T, bool WithoutRowId, class... Cs, class... Tss>
+            sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
+                                             sqlite3* db,
+                                             bool preserve) {
                 return tImpl.schema_status(db, preserve);
             }
 
@@ -15841,9 +15804,10 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<template<class...> class TTable, class... Tss, class... Cs>
-            sync_schema_result
-            sync_table(const storage_impl<TTable<Cs...>, Tss...>& tImpl, sqlite3* db, bool preserve) {
+            template<class T, bool WithoutRowId, class... Args, class... Tss>
+            sync_schema_result sync_table(const storage_impl<table_t<T, WithoutRowId, Args...>, Tss...>& tImpl,
+                                          sqlite3* db,
+                                          bool preserve) {
                 auto res = sync_schema_result::already_in_sync;
 
                 auto schema_stat = tImpl.schema_status(db, preserve);
