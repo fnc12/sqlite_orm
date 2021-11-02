@@ -15,15 +15,15 @@ namespace sqlite_orm {
             bool unique = false;
         };
 
-        template<class... Cols>
+        template<class... Els>
         struct index_t : index_base {
-            using columns_type = std::tuple<Cols...>;
+            using elements_type = std::tuple<Els...>;
             using object_type = void;
 
-            index_t(std::string name_, bool unique_, columns_type columns_) :
-                index_base{move(name_), unique_}, columns(move(columns_)) {}
+            index_t(std::string name_, bool unique_, elements_type elements_) :
+                index_base{move(name_), unique_}, elements(move(elements_)) {}
 
-            columns_type columns;
+            elements_type elements;
         };
     }
 

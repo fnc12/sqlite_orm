@@ -1957,7 +1957,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct column_base {
+        struct basic_column {
 
             /**
              *  Column name. Specified during construction in `make_column`.
@@ -1972,7 +1972,7 @@ namespace sqlite_orm {
          *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
          */
         template<class O, class T, class G /* = const T& (O::*)() const*/, class S /* = void (O::*)(T)*/, class... Op>
-        struct column_t : column_base {
+        struct column_t : basic_column {
             using object_type = O;
             using field_type = T;
             using constraints_type = std::tuple<Op...>;
@@ -2006,7 +2006,7 @@ namespace sqlite_orm {
                      getter_type getter_,
                      setter_type setter_,
                      constraints_type constraints_) :
-                column_base{std::move(name_)},
+                basic_column{move(name_)},
                 member_pointer(member_pointer_), getter(getter_), setter(setter_), constraints(move(constraints_)) {}
 
             /**
@@ -7607,15 +7607,15 @@ namespace sqlite_orm {
             bool unique = false;
         };
 
-        template<class... Cols>
+        template<class... Els>
         struct index_t : index_base {
-            using columns_type = std::tuple<Cols...>;
+            using elements_type = std::tuple<Els...>;
             using object_type = void;
 
-            index_t(std::string name_, bool unique_, columns_type columns_) :
-                index_base{move(name_), unique_}, columns(move(columns_)) {}
+            index_t(std::string name_, bool unique_, elements_type elements_) :
+                index_base{move(name_), unique_}, elements(move(elements_)) {}
 
-            columns_type columns;
+            elements_type elements;
         };
     }
 
@@ -8557,12 +8557,12 @@ namespace sqlite_orm {
             static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
             static constexpr const bool is_without_rowid = WithoutRowId;
 
-            elements_type columns;
+            elements_type elements;
 
-            table_t(std::string name_, elements_type columns_) : super{move(name_)}, columns{move(columns_)} {}
+            table_t(std::string name_, elements_type elements_) : super{move(name_)}, elements{move(elements_)} {}
 
             table_t<T, true, Cs...> without_rowid() const {
-                return {this->name, this->columns};
+                return {this->name, this->elements};
             }
 
             /**
@@ -8607,10 +8607,10 @@ namespace sqlite_orm {
              *  Calls **l** with every primary key dedicated constraint
              */
             template<class L>
-            void for_each_primary_key(const L& l) const {
-                iterate_tuple(this->columns, [&l](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<internal::is_primary_key<column_type>{}>(l)(column);
+            void for_each_primary_key(const L& lambda) const {
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    static_if<is_primary_key<element_type>{}>(lambda)(element);
                 });
             }
 
@@ -8713,22 +8713,22 @@ namespace sqlite_orm {
              * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
              * iterate columns with table constraints use iterate_tuple(columns, ...) instead. L is lambda type. Do
              * not specify it explicitly.
-             *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class L>
-            void for_each_column(const L& l) const {
-                iterate_tuple(this->columns, [&l](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<is_column<column_type>{}>(l)(column);
+            void for_each_column(const L& lambda) const {
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    static_if<is_column<element_type>{}>(lambda)(element);
                 });
             }
 
             template<class F, class L>
-            void for_each_column_with_field_type(const L& l) const {
-                iterate_tuple(this->columns, [&l](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    using field_type = typename column_field_type<column_type>::type;
-                    static_if<std::is_same<F, field_type>{}>(l)(column);
+            void for_each_column_with_field_type(const L& lambda) const {
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    using field_type = typename column_field_type<element_type>::type;
+                    static_if<std::is_same<F, field_type>{}>(lambda)(element);
                 });
             }
 
@@ -8736,15 +8736,15 @@ namespace sqlite_orm {
              *  Iterates all columns that have specified constraints and fires passed lambda.
              *  Lambda must have one and only templated argument Otherwise code will not compile.
              *  L is lambda type. Do not specify it explicitly.
-             *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class Op, class L>
-            void for_each_column_with(const L& l) const {
+            void for_each_column_with(const L& lambda) const {
                 using tuple_helper::tuple_contains_type;
-                iterate_tuple(this->columns, [&l](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    using constraints_type = typename column_constraints_type<column_type>::type;
-                    static_if<tuple_contains_type<Op, constraints_type>{}>(l)(column);
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    using constraints_type = typename column_constraints_type<element_type>::type;
+                    static_if<tuple_contains_type<Op, constraints_type>{}>(lambda)(element);
                 });
             }
 
@@ -8992,8 +8992,8 @@ namespace sqlite_orm {
              */
             int foreign_keys_count() {
                 auto res = 0;
-                iterate_tuple(this->table.columns, [&res](auto& c) {
-                    if(internal::is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
+                iterate_tuple(this->table.elements, [&res](auto& c) {
+                    if(is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
                         ++res;
                     }
                 });
@@ -14633,13 +14633,13 @@ namespace sqlite_orm {
                 if(statement.unique) {
                     ss << "UNIQUE ";
                 }
-                using columns_type = typename std::decay<decltype(statement)>::type::columns_type;
-                using head_t = typename std::tuple_element<0, columns_type>::type::column_type;
+                using elements_type = typename std::decay<decltype(statement)>::type::elements_type;
+                using head_t = typename std::tuple_element<0, elements_type>::type::column_type;
                 using indexed_type = typename table_type<head_t>::type;
                 ss << "INDEX IF NOT EXISTS '" << statement.name << "' ON '"
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
-                iterate_tuple(statement.columns, [&columnNames, &context](auto& v) {
+                iterate_tuple(statement.elements, [&columnNames, &context](auto& v) {
                     auto columnName = serialize(v, context);
                     columnNames.push_back(move(columnName));
                 });
@@ -15092,8 +15092,8 @@ namespace sqlite_orm {
                 auto index = 0;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                iterate_tuple(tableImpl.table.columns, [elementsCount, &index, &ss, &context](auto& c) {
-                    ss << serialize(c, context);
+                iterate_tuple(tableImpl.table.elements, [elementsCount, &index, &ss, &context](auto& element) {
+                    ss << serialize(element, context);
                     if(index < elementsCount - 1) {
                         ss << ", ";
                     }
@@ -15145,30 +15145,24 @@ namespace sqlite_orm {
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                using columns_type = typename std::decay<decltype(tImpl.table.columns)>::type;
+                using elements_type = typename std::decay<decltype(tImpl.table.elements)>::type;
 
-                using bool_type = std::integral_constant<bool, table_type::is_without_rowid>;
+                using is_without_rowid = std::integral_constant<bool, table_type::is_without_rowid>;
 
-                static_if<bool_type{}>(
-                    [](auto& tImpl) {
-                        std::ignore = tImpl;
-
-                        // all right. it's a "without_rowid" table
-                    },
-                    [](auto& tImpl) {
+                static_if<is_without_rowid{}>(
+                    [](auto&) {},  // all right. it's a "without_rowid" table
+                    [](auto& tImpl) {  // unfortunately, this static_assert's can't see an composite keys((
                         std::ignore = tImpl;
                         static_assert(
-                            count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
+                            count_tuple<elements_type, is_column_with_insertable_primary_key>::value <= 1,
                             "Attempting to execute 'insert' request into an noninsertable table was detected. "
                             "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
                             "'insert', or you can use 'insert' with explicit column listing.");
                         static_assert(
-                            count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
+                            count_tuple<elements_type, is_column_with_noninsertable_primary_key>::value == 0,
                             "Attempting to execute 'insert' request into an noninsertable table was detected. "
                             "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
                             "of 'insert', or you can use 'insert' with explicit column listing.");
-
-                        // unfortunately, this static_assert's can't see an composite keys((
                     })(tImpl);
             }
 

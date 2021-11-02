@@ -1603,13 +1603,13 @@ namespace sqlite_orm {
                 if(statement.unique) {
                     ss << "UNIQUE ";
                 }
-                using columns_type = typename std::decay<decltype(statement)>::type::columns_type;
-                using head_t = typename std::tuple_element<0, columns_type>::type::column_type;
+                using elements_type = typename std::decay<decltype(statement)>::type::elements_type;
+                using head_t = typename std::tuple_element<0, elements_type>::type::column_type;
                 using indexed_type = typename table_type<head_t>::type;
                 ss << "INDEX IF NOT EXISTS '" << statement.name << "' ON '"
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
-                iterate_tuple(statement.columns, [&columnNames, &context](auto& v) {
+                iterate_tuple(statement.elements, [&columnNames, &context](auto& v) {
                     auto columnName = serialize(v, context);
                     columnNames.push_back(move(columnName));
                 });

@@ -39,12 +39,12 @@ namespace sqlite_orm {
             static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
             static constexpr const bool is_without_rowid = WithoutRowId;
 
-            elements_type columns;
+            elements_type elements;
 
-            table_t(std::string name_, elements_type columns_) : super{move(name_)}, columns{move(columns_)} {}
+            table_t(std::string name_, elements_type elements_) : super{move(name_)}, elements{move(elements_)} {}
 
             table_t<T, true, Cs...> without_rowid() const {
-                return {this->name, this->columns};
+                return {this->name, this->elements};
             }
 
             /**
@@ -89,10 +89,10 @@ namespace sqlite_orm {
              *  Calls **l** with every primary key dedicated constraint
              */
             template<class L>
-            void for_each_primary_key(const L& l) const {
-                iterate_tuple(this->columns, [&l](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<internal::is_primary_key<column_type>{}>(l)(column);
+            void for_each_primary_key(const L& lambda) const {
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    static_if<is_primary_key<element_type>{}>(lambda)(element);
                 });
             }
 
@@ -195,22 +195,22 @@ namespace sqlite_orm {
              * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
              * iterate columns with table constraints use iterate_tuple(columns, ...) instead. L is lambda type. Do
              * not specify it explicitly.
-             *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class L>
-            void for_each_column(const L& l) const {
-                iterate_tuple(this->columns, [&l](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    static_if<is_column<column_type>{}>(l)(column);
+            void for_each_column(const L& lambda) const {
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    static_if<is_column<element_type>{}>(lambda)(element);
                 });
             }
 
             template<class F, class L>
-            void for_each_column_with_field_type(const L& l) const {
-                iterate_tuple(this->columns, [&l](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    using field_type = typename column_field_type<column_type>::type;
-                    static_if<std::is_same<F, field_type>{}>(l)(column);
+            void for_each_column_with_field_type(const L& lambda) const {
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    using field_type = typename column_field_type<element_type>::type;
+                    static_if<std::is_same<F, field_type>{}>(lambda)(element);
                 });
             }
 
@@ -218,15 +218,15 @@ namespace sqlite_orm {
              *  Iterates all columns that have specified constraints and fires passed lambda.
              *  Lambda must have one and only templated argument Otherwise code will not compile.
              *  L is lambda type. Do not specify it explicitly.
-             *  @param l Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class Op, class L>
-            void for_each_column_with(const L& l) const {
+            void for_each_column_with(const L& lambda) const {
                 using tuple_helper::tuple_contains_type;
-                iterate_tuple(this->columns, [&l](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
-                    using constraints_type = typename column_constraints_type<column_type>::type;
-                    static_if<tuple_contains_type<Op, constraints_type>{}>(l)(column);
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    using constraints_type = typename column_constraints_type<element_type>::type;
+                    static_if<tuple_contains_type<Op, constraints_type>{}>(lambda)(element);
                 });
             }
 
