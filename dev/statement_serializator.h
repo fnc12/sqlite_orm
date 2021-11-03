@@ -1007,30 +1007,29 @@ namespace sqlite_orm {
                 auto& tImpl = context.impl.template get_impl<object_type>();
 
                 std::stringstream ss;
-                ss << "UPDATE '" << tImpl.table.name << "' SET ";
+                ss << "UPDATE '" << tImpl.table.name << "' SET";
                 std::vector<std::string> setColumnNames;
-                tImpl.table.for_each_column([&setColumnNames](auto& c) {
-                    if(!c.template has<primary_key_t<>>()) {
-                        setColumnNames.emplace_back(c.name);
+                tImpl.table.for_each_column([&setColumnNames, &tImpl](auto& column) {
+                    if(!column.template has<primary_key_t<>>() &&
+                       !tImpl.table.exists_in_composite_primary_key(column)) {
+                        setColumnNames.emplace_back(column.name);
                     }
                 });
                 for(size_t i = 0; i < setColumnNames.size(); ++i) {
-                    ss << "\"" << setColumnNames[i] << "\""
+                    ss << " \"" << setColumnNames[i] << "\""
                        << " = ?";
                     if(i < setColumnNames.size() - 1) {
                         ss << ",";
                     }
-                    ss << " ";
                 }
-                ss << "WHERE ";
+                ss << " WHERE";
                 auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
+                    ss << " \"" << primaryKeyColumnNames[i] << "\""
                        << " = ?";
                     if(i < primaryKeyColumnNames.size() - 1) {
                         ss << " AND";
                     }
-                    ss << " ";
                 }
                 return ss.str();
             }

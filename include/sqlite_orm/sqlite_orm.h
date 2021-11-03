@@ -198,6 +198,7 @@ namespace sqlite_orm {
 
     //  got from here http://stackoverflow.com/questions/25958259/how-do-i-find-out-if-a-tuple-contains-a-type
     namespace tuple_helper {
+
         /**
          *  HAS_TYPE type trait
          */
@@ -1002,7 +1003,7 @@ namespace sqlite_orm {
         /**
          *  PRIMARY KEY constraint class.
          *  Cs is parameter pack which contains columns (member pointers and/or function pointers). Can be empty when
-         * used withen `make_column` function.
+         *  used withen `make_column` function.
          */
         template<class... Cs>
         struct primary_key_t : primary_key_base {
@@ -8603,6 +8604,23 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class C>
+            bool exists_in_composite_primary_key(const C& column) const {
+                auto res = false;
+                this->for_each_primary_key([&column, &res](auto& primaryKey) {
+                    iterate_tuple(primaryKey.columns, [&res, &column](auto& value) {
+                        if(!res) {
+                            if(column.member_pointer) {
+                                res = compare_any(value, column.member_pointer);
+                            } else {
+                                res = compare_any(value, column.getter) || compare_any(value, column.setter);
+                            }
+                        }
+                    });
+                });
+                return res;
+            }
+
             /**
              *  Calls **l** with every primary key dedicated constraint
              */
@@ -8725,10 +8743,10 @@ namespace sqlite_orm {
 
             template<class F, class L>
             void for_each_column_with_field_type(const L& lambda) const {
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = typename std::decay<decltype(element)>::type;
-                    using field_type = typename column_field_type<element_type>::type;
-                    static_if<std::is_same<F, field_type>{}>(lambda)(element);
+                this->for_each_column([&lambda](auto& column) {
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    using field_type = typename column_field_type<column_type>::type;
+                    static_if<std::is_same<F, field_type>{}>(lambda)(column);
                 });
             }
 
@@ -8740,11 +8758,11 @@ namespace sqlite_orm {
              */
             template<class Op, class L>
             void for_each_column_with(const L& lambda) const {
-                using tuple_helper::tuple_contains_type;
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = typename std::decay<decltype(element)>::type;
-                    using constraints_type = typename column_constraints_type<element_type>::type;
-                    static_if<tuple_contains_type<Op, constraints_type>{}>(lambda)(element);
+                this->for_each_column([&lambda](auto& column) {
+                    using tuple_helper::tuple_contains_type;
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    using constraints_type = typename column_constraints_type<column_type>::type;
+                    static_if<tuple_contains_type<Op, constraints_type>{}>(lambda)(column);
                 });
             }
 
@@ -14037,30 +14055,29 @@ namespace sqlite_orm {
                 auto& tImpl = context.impl.template get_impl<object_type>();
 
                 std::stringstream ss;
-                ss << "UPDATE '" << tImpl.table.name << "' SET ";
+                ss << "UPDATE '" << tImpl.table.name << "' SET";
                 std::vector<std::string> setColumnNames;
-                tImpl.table.for_each_column([&setColumnNames](auto& c) {
-                    if(!c.template has<primary_key_t<>>()) {
-                        setColumnNames.emplace_back(c.name);
+                tImpl.table.for_each_column([&setColumnNames, &tImpl](auto& column) {
+                    if(!column.template has<primary_key_t<>>() &&
+                       !tImpl.table.exists_in_composite_primary_key(column)) {
+                        setColumnNames.emplace_back(column.name);
                     }
                 });
                 for(size_t i = 0; i < setColumnNames.size(); ++i) {
-                    ss << "\"" << setColumnNames[i] << "\""
+                    ss << " \"" << setColumnNames[i] << "\""
                        << " = ?";
                     if(i < setColumnNames.size() - 1) {
                         ss << ",";
                     }
-                    ss << " ";
                 }
-                ss << "WHERE ";
+                ss << " WHERE";
                 auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
                 for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
+                    ss << " \"" << primaryKeyColumnNames[i] << "\""
                        << " = ?";
                     if(i < primaryKeyColumnNames.size() - 1) {
                         ss << " AND";
                     }
-                    ss << " ";
                 }
                 return ss.str();
             }
