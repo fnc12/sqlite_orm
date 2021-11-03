@@ -159,8 +159,8 @@ namespace sqlite_orm {
              */
             int foreign_keys_count() {
                 auto res = 0;
-                iterate_tuple(this->table.columns, [&res](auto& c) {
-                    if(internal::is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
+                iterate_tuple(this->table.elements, [&res](auto& c) {
+                    if(is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
                         ++res;
                     }
                 });

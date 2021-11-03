@@ -96,8 +96,8 @@ namespace sqlite_orm {
                 auto index = 0;
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                iterate_tuple(tableImpl.table.columns, [elementsCount, &index, &ss, &context](auto& c) {
-                    ss << serialize(c, context);
+                iterate_tuple(tableImpl.table.elements, [elementsCount, &index, &ss, &context](auto& element) {
+                    ss << serialize(element, context);
                     if(index < elementsCount - 1) {
                         ss << ", ";
                     }
@@ -149,30 +149,24 @@ namespace sqlite_orm {
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
                 using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                using columns_type = typename std::decay<decltype(tImpl.table.columns)>::type;
+                using elements_type = typename std::decay<decltype(tImpl.table.elements)>::type;
 
-                using bool_type = std::integral_constant<bool, table_type::is_without_rowid>;
+                using is_without_rowid = std::integral_constant<bool, table_type::is_without_rowid>;
 
-                static_if<bool_type{}>(
-                    [](auto& tImpl) {
-                        std::ignore = tImpl;
-
-                        // all right. it's a "without_rowid" table
-                    },
-                    [](auto& tImpl) {
+                static_if<is_without_rowid{}>(
+                    [](auto&) {},  // all right. it's a "without_rowid" table
+                    [](auto& tImpl) {  // unfortunately, this static_assert's can't see an composite keys((
                         std::ignore = tImpl;
                         static_assert(
-                            count_tuple<columns_type, is_column_with_insertable_primary_key>::value <= 1,
+                            count_tuple<elements_type, is_column_with_insertable_primary_key>::value <= 1,
                             "Attempting to execute 'insert' request into an noninsertable table was detected. "
                             "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
                             "'insert', or you can use 'insert' with explicit column listing.");
                         static_assert(
-                            count_tuple<columns_type, is_column_with_noninsertable_primary_key>::value == 0,
+                            count_tuple<elements_type, is_column_with_noninsertable_primary_key>::value == 0,
                             "Attempting to execute 'insert' request into an noninsertable table was detected. "
                             "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
                             "of 'insert', or you can use 'insert' with explicit column listing.");
-
-                        // unfortunately, this static_assert's can't see an composite keys((
                     })(tImpl);
             }
 
