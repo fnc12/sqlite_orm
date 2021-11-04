@@ -85,6 +85,23 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class C>
+            bool exists_in_composite_primary_key(const C& column) const {
+                auto res = false;
+                this->for_each_primary_key([&column, &res](auto& primaryKey) {
+                    iterate_tuple(primaryKey.columns, [&res, &column](auto& value) {
+                        if(!res) {
+                            if(column.member_pointer) {
+                                res = compare_any(value, column.member_pointer);
+                            } else {
+                                res = compare_any(value, column.getter) || compare_any(value, column.setter);
+                            }
+                        }
+                    });
+                });
+                return res;
+            }
+
             /**
              *  Calls **l** with every primary key dedicated constraint
              */
@@ -207,10 +224,10 @@ namespace sqlite_orm {
 
             template<class F, class L>
             void for_each_column_with_field_type(const L& lambda) const {
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = typename std::decay<decltype(element)>::type;
-                    using field_type = typename column_field_type<element_type>::type;
-                    static_if<std::is_same<F, field_type>{}>(lambda)(element);
+                this->for_each_column([&lambda](auto& column) {
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    using field_type = typename column_field_type<column_type>::type;
+                    static_if<std::is_same<F, field_type>{}>(lambda)(column);
                 });
             }
 
@@ -222,11 +239,11 @@ namespace sqlite_orm {
              */
             template<class Op, class L>
             void for_each_column_with(const L& lambda) const {
-                using tuple_helper::tuple_contains_type;
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = typename std::decay<decltype(element)>::type;
-                    using constraints_type = typename column_constraints_type<element_type>::type;
-                    static_if<tuple_contains_type<Op, constraints_type>{}>(lambda)(element);
+                this->for_each_column([&lambda](auto& column) {
+                    using tuple_helper::tuple_contains_type;
+                    using column_type = typename std::decay<decltype(column)>::type;
+                    using constraints_type = typename column_constraints_type<column_type>::type;
+                    static_if<tuple_contains_type<Op, constraints_type>{}>(lambda)(column);
                 });
             }
 
