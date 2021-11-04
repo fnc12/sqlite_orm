@@ -26,11 +26,11 @@ TEST_CASE("statement_serializator foreign key") {
 
         SECTION("simple") {
             auto fk = foreign_key(&Visit::userId).references(&User::id);
-            
+
             using ForeignKey = decltype(fk);
             static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
             static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-            
+
             auto visitsTable = make_table("visits",
                                           make_column("id", &Visit::id, primary_key(), autoincrement()),
                                           make_column("user_id", &Visit::userId),
@@ -50,11 +50,11 @@ TEST_CASE("statement_serializator foreign key") {
         SECTION("on update") {
             SECTION("no_action") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.no_action();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -73,11 +73,11 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("restrict_") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.restrict_();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -96,11 +96,11 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("set_null") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_null();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -119,11 +119,11 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("set_default") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_default();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -142,11 +142,11 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("cascade") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.cascade();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -167,11 +167,11 @@ TEST_CASE("statement_serializator foreign key") {
         SECTION("on delete") {
             SECTION("no_action") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.no_action();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -190,11 +190,11 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("restrict_") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.restrict_();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -213,11 +213,11 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("set_null") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_null();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -236,11 +236,11 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("set_default") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_default();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -259,11 +259,11 @@ TEST_CASE("statement_serializator foreign key") {
             }
             SECTION("cascade") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.cascade();
-                
+
                 using ForeignKey = decltype(fk);
                 static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
                 static_assert(std::is_same<ForeignKey::source_type, Visit>::value, "");
-                
+
                 auto visitsTable = make_table("visits",
                                               make_column("id", &Visit::id, primary_key(), autoincrement()),
                                               make_column("user_id", &Visit::userId),
@@ -301,11 +301,11 @@ TEST_CASE("statement_serializator foreign key") {
                 Object{id_}, token(std::move(token_)), usedId(usedId_) {}
         };
         auto fk = foreign_key(&Token::usedId).references(column<User>(&User::id));
-        
+
         using ForeignKey = decltype(fk);
         static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
         static_assert(std::is_same<ForeignKey::source_type, Token>::value, "");
-        
+
         auto usersTable =
             make_table<User>("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name));
         auto tokensTable = make_table<Token>("tokens",
@@ -338,28 +338,30 @@ TEST_CASE("statement_serializator foreign key") {
         };
 
         auto fk = foreign_key(&UserVisit::userId, &UserVisit::userFirstName).references(&User::id, &User::firstName);
-        
+
         using ForeignKey = decltype(fk);
         static_assert(std::is_same<ForeignKey::target_type, User>::value, "");
         static_assert(std::is_same<ForeignKey::source_type, UserVisit>::value, "");
-        
+
         auto usersTable = make_table("users",
                                      make_column("id", &User::id),
                                      make_column("first_name", &User::firstName),
                                      make_column("last_name", &User::lastName),
                                      primary_key(&User::id, &User::firstName));
-        
+
         static_assert(internal::storage_traits::table_foreign_keys_count<decltype(usersTable), User>::value == 0, "");
-        static_assert(internal::storage_traits::table_foreign_keys_count<decltype(usersTable), UserVisit>::value == 0, "");
-        
+        static_assert(internal::storage_traits::table_foreign_keys_count<decltype(usersTable), UserVisit>::value == 0,
+                      "");
+
         auto visitsTable = make_table("visits",
                                       make_column("user_id", &UserVisit::userId),
                                       make_column("user_first_name", &UserVisit::userFirstName),
                                       make_column("time", &UserVisit::time),
                                       fk);
         static_assert(internal::storage_traits::table_foreign_keys_count<decltype(visitsTable), User>::value == 1, "");
-        static_assert(internal::storage_traits::table_foreign_keys_count<decltype(visitsTable), UserVisit>::value == 0, "");
-        
+        static_assert(internal::storage_traits::table_foreign_keys_count<decltype(visitsTable), UserVisit>::value == 0,
+                      "");
+
         using storage_impl_t = internal::storage_impl<decltype(usersTable), decltype(visitsTable)>;
 
         storage_impl_t storageImpl{usersTable, visitsTable};
