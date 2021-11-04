@@ -11,6 +11,7 @@
 #include "alias.h"
 #include "column.h"
 #include "storage_traits.h"
+#include "function.h"
 
 namespace sqlite_orm {
 
@@ -71,12 +72,17 @@ namespace sqlite_orm {
         };
 
         template<class St, class R, class S, class... Args>
-        struct column_result_t<St, internal::core_function_t<R, S, Args...>, void> {
+        struct column_result_t<St, built_in_function_t<R, S, Args...>, void> {
             using type = R;
         };
 
+        template<class St, class F, class... Args>
+        struct column_result_t<St, function_call<F, Args...>, void> {
+            using type = typename callable_arguments<F>::return_type;
+        };
+
         template<class St, class X, class S>
-        struct column_result_t<St, core_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+        struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
@@ -214,7 +220,7 @@ namespace sqlite_orm {
 
         template<class St, class T>
         struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
-            using type = bool;
+            using type = typename T::result_type;
         };
 
         /**

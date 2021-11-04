@@ -11,10 +11,11 @@ add_executable(unit_tests
 	private_getters_tests.cpp
 	pragma_tests.cpp
 	explicit_columns.cpp
-	core_functions_tests.cpp
+	built_in_functions_tests/core_functions_tests.cpp
+    built_in_functions_tests/datetime_function_tests.cpp
+    built_in_functions_tests/math_functions.cpp
 	index_tests.cpp
 	constraints/composite_key.cpp
-	static_tests.cpp
 	operators/arithmetic_operators.cpp
 	operators/like.cpp
 	operators/glob.cpp
@@ -24,7 +25,6 @@ add_executable(unit_tests
 	operators/not_operator.cpp
 	operators/bitwise.cpp
     operators/binary_operators.cpp
-	dynamic_order_by.cpp
 	prepared_statement_tests/select.cpp
 	prepared_statement_tests/get_all.cpp
 	prepared_statement_tests/get_all_pointer.cpp
@@ -55,6 +55,12 @@ add_executable(unit_tests
     static_tests/column.cpp
     static_tests/same_or_void.cpp
     static_tests/foreign_key.cpp
+    static_tests/tuple_filter_single.cpp
+    static_tests/storage_traits.cpp
+    static_tests/tuple_helper.cpp
+    static_tests/function_static_tests.cpp
+    static_tests/aggregate_function_return_types.cpp
+    static_tests/column_result_t.cpp
 	constraints/default.cpp
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
@@ -66,13 +72,19 @@ add_executable(unit_tests
 	statement_serializator_tests/arithmetic_operators.cpp
 	statement_serializator_tests/core_functions.cpp
 	statement_serializator_tests/comparison_operators.cpp
-	statement_serializator_tests/unique.cpp
+	statement_serializator_tests/column_constraints/unique.cpp
 	statement_serializator_tests/foreign_key.cpp
 	statement_serializator_tests/collate.cpp
 	statement_serializator_tests/check.cpp
 	statement_serializator_tests/index.cpp
 	statement_serializator_tests/indexed_column.cpp
     statement_serializator_tests/logical_operators.cpp
+    statement_serializator_tests/select_constraints.cpp
+    statement_serializator_tests/insert_replace.cpp
+    statement_serializator_tests/ast/upsert_clause.cpp
+    statement_serializator_tests/ast/excluded.cpp
+    storage_tests.cpp
+    storage_non_crud_tests.cpp
 	unique_cases/get_all_with_two_tables.cpp
 	unique_cases/prepare_get_all_with_case.cpp
 	unique_cases/index_named_table_with_fk.cpp

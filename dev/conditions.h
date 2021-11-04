@@ -3,18 +3,16 @@
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::is_same
 #include <vector>  //  std::vector
-#include <tuple>  //  std::tuple
+#include <tuple>  //  std::tuple, std::tuple_size
+#include <sstream>  //  std::stringstream
 
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
-#include "negatable.h"
+#include "tags.h"
+#include "expression.h"
 
 namespace sqlite_orm {
-
-    namespace internal {
-        struct arithmetic_t;
-    }
 
     namespace internal {
 
@@ -58,11 +56,6 @@ namespace sqlite_orm {
 
         template<class T>
         struct is_offset<offset_t<T>> : std::true_type {};
-
-        /**
-         *  Inherit from this class if target class can be chained with other conditions with '&&' and '||' operators
-         */
-        struct condition_t {};
 
         /**
          *  Collated something
@@ -118,11 +111,13 @@ namespace sqlite_orm {
          *  L is left argument type
          *  R is right argument type
          *  S is 'string' class (a class which has cast to `std::string` operator)
+         *  Res is result type
          */
-        template<class L, class R, class S>
+        template<class L, class R, class S, class Res>
         struct binary_condition : condition_t, S {
             using left_type = L;
             using right_type = R;
+            using result_type = Res;
 
             left_type l;
             right_type r;
@@ -142,11 +137,16 @@ namespace sqlite_orm {
          *  Result of and operator
          */
         template<class L, class R>
-        struct and_condition_t : binary_condition<L, R, and_condition_string> {
-            using super = binary_condition<L, R, and_condition_string>;
+        struct and_condition_t : binary_condition<L, R, and_condition_string, bool> {
+            using super = binary_condition<L, R, and_condition_string, bool>;
 
             using super::super;
         };
+
+        template<class L, class R>
+        and_condition_t<L, R> make_and_condition(L left, R right) {
+            return {std::move(left), std::move(right)};
+        }
 
         struct or_condition_string {
             operator std::string() const {
@@ -158,11 +158,16 @@ namespace sqlite_orm {
          *  Result of or operator
          */
         template<class L, class R>
-        struct or_condition_t : binary_condition<L, R, or_condition_string> {
-            using super = binary_condition<L, R, or_condition_string>;
+        struct or_condition_t : binary_condition<L, R, or_condition_string, bool> {
+            using super = binary_condition<L, R, or_condition_string, bool>;
 
             using super::super;
         };
+
+        template<class L, class R>
+        or_condition_t<L, R> make_or_condition(L left, R right) {
+            return {std::move(left), std::move(right)};
+        }
 
         struct is_equal_string {
             operator std::string() const {
@@ -174,10 +179,10 @@ namespace sqlite_orm {
          *  = and == operators object
          */
         template<class L, class R>
-        struct is_equal_t : binary_condition<L, R, is_equal_string>, negatable_t {
+        struct is_equal_t : binary_condition<L, R, is_equal_string, bool>, negatable_t {
             using self = is_equal_t<L, R>;
 
-            using binary_condition<L, R, is_equal_string>::binary_condition;
+            using binary_condition<L, R, is_equal_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -194,6 +199,15 @@ namespace sqlite_orm {
             named_collate<self> collate(std::string name) const {
                 return {*this, std::move(name)};
             }
+
+            template<class C>
+            named_collate<self> collate() const {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                return {*this, std::move(name)};
+            }
         };
 
         struct is_not_equal_string {
@@ -206,10 +220,10 @@ namespace sqlite_orm {
          *  != operator object
          */
         template<class L, class R>
-        struct is_not_equal_t : binary_condition<L, R, is_not_equal_string>, negatable_t {
+        struct is_not_equal_t : binary_condition<L, R, is_not_equal_string, bool>, negatable_t {
             using self = is_not_equal_t<L, R>;
 
-            using binary_condition<L, R, is_not_equal_string>::binary_condition;
+            using binary_condition<L, R, is_not_equal_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -234,10 +248,10 @@ namespace sqlite_orm {
          *  > operator object.
          */
         template<class L, class R>
-        struct greater_than_t : binary_condition<L, R, greater_than_string>, negatable_t {
+        struct greater_than_t : binary_condition<L, R, greater_than_string, bool>, negatable_t {
             using self = greater_than_t<L, R>;
 
-            using binary_condition<L, R, greater_than_string>::binary_condition;
+            using binary_condition<L, R, greater_than_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -262,10 +276,10 @@ namespace sqlite_orm {
          *  >= operator object.
          */
         template<class L, class R>
-        struct greater_or_equal_t : binary_condition<L, R, greater_or_equal_string>, negatable_t {
+        struct greater_or_equal_t : binary_condition<L, R, greater_or_equal_string, bool>, negatable_t {
             using self = greater_or_equal_t<L, R>;
 
-            using binary_condition<L, R, greater_or_equal_string>::binary_condition;
+            using binary_condition<L, R, greater_or_equal_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -290,10 +304,10 @@ namespace sqlite_orm {
          *  < operator object.
          */
         template<class L, class R>
-        struct lesser_than_t : binary_condition<L, R, lesser_than_string>, negatable_t {
+        struct lesser_than_t : binary_condition<L, R, lesser_than_string, bool>, negatable_t {
             using self = lesser_than_t<L, R>;
 
-            using binary_condition<L, R, lesser_than_string>::binary_condition;
+            using binary_condition<L, R, lesser_than_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -318,10 +332,10 @@ namespace sqlite_orm {
          *  <= operator object.
          */
         template<class L, class R>
-        struct lesser_or_equal_t : binary_condition<L, R, lesser_or_equal_string>, negatable_t {
+        struct lesser_or_equal_t : binary_condition<L, R, lesser_or_equal_string, bool>, negatable_t {
             using self = lesser_or_equal_t<L, R>;
 
-            using binary_condition<L, R, lesser_or_equal_string>::binary_condition;
+            using binary_condition<L, R, lesser_or_equal_string, bool>::binary_condition;
 
             collate_t<self> collate_binary() const {
                 return {*this, collate_argument::binary};
@@ -407,32 +421,14 @@ namespace sqlite_orm {
             is_not_null_t(T t_) : t(std::move(t_)) {}
         };
 
-        struct where_string {
-            operator std::string() const {
-                return "WHERE";
-            }
-        };
-
-        /**
-         *  WHERE argument holder.
-         *  C is conditions type. Can be any condition like: is_equal_t, is_null_t, exists_t etc
-         */
-        template<class C>
-        struct where_t : where_string {
-            C c;
-
-            where_t(C c_) : c(std::move(c_)) {}
-        };
-
-        template<class T>
-        struct is_where : std::false_type {};
-
-        template<class T>
-        struct is_where<where_t<T>> : std::true_type {};
-
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
+
+            order_by_base() = default;
+
+            order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
+                asc_desc(asc_desc_), _collate_argument(move(_collate_argument_)) {}
         };
 
         struct order_by_string {
@@ -446,11 +442,12 @@ namespace sqlite_orm {
          */
         template<class O>
         struct order_by_t : order_by_base, order_by_string {
-            using self = order_by_t<O>;
+            using expression_type = O;
+            using self = order_by_t<expression_type>;
 
-            O o;
+            expression_type expression;
 
-            order_by_t(O o_) : o(std::move(o_)) {}
+            order_by_t(expression_type expression_) : order_by_base(), expression(std::move(expression_)) {}
 
             self asc() {
                 auto res = *this;
@@ -490,6 +487,15 @@ namespace sqlite_orm {
                 res._collate_argument = std::move(name);
                 return res;
             }
+
+            template<class C>
+            self collate() const {
+                std::stringstream ss;
+                ss << C::name();
+                auto name = ss.str();
+                ss.flush();
+                return this->collate(move(name));
+            }
         };
 
         /**
@@ -526,7 +532,7 @@ namespace sqlite_orm {
             void push_back(order_by_t<O> order_by) {
                 auto newContext = this->context;
                 newContext.skip_table_name = true;
-                auto columnName = serialize(order_by.o, newContext);
+                auto columnName = serialize(order_by.expression, newContext);
                 entries.emplace_back(move(columnName), order_by.asc_desc, move(order_by._collate_argument));
             }
 
@@ -861,6 +867,26 @@ namespace sqlite_orm {
             cast_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
 
+        template<class... Args>
+        struct from_t {
+            using tuple_type = std::tuple<Args...>;
+        };
+
+        template<class T>
+        struct is_from : std::false_type {};
+
+        template<class... Args>
+        struct is_from<from_t<Args...>> : std::true_type {};
+    }
+
+    /**
+     *  Explicit FROM function. Usage:
+     *  `storage.select(&User::id, from<User>());`
+     */
+    template<class... Args>
+    internal::from_t<Args...> from() {
+        static_assert(std::tuple_size<std::tuple<Args...>>::value > 0, "");
+        return {};
     }
 
     template<class T, typename = typename std::enable_if<std::is_base_of<internal::negatable_t, T>::value>::type>
@@ -1086,16 +1112,30 @@ namespace sqlite_orm {
              class R,
              typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
                                                 std::is_base_of<internal::condition_t, R>::value>::type>
-    internal::and_condition_t<L, R> operator&&(L l, R r) {
-        return {std::move(l), std::move(r)};
+    auto operator&&(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
+    }
+
+    template<class L, class R>
+    auto and_(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_and_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
     }
 
     template<class L,
              class R,
              typename = typename std::enable_if<std::is_base_of<internal::condition_t, L>::value ||
                                                 std::is_base_of<internal::condition_t, R>::value>::type>
-    internal::or_condition_t<L, R> operator||(L l, R r) {
-        return {std::move(l), std::move(r)};
+    auto operator||(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
+    }
+
+    template<class L, class R>
+    auto or_(L l, R r) {
+        using internal::get_from_expression;
+        return internal::make_or_condition(std::move(get_from_expression(l)), std::move(get_from_expression(r)));
     }
 
     template<class T>
@@ -1196,11 +1236,6 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::lesser_or_equal_t<L, R> le(L l, R r) {
         return {std::move(l), std::move(r)};
-    }
-
-    template<class C>
-    internal::where_t<C> where(C c) {
-        return {std::move(c)};
     }
 
     /**

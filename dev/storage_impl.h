@@ -39,7 +39,7 @@ namespace sqlite_orm {
                 auto rc = sqlite3_exec(
                     db,
                     query.c_str(),
-                    [](void* data, int argc, char** argv, char* * /*azColName*/) -> int {
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
                             res = !!std::atoi(argv[0]);
@@ -61,9 +61,9 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 
-            static bool get_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                               std::vector<table_info>& storageTableInfo,
-                                               std::vector<table_info>& dbTableInfo) {
+            static bool calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
+                                                     std::vector<table_info>& storageTableInfo,
+                                                     std::vector<table_info>& dbTableInfo) {
                 bool notEqual = false;
 
                 //  iterate through storage columns
@@ -117,7 +117,7 @@ namespace sqlite_orm {
                             std::string dflt_value = argv[index] ? argv[index] : "";
                             index++;
                             auto pk = std::atoi(argv[index++]);
-                            res.push_back(table_info{cid, name, type, notnull, dflt_value, pk});
+                            res.push_back(table_info(cid, name, type, notnull, dflt_value, pk));
                         }
                         return 0;
                     },
@@ -159,8 +159,8 @@ namespace sqlite_orm {
              */
             int foreign_keys_count() {
                 auto res = 0;
-                iterate_tuple(this->table.columns, [&res](auto& c) {
-                    if(internal::is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
+                iterate_tuple(this->table.elements, [&res](auto& c) {
+                    if(is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
                         ++res;
                     }
                 });
@@ -175,7 +175,7 @@ namespace sqlite_orm {
              *  `column_name` has SFINAE check for type equality but `column_name_simple` has not.
              */
             template<class O, class F>
-            std::string column_name_simple(F O::*m) const {
+            const std::string* column_name_simple(F O::*m) const {
                 return this->table.find_column_name(m);
             }
 
@@ -184,8 +184,8 @@ namespace sqlite_orm {
              *  skip inequal type O.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m,
-                                    typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
+            const std::string* column_name(F O::*m,
+                                           typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
                 return this->table.find_column_name(m);
             }
 
@@ -193,20 +193,21 @@ namespace sqlite_orm {
              *  Opposite version of function defined above. Just calls same function in superclass.
              */
             template<class O, class F, class HH = typename H::object_type>
-            std::string column_name(F O::*m,
-                                    typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
+            const std::string*
+            column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
                 return this->super::column_name(m);
             }
 
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F>& c,
-                                    typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
+            const std::string* column_name(const column_pointer<T, F>& c,
+                                           typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
                 return this->column_name_simple(c.field);
             }
 
             template<class T, class F, class HH = typename H::object_type>
-            std::string column_name(const column_pointer<T, F>& c,
-                                    typename std::enable_if<!std::is_same<T, HH>::value>::type* = nullptr) const {
+            const std::string*
+            column_name(const column_pointer<T, F>& c,
+                        typename std::enable_if<!std::is_same<T, HH>::value>::type* = nullptr) const {
                 return this->super::column_name(c);
             }
 
@@ -251,16 +252,16 @@ namespace sqlite_orm {
 
             void add_column(const table_info& ti, sqlite3* db) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name << " ";
-                ss << ti.type << " ";
+                ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name;
+                ss << " " << ti.type;
                 if(ti.pk) {
-                    ss << "PRIMARY KEY ";
+                    ss << " PRIMARY KEY";
                 }
                 if(ti.notnull) {
-                    ss << "NOT NULL ";
+                    ss << " NOT NULL";
                 }
                 if(ti.dflt_value.length()) {
-                    ss << "DEFAULT " << ti.dflt_value << " ";
+                    ss << " DEFAULT " << ti.dflt_value;
                 }
                 perform_void_exec(db, ss.str());
             }
@@ -271,8 +272,6 @@ namespace sqlite_orm {
              */
             void
             copy_table(sqlite3* db, const std::string& name, const std::vector<table_info*>& columnsToIgnore) const {
-                std::ignore = columnsToIgnore;
-
                 std::stringstream ss;
                 std::vector<std::string> columnNames;
                 this->table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
@@ -300,11 +299,10 @@ namespace sqlite_orm {
                 for(size_t i = 0; i < columnNamesCount; ++i) {
                     ss << columnNames[i];
                     if(i < columnNamesCount - 1) {
-                        ss << ",";
+                        ss << ", ";
                     }
-                    ss << " ";
                 }
-                ss << "FROM '" << this->table.name << "' ";
+                ss << " FROM '" << this->table.name << "' ";
                 perform_void_exec(db, ss.str());
             }
 
@@ -325,7 +323,7 @@ namespace sqlite_orm {
                     //  this vector will contain pointers to columns that gotta be added..
                     std::vector<table_info*> columnsToAdd;
 
-                    if(this->get_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
+                    if(this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;
                     }
 

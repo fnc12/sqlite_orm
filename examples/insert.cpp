@@ -1,7 +1,7 @@
 /**
  *  This code is an implementation of this article https://www.tutorialspoint.com/sqlite/sqlite_insert_query.htm
  *  with C++ specific features like creating object and inserting within
- *  single line and separatedly, inserting a subclass object and inserting a vector.
+ *  single line and separately, inserting a subclass object and inserting a vector.
  */
 
 #include <sqlite_orm/sqlite_orm.h>
@@ -109,6 +109,24 @@ int main(int, char**) {
     for(auto& employee: storage.iterate<Employee>()) {
         cout << storage.dump(employee) << endl;
     }
+
+    //  INSERT INTO COMPANY(ID, NAME, AGE, ADDRESS, SALARY)
+    //  VALUES (3, 'Sofia', 26, 'Madrid', 15000.0)
+    //         (4, 'Doja', 26, 'LA', 25000.0)
+    //  ON CONFLICT(ID) DO UPDATE SET NAME = excluded.NAME,
+    //                                AGE = excluded.AGE,
+    //                                ADDRESS = excluded.ADDRESS,
+    //                                SALARY = excluded.SALARY
+
+    storage.insert(
+        into<Employee>(),
+        columns(&Employee::id, &Employee::name, &Employee::age, &Employee::address, &Employee::salary),
+        values(std::make_tuple(3, "Sofia", 26, "Madrid", 15000.0), std::make_tuple(4, "Doja", 26, "LA", 25000.0)),
+        on_conflict(&Employee::id)
+            .do_update(set(c(&Employee::name) = excluded(&Employee::name),
+                           c(&Employee::age) = excluded(&Employee::age),
+                           c(&Employee::address) = excluded(&Employee::address),
+                           c(&Employee::salary) = excluded(&Employee::salary))));
 
     return 0;
 }

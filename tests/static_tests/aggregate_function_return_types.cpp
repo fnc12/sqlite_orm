@@ -1,9 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
-#include <tuple>
-#include <type_traits>
 #include <catch2/catch.hpp>
-
-#include "static_tests/static_tests_common.h"
+#include <type_traits>  //  std::is_same
 
 using namespace sqlite_orm;
 
@@ -146,13 +143,4 @@ TEST_CASE("Aggregate function return types") {
         std::is_same<decltype(storage2.sum(&User::setIdByRef, where(lesser_than(&User::id, 10))))::element_type,
                      int>::value,
         "Incorrect sum value");
-}
-
-TEST_CASE("Compound operators") {
-    auto unionValue = union_(select(&User::id), select(&Token::id));
-    static_assert(internal::is_base_of_template<decltype(unionValue), internal::compound_operator>::value,
-                  "union must be base of compound_operator");
-    auto exceptValue = except(select(&User::id), select(&Token::id));
-    static_assert(internal::is_base_of_template<decltype(exceptValue), internal::compound_operator>::value,
-                  "except must be base of compound_operator");
 }

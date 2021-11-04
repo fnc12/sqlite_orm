@@ -6,16 +6,16 @@
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if, std::is_member_pointer, std::is_member_function_pointer
 
 #include "type_is_nullable.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "default_value_extractor.h"
 #include "constraints.h"
-#include "getter_traits.h"
+#include "member_traits/member_traits.h"
 
 namespace sqlite_orm {
 
     namespace internal {
 
-        struct column_base {
+        struct basic_column {
 
             /**
              *  Column name. Specified during construction in `make_column`.
@@ -30,7 +30,7 @@ namespace sqlite_orm {
          *  Op... is a constraints pack, e.g. primary_key_t, autoincrement_t etc
          */
         template<class O, class T, class G /* = const T& (O::*)() const*/, class S /* = void (O::*)(T)*/, class... Op>
-        struct column_t : column_base {
+        struct column_t : basic_column {
             using object_type = O;
             using field_type = T;
             using constraints_type = std::tuple<Op...>;
@@ -64,7 +64,7 @@ namespace sqlite_orm {
                      getter_type getter_,
                      setter_type setter_,
                      constraints_type constraints_) :
-                column_base{std::move(name_)},
+                basic_column{move(name_)},
                 member_pointer(member_pointer_), getter(getter_), setter(setter_), constraints(move(constraints_)) {}
 
             /**

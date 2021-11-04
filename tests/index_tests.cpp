@@ -45,3 +45,13 @@ TEST_CASE("index") {
         storage.sync_schema();
     }
 }
+
+TEST_CASE("Escaped index name") {
+    struct User {
+        std::string group;
+    };
+    auto storage = make_storage("index_group.sqlite",
+                                make_index("index", &User::group),
+                                make_table("users", make_column("group", &User::group)));
+    storage.sync_schema();
+}

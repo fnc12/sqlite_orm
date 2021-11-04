@@ -6,10 +6,14 @@
 #include "conditions.h"
 #include "select_constraints.h"
 #include "operators.h"
-#include "tuple_helper.h"
+#include "tuple_helper/tuple_helper.h"
 #include "core_functions.h"
 #include "prepared_statement.h"
 #include "values.h"
+#include "function.h"
+#include "ast/excluded.h"
+#include "ast/upsert_clause.h"
+#include "ast/where.h"
 
 namespace sqlite_orm {
 
@@ -63,8 +67,28 @@ namespace sqlite_orm {
             using node_type = std::reference_wrapper<T>;
 
             template<class L>
-            void operator()(const node_type& r, const L& l) const {
-                iterate_ast(r.get(), l);
+            void operator()(const node_type& r, const L& lambda) const {
+                iterate_ast(r.get(), lambda);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<excluded_t<T>, void> {
+            using node_type = excluded_t<T>;
+
+            template<class L>
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.expression, lambda);
+            }
+        };
+
+        template<class... TargetArgs, class... ActionsArgs>
+        struct ast_iterator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+            using node_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
+
+            template<class L>
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.actions, lambda);
             }
         };
 
@@ -73,8 +97,8 @@ namespace sqlite_orm {
             using node_type = where_t<C>;
 
             template<class L>
-            void operator()(const node_type& where, const L& l) const {
-                iterate_ast(where.c, l);
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.expression, lambda);
             }
         };
 
@@ -162,6 +186,36 @@ namespace sqlite_orm {
             void operator()(const node_type& c, const L& l) const {
                 iterate_ast(c.left, l);
                 iterate_ast(c.right, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<into_t<T>, void> {
+            using node_type = into_t<T>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                //..
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<insert_raw_t<Args...>, void> {
+            using node_type = insert_raw_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                iterate_ast(node.args, l);
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<replace_raw_t<Args...>, void> {
+            using node_type = replace_raw_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& l) const {
+                iterate_ast(node.args, l);
             }
         };
 
@@ -358,9 +412,19 @@ namespace sqlite_orm {
             }
         };
 
+        template<class F, class... Args>
+        struct ast_iterator<function_call<F, Args...>, void> {
+            using node_type = function_call<F, Args...>;
+
+            template<class L>
+            void operator()(const node_type& f, const L& l) const {
+                iterate_ast(f.args, l);
+            }
+        };
+
         template<class R, class S, class... Args>
-        struct ast_iterator<core_function_t<R, S, Args...>, void> {
-            using node_type = core_function_t<R, S, Args...>;
+        struct ast_iterator<built_in_function_t<R, S, Args...>, void> {
+            using node_type = built_in_function_t<R, S, Args...>;
 
             template<class L>
             void operator()(const node_type& f, const L& l) const {
@@ -499,7 +563,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& a, const L& l) const {
-                iterate_ast(a.t, l);
+                iterate_ast(a.value, l);
             }
         };
 

@@ -23,7 +23,10 @@ namespace sqlite_orm {
         failed_to_init_a_backup,
         unknown_member_value,
         incorrect_order,
-        cannot_use_default_value
+        cannot_use_default_value,
+        arguments_count_does_not_match,
+        function_not_found,
+        index_is_out_of_bounds,
     };
 
 }
@@ -66,6 +69,12 @@ namespace sqlite_orm {
                     return "Incorrect order";
                 case orm_error_code::cannot_use_default_value:
                     return "The statement 'INSERT INTO * DEFAULT VALUES' can be used with only one row";
+                case orm_error_code::arguments_count_does_not_match:
+                    return "Arguments count does not match";
+                case orm_error_code::function_not_found:
+                    return "Function not found";
+                case orm_error_code::index_is_out_of_bounds:
+                    return "Index is out of bounds";
                 default:
                     return "unknown error";
             }

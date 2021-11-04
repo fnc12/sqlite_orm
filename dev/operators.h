@@ -4,7 +4,7 @@
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  //  std::nullopt
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
-#include "negatable.h"
+#include "tags.h"
 
 namespace sqlite_orm {
 
@@ -86,7 +86,7 @@ namespace sqlite_orm {
         template<class L, class R>
         using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
-        struct mod_string {
+        struct mod_operator_string {
             operator std::string() const {
                 return "%";
             }
@@ -96,7 +96,7 @@ namespace sqlite_orm {
          *  Result of mod % operator
          */
         template<class L, class R>
-        using mod_t = binary_operator<L, R, mod_string, arithmetic_t, negatable_t>;
+        using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
         struct bitwise_shift_left_string {
             operator std::string() const {
@@ -191,48 +191,6 @@ namespace sqlite_orm {
         template<class L, class... Args>
         struct in_t;
 
-        /**
-         *  Is not an operator but a result of c(...) function. Has operator= overloaded which returns assign_t
-         */
-        template<class T>
-        struct expression_t {
-            T value;
-
-            expression_t(T value_) : value(std::move(value_)) {}
-
-            template<class R>
-            assign_t<T, R> operator=(R r) const {
-                return {this->value, std::move(r)};
-            }
-
-            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
-                return {this->value, nullptr};
-            }
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-            assign_t<T, std::nullopt_t> operator=(std::nullopt_t) const {
-                return {this->value, std::nullopt};
-            }
-#endif
-            template<class... Args>
-            in_t<T, Args...> in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), false};
-            }
-
-            template<class... Args>
-            in_t<T, Args...> not_in(Args... args) const {
-                return {this->value, std::make_tuple(std::forward<Args>(args)...), true};
-            }
-        };
-
-    }
-
-    /**
-     *  Public interface for syntax sugar for columns. Example: `where(c(&User::id) == 5)` or
-     * `storage.update(set(c(&User::name) = "Dua Lipa"));
-     */
-    template<class T>
-    internal::expression_t<T> c(T value) {
-        return {std::move(value)};
     }
 
     /**

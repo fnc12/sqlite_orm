@@ -7,7 +7,7 @@
 using namespace sqlite_orm;
 
 TEST_CASE("same_or_void") {
-    using tuple_helper::same_or_void;
+    using internal::same_or_void;
 
     //  one argument
     static_assert(std::is_same<same_or_void<int>::type, int>::value, "int");

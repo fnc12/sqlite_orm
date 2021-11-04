@@ -33,6 +33,9 @@ TEST_CASE("binary operators") {
             SECTION("right") {
                 rows = storage.select(&User::id == c(1));
             }
+            SECTION("explicit column") {
+                rows = storage.select(column<User>(&User::id) == 1);
+            }
         }
         expected.push_back(true);
         expected.push_back(false);
@@ -51,6 +54,9 @@ TEST_CASE("binary operators") {
             }
             SECTION("right") {
                 rows = storage.select(&User::id != c(1));
+            }
+            SECTION("explicit column") {
+                rows = storage.select(column<User>(&User::id) != 1);
             }
         }
         expected.push_back(false);
@@ -71,6 +77,9 @@ TEST_CASE("binary operators") {
             SECTION("right") {
                 rows = storage.select(&User::id > c(2));
             }
+            SECTION("explicit column") {
+                rows = storage.select(column<User>(&User::id) > 2);
+            }
         }
         expected.push_back(true);
         expected.push_back(false);
@@ -90,6 +99,10 @@ TEST_CASE("binary operators") {
             SECTION("right") {
                 rows = storage.select(&User::id >= c(2));
             }
+
+            SECTION("explicit column") {
+                rows = storage.select(column<User>(&User::id) >= 2);
+            }
         }
         expected.push_back(true);
         expected.push_back(true);
@@ -107,7 +120,10 @@ TEST_CASE("binary operators") {
                 rows = storage.select(c(&User::id) < 2);
             }
             SECTION("right") {
-                rows = storage.select(c(&User::id) > 2);
+                rows = storage.select(&User::id < c(2));
+            }
+            SECTION("explicit column") {
+                rows = storage.select(column<User>(&User::id) < 2);
             }
         }
         expected.push_back(true);
@@ -127,6 +143,9 @@ TEST_CASE("binary operators") {
             }
             SECTION("right") {
                 rows = storage.select(&User::id <= c(2));
+            }
+            SECTION("explicit column") {
+                rows = storage.select(column<User>(&User::id) <= 2);
             }
         }
         expected.push_back(true);

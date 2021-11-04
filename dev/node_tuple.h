@@ -13,6 +13,10 @@
 #include "prepared_statement.h"
 #include "optional_container.h"
 #include "core_functions.h"
+#include "function.h"
+#include "ast/excluded.h"
+#include "ast/upsert_clause.h"
+#include "ast/where.h"
 
 namespace sqlite_orm {
 
@@ -35,6 +39,21 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
+            using type = typename node_tuple<T>::type;
+        };
+
+        template<class... TargetArgs, class... ActionsArgs>
+        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+            using type = typename node_tuple<std::tuple<ActionsArgs...>>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<set_t<Args...>, void> {
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class T>
+        struct node_tuple<excluded_t<T>, void> {
             using type = typename node_tuple<T>::type;
         };
 
@@ -102,6 +121,36 @@ namespace sqlite_orm {
             using columns_tuple = typename node_tuple<T>::type;
             using args_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
             using type = typename conc_tuple<columns_tuple, args_tuple>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<insert_raw_t<Args...>, void> {
+            using node_type = insert_raw_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<replace_raw_t<Args...>, void> {
+            using node_type = replace_raw_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class T>
+        struct node_tuple<into_t<T>, void> {
+            using node_type = into_t<T>;
+            using type = std::tuple<>;
+        };
+
+        template<class... Args>
+        struct node_tuple<values_t<Args...>, void> {
+            using node_type = values_t<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<std::tuple<Args...>, void> {
+            using node_type = std::tuple<Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 
         template<class T, class R, class... Args>
@@ -219,8 +268,14 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct node_tuple<core_function_t<R, S, Args...>, void> {
-            using node_type = core_function_t<R, S, Args...>;
+        struct node_tuple<built_in_function_t<R, S, Args...>, void> {
+            using node_type = built_in_function_t<R, S, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class F, class... Args>
+        struct node_tuple<function_call<F, Args...>, void> {
+            using node_type = function_call<F, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 

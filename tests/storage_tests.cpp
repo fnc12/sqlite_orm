@@ -173,3 +173,31 @@ TEST_CASE("has_dependent_rows") {
 
     //    storage.has_dependent_rows<User>(5);
 }
+
+TEST_CASE("column_name") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    struct Visit {
+        int id = 0;
+        int userId = 0;
+        int date = 0;
+
+        int notUsed = 0;
+    };
+    auto storage =
+        make_storage({},
+                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
+                     make_table("visits",
+                                make_column("id", &Visit::id, primary_key()),
+                                make_column("user_id", &Visit::userId),
+                                make_column("date", &Visit::date),
+                                foreign_key(&Visit::userId).references(&User::id)));
+    REQUIRE(*storage.column_name(&User::id) == "id");
+    REQUIRE(*storage.column_name(&User::name) == "name");
+    REQUIRE(*storage.column_name(&Visit::id) == "id");
+    REQUIRE(*storage.column_name(&Visit::userId) == "user_id");
+    REQUIRE(*storage.column_name(&Visit::date) == "date");
+    REQUIRE(storage.column_name(&Visit::notUsed) == nullptr);
+}

@@ -277,21 +277,68 @@ TEST_CASE("Custom collate") {
         std::string name;
     };
 
+    struct OtotoCollation {
+        int operator()(int leftLength, const void* lhs, int rightLength, const void* rhs) const {
+            if(leftLength == rightLength) {
+                return ::strncmp((const char*)lhs, (const char*)rhs, leftLength);
+            } else {
+                return 1;
+            }
+        }
+
+        static const char* name() {
+            return "ototo";
+        }
+    };
+
+    struct AlwaysEqualCollation {
+        int operator()(int leftLength, const void* lhs, int rightLength, const void* rhs) const {
+            return 0;
+        }
+
+        static const char* name() {
+            return "alwaysequal";
+        }
+    };
+
+    auto useLegacyScript = false;
+    SECTION("legacy API") {
+        useLegacyScript = true;
+    }
+    SECTION("modern API") {
+        useLegacyScript = false;
+    }
+
+    auto filename = "custom_collate.sqlite";
+    ::remove(filename);
     auto storage = make_storage(
-        "custom_collate.sqlite",
+        filename,
         make_table("items", make_column("id", &Item::id, primary_key()), make_column("name", &Item::name)));
-    //    storage.open_forever();
+    storage.open_forever();
     storage.sync_schema();
     storage.remove_all<Item>();
     storage.insert(Item{0, "Mercury"});
     storage.insert(Item{0, "Mars"});
-    storage.create_collation("ototo", [](int, const void* lhs, int, const void* rhs) {
-        return strcmp((const char*)lhs, (const char*)rhs);
-    });
-    storage.create_collation("alwaysequal", [](int, const void*, int, const void*) {
-        return 0;
-    });
+    if(useLegacyScript) {
+        storage.create_collation("ototo", [](int leftLength, const void* lhs, int rightLength, const void* rhs) {
+            if(leftLength == rightLength) {
+                return ::strncmp((const char*)lhs, (const char*)rhs, leftLength);
+            } else {
+                return 1;
+            }
+        });
+        storage.create_collation("alwaysequal", [](int, const void*, int, const void*) {
+            return 0;
+        });
+    } else {
+        storage.create_collation<OtotoCollation>();
+        storage.create_collation<AlwaysEqualCollation>();
+    }
     auto rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
+    REQUIRE(rows.size() == 1);
+    REQUIRE(rows.front() == "Mercury");
+
+    rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate<OtotoCollation>()));
     REQUIRE(rows.size() == 1);
     REQUIRE(rows.front() == "Mercury");
 
@@ -299,53 +346,53 @@ TEST_CASE("Custom collate") {
                           where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                           order_by(&Item::name).collate("ototo"));
 
-    storage.create_collation("ototo", {});
+    rows = storage.select(&Item::name,
+                          where(is_equal(&Item::name, "Mercury").collate<AlwaysEqualCollation>()),
+                          order_by(&Item::name).collate<OtotoCollation>());
+
+    if(useLegacyScript) {
+        storage.create_collation("ototo", {});
+    } else {
+        storage.delete_collation<OtotoCollation>();
+    }
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo")));
         REQUIRE(false);
-    } catch(const std::system_error& e) {
+    } catch(const std::system_error&) {
+        //        cout << e.what() << endl;
+    }
+    try {
+        rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate<OtotoCollation>()));
+        REQUIRE(false);
+    } catch(const std::system_error&) {
         //        cout << e.what() << endl;
     }
     try {
         rows = storage.select(&Item::name, where(is_equal(&Item::name, "Mercury").collate("ototo2")));
         REQUIRE(false);
-    } catch(const std::system_error& e) {
+    } catch(const std::system_error&) {
         //        cout << e.what() << endl;
     }
+
     rows = storage.select(&Item::name,
                           where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                           order_by(&Item::name).collate_rtrim());
+    REQUIRE(rows.size() == static_cast<size_t>(storage.count<Item>()));
+
+    rows = storage.select(&Item::name,
+                          where(is_equal(&Item::name, "Mercury").collate<AlwaysEqualCollation>()),
+                          order_by(&Item::name).collate_rtrim());
+    REQUIRE(rows.size() == static_cast<size_t>(storage.count<Item>()));
 
     rows = storage.select(&Item::name,
                           where(is_equal(&Item::name, "Mercury").collate("alwaysequal")),
                           order_by(&Item::name).collate("alwaysequal"));
     REQUIRE(rows.size() == static_cast<size_t>(storage.count<Item>()));
-}
 
-TEST_CASE("collate") {
-    struct User {
-        int id = 0;
-        std::string firstName;
-
-        bool operator==(const User& user) const {
-            return this->id == user.id && this->firstName == user.firstName;
-        }
-    };
-    auto storage = make_storage(
-        {},
-        make_table("users", make_column("id", &User::id, primary_key()), make_column("first_name", &User::firstName)));
-    storage.sync_schema();
-    User user1{1, "HELLO"};
-    User user2{2, "Hello"};
-    User user3{3, "HEllo"};
-
-    storage.replace(user1);
-    storage.replace(user2);
-    storage.replace(user3);
-
-    auto rows = storage.get_all<User>(where(is_equal(&User::firstName, "hello").collate_nocase()));
-    std::vector<User> expected = {user1, user2, user3};
-    REQUIRE(rows == expected);
+    rows = storage.select(&Item::name,
+                          where(is_equal(&Item::name, "Mercury").collate<AlwaysEqualCollation>()),
+                          order_by(&Item::name).collate<AlwaysEqualCollation>());
+    REQUIRE(rows.size() == static_cast<size_t>(storage.count<Item>()));
 }
 
 TEST_CASE("Vacuum") {
@@ -365,72 +412,4 @@ TEST_CASE("Vacuum") {
     storage.insert(Item{0, "Five"});
     storage.remove_all<Item>();
     storage.vacuum();
-}
-
-TEST_CASE("Remove all") {
-    struct Object {
-        int id;
-        std::string name;
-    };
-
-    auto storage = make_storage(
-        "",
-        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
-    storage.sync_schema();
-
-    storage.replace(Object{1, "Ototo"});
-    storage.replace(Object{2, "Contigo"});
-
-    REQUIRE(storage.count<Object>() == 2);
-
-    storage.remove_all<Object>(where(c(&Object::id) == 1));
-
-    REQUIRE(storage.count<Object>() == 1);
-}
-
-TEST_CASE("Escaped index name") {
-    struct User {
-        std::string group;
-    };
-    auto storage = make_storage("index_group.sqlite",
-                                make_index("index", &User::group),
-                                make_table("users", make_column("group", &User::group)));
-    storage.sync_schema();
-}
-
-TEST_CASE("Where") {
-    struct User {
-        int id = 0;
-        int age = 0;
-        std::string name;
-    };
-
-    auto storage = make_storage("",
-                                make_table("users",
-                                           make_column("id", &User::id, primary_key()),
-                                           make_column("age", &User::age),
-                                           make_column("name", &User::name)));
-    storage.sync_schema();
-
-    storage.replace(User{1, 4, "Jeremy"});
-    storage.replace(User{2, 18, "Nataly"});
-
-    auto users = storage.get_all<User>();
-    REQUIRE(users.size() == 2);
-
-    auto users2 = storage.get_all<User>(where(true));
-    REQUIRE(users2.size() == 2);
-
-    auto users3 = storage.get_all<User>(where(false));
-    REQUIRE(users3.size() == 0);
-
-    auto users4 = storage.get_all<User>(where(true and c(&User::id) == 1));
-    REQUIRE(users4.size() == 1);
-    REQUIRE(users4.front().id == 1);
-
-    auto users5 = storage.get_all<User>(where(false and c(&User::id) == 1));
-    REQUIRE(users5.size() == 0);
-
-    auto users6 = storage.get_all<User>(where((false or c(&User::id) == 4) and (false or c(&User::age) == 18)));
-    REQUIRE(users6.empty());
 }

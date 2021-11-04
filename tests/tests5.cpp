@@ -4,44 +4,6 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("Exists") {
-    struct User {
-        int id = 0;
-        std::string name;
-    };
-
-    struct Visit {
-        int id = 0;
-        int userId = 0;
-        time_t time = 0;
-    };
-
-    auto storage =
-        make_storage("",
-                     make_table("users", make_column("id", &User::id, primary_key()), make_column("name", &User::name)),
-                     make_table("visits",
-                                make_column("id", &Visit::id, primary_key()),
-                                make_column("userId", &Visit::userId),
-                                make_column("time", &Visit::time),
-                                foreign_key(&Visit::userId).references(&User::id)));
-    storage.sync_schema();
-
-    storage.replace(User{1, "Daddy Yankee"});
-    storage.replace(User{2, "Don Omar"});
-
-    storage.replace(Visit{1, 1, 100000});
-    storage.replace(Visit{2, 1, 100001});
-    storage.replace(Visit{3, 1, 100002});
-    storage.replace(Visit{4, 1, 200000});
-
-    storage.replace(Visit{5, 2, 100000});
-
-    auto rows = storage.select(
-        &User::id,
-        where(exists(select(&Visit::id, where(c(&Visit::time) == 200000 and eq(&Visit::userId, &User::id))))));
-    REQUIRE(!rows.empty() == 1);
-}
-
 TEST_CASE("Iterate blob") {
     struct Test {
         int64_t id;
@@ -298,3 +260,91 @@ TEST_CASE("Dump") {
     REQUIRE(dumpUser2 == std::string{"{ id : '2', car_year : '2006' }"});
 }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+TEST_CASE("issue730") {
+    struct Table {
+        int64_t id;
+        std::string a;
+        std::string b;
+        std::string c;
+    };
+    auto storage = make_storage({},
+                                make_table("table",
+                                           make_column("id", &Table::id),
+                                           make_column("a", &Table::a),
+                                           make_column("b", &Table::b),
+                                           make_column("c", &Table::c),
+                                           sqlite_orm::unique(&Table::a, &Table::b, &Table::c)));
+    storage.sync_schema();
+
+    auto rows = storage.select(asterisk<Table>());
+
+    using Rows = decltype(rows);
+    using ExpectedRows = std::vector<std::tuple<int64_t, std::string, std::string, std::string>>;
+
+    static_assert(std::is_same<Rows, ExpectedRows>::value, "");
+}
+
+TEST_CASE("issue822") {
+    class A {
+      public:
+        A() = default;
+        A(const uint8_t& address, const uint8_t& type, const uint8_t& idx, std::shared_ptr<double> value) :
+            address(address), type(type), idx(idx), value(std::move(value)){};
+
+        const uint8_t& getAddress() const {
+            return this->address;
+        }
+
+        void setAddress(const uint8_t& address) {
+            this->address = address;
+        }
+
+        const uint8_t& getType() const {
+            return this->type;
+        }
+
+        void setType(const uint8_t& type) {
+            this->type = type;
+        }
+
+        const uint8_t& getIndex() const {
+            return this->idx;
+        }
+
+        void setIndex(const uint8_t& index) {
+            this->idx = index;
+        }
+
+        std::shared_ptr<double> getValue() const {
+            return this->value;
+        }
+
+        void setValue(std::shared_ptr<double> value) {
+            this->value = std::move(value);
+        }
+
+      private:
+        uint8_t address;
+        uint8_t type;
+        uint8_t idx;
+        std::shared_ptr<double> value;
+    };
+    auto storage = make_storage("",
+                                make_table("A",
+                                           make_column("address", &A::getAddress, &A::setAddress),
+                                           make_column("type", &A::getType, &A::setType),
+                                           make_column("idx", &A::getIndex, &A::setIndex),
+                                           make_column("value", &A::getValue, &A::setValue),
+                                           primary_key(&A::getAddress, &A::getType, &A::getIndex)));
+    storage.sync_schema();
+    storage.replace(A(1, 1, 0, std::make_shared<double>(55.5)));
+    auto records = storage.get_all<A>(where(c(&A::getAddress) == 1 and c(&A::getType) == 1 and c(&A::getIndex) == 0));
+    if(records.size() != 0) {
+        A a = records[0];
+        a.setValue(std::make_shared<double>(10));
+        storage.update(a);
+        records = storage.get_all<A>(where(c(&A::getAddress) == 1 and c(&A::getType) == 1 and c(&A::getIndex) == 0));
+        std::ignore = records;
+    }
+}
