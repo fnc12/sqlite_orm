@@ -345,6 +345,7 @@ TEST_CASE("issue822") {
         a.setValue(std::make_shared<double>(10));
         storage.update(a);
         records = storage.get_all<A>(where(c(&A::getAddress) == 1 and c(&A::getType) == 1 and c(&A::getIndex) == 0));
-        std::ignore = records;
+        REQUIRE(records.size() == 1);
+        REQUIRE(*records[0].getValue() == 10);
     }
 }
