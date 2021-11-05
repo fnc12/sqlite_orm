@@ -232,6 +232,11 @@ namespace sqlite_orm {
                 return this->_action != decltype(this->_action)::none;
             }
         };
+    
+        template<class F>
+        bool operator==(const on_update_delete_t<F> &lhs, const on_update_delete_t<F> &rhs) {
+            return lhs._action == rhs._action;
+        }
 
         template<class... Cs, class... Rs>
         struct foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> {
@@ -260,7 +265,7 @@ namespace sqlite_orm {
             static_assert(!std::is_same<target_type, void>::value, "All references must have the same type");
 
             foreign_key_t(columns_type columns_, references_type references_) :
-                columns(std::move(columns_)), references(std::move(references_)),
+                columns(move(columns_)), references(move(references_)),
                 on_update(*this, true, foreign_key_action::none), on_delete(*this, false, foreign_key_action::none) {}
 
             foreign_key_t(const self& other) :
@@ -283,6 +288,11 @@ namespace sqlite_orm {
                 return false;
             }
         };
+    
+        template<class A, class B>
+        bool operator==(const foreign_key_t<A, B> &lhs, const foreign_key_t<A, B> &rhs) {
+            return lhs.columns == rhs.columns && lhs.references == rhs.references && lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete;
+        }
 
         /**
          *  Cs can be a class member pointer, a getter function member pointer or setter

@@ -208,10 +208,10 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument Otherwise
-             * code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
-             * iterate columns with table constraints use iterate_tuple(columns, ...) instead. L is lambda type. Do
-             * not specify it explicitly.
+             *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument. Otherwise
+             *  code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
+             *  iterate columns with table constraints use iterate_tuple(columns, ...) instead. L is lambda type. Do
+             *  not specify it explicitly.
              *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class L>
@@ -219,6 +219,14 @@ namespace sqlite_orm {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
                     using element_type = typename std::decay<decltype(element)>::type;
                     static_if<is_column<element_type>{}>(lambda)(element);
+                });
+            }
+            
+            template<class L>
+            void for_each_foreign_key(const L& lambda) const {
+                iterate_tuple(this->elements, [&lambda](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    static_if<is_foreign_key<element_type>{}>(lambda)(element);
                 });
             }
 
