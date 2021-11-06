@@ -198,11 +198,11 @@ TEST_CASE("for_each_foreign_key") {
                                  make_column("visited_at", &Visit::visited_at),
                                  make_column("mark", &Visit::mark),
                                  foreign_key(&Visit::location).references(&Location::id));
-    locationTable.for_each_foreign_key([](auto &) {
+    locationTable.for_each_foreign_key([](auto&) {
         REQUIRE(false);
     });
     auto visitCallsCount = 0;
-    visitTable.for_each_foreign_key([&visitCallsCount](auto &foreignKey) {
+    visitTable.for_each_foreign_key([&visitCallsCount](auto& foreignKey) {
         ++visitCallsCount;
         REQUIRE(foreignKey == foreign_key(&Visit::location).references(&Location::id));
     });

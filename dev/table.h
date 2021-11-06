@@ -221,7 +221,7 @@ namespace sqlite_orm {
                     static_if<is_column<element_type>{}>(lambda)(element);
                 });
             }
-            
+
             template<class L>
             void for_each_foreign_key(const L& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {

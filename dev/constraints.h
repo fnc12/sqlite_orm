@@ -232,9 +232,9 @@ namespace sqlite_orm {
                 return this->_action != decltype(this->_action)::none;
             }
         };
-    
+
         template<class F>
-        bool operator==(const on_update_delete_t<F> &lhs, const on_update_delete_t<F> &rhs) {
+        bool operator==(const on_update_delete_t<F>& lhs, const on_update_delete_t<F>& rhs) {
             return lhs._action == rhs._action;
         }
 
@@ -288,10 +288,11 @@ namespace sqlite_orm {
                 return false;
             }
         };
-    
+
         template<class A, class B>
-        bool operator==(const foreign_key_t<A, B> &lhs, const foreign_key_t<A, B> &rhs) {
-            return lhs.columns == rhs.columns && lhs.references == rhs.references && lhs.on_update == rhs.on_update && lhs.on_delete == rhs.on_delete;
+        bool operator==(const foreign_key_t<A, B>& lhs, const foreign_key_t<A, B>& rhs) {
+            return lhs.columns == rhs.columns && lhs.references == rhs.references && lhs.on_update == rhs.on_update &&
+                   lhs.on_delete == rhs.on_delete;
         }
 
         /**

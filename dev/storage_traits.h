@@ -221,12 +221,12 @@ namespace sqlite_orm {
             struct column_fk_references {
                 using type = std::tuple<>;
             };
-        
+
             template<class C, class O, class SFINAE = void>
             struct column_foreign_keys {
                 using type = std::tuple<>;
             };
-        
+
             template<class A, class B, class O>
             struct column_foreign_keys<
                 foreign_key_t<A, B>,
@@ -234,7 +234,7 @@ namespace sqlite_orm {
                 typename std::enable_if<std::is_same<O, typename foreign_key_t<A, B>::target_type>::value>::type> {
                 using type = std::tuple<foreign_key_t<A, B>>;
             };
-        
+
             template<class A, class B, class O>
             struct column_foreign_keys<
                 foreign_key_t<A, B>,
@@ -267,7 +267,7 @@ namespace sqlite_orm {
              */
             template<class O, class... Cs>
             struct table_fk_references_impl;
-        
+
             template<class O, class... Cs>
             struct table_foreign_keys_impl;
 
@@ -275,7 +275,7 @@ namespace sqlite_orm {
             struct table_fk_references_impl<O> {
                 using type = std::tuple<>;
             };
-        
+
             template<class O>
             struct table_foreign_keys_impl<O> {
                 using type = std::tuple<>;
@@ -287,7 +287,7 @@ namespace sqlite_orm {
                 using tail_tuple = typename table_fk_references_impl<O, Tail...>::type;
                 using type = typename conc_tuple<head_tuple, tail_tuple>::type;
             };
-        
+
             template<class O, class H, class... Tail>
             struct table_foreign_keys_impl<O, H, Tail...> {
                 using head_tuple = typename column_foreign_keys<H, O>::type;
@@ -301,7 +301,7 @@ namespace sqlite_orm {
              */
             template<class T, class O>
             struct table_fk_references;
-        
+
             template<class T, class O>
             struct table_foreign_keys;
 
@@ -311,7 +311,7 @@ namespace sqlite_orm {
 
                 using type = typename table_fk_references_impl<O, Cs...>::type;
             };
-        
+
             template<class T, bool WithoutRowId, class... Cs, class O>
             struct table_foreign_keys<table_t<T, WithoutRowId, Cs...>, O> {
                 using table_type = table_t<T, WithoutRowId, Cs...>;
@@ -325,7 +325,7 @@ namespace sqlite_orm {
              */
             template<class S, class O>
             struct storage_fk_references_impl;
-        
+
             template<class S, class O>
             struct storage_foreign_keys_impl;
 
@@ -333,7 +333,7 @@ namespace sqlite_orm {
             struct storage_fk_references_impl<storage_impl<>, O> {
                 using type = std::tuple<>;
             };
-        
+
             template<class O>
             struct storage_foreign_keys_impl<storage_impl<>, O> {
                 using type = std::tuple<>;
@@ -345,7 +345,7 @@ namespace sqlite_orm {
                 using tail_tuple = typename storage_fk_references_impl<storage_impl<Ts...>, O>::type;
                 using type = typename conc_tuple<head_tuple, tail_tuple>::type;
             };
-        
+
             template<class H, class... Ts, class O>
             struct storage_foreign_keys_impl<storage_impl<H, Ts...>, O> {
                 using head_tuple = typename table_foreign_keys<H, O>::type;
@@ -364,7 +364,7 @@ namespace sqlite_orm {
 
                 using type = typename storage_fk_references_impl<impl_type, O>::type;
             };
-        
+
             template<class S, class O>
             struct storage_foreign_keys {
                 using impl_type = typename S::impl_type;
