@@ -909,9 +909,9 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
-                this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
-                    auto res = this->sync_table(tableImpl, db, preserve);
-                    result.insert({tableImpl.table.name, res});
+                this->impl.for_each([&result, db, preserve, this](auto& storageImpl) {
+                    auto res = this->sync_table(storageImpl, db, preserve);
+                    result.insert({storageImpl.table.name, res});
                 });
                 return result;
             }
@@ -1606,22 +1606,87 @@ namespace sqlite_orm {
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-            /*template<class O>
+            template<class O>
             bool has_dependent_rows(const O& object) {
                 auto res = false;
-                using TupleWithForeignKeyTypes = typename storage_traits::storage_fk_references<self, O>::type;
-                iterate_tuple<TupleWithForeignKeyTypes>([&res, this](auto *itemPointer){
-                    using ConstItem = typename std::remove_pointer<decltype(itemPointer)>::type;
-                    using Item = typename std::decay<ConstItem>::type;
-                    if(!res) {
-                        auto rows = this->select(count<Item>());
-                        if (!rows.empty()) {
-                            res = rows[0];
-                        }
+                this->impl.for_each([this, &object, &res](auto& storageImpl) {
+                    if(res) {
+                        return;
                     }
+                    storageImpl.table.for_each_foreign_key([&storageImpl, this, &object, &res](auto& foreignKey) {
+                        using ForeignKey = typename std::decay<decltype(foreignKey)>::type;
+                        using TargetType = typename ForeignKey::target_type;
+                        if(std::is_same<TargetType, O>::value) {
+                            std::stringstream ss;
+                            ss << "SELECT COUNT(*)";
+                            ss << " FROM " << storageImpl.table.name;
+                            ss << " WHERE";
+                            auto columnIndex = 0;
+                            iterate_tuple(foreignKey.columns, [&ss, &columnIndex, &storageImpl](auto& column) {
+                                if(columnIndex > 0) {
+                                    ss << " AND";
+                                }
+                                if(auto columnName = storageImpl.table.find_column_name(column)) {
+                                    ss << ' ' << *columnName << " = ?";
+                                } else {
+                                    throw std::system_error(
+                                        std::make_error_code(sqlite_orm::orm_error_code::column_not_found));
+                                }
+                                ++columnIndex;
+                            });
+                            auto query = ss.str();
+                            ss.flush();
+                            auto con = this->get_connection();
+                            sqlite3_stmt* stmt;
+                            auto db = con.get();
+                            if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
+                                statement_finalizer finalizer(stmt);
+                                columnIndex = 1;
+                                iterate_tuple(
+                                    foreignKey.references,
+                                    [&columnIndex, stmt, &object, db](auto& memberPointer) {
+                                        using MemberPointer = typename std::decay<decltype(memberPointer)>::type;
+                                        using field_type = typename member_traits<MemberPointer>::field_type;
+                                        //                                    if(column.member_pointer) {
+                                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt,
+                                                                                            columnIndex++,
+                                                                                            object.*memberPointer)) {
+                                            throw std::system_error(
+                                                std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
+                                        }
+                                        /*} else {
+                                        using getter_type = typename column_type::getter_type;
+                                        field_value_holder<getter_type> valueHolder{((object).*(column.getter))()};
+                                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, columnIndex++, valueHolder.value)) {
+                                            throw std::system_error(
+                                                std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                sqlite3_errmsg(db));
+                                        }
+                                    }*/
+                                    });
+                                if(SQLITE_ROW != sqlite3_step(stmt)) {
+                                    throw std::system_error(
+                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                        sqlite3_errmsg(db));
+                                }
+                                auto countResult = sqlite3_column_int(stmt, 0);
+                                res = countResult > 0;
+                                if(SQLITE_DONE != sqlite3_step(stmt)) {
+                                    throw std::system_error(
+                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                        sqlite3_errmsg(db));
+                                }
+                            } else {
+                                throw std::system_error(
+                                    std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                    sqlite3_errmsg(db));
+                            }
+                        }
+                    });
                 });
                 return res;
-            }*/
+            }
         };  // struct storage_t
 
         template<class T>

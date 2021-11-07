@@ -1,13 +1,10 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
-#include <iostream>
 
 using namespace sqlite_orm;
-using std::cout;
-using std::endl;
 
-TEST_CASE("table") {
-    {
+TEST_CASE("table::find_column_name") {
+    SECTION("fields") {
         struct Contact {
             int id = 0;
             std::string firstName;
@@ -36,7 +33,7 @@ TEST_CASE("table") {
         REQUIRE(*table.find_column_name(&Contact::phoneNumber) == "phone_number");
         REQUIRE(*table.find_column_name(&Contact::visitsCount) == "visits_count");
     }
-    {
+    SECTION("getters and setters") {
         struct Contact {
           private:
             int _id = 0;
@@ -170,4 +167,44 @@ TEST_CASE("Composite key column names") {
         auto compositeKeyColumnsNames = table.composite_key_columns_names();
         REQUIRE(compositeKeyColumnsNames.empty());
     }
+}
+
+TEST_CASE("for_each_foreign_key") {
+    struct Location {
+        int id;
+        std::string place;
+        std::string country;
+        std::string city;
+        int distance;
+    };
+
+    struct Visit {
+        int id;
+        std::unique_ptr<int> location;
+        std::unique_ptr<int> user;
+        int visited_at;
+        uint8_t mark;
+    };
+    auto locationTable = make_table("location",
+                                    make_column("id", &Location::id, primary_key()),
+                                    make_column("place", &Location::place),
+                                    make_column("country", &Location::country),
+                                    make_column("city", &Location::city),
+                                    make_column("distance", &Location::distance));
+    auto visitTable = make_table("visit",
+                                 make_column("id", &Visit::id, primary_key()),
+                                 make_column("location", &Visit::location),
+                                 make_column("user", &Visit::user),
+                                 make_column("visited_at", &Visit::visited_at),
+                                 make_column("mark", &Visit::mark),
+                                 foreign_key(&Visit::location).references(&Location::id));
+    locationTable.for_each_foreign_key([](auto&) {
+        REQUIRE(false);
+    });
+    auto visitCallsCount = 0;
+    visitTable.for_each_foreign_key([&visitCallsCount](auto& foreignKey) {
+        ++visitCallsCount;
+        REQUIRE(foreignKey == foreign_key(&Visit::location).references(&Location::id));
+    });
+    REQUIRE(visitCallsCount == 1);
 }

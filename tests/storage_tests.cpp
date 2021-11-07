@@ -171,7 +171,14 @@ TEST_CASE("has_dependent_rows") {
                                 foreign_key(&Visit::userId).references(&User::id)));
     storage.sync_schema();
 
-    //    storage.has_dependent_rows<User>(5);
+    User user5{5, "Eugene"};
+    storage.replace(user5);
+
+    REQUIRE(!storage.has_dependent_rows(user5));
+
+    storage.insert(Visit{0, user5.id, 100});
+
+    REQUIRE(storage.has_dependent_rows(user5));
 }
 
 TEST_CASE("column_name") {
