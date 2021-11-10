@@ -153,7 +153,7 @@ namespace std {
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::false_type, std::true_type
 
-// #include "static_magic.h"
+// #include "../static_magic.h"
 
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
 
@@ -6160,22 +6160,6 @@ namespace sqlite_orm {
 // #include "ast/where.h"
 
 // #include "../serialize_result_type.h"
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>  //  string_view
-#else
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        using serialize_result_type = std::string_view;
-#else
-        using serialize_result_type = std::string;
-#endif
-    }
-}
 
 namespace sqlite_orm {
     namespace internal {
