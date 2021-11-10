@@ -20,6 +20,10 @@ __pragma(push_macro("min"))
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+// note: a C++17 conforming compiler ignores unknown attributes
+#define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
+#else
+#define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
 #pragma once
 
@@ -6684,6 +6688,10 @@ namespace sqlite_orm {
     using statement_finalizer =
         std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
 
+    using void_fn_t = void (*)();
+    using xdestroy_fn_t = void (*)(void*);
+    using null_xdestroy = std::integral_constant<xdestroy_fn_t, nullptr>;
+
 }
 #pragma once
 #include <type_traits>
@@ -6708,6 +6716,104 @@ namespace sqlite_orm {
 
     template<class V>
     using arithmetic_tag_t = typename arithmetic_tag<V>::type;
+}
+#pragma once
+
+#include <type_traits>
+#ifdef __cpp_lib_concepts
+#include <concepts>
+#endif
+
+namespace sqlite_orm {
+
+    namespace internal {
+
+        template<typename T>
+        struct fp_type {
+            using type = typename T::value_type;
+        };
+        template<typename R, typename... Args>
+        struct fp_type<R (*)(Args...)> {
+            using type = R (*)(Args...);
+        };
+        template<typename T>
+        using fp_type_t = typename fp_type<T>::type;
+    }
+
+    /**
+     *  Wraps a pointer and tags it with a pointer type,
+     *  used for accepting function parameters,
+     *  facilitating the 'pointer-passing interface'.
+     * 
+     *  Template parameters:
+     *    - P: The value type, possibly const-qualified.
+     *    - T: An integral constant string denoting the pointer type, e.g. carray_pvt_name.
+     *
+     */
+    template<typename P, typename T>
+    struct pointer_value {
+
+        static_assert(std::is_convertible_v<T::value_type, const char*>,
+                      "`std::integral_constant<>` must be convertible to `const char*`");
+
+        using tag = T;
+        P* ptr = nullptr;
+
+        constexpr operator P*() const {
+            return ptr;
+        }
+    };
+
+    /**
+     *  Pointer value with associated deleter function,
+     *  used for returning or binding pointer values
+     *  as part of facilitating the 'pointer-passing interface'.
+     * 
+     *  The term "trule" is the short form of "TRansport capsULE" and is a carrier
+     *  object used for moving wrapped types from one place to another.
+     *
+     *  Template parameters:
+     *    - D: The deleter function for the pointer value;
+     *         must be either a function pointer type,
+     *         integral constant or structure returning a function pointer.
+     *
+     *  @example
+     *  ```
+     *  int64 rememberedId;
+     *  storage.select(func<remember_fn>(&Object::id, carray_trule<int64, null_xdetroy>{&rememberedId}));
+     *  ```
+     */
+#ifdef __cpp_lib_concepts
+    template<typename P, typename T, typename D>
+    struct pointer_trule : pointer_value<P, T> {
+
+        SQLITE_ORM_NOUNIQUEADDRESS
+        D d_{};
+
+        using fn_t = internal::fp_type_t<D>;
+
+        // constraint: xDestroy function must be invocable: D(P*)
+        constexpr xdestroy_fn_t get_deleter() const requires std::invocable < fn_t, std::remove_cv_t<P>
+        * > {
+            fn_t destroy = d_;
+            return xdestroy_fn_t(void_fn_t(destroy));
+        }
+    };
+#else
+    template<typename P, typename T, typename D>
+    struct pointer_trule : pointer_value<P, T> {
+
+        D d_{};
+
+        using fn_t = internal::fp_type_t<D>;
+
+        // constraint: xDestroy function must be invocable: D(P*)
+        constexpr std::enable_if_t<std::is_invocable_v<fn_t, std::remove_cv_t<P>*>, xdestroy_fn_t> get_deleter() const {
+            fn_t destroy = d_;
+            return xdestroy_fn_t(void_fn_t(destroy));
+        }
+    };
+#endif
 }
 #pragma once
 
@@ -6754,6 +6860,8 @@ namespace sqlite_orm {
 
 // #include "arithmetic_tag.h"
 
+// #include "pointer_value.h"
+
 namespace sqlite_orm {
 
     /**
@@ -6761,6 +6869,23 @@ namespace sqlite_orm {
      */
     template<class V, typename Enable = void>
     struct statement_binder : std::false_type {};
+
+    /**
+     *  Specialization for 'pointer-passing interface'.
+     */
+    template<class P, class T, class D>
+    struct statement_binder<pointer_trule<P, T, D>, void> {
+
+        using V = pointer_trule<P, T, D>;
+
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+            return sqlite3_bind_pointer(stmt, index, (void*)value.ptr, T::value, value.get_deleter());
+        }
+
+        void result(sqlite3_context* context, const V& value) const {
+            sqlite3_result_pointer(context, (void*)value.ptr, T::value, value.get_deleter());
+        }
+    };
 
     /**
      *  Specialization for arithmetic types.
@@ -7041,6 +7166,8 @@ namespace sqlite_orm {
 
 // #include "arithmetic_tag.h"
 
+// #include "pointer_value.h"
+
 // #include "journal_mode.h"
 
 #include <string>  //  std::string
@@ -7122,6 +7249,21 @@ namespace sqlite_orm {
 
         //  used in user defined functions
         V extract(sqlite3_value* value) const;
+    };
+
+    /**
+     *  Specialization for the 'pointer-passing interface'.
+     * 
+     *  @note The 'pointer-passing' interface doesn't support (and in fact prohibits)
+     *  extracting pointers from columns.
+     */
+    template<class P, class T>
+    struct row_extractor<pointer_value<P, T>, void> {
+        using V = pointer_value<P, T>;
+
+        V extract(sqlite3_value* value) const {
+            return {static_cast<P*>(sqlite3_value_pointer(value, T::value))};
+        }
     };
 
     /**
@@ -17338,4 +17480,49 @@ namespace sqlite_orm {
         });
         return internal::get_ref(*result);
     }
+}
+#pragma once
+
+#include <type_traits>
+
+// #include "pointer_value.h"
+
+namespace sqlite_orm {
+
+    inline constexpr const char carray_pvt_name[] = "carray";
+    using carray_pvt = std::integral_constant<const char*, carray_pvt_name>;
+    template<typename P>
+    using carray_value = pointer_value<P, carray_pvt>;
+    template<typename P, typename D>
+    using carray_trule = pointer_trule<P, carray_pvt, D>;
+
+    /**
+     *  SQL function that is a pass-through
+     *  for values (it returns a copy of its argument) but also saves the
+     *  value that is passed through into a C-language variable.
+     */
+    template<typename P>
+    struct note_value_fn {
+        using pointer_value_t = carray_value<P>;
+
+        P operator()(P value, pointer_value_t pv) const {
+            if(P* p = pv) {
+                *p = value;
+            }
+            return std::move(value);
+        }
+
+        static constexpr const char* name() {
+            return "note_value";
+        }
+    };
+
+    /**
+     *  remember(V, $PTR) extension function https://sqlite.org/src/file/ext/misc/remember.c
+     */
+    struct remember_fn : note_value_fn<int64> {
+        static constexpr const char* name() {
+            return "remember";
+        }
+    };
 }

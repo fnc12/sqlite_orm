@@ -12,4 +12,8 @@ namespace sqlite_orm {
     using statement_finalizer =
         std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
 
+    using void_fn_t = void (*)();
+    using xdestroy_fn_t = void (*)(void*);
+    using null_xdestroy = std::integral_constant<xdestroy_fn_t, nullptr>;
+
 }

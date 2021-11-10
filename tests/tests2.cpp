@@ -559,3 +559,57 @@ TEST_CASE("custom functions") {
     }
     storage.delete_aggregate_function<MultiSum>();
 }
+
+TEST_CASE("Pointer") {
+    struct Object {
+        int64 id = 0;
+    };
+    using carray_value_t = carray_value<int64>;
+    using carray_trule_t = carray_trule<int64, null_xdestroy>;
+    // accept and return a pointer of type "carray"
+    struct test_pointer_passing_fn {
+        carray_trule_t operator()(carray_value_t pv) const {
+            int64 *p = pv;
+            return { p };
+        }
+
+        static const char* name() {
+            return "test_pointer_passing";
+        }
+    };
+
+    auto storage =
+        make_storage("", make_table("objects", make_column("id", &Object::id, autoincrement(), primary_key())));
+    storage.sync_schema();
+
+    storage.insert(Object{});
+
+
+    // test the note_value function
+
+    storage.create_scalar_function<note_value_fn<int64>>();
+    {
+        int64 lastUpdatedId = -1;
+        storage.update_all(
+            set(c(&Object::id) = add(1ll, func<note_value_fn<int64>>(&Object::id, carray_trule_t{&lastUpdatedId}))));
+        REQUIRE(lastUpdatedId == 0);
+        storage.update_all(
+            set(c(&Object::id) = add(1ll, func<note_value_fn<int64>>(&Object::id, carray_trule_t{&lastUpdatedId}))));
+        REQUIRE(lastUpdatedId == 1);
+    }
+    storage.delete_scalar_function<note_value_fn<int64>>();
+
+
+    // test passing a pointer into another function
+
+    storage.create_scalar_function<note_value_fn<int64>>();
+    storage.create_scalar_function<test_pointer_passing_fn>();
+    {
+        int64 lastSelectedId = -1;
+        auto v = storage.select(
+            func<note_value_fn<int64>>(&Object::id, func<test_pointer_passing_fn>(carray_trule_t{&lastSelectedId})));
+        REQUIRE(v.back() == lastSelectedId);
+    }
+    storage.delete_scalar_function<test_pointer_passing_fn>();
+    storage.delete_scalar_function<note_value_fn<int64>>();
+}
