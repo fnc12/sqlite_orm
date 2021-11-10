@@ -13,6 +13,7 @@
 #include <cstring>  //  ::strncpy, ::strlen
 
 #include "is_std_ptr.h"
+#include "arithmetic_tag.h"
 
 namespace sqlite_orm {
 

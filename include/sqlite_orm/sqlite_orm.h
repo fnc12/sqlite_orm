@@ -6686,6 +6686,7 @@ namespace sqlite_orm {
 
 }
 #pragma once
+#include <type_traits>
 
 namespace sqlite_orm {
 
@@ -6750,6 +6751,8 @@ namespace sqlite_orm {
         }
     };
 }
+
+// #include "arithmetic_tag.h"
 
 namespace sqlite_orm {
 
