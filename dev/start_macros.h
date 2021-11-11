@@ -23,5 +23,5 @@ __pragma(push_macro("min"))
 // note: a C++17 conforming compiler ignores unknown attributes
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
-#define SQLITE_ORM_NOUNIQUEADDRESS 
+#define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
