@@ -23,7 +23,7 @@ namespace sqlite_orm {
         using pointer_value_t = carray_value<P>;
 
         P operator()(P&& value, pointer_value_t pv) const {
-            if (P* p = pv) {
+            if(P* p = pv) {
                 *p = value;
             }
             return std::move(value);

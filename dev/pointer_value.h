@@ -74,9 +74,8 @@ namespace sqlite_orm {
         using fn_t = internal::fp_type_t<D>;
 
         // constraint: xDestroy function must be invocable: D(P*)
-        constexpr xdestroy_fn_t get_deleter() const
-            requires std::invocable<fn_t, std::remove_cv_t<P>*>
-        {
+        constexpr xdestroy_fn_t get_deleter() const requires std::invocable < fn_t, std::remove_cv_t<P>
+        * > {
             fn_t destroy = d_;
             return xdestroy_fn_t(void_fn_t(destroy));
         }
@@ -90,10 +89,7 @@ namespace sqlite_orm {
         using fn_t = internal::fp_type_t<D>;
 
         // constraint: xDestroy function must be invocable: D(P*)
-        constexpr std::enable_if_t<
-            std::is_invocable_v<fn_t, std::remove_cv_t<P>*>,
-            xdestroy_fn_t
-        > get_deleter() const {
+        constexpr std::enable_if_t<std::is_invocable_v<fn_t, std::remove_cv_t<P>*>, xdestroy_fn_t> get_deleter() const {
             fn_t destroy = d_;
             return xdestroy_fn_t(void_fn_t(destroy));
         }

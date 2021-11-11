@@ -570,10 +570,10 @@ TEST_CASE("Pointer") {
     struct test_pointer_passing_fn {
         carray_trule_t operator()(carray_value_t pv) const {
             int64 *p = pv;
-            return { p };
+            return {p};
         }
 
-        static const char* name() {
+        static const char *name() {
             return "test_pointer_passing";
         }
     };
@@ -583,7 +583,6 @@ TEST_CASE("Pointer") {
     storage.sync_schema();
 
     storage.insert(Object{});
-
 
     // test the note_value function
 
@@ -598,7 +597,6 @@ TEST_CASE("Pointer") {
         REQUIRE(lastUpdatedId == 1);
     }
     storage.delete_scalar_function<note_value_fn<int64>>();
-
 
     // test passing a pointer into another function
 
