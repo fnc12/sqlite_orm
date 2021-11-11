@@ -6821,7 +6821,9 @@ namespace sqlite_orm {
     template<typename P, typename T, typename D>
     struct pointer_trule : pointer_value<P, T> {
 
-        D d_{};
+        D d_;
+
+        pointer_trule(P* p, D d = D{}) : pointer_value<P, T>{p}, d_{d} {}
 
         // constraint: xDestroy function must be void(*)(void*)
         constexpr xdestroy_fn_t get_deleter() const {
