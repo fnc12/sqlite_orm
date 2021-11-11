@@ -50,13 +50,13 @@ class Amalgamation(object):
 
     # Search included file_path in self.include_paths and
     # in source_dir if specified.
-    def find_included_file(self, file_path, source_dir):
+    def find_included_file(self, include_path, source_dir):
         search_dirs = self.include_paths[:]
         if source_dir:
             search_dirs.insert(0, source_dir)
 
         for search_dir in search_dirs:
-            search_path = os.path.join(search_dir, file_path)
+            search_path = os.path.normpath(os.path.join(search_dir, include_path))
             if os.path.isfile(self.actual_path(search_path)):
                 return search_path
         return None
@@ -66,6 +66,9 @@ class Amalgamation(object):
             config = json.loads(f.read())
             for key in config:
                 setattr(self, key, config[key])
+            self.target = os.path.normpath(self.target)
+            self.sources = [os.path.normpath(src_path) for src_path in self.sources]
+            self.include_paths = [os.path.normpath(i) for i in self.include_paths]
 
             self.verbose = args.verbose == "yes"
             self.prologue = args.prologue
@@ -237,6 +240,8 @@ class TranslationUnit(object):
             tmp_content += self.content[prev_end:include_match.start()]
             tmp_content += "// {0}\n".format(include_match.group(0))
             if found_included_path not in self.amalgamation.included_files:
+                if self.amalgamation.verbose:
+                    print("    * including \"{0}\"".format(found_included_path))
                 t = TranslationUnit(found_included_path, self.amalgamation, False)
                 tmp_content += t.content
             prev_end = include_match.end()
