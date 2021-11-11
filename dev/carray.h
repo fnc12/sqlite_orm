@@ -14,15 +14,15 @@ namespace sqlite_orm {
     using carray_trule = pointer_trule<P, carray_pvt, D>;
 
     /**
-     *  SQL function that is a pass-through
-     *  for values (it returns a copy of its argument) but also saves the
+     *  SQL function that is a pass-through for values
+     *  (it returns its argument unchanged using move semantics) but also saves the
      *  value that is passed through into a C-language variable.
      */
     template<typename P>
     struct note_value_fn {
         using pointer_value_t = carray_value<P>;
 
-        P operator()(P value, pointer_value_t pv) const {
+        P operator()(P&& value, pointer_value_t pv) const {
             if (P* p = pv) {
                 *p = value;
             }
