@@ -2,11 +2,12 @@
 
 #include <type_traits>
 
+#include "start_macros.h"
 #include "pointer_value.h"
 
 namespace sqlite_orm {
 
-    inline constexpr const char carray_pvt_name[] = "carray";
+    SQLITE_ORM_INLINE_VAR constexpr const char carray_pvt_name[] = "carray";
     using carray_pvt = std::integral_constant<const char*, carray_pvt_name>;
     template<typename P>
     using carray_value = pointer_value<P, carray_pvt>;

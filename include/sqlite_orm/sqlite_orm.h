@@ -20,9 +20,11 @@ __pragma(push_macro("min"))
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+#define SQLITE_ORM_INLINE_VAR inline
 // note: a C++17 conforming compiler ignores unknown attributes
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
+#define SQLITE_ORM_INLINE_VAR
 #define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
 #pragma once
@@ -6723,6 +6725,8 @@ namespace sqlite_orm {
 #ifdef __cpp_lib_concepts
 #include <concepts>
 #endif
+
+// #include "start_macros.h"
 
 namespace sqlite_orm {
 
@@ -17497,11 +17501,13 @@ namespace sqlite_orm {
 
 #include <type_traits>
 
+// #include "start_macros.h"
+
 // #include "pointer_value.h"
 
 namespace sqlite_orm {
 
-    inline constexpr const char carray_pvt_name[] = "carray";
+    SQLITE_ORM_INLINE_VAR constexpr const char carray_pvt_name[] = "carray";
     using carray_pvt = std::integral_constant<const char*, carray_pvt_name>;
     template<typename P>
     using carray_value = pointer_value<P, carray_pvt>;

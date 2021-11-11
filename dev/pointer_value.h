@@ -5,6 +5,8 @@
 #include <concepts>
 #endif
 
+#include "start_macros.h"
+
 namespace sqlite_orm {
 
     namespace internal {
