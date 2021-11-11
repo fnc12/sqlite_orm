@@ -80,7 +80,7 @@ namespace sqlite_orm {
             return xdestroy_fn_t(void_fn_t(destroy));
         }
     };
-#else
+#elif __cplusplus >= 201703L  // use of C++17 or higher
     template<typename P, typename T, typename D>
     struct pointer_trule : pointer_value<P, T> {
 
@@ -92,6 +92,18 @@ namespace sqlite_orm {
         constexpr std::enable_if_t<std::is_invocable_v<fn_t, std::remove_cv_t<P>*>, xdestroy_fn_t> get_deleter() const {
             fn_t destroy = d_;
             return xdestroy_fn_t(void_fn_t(destroy));
+        }
+    };
+#else
+    template<typename P, typename T, typename D>
+    struct pointer_trule : pointer_value<P, T> {
+
+        D d_{};
+
+        // constraint: xDestroy function must be void(*)(void*)
+        constexpr xdestroy_fn_t get_deleter() const {
+            xdestroy_fn_t destroy = d_;
+            return destroy;
         }
     };
 #endif
