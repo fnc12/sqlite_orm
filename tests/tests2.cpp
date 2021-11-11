@@ -591,10 +591,10 @@ TEST_CASE("Pointer") {
         int64 lastUpdatedId = -1;
         storage.update_all(
             set(c(&Object::id) = add(1ll, func<note_value_fn<int64>>(&Object::id, carray_trule_t{&lastUpdatedId}))));
-        REQUIRE(lastUpdatedId == 0);
+        REQUIRE(lastUpdatedId == 1);
         storage.update_all(
             set(c(&Object::id) = add(1ll, func<note_value_fn<int64>>(&Object::id, carray_trule_t{&lastUpdatedId}))));
-        REQUIRE(lastUpdatedId == 1);
+        REQUIRE(lastUpdatedId == 2);
     }
     storage.delete_scalar_function<note_value_fn<int64>>();
 
