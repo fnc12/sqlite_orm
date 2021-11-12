@@ -28,9 +28,9 @@ namespace sqlite_orm {
      *  Specialization for 'pointer-passing interface'.
      */
     template<class P, class T, class D>
-    struct statement_binder<pointer_trule<P, T, D>, void> {
+    struct statement_binder<pointer_binding<P, T, D>, void> {
 
-        using V = pointer_trule<P, T, D>;
+        using V = pointer_binding<P, T, D>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             return sqlite3_bind_pointer(stmt, index, (void*)value.ptr, T::value, value.get_deleter());

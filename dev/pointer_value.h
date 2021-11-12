@@ -34,7 +34,7 @@ namespace sqlite_orm {
      *
      */
     template<typename P, typename T>
-    struct pointer_value {
+    struct pointer_arg {
 
         static_assert(std::is_convertible_v<T::value_type, const char*>,
                       "`std::integral_constant<>` must be convertible to `const char*`");
@@ -52,9 +52,6 @@ namespace sqlite_orm {
      *  used for returning or binding pointer values
      *  as part of facilitating the 'pointer-passing interface'.
      * 
-     *  The term "trule" is the short form of "TRansport capsULE" and is a carrier
-     *  object used for moving wrapped types from one place to another.
-     *
      *  Template parameters:
      *    - D: The deleter function for the pointer value;
      *         must be either a function pointer type,
@@ -63,12 +60,12 @@ namespace sqlite_orm {
      *  @example
      *  ```
      *  int64 rememberedId;
-     *  storage.select(func<remember_fn>(&Object::id, carray_trule<int64, null_xdetroy>{&rememberedId}));
+     *  storage.select(func<remember_fn>(&Object::id, statically_bindable_carray_pointer(&rememberedId)));
      *  ```
      */
 #ifdef __cpp_lib_concepts
     template<typename P, typename T, typename D>
-    struct pointer_trule : pointer_value<P, T> {
+    struct pointer_binding : pointer_arg<P, T> {
 
         SQLITE_ORM_NOUNIQUEADDRESS
         D d_{};
@@ -84,7 +81,7 @@ namespace sqlite_orm {
     };
 #elif __cplusplus >= 201703L  // use of C++17 or higher
     template<typename P, typename T, typename D>
-    struct pointer_trule : pointer_value<P, T> {
+    struct pointer_binding : pointer_arg<P, T> {
 
         D d_{};
 
@@ -98,11 +95,11 @@ namespace sqlite_orm {
     };
 #else
     template<typename P, typename T, typename D>
-    struct pointer_trule : pointer_value<P, T> {
+    struct pointer_binding : pointer_arg<P, T> {
 
         D d_;
 
-        pointer_trule(P* p, D d = D{}) : pointer_value<P, T>{p}, d_{d} {}
+        pointer_binding(P* p, D d = D{}) : pointer_arg<P, T>{p}, d_{d} {}
 
         // constraint: xDestroy function must be void(*)(void*)
         constexpr xdestroy_fn_t get_deleter() const {
@@ -111,4 +108,50 @@ namespace sqlite_orm {
         }
     };
 #endif
+
+    /**
+     *  Template alias for a static pointer value binding.
+     *  'Static' means that ownership won't be transferred to sqlite,
+     *  sqlite doesn't delete it, and sqlite assumes the object
+     *  pointed to is valid throughout the lifetime of a statement.
+     */
+    template<typename P, typename T>
+    using static_pointer_binding = pointer_binding<P, T, null_xdestroy_t>;
+}
+
+namespace sqlite_orm {
+
+    /**
+     *  Wrap a pointer, its type and its deleter function for binding it to a statement.
+     *  
+     *  Unless the deleter carries a nullptr function the ownership
+     *  will be transferred to sqlite, which will delete it through
+     *  the the deleter function when the statement finishes.
+     */
+    template<class T, class P, class D>
+    auto bindable_pointer(P* p, D d) -> pointer_binding<P, T, D> {
+        return {p, d};
+    }
+
+    template<const char* I, class P, class D>
+    auto bindable_pointer(P* p, D d) -> pointer_binding<P, std::integral_constant<const char*, I>, D> {
+        return {p, d};
+    }
+
+    /**
+     *  Wrap a pointer and its type for binding it to a statement.
+     *  
+     *  Note: 'Static' means that ownership won't be transferred to
+     *  sqlite and sqlite assumes the object pointed to is valid throughout
+     *  the lifetime of a statement.
+     */
+    template<class T, class P>
+    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, T> {
+        return {p};
+    }
+
+    template<const char* I, class P>
+    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, std::integral_constant<const char*, I>> {
+        return {p};
+    }
 }

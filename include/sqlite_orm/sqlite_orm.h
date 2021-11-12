@@ -6682,6 +6682,8 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #include <type_traits>  // std::integral_constant
 
+// #include "start_macros.h"
+
 namespace sqlite_orm {
 
     /**
@@ -6692,8 +6694,8 @@ namespace sqlite_orm {
 
     using void_fn_t = void (*)();
     using xdestroy_fn_t = void (*)(void*);
-    using null_xdestroy = std::integral_constant<xdestroy_fn_t, nullptr>;
-
+    using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
+    SQLITE_ORM_INLINE_VAR constexpr null_xdestroy_t null_xdestroy{};
 }
 #pragma once
 #include <type_traits>
@@ -6755,7 +6757,7 @@ namespace sqlite_orm {
      *
      */
     template<typename P, typename T>
-    struct pointer_value {
+    struct pointer_arg {
 
         static_assert(std::is_convertible_v<T::value_type, const char*>,
                       "`std::integral_constant<>` must be convertible to `const char*`");
@@ -6773,9 +6775,6 @@ namespace sqlite_orm {
      *  used for returning or binding pointer values
      *  as part of facilitating the 'pointer-passing interface'.
      * 
-     *  The term "trule" is the short form of "TRansport capsULE" and is a carrier
-     *  object used for moving wrapped types from one place to another.
-     *
      *  Template parameters:
      *    - D: The deleter function for the pointer value;
      *         must be either a function pointer type,
@@ -6784,12 +6783,12 @@ namespace sqlite_orm {
      *  @example
      *  ```
      *  int64 rememberedId;
-     *  storage.select(func<remember_fn>(&Object::id, carray_trule<int64, null_xdetroy>{&rememberedId}));
+     *  storage.select(func<remember_fn>(&Object::id, statically_bindable_carray_pointer(&rememberedId)));
      *  ```
      */
 #ifdef __cpp_lib_concepts
     template<typename P, typename T, typename D>
-    struct pointer_trule : pointer_value<P, T> {
+    struct pointer_binding : pointer_arg<P, T> {
 
         SQLITE_ORM_NOUNIQUEADDRESS
         D d_{};
@@ -6805,7 +6804,7 @@ namespace sqlite_orm {
     };
 #elif __cplusplus >= 201703L  // use of C++17 or higher
     template<typename P, typename T, typename D>
-    struct pointer_trule : pointer_value<P, T> {
+    struct pointer_binding : pointer_arg<P, T> {
 
         D d_{};
 
@@ -6819,11 +6818,11 @@ namespace sqlite_orm {
     };
 #else
     template<typename P, typename T, typename D>
-    struct pointer_trule : pointer_value<P, T> {
+    struct pointer_binding : pointer_arg<P, T> {
 
         D d_;
 
-        pointer_trule(P* p, D d = D{}) : pointer_value<P, T>{p}, d_{d} {}
+        pointer_binding(P* p, D d = D{}) : pointer_arg<P, T>{p}, d_{d} {}
 
         // constraint: xDestroy function must be void(*)(void*)
         constexpr xdestroy_fn_t get_deleter() const {
@@ -6832,6 +6831,52 @@ namespace sqlite_orm {
         }
     };
 #endif
+
+    /**
+     *  Template alias for a static pointer value binding.
+     *  'Static' means that ownership won't be transferred to sqlite,
+     *  sqlite doesn't delete it, and sqlite assumes the object
+     *  pointed to is valid throughout the lifetime of a statement.
+     */
+    template<typename P, typename T>
+    using static_pointer_binding = pointer_binding<P, T, null_xdestroy_t>;
+}
+
+namespace sqlite_orm {
+
+    /**
+     *  Wrap a pointer, its type and its deleter function for binding it to a statement.
+     *  
+     *  Unless the deleter carries a nullptr function the ownership
+     *  will be transferred to sqlite, which will delete it through
+     *  the the deleter function when the statement finishes.
+     */
+    template<class T, class P, class D>
+    auto bindable_pointer(P* p, D d) -> pointer_binding<P, T, D> {
+        return {p, d};
+    }
+
+    template<const char* I, class P, class D>
+    auto bindable_pointer(P* p, D d) -> pointer_binding<P, std::integral_constant<const char*, I>, D> {
+        return {p, d};
+    }
+
+    /**
+     *  Wrap a pointer and its type for binding it to a statement.
+     *  
+     *  Note: 'Static' means that ownership won't be transferred to
+     *  sqlite and sqlite assumes the object pointed to is valid throughout
+     *  the lifetime of a statement.
+     */
+    template<class T, class P>
+    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, T> {
+        return {p};
+    }
+
+    template<const char* I, class P>
+    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, std::integral_constant<const char*, I>> {
+        return {p};
+    }
 }
 #pragma once
 
@@ -6892,9 +6937,9 @@ namespace sqlite_orm {
      *  Specialization for 'pointer-passing interface'.
      */
     template<class P, class T, class D>
-    struct statement_binder<pointer_trule<P, T, D>, void> {
+    struct statement_binder<pointer_binding<P, T, D>, void> {
 
-        using V = pointer_trule<P, T, D>;
+        using V = pointer_binding<P, T, D>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             return sqlite3_bind_pointer(stmt, index, (void*)value.ptr, T::value, value.get_deleter());
@@ -7276,8 +7321,8 @@ namespace sqlite_orm {
      *  extracting pointers from columns.
      */
     template<class P, class T>
-    struct row_extractor<pointer_value<P, T>, void> {
-        using V = pointer_value<P, T>;
+    struct row_extractor<pointer_arg<P, T>, void> {
+        using V = pointer_arg<P, T>;
 
         V extract(sqlite3_value* value) const {
             return {static_cast<P*>(sqlite3_value_pointer(value, T::value))};
@@ -17511,23 +17556,50 @@ namespace sqlite_orm {
 
     SQLITE_ORM_INLINE_VAR constexpr const char carray_pvt_name[] = "carray";
     using carray_pvt = std::integral_constant<const char*, carray_pvt_name>;
+
     template<typename P>
-    using carray_value = pointer_value<P, carray_pvt>;
+    using carray_pointer_arg = pointer_arg<P, carray_pvt>;
     template<typename P, typename D>
-    using carray_trule = pointer_trule<P, carray_pvt, D>;
+    using carray_pointer_binding = pointer_binding<P, carray_pvt, D>;
+    template<typename P>
+    using static_carray_pointer_binding = static_pointer_binding<P, carray_pvt>;
 
     /**
-     *  SQL function that is a pass-through for values
+     *  Wrap a pointer of type 'carray' and its deleter function for binding it to a statement.
+     *  
+     *  Unless the deleter carries a nullptr function the ownership
+     *  will be transferred to sqlite, which will delete it through
+     *  the the deleter function when the statement finishes.
+     */
+    template<class P, class D>
+    auto bindable_carray_pointer(P* p, D d) -> pointer_binding<P, carray_pvt, D> {
+        return bindable_pointer<carray_pvt>(p, d);
+    }
+
+    /**
+     *  Wrap a pointer of type 'carray' for binding it to a statement.
+     *  
+     *  Note: 'Static' means that ownership won't be transferred to
+     *  sqlite and sqlite assumes the object pointed to is valid throughout
+     *  the lifetime of a statement.
+     */
+    template<class P>
+    auto statically_bindable_carray_pointer(P* p) -> static_pointer_binding<P, carray_pvt> {
+        return statically_bindable_pointer<carray_pvt>(p);
+    }
+
+    /**
+     *  Generalized form of the 'remember' SQL function that is a pass-through for values
      *  (it returns its argument unchanged using move semantics) but also saves the
-     *  value that is passed through into a C-language variable.
+     *  value that is passed through into a bound variable.
      */
     template<typename P>
     struct note_value_fn {
-        using pointer_value_t = carray_value<P>;
+        using pointer_arg_t = carray_pointer_arg<P>;
 
-        P operator()(P&& value, pointer_value_t pv) const {
-            if(P* p = pv) {
-                *p = value;
+        P operator()(P&& value, pointer_arg_t pv) const {
+            if(P* observer = pv) {
+                *observer = value;
             }
             return std::move(value);
         }

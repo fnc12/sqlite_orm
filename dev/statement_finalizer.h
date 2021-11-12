@@ -4,6 +4,8 @@
 #include <sqlite3.h>
 #include <type_traits>  // std::integral_constant
 
+#include "start_macros.h"
+
 namespace sqlite_orm {
 
     /**
@@ -14,6 +16,6 @@ namespace sqlite_orm {
 
     using void_fn_t = void (*)();
     using xdestroy_fn_t = void (*)(void*);
-    using null_xdestroy = std::integral_constant<xdestroy_fn_t, nullptr>;
-
+    using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
+    SQLITE_ORM_INLINE_VAR constexpr null_xdestroy_t null_xdestroy{};
 }

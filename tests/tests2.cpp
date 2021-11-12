@@ -564,13 +564,15 @@ TEST_CASE("Pointer") {
     struct Object {
         int64 id = 0;
     };
-    using carray_value_t = carray_value<int64>;
-    using carray_trule_t = carray_trule<int64, null_xdestroy>;
+    using carray_arg_t = carray_pointer_arg<int64>;
+
     // accept and return a pointer of type "carray"
     struct test_pointer_passing_fn {
-        carray_trule_t operator()(carray_value_t pv) const {
+        using bindable_carray_ptr_t = static_carray_pointer_binding<int64>;
+
+        bindable_carray_ptr_t operator()(carray_arg_t pv) const {
             int64 *p = pv;
-            return {p};
+            return statically_bindable_carray_pointer(p);
         }
 
         static const char *name() {
@@ -589,11 +591,14 @@ TEST_CASE("Pointer") {
     storage.create_scalar_function<note_value_fn<int64>>();
     {
         int64 lastUpdatedId = -1;
-        storage.update_all(
-            set(c(&Object::id) = add(1ll, func<note_value_fn<int64>>(&Object::id, carray_trule_t{&lastUpdatedId}))));
+        storage.update_all(set(
+            c(&Object::id) =
+                add(1ll,
+                    func<note_value_fn<int64>>(&Object::id, statically_bindable_pointer<carray_pvt>(&lastUpdatedId)))));
         REQUIRE(lastUpdatedId == 1);
-        storage.update_all(
-            set(c(&Object::id) = add(1ll, func<note_value_fn<int64>>(&Object::id, carray_trule_t{&lastUpdatedId}))));
+        storage.update_all(set(
+            c(&Object::id) =
+                add(1ll, func<note_value_fn<int64>>(&Object::id, statically_bindable_carray_pointer(&lastUpdatedId)))));
         REQUIRE(lastUpdatedId == 2);
     }
     storage.delete_scalar_function<note_value_fn<int64>>();
@@ -604,8 +609,9 @@ TEST_CASE("Pointer") {
     storage.create_scalar_function<test_pointer_passing_fn>();
     {
         int64 lastSelectedId = -1;
-        auto v = storage.select(
-            func<note_value_fn<int64>>(&Object::id, func<test_pointer_passing_fn>(carray_trule_t{&lastSelectedId})));
+        auto v = storage.select(func<note_value_fn<int64>>(
+            &Object::id,
+            func<test_pointer_passing_fn>(statically_bindable_carray_pointer(&lastSelectedId))));
         REQUIRE(v.back() == lastSelectedId);
     }
     storage.delete_scalar_function<test_pointer_passing_fn>();

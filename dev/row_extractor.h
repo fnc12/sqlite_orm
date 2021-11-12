@@ -44,8 +44,8 @@ namespace sqlite_orm {
      *  extracting pointers from columns.
      */
     template<class P, class T>
-    struct row_extractor<pointer_value<P, T>, void> {
-        using V = pointer_value<P, T>;
+    struct row_extractor<pointer_arg<P, T>, void> {
+        using V = pointer_arg<P, T>;
 
         V extract(sqlite3_value* value) const {
             return {static_cast<P*>(sqlite3_value_pointer(value, T::value))};
