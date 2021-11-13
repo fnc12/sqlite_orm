@@ -20,4 +20,10 @@ __pragma(push_macro("min"))
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
+#define SQLITE_ORM_INLINE_VAR inline
+// note: a C++17 conforming compiler ignores unknown attributes
+#define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
+#else
+#define SQLITE_ORM_INLINE_VAR
+#define SQLITE_ORM_NOUNIQUEADDRESS
 #endif

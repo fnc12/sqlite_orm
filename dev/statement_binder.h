@@ -13,6 +13,8 @@
 #include <cstring>  //  ::strncpy, ::strlen
 
 #include "is_std_ptr.h"
+#include "arithmetic_tag.h"
+#include "pointer_value.h"
 
 namespace sqlite_orm {
 
@@ -21,6 +23,23 @@ namespace sqlite_orm {
      */
     template<class V, typename Enable = void>
     struct statement_binder : std::false_type {};
+
+    /**
+     *  Specialization for 'pointer-passing interface'.
+     */
+    template<class P, class T, class D>
+    struct statement_binder<pointer_binding<P, T, D>, void> {
+
+        using V = pointer_binding<P, T, D>;
+
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+            return sqlite3_bind_pointer(stmt, index, (void*)value.ptr, T::value, value.get_deleter());
+        }
+
+        void result(sqlite3_context* context, const V& value) const {
+            sqlite3_result_pointer(context, (void*)value.ptr, T::value, value.get_deleter());
+        }
+    };
 
     /**
      *  Specialization for arithmetic types.

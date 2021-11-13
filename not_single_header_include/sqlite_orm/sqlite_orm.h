@@ -35,6 +35,7 @@
 #include "../../dev/table_info.h"
 #include "../../dev/statement_finalizer.h"
 #include "../../dev/arithmetic_tag.h"
+#include "../../dev/pointer_value.h"
 #include "../../dev/statement_binder.h"
 #include "../../dev/row_extractor.h"
 #include "../../dev/util.h"
@@ -49,3 +50,4 @@
 #include "../../dev/finish_macros.h"
 #include "../../dev/node_tuple.h"
 #include "../../dev/get_prepared_statement.h"
+#include "../../dev/carray.h"
