@@ -17,6 +17,8 @@
 #include "ast/excluded.h"
 #include "ast/upsert_clause.h"
 #include "ast/where.h"
+#include "ast/into.h"
+#include "ast/group_by.h"
 
 namespace sqlite_orm {
 
@@ -40,6 +42,18 @@ namespace sqlite_orm {
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
             using type = typename node_tuple<T>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<group_by_t<Args...>, void> {
+            using type = typename node_tuple<std::tuple<Args...>>::type;
+        };
+
+        template<class T, class... Args>
+        struct node_tuple<group_by_with_having<T, Args...>, void> {
+            using args_tuple = typename node_tuple<std::tuple<Args...>>::type;
+            using expression_tuple = typename node_tuple<T>::type;
+            using type = typename conc_tuple<args_tuple, expression_tuple>::type;
         };
 
         template<class... TargetArgs, class... ActionsArgs>

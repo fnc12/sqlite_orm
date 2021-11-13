@@ -24,6 +24,7 @@
 #include "function.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
+#include "ast/group_by.h"
 
 namespace sqlite_orm {
 
@@ -1465,23 +1466,33 @@ namespace sqlite_orm {
         };
 
         template<>
+        struct statement_serializator<conflict_action, void> {
+            using statement_type = conflict_action;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case conflict_action::replace:
+                        return "REPLACE";
+                    case conflict_action::abort:
+                        return "ABORT";
+                    case conflict_action::fail:
+                        return "FAIL";
+                    case conflict_action::ignore:
+                        return "IGNORE";
+                    case conflict_action::rollback:
+                        return "ROLLBACK";
+                }
+            }
+        };
+
+        template<>
         struct statement_serializator<insert_constraint, void> {
             using statement_type = insert_constraint;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
-                switch(statement) {
-                    case insert_constraint::abort:
-                        return "OR ABORT";
-                    case insert_constraint::fail:
-                        return "OR FAIL";
-                    case insert_constraint::ignore:
-                        return "OR IGNORE";
-                    case insert_constraint::replace:
-                        return "OR REPLACE";
-                    case insert_constraint::rollback:
-                        return "OR ROLLBACK";
-                }
+                return "OR " + serialize(statement.action, context);
             }
         };
 
@@ -1826,28 +1837,54 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class... Args>
+        struct statement_serializator<group_by_with_having<T, Args...>, void> {
+            using statement_type = group_by_with_having<T, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                std::vector<std::string> expressions;
+                auto newContext = context;
+                newContext.skip_table_name = false;
+                iterate_tuple(statement.args, [&expressions, &newContext](auto& v) {
+                    auto expression = serialize(v, newContext);
+                    expressions.push_back(expression);
+                });
+                ss << "GROUP BY";
+                for(size_t i = 0; i < expressions.size(); ++i) {
+                    ss << ' ' << expressions[i];
+                    if(i < expressions.size() - 1) {
+                        ss << ",";
+                    }
+                }
+                ss << " HAVING";
+                ss << ' ' << serialize(statement.expression, context);
+                return ss.str();
+            }
+        };
+
         template<class... Args>
         struct statement_serializator<group_by_t<Args...>, void> {
             using statement_type = group_by_t<Args...>;
 
             template<class C>
-            std::string operator()(const statement_type& groupBy, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
                 std::vector<std::string> expressions;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                iterate_tuple(groupBy.args, [&expressions, &newContext](auto& v) {
+                iterate_tuple(statement.args, [&expressions, &newContext](auto& v) {
                     auto expression = serialize(v, newContext);
                     expressions.push_back(expression);
                 });
-                ss << static_cast<std::string>(groupBy) << " ";
+                ss << "GROUP BY";
                 for(size_t i = 0; i < expressions.size(); ++i) {
-                    ss << expressions[i];
+                    ss << ' ' << expressions[i];
                     if(i < expressions.size() - 1) {
-                        ss << ", ";
+                        ss << ",";
                     }
                 }
-                ss << " ";
                 return ss.str();
             }
         };
@@ -1857,12 +1894,12 @@ namespace sqlite_orm {
             using statement_type = having_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& hav, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                ss << static_cast<std::string>(hav) << " ";
-                ss << serialize(hav.t, newContext) << " ";
+                ss << "HAVING";
+                ss << " " << serialize(statement.expression, newContext);
                 return ss.str();
             }
         };

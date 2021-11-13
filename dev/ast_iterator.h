@@ -14,6 +14,8 @@
 #include "ast/excluded.h"
 #include "ast/upsert_clause.h"
 #include "ast/where.h"
+#include "ast/into.h"
+#include "ast/group_by.h"
 
 namespace sqlite_orm {
 
@@ -67,8 +69,18 @@ namespace sqlite_orm {
             using node_type = std::reference_wrapper<T>;
 
             template<class L>
-            void operator()(const node_type& r, const L& lambda) const {
-                iterate_ast(r.get(), lambda);
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.get(), lambda);
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<group_by_t<Args...>, void> {
+            using node_type = group_by_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.args, lambda);
             }
         };
 
@@ -298,10 +310,21 @@ namespace sqlite_orm {
             using node_type = std::tuple<Args...>;
 
             template<class L>
-            void operator()(const node_type& tuple, const L& l) const {
-                iterate_tuple(tuple, [&l](auto& v) {
+            void operator()(const node_type& node, const L& l) const {
+                iterate_tuple(node, [&l](auto& v) {
                     iterate_ast(v, l);
                 });
+            }
+        };
+
+        template<class T, class... Args>
+        struct ast_iterator<group_by_with_having<T, Args...>, void> {
+            using node_type = group_by_with_having<T, Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.args, lambda);
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -310,8 +333,8 @@ namespace sqlite_orm {
             using node_type = having_t<T>;
 
             template<class L>
-            void operator()(const node_type& hav, const L& l) const {
-                iterate_ast(hav.t, l);
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.expression, lambda);
             }
         };
 

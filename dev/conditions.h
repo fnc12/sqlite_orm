@@ -565,29 +565,6 @@ namespace sqlite_orm {
         template<class C>
         struct is_order_by<dynamic_order_by_t<C>> : std::true_type {};
 
-        struct group_by_string {
-            operator std::string() const {
-                return "GROUP BY";
-            }
-        };
-
-        /**
-         *  GROUP BY pack holder.
-         */
-        template<class... Args>
-        struct group_by_t : group_by_string {
-            using args_type = std::tuple<Args...>;
-            args_type args;
-
-            group_by_t(args_type&& args_) : args(std::move(args_)) {}
-        };
-
-        template<class T>
-        struct is_group_by : std::false_type {};
-
-        template<class... Args>
-        struct is_group_by<group_by_t<Args...>> : std::true_type {};
-
         struct between_string {
             operator std::string() const {
                 return "BETWEEN";
@@ -819,31 +796,6 @@ namespace sqlite_orm {
 
             exists_t(T t_) : t(std::move(t_)) {}
         };
-
-        struct having_string {
-            operator std::string() const {
-                return "HAVING";
-            }
-        };
-
-        /**
-         *  HAVING holder.
-         *  T is having argument type.
-         */
-        template<class T>
-        struct having_t : having_string {
-            using type = T;
-
-            type t;
-
-            having_t(type t_) : t(std::move(t_)) {}
-        };
-
-        template<class T>
-        struct is_having : std::false_type {};
-
-        template<class T>
-        struct is_having<having_t<T>> : std::true_type {};
 
         struct cast_string {
             operator std::string() const {
@@ -1276,15 +1228,6 @@ namespace sqlite_orm {
     }
 
     /**
-     *  GROUP BY column.
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name))
-     */
-    template<class... Args>
-    internal::group_by_t<Args...> group_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-    /**
      *  X BETWEEN Y AND Z
      *  Example: storage.select(between(&User::id, 10, 20))
      */
@@ -1330,15 +1273,6 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::exists_t<T> exists(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  HAVING(expression).
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
-     */
-    template<class T>
-    internal::having_t<T> having(T t) {
         return {std::move(t)};
     }
 

@@ -11,6 +11,7 @@
 #include "tuple_helper/tuple_helper.h"
 #include "optional_container.h"
 #include "ast/where.h"
+#include "ast/group_by.h"
 
 namespace sqlite_orm {
 

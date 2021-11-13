@@ -36,7 +36,7 @@ namespace sqlite_orm {
     template<typename P, typename T>
     struct pointer_arg {
 
-        static_assert(std::is_convertible_v<T::value_type, const char*>,
+        static_assert(std::is_convertible_v<typename T::value_type, const char*>,
                       "`std::integral_constant<>` must be convertible to `const char*`");
 
         using tag = T;
@@ -147,7 +147,7 @@ namespace sqlite_orm {
      */
     template<class T, class P>
     auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, T> {
-        return {p};
+        return {{p}};
     }
 
     template<const char* I, class P>

@@ -741,4 +741,11 @@ TEST_CASE("Node tuple") {
         using ExpectedTuple = std::tuple<decltype(&User::name), decltype(&User::name)>;
         static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
     }
+    SECTION("group_by") {
+        auto statement = group_by(&User::id);
+        using Statement = decltype(statement);
+        using Tuple = node_tuple<Statement>::type;
+        using ExpectedTuple = std::tuple<decltype(&User::id)>;
+        static_assert(std::is_same<Tuple, ExpectedTuple>::value, "");
+    }
 }
