@@ -240,7 +240,7 @@ namespace sqlite_orm {
                 if(context.replace_bindable_with_question) {
                     return "?";
                 } else {
-                    return "\'" + c + "\'";
+                    return "'" + c + "'";
                 }
             }
         };
@@ -258,6 +258,22 @@ namespace sqlite_orm {
                 }
             }
         };
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        template<>
+        struct statement_serializator<std::string_view, void> {
+            using statement_type = std::string_view;
+
+            template<class C>
+            std::string operator()(const std::string_view& c, const C& context) const {
+                if(context.replace_bindable_with_question) {
+                    return "?";
+                } else {
+                    return "'" + std::string(c) + "'";
+                }
+            }
+        };
+#endif
 
         template<class O, class F>
         struct statement_serializator<F O::*, void> {
