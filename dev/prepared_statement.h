@@ -274,17 +274,6 @@ namespace sqlite_orm {
         template<class... Args>
         struct is_replace_raw<replace_raw_t<Args...>> : std::true_type {};
 
-        template<class T>
-        struct into_t {
-            using type = T;
-        };
-
-        template<class T>
-        struct is_into : std::false_type {};
-
-        template<class T>
-        struct is_into<into_t<T>> : std::true_type {};
-
         struct default_transformer {
 
             template<class T>
@@ -298,12 +287,16 @@ namespace sqlite_orm {
         template<class T>
         using is_default_values = std::is_same<default_values_t, T>;
 
-        enum class insert_constraint {
+        enum class conflict_action {
             abort,
             fail,
             ignore,
             replace,
             rollback,
+        };
+
+        struct insert_constraint {
+            conflict_action action = conflict_action::abort;
         };
 
         template<class T>
@@ -314,23 +307,23 @@ namespace sqlite_orm {
     }
 
     inline internal::insert_constraint or_rollback() {
-        return internal::insert_constraint::rollback;
+        return internal::insert_constraint{internal::conflict_action::rollback};
     }
 
     inline internal::insert_constraint or_replace() {
-        return internal::insert_constraint::replace;
+        return internal::insert_constraint{internal::conflict_action::replace};
     }
 
     inline internal::insert_constraint or_ignore() {
-        return internal::insert_constraint::ignore;
+        return internal::insert_constraint{internal::conflict_action::ignore};
     }
 
     inline internal::insert_constraint or_fail() {
-        return internal::insert_constraint::fail;
+        return internal::insert_constraint{internal::conflict_action::fail};
     }
 
     inline internal::insert_constraint or_abort() {
-        return internal::insert_constraint::abort;
+        return internal::insert_constraint{internal::conflict_action::abort};
     }
 
     /**
@@ -342,11 +335,6 @@ namespace sqlite_orm {
      *  ```
      */
     inline internal::default_values_t default_values() {
-        return {};
-    }
-
-    template<class T>
-    internal::into_t<T> into() {
         return {};
     }
 

@@ -3027,29 +3027,6 @@ namespace sqlite_orm {
         template<class C>
         struct is_order_by<dynamic_order_by_t<C>> : std::true_type {};
 
-        struct group_by_string {
-            operator std::string() const {
-                return "GROUP BY";
-            }
-        };
-
-        /**
-         *  GROUP BY pack holder.
-         */
-        template<class... Args>
-        struct group_by_t : group_by_string {
-            using args_type = std::tuple<Args...>;
-            args_type args;
-
-            group_by_t(args_type&& args_) : args(std::move(args_)) {}
-        };
-
-        template<class T>
-        struct is_group_by : std::false_type {};
-
-        template<class... Args>
-        struct is_group_by<group_by_t<Args...>> : std::true_type {};
-
         struct between_string {
             operator std::string() const {
                 return "BETWEEN";
@@ -3281,31 +3258,6 @@ namespace sqlite_orm {
 
             exists_t(T t_) : t(std::move(t_)) {}
         };
-
-        struct having_string {
-            operator std::string() const {
-                return "HAVING";
-            }
-        };
-
-        /**
-         *  HAVING holder.
-         *  T is having argument type.
-         */
-        template<class T>
-        struct having_t : having_string {
-            using type = T;
-
-            type t;
-
-            having_t(type t_) : t(std::move(t_)) {}
-        };
-
-        template<class T>
-        struct is_having : std::false_type {};
-
-        template<class T>
-        struct is_having<having_t<T>> : std::true_type {};
 
         struct cast_string {
             operator std::string() const {
@@ -3738,15 +3690,6 @@ namespace sqlite_orm {
     }
 
     /**
-     *  GROUP BY column.
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name))
-     */
-    template<class... Args>
-    internal::group_by_t<Args...> group_by(Args&&... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-    /**
      *  X BETWEEN Y AND Z
      *  Example: storage.select(between(&User::id, 10, 20))
      */
@@ -3792,15 +3735,6 @@ namespace sqlite_orm {
      */
     template<class T>
     internal::exists_t<T> exists(T t) {
-        return {std::move(t)};
-    }
-
-    /**
-     *  HAVING(expression).
-     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
-     */
-    template<class T>
-    internal::having_t<T> having(T t) {
         return {std::move(t)};
     }
 
@@ -6212,6 +6146,86 @@ namespace sqlite_orm {
     }
 }
 
+// #include "ast/group_by.h"
+
+#include <tuple>  //  std::tuple, std::make_tuple
+#include <type_traits>  //  std::true_type, std::false_type, std::forward
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T, class... Args>
+        struct group_by_with_having {
+            using args_type = std::tuple<Args...>;
+            using expression_type = T;
+
+            args_type args;
+            expression_type expression;
+        };
+
+        /**
+         *  GROUP BY pack holder.
+         */
+        template<class... Args>
+        struct group_by_t {
+            using args_type = std::tuple<Args...>;
+
+            args_type args;
+
+            template<class T>
+            group_by_with_having<T, Args...> having(T expression) {
+                return {move(this->args), std::move(expression)};
+            }
+        };
+
+        template<class T>
+        struct is_group_by : std::false_type {};
+
+        template<class... Args>
+        struct is_group_by<group_by_t<Args...>> : std::true_type {};
+
+        template<class T, class... Args>
+        struct is_group_by<group_by_with_having<T, Args...>> : std::true_type {};
+
+        /**
+         *  HAVING holder.
+         *  T is having argument type.
+         */
+        template<class T>
+        struct having_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
+
+        template<class T>
+        struct is_having : std::false_type {};
+
+        template<class T>
+        struct is_having<having_t<T>> : std::true_type {};
+    }
+
+    /**
+     *  GROUP BY column.
+     *  Example: storage.get_all<Employee>(group_by(&Employee::name))
+     */
+    template<class... Args>
+    internal::group_by_t<Args...> group_by(Args&&... args) {
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
+     *  [Deprecation notice]: this function is deprecated and will be removed in v1.8. Please use `group_by(...).having(...)` instead.
+     *
+     *  HAVING(expression).
+     *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
+     */
+    template<class T>
+    internal::having_t<T> having(T expression) {
+        return {std::move(expression)};
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -6759,7 +6773,7 @@ namespace sqlite_orm {
     template<typename P, typename T>
     struct pointer_arg {
 
-        static_assert(std::is_convertible_v<T::value_type, const char*>,
+        static_assert(std::is_convertible_v<typename T::value_type, const char*>,
                       "`std::integral_constant<>` must be convertible to `const char*`");
 
         using tag = T;
@@ -6870,7 +6884,7 @@ namespace sqlite_orm {
      */
     template<class T, class P>
     auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, T> {
-        return {p};
+        return {{p}};
     }
 
     template<const char* I, class P>
@@ -10260,17 +10274,6 @@ namespace sqlite_orm {
         template<class... Args>
         struct is_replace_raw<replace_raw_t<Args...>> : std::true_type {};
 
-        template<class T>
-        struct into_t {
-            using type = T;
-        };
-
-        template<class T>
-        struct is_into : std::false_type {};
-
-        template<class T>
-        struct is_into<into_t<T>> : std::true_type {};
-
         struct default_transformer {
 
             template<class T>
@@ -10284,12 +10287,16 @@ namespace sqlite_orm {
         template<class T>
         using is_default_values = std::is_same<default_values_t, T>;
 
-        enum class insert_constraint {
+        enum class conflict_action {
             abort,
             fail,
             ignore,
             replace,
             rollback,
+        };
+
+        struct insert_constraint {
+            conflict_action action = conflict_action::abort;
         };
 
         template<class T>
@@ -10300,23 +10307,23 @@ namespace sqlite_orm {
     }
 
     inline internal::insert_constraint or_rollback() {
-        return internal::insert_constraint::rollback;
+        return internal::insert_constraint{internal::conflict_action::rollback};
     }
 
     inline internal::insert_constraint or_replace() {
-        return internal::insert_constraint::replace;
+        return internal::insert_constraint{internal::conflict_action::replace};
     }
 
     inline internal::insert_constraint or_ignore() {
-        return internal::insert_constraint::ignore;
+        return internal::insert_constraint{internal::conflict_action::ignore};
     }
 
     inline internal::insert_constraint or_fail() {
-        return internal::insert_constraint::fail;
+        return internal::insert_constraint{internal::conflict_action::fail};
     }
 
     inline internal::insert_constraint or_abort() {
-        return internal::insert_constraint::abort;
+        return internal::insert_constraint{internal::conflict_action::abort};
     }
 
     /**
@@ -10328,11 +10335,6 @@ namespace sqlite_orm {
      *  ```
      */
     inline internal::default_values_t default_values() {
-        return {};
-    }
-
-    template<class T>
-    internal::into_t<T> into() {
         return {};
     }
 
@@ -10835,6 +10837,33 @@ namespace sqlite_orm {
 
 // #include "ast/where.h"
 
+// #include "ast/into.h"
+
+#include <type_traits>  //  std::true_type, std::false_type
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T>
+        struct into_t {
+            using type = T;
+        };
+
+        template<class T>
+        struct is_into : std::false_type {};
+
+        template<class T>
+        struct is_into<into_t<T>> : std::true_type {};
+    }
+
+    template<class T>
+    internal::into_t<T> into() {
+        return {};
+    }
+}
+
+// #include "ast/group_by.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -10887,8 +10916,18 @@ namespace sqlite_orm {
             using node_type = std::reference_wrapper<T>;
 
             template<class L>
-            void operator()(const node_type& r, const L& lambda) const {
-                iterate_ast(r.get(), lambda);
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.get(), lambda);
+            }
+        };
+
+        template<class... Args>
+        struct ast_iterator<group_by_t<Args...>, void> {
+            using node_type = group_by_t<Args...>;
+
+            template<class L>
+            void operator()(const node_type& expression, const L& lambda) const {
+                iterate_ast(expression.args, lambda);
             }
         };
 
@@ -11118,10 +11157,21 @@ namespace sqlite_orm {
             using node_type = std::tuple<Args...>;
 
             template<class L>
-            void operator()(const node_type& tuple, const L& l) const {
-                iterate_tuple(tuple, [&l](auto& v) {
+            void operator()(const node_type& node, const L& l) const {
+                iterate_tuple(node, [&l](auto& v) {
                     iterate_ast(v, l);
                 });
+            }
+        };
+
+        template<class T, class... Args>
+        struct ast_iterator<group_by_with_having<T, Args...>, void> {
+            using node_type = group_by_with_having<T, Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.args, lambda);
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -11130,8 +11180,8 @@ namespace sqlite_orm {
             using node_type = having_t<T>;
 
             template<class L>
-            void operator()(const node_type& hav, const L& l) const {
-                iterate_ast(hav.t, l);
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -13352,6 +13402,8 @@ namespace sqlite_orm {
 
 // #include "ast/excluded.h"
 
+// #include "ast/group_by.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -14792,23 +14844,33 @@ namespace sqlite_orm {
         };
 
         template<>
+        struct statement_serializator<conflict_action, void> {
+            using statement_type = conflict_action;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case conflict_action::replace:
+                        return "REPLACE";
+                    case conflict_action::abort:
+                        return "ABORT";
+                    case conflict_action::fail:
+                        return "FAIL";
+                    case conflict_action::ignore:
+                        return "IGNORE";
+                    case conflict_action::rollback:
+                        return "ROLLBACK";
+                }
+            }
+        };
+
+        template<>
         struct statement_serializator<insert_constraint, void> {
             using statement_type = insert_constraint;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
-                switch(statement) {
-                    case insert_constraint::abort:
-                        return "OR ABORT";
-                    case insert_constraint::fail:
-                        return "OR FAIL";
-                    case insert_constraint::ignore:
-                        return "OR IGNORE";
-                    case insert_constraint::replace:
-                        return "OR REPLACE";
-                    case insert_constraint::rollback:
-                        return "OR ROLLBACK";
-                }
+                return "OR " + serialize(statement.action, context);
             }
         };
 
@@ -15153,28 +15215,54 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T, class... Args>
+        struct statement_serializator<group_by_with_having<T, Args...>, void> {
+            using statement_type = group_by_with_having<T, Args...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                std::vector<std::string> expressions;
+                auto newContext = context;
+                newContext.skip_table_name = false;
+                iterate_tuple(statement.args, [&expressions, &newContext](auto& v) {
+                    auto expression = serialize(v, newContext);
+                    expressions.push_back(expression);
+                });
+                ss << "GROUP BY";
+                for(size_t i = 0; i < expressions.size(); ++i) {
+                    ss << ' ' << expressions[i];
+                    if(i < expressions.size() - 1) {
+                        ss << ",";
+                    }
+                }
+                ss << " HAVING";
+                ss << ' ' << serialize(statement.expression, context);
+                return ss.str();
+            }
+        };
+
         template<class... Args>
         struct statement_serializator<group_by_t<Args...>, void> {
             using statement_type = group_by_t<Args...>;
 
             template<class C>
-            std::string operator()(const statement_type& groupBy, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
                 std::vector<std::string> expressions;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                iterate_tuple(groupBy.args, [&expressions, &newContext](auto& v) {
+                iterate_tuple(statement.args, [&expressions, &newContext](auto& v) {
                     auto expression = serialize(v, newContext);
                     expressions.push_back(expression);
                 });
-                ss << static_cast<std::string>(groupBy) << " ";
+                ss << "GROUP BY";
                 for(size_t i = 0; i < expressions.size(); ++i) {
-                    ss << expressions[i];
+                    ss << ' ' << expressions[i];
                     if(i < expressions.size() - 1) {
-                        ss << ", ";
+                        ss << ",";
                     }
                 }
-                ss << " ";
                 return ss.str();
             }
         };
@@ -15184,12 +15272,12 @@ namespace sqlite_orm {
             using statement_type = having_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& hav, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
-                ss << static_cast<std::string>(hav) << " ";
-                ss << serialize(hav.t, newContext) << " ";
+                ss << "HAVING";
+                ss << " " << serialize(statement.expression, newContext);
                 return ss.str();
             }
         };
@@ -17041,6 +17129,10 @@ __pragma(pop_macro("min"))
 
     // #include "ast/where.h"
 
+    // #include "ast/into.h"
+
+    // #include "ast/group_by.h"
+
     namespace sqlite_orm {
 
     namespace internal {
@@ -17063,6 +17155,18 @@ __pragma(pop_macro("min"))
         template<class T>
         struct node_tuple<std::reference_wrapper<T>, void> {
             using type = typename node_tuple<T>::type;
+        };
+
+        template<class... Args>
+        struct node_tuple<group_by_t<Args...>, void> {
+            using type = typename node_tuple<std::tuple<Args...>>::type;
+        };
+
+        template<class T, class... Args>
+        struct node_tuple<group_by_with_having<T, Args...>, void> {
+            using args_tuple = typename node_tuple<std::tuple<Args...>>::type;
+            using expression_tuple = typename node_tuple<T>::type;
+            using type = typename conc_tuple<args_tuple, expression_tuple>::type;
         };
 
         template<class... TargetArgs, class... ActionsArgs>
