@@ -31,5 +31,19 @@ TEST_CASE("statement_serializator base types") {
             expected = "?";
         }
     }
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+    SECTION("std::string_view") {
+        std::string_view str = "agora";
+        SECTION("no question") {
+            stringValue = serialize(str, context);
+            expected = "\'agora\'";
+        }
+        SECTION("question") {
+            context.replace_bindable_with_question = true;
+            stringValue = serialize(str, context);
+            expected = "?";
+        }
+    }
+#endif
     REQUIRE(stringValue == expected);
 }
