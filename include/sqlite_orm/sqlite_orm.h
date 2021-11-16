@@ -7010,9 +7010,12 @@ namespace sqlite_orm {
      *  Specialization for std::string and C-string.
      */
     template<class V>
-    struct statement_binder<
-        V,
-        std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char*>::value>> {
+    struct statement_binder<V,
+                            std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char*>::value
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                                             || std::is_same<V, std::string_view>::value
+#endif
+                                             >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -7040,6 +7043,12 @@ namespace sqlite_orm {
             auto length = int(::strlen(s));
             return {s, length};
         }
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        std::tuple<const char*, int> string_data(const std::string_view& s) const {
+            return {s.data(), int(s.size())};
+        }
+#endif
     };
 
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -13625,7 +13634,7 @@ namespace sqlite_orm {
                 if(context.replace_bindable_with_question) {
                     return "?";
                 } else {
-                    return "\'" + c + "\'";
+                    return "'" + c + "'";
                 }
             }
         };
@@ -13643,6 +13652,22 @@ namespace sqlite_orm {
                 }
             }
         };
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        template<>
+        struct statement_serializator<std::string_view, void> {
+            using statement_type = std::string_view;
+
+            template<class C>
+            std::string operator()(const std::string_view& c, const C& context) const {
+                if(context.replace_bindable_with_question) {
+                    return "?";
+                } else {
+                    return "'" + std::string(c) + "'";
+                }
+            }
+        };
+#endif
 
         template<class O, class F>
         struct statement_serializator<F O::*, void> {
