@@ -67,7 +67,7 @@ namespace sqlite_orm {
     }
 
     /**
-     *  [Deprecation notice]: this function is deprecated and will be removed in v1.8. Please use `group_by(...).having(...)` instead.
+     *  [Deprecation notice]: this function is deprecated and will be removed in v1.9. Please use `group_by(...).having(...)` instead.
      *
      *  HAVING(expression).
      *  Example: storage.get_all<Employee>(group_by(&Employee::name), having(greater_than(count(&Employee::name), 2)));
