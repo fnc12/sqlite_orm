@@ -11648,6 +11648,14 @@ namespace sqlite_orm {
                 this->_journal_mode = static_cast<decltype(this->_journal_mode)>(value);
             }
 
+            int application_id() {
+                return this->get_pragma<int>("application_id");
+            }
+
+            void application_id(int value) {
+                this->set_pragma("application_id", value);
+            }
+
             int synchronous() {
                 return this->get_pragma<int>("synchronous");
             }

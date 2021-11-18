@@ -143,3 +143,12 @@ TEST_CASE("Integrity Check") {
     REQUIRE(storage.pragma.integrity_check(5) == std::vector<std::string>{"ok"});
     REQUIRE(storage.pragma.integrity_check(tablename) == std::vector<std::string>{"ok"});
 }
+
+TEST_CASE("application_id") {
+    auto filename = "application_id.sqlite";
+    ::remove(filename);
+
+    auto storage = make_storage(filename);
+    storage.pragma.application_id(3);
+    REQUIRE(storage.pragma.application_id() == 3);
+}
