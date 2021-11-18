@@ -6773,7 +6773,7 @@ namespace sqlite_orm {
     template<typename P, typename T>
     struct pointer_arg {
 
-        static_assert(std::is_convertible_v<typename T::value_type, const char*>,
+        static_assert(std::is_convertible<typename T::value_type, const char*>::value,
                       "`std::integral_constant<>` must be convertible to `const char*`");
 
         using tag = T;
@@ -11648,10 +11648,16 @@ namespace sqlite_orm {
                 this->_journal_mode = static_cast<decltype(this->_journal_mode)>(value);
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_application_id
+             */
             int application_id() {
                 return this->get_pragma<int>("application_id");
             }
 
+            /**
+             *  https://www.sqlite.org/pragma.html#pragma_application_id
+             */
             void application_id(int value) {
                 this->set_pragma("application_id", value);
             }
