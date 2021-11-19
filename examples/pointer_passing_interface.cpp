@@ -11,6 +11,8 @@
  *    - stores results of some type, along with a error category enumeration and an error code.
  *    - registers a sqlite scalar function getting the pointer to the error category.
  *    - registers another set of sqlite scalar functions that accept a pointer to an error category.
+ *    - registers a sqlite scalar function creating a std::error_code.
+ *    - registers a sqlite scalar function comparing two std::error_code.
  *
  *  Note: pointers are only accessible within application code, and therefore unleakable.
  */
@@ -26,14 +28,18 @@
 using namespace sqlite_orm;
 
 using std::cout;
+using std::default_delete;
 using std::endl;
 using std::error_category;
+using std::error_code;
 using std::min;
 
-// name for our pointer value type
+// name for our pointer value types
 SQLITE_ORM_INLINE_VAR constexpr const char ecat_pvt_name[] = "ecat";
-// c++ integral constant for our pointer value type
+SQLITE_ORM_INLINE_VAR constexpr const char ecode_pvt_name[] = "ecode";
+// c++ integral constant for our pointer value types
 using ecat_pvt = std::integral_constant<const char*, ecat_pvt_name>;
+using ecode_pvt = std::integral_constant<const char*, ecode_pvt_name>;
 
 // a fixed set of error categories the application is dealing with
 enum class app_error_category : unsigned int {
@@ -73,6 +79,7 @@ int main() {
         unsigned int errorCategory = 0;
     };
     using ecat_arg_t = pointer_arg<const std::error_category, ecat_pvt>;
+    using ecode_arg_t = pointer_arg<std::error_code, ecode_pvt>;
 
     // function returning a pointer to a std::error_category,
     // which is only visible to functions accepting pointer values of type "ecat"
@@ -120,6 +127,38 @@ int main() {
         }
     };
 
+    // function returning an error_code object from an error value
+    struct make_error_code_fn {
+        using ecode_binding_t = pointer_binding<std::error_code, ecode_pvt, std::default_delete<std::error_code>>;
+
+        ecode_binding_t operator()(int errorValue, unsigned int errorCategory) const {
+            size_t idx = min<size_t>(errorCategory, ecat_map.size());
+            error_code* ec = idx != ecat_map.size()
+                                 ? new error_code{errorValue, get<const error_category&>(ecat_map[idx])}
+                                 : nullptr;
+            return bindable_pointer<ecode_pvt>(ec, default_delete<error_code>{});
+        }
+
+        static constexpr const char* name() {
+            return "make_error_code";
+        }
+    };
+
+    // function comparing two error_code objects
+    struct equal_error_code_fn {
+        bool operator()(ecode_arg_t pv1, ecode_arg_t pv2) const {
+            error_code *ec1 = pv1, *ec2 = pv2;
+            if(ec1 && ec2) {
+                return *ec1 == *ec2;
+            }
+            return false;
+        }
+
+        static constexpr const char* name() {
+            return "equal_error_code";
+        }
+    };
+
     auto storage = make_storage({},
                                 make_table("result",
                                            make_column("id", &Result::id, primary_key()),
@@ -141,11 +180,14 @@ int main() {
     storage.create_scalar_function<get_error_category_fn>();
     storage.create_scalar_function<error_category_name_fn>();
     storage.create_scalar_function<error_category_message_fn>();
+    storage.create_scalar_function<make_error_code_fn>();
+    storage.create_scalar_function<equal_error_code_fn>();
 
     //  list all results including error category name and error message
     {
 
         //  SELECT id, not error_value as ok, error_category, error_value,
+        //      equal_error_code(make_error_code(error_value, error_category), ?),
         //      error_category_name(get_error_category(error_category)),
         //      error_category_message(get_error_category(error_category), error_value)
         //      FROM result
@@ -155,14 +197,17 @@ int main() {
                     as<str_alias<'o', 'k'>>(c(&Result::errorValue) == 0),
                     &Result::errorValue,
                     &Result::errorCategory,
+                    as<str_alias<'e', 'q'>>(func<equal_error_code_fn>(
+                        func<make_error_code_fn>(&Result::errorValue, &Result::errorCategory),
+                        bindable_pointer<ecode_pvt>(new error_code{}, default_delete<error_code>{}))),
                     func<error_category_name_fn>(func<get_error_category_fn>(&Result::errorCategory)),
                     func<error_category_message_fn>(func<get_error_category_fn>(&Result::errorCategory),
                                                     &Result::errorValue))/*,
             multi_order_by(!c(&Result::errorValue), &Result::errorCategory, &Result::errorValue, &Result::id)*/);
         for(auto& row: rows) {
             cout << std::get<0>(row) << ' ' << std::get<1>(row) << ' ' << std::get<2>(row) << ' ' << std::get<3>(row)
-                 << " \"" << std::get<4>(row) << "\""
-                 << " \"" << std::get<5>(row) << "\"" << endl;
+                 << ' ' << std::get<4>(row) << " \"" << std::get<5>(row) << "\""
+                 << " \"" << std::get<6>(row) << "\"" << endl;
         }
         cout << endl;
     }

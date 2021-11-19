@@ -29,6 +29,7 @@ namespace sqlite_orm {
      */
     template<class P, class T, class D>
     struct statement_binder<pointer_binding<P, T, D>, void> {
+        // note: C-casting `P* -> void*` like internal::xdestroy_proxy()
 
         using V = pointer_binding<P, T, D>;
 

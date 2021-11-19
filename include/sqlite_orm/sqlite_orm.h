@@ -21,8 +21,11 @@ __pragma(push_macro("min"))
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #define SQLITE_ORM_INLINE_VAR inline
-// note: a C++17 conforming compiler ignores unknown attributes
+#if __cplusplus >= 202002L  // use of C++20 or higher
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
+#else
+#define SQLITE_ORM_NOUNIQUEADDRESS
+#endif
 #else
 #define SQLITE_ORM_INLINE_VAR
 #define SQLITE_ORM_NOUNIQUEADDRESS
@@ -478,6 +481,243 @@ namespace sqlite_orm {
         };
 
     }
+}
+#pragma once
+
+#include <type_traits>  // std::integral_constant
+#ifdef __cpp_lib_concepts
+#include <concepts>
+#endif
+
+// #include "start_macros.h"
+
+namespace sqlite_orm {
+
+    using xdestroy_fn_t = void (*)(void*);
+    using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
+    SQLITE_ORM_INLINE_VAR constexpr null_xdestroy_t null_xdestroy_f{};
+}
+
+namespace sqlite_orm {
+    namespace internal {
+#ifdef __cpp_concepts
+        /**
+         *  Constraints a deleter to be state-less.
+         */
+        template<typename D>
+        concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
+
+        /**
+         *  Constraints a deleter to be an integral function constant.
+         */
+        template<typename D>
+        concept integral_fp_c = requires {
+            typename D::value_type;
+            D::value;
+            requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
+        };
+
+        /**
+         *  Constraints a deleter to be or to yield a function pointer.
+         */
+        template<typename D>
+        concept can_yield_fp = requires(D d) {
+            // yielding function pointer by using the plus trick
+            {+d};
+            requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
+        };
+#endif
+
+#ifdef __cpp_lib_concepts
+        /**
+         *  Yield a deleter's function pointer.
+         */
+        template<can_yield_fp D>
+        struct yield_fp_of {
+            using type = decltype(+std::declval<D>());
+        };
+#else
+
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_stateless_deleter_v =
+            std::is_empty<D>::value&& std::is_default_constructible<D>::value;
+
+        template<typename D, typename SFINAE = void>
+        struct is_integral_fp_c : std::false_type {};
+        template<typename D>
+        struct is_integral_fp_c<
+            D,
+            std::void_t<typename D::value_type,
+                        decltype(D::value),
+                        std::enable_if_t<std::is_function<std::remove_pointer_t<typename D::value_type>>::value>>>
+            : std::true_type {};
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
+
+        template<typename D, typename SFINAE = void>
+        struct can_yield_fp : std::false_type {};
+        template<typename D>
+        struct can_yield_fp<
+            D,
+            std::void_t<decltype(+std::declval<D>()),
+                        std::enable_if_t<std::is_function<std::remove_pointer_t<decltype(+std::declval<D>())>>::value>>>
+            : std::true_type {};
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
+
+        template<typename D, bool = can_yield_fp_v<D>>
+        struct yield_fp_of {
+            using type = std::void_t<>;
+        };
+        template<typename D>
+        struct yield_fp_of<D, true> {
+            using type = decltype(+std::declval<D>());
+        };
+#endif
+        template<typename D>
+        using yielded_fn_t = typename yield_fp_of<D>::type;
+
+#ifdef __cpp_lib_concepts
+        template<typename D>
+        concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
+                                            (can_yield_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+
+        template<typename D>
+        concept can_yield_xdestroy = can_yield_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
+
+        template<typename D, typename P>
+        concept needs_xdestroy_proxy = (stateless_deleter<D> &&
+                                        (!can_yield_fp<D> || !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+
+        /**
+         *  xDestroy function that constructs and invokes the stateless deleter.
+         *  
+         *  Requires that the deleter can be called with the q-qualified pointer argument;
+         *  it doesn't check so explicitly, but a compiler error will occur.
+         */
+        template<typename D, typename P>
+        requires(!integral_fp_c<D>) void xdestroy_proxy(void* p) noexcept {
+            // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
+            auto o = (P*)p;
+            // ignoring return code
+            (void)D{}(o);
+        }
+
+        /**
+         *  xDestroy function that invokes the integral function pointer constant.
+         *  
+         *  Performs a const-cast of the argument pointer in order to allow for C API functions
+         *  that take a non-const parameter, but user code passes a pointer to a const object.
+         */
+        template<integral_fp_c D, typename P>
+        void xdestroy_proxy(void* p) noexcept {
+            // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
+            auto o = (std::remove_cv_t<P>*)(P*)p;
+            // ignoring return code
+            (void)D{}(o);
+        }
+#else
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_unusable_for_xdestroy_v =
+            !is_stateless_deleter_v<D> && (can_yield_fp_v<D> && !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool can_yield_xdestroy_v =
+            can_yield_fp_v<D>&& std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value;
+
+        template<typename D, typename P>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            needs_xdestroy_proxy_v = is_stateless_deleter_v<D> &&
+                                     (!can_yield_fp_v<D> || !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+
+        template<typename D, typename P>
+        std::enable_if_t<!is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+            // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
+            auto o = (P*)p;
+            // ignoring return code
+            (void)D{}(o);
+        }
+
+        template<typename D, typename P>
+        std::enable_if_t<is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+            // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
+            auto o = (std::remove_cv_t<P>*)(P*)p;
+            // ignoring return code
+            (void)D{}(o);
+        }
+#endif
+    }
+}
+
+namespace sqlite_orm {
+
+#ifdef __cpp_lib_concepts
+    /**
+     *  Prohibits using a yielded function pointer, which is not of type xdestroy_fn_t.
+     *  
+     *  Explicitly declared for better error messages.
+     */
+    template<typename D, typename P>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::is_unusable_for_xdestroy<D>) {
+        static_assert(std::is_same<D, void>::value,
+                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+        return nullptr;
+    }
+
+    /**
+     *  Obtains a proxy 'xDestroy' function pointer [of type void(*)(void*)]
+     *  for a deleter in a type-safe way.
+     *  
+     *  The deleter can be one of:
+     *         - integral function constant
+     *         - state-less (empty) deleter
+     *         - non-capturing lambda
+     *  
+     *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
+     *  is invocable with the non-q-qualified pointer value.
+     */
+    template<typename D, typename P>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::needs_xdestroy_proxy<D, P>) {
+        return internal::xdestroy_proxy<D, P>;
+    }
+
+    /**
+     *  Directly obtains a 'xDestroy' function pointer [of type void(*)(void*)]
+     *  from a deleter in a type-safe way.
+     *  
+     *  The deleter can be one of:
+     *         - function pointer of type xdestroy_fn_t
+     *         - structure holding a function pointer
+     *         - integral function constant
+     *         - non-capturing lambda
+     *  ... and yield a function pointer of type xdestroy_fn_t.
+     *  
+     *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
+     *  is invocable with the non-q-qualified pointer value.
+     */
+    template<typename D, typename P>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept requires(internal::can_yield_xdestroy<D>) {
+        return d;
+    }
+#else
+    template<typename D, typename P>
+    constexpr std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D, P*) {
+        static_assert(std::is_same<D, void>::value,
+                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+        return nullptr;
+    }
+
+    template<typename D, typename P>
+    constexpr std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, xdestroy_fn_t> obtain_xdestroy_for(D,
+                                                                                                          P*) noexcept {
+        return internal::xdestroy_proxy<D, P>;
+    }
+
+    template<typename D, typename P>
+    constexpr std::enable_if_t<internal::can_yield_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D d, P*) noexcept {
+        return d;
+    }
+#endif
 }
 #pragma once
 
@@ -6682,8 +6922,6 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #include <type_traits>  // std::integral_constant
 
-// #include "start_macros.h"
-
 namespace sqlite_orm {
 
     /**
@@ -6691,11 +6929,6 @@ namespace sqlite_orm {
      */
     using statement_finalizer =
         std::unique_ptr<sqlite3_stmt, std::integral_constant<decltype(&sqlite3_finalize), sqlite3_finalize>>;
-
-    using void_fn_t = void (*)();
-    using xdestroy_fn_t = void (*)(void*);
-    using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
-    SQLITE_ORM_INLINE_VAR constexpr null_xdestroy_t null_xdestroy{};
 }
 #pragma once
 #include <type_traits>
@@ -6724,27 +6957,12 @@ namespace sqlite_orm {
 #pragma once
 
 #include <type_traits>
-#ifdef __cpp_lib_concepts
-#include <concepts>
-#endif
 
 // #include "start_macros.h"
 
+// #include "xdestroy_handling.h"
+
 namespace sqlite_orm {
-
-    namespace internal {
-
-        template<typename T>
-        struct fp_type {
-            using type = typename T::value_type;
-        };
-        template<typename R, typename... Args>
-        struct fp_type<R (*)(Args...)> {
-            using type = R (*)(Args...);
-        };
-        template<typename T>
-        using fp_type_t = typename fp_type<T>::type;
-    }
 
     /**
      *  Wraps a pointer and tags it with a pointer type,
@@ -6776,9 +6994,13 @@ namespace sqlite_orm {
      *  as part of facilitating the 'pointer-passing interface'.
      * 
      *  Template parameters:
-     *    - D: The deleter function for the pointer value;
-     *         must be either a function pointer type,
-     *         integral constant or structure returning a function pointer.
+     *    - D: The deleter for the pointer value;
+     *         can be one of:
+     *         - function pointer
+     *         - integral function pointer constant
+     *         - state-less (empty) deleter
+     *         - non-capturing lambda
+     *         - structure implicitly yielding a function pointer
      *
      *  @example
      *  ```
@@ -6786,51 +7008,21 @@ namespace sqlite_orm {
      *  storage.select(func<remember_fn>(&Object::id, statically_bindable_carray_pointer(&rememberedId)));
      *  ```
      */
-#ifdef __cpp_lib_concepts
     template<typename P, typename T, typename D>
     struct pointer_binding : pointer_arg<P, T> {
 
         SQLITE_ORM_NOUNIQUEADDRESS
         D d_{};
 
-        using fn_t = internal::fp_type_t<D>;
-
-        // constraint: xDestroy function must be invocable: D(P*)
-        constexpr xdestroy_fn_t get_deleter() const requires std::invocable < fn_t, std::remove_cv_t<P>
-        * > {
-            fn_t destroy = d_;
-            return xdestroy_fn_t(void_fn_t(destroy));
-        }
-    };
-#elif __cplusplus >= 201703L  // use of C++17 or higher
-    template<typename P, typename T, typename D>
-    struct pointer_binding : pointer_arg<P, T> {
-
-        D d_{};
-
-        using fn_t = internal::fp_type_t<D>;
-
-        // constraint: xDestroy function must be invocable: D(P*)
-        constexpr std::enable_if_t<std::is_invocable_v<fn_t, std::remove_cv_t<P>*>, xdestroy_fn_t> get_deleter() const {
-            fn_t destroy = d_;
-            return xdestroy_fn_t(void_fn_t(destroy));
-        }
-    };
-#else
-    template<typename P, typename T, typename D>
-    struct pointer_binding : pointer_arg<P, T> {
-
-        D d_;
-
+#if __cplusplus < 201703L  // use of C++14
         pointer_binding(P* p, D d = D{}) : pointer_arg<P, T>{p}, d_{d} {}
+#endif
 
-        // constraint: xDestroy function must be void(*)(void*)
-        constexpr xdestroy_fn_t get_deleter() const {
-            xdestroy_fn_t destroy = d_;
-            return destroy;
+        // constraint: xDestroy function must be invocable: D(P*)
+        constexpr xdestroy_fn_t get_deleter() const noexcept {
+            return obtain_xdestroy_for(d_, this->ptr);
         }
     };
-#endif
 
     /**
      *  Template alias for a static pointer value binding.
@@ -6847,24 +7039,24 @@ namespace sqlite_orm {
     /**
      *  Wrap a pointer, its type and its deleter function for binding it to a statement.
      *  
-     *  Unless the deleter carries a nullptr function the ownership
+     *  Unless the deleter yields a nullptr function the ownership of the pointed-to-object
      *  will be transferred to sqlite, which will delete it through
-     *  the the deleter function when the statement finishes.
+     *  the deleter function when the statement finishes.
      */
     template<class T, class P, class D>
     auto bindable_pointer(P* p, D d) -> pointer_binding<P, T, D> {
         return {p, d};
     }
 
-    template<const char* I, class P, class D>
-    auto bindable_pointer(P* p, D d) -> pointer_binding<P, std::integral_constant<const char*, I>, D> {
+    template<const char* N, class P, class D>
+    auto bindable_pointer(P* p, D d) -> pointer_binding<P, std::integral_constant<const char*, N>, D> {
         return {p, d};
     }
 
     /**
      *  Wrap a pointer and its type for binding it to a statement.
      *  
-     *  Note: 'Static' means that ownership won't be transferred to
+     *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred to
      *  sqlite and sqlite assumes the object pointed to is valid throughout
      *  the lifetime of a statement.
      */
@@ -6873,8 +7065,8 @@ namespace sqlite_orm {
         return {p};
     }
 
-    template<const char* I, class P>
-    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, std::integral_constant<const char*, I>> {
+    template<const char* N, class P>
+    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, std::integral_constant<const char*, N>> {
         return {p};
     }
 }
@@ -6938,6 +7130,7 @@ namespace sqlite_orm {
      */
     template<class P, class T, class D>
     struct statement_binder<pointer_binding<P, T, D>, void> {
+        // note: C-casting `P* -> void*` like internal::xdestroy_proxy()
 
         using V = pointer_binding<P, T, D>;
 

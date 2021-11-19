@@ -18,6 +18,7 @@
 #include "../../dev/member_traits/getter_traits.h"
 #include "../../dev/member_traits/setter_traits.h"
 #include "../../dev/member_traits/member_traits.h"
+#include "../../dev/xdestroy_handling.h"
 #include "../../dev/type_printer.h"
 #include "../../dev/collate_argument.h"
 #include "../../dev/constraints.h"

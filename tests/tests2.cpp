@@ -3,6 +3,8 @@
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <memory>  // std::default_delete
+#include <malloc.h>  // free()
 
 using namespace sqlite_orm;
 
@@ -560,14 +562,14 @@ TEST_CASE("custom functions") {
     storage.delete_aggregate_function<MultiSum>();
 }
 
-TEST_CASE("Pointer") {
+TEST_CASE("pointer-passing") {
     struct Object {
         int64 id = 0;
     };
     using carray_arg_t = carray_pointer_arg<int64>;
 
     // accept and return a pointer of type "carray"
-    struct test_pointer_passing_fn {
+    struct pass_thru_pointer_fn {
         using bindable_carray_ptr_t = static_carray_pointer_binding<int64>;
 
         bindable_carray_ptr_t operator()(carray_arg_t pv) const {
@@ -576,7 +578,7 @@ TEST_CASE("Pointer") {
         }
 
         static const char *name() {
-            return "test_pointer_passing";
+            return "pass_thru_pointer";
         }
     };
 
@@ -586,10 +588,11 @@ TEST_CASE("Pointer") {
 
     storage.insert(Object{});
 
-    // test the note_value function
-
     storage.create_scalar_function<note_value_fn<int64>>();
-    {
+    storage.create_scalar_function<pass_thru_pointer_fn>();
+
+    // test the note_value function
+    SECTION("note_value, statically_bindable_pointer") {
         int64 lastUpdatedId = -1;
         storage.update_all(set(
             c(&Object::id) =
@@ -601,19 +604,188 @@ TEST_CASE("Pointer") {
                 add(1ll, func<note_value_fn<int64>>(&Object::id, statically_bindable_carray_pointer(&lastUpdatedId)))));
         REQUIRE(lastUpdatedId == 2);
     }
-    storage.delete_scalar_function<note_value_fn<int64>>();
 
     // test passing a pointer into another function
-
-    storage.create_scalar_function<note_value_fn<int64>>();
-    storage.create_scalar_function<test_pointer_passing_fn>();
-    {
+    SECTION("test_pass_thru, statically_bindable_pointer") {
         int64 lastSelectedId = -1;
         auto v = storage.select(func<note_value_fn<int64>>(
             &Object::id,
-            func<test_pointer_passing_fn>(statically_bindable_carray_pointer(&lastSelectedId))));
+            func<pass_thru_pointer_fn>(statically_bindable_carray_pointer(&lastSelectedId))));
         REQUIRE(v.back() == lastSelectedId);
     }
-    storage.delete_scalar_function<test_pointer_passing_fn>();
-    storage.delete_scalar_function<note_value_fn<int64>>();
+
+    SECTION("bindable_pointer") {
+        static int64 lastSelectedId;
+        static bool deleted;
+        lastSelectedId = -1;
+        deleted = false;
+
+        struct delete_int64 {
+            void operator()(int64 *p) const {
+                lastSelectedId = *p;
+                delete p;
+                deleted = true;
+            }
+        };
+
+        // return a pointer of type "carray"
+        struct make_pointer_fn {
+            using bindable_carray_ptr_t = carray_pointer_binding<int64, delete_int64>;
+
+            bindable_carray_ptr_t operator()(int /*dummy*/) const {
+                return bindable_carray_pointer(new int64{-1}, delete_int64{});
+            }
+
+            static const char *name() {
+                return "make_pointer";
+            }
+        };
+
+        storage.create_scalar_function<make_pointer_fn>();
+
+        // test passing a pointer into another function
+        SECTION("test_pass_thru") {
+            auto v = storage.select(func<note_value_fn<int64>>(
+                &Object::id,
+                func<pass_thru_pointer_fn>(bindable_carray_pointer(new int64{-1}, delete_int64{}))));
+            REQUIRE(deleted == true);
+            REQUIRE(v.back() == lastSelectedId);
+        }
+
+        // test passing a pointer into another function
+        SECTION("test_make_pointer") {
+            auto v = storage.select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>(0)));
+            REQUIRE(deleted == true);
+            REQUIRE(v.back() == lastSelectedId);
+        }
+    }
+}
+
+// Wrap std::default_delete in a function
+template<typename T>
+void delete_default(std::conditional_t<std::is_array<T>::value, std::decay_t<T>, T *> o) noexcept(
+    noexcept(std::default_delete<T>{}(o))) {
+    std::default_delete<T>{}(o);
+}
+
+// Integral function constant for default deletion
+template<typename T>
+using delete_default_t = std::integral_constant<decltype(&delete_default<T>), delete_default<T>>;
+// Integral function constant variable for default deletion
+template<typename T>
+SQLITE_ORM_INLINE_VAR constexpr delete_default_t<T> delete_default_f{};
+
+using free_t = std::integral_constant<decltype(&free), free>;
+SQLITE_ORM_INLINE_VAR constexpr free_t free_f{};
+
+TEST_CASE("obtain_xdestroy_for") {
+
+    using internal::xdestroy_proxy;
+
+    // class yielding a 'xDestroy' function pointer
+    struct xdestroy_holder {
+        xdestroy_fn_t xDestroy = free;
+
+        constexpr operator xdestroy_fn_t() const noexcept {
+            return xDestroy;
+        }
+    };
+
+    // class yielding a function pointer not of type xdestroy_fn_t
+    struct int_destroy_holder {
+        using destroy_fn_t = void (*)(int *);
+
+        destroy_fn_t destroy = nullptr;
+
+        constexpr operator destroy_fn_t() const noexcept {
+            return destroy;
+        }
+    };
+
+    {
+        constexpr int *int_nullptr = (int *)nullptr;
+        constexpr const int *const_int_nullptr = (const int *)nullptr;
+
+        // null_xdestroy_f(int*)
+        constexpr xdestroy_fn_t xDestroy1 = obtain_xdestroy_for(null_xdestroy_f, int_nullptr);
+        static_assert(xDestroy1 == nullptr, "");
+        REQUIRE(xDestroy1 == nullptr);
+
+        // free(int*)
+        constexpr xdestroy_fn_t xDestroy2 = obtain_xdestroy_for(free, int_nullptr);
+        static_assert(xDestroy2 == free, "");
+        REQUIRE(xDestroy2 == free);
+
+        // free_f(int*)
+        constexpr xdestroy_fn_t xDestroy3 = obtain_xdestroy_for(free_f, int_nullptr);
+        static_assert(xDestroy3 == free, "");
+        REQUIRE(xDestroy3 == free);
+
+#if __cplusplus >= 201703L  // use of C++17 or higher
+        // [](void* p){}
+        constexpr auto lambda4_1 = [](void *p) {};
+        constexpr xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
+        static_assert(xDestroy4_1 == lambda4_1, "");
+        REQUIRE(xDestroy4_1 == lambda4_1);
+#else
+        // [](void* p){}
+        auto lambda4_1 = [](void *p) {};
+        xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
+        REQUIRE(xDestroy4_1 == lambda4_1);
+#endif
+
+        // [](int* p) { delete p; }
+        // default-constructible non-capturing lambdas everwhere in code are only available since C++20
+#if __cplusplus >= 202002L  // use of C++20 or higher
+        constexpr auto lambda4_2 = [](int *p) {
+            delete p;
+        };
+        using lambda4_2_t = std::remove_const_t<decltype(lambda4_2)>;
+        constexpr xdestroy_fn_t xDestroy4_2 = obtain_xdestroy_for(lambda4_2, int_nullptr);
+        static_assert(xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>);
+        REQUIRE((xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>));
+#endif
+
+        // default_delete<int>(int*)
+        constexpr xdestroy_fn_t xDestroy5 = obtain_xdestroy_for(default_delete<int>{}, int_nullptr);
+        static_assert(xDestroy5 == xdestroy_proxy<default_delete<int>, int>, "");
+        REQUIRE((xDestroy5 == xdestroy_proxy<default_delete<int>, int>));
+
+        // delete_default_f<int>(int*)
+        constexpr xdestroy_fn_t xDestroy6 = obtain_xdestroy_for(delete_default_f<int>, int_nullptr);
+        static_assert(xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>, "");
+        REQUIRE((xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>));
+
+        // delete_default_f<int>(const int*)
+        constexpr xdestroy_fn_t xDestroy7 = obtain_xdestroy_for(delete_default_f<int>, const_int_nullptr);
+        static_assert(xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>, "");
+        REQUIRE((xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>));
+
+        // xdestroy_holder{ free }(int*)
+        constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
+        static_assert(xDestroy8 == free, "");
+        REQUIRE(xDestroy8 == free);
+
+        // xdestroy_holder{ free }(const int*)
+        constexpr xdestroy_fn_t xDestroy9 = obtain_xdestroy_for(xdestroy_holder{free}, const_int_nullptr);
+        static_assert(xDestroy9 == free, "");
+        REQUIRE(xDestroy9 == free);
+
+        // xdestroy_holder{ nullptr }(const int*)
+        constexpr xdestroy_fn_t xDestroy10 = obtain_xdestroy_for(xdestroy_holder{nullptr}, const_int_nullptr);
+        static_assert(xDestroy10 == nullptr, "");
+        REQUIRE(xDestroy10 == nullptr);
+
+        // expressions that do not work
+#if 0
+    // can't use functions that differ from xdestroy_fn_t
+    constexpr xdestroy_fn_t xDestroy = obtain_xdestroy_for(delete_default<int>, int_nullptr);
+    // can't use object yielding a function pointer that differs from xdestroy_fn_t
+    constexpr xdestroy_fn_t xDestroy = obtain_xdestroy_for(int_destroy_holder{}, int_nullptr);
+    // successfully takes default_delete<void>, but default_delete statically asserts on a non-complete type `void*`
+    constexpr xdestroy_fn_t xDestroy = obtain_xdestroy_for(default_delete<void>{}, int_nullptr);
+    // successfully takes default_delete<int>, but xdestroy_proxy can't call the deleter with a `const int*`
+    constexpr xdestroy_fn_t xDestroy = obtain_xdestroy_for(default_delete<int>{}, const_int_nullptr);
+#endif
+    }
 }
