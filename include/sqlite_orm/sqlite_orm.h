@@ -7076,7 +7076,7 @@ namespace sqlite_orm {
      */
     template<class T, class P>
     auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, T> {
-        return {{p}};
+        return {p};
     }
 
     template<const char* N, class P>
