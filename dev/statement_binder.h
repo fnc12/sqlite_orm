@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
+#include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
@@ -14,6 +15,7 @@
 
 #include "is_std_ptr.h"
 #include "arithmetic_tag.h"
+#include "xdestroy_handling.h"
 #include "pointer_value.h"
 
 namespace sqlite_orm {
@@ -101,12 +103,10 @@ namespace sqlite_orm {
             auto stringData = this->string_data(value);
             auto stringDataLength = std::get<1>(stringData);
             auto dataCopy = new char[stringDataLength + 1];
+            constexpr auto deleter = std::default_delete<char[]>;
             auto stringChars = std::get<0>(stringData);
             ::strncpy(dataCopy, stringChars, stringDataLength + 1);
-            sqlite3_result_text(context, dataCopy, stringDataLength, [](void* pointer) {
-                auto charPointer = (char*)pointer;
-                delete[] charPointer;
-            });
+            sqlite3_result_text(context, dataCopy, stringDataLength, obtain_xdestroy_for(deleter, dataCopy));
         }
 
       private:
