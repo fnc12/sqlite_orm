@@ -7,6 +7,7 @@
 #include <malloc.h>  // free()
 
 using namespace sqlite_orm;
+using std::default_delete;
 
 TEST_CASE("Empty storage") {
     auto storage = make_storage("empty.sqlite");
@@ -661,19 +662,18 @@ TEST_CASE("pointer-passing") {
     }
 }
 
-// Wrap std::default_delete in a function
 template<typename T>
-void delete_default(std::conditional_t<std::is_array<T>::value, std::decay_t<T>, T *> o) noexcept(
-    noexcept(std::default_delete<T>{}(o))) {
-    std::default_delete<T>{}(o);
+void delete_object_default(T *o) noexcept {
+    static_assert(0 < sizeof(T), "can't delete an incomplete type");
+    delete o;
 }
 
 // Integral function constant for default deletion
 template<typename T>
-using delete_default_t = std::integral_constant<decltype(&delete_default<T>), delete_default<T>>;
+using delete_object_default_t = std::integral_constant<decltype(&delete_object_default<T>), delete_object_default<T>>;
 // Integral function constant variable for default deletion
 template<typename T>
-SQLITE_ORM_INLINE_VAR constexpr delete_default_t<T> delete_default_f{};
+SQLITE_ORM_INLINE_VAR constexpr delete_object_default_t<T> delete_object_default_f{};
 
 using free_t = std::integral_constant<decltype(&free), free>;
 SQLITE_ORM_INLINE_VAR constexpr free_t free_f{};
@@ -751,15 +751,15 @@ TEST_CASE("obtain_xdestroy_for") {
         static_assert(xDestroy5 == xdestroy_proxy<default_delete<int>, int>, "");
         REQUIRE((xDestroy5 == xdestroy_proxy<default_delete<int>, int>));
 
-        // delete_default_f<int>(int*)
-        constexpr xdestroy_fn_t xDestroy6 = obtain_xdestroy_for(delete_default_f<int>, int_nullptr);
-        static_assert(xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>, "");
-        REQUIRE((xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>));
+        // delete_object_default_f<int>(int*)
+        constexpr xdestroy_fn_t xDestroy6 = obtain_xdestroy_for(delete_object_default_f<int>, int_nullptr);
+        static_assert(xDestroy6 == xdestroy_proxy<delete_object_default_t<int>, int>, "");
+        REQUIRE((xDestroy6 == xdestroy_proxy<delete_object_default_t<int>, int>));
 
-        // delete_default_f<int>(const int*)
-        constexpr xdestroy_fn_t xDestroy7 = obtain_xdestroy_for(delete_default_f<int>, const_int_nullptr);
-        static_assert(xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>, "");
-        REQUIRE((xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>));
+        // delete_object_default_f<int>(const int*)
+        constexpr xdestroy_fn_t xDestroy7 = obtain_xdestroy_for(delete_object_default_f<int>, const_int_nullptr);
+        static_assert(xDestroy7 == xdestroy_proxy<delete_object_default_t<int>, const int>, "");
+        REQUIRE((xDestroy7 == xdestroy_proxy<delete_object_default_t<int>, const int>));
 
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
@@ -779,7 +779,7 @@ TEST_CASE("obtain_xdestroy_for") {
         // expressions that do not work
 #if 0
     // can't use functions that differ from xdestroy_fn_t
-    constexpr xdestroy_fn_t xDestroy = obtain_xdestroy_for(delete_default<int>, int_nullptr);
+    constexpr xdestroy_fn_t xDestroy = obtain_xdestroy_for(delete_object_default<int>, int_nullptr);
     // can't use object yielding a function pointer that differs from xdestroy_fn_t
     constexpr xdestroy_fn_t xDestroy = obtain_xdestroy_for(int_destroy_holder{}, int_nullptr);
     // successfully takes default_delete<void>, but default_delete statically asserts on a non-complete type `void*`
