@@ -13,12 +13,12 @@ skip_commits:
   - '*.sh'
 
 image:
-  - Visual Studio 2017
+  - Visual Studio 2019
 
 # configurations to add to build matrix
 # TODO: MinGW Makefiles and MSYS Makefiles
 configuration:
-  - Debug
+  #- Debug
   - Release
 
 platform:
@@ -32,6 +32,9 @@ environment:
    
    # using C++17 (for std::optional support)
    - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+   
+   # using C++20 (for concepts support)
+   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
 init:
   - echo %APPVEYOR_BUILD_WORKER_IMAGE% - %configuration% - %PLATFORM%
