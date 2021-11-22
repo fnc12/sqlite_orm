@@ -9,8 +9,6 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-#include "pointer_value.h"
-
 namespace sqlite_orm {
 
     /**
@@ -129,6 +127,9 @@ namespace sqlite_orm {
         }
     };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<typename P, typename T, typename D>
+    class pointer_binding;
 
     template<class P, class T, class D>
     struct field_printer<pointer_binding<P, T, D>, void> {
