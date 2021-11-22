@@ -31,16 +31,19 @@ namespace sqlite_orm {
      */
     template<class P, class T, class D>
     struct statement_binder<pointer_binding<P, T, D>, void> {
-        // note: C-casting `P* -> void*` like internal::xdestroy_proxy()
-
         using V = pointer_binding<P, T, D>;
 
+        // ownership of pointed-to-object is left untouched and remains at prepared statement's AST expression
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            return sqlite3_bind_pointer(stmt, index, (void*)value.ptr, T::value, value.get_deleter());
+            // note: C-casting `P* -> void*`, internal::xdestroy_proxy() does the inverse
+            return sqlite3_bind_pointer(stmt, index, (void*)value.ptr(), T::value, null_xdestroy_f);
         }
 
-        void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_pointer(context, (void*)value.ptr, T::value, value.get_deleter());
+        // ownership of pointed-to-object is transferred to sqlite
+        void result(sqlite3_context* context, V& value) const {
+            // note: C-casting `P* -> void*`,
+            // row_extractor<pointer_arg<P, T>>::extract() and internal::xdestroy_proxy() do the inverse
+            sqlite3_result_pointer(context, (void*)value.take_ptr(), T::value, value.get_xdestroy());
         }
     };
 

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <type_traits>
+#include <memory>
+#include <utility>
 
 #include "start_macros.h"
 #include "xdestroy_handling.h"
@@ -24,10 +26,14 @@ namespace sqlite_orm {
                       "`std::integral_constant<>` must be convertible to `const char*`");
 
         using tag = T;
-        P* ptr = nullptr;
+        P* p_;
 
-        constexpr operator P*() const {
-            return ptr;
+        P* ptr() const noexcept {
+            return this->p_;
+        }
+
+        constexpr operator P*() const noexcept {
+            return p_;
         }
     };
 
@@ -52,18 +58,46 @@ namespace sqlite_orm {
      *  ```
      */
     template<typename P, typename T, typename D>
-    struct pointer_binding : pointer_arg<P, T> {
+    class pointer_binding {
 
+        P* p_;
         SQLITE_ORM_NOUNIQUEADDRESS
-        D d_{};
+        D d_;
 
-#if __cplusplus < 201703L  // use of C++14
-        pointer_binding(P* p, D d = D{}) : pointer_arg<P, T>{p}, d_{d} {}
-#endif
+      public:
+        using tag = T;
 
-        // constraint: xDestroy function must be invocable: D(P*)
-        constexpr xdestroy_fn_t get_deleter() const noexcept {
-            return obtain_xdestroy_for(d_, this->ptr);
+        pointer_binding(const pointer_binding&) = delete;
+        pointer_binding& operator=(const pointer_binding&) = delete;
+        pointer_binding& operator=(pointer_binding&&) = delete;
+
+        // Construct from pointer and deleter.
+        // Transfers ownership of the passed in object.
+        // Prefer using the factory functions as a simpler public interface.
+        pointer_binding(P* p, D d = D{}) noexcept : p_{p}, d_{std::move(d)} {}
+
+        pointer_binding(pointer_binding&& other) noexcept :
+            p_{std::exchange(other.p_, nullptr)}, d_{std::move(other.d_)} {}
+
+        ~pointer_binding() {
+            if(p_) {
+                if(auto xDestroy = get_xdestroy()) {
+                    // note: C-casting `P* -> void*` like statement_binder<pointer_binding<P, T, D>
+                    xDestroy((void*)p_);
+                }
+            }
+        }
+
+        P* ptr() const noexcept {
+            return p_;
+        }
+
+        P* take_ptr() noexcept {
+            return std::exchange(p_, nullptr);
+        }
+
+        constexpr xdestroy_fn_t get_xdestroy() const noexcept {
+            return obtain_xdestroy_for(d_, p_);
         }
     };
 
@@ -82,34 +116,45 @@ namespace sqlite_orm {
     /**
      *  Wrap a pointer, its type and its deleter function for binding it to a statement.
      *  
-     *  Unless the deleter yields a nullptr function the ownership of the pointed-to-object
-     *  will be transferred to sqlite, which will delete it through
+     *  Unless the deleter yields a nullptr 'xDestroy' function the ownership of the pointed-to-object
+     *  is transferred to the pointer binding, which will delete it through
      *  the deleter function when the statement finishes.
      */
     template<class T, class P, class D>
-    auto bindable_pointer(P* p, D d) -> pointer_binding<P, T, D> {
+    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
         return {p, d};
     }
 
     template<const char* N, class P, class D>
-    auto bindable_pointer(P* p, D d) -> pointer_binding<P, std::integral_constant<const char*, N>, D> {
+    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, std::integral_constant<const char*, N>, D> {
         return {p, d};
+    }
+
+    template<class T, class P, class D>
+    auto bindable_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, T, D> {
+        return {p.release(), p.get_deleter()};
+    }
+
+    template<const char* N, class P, class D>
+    auto bindable_pointer(std::unique_ptr<P, D> p) noexcept
+        -> pointer_binding<P, std::integral_constant<const char*, N>, D> {
+        return {p.release(), p.get_deleter()};
     }
 
     /**
      *  Wrap a pointer and its type for binding it to a statement.
      *  
-     *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred to
-     *  sqlite and sqlite assumes the object pointed to is valid throughout
-     *  the lifetime of a statement.
+     *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred
+     *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class T, class P>
-    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, T> {
+    auto statically_bindable_pointer(P* p) noexcept -> static_pointer_binding<P, T> {
         return {p};
     }
 
     template<const char* N, class P>
-    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, std::integral_constant<const char*, N>> {
+    auto statically_bindable_pointer(P* p) noexcept
+        -> static_pointer_binding<P, std::integral_constant<const char*, N>> {
         return {p};
     }
 }

@@ -20,24 +20,23 @@ namespace sqlite_orm {
     /**
      *  Wrap a pointer of type 'carray' and its deleter function for binding it to a statement.
      *  
-     *  Unless the deleter carries a nullptr function the ownership
-     *  will be transferred to sqlite, which will delete it through
-     *  the the deleter function when the statement finishes.
+     *  Unless the deleter yields a nullptr 'xDestroy' function the ownership of the pointed-to-object
+     *  is transferred to the pointer binding, which will delete it through
+     *  the deleter function when the statement finishes.
      */
     template<class P, class D>
-    auto bindable_carray_pointer(P* p, D d) -> pointer_binding<P, carray_pvt, D> {
+    auto bindable_carray_pointer(P* p, D d) noexcept -> pointer_binding<P, carray_pvt, D> {
         return bindable_pointer<carray_pvt>(p, d);
     }
 
     /**
      *  Wrap a pointer of type 'carray' for binding it to a statement.
      *  
-     *  Note: 'Static' means that ownership won't be transferred to
-     *  sqlite and sqlite assumes the object pointed to is valid throughout
-     *  the lifetime of a statement.
+     *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred
+     *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class P>
-    auto statically_bindable_carray_pointer(P* p) -> static_pointer_binding<P, carray_pvt> {
+    auto statically_bindable_carray_pointer(P* p) noexcept -> static_pointer_binding<P, carray_pvt> {
         return statically_bindable_pointer<carray_pvt>(p);
     }
 
@@ -48,9 +47,7 @@ namespace sqlite_orm {
      */
     template<typename P>
     struct note_value_fn {
-        using pointer_arg_t = carray_pointer_arg<P>;
-
-        P operator()(P&& value, pointer_arg_t pv) const {
+        P operator()(P&& value, carray_pointer_arg<P> pv) const {
             if(P* observer = pv) {
                 *observer = value;
             }

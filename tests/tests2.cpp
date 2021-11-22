@@ -8,6 +8,7 @@
 
 using namespace sqlite_orm;
 using std::default_delete;
+using std::unique_ptr;
 
 TEST_CASE("Empty storage") {
     auto storage = make_storage("empty.sqlite");
@@ -563,23 +564,66 @@ TEST_CASE("custom functions") {
     storage.delete_aggregate_function<MultiSum>();
 }
 
+struct delete_int64 {
+    static int64 lastSelectedId;
+    static bool deleted;
+
+    void operator()(int64 *p) const {
+        // must not double-delete
+        assert(!deleted);
+
+        lastSelectedId = *p;
+        delete p;
+        deleted = true;
+    }
+};
+
+int64 delete_int64::lastSelectedId = -1;
+bool delete_int64::deleted = false;
+
 TEST_CASE("pointer-passing") {
     struct Object {
         int64 id = 0;
     };
-    using carray_arg_t = carray_pointer_arg<int64>;
 
     // accept and return a pointer of type "carray"
     struct pass_thru_pointer_fn {
         using bindable_carray_ptr_t = static_carray_pointer_binding<int64>;
 
-        bindable_carray_ptr_t operator()(carray_arg_t pv) const {
+        bindable_carray_ptr_t operator()(carray_pointer_arg<int64> pv) const {
             int64 *p = pv;
             return statically_bindable_carray_pointer(p);
         }
 
         static const char *name() {
             return "pass_thru_pointer";
+        }
+    };
+
+    // return a pointer of type "carray"
+    struct make_pointer_fn {
+        using bindable_carray_ptr_t = carray_pointer_binding<int64, delete_int64>;
+
+        bindable_carray_ptr_t operator()(int64 /*dummy*/) const {
+            return bindable_carray_pointer(new int64{-1}, delete_int64{});
+        }
+
+        static const char *name() {
+            return "make_pointer";
+        }
+    };
+
+    // return value from a pointer of type "carray"
+    struct fetch_from_pointer_fn {
+        int64 operator()(carray_pointer_arg<const int64> pv) const {
+            if(const int64 *v = pv) {
+                return *v;
+            }
+            return 0;
+        }
+
+        static const char *name() {
+            return "fetch_from_pointer";
         }
     };
 
@@ -590,6 +634,8 @@ TEST_CASE("pointer-passing") {
     storage.insert(Object{});
 
     storage.create_scalar_function<note_value_fn<int64>>();
+    storage.create_scalar_function<make_pointer_fn>();
+    storage.create_scalar_function<fetch_from_pointer_fn>();
     storage.create_scalar_function<pass_thru_pointer_fn>();
 
     // test the note_value function
@@ -616,48 +662,56 @@ TEST_CASE("pointer-passing") {
     }
 
     SECTION("bindable_pointer") {
-        static int64 lastSelectedId;
-        static bool deleted;
-        lastSelectedId = -1;
-        deleted = false;
+        delete_int64::lastSelectedId = -1;
+        delete_int64::deleted = false;
 
-        struct delete_int64 {
-            void operator()(int64 *p) const {
-                lastSelectedId = *p;
-                delete p;
-                deleted = true;
+        SECTION("unbound is deleted") {
+            try {
+                unique_ptr<int64, delete_int64> x{new int64(42)};
+                auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(std::move(x))));
+                auto stmt = storage.prepare(std::move(ast));
+                throw std::system_error{0, std::system_category()};
+            } catch(const std::system_error &) {
             }
-        };
+            // unbound pointer value must be deleted in face of exceptions (unregistered sql function)
+            REQUIRE(delete_int64::deleted == true);
+        }
 
-        // return a pointer of type "carray"
-        struct make_pointer_fn {
-            using bindable_carray_ptr_t = carray_pointer_binding<int64, delete_int64>;
+        SECTION("deleted with prepared statement") {
+            {
+                unique_ptr<int64, delete_int64> x{new int64(42)};
+                auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(std::move(x))));
+                auto stmt = storage.prepare(std::move(ast));
 
-            bindable_carray_ptr_t operator()(int /*dummy*/) const {
-                return bindable_carray_pointer(new int64{-1}, delete_int64{});
+                storage.execute(stmt);
+                // bound pointer value must not be deleted while executing statements
+                REQUIRE(delete_int64::deleted == false);
+                storage.execute(stmt);
+                REQUIRE(delete_int64::deleted == false);
             }
+            // bound pointer value must be deleted when prepared statement is going out of scope
+            REQUIRE(delete_int64::deleted == true);
+        }
 
-            static const char *name() {
-                return "make_pointer";
+        SECTION("ownership transfer") {
+            {
+                auto ast = select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>(0)));
+                auto stmt = storage.prepare(std::move(ast));
+
+                auto results = storage.execute(stmt);
+                // returned pointers must be deleted by sqlite after executing the statement
+                REQUIRE(delete_int64::deleted == true);
+                REQUIRE(results.back() == delete_int64::lastSelectedId);
             }
-        };
-
-        storage.create_scalar_function<make_pointer_fn>();
+        }
 
         // test passing a pointer into another function
         SECTION("test_pass_thru") {
             auto v = storage.select(func<note_value_fn<int64>>(
                 &Object::id,
                 func<pass_thru_pointer_fn>(bindable_carray_pointer(new int64{-1}, delete_int64{}))));
-            REQUIRE(deleted == true);
-            REQUIRE(v.back() == lastSelectedId);
-        }
-
-        // test passing a pointer into another function
-        SECTION("test_make_pointer") {
-            auto v = storage.select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>(0)));
-            REQUIRE(deleted == true);
-            REQUIRE(v.back() == lastSelectedId);
+            REQUIRE(delete_int64::deleted == true);
+            REQUIRE(v.back() == delete_int64::lastSelectedId);
         }
     }
 }

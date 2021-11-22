@@ -48,9 +48,15 @@ namespace sqlite_orm {
         using V = pointer_arg<P, T>;
 
         V extract(sqlite3_value* value) const {
-            return {static_cast<P*>(sqlite3_value_pointer(value, T::value))};
+            return {(P*)sqlite3_value_pointer(value, T::value)};
         }
     };
+
+    /**
+     * Undefine using pointer_binding<> for querying values
+     */
+    template<class P, class T, class D>
+    struct row_extractor<pointer_binding<P, T, D>, void>;
 
     /**
      *  Specialization for arithmetic types.
