@@ -7222,7 +7222,7 @@ namespace sqlite_orm {
             auto stringData = this->string_data(value);
             auto stringDataLength = std::get<1>(stringData);
             auto dataCopy = new char[stringDataLength + 1];
-            constexpr auto deleter = std::default_delete<char[]>;
+            constexpr auto deleter = std::default_delete<char[]>{};
             auto stringChars = std::get<0>(stringData);
             ::strncpy(dataCopy, stringChars, stringDataLength + 1);
             sqlite3_result_text(context, dataCopy, stringDataLength, obtain_xdestroy_for(deleter, dataCopy));
