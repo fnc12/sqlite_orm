@@ -7,6 +7,7 @@
 #include <malloc.h>  // free()
 
 using namespace sqlite_orm;
+using std::default_delete;
 
 TEST_CASE("Empty storage") {
     auto storage = make_storage("empty.sqlite");
