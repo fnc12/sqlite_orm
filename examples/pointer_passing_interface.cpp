@@ -193,18 +193,21 @@ int main() {
         //      error_category_message(get_error_category(error_category), error_value)
         //      FROM result
         //      ORDER BY not error_value, error_category, error_value, id;
-        auto rows = storage.select(
-            columns(&Result::id,
-                    as<str_alias<'o', 'k'>>(c(&Result::errorValue) == 0),
-                    &Result::errorValue,
-                    &Result::errorCategory,
-                    as<str_alias<'e', 'q'>>(
-                        func<equal_error_code_fn>(func<make_error_code_fn>(&Result::errorValue, &Result::errorCategory),
-                                                  bindable_pointer<ecode_pvt>(make_unique<error_code>()))),
-                    func<error_category_name_fn>(func<get_error_category_fn>(&Result::errorCategory)),
-                    func<error_category_message_fn>(func<get_error_category_fn>(&Result::errorCategory),
-                                                    &Result::errorValue))/*,
-            multi_order_by(!c(&Result::errorValue), &Result::errorCategory, &Result::errorValue, &Result::id)*/);
+        auto rows =
+            storage.select(columns(&Result::id,
+                                   as<str_alias<'o', 'k'>>(c(&Result::errorValue) == 0),
+                                   &Result::errorValue,
+                                   &Result::errorCategory,
+                                   as<str_alias<'e', 'q'>>(func<equal_error_code_fn>(
+                                       func<make_error_code_fn>(&Result::errorValue, &Result::errorCategory),
+                                       bindable_pointer<ecode_pvt>(make_unique<error_code>()))),
+                                   func<error_category_name_fn>(func<get_error_category_fn>(&Result::errorCategory)),
+                                   func<error_category_message_fn>(func<get_error_category_fn>(&Result::errorCategory),
+                                                                   &Result::errorValue)),
+                           multi_order_by(order_by(c(&Result::errorValue) == 0),
+                                          order_by(&Result::errorCategory),
+                                          order_by(&Result::errorValue),
+                                          order_by(&Result::id)));
         for(auto& row: rows) {
             cout << std::get<0>(row) << ' ' << std::get<1>(row) << ' ' << std::get<2>(row) << ' ' << std::get<3>(row)
                  << ' ' << std::get<4>(row) << " \"" << std::get<5>(row) << "\""
