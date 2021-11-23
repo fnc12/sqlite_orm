@@ -136,20 +136,9 @@ namespace sqlite_orm {
         return {p, std::move(d)};
     }
 
-    template<const char* T, class P, class D>
-    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, std::integral_constant<const char*, T>, D> {
-        return bindable_pointer<std::integral_constant<const char*, T>>(p, std::move(d));
-    }
-
     template<class T, class P, class D>
     auto bindable_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, T, D> {
         return bindable_pointer<T>(p.release(), p.get_deleter());
-    }
-
-    template<const char* T, class P, class D>
-    auto bindable_pointer(std::unique_ptr<P, D> p) noexcept
-        -> pointer_binding<P, std::integral_constant<const char*, T>, D> {
-        return bindable_pointer<std::integral_constant<const char*, T>>(p.release(), p.get_deleter());
     }
 
     template<typename B>
@@ -166,12 +155,6 @@ namespace sqlite_orm {
     template<class T, class P>
     auto statically_bindable_pointer(P* p) noexcept -> static_pointer_binding<P, T> {
         return bindable_pointer<T>(p, null_xdestroy_f);
-    }
-
-    template<const char* T, class P>
-    auto statically_bindable_pointer(P* p) noexcept
-        -> static_pointer_binding<P, std::integral_constant<const char*, T>> {
-        return statically_bindable_pointer<std::integral_constant<const char*, T>>(p);
     }
 
     template<typename B>
