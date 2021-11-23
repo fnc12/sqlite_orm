@@ -7010,10 +7010,10 @@ namespace sqlite_orm {
         P* p_;
 
         P* ptr() const noexcept {
-            return this->p_;
+            return p_;
         }
 
-        constexpr operator P*() const noexcept {
+        operator P*() const noexcept {
             return p_;
         }
     };
@@ -7032,6 +7032,9 @@ namespace sqlite_orm {
      *         - non-capturing lambda
      *         - structure implicitly yielding a function pointer
      *
+     *  @note Use one of the factory functions to create a pointer binding,
+     *  e.g. bindable_carray_pointer or statically_bindable_carray_pointer().
+     *  
      *  @example
      *  ```
      *  int64 rememberedId;
@@ -7045,17 +7048,25 @@ namespace sqlite_orm {
         SQLITE_ORM_NOUNIQUEADDRESS
         D d_;
 
+      protected:
+        // Constructing pointer bindings must go through bindable_pointer()
+        template<class T, class P, class D>
+        friend auto bindable_pointer(P*, D) noexcept -> pointer_binding<P, T, D>;
+        template<class B>
+        friend B bindable_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
+
+        // Construct from pointer and deleter.
+        // Transfers ownership of the passed in object.
+        pointer_binding(P* p, D d = {}) noexcept : p_{p}, d_{std::move(d)} {}
+
       public:
+        using qualified_type = P;
         using tag = T;
+        using deleter_type = D;
 
         pointer_binding(const pointer_binding&) = delete;
         pointer_binding& operator=(const pointer_binding&) = delete;
         pointer_binding& operator=(pointer_binding&&) = delete;
-
-        // Construct from pointer and deleter.
-        // Transfers ownership of the passed in object.
-        // Prefer using the factory functions as a simpler public interface.
-        pointer_binding(P* p, D d = D{}) noexcept : p_{p}, d_{std::move(d)} {}
 
         pointer_binding(pointer_binding&& other) noexcept :
             p_{std::exchange(other.p_, nullptr)}, d_{std::move(other.d_)} {}
@@ -7077,7 +7088,7 @@ namespace sqlite_orm {
             return std::exchange(p_, nullptr);
         }
 
-        constexpr xdestroy_fn_t get_xdestroy() const noexcept {
+        xdestroy_fn_t get_xdestroy() const noexcept {
             return obtain_xdestroy_for(d_, p_);
         }
     };
@@ -7099,27 +7110,32 @@ namespace sqlite_orm {
      *  
      *  Unless the deleter yields a nullptr 'xDestroy' function the ownership of the pointed-to-object
      *  is transferred to the pointer binding, which will delete it through
-     *  the deleter function when the statement finishes.
+     *  the deleter when the statement finishes.
      */
     template<class T, class P, class D>
     auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
-        return {p, d};
+        return {p, std::move(d)};
     }
 
-    template<const char* N, class P, class D>
-    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, std::integral_constant<const char*, N>, D> {
-        return {p, d};
+    template<const char* T, class P, class D>
+    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, std::integral_constant<const char*, T>, D> {
+        return bindable_pointer<std::integral_constant<const char*, T>>(p, std::move(d));
     }
 
     template<class T, class P, class D>
     auto bindable_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, T, D> {
-        return {p.release(), p.get_deleter()};
+        return bindable_pointer<T>(p.release(), p.get_deleter());
     }
 
-    template<const char* N, class P, class D>
+    template<const char* T, class P, class D>
     auto bindable_pointer(std::unique_ptr<P, D> p) noexcept
-        -> pointer_binding<P, std::integral_constant<const char*, N>, D> {
-        return {p.release(), p.get_deleter()};
+        -> pointer_binding<P, std::integral_constant<const char*, T>, D> {
+        return bindable_pointer<std::integral_constant<const char*, T>>(p.release(), p.get_deleter());
+    }
+
+    template<typename B>
+    B bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
+        return B{p, std::move(d)};
     }
 
     /**
@@ -7130,13 +7146,27 @@ namespace sqlite_orm {
      */
     template<class T, class P>
     auto statically_bindable_pointer(P* p) noexcept -> static_pointer_binding<P, T> {
-        return {p};
+        return bindable_pointer<T>(p, null_xdestroy_f);
     }
 
-    template<const char* N, class P>
+    template<const char* T, class P>
     auto statically_bindable_pointer(P* p) noexcept
-        -> static_pointer_binding<P, std::integral_constant<const char*, N>> {
-        return {p};
+        -> static_pointer_binding<P, std::integral_constant<const char*, T>> {
+        return statically_bindable_pointer<std::integral_constant<const char*, T>>(p);
+    }
+
+    template<typename B>
+    B statically_bindable_pointer(typename B::qualified_type* p,
+                                  typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+        return bindable_pointer<B>(p);
+    }
+
+    /**
+     *  Forward a pointer value from an argument.
+     */
+    template<class P, class T>
+    auto rebind_statically(const pointer_arg<P, T>& pv) noexcept -> static_pointer_binding<P, T> {
+        return statically_bindable_pointer<T>(pv.ptr());
     }
 }
 #pragma once
@@ -17978,11 +18008,11 @@ namespace sqlite_orm {
      *  
      *  Unless the deleter yields a nullptr 'xDestroy' function the ownership of the pointed-to-object
      *  is transferred to the pointer binding, which will delete it through
-     *  the deleter function when the statement finishes.
+     *  the deleter when the statement finishes.
      */
     template<class P, class D>
     auto bindable_carray_pointer(P* p, D d) noexcept -> pointer_binding<P, carray_pvt, D> {
-        return bindable_pointer<carray_pvt>(p, d);
+        return bindable_pointer<carray_pvt>(p, std::move(d));
     }
 
     /**

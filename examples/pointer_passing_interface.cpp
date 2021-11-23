@@ -32,6 +32,7 @@ using std::default_delete;
 using std::endl;
 using std::error_category;
 using std::error_code;
+using std::make_unique;
 using std::min;
 
 // name for our pointer value types
@@ -197,9 +198,9 @@ int main() {
                     as<str_alias<'o', 'k'>>(c(&Result::errorValue) == 0),
                     &Result::errorValue,
                     &Result::errorCategory,
-                    as<str_alias<'e', 'q'>>(func<equal_error_code_fn>(
-                        func<make_error_code_fn>(&Result::errorValue, &Result::errorCategory),
-                        bindable_pointer<ecode_pvt>(new error_code{}, default_delete<error_code>{}))),
+                    as<str_alias<'e', 'q'>>(
+                        func<equal_error_code_fn>(func<make_error_code_fn>(&Result::errorValue, &Result::errorCategory),
+                                                  bindable_pointer<ecode_pvt>(make_unique<error_code>()))),
                     func<error_category_name_fn>(func<get_error_category_fn>(&Result::errorCategory)),
                     func<error_category_message_fn>(func<get_error_category_fn>(&Result::errorCategory),
                                                     &Result::errorValue))/*,

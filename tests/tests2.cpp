@@ -591,8 +591,7 @@ TEST_CASE("pointer-passing") {
         using bindable_carray_ptr_t = static_carray_pointer_binding<int64>;
 
         bindable_carray_ptr_t operator()(carray_pointer_arg<int64> pv) const {
-            int64 *p = pv;
-            return statically_bindable_carray_pointer(p);
+            return rebind_statically(pv);
         }
 
         static const char *name() {
@@ -605,6 +604,8 @@ TEST_CASE("pointer-passing") {
         using bindable_carray_ptr_t = carray_pointer_binding<int64, delete_int64>;
 
         bindable_carray_ptr_t operator()(int64 /*dummy*/) const {
+            return bindable_pointer<bindable_carray_ptr_t>(new int64{-1});
+            // outline: low-level; must compile
             return bindable_carray_pointer(new int64{-1}, delete_int64{});
         }
 

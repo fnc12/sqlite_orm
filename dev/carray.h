@@ -22,11 +22,11 @@ namespace sqlite_orm {
      *  
      *  Unless the deleter yields a nullptr 'xDestroy' function the ownership of the pointed-to-object
      *  is transferred to the pointer binding, which will delete it through
-     *  the deleter function when the statement finishes.
+     *  the deleter when the statement finishes.
      */
     template<class P, class D>
     auto bindable_carray_pointer(P* p, D d) noexcept -> pointer_binding<P, carray_pvt, D> {
-        return bindable_pointer<carray_pvt>(p, d);
+        return bindable_pointer<carray_pvt>(p, std::move(d));
     }
 
     /**
