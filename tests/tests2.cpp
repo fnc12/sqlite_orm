@@ -696,7 +696,7 @@ TEST_CASE("pointer-passing") {
 
         SECTION("ownership transfer") {
             {
-                auto ast = select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>(0)));
+                auto ast = select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>(0 /*dummy*/)));
                 auto stmt = storage.prepare(std::move(ast));
 
                 auto results = storage.execute(stmt);
