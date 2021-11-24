@@ -48,33 +48,6 @@ TEST_CASE("Multi order by") {
     }
 }
 
-TEST_CASE("Issue 847") {
-    // table structure for results of some type
-    struct Result {
-        int64 id = 0;
-        int errorValue = 0;
-    };
-
-    auto storage = make_storage({},
-                                make_table("result",
-                                           make_column("id", &Result::id, primary_key()),
-                                           make_column("error_value", &Result::errorValue)));
-    storage.sync_schema();
-
-    storage.transaction([&storage] {
-        storage.replace(Result{1, 2});
-        storage.replace(Result{2, 0});
-        storage.replace(Result{3, 1});
-        storage.replace(Result{4, 1});
-        storage.replace(Result{5, 0});
-        storage.replace(Result{6, 0});
-        return true;
-    });
-
-    auto v = storage.select(c(&Result::errorValue) == 0, order_by(c(&Result::errorValue) == 0));
-    REQUIRE_THAT(v, Catch::Matchers::Equals(std::vector<int>{0, 0, 0, 1, 1, 1}));
-}
-
 TEST_CASE("Issue 105") {
     struct Data {
         int str;
