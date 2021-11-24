@@ -695,15 +695,13 @@ TEST_CASE("pointer-passing") {
         }
 
         SECTION("ownership transfer") {
-            {
-                auto ast = select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>(0 /*dummy*/)));
-                auto stmt = storage.prepare(std::move(ast));
+            auto ast = select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>(0 /*dummy*/)));
+            auto stmt = storage.prepare(std::move(ast));
 
-                auto results = storage.execute(stmt);
-                // returned pointers must be deleted by sqlite after executing the statement
-                REQUIRE(delete_int64::deleted == true);
-                REQUIRE(results.back() == delete_int64::lastSelectedId);
-            }
+            auto results = storage.execute(stmt);
+            // returned pointers must be deleted by sqlite after executing the statement
+            REQUIRE(delete_int64::deleted == true);
+            REQUIRE(results.back() == delete_int64::lastSelectedId);
         }
 
         // test passing a pointer into another function
