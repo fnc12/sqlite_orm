@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
+#include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
@@ -14,6 +15,7 @@
 
 #include "is_std_ptr.h"
 #include "arithmetic_tag.h"
+#include "xdestroy_handling.h"
 #include "pointer_value.h"
 
 namespace sqlite_orm {
@@ -29,15 +31,19 @@ namespace sqlite_orm {
      */
     template<class P, class T, class D>
     struct statement_binder<pointer_binding<P, T, D>, void> {
-
         using V = pointer_binding<P, T, D>;
 
+        // ownership of pointed-to-object is left untouched and remains at prepared statement's AST expression
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            return sqlite3_bind_pointer(stmt, index, (void*)value.ptr, T::value, value.get_deleter());
+            // note: C-casting `P* -> void*`, internal::xdestroy_proxy() does the inverse
+            return sqlite3_bind_pointer(stmt, index, (void*)value.ptr(), T::value, null_xdestroy_f);
         }
 
-        void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_pointer(context, (void*)value.ptr, T::value, value.get_deleter());
+        // ownership of pointed-to-object is transferred to sqlite
+        void result(sqlite3_context* context, V& value) const {
+            // note: C-casting `P* -> void*`,
+            // row_extractor<pointer_arg<P, T>>::extract() and internal::xdestroy_proxy() do the inverse
+            sqlite3_result_pointer(context, (void*)value.take_ptr(), T::value, value.get_xdestroy());
         }
     };
 
@@ -103,12 +109,10 @@ namespace sqlite_orm {
             auto stringData = this->string_data(value);
             auto stringDataLength = std::get<1>(stringData);
             auto dataCopy = new char[stringDataLength + 1];
+            constexpr auto deleter = std::default_delete<char[]>{};
             auto stringChars = std::get<0>(stringData);
             ::strncpy(dataCopy, stringChars, stringDataLength + 1);
-            sqlite3_result_text(context, dataCopy, stringDataLength, [](void* pointer) {
-                auto charPointer = (char*)pointer;
-                delete[] charPointer;
-            });
+            sqlite3_result_text(context, dataCopy, stringDataLength, obtain_xdestroy_for(deleter, dataCopy));
         }
 
       private:

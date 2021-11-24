@@ -9,6 +9,7 @@
         "dev/tuple_helper/tuple_transformer.h",
         "dev/tuple_helper/count_tuple.h",
         "dev/tuple_helper/same_or_void.h",
+		"dev/xdestroy_handling.h",
 		"dev/type_printer.h",
 		"dev/collate_argument.h",
 		"dev/constraints.h",

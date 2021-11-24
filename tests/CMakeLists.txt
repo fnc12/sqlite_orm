@@ -81,6 +81,7 @@ add_executable(unit_tests
     statement_serializator_tests/logical_operators.cpp
     statement_serializator_tests/select_constraints.cpp
     statement_serializator_tests/insert_replace.cpp
+    statement_serializator_tests/bound_pointer.cpp
     statement_serializator_tests/ast/upsert_clause.cpp
     statement_serializator_tests/ast/excluded.cpp
     storage_tests.cpp
