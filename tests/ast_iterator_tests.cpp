@@ -13,6 +13,12 @@ TEST_CASE("ast_iterator") {
     auto lambda = [&typeIndexes](auto &value) {
         typeIndexes.push_back(typeid(value));
     };
+    SECTION("order_by") {
+        auto node = order_by(c(&User::id) == 0);
+        expected.push_back(typeid(&User::id));
+        expected.push_back(typeid(int));
+        internal::iterate_ast(node, lambda);
+    }
     SECTION("group_by") {
         auto node = group_by(&User::id);
         expected.push_back(typeid(&User::id));
