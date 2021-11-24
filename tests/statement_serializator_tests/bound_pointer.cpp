@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 TEST_CASE("bindable_pointer") {
     using internal::serialize;
     struct Dummy {};
-    auto table = make_table<Vocabulary>("dummy");
+    auto table = make_table<Dummy>("dummy");
     using storage_impl_t = internal::storage_impl<decltype(table)>;
     auto storageImpl = storage_impl_t{table};
     using context_t = internal::serializator_context<storage_impl_t>;
