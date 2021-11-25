@@ -22,12 +22,16 @@ __pragma(push_macro("min"))
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #define SQLITE_ORM_INLINE_VAR inline
 #if __cplusplus >= 202002L  // use of C++20 or higher
+#define SQLITE_ORM_CONSTEVAL consteval
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
+#define SQLITE_ORM_CONSTEVAL
+#define SQLITE_ORM_CONSTEVAL constexpr
 #define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
 #else
 #define SQLITE_ORM_INLINE_VAR
+#define SQLITE_ORM_CONSTEVAL constexpr
 #define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
 #pragma once
@@ -8624,10 +8628,16 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::function
+#include <algorithm>  //  std::min
 
 namespace sqlite_orm {
 
     struct arg_values;
+
+    template<class T, class P>
+    struct pointer_arg;
+    template<class T, class P, class D>
+    class pointer_binding;
 
     namespace internal {
 
@@ -8782,6 +8792,78 @@ namespace sqlite_orm {
 
             args_tuple args;
         };
+
+        template<typename Type, template<typename...> typename Primary>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_v = false;
+
+        template<template<typename...> typename Primary, typename... Types>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_v<Primary<Types...>, Primary> = true;
+
+        template<typename Type, template<typename...> typename Primary>
+        struct is_specialization : std::bool_constant<is_specialization_v<Type, Primary>> {};
+
+        template<typename... T>
+        using is_specialization_t = typename is_specialization<T...>::type;
+
+        template<typename...>
+        SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
+
+        template<size_t I>
+        using index_constant = std::integral_constant<size_t, I>;
+
+        template<class T>
+        struct unpacked_arg {
+            using type = T;
+        };
+        template<class F, class... Args>
+        struct unpacked_arg<function_call<F, Args...>> {
+            using type = typename callable_arguments<F>::return_type;
+        };
+        template<class T>
+        using unpacked_arg_t = typename unpacked_arg<T>::type;
+
+        template<size_t I, const char* PointerArg, const char* Binding>
+        SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
+            constexpr bool valid = Binding == PointerArg;
+            static_assert(valid, "Pointer value types of I-th argument do not match");
+            return valid;
+        }
+        template<size_t I, class FnArg, class CallArg>
+        SQLITE_ORM_CONSTEVAL bool expected_pointer_value() {
+            static_assert(always_false_v<FnArg, CallArg>, "Expected a pointer value for I-th argument");
+            return false;
+        }
+
+        template<size_t I, class FnArg, class CallArg, class EnableIfTag = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_same_pvt_v = expected_pointer_value<I, FnArg, CallArg>();
+
+        template<size_t I, class PointerArg, class Binding>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_same_pvt_v<I, PointerArg, Binding, std::void_t<typename PointerArg::tag, typename Binding::tag>> =
+                assert_same_pointer_type<I, PointerArg::tag::value, Binding::tag::value>();
+
+        template<size_t I, class FnArg, class CallArg>
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type() {
+            return is_same_pvt_v<I, FnArg, CallArg>;
+        }
+
+        template<class FnArgs, class CallArgs>
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_types(index_constant<size_t(-1)>) {
+            return true;
+        }
+        template<class FnArgs, class CallArgs, size_t I>
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_types(index_constant<I>) {
+            using func_arg_t = std::tuple_element_t<I, FnArgs>;
+            using passed_arg_t = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
+
+            constexpr bool valid = (!is_specialization_v<func_arg_t, pointer_arg> &&
+                                    !is_specialization_v<passed_arg_t, pointer_binding>) ||
+                                   validate_pointer_value_type<I,
+                                                               std::tuple_element_t<I, FnArgs>,
+                                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>();
+
+            return validate_pointer_value_types<FnArgs, CallArgs>(index_constant<I - 1>{}) && valid;
+        }
     }
 
     /**
@@ -8793,10 +8875,12 @@ namespace sqlite_orm {
         using function_args_tuple = typename internal::callable_arguments<F>::args_tuple;
         constexpr auto argsCount = std::tuple_size<args_tuple>::value;
         constexpr auto functionArgsCount = std::tuple_size<function_args_tuple>::value;
-        static_assert(
-            (argsCount == functionArgsCount && !std::is_same<function_args_tuple, std::tuple<arg_values>>::value) ||
-                std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
-            "Arguments amount does not match");
+        static_assert((argsCount == functionArgsCount &&
+                       !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
+                       internal::validate_pointer_value_types<function_args_tuple, args_tuple>(
+                           internal::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
+                          std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
+                      "Number of arguments does not match");
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
