@@ -603,7 +603,7 @@ TEST_CASE("pointer-passing") {
     struct make_pointer_fn {
         using bindable_carray_ptr_t = carray_pointer_binding<int64, delete_int64>;
 
-        bindable_carray_ptr_t operator()(int64 /*dummy*/) const {
+        bindable_carray_ptr_t operator()() const {
             return bindable_pointer<bindable_carray_ptr_t>(new int64{-1});
             // outline: low-level; must compile
             return bindable_carray_pointer(new int64{-1}, delete_int64{});
@@ -695,7 +695,7 @@ TEST_CASE("pointer-passing") {
         }
 
         SECTION("ownership transfer") {
-            auto ast = select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>(0 /*dummy*/)));
+            auto ast = select(func<note_value_fn<int64>>(&Object::id, func<make_pointer_fn>()));
             auto stmt = storage.prepare(std::move(ast));
 
             auto results = storage.execute(stmt);

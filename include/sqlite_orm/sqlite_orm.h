@@ -12579,7 +12579,7 @@ namespace sqlite_orm {
          *  T is a std::tuple type
          *  I is index to extract value from values C array to tuple. I must me < std::tuple_size<T>::value
          */
-        template<class T, int I>
+        template<class T, size_t I>
         struct values_to_tuple {
 
             void extract(sqlite3_value** values, T& tuple, int argsCount) const {
@@ -12591,7 +12591,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct values_to_tuple<T, -1> {
+        struct values_to_tuple<T, size_t(-1)> {
             void extract(sqlite3_value** values, T& tuple, int argsCount) const {
                 //..
             }
