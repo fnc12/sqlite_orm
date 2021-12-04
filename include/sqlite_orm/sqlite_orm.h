@@ -12013,14 +12013,14 @@ namespace sqlite_orm {
                      const std::string& zSourceName,
                      std::unique_ptr<connection_holder> holder_) :
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
-                to(to_), from(from_), holder(move(holder_)) {
+                holder(move(holder_)), to(to_), from(from_) {
                 if(!this->handle) {
                     throw std::system_error(std::make_error_code(orm_error_code::failed_to_init_a_backup));
                 }
             }
 
             backup_t(backup_t&& other) :
-                handle(other.handle), to(other.to), from(other.from), holder(move(other.holder)) {
+                handle(other.handle), holder(move(other.holder)), to(other.to), from(other.from) {
                 other.handle = nullptr;
             }
 
@@ -12054,9 +12054,9 @@ namespace sqlite_orm {
 
           protected:
             sqlite3_backup* handle = nullptr;
+            std::unique_ptr<connection_holder> holder;
             connection_ref to;
             connection_ref from;
-            std::unique_ptr<connection_holder> holder;
         };
     }
 }
