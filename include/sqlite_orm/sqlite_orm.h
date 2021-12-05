@@ -8842,7 +8842,12 @@ namespace sqlite_orm {
                 assert_same_pointer_type<I, PointerArg::tag::value, Binding::tag::value>();
 
         template<size_t I, class FnArg, class CallArg>
-        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type() {
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(std::false_type) {
+            return true;
+        }
+
+        template<size_t I, class FnArg, class CallArg>
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(std::true_type) {
             return is_same_pvt_v<I, FnArg, CallArg>;
         }
 
@@ -8855,11 +8860,12 @@ namespace sqlite_orm {
             using func_arg_t = std::tuple_element_t<I, FnArgs>;
             using passed_arg_t = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
-            constexpr bool valid = (!is_specialization_v<func_arg_t, pointer_arg> &&
-                                    !is_specialization_v<passed_arg_t, pointer_binding>) ||
-                                   validate_pointer_value_type<I,
+            constexpr bool valid = validate_pointer_value_type<I,
                                                                std::tuple_element_t<I, FnArgs>,
-                                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>();
+                                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
+                std::integral_constant < bool,
+                is_specialization_v<func_arg_t, pointer_arg> || is_specialization_v < passed_arg_t,
+                pointer_binding >> {});
 
             return validate_pointer_value_types<FnArgs, CallArgs>(index_constant<I - 1>{}) && valid;
         }
