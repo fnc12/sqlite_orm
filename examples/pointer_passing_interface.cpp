@@ -85,9 +85,9 @@ int main() {
     // function returning a pointer to a std::error_category,
     // which is only visible to functions accepting pointer values of type "ecat"
     struct get_error_category_fn {
-        using ecat_binding_t = static_pointer_binding<const std::error_category, ecat_pvt>;
+        using ecat_binding = static_pointer_binding<const std::error_category, ecat_pvt>;
 
-        ecat_binding_t operator()(unsigned int errorCategory) const {
+        ecat_binding operator()(unsigned int errorCategory) const {
             size_t idx = min<size_t>(errorCategory, ecat_map.size());
             const error_category* ecat = idx != ecat_map.size() ? &get<const error_category&>(ecat_map[idx]) : nullptr;
             return statically_bindable_pointer<ecat_pvt>(ecat);
@@ -130,14 +130,14 @@ int main() {
 
     // function returning an error_code object from an error value
     struct make_error_code_fn {
-        using ecode_binding_t = pointer_binding<std::error_code, ecode_pvt, std::default_delete<std::error_code>>;
+        using ecode_binding = pointer_binding<std::error_code, ecode_pvt, std::default_delete<std::error_code>>;
 
-        ecode_binding_t operator()(int errorValue, unsigned int errorCategory) const {
+        ecode_binding operator()(int errorValue, unsigned int errorCategory) const {
             size_t idx = min<size_t>(errorCategory, ecat_map.size());
             error_code* ec = idx != ecat_map.size()
                                  ? new error_code{errorValue, get<const error_category&>(ecat_map[idx])}
                                  : nullptr;
-            return bindable_pointer<ecode_pvt>(ec, default_delete<error_code>{});
+            return bindable_pointer<ecode_binding>(ec, default_delete<error_code>{});
         }
 
         static constexpr const char* name() {
