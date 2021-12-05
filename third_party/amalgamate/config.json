@@ -25,6 +25,7 @@
 		"dev/typed_comparator.h",
 		"dev/select_constraints.h",
 		"dev/table_info.h",
+		"dev/triggers.h",
 		"dev/statement_finalizer.h",
 		"dev/arithmetic_tag.h",
 		"dev/pointer_value.h",
@@ -42,7 +43,6 @@
 		"dev/finish_macros.h",
 		"dev/node_tuple.h",
 		"dev/get_prepared_statement.h",
-		"dev/triggers.h",
 		"dev/carray.h"
 	],
 	"include_paths": ["dev"]

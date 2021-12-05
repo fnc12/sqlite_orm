@@ -19,6 +19,7 @@
 #include "column_names_getter.h"
 #include "order_by_serializator.h"
 #include "values.h"
+#include "triggers.h"
 #include "table_type.h"
 #include "indexed_column.h"
 #include "function.h"
@@ -1798,6 +1799,44 @@ namespace sqlite_orm {
                     }
                     ++index;
                 });
+                return ss.str();
+            }
+        };
+
+        template<class... Cols>
+        struct statement_serializator<trigger_t<Cols...>, void> {
+            using statement_type = trigger_t<Cols...>;
+
+            template<class C>
+            std::string operator()(const statement_type &statement, const C &context) const {
+                std::stringstream ss;
+                std::string timing = "BEFORE";
+                ss << "CREATE ";
+
+                switch (statement.timing) {
+                    case trigger::trigger_before:
+                        timing = "BEFORE";
+                        break;
+                    case trigger::trigger_after:
+                        timing = "AFTER";
+                        break;
+                    case trigger::trigger_instead_of:
+                        timing = "INSTEAD OF";
+                        break;
+                }
+                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' "
+                   << timing << " " << statement.statement_type.to_string(context);
+                ss << (statement.for_each_row ? "FOR EACH ROW " : "");
+
+                C c{context.impl};
+
+                c.replace_bindable_with_question = true;
+                ss << "BEGIN ";
+                iterate_tuple(statement.stmts, [&ss, &c](auto &v) {
+                    ss << serialize(v, c) << ";";
+                });
+
+                ss << " END";
                 return ss.str();
             }
         };
