@@ -25,7 +25,6 @@ __pragma(push_macro("min"))
 #define SQLITE_ORM_CONSTEVAL consteval
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
-#define SQLITE_ORM_CONSTEVAL
 #define SQLITE_ORM_CONSTEVAL constexpr
 #define SQLITE_ORM_NOUNIQUEADDRESS
 #endif

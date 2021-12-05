@@ -169,13 +169,13 @@ namespace sqlite_orm {
             args_tuple args;
         };
 
-        template<typename Type, template<typename...> typename Primary>
+        template<typename Type, template<typename...> class Primary>
         SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_v = false;
 
-        template<template<typename...> typename Primary, typename... Types>
+        template<template<typename...> class Primary, class... Types>
         SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_v<Primary<Types...>, Primary> = true;
 
-        template<typename Type, template<typename...> typename Primary>
+        template<typename Type, template<typename...> class Primary>
         struct is_specialization : std::bool_constant<is_specialization_v<Type, Primary>> {};
 
         template<typename... T>

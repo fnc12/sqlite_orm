@@ -25,7 +25,6 @@ __pragma(push_macro("min"))
 #define SQLITE_ORM_CONSTEVAL consteval
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
-#define SQLITE_ORM_CONSTEVAL
 #define SQLITE_ORM_CONSTEVAL constexpr
 #define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
@@ -7054,8 +7053,8 @@ namespace sqlite_orm {
 
       protected:
         // Constructing pointer bindings must go through bindable_pointer()
-        template<class T, class P, class D>
-        friend auto bindable_pointer(P*, D) noexcept -> pointer_binding<P, T, D>;
+        template<class T2, class P2, class D2>
+        friend auto bindable_pointer(P2*, D2) noexcept -> pointer_binding<P2, T2, D2>;
         template<class B>
         friend B bindable_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
 
@@ -8793,13 +8792,13 @@ namespace sqlite_orm {
             args_tuple args;
         };
 
-        template<typename Type, template<typename...> typename Primary>
+        template<typename Type, template<typename...> class Primary>
         SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_v = false;
 
-        template<template<typename...> typename Primary, typename... Types>
+        template<template<typename...> class Primary, class... Types>
         SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_v<Primary<Types...>, Primary> = true;
 
-        template<typename Type, template<typename...> typename Primary>
+        template<typename Type, template<typename...> class Primary>
         struct is_specialization : std::bool_constant<is_specialization_v<Type, Primary>> {};
 
         template<typename... T>
