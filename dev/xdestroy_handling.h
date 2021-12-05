@@ -6,6 +6,7 @@
 #endif
 
 #include "start_macros.h"
+#include "cxx_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -63,9 +64,9 @@ namespace sqlite_orm {
         template<typename D>
         struct is_integral_fp_c<
             D,
-            std::void_t<typename D::value_type,
-                        decltype(D::value),
-                        std::enable_if_t<std::is_function<std::remove_pointer_t<typename D::value_type>>::value>>>
+            polyfill::void_t<typename D::value_type,
+                             decltype(D::value),
+                             std::enable_if_t<std::is_function<std::remove_pointer_t<typename D::value_type>>::value>>>
             : std::true_type {};
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
@@ -75,15 +76,16 @@ namespace sqlite_orm {
         template<typename D>
         struct can_yield_fp<
             D,
-            std::void_t<decltype(+std::declval<D>()),
-                        std::enable_if_t<std::is_function<std::remove_pointer_t<decltype(+std::declval<D>())>>::value>>>
+            polyfill::void_t<
+                decltype(+std::declval<D>()),
+                std::enable_if_t<std::is_function<std::remove_pointer_t<decltype(+std::declval<D>())>>::value>>>
             : std::true_type {};
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
 
         template<typename D, bool = can_yield_fp_v<D>>
         struct yield_fp_of {
-            using type = std::void_t<>;
+            using type = polyfill::void_t<>;
         };
         template<typename D>
         struct yield_fp_of<D, true> {
