@@ -25,7 +25,6 @@ __pragma(push_macro("min"))
 #define SQLITE_ORM_CONSTEVAL consteval
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
-#define SQLITE_ORM_CONSTEVAL
 #define SQLITE_ORM_CONSTEVAL constexpr
 #define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
@@ -495,6 +494,51 @@ namespace sqlite_orm {
 
 // #include "start_macros.h"
 
+// #include "cxx_polyfill.h"
+
+#include <type_traits>
+
+// #include "start_macros.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace polyfill {
+#if __cplusplus < 201703L  // before C++17
+            template<class...>
+            using void_t = void;
+
+            template<bool v>
+            using bool_constant = std::integral_constant<bool, v>;
+#else
+            using std::bool_constant;
+            using std::void_t;
+#endif
+
+#if __cplusplus < 202312L  // before C++23
+            template<typename Type, template<typename...> class Primary>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
+
+            template<template<typename...> class Primary, class... Types>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
+
+            template<typename Type, template<typename...> class Primary>
+            struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
+
+            template<typename... T>
+            using is_specialization_of_t = typename is_specialization_of<T...>::type;
+#else
+            using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
+#endif
+
+            template<typename...>
+            SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
+
+            template<size_t I>
+            using index_constant = std::integral_constant<size_t, I>;
+        }
+    }
+}
+
 namespace sqlite_orm {
 
     using xdestroy_fn_t = void (*)(void*);
@@ -551,9 +595,9 @@ namespace sqlite_orm {
         template<typename D>
         struct is_integral_fp_c<
             D,
-            std::void_t<typename D::value_type,
-                        decltype(D::value),
-                        std::enable_if_t<std::is_function<std::remove_pointer_t<typename D::value_type>>::value>>>
+            polyfill::void_t<typename D::value_type,
+                             decltype(D::value),
+                             std::enable_if_t<std::is_function<std::remove_pointer_t<typename D::value_type>>::value>>>
             : std::true_type {};
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
@@ -563,15 +607,16 @@ namespace sqlite_orm {
         template<typename D>
         struct can_yield_fp<
             D,
-            std::void_t<decltype(+std::declval<D>()),
-                        std::enable_if_t<std::is_function<std::remove_pointer_t<decltype(+std::declval<D>())>>::value>>>
+            polyfill::void_t<
+                decltype(+std::declval<D>()),
+                std::enable_if_t<std::is_function<std::remove_pointer_t<decltype(+std::declval<D>())>>::value>>>
             : std::true_type {};
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
 
         template<typename D, bool = can_yield_fp_v<D>>
         struct yield_fp_of {
-            using type = std::void_t<>;
+            using type = polyfill::void_t<>;
         };
         template<typename D>
         struct yield_fp_of<D, true> {
@@ -7054,8 +7099,8 @@ namespace sqlite_orm {
 
       protected:
         // Constructing pointer bindings must go through bindable_pointer()
-        template<class T, class P, class D>
-        friend auto bindable_pointer(P*, D) noexcept -> pointer_binding<P, T, D>;
+        template<class T2, class P2, class D2>
+        friend auto bindable_pointer(P2*, D2) noexcept -> pointer_binding<P2, T2, D2>;
         template<class B>
         friend B bindable_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
 
@@ -8630,6 +8675,8 @@ namespace sqlite_orm {
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
 
+// #include "cxx_polyfill.h"
+
 namespace sqlite_orm {
 
     struct arg_values;
@@ -8793,24 +8840,6 @@ namespace sqlite_orm {
             args_tuple args;
         };
 
-        template<typename Type, template<typename...> typename Primary>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_v = false;
-
-        template<template<typename...> typename Primary, typename... Types>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_v<Primary<Types...>, Primary> = true;
-
-        template<typename Type, template<typename...> typename Primary>
-        struct is_specialization : std::bool_constant<is_specialization_v<Type, Primary>> {};
-
-        template<typename... T>
-        using is_specialization_t = typename is_specialization<T...>::type;
-
-        template<typename...>
-        SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
-
-        template<size_t I>
-        using index_constant = std::integral_constant<size_t, I>;
-
         template<class T>
         struct unpacked_arg {
             using type = T;
@@ -8822,47 +8851,67 @@ namespace sqlite_orm {
         template<class T>
         using unpacked_arg_t = typename unpacked_arg<T>::type;
 
-        template<size_t I, const char* PointerArg, const char* Binding>
-        SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
-            constexpr bool valid = Binding == PointerArg;
-            static_assert(valid, "Pointer value types of I-th argument do not match");
-            return valid;
-        }
         template<size_t I, class FnArg, class CallArg>
         SQLITE_ORM_CONSTEVAL bool expected_pointer_value() {
-            static_assert(always_false_v<FnArg, CallArg>, "Expected a pointer value for I-th argument");
+            static_assert(polyfill::always_false_v<FnArg, CallArg>, "Expected a pointer value for I-th argument");
             return false;
         }
 
         template<size_t I, class FnArg, class CallArg, class EnableIfTag = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_same_pvt_v = expected_pointer_value<I, FnArg, CallArg>();
 
+#if __cplusplus >= 201703L  // using C++17 or higher
+        template<size_t I, const char* PointerArg, const char* Binding>
+        SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
+            constexpr bool valid = Binding == PointerArg;
+            static_assert(valid, "Pointer value types of I-th argument do not match");
+            return valid;
+        }
+
         template<size_t I, class PointerArg, class Binding>
         SQLITE_ORM_INLINE_VAR constexpr bool
-            is_same_pvt_v<I, PointerArg, Binding, std::void_t<typename PointerArg::tag, typename Binding::tag>> =
+            is_same_pvt_v<I, PointerArg, Binding, polyfill::void_t<typename PointerArg::tag, typename Binding::tag>> =
                 assert_same_pointer_type<I, PointerArg::tag::value, Binding::tag::value>();
+#else
+        template<size_t I, class PointerArg, class Binding>
+        SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
+            constexpr bool valid = Binding::value == PointerArg::value;
+            static_assert(valid, "Pointer value types of I-th argument do not match");
+            return valid;
+        }
+
+        template<size_t I, class PointerArg, class Binding>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_same_pvt_v<I, PointerArg, Binding, polyfill::void_t<typename PointerArg::tag, typename Binding::tag>> =
+                assert_same_pointer_type<I, typename PointerArg::tag, typename Binding::tag>();
+#endif
 
         template<size_t I, class FnArg, class CallArg>
-        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type() {
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(std::false_type) {
+            return true;
+        }
+
+        template<size_t I, class FnArg, class CallArg>
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_type(std::true_type) {
             return is_same_pvt_v<I, FnArg, CallArg>;
         }
 
         template<class FnArgs, class CallArgs>
-        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_types(index_constant<size_t(-1)>) {
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_types(polyfill::index_constant<size_t(-1)>) {
             return true;
         }
         template<class FnArgs, class CallArgs, size_t I>
-        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_types(index_constant<I>) {
+        SQLITE_ORM_CONSTEVAL bool validate_pointer_value_types(polyfill::index_constant<I>) {
             using func_arg_t = std::tuple_element_t<I, FnArgs>;
             using passed_arg_t = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
-            constexpr bool valid = (!is_specialization_v<func_arg_t, pointer_arg> &&
-                                    !is_specialization_v<passed_arg_t, pointer_binding>) ||
-                                   validate_pointer_value_type<I,
+            constexpr bool valid = validate_pointer_value_type<I,
                                                                std::tuple_element_t<I, FnArgs>,
-                                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>();
+                                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
+                polyfill::bool_constant < (polyfill::is_specialization_of_v<func_arg_t, pointer_arg>) ||
+                (polyfill::is_specialization_of_v<passed_arg_t, pointer_binding>) > {});
 
-            return validate_pointer_value_types<FnArgs, CallArgs>(index_constant<I - 1>{}) && valid;
+            return validate_pointer_value_types<FnArgs, CallArgs>(polyfill::index_constant<I - 1>{}) && valid;
         }
     }
 
@@ -8878,7 +8927,7 @@ namespace sqlite_orm {
         static_assert((argsCount == functionArgsCount &&
                        !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
                        internal::validate_pointer_value_types<function_args_tuple, args_tuple>(
-                           internal::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
+                           internal::polyfill::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
                           std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
                       "Number of arguments does not match");
         return {std::make_tuple(std::forward<Args>(args)...)};
