@@ -4,7 +4,7 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <memory>  // std::default_delete
-#include <malloc.h>  // free()
+#include <stdlib.h>  // free()
 
 using namespace sqlite_orm;
 using std::default_delete;
