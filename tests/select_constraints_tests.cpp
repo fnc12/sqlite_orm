@@ -253,7 +253,7 @@ TEST_CASE("Exists") {
     auto rows = storage.select(
         &User::id,
         where(exists(select(&Visit::id, where(c(&Visit::time) == 200000 and eq(&Visit::userId, &User::id))))));
-    REQUIRE(!rows.empty() == 1);
+    REQUIRE(rows.empty() == false);
 }
 
 TEST_CASE("Case") {

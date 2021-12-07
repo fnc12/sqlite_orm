@@ -1,27 +1,13 @@
 #pragma once
 
 #include <type_traits>
-#ifdef __cpp_lib_concepts
-#include <concepts>
-#endif
+#include <memory>
+#include <utility>
 
 #include "start_macros.h"
+#include "xdestroy_handling.h"
 
 namespace sqlite_orm {
-
-    namespace internal {
-
-        template<typename T>
-        struct fp_type {
-            using type = typename T::value_type;
-        };
-        template<typename R, typename... Args>
-        struct fp_type<R (*)(Args...)> {
-            using type = R (*)(Args...);
-        };
-        template<typename T>
-        using fp_type_t = typename fp_type<T>::type;
-    }
 
     /**
      *  Wraps a pointer and tags it with a pointer type,
@@ -40,10 +26,14 @@ namespace sqlite_orm {
                       "`std::integral_constant<>` must be convertible to `const char*`");
 
         using tag = T;
-        P* ptr = nullptr;
+        P* p_;
 
-        constexpr operator P*() const {
-            return ptr;
+        P* ptr() const noexcept {
+            return p_;
+        }
+
+        operator P*() const noexcept {
+            return p_;
         }
     };
 
@@ -53,61 +43,74 @@ namespace sqlite_orm {
      *  as part of facilitating the 'pointer-passing interface'.
      * 
      *  Template parameters:
-     *    - D: The deleter function for the pointer value;
-     *         must be either a function pointer type,
-     *         integral constant or structure returning a function pointer.
+     *    - D: The deleter for the pointer value;
+     *         can be one of:
+     *         - function pointer
+     *         - integral function pointer constant
+     *         - state-less (empty) deleter
+     *         - non-capturing lambda
+     *         - structure implicitly yielding a function pointer
      *
+     *  @note Use one of the factory functions to create a pointer binding,
+     *  e.g. bindable_carray_pointer or statically_bindable_carray_pointer().
+     *  
      *  @example
      *  ```
      *  int64 rememberedId;
      *  storage.select(func<remember_fn>(&Object::id, statically_bindable_carray_pointer(&rememberedId)));
      *  ```
      */
-#ifdef __cpp_lib_concepts
     template<typename P, typename T, typename D>
-    struct pointer_binding : pointer_arg<P, T> {
+    class pointer_binding {
 
+        P* p_;
         SQLITE_ORM_NOUNIQUEADDRESS
-        D d_{};
-
-        using fn_t = internal::fp_type_t<D>;
-
-        // constraint: xDestroy function must be invocable: D(P*)
-        constexpr xdestroy_fn_t get_deleter() const requires std::invocable < fn_t, std::remove_cv_t<P>
-        * > {
-            fn_t destroy = d_;
-            return xdestroy_fn_t(void_fn_t(destroy));
-        }
-    };
-#elif __cplusplus >= 201703L  // use of C++17 or higher
-    template<typename P, typename T, typename D>
-    struct pointer_binding : pointer_arg<P, T> {
-
-        D d_{};
-
-        using fn_t = internal::fp_type_t<D>;
-
-        // constraint: xDestroy function must be invocable: D(P*)
-        constexpr std::enable_if_t<std::is_invocable_v<fn_t, std::remove_cv_t<P>*>, xdestroy_fn_t> get_deleter() const {
-            fn_t destroy = d_;
-            return xdestroy_fn_t(void_fn_t(destroy));
-        }
-    };
-#else
-    template<typename P, typename T, typename D>
-    struct pointer_binding : pointer_arg<P, T> {
-
         D d_;
 
-        pointer_binding(P* p, D d = D{}) : pointer_arg<P, T>{p}, d_{d} {}
+      protected:
+        // Constructing pointer bindings must go through bindable_pointer()
+        template<class T2, class P2, class D2>
+        friend auto bindable_pointer(P2*, D2) noexcept -> pointer_binding<P2, T2, D2>;
+        template<class B>
+        friend B bindable_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
 
-        // constraint: xDestroy function must be void(*)(void*)
-        constexpr xdestroy_fn_t get_deleter() const {
-            xdestroy_fn_t destroy = d_;
-            return destroy;
+        // Construct from pointer and deleter.
+        // Transfers ownership of the passed in object.
+        pointer_binding(P* p, D d = {}) noexcept : p_{p}, d_{std::move(d)} {}
+
+      public:
+        using qualified_type = P;
+        using tag = T;
+        using deleter_type = D;
+
+        pointer_binding(const pointer_binding&) = delete;
+        pointer_binding& operator=(const pointer_binding&) = delete;
+        pointer_binding& operator=(pointer_binding&&) = delete;
+
+        pointer_binding(pointer_binding&& other) noexcept :
+            p_{std::exchange(other.p_, nullptr)}, d_{std::move(other.d_)} {}
+
+        ~pointer_binding() {
+            if(p_) {
+                if(auto xDestroy = get_xdestroy()) {
+                    // note: C-casting `P* -> void*` like statement_binder<pointer_binding<P, T, D>
+                    xDestroy((void*)p_);
+                }
+            }
+        }
+
+        P* ptr() const noexcept {
+            return p_;
+        }
+
+        P* take_ptr() noexcept {
+            return std::exchange(p_, nullptr);
+        }
+
+        xdestroy_fn_t get_xdestroy() const noexcept {
+            return obtain_xdestroy_for(d_, p_);
         }
     };
-#endif
 
     /**
      *  Template alias for a static pointer value binding.
@@ -124,34 +127,47 @@ namespace sqlite_orm {
     /**
      *  Wrap a pointer, its type and its deleter function for binding it to a statement.
      *  
-     *  Unless the deleter carries a nullptr function the ownership
-     *  will be transferred to sqlite, which will delete it through
-     *  the the deleter function when the statement finishes.
+     *  Unless the deleter yields a nullptr 'xDestroy' function the ownership of the pointed-to-object
+     *  is transferred to the pointer binding, which will delete it through
+     *  the deleter when the statement finishes.
      */
     template<class T, class P, class D>
-    auto bindable_pointer(P* p, D d) -> pointer_binding<P, T, D> {
-        return {p, d};
+    auto bindable_pointer(P* p, D d) noexcept -> pointer_binding<P, T, D> {
+        return {p, std::move(d)};
     }
 
-    template<const char* I, class P, class D>
-    auto bindable_pointer(P* p, D d) -> pointer_binding<P, std::integral_constant<const char*, I>, D> {
-        return {p, d};
+    template<class T, class P, class D>
+    auto bindable_pointer(std::unique_ptr<P, D> p) noexcept -> pointer_binding<P, T, D> {
+        return bindable_pointer<T>(p.release(), p.get_deleter());
+    }
+
+    template<typename B>
+    B bindable_pointer(typename B::qualified_type* p, typename B::deleter_type d = {}) noexcept {
+        return B{p, std::move(d)};
     }
 
     /**
      *  Wrap a pointer and its type for binding it to a statement.
      *  
-     *  Note: 'Static' means that ownership won't be transferred to
-     *  sqlite and sqlite assumes the object pointed to is valid throughout
-     *  the lifetime of a statement.
+     *  Note: 'Static' means that ownership of the pointed-to-object won't be transferred
+     *  and sqlite assumes the object pointed to is valid throughout the lifetime of a statement.
      */
     template<class T, class P>
-    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, T> {
-        return {{p}};
+    auto statically_bindable_pointer(P* p) noexcept -> static_pointer_binding<P, T> {
+        return bindable_pointer<T>(p, null_xdestroy_f);
     }
 
-    template<const char* I, class P>
-    auto statically_bindable_pointer(P* p) -> static_pointer_binding<P, std::integral_constant<const char*, I>> {
-        return {p};
+    template<typename B>
+    B statically_bindable_pointer(typename B::qualified_type* p,
+                                  typename B::deleter_type* /*exposition*/ = nullptr) noexcept {
+        return bindable_pointer<B>(p);
+    }
+
+    /**
+     *  Forward a pointer value from an argument.
+     */
+    template<class P, class T>
+    auto rebind_statically(const pointer_arg<P, T>& pv) noexcept -> static_pointer_binding<P, T> {
+        return statically_bindable_pointer<T>(pv.ptr());
     }
 }

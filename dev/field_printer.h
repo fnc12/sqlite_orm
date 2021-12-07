@@ -127,4 +127,14 @@ namespace sqlite_orm {
         }
     };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<typename P, typename T, typename D>
+    class pointer_binding;
+
+    template<class P, class T, class D>
+    struct field_printer<pointer_binding<P, T, D>, void> {
+        std::string operator()(const pointer_binding<P, T, D>&) const {
+            return field_printer<std::nullptr_t>()(nullptr);
+        }
+    };
 }
