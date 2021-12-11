@@ -1808,12 +1808,12 @@ namespace sqlite_orm {
             using statement_type = trigger_t<Cols...>;
 
             template<class C>
-            std::string operator()(const statement_type &statement, const C &context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
                 std::string timing = "BEFORE";
                 ss << "CREATE ";
 
-                switch (statement.timing) {
+                switch(statement.timing) {
                     case trigger::trigger_before:
                         timing = "BEFORE";
                         break;
@@ -1824,15 +1824,15 @@ namespace sqlite_orm {
                         timing = "INSTEAD OF";
                         break;
                 }
-                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' "
-                   << timing << " " << statement.statement_type.to_string(context);
+                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << timing << " "
+                   << statement.statement_type.to_string(context);
                 ss << (statement.for_each_row ? "FOR EACH ROW " : "");
 
                 C c{context.impl};
 
-                c.replace_bindable_with_question = true;
+                c.replace_bindable_with_question = false;
                 ss << "BEGIN ";
-                iterate_tuple(statement.stmts, [&ss, &c](auto &v) {
+                iterate_tuple(statement.stmts, [&ss, &c](auto& v) {
                     ss << serialize(v, c) << ";";
                 });
 

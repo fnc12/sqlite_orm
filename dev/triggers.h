@@ -14,11 +14,7 @@
 
 namespace sqlite_orm {
     namespace trigger {
-        enum trigger_timing_t {
-            trigger_before,
-            trigger_after,
-            trigger_instead_of
-        };
+        enum trigger_timing_t { trigger_before, trigger_after, trigger_instead_of };
 
         inline trigger_timing_t before() {
             return trigger_before;
@@ -77,9 +73,7 @@ namespace sqlite_orm {
             T table;
 
             on_update_t(T table, Cs... args) :
-                columns(std::make_tuple<Cs...>(std::forward<Cs>(args)...)),
-                table(table)
-            {}
+                columns(std::make_tuple<Cs...>(std::forward<Cs>(args)...)), table(table) {}
 
             template<class C>
             std::string to_string(const C &context) const {
@@ -95,8 +89,8 @@ namespace sqlite_orm {
                         using member_t = typename std::decay<typename col_t::member_pointer_t>::type;
                         using node_t = typename std::decay<decltype(node)>::type;
 
-                        if constexpr (std::is_same<member_t, node_t>::value) {
-                            if (c.member_pointer == node) {
+                        if constexpr(std::is_same<member_t, node_t>::value) {
+                            if(c.member_pointer == node) {
                                 name = c.name;
                             }
                         }
@@ -116,18 +110,22 @@ namespace sqlite_orm {
          */
         template<class St, class... S>
         struct trigger_t {
-            using object_type = void; // Not sure
+            using object_type = void;  // Not sure
             using table_type = typename St::object_type;
             using elements_type = typename St::elements_type;
             using statements_type = std::tuple<S...>;
 
             // Construct triggers by using one of the make_trigger functions
-            trigger_t(std::string name, trigger::trigger_timing_t timing, St type, bool for_each_row, std::shared_ptr<void *> when, S... statements) :
-                name(std::move(name)), table(type.table), elements(type.table.elements),
-                timing(timing), statement_type(type),
+            trigger_t(std::string name,
+                      trigger::trigger_timing_t timing,
+                      St type,
+                      bool for_each_row,
+                      std::shared_ptr<void *> when,
+                      S... statements) :
+                name(std::move(name)),
+                table(type.table), elements(type.table.elements), timing(timing), statement_type(type),
                 for_each_row(for_each_row), when_expr(std::move(when)),
-                stmts(std::tuple<S...>(std::forward<S>(statements)...))
-            {}
+                stmts(std::tuple<S...>(std::forward<S>(statements)...)) {}
 
             /**
              * Name of the trigger
@@ -184,7 +182,7 @@ namespace sqlite_orm {
                 return false;
             }
         };
-    } // NAMESPACE internal
+    }  // NAMESPACE internal
 
     /*
       make_trigger(name, BEFORE|AFTER|INSTEAD_OF, DELETE|INSERT|UPDATE([COLUMN_NAME,...]), table, statements...)
@@ -195,20 +193,24 @@ namespace sqlite_orm {
 
     namespace trigger {
         template<class T>
-        inline internal::on_delete_t<T> on_delete(T table)
-        { return {std::forward<T>(table)}; }
+        inline internal::on_delete_t<T> on_delete(T table) {
+            return {std::forward<T>(table)};
+        }
 
         template<class T>
-        inline internal::on_insert_t<T> on_insert(T table)
-        { return {std::forward<T>(table)}; }
+        inline internal::on_insert_t<T> on_insert(T table) {
+            return {std::forward<T>(table)};
+        }
 
         template<class T, class... Cs>
-        inline internal::on_update_t<T, Cs...> on_update(T table, Cs... cols)
-        { return {std::forward<T>(table), std::forward<Cs>(cols)...}; }
+        inline internal::on_update_t<T, Cs...> on_update(T table, Cs... cols) {
+            return {std::forward<T>(table), std::forward<Cs>(cols)...};
+        }
     }
 
     template<class St, class... S>
-    internal::trigger_t<St, S...> make_trigger(const std::string &name, trigger::trigger_timing_t timing, St type, S... statements) {
+    internal::trigger_t<St, S...>
+    make_trigger(const std::string &name, trigger::trigger_timing_t timing, St type, S... statements) {
         return {name, timing, type, true, nullptr, std::forward<S>(statements)...};
     }
     // NOTE Disabled because for_each_row is a placeholder for now, so overloads to set it are useless
@@ -217,7 +219,11 @@ namespace sqlite_orm {
     //     return internal::trigger_t<T, St, S...>(name, timing, type, for_each_row, nullptr, statements...);
     // }
     template<class St, class... S>
-    internal::trigger_t<St, S...> make_trigger(const std::string &name, trigger::trigger_timing_t timing, St type, std::shared_ptr<void *> when, S... statements) {
+    internal::trigger_t<St, S...> make_trigger(const std::string &name,
+                                               trigger::trigger_timing_t timing,
+                                               St type,
+                                               std::shared_ptr<void *> when,
+                                               S... statements) {
         return {name, timing, type, true, when, std::forward<S>(statements)...};
     }
     // NOTE Disabled because for_each_row is a placeholder for now, so overloads to set it are useless
