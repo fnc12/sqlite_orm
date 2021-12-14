@@ -110,6 +110,26 @@ TEST_CASE("Sync schema") {
     REQUIRE(std::equal(ids.begin(), ids.end(), idsFromGetAll.begin(), idsFromGetAll.end()));
 }
 
+TEST_CASE("issue854") {
+    struct Base {
+        std::string name;
+        int64_t timestamp;
+        int64_t value;
+    };
+
+    struct A : public Base {
+        int64_t id;
+    };
+    auto storage =
+        make_storage({},
+                     make_table("entries",
+                                make_column("id", &A::id, sqlite_orm::autoincrement(), sqlite_orm::primary_key()),
+                                make_column("name", &A::name),
+                                make_column("timestamp", &A::timestamp),
+                                unique(column<A>(&Base::name), column<A>(&Base::timestamp))));
+    storage.sync_schema();
+}
+
 TEST_CASE("issue521") {
     auto storagePath = "issue521.sqlite";
 
