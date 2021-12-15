@@ -332,7 +332,11 @@ namespace sqlite_orm {
                         if(dbTableInfo.size() > 0) {
                             // extra table columns than storage columns
                             if(!preserve) {
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+                                res = decltype(res)::old_columns_removed;
+#else
                                 gottaCreateTable = true;
+#endif
                             } else {
                                 res = decltype(res)::old_columns_removed;
                             }
