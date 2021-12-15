@@ -16695,9 +16695,6 @@ namespace sqlite_orm {
                                     this->drop_column(db, tImpl.table.name, tableInfo.name);
                                 }
                                 res = decltype(res)::old_columns_removed;
-                                //  extra table columns than storage columns
-//                                this->backup_table(db, tImpl, {});
-//                                res = decltype(res)::old_columns_removed;
 #else
                                     //  extra table columns than storage columns
                                     this->backup_table(db, tImpl, {});
