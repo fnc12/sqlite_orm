@@ -109,7 +109,13 @@ namespace sqlite_orm {
                 }
                 perform_void_exec(db, ss.str());
             }
-
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+            void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
+                std::stringstream ss;
+                ss << "ALTER TABLE '" << tableName << "' DROP COLUMN \"" << columnName << "\"";
+                perform_void_exec(db, ss.str());
+            }
+#endif
             template<class I>
             void backup_table(sqlite3* db, const I& tableImpl, const std::vector<table_info*>& columnsToIgnore) {
 
@@ -155,7 +161,7 @@ namespace sqlite_orm {
 
                 static_if<is_without_rowid{}>(
                     [](auto&) {},  // all right. it's a "without_rowid" table
-                    [](auto& tImpl) {  // unfortunately, this static_assert's can't see an composite keys((
+                    [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
                         std::ignore = tImpl;
                         static_assert(
                             count_tuple<elements_type, is_column_with_insertable_primary_key>::value <= 1,
@@ -830,10 +836,19 @@ namespace sqlite_orm {
                             tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                             if(schema_stat == sync_schema_result::old_columns_removed) {
-
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+                                for(auto& tableInfo: dbTableInfo) {
+                                    this->drop_column(db, tImpl.table.name, tableInfo.name);
+                                }
+                                res = decltype(res)::old_columns_removed;
+                                //  extra table columns than storage columns
+//                                this->backup_table(db, tImpl, {});
+//                                res = decltype(res)::old_columns_removed;
+#else
                                 //  extra table columns than storage columns
                                 this->backup_table(db, tImpl, {});
                                 res = decltype(res)::old_columns_removed;
+#endif
                             }
 
                             if(schema_stat == sync_schema_result::new_columns_added) {
