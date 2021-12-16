@@ -23,31 +23,48 @@ TEST_CASE("statement_serializator insert/replace") {
     std::string value;
     decltype(value) expected;
     SECTION("replace") {
-        SECTION("values") {
-            SECTION("1 row") {
-                auto statement =
-                    replace(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, "The Weeknd")));
-                value = serialize(statement, context);
-                expected = "REPLACE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+        SECTION("object") {
+            User user{5, "Gambit"};
+            auto statement = replace(user);
+            SECTION("question marks") {
+                context.replace_bindable_with_question = true;
+                expected = "REPLACE INTO 'users' (\"id\", \"name\") VALUES (?, ?)";
             }
-            SECTION("2 rows") {
-                auto statement = replace(into<User>(),
-                                         columns(&User::id, &User::name),
-                                         values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
-                value = serialize(statement, context);
-                expected = "REPLACE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue')";
+            SECTION("no question marks") {
+                context.replace_bindable_with_question = false;
+                expected = "REPLACE INTO 'users' (\"id\", \"name\") VALUES (5, 'Gambit')";
             }
-        }
-        SECTION("default values") {
-            auto statement = replace(into<User>(), default_values());
             value = serialize(statement, context);
-            expected = "REPLACE INTO users DEFAULT VALUES";
         }
-        SECTION("select") {
-            auto statement = replace(into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
-            value = serialize(statement, context);
-            expected =
-                "REPLACE INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM 'users_backup'";
+        SECTION("raw") {
+            SECTION("values") {
+                SECTION("1 row") {
+                    auto statement = replace(into<User>(),
+                                             columns(&User::id, &User::name),
+                                             values(std::make_tuple(1, "The Weeknd")));
+                    value = serialize(statement, context);
+                    expected = "REPLACE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+                }
+                SECTION("2 rows") {
+                    auto statement =
+                        replace(into<User>(),
+                                columns(&User::id, &User::name),
+                                values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
+                    value = serialize(statement, context);
+                    expected = "REPLACE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue')";
+                }
+            }
+            SECTION("default values") {
+                auto statement = replace(into<User>(), default_values());
+                value = serialize(statement, context);
+                expected = "REPLACE INTO users DEFAULT VALUES";
+            }
+            SECTION("select") {
+                auto statement = replace(into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
+                value = serialize(statement, context);
+                expected =
+                    "REPLACE INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM 'users_backup'";
+            }
         }
     }
     SECTION("insert") {

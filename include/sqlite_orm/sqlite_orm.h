@@ -10649,7 +10649,7 @@ namespace sqlite_orm {
         struct replace_t {
             using type = T;
 
-            type obj;
+            type object;
         };
 
         template<class T>
@@ -13516,7 +13516,7 @@ namespace sqlite_orm {
 
             template<class O>
             auto& operator()(O& e) const {
-                return get_ref(e.obj);
+                return get_ref(e.object);
             }
         };
 
@@ -14804,8 +14804,41 @@ namespace sqlite_orm {
             using statement_type = replace_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& rep, const C& context) const {
-                return serialize_replace_range_impl(rep, context, 1);
+            std::string operator()(const statement_type& statement, const C& context) const {
+                using expression_type = typename std::decay<decltype(statement)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                auto& tImpl = context.impl.template get_impl<object_type>();
+                std::stringstream ss;
+                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
+
+                auto columnIndex = 0;
+                auto columnsCount = tImpl.table.count_columns_amount();
+                tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                    ss << "\"" << column.name << "\"";
+                    if(columnIndex < columnsCount - 1) {
+                        ss << ", ";
+                    } else {
+                        ss << ")";
+                    }
+                    ++columnIndex;
+                });
+                ss << " VALUES (";
+                columnIndex = 0;
+                auto& object = get_ref(statement.object);
+                tImpl.table.for_each_column([&ss, &columnIndex, columnsCount, &object, &context](auto& column) {
+                    if(column.member_pointer) {
+                        ss << serialize(object.*column.member_pointer, context);
+                    } else {
+                        ss << serialize((object.*column.getter)(), context);
+                    }
+                    if(columnIndex < columnsCount - 1) {
+                        ss << ", ";
+                    } else {
+                        ss << ")";
+                    }
+                    ++columnIndex;
+                });
+                return ss.str();
             }
         };
 
@@ -18129,13 +18162,13 @@ namespace sqlite_orm {
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::replace_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return internal::get_ref(statement.expression.obj);
+        return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::replace_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for replace statement");
-        return internal::get_ref(statement.expression.obj);
+        return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
