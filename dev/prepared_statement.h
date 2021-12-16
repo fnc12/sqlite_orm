@@ -189,7 +189,7 @@ namespace sqlite_orm {
         struct insert_t {
             using type = T;
 
-            type obj;
+            type object;
         };
 
         template<class T>

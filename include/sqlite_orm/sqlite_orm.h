@@ -2528,6 +2528,9 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif  //  SQLITE_ORM_OMITS_CODECVT
 
 namespace sqlite_orm {
 
@@ -2582,8 +2585,8 @@ namespace sqlite_orm {
 
     template<>
     struct field_printer<std::string, void> {
-        std::string operator()(const std::string& t) const {
-            return t;
+        std::string operator()(const std::string& string) const {
+            return string;
         }
     };
 
@@ -2598,7 +2601,15 @@ namespace sqlite_orm {
             return ss.str();
         }
     };
-
+#ifndef SQLITE_ORM_OMITS_CODECVT
+    template<>
+    struct field_printer<std::wstring, void> {
+        std::string operator()(const std::wstring& wideString) const {
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            return converter.to_bytes(wideString);
+        }
+    };
+#endif  //  SQLITE_ORM_OMITS_CODECVT
     template<>
     struct field_printer<std::nullptr_t, void> {
         std::string operator()(const std::nullptr_t&) const {
@@ -10616,7 +10627,7 @@ namespace sqlite_orm {
         struct insert_t {
             using type = T;
 
-            type obj;
+            type object;
         };
 
         template<class T>
@@ -13515,7 +13526,7 @@ namespace sqlite_orm {
 
             template<class O>
             auto& operator()(O& e) const {
-                return get_ref(e.obj);
+                return get_ref(e.object);
             }
         };
 
@@ -15030,7 +15041,57 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
-                return serialize_insert_range_impl(statement, context, 1);
+                using object_type = typename expression_object_type<statement_type>::type;
+                auto& tImpl = context.impl.template get_impl<object_type>();
+
+                std::stringstream ss;
+                ss << "INSERT INTO '" << tImpl.table.name << "' ";
+
+                auto columnIndex = 0;
+                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss](auto& column) {
+                    using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                    if(table_type::is_without_rowid || (!column.template has<primary_key_t<>>() &&
+                                                        !tImpl.table.exists_in_composite_primary_key(column))) {
+                        if(0 == columnIndex) {
+                            ss << '(';
+                        } else {
+                            ss << ", ";
+                        }
+                        ss << "\"" << column.name << "\"";
+                        ++columnIndex;
+                    }
+                });
+                auto columnsToInsertCount = columnIndex;
+                if(columnsToInsertCount > 0) {
+                    ss << ')';
+                } else {
+                    ss << "DEFAULT";
+                }
+                ss << " VALUES ";
+                if(columnsToInsertCount) {
+                    ss << "(";
+                    columnIndex = 0;
+                    auto& object = get_ref(statement.object);
+                    tImpl.table.for_each_column(
+                        [&tImpl, &columnIndex, &ss, columnsToInsertCount, &context, &object](auto& column) {
+                            using table_type = typename std::decay<decltype(tImpl.table)>::type;
+                            if(table_type::is_without_rowid || (!column.template has<primary_key_t<>>() &&
+                                                                !tImpl.table.exists_in_composite_primary_key(column))) {
+                                if(column.member_pointer) {
+                                    ss << serialize(object.*column.member_pointer, context);
+                                } else {
+                                    ss << serialize((object.*column.getter)(), context);
+                                }
+                                if(columnIndex < columnsToInsertCount - 1) {
+                                    ss << ", ";
+                                }
+                                ++columnIndex;
+                            }
+                        });
+                    ss << ")";
+                }
+
+                return ss.str();
             }
         };
 
@@ -18080,13 +18141,13 @@ namespace sqlite_orm {
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::insert_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::get_ref(statement.expression.obj);
+        return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::insert_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for insert statement");
-        return internal::get_ref(statement.expression.obj);
+        return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
