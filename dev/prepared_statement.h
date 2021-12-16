@@ -211,7 +211,7 @@ namespace sqlite_orm {
         struct replace_t {
             using type = T;
 
-            type obj;
+            type object;
         };
 
         template<class T>
