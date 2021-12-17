@@ -7,9 +7,10 @@
 #include <vector>  //  std::vector
 
 #include "conditions.h"
-#include "operators.h"
 #include "is_base_of_template.h"
+#include "operators.h"
 #include "serialize_result_type.h"
+#include "tuple_helper/count_tuple.h"
 
 namespace sqlite_orm {
 

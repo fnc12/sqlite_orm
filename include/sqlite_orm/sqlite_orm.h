@@ -40,6 +40,7 @@ __pragma(push_macro("min"))
 #include <sqlite3.h>
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
+#include <type_traits>
 
         namespace sqlite_orm {
 
@@ -895,11 +896,15 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <ostream>  //  std::ostream
+#include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::make_tuple
-#include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
-#include <ostream>  //  std::ostream
+
+// #include "collate_argument.h"
+
+// #include "error_code.h"
 
 // #include "table_type.h"
 
@@ -1182,6 +1187,8 @@ namespace sqlite_orm {
 
 // #include "member_traits/is_setter.h"
 
+#include <type_traits>
+
 // #include "setters.h"
 
 namespace sqlite_orm {
@@ -1254,7 +1261,11 @@ namespace sqlite_orm {
     }
 }
 
+// #include "tuple_helper/same_or_void.h"
+
 // #include "tuple_helper/tuple_helper.h"
+
+// #include "type_printer.h"
 
 namespace sqlite_orm {
 
@@ -2577,6 +2588,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <locale>  // std::wstring_convert
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
@@ -2771,6 +2783,8 @@ namespace sqlite_orm {
         };
     }
 }
+
+// #include "serializator_context.h"
 
 // #include "tags.h"
 
@@ -4391,8 +4405,6 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
-// #include "operators.h"
-
 // #include "is_base_of_template.h"
 
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
@@ -4432,6 +4444,8 @@ namespace sqlite_orm {
     }
 }
 
+// #include "operators.h"
+
 // #include "serialize_result_type.h"
 
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
@@ -4449,6 +4463,8 @@ namespace sqlite_orm {
 #endif
     }
 }
+
+// #include "tuple_helper/count_tuple.h"
 
 namespace sqlite_orm {
 
@@ -6603,6 +6619,8 @@ namespace sqlite_orm {
     }
 }
 
+// #include "core_functions.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -7082,224 +7100,194 @@ namespace sqlite_orm {
 // It could be an interesting feature to bring to sqlite_orm that other libraries don't have ?
 
 namespace sqlite_orm {
-    namespace trigger {
-        enum trigger_timing_t { trigger_before, trigger_after, trigger_instead_of };
-
-        inline trigger_timing_t before() {
-            return trigger_before;
-        }
-
-        inline trigger_timing_t after() {
-            return trigger_after;
-        }
-
-        inline trigger_timing_t instead_of() {
-            return trigger_instead_of;
-        }
-    }
-
     namespace internal {
-        template<class T>
-        struct on_delete_t {
-            using object_type = typename T::object_type;
-            using elements_type = typename T::elements_type;
-            using table_type = T;
+        enum class trigger_timing { trigger_before, trigger_after, trigger_instead_of };
+        enum class trigger_type { trigger_delete, trigger_insert, trigger_update };
 
-            T table;
+        /**
+         * This class is an intermediate SQLite trigger, to be used with
+         * `make_trigger` to create a full trigger.
+         *  T is the base of the trigger (contains its type, timing and associated table)
+         *  S is the list of trigger statments
+         */
+        template<class T, class... S>
+        struct partial_trigger_t {
+            using statements_type = std::tuple<S...>;
 
-            on_delete_t(T table) : table(table) {}
+            /**
+             * Statements of the triggers (to be executed when the trigger fires)
+             */
+            statements_type statements;
+            /**
+             * Base of the trigger (contains its type, timing and associated table)
+             */
+            T base;
 
-            template<class C>
-            std::string to_string(const C& context) const {
-                return "DELETE ON '" + context.impl.find_table_name(typeid(typename T::object_type)) + "' ";
-            }
-        };
+            partial_trigger_t(T trigger_base, S... statements) :
+                statements(std::make_tuple<S...>(std::forward<S>(statements)...)), base(trigger_base) {}
 
-        template<class T>
-        struct on_insert_t {
-            using object_type = typename T::object_type;
-            using elements_type = typename T::elements_type;
-            using table_type = T;
-
-            T table;
-
-            on_insert_t(T table) : table(table) {}
-
-            template<class C>
-            std::string to_string(const C& context) const {
-                return "INSERT ON '" + context.impl.find_table_name(typeid(typename T::object_type)) + "' ";
-            }
-        };
-
-        template<class T, class... Cs>
-        struct on_update_t {
-            using columns_type = std::tuple<Cs...>;
-            using object_type = typename T::object_type;
-            using elements_type = typename T::elements_type;
-            using table_type = T;
-
-            columns_type columns;
-            T table;
-
-            on_update_t(T table, Cs... args) :
-                columns(std::make_tuple<Cs...>(std::forward<Cs>(args)...)), table(table) {}
-
-            template<class C>
-            std::string to_string(const C& context) const {
-                std::stringstream ss;
-                std::string sep = " OF ";
-
-                ss << "UPDATE";
-
-                iterate_tuple(columns, [this, &ss, &sep](auto& node) {
-                    std::string name = "";
-                    table.for_each_column([&node, &name](auto& c) {
-                        using col_t = typename std::decay<decltype(c)>::type;
-                        using member_t = typename std::decay<typename col_t::member_pointer_t>::type;
-                        using node_t = typename std::decay<decltype(node)>::type;
-
-                        if constexpr(std::is_same<member_t, node_t>::value) {
-                            if(c.member_pointer == node) {
-                                name = c.name;
-                            }
-                        }
-                    });
-                    ss << sep << "'" << name << "'";
-                    sep = ", ";
-                });
-                ss << " ON '" << context.impl.find_table_name(typeid(typename T::object_type)) << "' ";
-                return ss.str();
+            partial_trigger_t& end() {
+                return *this;
             }
         };
 
         /**
          * This class represent a SQLite trigger
-         // *  St is the statement type
-         // *  S is the list of trigger statments
+         *  T is the base of the trigger (contains its type, timing and associated table)
+         *  S is the list of trigger statments
          */
-        template<class St, class... S>
+        template<class T, class... S>
         struct trigger_t {
             using object_type = void;  // Not sure
-            using table_type = typename St::object_type;
-            using elements_type = typename St::elements_type;
-            using statements_type = std::tuple<S...>;
-
-            // Construct triggers by using one of the make_trigger functions
-            trigger_t(std::string name,
-                      trigger::trigger_timing_t timing,
-                      St type,
-                      bool for_each_row,
-                      std::shared_ptr<void*> when,
-                      S... statements) :
-                name(std::move(name)),
-                table(type.table), elements(type.table.elements), timing(timing), statement_type(type),
-                for_each_row(for_each_row), when_expr(std::move(when)),
-                stmts(std::tuple<S...>(std::forward<S>(statements)...)) {}
+            using elements_type = typename partial_trigger_t<T, S...>::statements_type;
 
             /**
              * Name of the trigger
              */
             std::string name;
+            /**
+             * Contains more data about the trigger
+             */
+            partial_trigger_t<T, S...> part;
+            /**
+             * Statements of the triggers (to be executed when the trigger fires)
+             * (reference to partial_trigger::statements for conveniance)
+             */
+            const elements_type& elements;
+
+            trigger_t(const std::string& name, const partial_trigger_t<T, S...>& part) :
+                name(name), part(part), elements(part.statements) {}
+        };
+
+        /**
+         * Base of a trigger. Contains the trigger type/timming and the table type
+         * T is the table type
+         * Type is the trigger base type (type+timing)
+         */
+        template<class T, class Type>
+        struct trigger_base_t {
+            using table_type = T;
+            using trigger_type_base = Type;
 
             /**
-             * Value indicating if the timer is run BEFORE, AFTER or INSTEAD OF the
-             * statement that fired it.
-             * Defaults to BEFORE in the SQLite documentation
+             * Contains the trigger type and timing
              */
-            trigger::trigger_timing_t timing = trigger::trigger_before;
-
-            /**
-             * The type of the statement that would cause the trigger to trigger.
-             * Can be DELETE, INSERT, or UPDATE.
-             * There is no default for this parameter, it must be specified.
-             */
-            St statement_type;
-
-            /**
-             * Table the trigger is watching
-             */
-            typename St::table_type table;
-
-            elements_type& elements;
-
+            trigger_type_base type_base;
             /**
              * Value used to determine if we execute the trigger on each row or on each statement
              * (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
              * so this value is more of a placeholder for a later update)
              * Defaults to true in SQLite documentation
              */
-            bool for_each_row = true;
-
+            bool do_for_each_row = true;
             /**
              * When expression (if any)
-             * If a when expression is specified, the trigger will only execute
+             * If a WHEN expression is specified, the trigger will only execute
              * if the expression evaluates to true when the trigger is fired
              */
-            std::shared_ptr<void*> when_expr = nullptr;
+            // void when = NOT_IMPLEMENTED;
+
+            trigger_base_t(trigger_type_base type_base) : type_base(type_base) {}
+
+            trigger_base_t& for_each_row() {
+                do_for_each_row = true;
+                return *this;
+            }
+            // trigger_base_t &when(void); // TODO
+
+            template<class... S>
+            partial_trigger_t<trigger_base_t<T, Type>, S...> begin(S... statements) {
+                return {*this, std::forward<S>(statements)...};
+            }
+        };
+
+        /**
+         * Contains the trigger type and timing
+         */
+        struct trigger_type_base_t {
+            /**
+             * Value indicating if the trigger is run BEFORE, AFTER or INSTEAD OF
+             * the statement that fired it.
+             */
+            trigger_timing timing;
+            /**
+             * The type of the statement that would cause the trigger to fire.
+             * Can be DELETE, INSERT, or UPDATE.
+             */
+            trigger_type type;
+
+            trigger_type_base_t(trigger_timing timing, trigger_type type) : timing(timing), type(type) {}
+
+            template<class T>
+            trigger_base_t<T, trigger_type_base_t> on(void) {
+                return {*this};
+            }
+        };
+
+        /**
+         * Special case for UPDATE OF (columns)
+         * Contains the trigger type and timing
+         */
+        template<class... Cs>
+        struct trigger_update_type_t : trigger_type_base_t {
+            using columns_type = std::tuple<Cs...>;
 
             /**
-             * Statements of the triggers (to be executed when the trigger fires)
+             * Contains the columns the trigger is watching. Will only
+             * trigger if one of theses columns is updated.
              */
-            statements_type stmts;
+            columns_type columns;
 
-            // Noop implementations, taken from `foreign_key_t`
-            template<class L>
-            void for_each_column(const L& _) {}
+            trigger_update_type_t(trigger_timing timing, trigger_type type, Cs... columns) :
+                trigger_type_base_t(timing, type), columns(std::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
 
-            template<class... Opts>
-            constexpr bool has_every() const {
-                return false;
+            template<class T>
+            trigger_base_t<T, trigger_update_type_t<Cs...>> on(void) {
+                return {*this};
+            }
+        };
+
+        struct trigger_timing_t {
+            trigger_timing timing;
+
+            trigger_timing_t(trigger_timing timing) : timing(timing) {}
+
+            trigger_type_base_t delete_(void) {
+                return {timing, trigger_type::trigger_delete};
+            }
+
+            trigger_type_base_t insert(void) {
+                return {timing, trigger_type::trigger_insert};
+            }
+
+            trigger_type_base_t update(void) {
+                return {timing, trigger_type::trigger_update};
+            }
+
+            template<class... Cs>
+            trigger_update_type_t<Cs...> update_of(Cs... columns) {
+                return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
             }
         };
     }  // NAMESPACE internal
 
-    /*
-      make_trigger(name, BEFORE|AFTER|INSTEAD_OF, DELETE|INSERT|UPDATE([COLUMN_NAME,...]), table, statements...)
-      make_trigger(name, BEFORE|AFTER|INSTEAD_OF, DELETE|INSERT|UPDATE([COLUMN_NAME,...]), table, FOR_EACH_ROW, statements...)
-      make_trigger(name, BEFORE|AFTER|INSTEAD_OF, DELETE|INSERT|UPDATE([COLUMN_NAME,...]), table, WHEN, statements...)
-      make_trigger(name, BEFORE|AFTER|INSTEAD_OF, DELETE|INSERT|UPDATE([COLUMN_NAME,...]), table, FOR_EACH_ROW, WHEN, statements...)
-     */
-
-    namespace trigger {
-        template<class T>
-        inline internal::on_delete_t<T> on_delete(T table) {
-            return {std::forward<T>(table)};
-        }
-
-        template<class T>
-        inline internal::on_insert_t<T> on_insert(T table) {
-            return {std::forward<T>(table)};
-        }
-
-        template<class T, class... Cs>
-        inline internal::on_update_t<T, Cs...> on_update(T table, Cs... cols) {
-            return {std::forward<T>(table), std::forward<Cs>(cols)...};
-        }
+    template<class T, class... S>
+    internal::trigger_t<T, S...> make_trigger(const std::string& name,
+                                              const internal::partial_trigger_t<T, S...>& part) {
+        return {name, part};
     }
 
-    template<class St, class... S>
-    internal::trigger_t<St, S...>
-    make_trigger(const std::string& name, trigger::trigger_timing_t timing, St type, S... statements) {
-        return {name, timing, type, true, nullptr, std::forward<S>(statements)...};
+    inline internal::trigger_timing_t before(void) {
+        return {internal::trigger_timing_t(internal::trigger_timing::trigger_before)};
     }
-    // NOTE Disabled because for_each_row is a placeholder for now, so overloads to set it are useless
-    // template<class St, class... S>
-    // internal::trigger_t<T, St, S...> make_trigger(const std::string &name, trigger::trigger_timing_t timing, St type, bool for_each_row, S... statements) {
-    //     return internal::trigger_t<T, St, S...>(name, timing, type, for_each_row, nullptr, statements...);
-    // }
-    template<class St, class... S>
-    internal::trigger_t<St, S...> make_trigger(const std::string& name,
-                                               trigger::trigger_timing_t timing,
-                                               St type,
-                                               std::shared_ptr<void*> when,
-                                               S... statements) {
-        return {name, timing, type, true, when, std::forward<S>(statements)...};
+
+    inline internal::trigger_timing_t after(void) {
+        return {internal::trigger_timing_t(internal::trigger_timing::trigger_after)};
     }
-    // NOTE Disabled because for_each_row is a placeholder for now, so overloads to set it are useless
-    // template<class St, class... S>
-    // internal::trigger_t<T, St, S...> make_trigger(const std::string &name, trigger::trigger_timing_t timing, St type, bool for_each_row, std::shared_ptr<void *> when, S... statements) {
-    //     return internal::trigger_t<T, St, S...>(name, timing, type, for_each_row, when, statements...);
-    // };
+
+    inline internal::trigger_timing_t instead_of(void) {
+        return {internal::trigger_timing_t(internal::trigger_timing::trigger_instead_of)};
+    }
 }
 #pragma once
 
@@ -7872,6 +7860,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>  //  std::vector
 #include <cstring>  //  strlen
+#include <locale>
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
@@ -7943,6 +7932,8 @@ namespace sqlite_orm {
 }
 
 // #include "error_code.h"
+
+// #include "is_std_ptr.h"
 
 namespace sqlite_orm {
 
@@ -8603,6 +8594,8 @@ namespace sqlite_orm {
 // #include "storage_traits.h"
 #include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type, std::integral_constant
 #include <tuple>  //  std::tuple
+
+// #include "tuple_helper/tuple_transformer.h"
 
 namespace sqlite_orm {
 
@@ -13872,9 +13865,23 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
+#include <cstddef>  // std::nullptr_t
+#include <memory>
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+// #include "member_traits/is_getter.h"
+
+// #include "member_traits/is_setter.h"
+
+// #include "ast/upsert_clause.h"
+
+// #include "ast/excluded.h"
+
+// #include "ast/group_by.h"
+
+// #include "ast/into.h"
 
 // #include "core_functions.h"
 
@@ -13883,6 +13890,12 @@ namespace sqlite_orm {
 // #include "conditions.h"
 
 // #include "column.h"
+
+// #include "indexed_column.h"
+
+// #include "function.h"
+
+// #include "prepared_statement.h"
 
 // #include "rowid.h"
 
@@ -14182,21 +14195,15 @@ namespace sqlite_orm {
     }
 }
 
+// #include "statement_binder.h"
+
 // #include "values.h"
 
 // #include "triggers.h"
 
 // #include "table_type.h"
 
-// #include "indexed_column.h"
-
-// #include "function.h"
-
-// #include "ast/upsert_clause.h"
-
-// #include "ast/excluded.h"
-
-// #include "ast/group_by.h"
+// #include "index.h"
 
 namespace sqlite_orm {
 
@@ -15974,9 +15981,116 @@ namespace sqlite_orm {
             }
         };
 
-        template<class... Cols>
-        struct statement_serializator<trigger_t<Cols...>, void> {
-            using statement_type = trigger_t<Cols...>;
+        template<>
+        struct statement_serializator<trigger_timing, void> {
+            using statement_type = trigger_timing;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case trigger_timing::trigger_before:
+                        return "BEFORE";
+                    case trigger_timing::trigger_after:
+                        return "AFTER";
+                    case trigger_timing::trigger_instead_of:
+                        return "INSTEAD OF";
+                    default:
+                        return "";
+                }
+            }
+        };
+
+        template<>
+        struct statement_serializator<trigger_type, void> {
+            using statement_type = trigger_type;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case trigger_type::trigger_delete:
+                        return "DELETE";
+                    case trigger_type::trigger_insert:
+                        return "INSERT";
+                    case trigger_type::trigger_update:
+                        return "UPDATE";
+                    default:
+                        return "";
+                }
+            }
+        };
+
+        template<>
+        struct statement_serializator<trigger_type_base_t, void> {
+            using statement_type = trigger_type_base_t;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+
+                ss << serialize(statement.timing, context) << " " << serialize(statement.type, context);
+                return ss.str();
+            }
+        };
+
+        template<class... Cs>
+        struct statement_serializator<trigger_update_type_t<Cs...>, void> {
+            using statement_type = trigger_update_type_t<Cs...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                std::string sep = "";
+
+                ss << serialize(statement.timing, context) << " UPDATE OF ";
+                iterate_tuple(statement.columns, [&ss, &sep, &context](auto& v) {
+                    ss << sep << "'" << *context.column_name(v) << "'";
+                    sep = ", ";
+                });
+                return ss.str();
+            }
+        };
+
+        template<class T, class Trigger>
+        struct statement_serializator<trigger_base_t<T, Trigger>, void> {
+            using statement_type = trigger_base_t<T, Trigger>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+
+                ss << serialize(statement.type_base, context);
+                ss << " ON '" << context.impl.find_table_name(typeid(T)) << "' ";
+                ss << (statement.do_for_each_row ? "FOR EACH ROW " : "");
+                // TODO add WHEN clause
+                return ss.str();
+            }
+        };
+
+        template<class T, class... S>
+        struct statement_serializator<partial_trigger_t<T, S...>, void> {
+            using statement_type = partial_trigger_t<T, S...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+
+                ss << serialize(statement.base, context);
+
+                C c{context};
+
+                c.replace_bindable_with_question = false;
+                ss << "BEGIN ";
+                iterate_tuple(statement.statements, [&ss, &c](auto& v) {
+                    ss << serialize(v, c) << ";";
+                });
+                ss << " END";
+                return ss.str();
+            }
+        };
+
+        template<class... S>
+        struct statement_serializator<trigger_t<S...>, void> {
+            using statement_type = trigger_t<S...>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
@@ -15984,31 +16098,8 @@ namespace sqlite_orm {
                 std::string timing = "BEFORE";
                 ss << "CREATE ";
 
-                switch(statement.timing) {
-                    case trigger::trigger_before:
-                        timing = "BEFORE";
-                        break;
-                    case trigger::trigger_after:
-                        timing = "AFTER";
-                        break;
-                    case trigger::trigger_instead_of:
-                        timing = "INSTEAD OF";
-                        break;
-                }
-                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << timing << " "
-                   << statement.statement_type.to_string(context);
-                ss << (statement.for_each_row ? "FOR EACH ROW " : "");
+                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << serialize(statement.part, context);
 
-                C c{context.impl};
-
-                c.replace_bindable_with_question = false;
-                ss << "BEGIN ";
-                iterate_tuple(statement.stmts, [&ss, &c](auto& v) {
-                    ss << serialize(v, c) << ";";
-                });
-
-                ss << " END";
-                std::cout << ss.str() << std::endl;
                 return ss.str();
             }
         };
@@ -16403,6 +16494,8 @@ namespace sqlite_orm {
 // #include "table.h"
 
 // #include "column.h"
+
+// #include "index.h"
 
 namespace sqlite_orm {
 
@@ -17165,9 +17258,10 @@ namespace sqlite_orm {
             template<class... Tss, class... Cols>
             sync_schema_result
             sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
-                auto res = sync_schema_result::already_in_sync;
+                auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
+                // context.replace_bindable_with_question = true;
                 auto query = serialize(tableImpl.table, context);
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
                 if(rc != SQLITE_OK) {
