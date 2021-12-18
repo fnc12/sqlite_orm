@@ -9437,6 +9437,9 @@ namespace sqlite_orm {
                 return res;
             }
 
+            /**
+             *  Counts and returns amount of columns. Skips constraints.
+             */
             int count_columns_amount() const {
                 auto res = 0;
                 this->for_each_column([&res](auto&) {
@@ -10612,7 +10615,7 @@ namespace sqlite_orm {
         struct update_t {
             using type = T;
 
-            type obj;
+            type object;
         };
 
         template<class T, class... Ids>
@@ -13536,7 +13539,7 @@ namespace sqlite_orm {
 
             template<class O>
             auto& operator()(O& e) const {
-                return get_ref(e.obj);
+                return get_ref(e.object);
             }
         };
     }
@@ -14898,36 +14901,51 @@ namespace sqlite_orm {
             using statement_type = update_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& upd, const C& context) const {
-                using expression_type = typename std::decay<decltype(upd)>::type;
+            std::string operator()(const statement_type& statement, const C& context) const {
+                using expression_type = typename std::decay<decltype(statement)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
                 auto& tImpl = context.impl.template get_impl<object_type>();
 
                 std::stringstream ss;
                 ss << "UPDATE '" << tImpl.table.name << "' SET";
-                std::vector<std::string> setColumnNames;
-                tImpl.table.for_each_column([&setColumnNames, &tImpl](auto& column) {
+                //                std::vector<std::string> setColumnNames;
+                auto columnIndex = 0;
+                auto& object = get_ref(statement.object);
+                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object, &context](auto& column) {
                     if(!column.template has<primary_key_t<>>() &&
                        !tImpl.table.exists_in_composite_primary_key(column)) {
-                        setColumnNames.emplace_back(column.name);
+                        if(0 == columnIndex) {
+                            ss << ' ';
+                        } else {
+                            ss << ", ";
+                        }
+                        ss << "\"" << column.name << "\" = ";
+                        if(column.member_pointer) {
+                            ss << serialize(object.*column.member_pointer, context);
+                        } else {
+                            ss << serialize((object.*column.getter)(), context);
+                        }
+                        ++columnIndex;
                     }
                 });
-                for(size_t i = 0; i < setColumnNames.size(); ++i) {
-                    ss << " \"" << setColumnNames[i] << "\""
-                       << " = ?";
-                    if(i < setColumnNames.size() - 1) {
-                        ss << ",";
-                    }
-                }
                 ss << " WHERE";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << " \"" << primaryKeyColumnNames[i] << "\""
-                       << " = ?";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << " AND";
+                columnIndex = 0;
+                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object, &context](auto& column) {
+                    if(column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column)) {
+                        if(0 == columnIndex) {
+                            ss << ' ';
+                        } else {
+                            ss << " AND ";
+                        }
+                        ss << "\"" << column.name << "\" = ";
+                        if(column.member_pointer) {
+                            ss << serialize(object.*column.member_pointer, context);
+                        } else {
+                            ss << serialize((object.*column.getter)(), context);
+                        }
+                        ++columnIndex;
                     }
-                }
+                });
                 return ss.str();
             }
         };
@@ -18138,13 +18156,13 @@ namespace sqlite_orm {
     template<int N, class T>
     auto& get(internal::prepared_statement_t<internal::update_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return internal::get_ref(statement.expression.obj);
+        return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<internal::update_t<T>>& statement) {
         static_assert(N == 0, "get<> works only with 0 argument for update statement");
-        return internal::get_ref(statement.expression.obj);
+        return internal::get_ref(statement.expression.object);
     }
 
     template<int N, class T, class... Cols>
