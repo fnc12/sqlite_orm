@@ -14983,7 +14983,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& upd, const C& context) const {
                 std::stringstream ss;
-                ss << "UPDATE ";
+                ss << "UPDATE";
                 table_name_collector collector([&context](std::type_index ti) {
                     return context.impl.find_table_name(ti);
                 });
@@ -14999,7 +14999,7 @@ namespace sqlite_orm {
                             std::stringstream sss;
                             sss << serialize(asgn.lhs, leftContext);
                             sss << " " << static_cast<std::string>(asgn) << " ";
-                            sss << serialize(asgn.rhs, context) << " ";
+                            sss << serialize(asgn.rhs, context);
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();
@@ -15636,7 +15636,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << statement.serialize() << " ";
                 auto whereString = serialize(statement.expression, context);
-                ss << "( " << whereString << ") ";
+                ss << '(' << whereString << ')';
                 return ss.str();
             }
         };
