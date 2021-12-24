@@ -16,12 +16,7 @@ namespace sqlite_orm {
         /**
          *  AUTOINCREMENT constraint class.
          */
-        struct autoincrement_t {
-
-            operator std::string() const {
-                return "AUTOINCREMENT";
-            }
-        };
+        struct autoincrement_t {};
 
         struct primary_key_base {
             enum class order_by {
@@ -352,6 +347,40 @@ namespace sqlite_orm {
 
             check_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
+        struct basic_generated_always {
+            enum class storage_type {
+                not_specified,
+                virtual_,
+                stored,
+            };
+
+            bool full = true;
+            storage_type storage = storage_type::not_specified;
+        };
+
+        template<class T>
+        struct generated_always_t : basic_generated_always {
+            using expression_type = T;
+
+            expression_type expression;
+
+            generated_always_t(expression_type expression_, bool full, storage_type storage) :
+                basic_generated_always{full, storage}, expression(std::move(expression_)) {}
+
+            generated_always_t<T> virtual_() {
+                return {std::move(this->expression), this->full, storage_type::virtual_};
+            }
+
+            generated_always_t<T> stored() {
+                return {std::move(this->expression), this->full, storage_type::stored};
+            }
+        };
+
+        template<class T>
+        struct is_generated_always : std::false_type {};
+
+        template<class T>
+        struct is_generated_always<generated_always_t<T>> : std::true_type {};
 
         template<class T>
         struct is_constraint : std::false_type {};
@@ -376,7 +405,10 @@ namespace sqlite_orm {
 
         template<class T>
         struct is_constraint<check_t<T>> : std::true_type {};
-
+#if SQLITE_VERSION_NUMBER >= 3031000
+        template<class T>
+        struct is_constraint<generated_always_t<T>> : std::true_type {};
+#endif
         template<class... Args>
         struct constraints_size;
 
@@ -390,7 +422,17 @@ namespace sqlite_orm {
             static constexpr const int value = is_constraint<H>::value + constraints_size<Args...>::value;
         };
     }
+#if SQLITE_VERSION_NUMBER >= 3031000
+    template<class T>
+    internal::generated_always_t<T> generated_always_as(T expression) {
+        return {std::move(expression), true, internal::basic_generated_always::storage_type::not_specified};
+    }
 
+    template<class T>
+    internal::generated_always_t<T> as(T expression) {
+        return {std::move(expression), false, internal::basic_generated_always::storage_type::not_specified};
+    }
+#endif
 #if SQLITE_VERSION_NUMBER >= 3006019
 
     /**
