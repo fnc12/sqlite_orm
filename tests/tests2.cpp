@@ -67,117 +67,42 @@ TEST_CASE("Remove") {
         REQUIRE(storage.count<Object>() == 1);
     }
 }
-
-TEST_CASE("Replace query") {
-    struct Object {
-        int id;
+#if SQLITE_VERSION_NUMBER >= 3031000
+TEST_CASE("insert with generated column") {
+    struct Product {
         std::string name;
+        double price = 0;
+        double discount = 0;
+        double tax = 0;
+        double netPrice = 0;
+
+        bool operator==(const Product &other) const {
+            return this->name == other.name && this->price == other.price && this->discount == other.discount &&
+                   this->tax == other.tax && this->netPrice == other.netPrice;
+        }
     };
-
-    struct User {
-
-        User(int id_, std::string name_) : id(id_), name(move(name_)) {}
-
-        int getId() const {
-            return this->id;
-        }
-
-        void setId(int id_) {
-            this->id = id_;
-        }
-
-        std::string getName() const {
-            return this->name;
-        }
-
-        void setName(std::string name_) {
-            this->name = move(name_);
-        }
-
-      private:
-        int id = 0;
-        std::string name;
-    };
-
-    auto storage = make_storage(
-        "test_replace.sqlite",
-        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)),
-        make_table("users",
-                   make_column("id", &User::getId, &User::setId, primary_key()),
-                   make_column("name", &User::setName, &User::getName)));
-
+    auto storage =
+        make_storage({},
+                     make_table("products",
+                                make_column("name", &Product::name),
+                                make_column("price", &Product::price),
+                                make_column("discount", &Product::discount),
+                                make_column("tax", &Product::tax),
+                                make_column("net_price",
+                                            &Product::netPrice,
+                                            generated_always_as(c(&Product::price) * (1 - c(&Product::discount)) *
+                                                                (1 + c(&Product::tax))))));
     storage.sync_schema();
-    storage.remove_all<Object>();
-    storage.remove_all<User>();
+    Product product{"ABC Widget", 100, 0.05, 0.07, -100};
+    storage.insert(product);
 
-    storage.replace(Object{
-        100,
-        "Baby",
-    });
-    REQUIRE(storage.count<Object>() == 1);
-    auto baby = storage.get<Object>(100);
-    REQUIRE(baby.id == 100);
-    REQUIRE(baby.name == "Baby");
-
-    storage.replace(Object{
-        200,
-        "Time",
-    });
-    REQUIRE(storage.count<Object>() == 2);
-    auto time = storage.get<Object>(200);
-    REQUIRE(time.id == 200);
-    REQUIRE(time.name == "Time");
-    storage.replace(Object{
-        100,
-        "Ototo",
-    });
-    REQUIRE(storage.count<Object>() == 2);
-    auto ototo = storage.get<Object>(100);
-    REQUIRE(ototo.id == 100);
-    REQUIRE(ototo.name == "Ototo");
-
-    SECTION("straight") {
-        auto initList = {
-            Object{
-                300,
-                "Iggy",
-            },
-            Object{
-                400,
-                "Azalea",
-            },
-        };
-        storage.replace_range(initList.begin(), initList.end());
-        REQUIRE(storage.count<Object>() == 4);
-
-        //  test empty container
-        std::vector<Object> emptyVector;
-        storage.replace_range(emptyVector.begin(), emptyVector.end());
-    }
-    SECTION("pointers") {
-        std::vector<std::unique_ptr<Object>> vector;
-        vector.push_back(std::make_unique<Object>(Object{300, "Iggy"}));
-        vector.push_back(std::make_unique<Object>(Object{400, "Azalea"}));
-        storage.replace_range<Object>(vector.begin(),
-                                      vector.end(),
-                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                          return *pointer;
-                                      });
-        REQUIRE(storage.count<Object>() == 4);
-
-        //  test empty container
-        std::vector<std::unique_ptr<Object>> emptyVector;
-        storage.replace_range<Object>(emptyVector.begin(),
-                                      emptyVector.end(),
-                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
-                                          return *pointer;
-                                      });
-    }
-    REQUIRE(storage.count<User>() == 0);
-    storage.replace(User{10, "Daddy Yankee"});
+    auto allProducts = storage.get_all<Product>();
+    decltype(allProducts) expectedProducts;
+    expectedProducts.push_back({"ABC Widget", 100, 0.05, 0.07, 101.65});
+    REQUIRE(allProducts == expectedProducts);
 }
-
-TEST_CASE("Insert") {
+#endif
+TEST_CASE("insert") {
     struct Object {
         int id;
         std::string name;

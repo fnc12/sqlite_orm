@@ -250,22 +250,6 @@ namespace sqlite_orm {
                 }
             }
 
-            void add_column(const table_info& ti, sqlite3* db) const {
-                std::stringstream ss;
-                ss << "ALTER TABLE " << this->table.name << " ADD COLUMN " << ti.name;
-                ss << " " << ti.type;
-                if(ti.pk) {
-                    ss << " PRIMARY KEY";
-                }
-                if(ti.notnull) {
-                    ss << " NOT NULL";
-                }
-                if(ti.dflt_value.length()) {
-                    ss << " DEFAULT " << ti.dflt_value;
-                }
-                perform_void_exec(db, ss.str());
-            }
-
             /**
              *  Copies current table to another table with a given **name**.
              *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
@@ -302,7 +286,7 @@ namespace sqlite_orm {
                         ss << ", ";
                     }
                 }
-                ss << " FROM '" << this->table.name << "' ";
+                ss << " FROM '" << this->table.name << "'";
                 perform_void_exec(db, ss.str());
             }
 
@@ -348,9 +332,19 @@ namespace sqlite_orm {
                         if(columnsToAdd.size()) {
                             // extra storage columns than table columns
                             for(auto columnPointer: columnsToAdd) {
-                                if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
-                                    gottaCreateTable = true;
-                                    break;
+                                auto generatedStorageTypePointer =
+                                    this->find_column_generated_storage_type(columnPointer->name);
+                                if(generatedStorageTypePointer) {
+                                    if(*generatedStorageTypePointer == basic_generated_always::storage_type::stored) {
+                                        gottaCreateTable = true;
+                                        break;
+                                    }
+                                    //  fallback cause VIRTUAL can be added
+                                } else {
+                                    if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
+                                        gottaCreateTable = true;
+                                        break;
+                                    }
                                 }
                             }
                             if(!gottaCreateTable) {
@@ -376,6 +370,28 @@ namespace sqlite_orm {
 
           private:
             using self = storage_impl<H, Ts...>;
+
+            const basic_generated_always::storage_type*
+            find_column_generated_storage_type(const std::string& name) const {
+                const basic_generated_always::storage_type* result = nullptr;
+#if SQLITE_VERSION_NUMBER >= 3031000
+                this->table.for_each_column([&result, &name](auto& column) {
+                    if(column.name != name) {
+                        return;
+                    }
+                    iterate_tuple(column.constraints, [&result](auto& constraint) {
+                        if(result) {
+                            return;
+                        }
+                        using constraint_type = typename std::decay<decltype(constraint)>::type;
+                        static_if<is_generated_always<constraint_type>{}>([&result](auto& generatedAlwaysConstraint) {
+                            result = &generatedAlwaysConstraint.storage;
+                        })(constraint);
+                    });
+                });
+#endif
+                return result;
+            }
         };
 
         template<>

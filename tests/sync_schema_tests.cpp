@@ -479,3 +479,65 @@ TEST_CASE("sync_schema_simulate") {
     storage.sync_schema();
     storage.sync_schema_simulate();
 }
+#if SQLITE_VERSION_NUMBER >= 3031000
+TEST_CASE("sync_schema with generated columns") {
+    struct User {
+        int id = 0;
+        int hash = 0;
+
+        bool operator==(const User& other) const {
+            return this->id == other.id && this->hash == other.hash;
+        }
+    };
+    auto storagePath = "sync_schema_with_generated.sqlite";
+    ::remove(storagePath);
+    auto storage1 = make_storage(storagePath, make_table("users", make_column("id", &User::id)));
+    storage1.sync_schema();
+    storage1.insert(User{5});
+    SECTION("add a generated column and sync schema with preserve = false") {
+        auto generatedAlwaysConstraint = generated_always_as(c(&User::id) + 4);
+        std::vector<User> allUsers;
+        decltype(allUsers) expectedUsers;
+        SECTION("virtual") {
+            generatedAlwaysConstraint = generatedAlwaysConstraint.virtual_();
+            expectedUsers.push_back({5, 9});
+        }
+        SECTION("not specified") {
+            expectedUsers.push_back({5, 9});
+        }
+        SECTION("stored") {
+            generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
+        }
+        auto storage2 = make_storage(storagePath,
+                                     make_table("users",
+                                                make_column("id", &User::id),
+                                                make_column("hash", &User::hash, generatedAlwaysConstraint)));
+        storage2.sync_schema();
+        allUsers = storage2.get_all<User>();
+        REQUIRE(allUsers == expectedUsers);
+    }
+    SECTION("add a generated column and sync schema with preserve = true") {
+        auto generatedAlwaysConstraint = generated_always_as(c(&User::id) + 4);
+        std::vector<User> allUsers;
+        decltype(allUsers) expectedUsers;
+        SECTION("not specified") {
+            expectedUsers.push_back({5, 9});
+        }
+        SECTION("virtual") {
+            generatedAlwaysConstraint = generatedAlwaysConstraint.virtual_();
+            expectedUsers.push_back({5, 9});
+        }
+        SECTION("stored") {
+            generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
+            //  expectedUsers.push_back({5, 9});    //  TODO: add sync_schema(true) support
+        }
+        auto storage2 = make_storage(storagePath,
+                                     make_table("users",
+                                                make_column("id", &User::id),
+                                                make_column("hash", &User::hash, generatedAlwaysConstraint)));
+        storage2.sync_schema(true);
+        allUsers = storage2.get_all<User>();
+        REQUIRE(allUsers == expectedUsers);
+    }
+}
+#endif

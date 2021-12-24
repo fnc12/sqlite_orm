@@ -8,6 +8,7 @@ add_executable(unit_tests
 	tests3.cpp
 	tests4.cpp
 	tests5.cpp
+    column_tests.cpp
 	private_getters_tests.cpp
 	pragma_tests.cpp
 	explicit_columns.cpp
@@ -66,16 +67,18 @@ add_executable(unit_tests
 	constraints/foreign_key.cpp
 	constraints/check.cpp
 	table_tests.cpp
-	statement_serializator_tests/primary_key.cpp
+    statement_serializator_tests/column_constraints/generated.cpp
+    statement_serializator_tests/column_constraints/default.cpp
+    statement_serializator_tests/column_constraints/primary_key.cpp
 	statement_serializator_tests/column_names.cpp
-	statement_serializator_tests/autoincrement.cpp
+	statement_serializator_tests/column_constraints/autoincrement.cpp
 	statement_serializator_tests/arithmetic_operators.cpp
 	statement_serializator_tests/core_functions.cpp
 	statement_serializator_tests/comparison_operators.cpp
 	statement_serializator_tests/column_constraints/unique.cpp
 	statement_serializator_tests/foreign_key.cpp
 	statement_serializator_tests/collate.cpp
-	statement_serializator_tests/check.cpp
+	statement_serializator_tests/column_constraints/check.cpp
 	statement_serializator_tests/index.cpp
 	statement_serializator_tests/indexed_column.cpp
     statement_serializator_tests/logical_operators.cpp
