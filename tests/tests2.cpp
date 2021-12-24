@@ -94,7 +94,12 @@ TEST_CASE("insert with generated column") {
                                                                 (1 + c(&Product::tax))))));
     storage.sync_schema();
     Product product{"ABC Widget", 100, 0.05, 0.07, -100};
-    storage.insert(product);
+    SECTION("insert") {
+        storage.insert(product);
+    }
+    SECTION("replace") {
+        storage.replace(product);
+    }
 
     auto allProducts = storage.get_all<Product>();
     decltype(allProducts) expectedProducts;
