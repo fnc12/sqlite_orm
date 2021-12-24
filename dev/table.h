@@ -200,6 +200,19 @@ namespace sqlite_orm {
             }
 
             /**
+             *  Counts and returns amount of columns without GENERATED ALWAYS constraints. Skips table constraints.
+             */
+            int non_generated_columns_count() const {
+                auto res = 0;
+                this->for_each_column([&res](auto& column) {
+                    if(!column.is_generated()) {
+                        ++res;
+                    }
+                });
+                return res;
+            }
+
+            /**
              *  Counts and returns amount of columns. Skips constraints.
              */
             int count_columns_amount() const {

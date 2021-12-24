@@ -9495,6 +9495,19 @@ namespace sqlite_orm {
             }
 
             /**
+             *  Counts and returns amount of columns without GENERATED ALWAYS constraints. Skips table constraints.
+             */
+            int non_generated_columns_count() const {
+                auto res = 0;
+                this->for_each_column([&res](auto& column) {
+                    if(!column.is_generated()) {
+                        ++res;
+                    }
+                });
+                return res;
+            }
+
+            /**
              *  Counts and returns amount of columns. Skips constraints.
              */
             int count_columns_amount() const {
@@ -14915,8 +14928,11 @@ namespace sqlite_orm {
                 ss << "REPLACE INTO '" << tImpl.table.name << "' (";
 
                 auto columnIndex = 0;
-                auto columnsCount = tImpl.table.count_columns_amount();
+                auto columnsCount = tImpl.table.non_generated_columns_count();
                 tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                    if(column.is_generated()) {
+                        return;
+                    }
                     ss << "\"" << column.name << "\"";
                     if(columnIndex < columnsCount - 1) {
                         ss << ", ";
@@ -14929,6 +14945,9 @@ namespace sqlite_orm {
                 columnIndex = 0;
                 auto& object = get_ref(statement.object);
                 tImpl.table.for_each_column([&ss, &columnIndex, columnsCount, &object, &context](auto& column) {
+                    if(column.is_generated()) {
+                        return;
+                    }
                     if(column.member_pointer) {
                         ss << serialize(object.*column.member_pointer, context);
                     } else {
@@ -15278,49 +15297,6 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class C>
-        std::string serialize_replace_range_impl(const T& rep, const C& context, const int valuesCount) {
-            using expression_type = typename std::decay<decltype(rep)>::type;
-            using object_type = typename expression_object_type<expression_type>::type;
-            auto& tImpl = context.impl.template get_impl<object_type>();
-            std::stringstream ss;
-            ss << "REPLACE INTO '" << tImpl.table.name << "' (";
-
-            auto columnIndex = 0;
-            auto columnsCount = tImpl.table.count_columns_amount();
-            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
-                ss << " \"" << column.name << "\"";
-                if(columnIndex < columnsCount - 1) {
-                    ss << ",";
-                } else {
-                    ss << ")";
-                }
-                ++columnIndex;
-            });
-            ss << " VALUES ";
-            auto valuesString = [columnsCount] {
-                std::stringstream ss_;
-                ss_ << "(";
-                for(auto i = 0; i < columnsCount; ++i) {
-                    ss_ << "?";
-                    if(i < columnsCount - 1) {
-                        ss_ << ", ";
-                    } else {
-                        ss_ << ")";
-                    }
-                }
-                return ss_.str();
-            }();
-            for(auto i = 0; i < valuesCount; ++i) {
-                ss << valuesString;
-                if(i < valuesCount - 1) {
-                    ss << ",";
-                }
-                ss << " ";
-            }
-            return ss.str();
-        }
-
         template<class It, class L, class O>
         struct statement_serializator<replace_range_t<It, L, O>, void> {
             using statement_type = replace_range_t<It, L, O>;
@@ -15328,7 +15304,48 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& rep, const C& context) const {
                 auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
-                return serialize_replace_range_impl(rep, context, valuesCount);
+                using expression_type = typename std::decay<decltype(rep)>::type;
+                using object_type = typename expression_object_type<expression_type>::type;
+                auto& tImpl = context.impl.template get_impl<object_type>();
+                std::stringstream ss;
+                ss << "REPLACE INTO '" << tImpl.table.name << "' (";
+
+                auto columnIndex = 0;
+                auto columnsCount = tImpl.table.non_generated_columns_count();
+                tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                    if(column.is_generated()) {
+                        return;
+                    }
+                    ss << " \"" << column.name << "\"";
+                    if(columnIndex < columnsCount - 1) {
+                        ss << ",";
+                    } else {
+                        ss << ")";
+                    }
+                    ++columnIndex;
+                });
+                ss << " VALUES ";
+                auto valuesString = [columnsCount] {
+                    std::stringstream ss_;
+                    ss_ << "(";
+                    for(auto i = 0; i < columnsCount; ++i) {
+                        ss_ << "?";
+                        if(i < columnsCount - 1) {
+                            ss_ << ", ";
+                        } else {
+                            ss_ << ")";
+                        }
+                    }
+                    return ss_.str();
+                }();
+                for(auto i = 0; i < valuesCount; ++i) {
+                    ss << valuesString;
+                    if(i < valuesCount - 1) {
+                        ss << ",";
+                    }
+                    ss << " ";
+                }
+                return ss.str();
             }
         };
 
@@ -17211,6 +17228,9 @@ namespace sqlite_orm {
 
                 auto processObject = [&index, &stmt, &tImpl, db](auto& object) {
                     tImpl.table.for_each_column([&index, stmt, &object, db](auto& column) {
+                        if(column.is_generated()) {
+                            return;
+                        }
                         using column_type = typename std::decay<decltype(column)>::type;
                         using field_type = typename column_type::field_type;
                         if(column.member_pointer) {

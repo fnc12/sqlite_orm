@@ -1151,6 +1151,9 @@ namespace sqlite_orm {
 
                 auto processObject = [&index, &stmt, &tImpl, db](auto& object) {
                     tImpl.table.for_each_column([&index, stmt, &object, db](auto& column) {
+                        if(column.is_generated()) {
+                            return;
+                        }
                         using column_type = typename std::decay<decltype(column)>::type;
                         using field_type = typename column_type::field_type;
                         if(column.member_pointer) {
