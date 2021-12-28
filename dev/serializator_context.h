@@ -13,6 +13,11 @@ namespace sqlite_orm {
             const std::string* column_name(F O::*) const {
                 return nullptr;
             }
+
+            template<class T, class F>
+            const std::string* column_name(const column_pointer<T, F>&) const {
+                return nullptr;
+            }
         };
 
         template<class I>
@@ -24,8 +29,13 @@ namespace sqlite_orm {
             serializator_context(const impl_type& impl_) : impl(impl_) {}
 
             template<class O, class F>
-            const std::string* column_name(F O::*m) const {
-                return this->impl.column_name(m);
+            const std::string* column_name(F O::*memberPointer) const {
+                return this->impl.column_name(memberPointer);
+            }
+
+            template<class T, class F>
+            const std::string* column_name(const column_pointer<T, F>& columnPointer) const {
+                return this->impl.column_name(columnPointer);
             }
         };
 

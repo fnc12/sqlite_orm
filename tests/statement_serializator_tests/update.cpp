@@ -24,10 +24,32 @@ TEST_CASE("statement_serializator update") {
             auto storageImpl = storage_impl_t{table};
             using context_t = internal::serializator_context<storage_impl_t>;
             context_t context{storageImpl};
+            SECTION("update") {
+                SECTION("with question marks") {
+                    context.replace_bindable_with_question = true;
+                    expected = "UPDATE 'table' SET \"type\" = ?, \"idx\" = ?, \"value\" = ? WHERE \"address\" = ?";
+                }
+                SECTION("without question marks") {
+                    context.replace_bindable_with_question = false;
+                    expected = "UPDATE 'table' SET \"type\" = 2, \"idx\" = 3, \"value\" = 4 WHERE \"address\" = 1";
+                }
 
-            A object{1, 2, 3, 4};
-            auto expression = update(object);
-            value = serialize(expression, context);
+                A object{1, 2, 3, 4};
+                auto expression = update(object);
+                value = serialize(expression, context);
+            }
+            SECTION("update_all") {
+                auto expression = update_all(set(assign(&A::value, 5)), where(is_equal(&A::address, 1)));
+                SECTION("with question marks") {
+                    context.replace_bindable_with_question = true;
+                    expected = "UPDATE 'table' SET \"value\" = ? WHERE ((\"address\" = ?))";
+                }
+                SECTION("without question marks") {
+                    context.replace_bindable_with_question = false;
+                    expected = "UPDATE 'table' SET \"value\" = 5 WHERE ((\"address\" = 1))";
+                }
+                value = serialize(expression, context);
+            }
         }
         SECTION("table") {
             auto table = make_table("table",
@@ -40,12 +62,19 @@ TEST_CASE("statement_serializator update") {
             auto storageImpl = storage_impl_t{table};
             using context_t = internal::serializator_context<storage_impl_t>;
             context_t context{storageImpl};
+            SECTION("with question marks") {
+                context.replace_bindable_with_question = true;
+                expected = "UPDATE 'table' SET \"type\" = ?, \"idx\" = ?, \"value\" = ? WHERE \"address\" = ?";
+            }
+            SECTION("without question marks") {
+                context.replace_bindable_with_question = false;
+                expected = "UPDATE 'table' SET \"type\" = 2, \"idx\" = 3, \"value\" = 4 WHERE \"address\" = 1";
+            }
 
             A object{1, 2, 3, 4};
             auto expression = update(object);
             value = serialize(expression, context);
         }
-        expected = "UPDATE 'table' SET \"type\" = ?, \"idx\" = ?, \"value\" = ? WHERE \"address\" = ?";
     }
     SECTION("composite key 2") {
         auto table = make_table("table",
@@ -58,11 +87,18 @@ TEST_CASE("statement_serializator update") {
         auto storageImpl = storage_impl_t{table};
         using context_t = internal::serializator_context<storage_impl_t>;
         context_t context{storageImpl};
+        SECTION("with question marks") {
+            context.replace_bindable_with_question = true;
+            expected = "UPDATE 'table' SET \"idx\" = ?, \"value\" = ? WHERE \"address\" = ? AND \"type\" = ?";
+        }
+        SECTION("without question marks") {
+            context.replace_bindable_with_question = false;
+            expected = "UPDATE 'table' SET \"idx\" = 3, \"value\" = 4 WHERE \"address\" = 1 AND \"type\" = 2";
+        }
 
         A object{1, 2, 3, 4};
         auto expression = update(object);
         value = serialize(expression, context);
-        expected = "UPDATE 'table' SET \"idx\" = ?, \"value\" = ? WHERE \"address\" = ? AND \"type\" = ?";
     }
     SECTION("composite key 3") {
         auto table = make_table("table",
@@ -75,11 +111,18 @@ TEST_CASE("statement_serializator update") {
         auto storageImpl = storage_impl_t{table};
         using context_t = internal::serializator_context<storage_impl_t>;
         context_t context{storageImpl};
+        SECTION("question marks") {
+            context.replace_bindable_with_question = true;
+            expected = "UPDATE 'table' SET \"value\" = ? WHERE \"address\" = ? AND \"type\" = ? AND \"idx\" = ?";
+        }
+        SECTION("no question marks") {
+            context.replace_bindable_with_question = false;
+            expected = "UPDATE 'table' SET \"value\" = 4 WHERE \"address\" = 1 AND \"type\" = 2 AND \"idx\" = 3";
+        }
 
         A object{1, 2, 3, 4};
         auto expression = update(object);
         value = serialize(expression, context);
-        expected = "UPDATE 'table' SET \"value\" = ? WHERE \"address\" = ? AND \"type\" = ? AND \"idx\" = ?";
     }
     REQUIRE(value == expected);
 }

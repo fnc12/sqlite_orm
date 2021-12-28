@@ -174,7 +174,7 @@ namespace sqlite_orm {
         struct update_t {
             using type = T;
 
-            type obj;
+            type object;
         };
 
         template<class T, class... Ids>
@@ -189,7 +189,7 @@ namespace sqlite_orm {
         struct insert_t {
             using type = T;
 
-            type obj;
+            type object;
         };
 
         template<class T>
@@ -211,7 +211,7 @@ namespace sqlite_orm {
         struct replace_t {
             using type = T;
 
-            type obj;
+            type object;
         };
 
         template<class T>

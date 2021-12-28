@@ -8,6 +8,9 @@
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif  //  SQLITE_ORM_OMITS_CODECVT
 
 namespace sqlite_orm {
 
@@ -62,8 +65,8 @@ namespace sqlite_orm {
 
     template<>
     struct field_printer<std::string, void> {
-        std::string operator()(const std::string& t) const {
-            return t;
+        std::string operator()(const std::string& string) const {
+            return string;
         }
     };
 
@@ -78,7 +81,15 @@ namespace sqlite_orm {
             return ss.str();
         }
     };
-
+#ifndef SQLITE_ORM_OMITS_CODECVT
+    template<>
+    struct field_printer<std::wstring, void> {
+        std::string operator()(const std::wstring& wideString) const {
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            return converter.to_bytes(wideString);
+        }
+    };
+#endif  //  SQLITE_ORM_OMITS_CODECVT
     template<>
     struct field_printer<std::nullptr_t, void> {
         std::string operator()(const std::nullptr_t&) const {

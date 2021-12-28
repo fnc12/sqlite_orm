@@ -363,6 +363,115 @@ TEST_CASE("Select") {
     REQUIRE(storage.get<Word>(firstId).currentWord == "ototo");
 }
 
+TEST_CASE("Replace query") {
+    struct Object {
+        int id;
+        std::string name;
+    };
+
+    struct User {
+
+        User(int id_, std::string name_) : id(id_), name(move(name_)) {}
+
+        int getId() const {
+            return this->id;
+        }
+
+        void setId(int id_) {
+            this->id = id_;
+        }
+
+        std::string getName() const {
+            return this->name;
+        }
+
+        void setName(std::string name_) {
+            this->name = move(name_);
+        }
+
+      private:
+        int id = 0;
+        std::string name;
+    };
+
+    auto storage = make_storage(
+        "test_replace.sqlite",
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)),
+        make_table("users",
+                   make_column("id", &User::getId, &User::setId, primary_key()),
+                   make_column("name", &User::setName, &User::getName)));
+
+    storage.sync_schema();
+    storage.remove_all<Object>();
+    storage.remove_all<User>();
+
+    storage.replace(Object{
+        100,
+        "Baby",
+    });
+    REQUIRE(storage.count<Object>() == 1);
+    auto baby = storage.get<Object>(100);
+    REQUIRE(baby.id == 100);
+    REQUIRE(baby.name == "Baby");
+
+    storage.replace(Object{
+        200,
+        "Time",
+    });
+    REQUIRE(storage.count<Object>() == 2);
+    auto time = storage.get<Object>(200);
+    REQUIRE(time.id == 200);
+    REQUIRE(time.name == "Time");
+    storage.replace(Object{
+        100,
+        "Ototo",
+    });
+    REQUIRE(storage.count<Object>() == 2);
+    auto ototo = storage.get<Object>(100);
+    REQUIRE(ototo.id == 100);
+    REQUIRE(ototo.name == "Ototo");
+
+    SECTION("straight") {
+        auto initList = {
+            Object{
+                300,
+                "Iggy",
+            },
+            Object{
+                400,
+                "Azalea",
+            },
+        };
+        storage.replace_range(initList.begin(), initList.end());
+        REQUIRE(storage.count<Object>() == 4);
+
+        //  test empty container
+        std::vector<Object> emptyVector;
+        storage.replace_range(emptyVector.begin(), emptyVector.end());
+    }
+    SECTION("pointers") {
+        std::vector<std::unique_ptr<Object>> vector;
+        vector.push_back(std::make_unique<Object>(Object{300, "Iggy"}));
+        vector.push_back(std::make_unique<Object>(Object{400, "Azalea"}));
+        storage.replace_range<Object>(vector.begin(),
+                                      vector.end(),
+                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                          return *pointer;
+                                      });
+        REQUIRE(storage.count<Object>() == 4);
+
+        //  test empty container
+        std::vector<std::unique_ptr<Object>> emptyVector;
+        storage.replace_range<Object>(emptyVector.begin(),
+                                      emptyVector.end(),
+                                      [](const std::unique_ptr<Object> &pointer) -> const Object & {
+                                          return *pointer;
+                                      });
+    }
+    REQUIRE(storage.count<User>() == 0);
+    storage.replace(User{10, "Daddy Yankee"});
+}
+
 TEST_CASE("Remove all") {
     struct Object {
         int id;
@@ -382,4 +491,163 @@ TEST_CASE("Remove all") {
     storage.remove_all<Object>(where(c(&Object::id) == 1));
 
     REQUIRE(storage.count<Object>() == 1);
+}
+
+TEST_CASE("Explicit insert") {
+    struct User {
+        int id;
+        std::string name;
+        int age;
+        std::string email;
+    };
+
+    class Visit {
+      public:
+        const int &id() const {
+            return _id;
+        }
+
+        void setId(int newValue) {
+            _id = newValue;
+        }
+
+        const time_t &createdAt() const {
+            return _createdAt;
+        }
+
+        void setCreatedAt(time_t newValue) {
+            _createdAt = newValue;
+        }
+
+        const int &usedId() const {
+            return _usedId;
+        }
+
+        void setUsedId(int newValue) {
+            _usedId = newValue;
+        }
+
+      private:
+        int _id;
+        time_t _createdAt;
+        int _usedId;
+    };
+
+    auto storage =
+        make_storage("explicitinsert.sqlite",
+                     make_table("users",
+                                make_column("id", &User::id, primary_key()),
+                                make_column("name", &User::name),
+                                make_column("age", &User::age),
+                                make_column("email", &User::email, default_value("dummy@email.com"))),
+                     make_table("visits",
+                                make_column("id", &Visit::setId, &Visit::id, primary_key()),
+                                make_column("created_at", &Visit::createdAt, &Visit::setCreatedAt, default_value(10)),
+                                make_column("used_id", &Visit::usedId, &Visit::setUsedId)));
+
+    storage.sync_schema();
+    storage.remove_all<User>();
+    storage.remove_all<Visit>();
+
+    SECTION("user") {
+        SECTION("two columns") {
+            User user{};
+            user.name = "Juan";
+            user.age = 57;
+            auto id = storage.insert(user, columns(&User::name, &User::age));
+            REQUIRE(storage.get<User>(id).email == "dummy@email.com");
+        }
+        SECTION("three columns") {
+            User user2;
+            user2.id = 2;
+            user2.name = "Kevin";
+            user2.age = 27;
+            REQUIRE(user2.id == storage.insert(user2, columns(&User::id, &User::name, &User::age)));
+            REQUIRE(storage.get<User>(user2.id).email == "dummy@email.com");
+        }
+        SECTION("four columns") {
+            User user3;
+            user3.id = 3;
+            user3.name = "Sia";
+            user3.age = 42;
+            user3.email = "sia@gmail.com";
+            auto insertedId = storage.insert(user3, columns(&User::id, &User::name, &User::age, &User::email));
+            REQUIRE(user3.id == insertedId);
+            auto insertedUser3 = storage.get<User>(user3.id);
+            REQUIRE(insertedUser3.email == user3.email);
+            REQUIRE(insertedUser3.age == user3.age);
+            REQUIRE(insertedUser3.name == user3.name);
+        }
+        SECTION("one column") {
+            User user4;
+            user4.name = "Egor";
+            try {
+                storage.insert(user4, columns(&User::name));
+                REQUIRE(false);
+                //                throw std::runtime_error("Must not fire");
+            } catch(const std::system_error &) {
+                //        cout << e.what() << endl;
+            }
+        }
+    }
+    SECTION("visit") {
+        SECTION("one column not primary key") {
+            Visit visit;
+            SECTION("getter") {
+                visit.setUsedId(1);
+                visit.setId(storage.insert(visit, columns(&Visit::usedId)));
+
+                auto visitFromStorage = storage.get<Visit>(visit.id());
+                REQUIRE(visitFromStorage.createdAt() == 10);
+                REQUIRE(visitFromStorage.usedId() == visit.usedId());
+                storage.remove<Visit>(visitFromStorage.usedId());
+            }
+            SECTION("setter") {
+                visit.setId(storage.insert(visit, columns(&Visit::setUsedId)));
+                auto visitFromStorage = storage.get<Visit>(visit.id());
+                REQUIRE(visitFromStorage.createdAt() == 10);
+                REQUIRE(visitFromStorage.usedId() == visit.usedId());
+                storage.remove<Visit>(visitFromStorage.usedId());
+            }
+        }
+        SECTION("two columns") {
+            Visit visit2;
+            visit2.setId(2);
+            visit2.setUsedId(1);
+            SECTION("getters") {
+                auto insertedId = storage.insert(visit2, columns(&Visit::id, &Visit::usedId));
+                REQUIRE(visit2.id() == insertedId);
+                auto visitFromStorage = storage.get<Visit>(visit2.id());
+                REQUIRE(visitFromStorage.usedId() == visit2.usedId());
+                storage.remove<Visit>(visit2.id());
+            }
+            SECTION("setters") {
+                auto insertedId = storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId));
+                REQUIRE(visit2.id() == insertedId);
+                auto visitFromStorage = storage.get<Visit>(visit2.id());
+                REQUIRE(visitFromStorage.usedId() == visit2.usedId());
+                storage.remove<Visit>(visit2.id());
+            }
+        }
+        SECTION("one column primary key") {
+            Visit visit3;
+            visit3.setId(10);
+            SECTION("getter") {
+                try {
+                    storage.insert(visit3, columns(&Visit::id));
+                    REQUIRE(false);
+                } catch(const std::system_error &) {
+                    //        cout << e.what() << endl;
+                }
+            }
+            SECTION("setter") {
+                try {
+                    storage.insert(visit3, columns(&Visit::setId));
+                    REQUIRE(false);
+                } catch(const std::system_error &) {
+                    //        cout << e.what() << endl;
+                }
+            }
+        }
+    }
 }

@@ -107,6 +107,21 @@ namespace sqlite_orm {
                 });
                 return res;
             }
+
+            bool is_generated() const {
+#if SQLITE_VERSION_NUMBER >= 3031000
+                auto res = false;
+                iterate_tuple(this->constraints, [&res](auto& constraint) {
+                    using constraint_type = typename std::decay<decltype(constraint)>::type;
+                    if(!res) {
+                        res = is_generated_always<constraint_type>::value;
+                    }
+                });
+                return res;
+#else
+                return false;
+#endif
+            }
         };
 
         // we are compelled to wrap all sfinae-implemented traits to prevent "error: type/value mismatch at argument 2 in template parameter list"

@@ -69,8 +69,8 @@ namespace sqlite_orm {
 
       protected:
         // Constructing pointer bindings must go through bindable_pointer()
-        template<class T, class P, class D>
-        friend auto bindable_pointer(P*, D) noexcept -> pointer_binding<P, T, D>;
+        template<class T2, class P2, class D2>
+        friend auto bindable_pointer(P2*, D2) noexcept -> pointer_binding<P2, T2, D2>;
         template<class B>
         friend B bindable_pointer(typename B::qualified_type*, typename B::deleter_type) noexcept;
 

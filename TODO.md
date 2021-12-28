@@ -10,10 +10,8 @@
 * triggers
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
 * `WINDOW`
-* `UPSERT` https://www.sqlite.org/lang_UPSERT.html
 * `SAVEPOINT` https://www.sqlite.org/lang_savepoint.html
 * add `static_assert` in crud `get*` functions in case user passes `where_t` instead of id to make compilation error more clear (example https://github.com/fnc12/sqlite_orm/issues/485)
-* generated columns https://www.sqlite.org/gencol.html
 * named constraints: constraint can have name `CREATE TABLE heroes(id INTEGER CONSTRAINT pk PRIMARY KEY)`
 * `FILTER` clause https://sqlite.org/lang_aggfunc.html#aggfilter
 * scalar math functions https://sqlite.org/lang_mathfunc.html
@@ -22,5 +20,7 @@
 * `iif()` function https://sqlite.org/lang_corefunc.html#iif
 * add strong typed collate syntax (more info [here](https://github.com/fnc12/sqlite_orm/issues/767#issuecomment-887689672))
 * raw `INSERT`: `storage.insert_into<User>(&User::id, values(5));` or `storage.insert_into<User>(columns(&User::id, &User::name), values(5, "Puff Diddy"));` or `storage.insert_into<User>(columns(), default_values());`
+* strict tables https://sqlite.org/stricttables.html
+* static assert when UPDATE is called with no PKs
 
 Please feel free to add any feature that isn't listed here and not implemented yet.

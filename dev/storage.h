@@ -109,7 +109,13 @@ namespace sqlite_orm {
                 }
                 perform_void_exec(db, ss.str());
             }
-
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+            void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
+                std::stringstream ss;
+                ss << "ALTER TABLE '" << tableName << "' DROP COLUMN \"" << columnName << "\"";
+                perform_void_exec(db, ss.str());
+            }
+#endif
             template<class I>
             void backup_table(sqlite3* db, const I& tableImpl, const std::vector<table_info*>& columnsToIgnore) {
 
@@ -155,7 +161,7 @@ namespace sqlite_orm {
 
                 static_if<is_without_rowid{}>(
                     [](auto&) {},  // all right. it's a "without_rowid" table
-                    [](auto& tImpl) {  // unfortunately, this static_assert's can't see an composite keys((
+                    [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
                         std::ignore = tImpl;
                         static_assert(
                             count_tuple<elements_type, is_column_with_insertable_primary_key>::value <= 1,
@@ -830,15 +836,26 @@ namespace sqlite_orm {
                             tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                             if(schema_stat == sync_schema_result::old_columns_removed) {
-
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+                                for(auto& tableInfo: dbTableInfo) {
+                                    this->drop_column(db, tImpl.table.name, tableInfo.name);
+                                }
+                                res = decltype(res)::old_columns_removed;
+#else
                                 //  extra table columns than storage columns
                                 this->backup_table(db, tImpl, {});
                                 res = decltype(res)::old_columns_removed;
+#endif
                             }
 
                             if(schema_stat == sync_schema_result::new_columns_added) {
                                 for(auto columnPointer: columnsToAdd) {
-                                    tImpl.add_column(*columnPointer, db);
+                                    tImpl.table.for_each_column([this, columnPointer, &tImpl, db](auto& column) {
+                                        if(column.name != columnPointer->name) {
+                                            return;
+                                        }
+                                        this->add_column(tImpl.table.name, column, db);
+                                    });
                                 }
                                 res = decltype(res)::new_columns_added;
                             }
@@ -857,6 +874,16 @@ namespace sqlite_orm {
                     }
                 }
                 return res;
+            }
+
+            template<class C>
+            void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
+                std::stringstream ss;
+                ss << "ALTER TABLE " << tableName << " ADD COLUMN ";
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                ss << serialize(column, context);
+                perform_void_exec(db, ss.str());
             }
 
             template<typename S>
@@ -890,16 +917,16 @@ namespace sqlite_orm {
              *          * if there are columns in storage that do not exist in db they will be added using `ALTER TABLE
              * ... ADD COLUMN ...' command
              *          * if there is any column existing in both db and storage but differs by any of
-             * properties/constraints (type, pk, notnull, dflt_value) table will be dropped and recreated Be aware that
+             * properties/constraints (pk, notnull, dflt_value) table will be dropped and recreated. Be aware that
              * `sync_schema` doesn't guarantee that data will not be dropped. It guarantees only that it will make db
              * schema the same as you specified in `make_storage` function call. A good point is that if you have no db
              * file at all it will be created and all tables also will be created with exact tables and columns you
-             * specified in `make_storage`, `make_table` and `make_column` call. The best practice is to call this
+             * specified in `make_storage`, `make_table` and `make_column` calls. The best practice is to call this
              * function right after storage creation.
-             *  @param preserve affects on function behaviour in case it is needed to remove a column. If it is `false`
-             * so table will be dropped if there is column to remove, if `true` -  table is being copied into another
-             * table, dropped and copied table is renamed with source table name. Warning: sync_schema doesn't check
-             * foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info please
+             *  @param preserve affects function's behaviour in case it is needed to remove a column. If it is `false`
+             * so table will be dropped if there is column to remove if SQLite version is < 3.35.0 and rmeove column if SQLite version >= 3.35.0,
+             * if `true` -  table is being copied into another table, dropped and copied table is renamed with source table name.
+             * Warning: sync_schema doesn't check foreign keys cause it is unable to do so in sqlite3. If you know how to get foreign key info please
              * submit an issue https://github.com/fnc12/sqlite_orm/issues
              *  @return std::map with std::string key equal table name and `sync_schema_result` as value.
              * `sync_schema_result` is a enum value that stores table state after syncing a schema. `sync_schema_result`
@@ -1124,6 +1151,9 @@ namespace sqlite_orm {
 
                 auto processObject = [&index, &stmt, &tImpl, db](auto& object) {
                     tImpl.table.for_each_column([&index, stmt, &object, db](auto& column) {
+                        if(column.is_generated()) {
+                            return;
+                        }
                         using column_type = typename std::decay<decltype(column)>::type;
                         using field_type = typename column_type::field_type;
                         if(column.member_pointer) {
@@ -1174,32 +1204,29 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto& tImpl = this->get_impl<object_type>();
-                auto compositeKeyColumnNames = tImpl.table.composite_key_columns_names();
                 sqlite3_reset(stmt);
-                auto processObject = [&index, &stmt, &tImpl, &compositeKeyColumnNames, db](auto& o) {
-                    tImpl.table.for_each_column([&](auto& c) {
+                auto processObject = [&index, stmt, &tImpl, db](auto& object) {
+                    tImpl.table.for_each_column([&tImpl, &index, &object, db, stmt](auto& column) {
                         using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                        if(table_type::is_without_rowid || !c.template has<primary_key_t<>>()) {
-                            auto it = std::find(compositeKeyColumnNames.begin(), compositeKeyColumnNames.end(), c.name);
-                            if(it == compositeKeyColumnNames.end()) {
-                                using column_type = typename std::decay<decltype(c)>::type;
-                                using field_type = typename column_type::field_type;
-                                if(c.member_pointer) {
-                                    if(SQLITE_OK !=
-                                       statement_binder<field_type>().bind(stmt, index++, o.*c.member_pointer)) {
-                                        throw std::system_error(
-                                            std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                                    }
-                                } else {
-                                    using getter_type = typename column_type::getter_type;
-                                    field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
-                                    if(SQLITE_OK !=
-                                       statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
-                                        throw std::system_error(
-                                            std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
-                                    }
+                        if(table_type::is_without_rowid ||
+                           (!column.template has<primary_key_t<>>() &&
+                            !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
+                            using column_type = typename std::decay<decltype(column)>::type;
+                            using field_type = typename column_type::field_type;
+                            if(column.member_pointer) {
+                                if(SQLITE_OK !=
+                                   statement_binder<field_type>().bind(stmt, index++, object.*column.member_pointer)) {
+                                    throw std::system_error(
+                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                        sqlite3_errmsg(db));
+                                }
+                            } else {
+                                using getter_type = typename column_type::getter_type;
+                                field_value_holder<getter_type> valueHolder{((object).*(column.getter))()};
+                                if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
+                                    throw std::system_error(
+                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                        sqlite3_errmsg(db));
                                 }
                             }
                         }
