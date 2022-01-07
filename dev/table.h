@@ -6,6 +6,7 @@
 #include <tuple>  //  std::tuple_size, std::tuple_element
 #include <algorithm>  //  std::reverse, std::find_if
 
+#include "cxx_polyfill.h"
 #include "column_result.h"
 #include "static_magic.h"
 #include "typed_comparator.h"
@@ -19,6 +20,9 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<typename T>
+        using cte_label_t = typename T::cte_label_type;
+
         struct basic_table {
 
             /**
@@ -30,10 +34,11 @@ namespace sqlite_orm {
         /**
          *  Table class.
          */
-        template<class T, bool WithoutRowId, class... Cs>
+        template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
             using super = basic_table;
-            using object_type = T;
+            using object_type = O;
+            using cte_label_type = polyfill::detected_or_t<void, cte_label_t, O>;
             using elements_type = std::tuple<Cs...>;
 
             static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
@@ -43,7 +48,7 @@ namespace sqlite_orm {
 
             table_t(std::string name_, elements_type elements_) : super{move(name_)}, elements{move(elements_)} {}
 
-            table_t<T, true, Cs...> without_rowid() const {
+            table_t<O, true, Cs...> without_rowid() const {
                 return {this->name, this->elements};
             }
 
@@ -309,13 +314,13 @@ namespace sqlite_orm {
      *  Function used for table creation. Do not use table constructor - use this function
      *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
-    template<class... Cs, class T = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
-    internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
+    template<class... Cs, class O = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
+    internal::table_t<O, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
 
-    template<class T, class... Cs>
-    internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
+    template<class O, class... Cs>
+    internal::table_t<O, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
 }

@@ -14,6 +14,9 @@ namespace sqlite_orm {
 
             connection_holder(std::string filename_) : filename(move(filename_)) {}
 
+            connection_holder(connection_holder* connection) :
+                filename{connection->filename}, db{connection->db}, _retain_count{++connection->_retain_count} {}
+
             void retain() {
                 ++this->_retain_count;
                 if(1 == this->_retain_count) {

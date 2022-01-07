@@ -48,6 +48,7 @@
 #include "../../dev/table.h"
 #include "../../dev/storage_impl.h"
 #include "../../dev/storage.h"
+#include "../../dev/cte.h"
 #include "../../dev/finish_macros.h"
 #include "../../dev/node_tuple.h"
 #include "../../dev/get_prepared_statement.h"

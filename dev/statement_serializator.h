@@ -9,6 +9,7 @@
 #include <optional>
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "cxx_polyfill.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -211,7 +212,11 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 auto tableAliasString = alias_extractor<T>::get();
-                return serialize(c.expression, context) + " AS " + tableAliasString;
+                if(c.serializeAlias) {
+                    return tableAliasString;
+                } else {
+                    return serialize(c.expression, context) + " AS " + tableAliasString;
+                }
             }
         };
 
@@ -467,6 +472,41 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " (";
                 ss << serialize(c.expression, context) << " AS " << type_printer<T>().print() << ")";
+                return ss.str();
+            }
+        };
+
+        template<class CTE>
+        struct statement_serializator<
+            CTE,
+            polyfill::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
+            using statement_type = CTE;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& c, const Ctx& context) const {
+                Ctx cteContext = context;
+                cteContext.use_parentheses = true;
+
+                std::stringstream ss;
+                ss << static_cast<std::string>(c) << " as ";
+                ss << serialize(c.expression, cteContext);
+                return ss.str();
+            }
+        };
+
+        template<class With>
+        struct statement_serializator<With, polyfill::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
+            using statement_type = With;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& c, const Ctx& context) const {
+                Ctx tupleContext = context;
+                tupleContext.use_parentheses = false;
+
+                std::stringstream ss;
+                ss << static_cast<std::string>(c) << " ";
+                ss << serialize(c.cte, tupleContext) << " ";
+                ss << serialize(c.expression, context);
                 return ss.str();
             }
         };
@@ -1785,11 +1825,10 @@ namespace sqlite_orm {
                 ss << "FROM ";
                 size_t index = 0;
                 iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
-                    using mapped_type = typename std::remove_pointer<decltype(itemPointer)>::type;
+                    using from_type = std::remove_cv_t<std::remove_pointer_t<decltype(itemPointer)>>;
 
-                    auto aliasString = alias_extractor<mapped_type>::get();
-                    ss << "'" << context.impl.find_table_name(typeid(typename mapped_type_proxy<mapped_type>::type))
-                       << "'";
+                    auto aliasString = alias_extractor<from_type>::get();
+                    ss << "'" << context.impl.get_table_name<typename mapped_type_proxy<from_type>::type>() << "'";
                     if(aliasString.length()) {
                         ss << " '" << aliasString << "'";
                     }
@@ -2106,7 +2145,9 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << '(';
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
                 auto index = 0;
                 using TupleSize = std::tuple_size<statement_type>;
                 iterate_tuple(statement, [&context, &index, &ss](auto& value) {
@@ -2116,7 +2157,9 @@ namespace sqlite_orm {
                     }
                     ++index;
                 });
-                ss << ')';
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
                 return ss.str();
             }
         };

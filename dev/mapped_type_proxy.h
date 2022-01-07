@@ -7,10 +7,10 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  If T is alias than mapped_type_proxy<T>::type is alias::type
+         *  If T is alias then mapped_type_proxy<T>::type is alias::type
          *  otherwise T is T.
          */
-        template<class T, class sfinae = void>
+        template<class T, class SFINAE = void>
         struct mapped_type_proxy {
             using type = T;
         };

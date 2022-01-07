@@ -8,7 +8,7 @@ namespace sqlite_orm {
         template<class... Ts>
         struct storage_impl;
 
-        template<class T, bool WithoutRowId, class... Cs>
+        template<class O, bool WithoutRowId, class... Cs>
         struct table_t;
 
         template<class A, class B>
@@ -18,71 +18,71 @@ namespace sqlite_orm {
 
             /**
              *  S - storage_impl type
-             *  T - mapped or not mapped data type
+             *  O - mapped or not mapped data type
              */
-            template<class S, class T, class SFINAE = void>
+            template<class S, class O, class SFINAE = void>
             struct type_is_mapped_impl;
 
             /**
              *  S - storage
-             *  T - mapped or not mapped data type
+             *  O - mapped or not mapped data type
              */
-            template<class S, class T>
-            struct type_is_mapped : type_is_mapped_impl<typename S::impl_type, T> {};
+            template<class S, class O>
+            struct type_is_mapped : type_is_mapped_impl<typename S::impl_type, O> {};
 
             /**
              *  Final specialisation
              */
-            template<class T>
-            struct type_is_mapped_impl<storage_impl<>, T, void> : std::false_type {};
+            template<class O>
+            struct type_is_mapped_impl<storage_impl<>, O, void> : std::false_type {};
 
-            template<class S, class T>
+            template<class S, class O>
             struct type_is_mapped_impl<
                 S,
-                T,
-                typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type>
+                O,
+                typename std::enable_if<std::is_same<O, typename S::table_type::object_type>::value>::type>
                 : std::true_type {};
 
-            template<class S, class T>
+            template<class S, class O>
             struct type_is_mapped_impl<
                 S,
-                T,
-                typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
-                : type_is_mapped_impl<typename S::super, T> {};
+                O,
+                typename std::enable_if<!std::is_same<O, typename S::table_type::object_type>::value>::type>
+                : type_is_mapped_impl<typename S::super, O> {};
 
             /**
              *  S - storage_impl type
-             *  T - mapped or not mapped data type
+             *  O - mapped or not mapped data type
              */
-            template<class S, class T, class SFINAE = void>
+            template<class S, class O, class SFINAE = void>
             struct storage_columns_count_impl;
 
             /**
              *  S - storage
-             *  T - mapped or not mapped data type
+             *  O - mapped or not mapped data type
              */
-            template<class S, class T>
-            struct storage_columns_count : storage_columns_count_impl<typename S::impl_type, T> {};
+            template<class S, class O>
+            struct storage_columns_count : storage_columns_count_impl<typename S::impl_type, O> {};
 
             /**
              *  Final specialisation
              */
-            template<class T>
-            struct storage_columns_count_impl<storage_impl<>, T, void> : std::integral_constant<int, 0> {};
+            template<class O>
+            struct storage_columns_count_impl<storage_impl<>, O, void> : std::integral_constant<int, 0> {};
 
-            template<class S, class T>
+            template<class S, class O>
             struct storage_columns_count_impl<
                 S,
-                T,
-                typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type>
+                O,
+                typename std::enable_if<std::is_same<O, typename S::table_type::object_type>::value>::type>
                 : std::integral_constant<int, S::table_type::elements_count> {};
 
-            template<class S, class T>
+            template<class S, class O>
             struct storage_columns_count_impl<
                 S,
-                T,
-                typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
-                : storage_columns_count_impl<typename S::super, T> {};
+                O,
+                typename std::enable_if<!std::is_same<O, typename S::table_type::object_type>::value>::type>
+                : storage_columns_count_impl<typename S::super, O> {};
 
             /**
              *  T - table type.
@@ -93,8 +93,8 @@ namespace sqlite_orm {
             /**
              *  type is std::tuple of field types of mapped colums.
              */
-            template<class T, bool WithoutRowId, class... Args>
-            struct table_types<table_t<T, WithoutRowId, Args...>> {
+            template<class O, bool WithoutRowId, class... Args>
+            struct table_types<table_t<O, WithoutRowId, Args...>> {
                 using args_tuple = std::tuple<Args...>;
                 using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
 
@@ -103,41 +103,41 @@ namespace sqlite_orm {
 
             /**
              *  S - storage_impl type
-             *  T - mapped or not mapped data type
+             *  O - mapped or not mapped data type
              */
-            template<class S, class T, class SFINAE = void>
+            template<class S, class O, class SFINAE = void>
             struct storage_mapped_columns_impl;
 
             /**
              *  S - storage
-             *  T - mapped or not mapped data type
+             *  O - mapped or not mapped data type
              */
-            template<class S, class T>
-            struct storage_mapped_columns : storage_mapped_columns_impl<typename S::impl_type, T> {};
+            template<class S, class O>
+            struct storage_mapped_columns : storage_mapped_columns_impl<typename S::impl_type, O> {};
 
             /**
              *  Final specialisation
              */
-            template<class T>
-            struct storage_mapped_columns_impl<storage_impl<>, T, void> {
+            template<class O>
+            struct storage_mapped_columns_impl<storage_impl<>, O, void> {
                 using type = std::tuple<>;
             };
 
-            template<class S, class T>
+            template<class S, class O>
             struct storage_mapped_columns_impl<
                 S,
-                T,
-                typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
+                O,
+                typename std::enable_if<std::is_same<O, typename S::table_type::object_type>::value>::type> {
                 using table_type = typename S::table_type;
                 using type = typename table_types<table_type>::type;
             };
 
-            template<class S, class T>
+            template<class S, class O>
             struct storage_mapped_columns_impl<
                 S,
-                T,
-                typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
-                : storage_mapped_columns_impl<typename S::super, T> {};
+                O,
+                typename std::enable_if<!std::is_same<O, typename S::table_type::object_type>::value>::type>
+                : storage_mapped_columns_impl<typename S::super, O> {};
 
             /**
              *  C is any column type: column_t or constraint type
@@ -178,11 +178,11 @@ namespace sqlite_orm {
             template<class T, class O>
             struct table_foreign_keys_count;
 
-            template<class T, class... Cs, class O>
-            struct table_foreign_keys_count<table_t<T, false, Cs...>, O> {
-                using table_type = table_t<T, false, Cs...>;
+            template<class O, class... Cs, class P>
+            struct table_foreign_keys_count<table_t<O, false, Cs...>, P> {
+                using table_type = table_t<O, false, Cs...>;
 
-                static constexpr const int value = table_foreign_keys_count_impl<O, Cs...>::value;
+                static constexpr const int value = table_foreign_keys_count_impl<P, Cs...>::value;
             };
 
             /**
@@ -305,18 +305,18 @@ namespace sqlite_orm {
             template<class T, class O>
             struct table_foreign_keys;
 
-            template<class T, bool WithoutRowId, class... Cs, class O>
-            struct table_fk_references<table_t<T, WithoutRowId, Cs...>, O> {
-                using table_type = table_t<T, WithoutRowId, Cs...>;
+            template<class O, bool WithoutRowId, class... Cs, class P>
+            struct table_fk_references<table_t<O, WithoutRowId, Cs...>, P> {
+                using table_type = table_t<O, WithoutRowId, Cs...>;
 
-                using type = typename table_fk_references_impl<O, Cs...>::type;
+                using type = typename table_fk_references_impl<P, Cs...>::type;
             };
 
-            template<class T, bool WithoutRowId, class... Cs, class O>
-            struct table_foreign_keys<table_t<T, WithoutRowId, Cs...>, O> {
-                using table_type = table_t<T, WithoutRowId, Cs...>;
+            template<class O, bool WithoutRowId, class... Cs, class P>
+            struct table_foreign_keys<table_t<O, WithoutRowId, Cs...>, P> {
+                using table_type = table_t<O, WithoutRowId, Cs...>;
 
-                using type = typename table_foreign_keys_impl<O, Cs...>::type;
+                using type = typename table_foreign_keys_impl<P, Cs...>::type;
             };
 
             /**

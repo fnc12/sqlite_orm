@@ -13,8 +13,12 @@ namespace sqlite_orm {
 
             template<bool v>
             using bool_constant = std::integral_constant<bool, v>;
+
+            template<bool C, typename T>
+            using enable_if_t = typename std::enable_if<C, T>::type;
 #else
             using std::bool_constant;
+            using std::enable_if_t;
             using std::void_t;
 #endif
 
@@ -39,6 +43,41 @@ namespace sqlite_orm {
 
             template<size_t I>
             using index_constant = std::integral_constant<size_t, I>;
+
+#if 1  // library fundamentals TS v2
+            struct nonesuch {
+                ~nonesuch() = delete;
+                nonesuch(const nonesuch&) = delete;
+                void operator=(const nonesuch&) = delete;
+            };
+
+            template<class Default, class AlwaysVoid, template<class...> class Op, class... Args>
+            struct detector {
+                using value_t = std::false_type;
+                using type = Default;
+            };
+
+            template<class Default, template<class...> class Op, class... Args>
+            struct detector<Default, polyfill::void_t<Op<Args...>>, Op, Args...> {
+                using value_t = std::true_type;
+                using type = Op<Args...>;
+            };
+
+            template<template<class...> class Op, class... Args>
+            using is_detected = typename detector<nonesuch, void, Op, Args...>::value_t;
+
+            template<template<class...> class Op, class... Args>
+            using detected_t = typename detector<nonesuch, void, Op, Args...>::type;
+
+            template<class Default, template<class...> class Op, class... Args>
+            using detected_or = detector<Default, void, Op, Args...>;
+
+            template<class Default, template<class...> class Op, class... Args>
+            using detected_or_t = typename detected_or<Default, Op, Args...>::type;
+
+            template<template<class...> class Op, class... Args>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_detected_v = is_detected<Op, Args...>::value;
+#endif
         }
     }
 }

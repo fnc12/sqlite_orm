@@ -54,7 +54,7 @@ namespace sqlite_orm {
             template<class C>
             std::vector<std::string> operator()(const expression_type&, const C&) {
                 std::vector<std::string> res;
-                res.push_back("*");
+                res.emplace_back("*");
                 return res;
             }
         };
@@ -66,7 +66,7 @@ namespace sqlite_orm {
             template<class C>
             std::vector<std::string> operator()(const expression_type&, const C&) {
                 std::vector<std::string> res;
-                res.push_back("*");
+                res.emplace_back("*");
                 return res;
             }
         };
@@ -84,7 +84,7 @@ namespace sqlite_orm {
                 iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
                     auto columnName = serialize(m, newContext);
                     if(columnName.length()) {
-                        columnNames.push_back(columnName);
+                        columnNames.push_back(std::move(columnName));
                     } else {
                         throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                     }

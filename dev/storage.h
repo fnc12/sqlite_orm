@@ -70,7 +70,9 @@ namespace sqlite_orm {
             storage_t(const std::string& filename, impl_type impl_) :
                 storage_base{filename, foreign_keys_count(impl_)}, impl(std::move(impl_)) {}
 
-            storage_t(const storage_t& other) : storage_base(other), impl(other.impl) {}
+            storage_t(const storage_t&) = default;
+
+            storage_t(const storage_base& base, const Ts&... tables) : storage_base{base, true}, impl{tables...} {}
 
           protected:
             impl_type impl;
@@ -86,6 +88,15 @@ namespace sqlite_orm {
 
             template<class S>
             friend struct serializator_context_builder;
+
+            template<typename... CTETables>
+            friend storage_t<CTETables..., Ts...> storage_cat(const storage_t<Ts...>& storage,
+                                                              CTETables&&... cteTables) {
+                using storage_type = storage_t<CTETables..., Ts...>;
+                return storage_type(storage,
+                                    std::forward<CTETables>(cteTables)...,
+                                    storage.get_impl<typename Ts::object_type>().table...);
+            }
 
             template<class I>
             void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
@@ -436,7 +447,7 @@ namespace sqlite_orm {
                      class O,
                      class... Args,
                      class Tuple = std::tuple<Args...>,
-                     typename sfinae = typename std::enable_if<std::tuple_size<Tuple>::value >= 1>::type>
+                     typename SFINAE = typename std::enable_if<std::tuple_size<Tuple>::value >= 1>::type>
             std::string group_concat(F O::*m, Args&&... args) {
                 return this->group_concat_internal(m, {}, std::forward<Args>(args)...);
             }
@@ -904,6 +915,11 @@ namespace sqlite_orm {
                 }
             }
 
+            template<class CTE, class E>
+            friend prepared_statement_t<with_t<CTE, E>> prepare_with_cte(self&& storage, with_t<CTE, E> ast) {
+                return storage.prepare_impl<with_t<CTE, E>>(std::move(ast));
+            }
+
           public:
             /**
              *  This is a cute function used to replace migration up/down functionality.
@@ -967,6 +983,13 @@ namespace sqlite_orm {
             bool table_exists(const std::string& tableName) {
                 auto con = this->get_connection();
                 return this->impl.table_exists(tableName, con.get());
+            }
+
+            template<class CTE, class E>
+            typename std::enable_if<is_base_of_template<E, select_t>::value, prepared_statement_t<with_t<CTE, E>>>::type
+            prepare(with_t<CTE, E> ast) {
+                auto cte = make_cte_storage(*this, ast);
+                return prepare_with_cte(std::move(cte), std::move(ast));
             }
 
             template<class T, class... Args>
@@ -1478,8 +1501,8 @@ namespace sqlite_orm {
                 perform_step(db, stmt);
             }
 
-            template<class T, class... Args, class R = typename column_result_t<self, T>::type>
-            std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
+            template<class R, class S>
+            std::vector<R> _execute_select(const S& statement) {
                 auto con = this->get_connection();
                 auto db = con.get();
                 auto stmt = statement.stmt;
@@ -1516,6 +1539,16 @@ namespace sqlite_orm {
                     }
                 } while(stepRes != SQLITE_DONE);
                 return res;
+            }
+
+            template<class CTE, class T, class... Args, class R = typename column_result_t<self, T>::type>
+            std::vector<R> execute(const prepared_statement_t<with_t<CTE, select_t<T, Args...>>>& statement) {
+                return _execute_select<R>(statement);
+            }
+
+            template<class T, class... Args, class R = typename column_result_t<self, T>::type>
+            std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
+                return _execute_select<R>(statement);
             }
 
             template<class T, class R, class... Args>

@@ -230,6 +230,48 @@ namespace sqlite_orm {
             using super::super;
         };
 
+        struct with_string {
+            explicit operator std::string() const {
+                return "WITH";
+            }
+        };
+
+        /**
+         *  Labeled (aliased) CTE expression.
+         */
+        template<class Label, class E>
+        struct common_table_expression {
+            using label_type = Label;
+            using expression_type = E;
+
+            expression_type expression;
+
+            common_table_expression(expression_type expression) : expression{std::move(expression)} {
+                this->expression.highest_level = false;
+            }
+
+            explicit operator std::string() const {
+                return Label::label();
+            }
+        };
+
+        /**
+         *  Expression with CTEs attached.
+         */
+        template<class CTE, class E>
+        struct with_t : with_string {
+            using cte_type = std::tuple<CTE>;
+            using expression_type = E;
+
+            cte_type cte;
+            expression_type expression;
+
+            with_t(std::tuple<CTE> cte, expression_type expression) :
+                cte{move(cte)}, expression{std::move(expression)} {
+                this->expression.highest_level = true;
+            }
+        };
+
         /**
          *  Generic way to get DISTINCT value from any type.
          */
@@ -416,6 +458,20 @@ namespace sqlite_orm {
     template<class L, class R>
     internal::intersect_t<L, R> intersect(L lhs, R rhs) {
         return {std::move(lhs), std::move(rhs)};
+    }
+
+    template<class Label, class Select>
+    internal::common_table_expression<Label, Select> cte(Select sel) {
+        return {std::move(sel)};
+    }
+
+    template<class CTE, class E>
+    internal::with_t<CTE, E> with(std::tuple<CTE> ctes, E expression) {
+        return {move(ctes), std::move(expression)};
+    }
+    template<class CTE, class E>
+    internal::with_t<CTE, E> with(CTE cte, E expression) {
+        return {std::tuple<CTE>{move(cte)}, std::move(expression)};
     }
 
     /**

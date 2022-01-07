@@ -190,6 +190,28 @@ namespace sqlite_orm {
             }
         };
 
+        template<class CTE>
+        struct ast_iterator<CTE,
+                            polyfill::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
+            using node_type = CTE;
+
+            template<class L>
+            void operator()(const node_type& c, const L& l) const {
+                iterate_ast(c.expression, l);
+            }
+        };
+
+        template<class With>
+        struct ast_iterator<With, polyfill::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
+            using node_type = With;
+
+            template<class L>
+            void operator()(const node_type& c, const L& l) const {
+                iterate_ast(c.cte, l);
+                iterate_ast(c.expression, l);
+            }
+        };
+
         template<class T>
         struct ast_iterator<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
             using node_type = T;

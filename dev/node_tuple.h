@@ -129,6 +129,16 @@ namespace sqlite_orm {
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
+        template<class T>
+        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, common_table_expression>::value>::type> {
+            using node_type = T;
+            using cte_type = typename node_type::cte_type;
+            using expression_type = typename node_type::expression_type;
+            using cte_tuple = typename node_tuple<cte_type>::type;
+            using expression_tuple = typename node_tuple<expression_type>::type;
+            using type = typename conc_tuple<cte_tuple, expression_tuple>::type;
+        };
+
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> {
             using node_type = select_t<T, Args...>;

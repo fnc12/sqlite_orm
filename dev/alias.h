@@ -22,7 +22,7 @@ namespace sqlite_orm {
         struct table_alias : alias_tag {
             using type = T;
 
-            static char get() {
+            constexpr static char get() {
                 return A;
             }
         };
@@ -70,6 +70,8 @@ namespace sqlite_orm {
             using expression_type = E;
 
             expression_type expression;
+            // whether to only serialize the alias
+            bool serializeAlias = false;
         };
 
         template<class T>
@@ -92,6 +94,11 @@ namespace sqlite_orm {
     template<class T, class E>
     internal::as_t<T, E> as(E expression) {
         return {std::move(expression)};
+    }
+
+    template<class T, class E>
+    internal::as_t<T, E> refed_as(E expression) {
+        return {std::move(expression), true};
     }
 
     template<class T>
