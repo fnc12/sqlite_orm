@@ -13,12 +13,8 @@ namespace sqlite_orm {
 
             template<bool v>
             using bool_constant = std::integral_constant<bool, v>;
-
-            template<bool C, typename T>
-            using enable_if_t = typename std::enable_if<C, T>::type;
 #else
             using std::bool_constant;
-            using std::enable_if_t;
             using std::void_t;
 #endif
 

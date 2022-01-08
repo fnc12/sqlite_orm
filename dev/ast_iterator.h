@@ -192,7 +192,7 @@ namespace sqlite_orm {
 
         template<class CTE>
         struct ast_iterator<CTE,
-                            polyfill::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
+                            std::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
             using node_type = CTE;
 
             template<class L>
@@ -202,7 +202,7 @@ namespace sqlite_orm {
         };
 
         template<class With>
-        struct ast_iterator<With, polyfill::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
+        struct ast_iterator<With, std::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
             using node_type = With;
 
             template<class L>

@@ -73,8 +73,6 @@ namespace sqlite_orm {
 
             storage_t(const storage_t&) = default;
 
-            storage_t(const storage_base& base, const Ts&... tables) : storage_base{base, true}, impl{tables...} {}
-
           protected:
             impl_type impl;
 
@@ -91,12 +89,9 @@ namespace sqlite_orm {
             friend struct serializator_context_builder;
 
             template<typename... CTETables>
-            friend storage_t<CTETables..., Ts...> storage_cat(const storage_t<Ts...>& storage,
-                                                              CTETables&&... cteTables) {
-                using storage_type = storage_t<CTETables..., Ts...>;
-                return storage_type(storage,
-                                    std::forward<CTETables>(cteTables)...,
-                                    storage.get_impl<typename Ts::object_type>().table...);
+            friend storage_impl<CTETables..., Ts...> storage_impl_cat(const storage_t<Ts...>& storage,
+                                                                      CTETables&&... cteTables) {
+                return {std::forward<CTETables>(cteTables)..., storage.impl.get_impl<typename Ts::object_type>().table...};
             }
 
             template<class I>
@@ -561,10 +556,10 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            typename std::enable_if<is_prepared_statement<T>::value, std::string>::type
-            dump(const T& preparedStatement) const {
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
+            std::enable_if_t<is_prepared_statement<T>::value, std::string> dump(const T& preparedStatement) const {
+                const auto& impl = impl_for_expression(preparedStatement.expression);
+                using context_t = serializator_context<decltype(impl)>;
+                context_t context{impl};
                 return serialize(preparedStatement.expression, context);
             }
 
@@ -898,13 +893,23 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 
+            template<class S>
+            const impl_type& impl_for_expression(const S& /*statement*/) const {
+                return this->impl;
+            }
+            template<class... CTEs, class E>
+            decltype(auto) impl_for_expression(const with_t<E, CTEs...>& statement) const {
+                return make_cte_storage(*this, statement);
+            }
+
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
                 auto con = this->get_connection();
                 sqlite3_stmt* stmt;
                 auto db = con.get();
-                using context_t = serializator_context<impl_type>;
-                context_t context{this->impl};
+                const auto& impl = impl_for_expression(statement);
+                using context_t = serializator_context<decltype(impl)>;
+                context_t context{impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
                 auto query = serialize(statement, context);
@@ -914,11 +919,6 @@ namespace sqlite_orm {
                     throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                             sqlite3_errmsg(db));
                 }
-            }
-
-            template<class E, class... CTEs>
-            friend prepared_statement_t<with_t<E, CTEs...>> prepare_with_cte(self&& storage, with_t<E, CTEs...> ast) {
-                return storage.prepare_impl<with_t<E, CTEs...>>(std::move(ast));
             }
 
           public:
@@ -987,10 +987,9 @@ namespace sqlite_orm {
             }
 
             template<class E, class... CTEs>
-            typename std::enable_if<is_base_of_template<E, select_t>::value, prepared_statement_t<with_t<E, CTEs...>>>::type
-            prepare(with_t<E, CTEs...> ast) {
-                auto cte = make_cte_storage(*this, ast);
-                return prepare_with_cte(std::move(cte), std::move(ast));
+            std::enable_if_t<is_base_of_template<E, select_t>::value, prepared_statement_t<with_t<E, CTEs...>>>
+            prepare(with_t<E, CTEs...> sel) {
+                return prepare_impl<with_t<E, CTEs...>>(std::move(sel));
             }
 
             template<class T, class... Args>

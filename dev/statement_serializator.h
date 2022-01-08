@@ -211,11 +211,11 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
-                auto tableAliasString = alias_extractor<T>::get();
-                if(c.serializeAlias) {
-                    return tableAliasString;
+                auto aliasString = alias_extractor<T>::get();
+                if(c.serializeAliasOnly) {
+                    return aliasString;
                 } else {
-                    return serialize(c.expression, context) + " AS " + tableAliasString;
+                    return serialize(c.expression, context) + " AS " + aliasString;
                 }
             }
         };
@@ -479,7 +479,7 @@ namespace sqlite_orm {
         template<class CTE>
         struct statement_serializator<
             CTE,
-            polyfill::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
+            std::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
             using statement_type = CTE;
 
             template<class Ctx>
@@ -495,7 +495,7 @@ namespace sqlite_orm {
         };
 
         template<class With>
-        struct statement_serializator<With, polyfill::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
+        struct statement_serializator<With, std::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
             using statement_type = With;
 
             template<class Ctx>

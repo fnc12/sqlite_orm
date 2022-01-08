@@ -100,8 +100,6 @@ namespace sqlite_orm {
             }
         };
 
-
-
         // F = field_type
         template<typename Label, typename F>
         struct create_column_results {
@@ -171,7 +169,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& /*expression*/, const Ctx& /*context*/) const {
-                return T::get();
+                return {T::get()};
             }
         };
 
@@ -268,7 +266,7 @@ namespace sqlite_orm {
         decltype(auto) make_cte_storage_with_table_indices(const Strg& storage,
                                                            const with_t<E, CTEs...>& e,
                                                            std::index_sequence<TIs...>) {
-            return storage_cat(
+            return storage_impl_cat(
                 storage,
                 make_cte_table<
                     create_column_results_t<typename CTEs::label_type,
@@ -281,6 +279,5 @@ namespace sqlite_orm {
         decltype(auto) make_cte_storage(const Strg& storage, const with_t<E, CTEs...>& e) {
             return make_cte_storage_with_table_indices(storage, e, std::index_sequence_for<CTEs...>{});
         }
-
     }
 }

@@ -70,8 +70,9 @@ namespace sqlite_orm {
             using expression_type = E;
 
             expression_type expression;
-            // whether to only serialize the alias
-            bool serializeAlias = false;
+            // Whether to only serialize the alias;
+            // this is used together with refed_as() when selecting an aliased column from a subselect.
+            bool serializeAliasOnly = false;
         };
 
         template<class T>

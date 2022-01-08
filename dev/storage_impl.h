@@ -214,7 +214,7 @@ namespace sqlite_orm {
             template<class O,
                      class HH = typename H::object_type,
                      class Label = typename H::cte_label_type,
-                     polyfill::enable_if_t<std::is_void<Label>::value, int> = 0>
+                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
             const auto& get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
                 return *this;
             }
@@ -222,7 +222,7 @@ namespace sqlite_orm {
             template<class O,
                      class HH = typename H::object_type,
                      class Label = typename H::cte_label_type,
-                     polyfill::enable_if_t<std::is_void<Label>::value, int> = 0>
+                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
             const auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
                 return this->super::template get_impl<O>();
             }
@@ -238,43 +238,43 @@ namespace sqlite_orm {
             template<class O,
                      class HH = typename H::object_type,
                      class Label = typename H::cte_label_type,
-                     polyfill::enable_if_t<std::is_void<Label>::value, int> = 0>
+                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
             auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) {
                 return this->super::template get_impl<O>();
             }
 
             template<class Label,
                      class HL = typename H::cte_label_type,
-                     polyfill::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            const auto& get_impl(polyfill::enable_if_t<std::is_same<Label, HL>::value>* = nullptr) const {
+                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
+            const auto& get_impl(std::enable_if_t<std::is_same<Label, HL>::value>* = nullptr) const {
                 return *this;
             }
 
             template<class Label,
                      class HL = typename H::cte_label_type,
-                     polyfill::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            const auto& get_impl(polyfill::enable_if_t<!std::is_same<Label, HL>::value>* = nullptr) const {
+                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
+            const auto& get_impl(std::enable_if_t<!std::is_same<Label, HL>::value>* = nullptr) const {
                 return this->super::template get_impl<Label>();
             }
 
             template<class Label,
                      class HL = typename H::cte_label_type,
-                     polyfill::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            auto& get_impl(polyfill::enable_if_t<std::is_same<Label, HL>::value>* = nullptr) {
+                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
+            auto& get_impl(std::enable_if_t<std::is_same<Label, HL>::value>* = nullptr) {
                 return *this;
             }
 
             template<class Label,
                      class HL = typename H::cte_label_type,
-                     polyfill::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            auto& get_impl(polyfill::enable_if_t<!std::is_same<Label, HL>::value>* = nullptr) {
+                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
+            auto& get_impl(std::enable_if_t<!std::is_same<Label, HL>::value>* = nullptr) {
                 return this->super::template get_impl<Label>();
             }
 
             template<class O,
                      class HH = typename H::object_type,
                      class Label = typename H::cte_label_type,
-                     polyfill::enable_if_t<std::is_void<Label>::value, int> = 0>
+                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
             const auto* find_table(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
                 return &this->table;
             }
@@ -282,21 +282,21 @@ namespace sqlite_orm {
             template<class O,
                      class HH = typename H::object_type,
                      class Label = typename H::cte_label_type,
-                     polyfill::enable_if_t<std::is_void<Label>::value, int> = 0>
+                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
             const auto* find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
                 return this->super::template find_table<O>();
             }
 
             template<class Label,
                      class HL = typename H::cte_label_type,
-                     polyfill::enable_if_t<!std::is_void<HL>::value, int> = 0>
+                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
             const auto* find_table(typename std::enable_if<std::is_same<Label, HL>::value>::type* = nullptr) const {
                 return &this->table;
             }
 
             template<class Label,
                      class HL = typename H::cte_label_type,
-                     polyfill::enable_if_t<!std::is_void<HL>::value, int> = 0>
+                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
             const auto* find_table(typename std::enable_if<!std::is_same<Label, HL>::value>::type* = nullptr) const {
                 return this->super::template find_table<Label>();
             }

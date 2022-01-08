@@ -459,8 +459,8 @@ namespace sqlite_orm {
             storage_base(const std::string& filename_, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(filename_.empty() || filename_ == ":memory:"), connection(new connection_holder(filename_)),
-                cachedForeignKeysCount(foreignKeysCount) {
+                inMemory(filename_.empty() || filename_ == ":memory:"),
+                connection(std::make_unique<connection_holder>(filename_)), cachedForeignKeysCount(foreignKeysCount) {
                 if(this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
@@ -470,19 +470,13 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(new connection_holder(other.connection->filename)),
+                connection(std::make_unique<connection_holder>(other.connection->filename)),
                 cachedForeignKeysCount(other.cachedForeignKeysCount) {
                 if(this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
                 }
             }
-
-            storage_base(const storage_base& other, bool /*shareConnection*/) :
-                on_open{other.on_open}, pragma{std::bind(&storage_base::get_connection, this)},
-                limit{std::bind(&storage_base::get_connection, this)}, inMemory{other.inMemory},
-                connection{other.connection.get(), connection_deleter{false /*no ownership*/}},
-                cachedForeignKeysCount{other.cachedForeignKeysCount} {}
 
             ~storage_base() {
                 if(this->isOpenedForever) {
@@ -733,20 +727,9 @@ namespace sqlite_orm {
                 return res;
             }
 
-            //  enables turning a unique_ptr into an observing smart pointer
-            struct connection_deleter {
-                const bool ownership = true;
-
-                void operator()(connection_holder* holder) const {
-                    if(this->ownership) {
-                        delete holder;
-                    }
-                }
-            };
-
             const bool inMemory;
             bool isOpenedForever = false;
-            std::unique_ptr<connection_holder, connection_deleter> connection;
+            std::unique_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;
