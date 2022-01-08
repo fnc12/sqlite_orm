@@ -49,6 +49,7 @@
 #include "object_from_column_builder.h"
 #include "table.h"
 #include "column.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
