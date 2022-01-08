@@ -254,15 +254,15 @@ namespace sqlite_orm {
         /**
          *  Expression with CTEs attached.
          */
-        template<class E, class CTE>
+        template<class E, class... CTEs>
         struct with_t : with_string {
-            using cte_type = std::tuple<CTE>;
+            using cte_type = std::tuple<CTEs...>;
             using expression_type = E;
 
             cte_type cte;
             expression_type expression;
 
-            with_t(std::tuple<CTE> cte, expression_type expression) :
+            with_t(std::tuple<CTEs...> cte, expression_type expression) :
                 cte{move(cte)}, expression{std::move(expression)} {
                 this->expression.highest_level = true;
             }
@@ -462,16 +462,16 @@ namespace sqlite_orm {
     }
 
     // tuple of CTEs
-    template<class E, class Label, class CTE>
-    internal::with_t<E, internal::common_table_expression<Label, CTE>>
-    with(std::tuple<internal::common_table_expression<Label, CTE>> cte, E expression) {
+    template<class E, class... Labels, class... Selects>
+    internal::with_t<E, internal::common_table_expression<Labels, Selects>...>
+    with(std::tuple<internal::common_table_expression<Labels, Selects>...> cte, E expression) {
         return {move(cte), std::move(expression)};
     }
-    
+
     // a single CTE
-    template<class E, class Label, class CTE>
-    internal::with_t<E, internal::common_table_expression<Label, CTE>>
-    with(internal::common_table_expression<Label, CTE> cte, E expression) {
+    template<class E, class Label, class Select>
+    internal::with_t<E, internal::common_table_expression<Label, Select>>
+    with(internal::common_table_expression<Label, Select> cte, E expression) {
         return {std::make_tuple(move(cte)), std::move(expression)};
     }
 

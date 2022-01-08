@@ -70,16 +70,24 @@ namespace sqlite_orm {
     };
 
     using cte_1 = cte_label<'c', 't', 'e', '_', '1'>;
+    using cte_2 = cte_label<'c', 't', 'e', '_', '2'>;
+    using cte_3 = cte_label<'c', 't', 'e', '_', '3'>;
+    using cte_4 = cte_label<'c', 't', 'e', '_', '4'>;
+    using cte_5 = cte_label<'c', 't', 'e', '_', '5'>;
+    using cte_6 = cte_label<'c', 't', 'e', '_', '6'>;
+    using cte_7 = cte_label<'c', 't', 'e', '_', '7'>;
+    using cte_8 = cte_label<'c', 't', 'e', '_', '8'>;
+    using cte_9 = cte_label<'c', 't', 'e', '_', '9'>;
 
     namespace internal {
         /*
-         *
+         *  Tuple data structure for CTEs
          */
         template<typename Label, typename... Fs>
         class column_results : std::tuple<Fs...> {
           public:
             using base = std::tuple<Fs...>;
-            using index_sequence = std::make_index_sequence<std::tuple_size<base>::value>;
+            using index_sequence = std::index_sequence_for<Fs...>;
             using cte_label_type = Label;
 
             template<size_t I>
@@ -91,6 +99,8 @@ namespace sqlite_orm {
                 std::get<I>(polyfill::as_base_cast<std::tuple>(*this)) = std::move(v);
             }
         };
+
+
 
         // F = field_type
         template<typename Label, typename F>
@@ -224,15 +234,15 @@ namespace sqlite_orm {
         };
 
         template<typename Strg, typename T, typename... Args>
-        std::vector<std::string> cte_column_names(const Strg& storage, const select_t<T, Args...>& sel) {
+        std::vector<std::string> collect_cte_column_names(const Strg& storage, const select_t<T, Args...>& sel) {
             const serializator_context_builder<Strg> ctxBuilder(storage);
             return get_cte_column_names(sel.col, ctxBuilder());
         }
 
-        template<typename O, typename Strg, typename CTE, size_t... Is>
+        template<typename O, typename Strg, typename CTE, size_t... CIs>
         create_cte_table_t<O, typename O::index_sequence>
-        make_cte_table(const Strg& storage, std::string name, const CTE& cte, std::index_sequence<Is...>) {
-            std::vector<std::string> columnNames = cte_column_names(storage, cte);
+        make_cte_table_with_column_indices(const Strg& storage, const CTE& cte, std::index_sequence<CIs...>) {
+            std::vector<std::string> columnNames = collect_cte_column_names(storage, cte.expression);
             assert(columnNames.size() == O::index_sequence::size());
             // unquote
             for(std::string& name: columnNames) {
@@ -243,23 +253,33 @@ namespace sqlite_orm {
             }
 
             return create_cte_table_t<O, typename O::index_sequence>{
-                move(name),
+                cte.label(),
                 std::make_tuple<>(
-                    make_column<>(columnNames.at(Is), &(O::template cget<Is>), &(O::template set<Is>))...)}
+                    make_column<>(columnNames.at(CIs), &(O::template cget<CIs>), &(O::template set<CIs>))...)}
                 .without_rowid();
         }
 
-        template<class Strg, class E, class CTE>
-        decltype(auto) make_cte_storage(const Strg& storage,
-                                        const with_t<E, CTE>& e) {
-            using object_type = create_column_results_t<typename CTE::label_type, typename column_result_t<Strg, typename CTE::expression_type>::type>;
-            using table_type = create_cte_table_t<object_type, typename object_type::index_sequence>;
+        template<typename O, typename Strg, typename CTE>
+        create_cte_table_t<O, typename O::index_sequence> make_cte_table(const Strg& storage, const CTE& cte) {
+            return make_cte_table_with_column_indices<O>(storage, cte, typename O::index_sequence{});
+        }
 
-            return storage_cat(storage,
-                               make_cte_table<object_type>(storage,
-                                                           static_cast<std::string>(std::get<0>(e.cte)),
-                                                           std::get<0>(e.cte).expression,
-                                                           typename object_type::index_sequence{}));
+        template<class Strg, class E, class... CTEs, size_t... TIs>
+        decltype(auto) make_cte_storage_with_table_indices(const Strg& storage,
+                                                           const with_t<E, CTEs...>& e,
+                                                           std::index_sequence<TIs...>) {
+            return storage_cat(
+                storage,
+                make_cte_table<
+                    create_column_results_t<typename CTEs::label_type,
+                                            typename column_result_t<Strg, typename CTEs::expression_type>::type>>(
+                    storage,
+                    get<TIs>(e.cte))...);
+        }
+
+        template<class Strg, class E, class... CTEs>
+        decltype(auto) make_cte_storage(const Strg& storage, const with_t<E, CTEs...>& e) {
+            return make_cte_storage_with_table_indices(storage, e, std::index_sequence_for<CTEs...>{});
         }
 
     }
