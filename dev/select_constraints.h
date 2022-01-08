@@ -239,26 +239,22 @@ namespace sqlite_orm {
         /**
          *  Labeled (aliased) CTE expression.
          */
-        template<class Label, class E>
-        struct common_table_expression {
+        template<class Label, class Select>
+        struct common_table_expression : public Label {
             using label_type = Label;
-            using expression_type = E;
+            using expression_type = Select;
 
             expression_type expression;
 
             common_table_expression(expression_type expression) : expression{std::move(expression)} {
                 this->expression.highest_level = false;
             }
-
-            explicit operator std::string() const {
-                return Label::label();
-            }
         };
 
         /**
          *  Expression with CTEs attached.
          */
-        template<class CTE, class E>
+        template<class E, class CTE>
         struct with_t : with_string {
             using cte_type = std::tuple<CTE>;
             using expression_type = E;
@@ -465,13 +461,18 @@ namespace sqlite_orm {
         return {std::move(sel)};
     }
 
-    template<class CTE, class E>
-    internal::with_t<CTE, E> with(std::tuple<CTE> ctes, E expression) {
-        return {move(ctes), std::move(expression)};
+    // tuple of CTEs
+    template<class E, class Label, class CTE>
+    internal::with_t<E, internal::common_table_expression<Label, CTE>>
+    with(std::tuple<internal::common_table_expression<Label, CTE>> cte, E expression) {
+        return {move(cte), std::move(expression)};
     }
-    template<class CTE, class E>
-    internal::with_t<CTE, E> with(CTE cte, E expression) {
-        return {std::tuple<CTE>{move(cte)}, std::move(expression)};
+    
+    // a single CTE
+    template<class E, class Label, class CTE>
+    internal::with_t<E, internal::common_table_expression<Label, CTE>>
+    with(internal::common_table_expression<Label, CTE> cte, E expression) {
+        return {std::make_tuple(move(cte)), std::move(expression)};
     }
 
     /**

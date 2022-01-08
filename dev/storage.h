@@ -915,9 +915,9 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class CTE, class E>
-            friend prepared_statement_t<with_t<CTE, E>> prepare_with_cte(self&& storage, with_t<CTE, E> ast) {
-                return storage.prepare_impl<with_t<CTE, E>>(std::move(ast));
+            template<class E, class CTE>
+            friend prepared_statement_t<with_t<E, CTE>> prepare_with_cte(self&& storage, with_t<E, CTE> ast) {
+                return storage.prepare_impl<with_t<E, CTE>>(std::move(ast));
             }
 
           public:
@@ -985,9 +985,9 @@ namespace sqlite_orm {
                 return this->impl.table_exists(tableName, con.get());
             }
 
-            template<class CTE, class E>
-            typename std::enable_if<is_base_of_template<E, select_t>::value, prepared_statement_t<with_t<CTE, E>>>::type
-            prepare(with_t<CTE, E> ast) {
+            template<class E, class CTE>
+            typename std::enable_if<is_base_of_template<E, select_t>::value, prepared_statement_t<with_t<E, CTE>>>::type
+            prepare(with_t<E, CTE> ast) {
                 auto cte = make_cte_storage(*this, ast);
                 return prepare_with_cte(std::move(cte), std::move(ast));
             }
@@ -1542,7 +1542,7 @@ namespace sqlite_orm {
             }
 
             template<class CTE, class T, class... Args, class R = typename column_result_t<self, T>::type>
-            std::vector<R> execute(const prepared_statement_t<with_t<CTE, select_t<T, Args...>>>& statement) {
+            std::vector<R> execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTE>>& statement) {
                 return _execute_select<R>(statement);
             }
 

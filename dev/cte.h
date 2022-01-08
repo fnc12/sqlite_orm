@@ -55,22 +55,32 @@ namespace sqlite_orm {
 }
 
 namespace sqlite_orm {
+
+    template<char C, char... Cs>
     struct cte_label {
-        static std::string label() {
-            return "cte";
+        static constexpr char str[] = {C, Cs..., '\0'};
+
+        static const char* label() {
+            return str;
+        }
+
+        explicit operator std::string() const {
+            return cte_label::label();
         }
     };
+
+    using cte_1 = cte_label<'c', 't', 'e', '_', '1'>;
 
     namespace internal {
         /*
          *
          */
-        template<typename... Fs>
+        template<typename Label, typename... Fs>
         class column_results : std::tuple<Fs...> {
           public:
             using base = std::tuple<Fs...>;
             using index_sequence = std::make_index_sequence<std::tuple_size<base>::value>;
-            using cte_label_type = cte_label;
+            using cte_label_type = Label;
 
             template<size_t I>
             decltype(auto) cget() const noexcept {
@@ -83,18 +93,18 @@ namespace sqlite_orm {
         };
 
         // F = field_type
-        template<typename F>
+        template<typename Label, typename F>
         struct create_column_results {
-            using type = column_results<F>;
+            using type = column_results<Label, F>;
         };
 
-        template<typename... Fs>
-        struct create_column_results<std::tuple<Fs...>> {
-            using type = column_results<Fs...>;
+        template<typename Label, typename... Fs>
+        struct create_column_results<Label, std::tuple<Fs...>> {
+            using type = column_results<Label, Fs...>;
         };
 
-        template<typename... Fs>
-        using create_column_results_t = typename create_column_results<Fs...>::type;
+        template<typename Label, typename... Fs>
+        using create_column_results_t = typename create_column_results<Label, Fs...>::type;
 
         template<typename O, size_t I>
         struct create_cte_column {
@@ -112,9 +122,9 @@ namespace sqlite_orm {
         template<typename O, typename IdxSeq>
         struct create_cte_table;
 
-        template<typename... Fs, size_t... Is>
-        struct create_cte_table<column_results<Fs...>, std::index_sequence<Is...>> {
-            using object_type = column_results<Fs...>;
+        template<typename Label, typename... Fs, size_t... Is>
+        struct create_cte_table<column_results<Label, Fs...>, std::index_sequence<Is...>> {
+            using object_type = column_results<Label, Fs...>;
             using table_type = table_t<object_type, true, create_cte_column_t<object_type, Is>...>;
 
             using type = table_type;
@@ -239,10 +249,10 @@ namespace sqlite_orm {
                 .without_rowid();
         }
 
-        template<class Strg, class CTE, class E>
-        decltype(auto) make_cte_storage(const Strg& storage, const with_t<CTE, E>& e) {
-            using object_type =
-                create_column_results_t<typename column_result_t<Strg, typename CTE::expression_type>::type>;
+        template<class Strg, class E, class CTE>
+        decltype(auto) make_cte_storage(const Strg& storage,
+                                        const with_t<E, CTE>& e) {
+            using object_type = create_column_results_t<typename CTE::label_type, typename column_result_t<Strg, typename CTE::expression_type>::type>;
             using table_type = create_cte_table_t<object_type, typename object_type::index_sequence>;
 
             return storage_cat(storage,
