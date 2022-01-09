@@ -21,5 +21,6 @@
 * add strong typed collate syntax (more info [here](https://github.com/fnc12/sqlite_orm/issues/767#issuecomment-887689672))
 * strict tables https://sqlite.org/stricttables.html
 * static assert when UPDATE is called with no PKs
+* `json_each` and `json_tree` functions for JSON1 extension
 
 Please feel free to add any feature that isn't listed here and not implemented yet.
