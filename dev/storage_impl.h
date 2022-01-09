@@ -243,28 +243,36 @@ namespace sqlite_orm {
                 return this->super::template get_impl<O>();
             }
 
-            template<class Label,
+            // Lookup by (CTE) label
+            template<class T,
+                     class Label = detected_cte_label_t<T>,
                      class HL = typename H::cte_label_type,
                      std::enable_if_t<!std::is_void<HL>::value, int> = 0>
             const auto& get_impl(std::enable_if_t<std::is_same<Label, HL>::value>* = nullptr) const {
                 return *this;
             }
 
-            template<class Label,
+            // Lookup by (CTE) label
+            template<class T,
+                     class Label = detected_cte_label_t<T>,
                      class HL = typename H::cte_label_type,
                      std::enable_if_t<!std::is_void<HL>::value, int> = 0>
             const auto& get_impl(std::enable_if_t<!std::is_same<Label, HL>::value>* = nullptr) const {
                 return this->super::template get_impl<Label>();
             }
 
-            template<class Label,
+            // Lookup by (CTE) label
+            template<class T,
+                     class Label = detected_cte_label_t<T>,
                      class HL = typename H::cte_label_type,
                      std::enable_if_t<!std::is_void<HL>::value, int> = 0>
             auto& get_impl(std::enable_if_t<std::is_same<Label, HL>::value>* = nullptr) {
                 return *this;
             }
 
-            template<class Label,
+            // Lookup by (CTE) label
+            template<class T,
+                     class Label = detected_cte_label_t<T>,
                      class HL = typename H::cte_label_type,
                      std::enable_if_t<!std::is_void<HL>::value, int> = 0>
             auto& get_impl(std::enable_if_t<!std::is_same<Label, HL>::value>* = nullptr) {
@@ -287,14 +295,18 @@ namespace sqlite_orm {
                 return this->super::template find_table<O>();
             }
 
-            template<class Label,
+            // Lookup by (CTE) label
+            template<class T,
+                     class Label = detected_cte_label_t<T>,
                      class HL = typename H::cte_label_type,
                      std::enable_if_t<!std::is_void<HL>::value, int> = 0>
             const auto* find_table(typename std::enable_if<std::is_same<Label, HL>::value>::type* = nullptr) const {
                 return &this->table;
             }
 
-            template<class Label,
+            // Lookup by (CTE) label
+            template<class T,
+                     class Label = detected_cte_label_t<T>,
                      class HL = typename H::cte_label_type,
                      std::enable_if_t<!std::is_void<HL>::value, int> = 0>
             const auto* find_table(typename std::enable_if<!std::is_same<Label, HL>::value>::type* = nullptr) const {

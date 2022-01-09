@@ -91,7 +91,8 @@ namespace sqlite_orm {
             template<typename... CTETables>
             friend storage_impl<CTETables..., Ts...> storage_impl_cat(const storage_t<Ts...>& storage,
                                                                       CTETables&&... cteTables) {
-                return {std::forward<CTETables>(cteTables)..., storage.impl.get_impl<typename Ts::object_type>().table...};
+                return {std::forward<CTETables>(cteTables)...,
+                        storage.impl.get_impl<typename Ts::object_type>().table...};
             }
 
             template<class I>

@@ -60,7 +60,7 @@ namespace sqlite_orm {
     struct cte_label {
         static constexpr char str[] = {C, Cs..., '\0'};
 
-        static const char* label() {
+        static constexpr const char* label() {
             return str;
         }
 
@@ -114,26 +114,26 @@ namespace sqlite_orm {
         template<typename Label, typename... Fs>
         using create_column_results_t = typename create_column_results<Label, Fs...>::type;
 
-        template<typename O, size_t I>
+        template<typename O, size_t CI>
         struct create_cte_column {
             using object_type = O;
-            using field_type = std::tuple_element_t<I, typename O::base>;
-            using getter_type = decltype(&O::template cget<I>);
-            using setter_type = decltype(&O::template set<I>);
+            using field_type = std::tuple_element_t<CI, typename O::base>;
+            using getter_type = decltype(&O::template cget<CI>);
+            using setter_type = decltype(&O::template set<CI>);
 
             using type = column_t<object_type, field_type, getter_type, setter_type>;
         };
 
-        template<typename O, size_t I>
-        using create_cte_column_t = typename create_cte_column<O, I>::type;
+        template<typename O, size_t CI>
+        using create_cte_column_t = typename create_cte_column<O, CI>::type;
 
         template<typename O, typename IdxSeq>
         struct create_cte_table;
 
-        template<typename Label, typename... Fs, size_t... Is>
-        struct create_cte_table<column_results<Label, Fs...>, std::index_sequence<Is...>> {
+        template<typename Label, typename... Fs, size_t... CIs>
+        struct create_cte_table<column_results<Label, Fs...>, std::index_sequence<CIs...>> {
             using object_type = column_results<Label, Fs...>;
-            using table_type = table_t<object_type, true, create_cte_column_t<object_type, Is>...>;
+            using table_type = table_t<object_type, true, create_cte_column_t<object_type, CIs>...>;
 
             using type = table_type;
         };
@@ -163,19 +163,19 @@ namespace sqlite_orm {
             return serializator(t, context);
         }
 
-        template<class T, class E>
-        struct cte_column_names_collector<as_t<T, E>, void> {
-            using expression_type = as_t<T, E>;
+        template<class As>
+        struct cte_column_names_collector<As, match_specialization_of<As, as_t>> {
+            using expression_type = As;
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& /*expression*/, const Ctx& /*context*/) const {
-                return {T::get()};
+                return {As::alias_type::get()};
             }
         };
 
-        template<class T>
-        struct cte_column_names_collector<std::reference_wrapper<T>, void> {
-            using expression_type = std::reference_wrapper<T>;
+        template<class RefWrapper>
+        struct cte_column_names_collector<RefWrapper, match_specialization_of<RefWrapper, std::reference_wrapper>> {
+            using expression_type = RefWrapper;
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& expression, const Ctx& context) const {
@@ -183,30 +183,32 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct cte_column_names_collector<asterisk_t<T>, void> {
-            using expression_type = asterisk_t<T>;
+        template<class Asterisk>
+        struct cte_column_names_collector<Asterisk, match_specialization_of<Asterisk, asterisk_t>> {
+            using expression_type = Asterisk;
+            using T = typename Asterisk::type;
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx& context) const {
-                auto& strgImpl = context.impl.get_impl<T>();
+                auto& tImpl = context.impl.get_impl<T>();
 
                 std::vector<std::string> columnNames;
-                columnNames.reserve(size_t(strgImpl.table.elements_count));
+                columnNames.reserve(size_t(tImpl.table.elements_count));
 
-                strgImpl.table.for_each_column([&columnNames](const basic_column& column) {
+                tImpl.table.for_each_column([&columnNames](const basic_column& column) {
                     columnNames.push_back(column.name);
                 });
                 return columnNames;
             }
         };
 
-        template<class T>
-        struct cte_column_names_collector<object_t<T>, void>;
+        // No CTE for object expressions.
+        template<class Object>
+        struct cte_column_names_collector<Object, match_specialization_of<Object, object_t>>;
 
-        template<class... Args>
-        struct cte_column_names_collector<columns_t<Args...>, void> {
-            using expression_type = columns_t<Args...>;
+        template<class Columns>
+        struct cte_column_names_collector<Columns, match_specialization_of<Columns, columns_t>> {
+            using expression_type = Columns;
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& cols, const Ctx& context) const {
@@ -239,7 +241,7 @@ namespace sqlite_orm {
 
         template<typename O, typename Strg, typename CTE, size_t... CIs>
         create_cte_table_t<O, typename O::index_sequence>
-        make_cte_table_with_column_indices(const Strg& storage, const CTE& cte, std::index_sequence<CIs...>) {
+        make_cte_table_using_column_indices(const Strg& storage, const CTE& cte, std::index_sequence<CIs...>) {
             std::vector<std::string> columnNames = collect_cte_column_names(storage, cte.expression);
             assert(columnNames.size() == O::index_sequence::size());
             // unquote
@@ -259,13 +261,13 @@ namespace sqlite_orm {
 
         template<typename O, typename Strg, typename CTE>
         create_cte_table_t<O, typename O::index_sequence> make_cte_table(const Strg& storage, const CTE& cte) {
-            return make_cte_table_with_column_indices<O>(storage, cte, typename O::index_sequence{});
+            return make_cte_table_using_column_indices<O>(storage, cte, typename O::index_sequence{});
         }
 
         template<class Strg, class E, class... CTEs, size_t... TIs>
-        decltype(auto) make_cte_storage_with_table_indices(const Strg& storage,
-                                                           const with_t<E, CTEs...>& e,
-                                                           std::index_sequence<TIs...>) {
+        decltype(auto) make_cte_storage_using_table_indices(const Strg& storage,
+                                                            const with_t<E, CTEs...>& e,
+                                                            std::index_sequence<TIs...>) {
             return storage_impl_cat(
                 storage,
                 make_cte_table<
@@ -277,7 +279,7 @@ namespace sqlite_orm {
 
         template<class Strg, class E, class... CTEs>
         decltype(auto) make_cte_storage(const Strg& storage, const with_t<E, CTEs...>& e) {
-            return make_cte_storage_with_table_indices(storage, e, std::index_sequence_for<CTEs...>{});
+            return make_cte_storage_using_table_indices(storage, e, std::index_sequence_for<CTEs...>{});
         }
     }
 }

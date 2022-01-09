@@ -20,8 +20,20 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        /**
+         *  A mapped data type's CTE alias by which a CTE table descriptor can be found.
+         */
+        template<typename O>
+        using cte_label_t = typename O::cte_label_type;
+
+        template<typename O>
+        using cte_label_of_t = polyfill::detected_or_t<void, cte_label_t, O>;
+
+        /**
+         *  A data type's CTE alias, otherwise T itself is used as a CTE alias.
+         */
         template<typename T>
-        using cte_label_t = typename T::cte_label_type;
+        using detected_cte_label_t = polyfill::detected_or_t<T, cte_label_t, T>;
 
         struct basic_table {
 
@@ -32,13 +44,15 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Table class.
+         *  Table descriptor.
+         * 
+         *  Can be either for a table mapped to storage or for a common table expression (CTE).
          */
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
             using super = basic_table;
             using object_type = O;
-            using cte_label_type = polyfill::detected_or_t<void, cte_label_t, O>;
+            using cte_label_type = cte_label_of_t<O>;
             using elements_type = std::tuple<Cs...>;
 
             static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);

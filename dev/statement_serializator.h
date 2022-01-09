@@ -10,6 +10,7 @@
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "cxx_polyfill.h"
+#include "type_traits.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
@@ -477,9 +478,7 @@ namespace sqlite_orm {
         };
 
         template<class CTE>
-        struct statement_serializator<
-            CTE,
-            std::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
+        struct statement_serializator<CTE, match_specialization_of<CTE, common_table_expression>> {
             using statement_type = CTE;
 
             template<class Ctx>
@@ -495,7 +494,7 @@ namespace sqlite_orm {
         };
 
         template<class With>
-        struct statement_serializator<With, std::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
+        struct statement_serializator<With, match_specialization_of<With, with_t>> {
             using statement_type = With;
 
             template<class Ctx>
