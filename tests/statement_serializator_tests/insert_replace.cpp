@@ -68,8 +68,8 @@ TEST_CASE("statement_serializator insert/replace") {
         }
     }
     SECTION("insert") {
+        User user{5, "Gambit"};
         SECTION("crud") {
-            User user{5, "Gambit"};
             auto statement = insert(user);
             SECTION("question marks") {
                 context.replace_bindable_with_question = true;
@@ -80,6 +80,32 @@ TEST_CASE("statement_serializator insert/replace") {
                 expected = "INSERT INTO 'users' (\"id\", \"name\") VALUES (5, 'Gambit')";
             }
             value = serialize(statement, context);
+        }
+        SECTION("explicit") {
+            SECTION("one column") {
+                auto statement = insert(user, columns(&User::id));
+                SECTION("question marks") {
+                    context.replace_bindable_with_question = true;
+                    expected = "INSERT INTO 'users' (\"id\") VALUES (?)";
+                }
+                SECTION("no question marks") {
+                    context.replace_bindable_with_question = false;
+                    expected = "INSERT INTO 'users' (\"id\") VALUES (5)";
+                }
+                value = serialize(statement, context);
+            }
+            SECTION("two columns") {
+                auto statement = insert(user, columns(&User::id, &User::name));
+                SECTION("question marks") {
+                    context.replace_bindable_with_question = true;
+                    expected = "INSERT INTO 'users' (\"id\", \"name\") VALUES (?, ?)";
+                }
+                SECTION("no question marks") {
+                    context.replace_bindable_with_question = false;
+                    expected = "INSERT INTO 'users' (\"id\", \"name\") VALUES (5, 'Gambit')";
+                }
+                value = serialize(statement, context);
+            }
         }
         SECTION("raw") {
             SECTION("values") {

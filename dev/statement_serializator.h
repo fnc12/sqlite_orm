@@ -1041,40 +1041,51 @@ namespace sqlite_orm {
                 auto& tImpl = context.impl.template get_impl<object_type>();
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' ";
-                std::vector<std::string> columnNames;
-                columnNames.reserve(colsCount);
+                ss << "(";
                 {
                     auto columnsContext = context;
                     columnsContext.skip_table_name = true;
-                    iterate_tuple(ins.columns.columns, [&columnNames, &columnsContext](auto& m) {
-                        auto columnName = serialize(m, columnsContext);
+                    auto index = 0;
+                    iterate_tuple(ins.columns.columns, [&ss, &columnsContext, &index](auto& memberPointer) {
+                        auto columnName = serialize(memberPointer, columnsContext);
                         if(!columnName.empty()) {
-                            columnNames.push_back(columnName);
+                            ss << columnName;
+                            if(index < colsCount - 1) {
+                                ss << ",";
+                            } else {
+                                ss << ")";
+                            }
+                            ss << " ";
+                            ++index;
                         } else {
                             throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                         }
                     });
                 }
-                ss << "(";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
                 ss << "VALUES (";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "?";
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
+                auto index = 0;
+                auto& object = get_ref(ins.obj);
+                iterate_tuple(ins.columns.columns, [&ss, &context, &index, &object](auto& memberPointer) {
+                    using member_pointer_type = typename std::decay<decltype(memberPointer)>::type;
+                    static_assert(!is_setter<member_pointer_type>::value,
+                                  "Unable to use setter within insert explicit");
+
+                    std::string valueString;
+                    static_if<is_getter<member_pointer_type>{}>(
+                        [&valueString, &memberPointer, &context](auto& object) {
+                            valueString = serialize((object.*memberPointer)(), context);
+                        },
+                        [&valueString, &memberPointer, &context](auto& object) {
+                            valueString = serialize(object.*memberPointer, context);
+                        })(object);
+                    ss << valueString;
+                    if(index < colsCount - 1) {
+                        ss << ", ";
                     } else {
                         ss << ")";
                     }
-                    ss << " ";
-                }
+                    ++index;
+                });
                 return ss.str();
             }
         };
