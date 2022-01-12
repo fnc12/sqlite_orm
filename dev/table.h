@@ -29,12 +29,6 @@ namespace sqlite_orm {
         template<typename O>
         using cte_label_of_t = polyfill::detected_or_t<void, cte_label_t, O>;
 
-        /**
-         *  A data type's CTE alias, otherwise T itself is used as a CTE alias.
-         */
-        template<typename T>
-        using detected_cte_label_t = polyfill::detected_or_t<T, cte_label_t, T>;
-
         struct basic_table {
 
             /**

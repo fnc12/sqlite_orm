@@ -181,7 +181,7 @@ TEST_CASE("has_dependent_rows") {
     REQUIRE(storage.has_dependent_rows(user5));
 }
 
-TEST_CASE("column_name") {
+TEST_CASE("find_column_name") {
     struct User {
         int id = 0;
         std::string name;
@@ -201,10 +201,10 @@ TEST_CASE("column_name") {
                                 make_column("user_id", &Visit::userId),
                                 make_column("date", &Visit::date),
                                 foreign_key(&Visit::userId).references(&User::id)));
-    REQUIRE(*storage.column_name(&User::id) == "id");
-    REQUIRE(*storage.column_name(&User::name) == "name");
-    REQUIRE(*storage.column_name(&Visit::id) == "id");
-    REQUIRE(*storage.column_name(&Visit::userId) == "user_id");
-    REQUIRE(*storage.column_name(&Visit::date) == "date");
-    REQUIRE(storage.column_name(&Visit::notUsed) == nullptr);
+    REQUIRE(*storage.find_column_name(&User::id) == "id");
+    REQUIRE(*storage.find_column_name(&User::name) == "name");
+    REQUIRE(*storage.find_column_name(&Visit::id) == "id");
+    REQUIRE(*storage.find_column_name(&Visit::userId) == "user_id");
+    REQUIRE(*storage.find_column_name(&Visit::date) == "date");
+    REQUIRE(storage.find_column_name(&Visit::notUsed) == nullptr);
 }

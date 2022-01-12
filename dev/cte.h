@@ -11,54 +11,15 @@
 #include "select_constraints.h"
 #include "alias.h"
 #include "table.h"
+#include "cte_types.h"
 #include "storage.h"
 #include "statement_serializator.h"
 
 namespace sqlite_orm {
-    namespace internal {
-        namespace polyfill {
-            template<template<typename...> typename Base, typename... Fs>
-            Base<Fs...>& as_base_cast(Base<Fs...>& base) {
-                return base;
-            }
-            template<template<typename...> typename Base, typename... Fs>
-            const Base<Fs...>& as_base_cast(const Base<Fs...>& base) {
-                return base;
-            }
-            template<template<typename...> typename Base, typename... Fs>
-            Base<Fs...>&& as_base_cast(Base<Fs...>&& base) {
-                return std::move(base);
-            }
-            template<template<typename...> typename Base, typename... Fs>
-            const Base<Fs...>&& as_base_cast(const Base<Fs...>&& base) {
-                return std::move(base);
-            }
 
-            /** @short Deduce template base specialization from a derived type */
-            template<template<typename...> class Base, class Derived>
-            using as_base_cast_t = decltype(as_base_cast<Base>(std::declval<Derived>()));
-
-            template<template<typename...> class Base, class Derived, typename SFINAE = void>
-            struct is_template_base_of : std::false_type {};
-
-            template<template<typename...> class Base, class Derived>
-            struct is_template_base_of<Base, Derived, polyfill::void_t<as_base_cast_t<Base, Derived>>>
-                : std::true_type {};
-
-            template<template<typename...> class Base, class Derived>
-            using is_template_base_of_t = typename is_template_base_of<Base, Derived>::type;
-
-            template<template<typename...> class Base, class Derived>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_template_base_of_v = is_template_base_of<Base, Derived>::value;
-        }
-    }
-}
-
-namespace sqlite_orm {
-
-    template<char C, char... Cs>
+    template<char C, char... Chars>
     struct cte_label {
-        static constexpr char str[] = {C, Cs..., '\0'};
+        static constexpr char str[] = {C, Chars..., '\0'};
 
         static constexpr const char* label() {
             return str;
@@ -79,26 +40,31 @@ namespace sqlite_orm {
     using cte_8 = cte_label<'c', 't', 'e', '_', '8'>;
     using cte_9 = cte_label<'c', 't', 'e', '_', '9'>;
 
+#if __cplusplus >= 201703L  // use of C++17 or higher
     namespace internal {
-        /*
-         *  Tuple data structure for CTEs
-         */
-        template<typename Label, typename... Fs>
-        class column_results : std::tuple<Fs...> {
-          public:
-            using base = std::tuple<Fs...>;
-            using index_sequence = std::index_sequence_for<Fs...>;
-            using cte_label_type = Label;
+        constexpr size_t _10_pow(size_t n) {
+            if(n == 0) {
+                return 1;
+            } else {
+                return 10 * _10_pow(n - 1);
+            }
+        }
 
-            template<size_t I>
-            decltype(auto) cget() const noexcept {
-                return std::get<I>(polyfill::as_base_cast<std::tuple>(*this));
-            }
-            template<size_t I>
-            void set(std::tuple_element_t<I, base> v) noexcept {
-                std::get<I>(polyfill::as_base_cast<std::tuple>(*this)) = std::move(v);
-            }
-        };
+        template<class... Chars, size_t... Is>
+        constexpr size_t n_from_literal(std::index_sequence<Is...>, Chars... chars) {
+            return (((chars - '0') * _10_pow(sizeof...(Is) - 1u - Is /*reversed index sequence*/)) + ...);
+        }
+    }
+
+    // index_constant<> from numeric literal
+    template<char... Chars>
+    [[nodiscard]] constexpr decltype(auto) operator"" _col() {
+        return polyfill::index_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
+                                                                 Chars...)>{};
+    }
+#endif
+
+    namespace internal {
 
         // F = field_type
         template<typename Label, typename F>
@@ -117,13 +83,16 @@ namespace sqlite_orm {
         template<typename O, size_t CI>
         struct create_cte_column {
             using object_type = O;
-            using field_type = std::tuple_element_t<CI, typename O::base>;
-            using getter_type = decltype(&O::template cget<CI>);
-            using setter_type = decltype(&O::template set<CI>);
+            using field_type = std::tuple_element_t<CI, typename O::fields_type>;
+            using getter_type = cte_getter_t<O, CI>;
+            using setter_type = cte_setter_t<O, CI>;
 
             using type = column_t<object_type, field_type, getter_type, setter_type>;
         };
 
+        /**
+         *  Metafunction to create a CTE column_t type.
+         */
         template<typename O, size_t CI>
         using create_cte_column_t = typename create_cte_column<O, CI>::type;
 
@@ -138,6 +107,9 @@ namespace sqlite_orm {
             using type = table_type;
         };
 
+        /**
+         *  Metafunction to create a CTE table_t type.
+         */
         template<typename O, typename IdxSeq>
         using create_cte_table_t = typename create_cte_table<O, IdxSeq>::type;
 
@@ -190,7 +162,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx& context) const {
-                auto& tImpl = context.impl.get_impl<T>();
+                auto& tImpl = pick_impl<T>(context.impl);
 
                 std::vector<std::string> columnNames;
                 columnNames.reserve(size_t(tImpl.table.elements_count));
@@ -254,9 +226,7 @@ namespace sqlite_orm {
 
             return create_cte_table_t<O, typename O::index_sequence>{
                 cte.label(),
-                std::make_tuple<>(
-                    make_column<>(columnNames.at(CIs), &(O::template cget<CIs>), &(O::template set<CIs>))...)}
-                .without_rowid();
+                std::make_tuple(make_column<>(columnNames.at(CIs), cte_getter_v<O, CIs>, cte_setter_v<O, CIs>)...)};
         }
 
         template<typename O, typename Strg, typename CTE>

@@ -139,8 +139,9 @@ namespace sqlite_orm {
 
         template<class H, class... Ts>
         struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
-            using table_type = H;
             using super = storage_impl<Ts...>;
+            using self = storage_impl<H, Ts...>;
+            using table_type = H;
 
             storage_impl(H h, Ts... ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
 
@@ -157,7 +158,7 @@ namespace sqlite_orm {
             /**
              *  Returns foreign keys count in table definition
              */
-            int foreign_keys_count() {
+            int foreign_keys_count() const {
                 auto res = 0;
                 iterate_tuple(this->table.elements, [&res](auto& c) {
                     if(is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
@@ -169,157 +170,24 @@ namespace sqlite_orm {
 
 #endif
 
-            /**
-             *  Is used to get column name by member pointer to a base class.
-             *  Main difference between `column_name` and `column_name_simple` is that
-             *  `column_name` has SFINAE check for type equality but `column_name_simple` has not.
-             */
-            template<class O, class F>
-            const std::string* column_name_simple(F O::*m) const {
-                return this->table.find_column_name(m);
+            template<class Lookup>
+            storage_pick_impl_t<self, Lookup>& get_impl() {
+                return *this;
             }
-
-            /**
-             *  Cute function used to find column name by its type and member pointer. Uses SFINAE to
-             *  skip inequal type O.
-             */
-            template<class O, class F, class HH = typename H::object_type>
-            const std::string* column_name(F O::*m,
-                                           typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->table.find_column_name(m);
-            }
-
-            /**
-             *  Opposite version of function defined above. Just calls same function in superclass.
-             */
-            template<class O, class F, class HH = typename H::object_type>
-            const std::string*
-            column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->super::column_name(m);
-            }
-
-            template<class O, class F, class HH = typename H::object_type>
-            const std::string* column_name(const column_pointer<O, F>& c,
-                                           typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->column_name_simple(c.field);
-            }
-
-            template<class O, class F, class HH = typename H::object_type>
-            const std::string*
-            column_name(const column_pointer<O, F>& c,
-                        typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->super::column_name(c);
-            }
-
-            template<class O,
-                     class HH = typename H::object_type,
-                     class Label = typename H::cte_label_type,
-                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
-            const auto& get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class Lookup>
+            storage_pick_impl_t<const self, Lookup>& get_impl() const {
                 return *this;
             }
 
-            template<class O,
-                     class HH = typename H::object_type,
-                     class Label = typename H::cte_label_type,
-                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
-            const auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->super::template get_impl<O>();
-            }
-
-            template<class O,
-                     class HH = typename H::object_type,
-                     class Label = typename H::cte_label_type,
-                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
-            auto& get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) {
-                return *this;
-            }
-
-            template<class O,
-                     class HH = typename H::object_type,
-                     class Label = typename H::cte_label_type,
-                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
-            auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) {
-                return this->super::template get_impl<O>();
-            }
-
-            // Lookup by (CTE) label
-            template<class T,
-                     class Label = detected_cte_label_t<T>,
-                     class HL = typename H::cte_label_type,
-                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            const auto& get_impl(std::enable_if_t<std::is_same<Label, HL>::value>* = nullptr) const {
-                return *this;
-            }
-
-            // Lookup by (CTE) label
-            template<class T,
-                     class Label = detected_cte_label_t<T>,
-                     class HL = typename H::cte_label_type,
-                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            const auto& get_impl(std::enable_if_t<!std::is_same<Label, HL>::value>* = nullptr) const {
-                return this->super::template get_impl<Label>();
-            }
-
-            // Lookup by (CTE) label
-            template<class T,
-                     class Label = detected_cte_label_t<T>,
-                     class HL = typename H::cte_label_type,
-                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            auto& get_impl(std::enable_if_t<std::is_same<Label, HL>::value>* = nullptr) {
-                return *this;
-            }
-
-            // Lookup by (CTE) label
-            template<class T,
-                     class Label = detected_cte_label_t<T>,
-                     class HL = typename H::cte_label_type,
-                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            auto& get_impl(std::enable_if_t<!std::is_same<Label, HL>::value>* = nullptr) {
-                return this->super::template get_impl<Label>();
-            }
-
-            template<class O,
-                     class HH = typename H::object_type,
-                     class Label = typename H::cte_label_type,
-                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
-            const auto* find_table(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
+            // indirected access to table, for simplified programming
+            const table_type* get_table() const {
                 return &this->table;
-            }
-
-            template<class O,
-                     class HH = typename H::object_type,
-                     class Label = typename H::cte_label_type,
-                     std::enable_if_t<std::is_void<Label>::value, int> = 0>
-            const auto* find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->super::template find_table<O>();
-            }
-
-            // Lookup by (CTE) label
-            template<class T,
-                     class Label = detected_cte_label_t<T>,
-                     class HL = typename H::cte_label_type,
-                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            const auto* find_table(typename std::enable_if<std::is_same<Label, HL>::value>::type* = nullptr) const {
-                return &this->table;
-            }
-
-            // Lookup by (CTE) label
-            template<class T,
-                     class Label = detected_cte_label_t<T>,
-                     class HL = typename H::cte_label_type,
-                     std::enable_if_t<!std::is_void<HL>::value, int> = 0>
-            const auto* find_table(typename std::enable_if<!std::is_same<Label, HL>::value>::type* = nullptr) const {
-                return this->super::template find_table<Label>();
-            }
-
-            template<class O>
-            const std::string& get_table_name() const {
-                return this->get_impl<O>().table.name;
             }
 
             std::string find_table_name(std::type_index ti) const {
-                std::type_index thisTypeIndex{typeid(typename H::object_type)};
+                std::type_index thisTypeIndex{typeid(std::conditional_t<std::is_void<typename H::cte_label_type>::value,
+                                                                        typename H::object_type,
+                                                                        typename H::cte_label_type>)};
                 if(thisTypeIndex == ti) {
                     return this->table.name;
                 } else {
@@ -446,8 +314,6 @@ namespace sqlite_orm {
             }
 
           private:
-            using self = storage_impl<H, Ts...>;
-
             const basic_generated_always::storage_type*
             find_column_generated_storage_type(const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
@@ -474,6 +340,15 @@ namespace sqlite_orm {
         template<>
         struct storage_impl<> : storage_impl_base {
 
+            template<class Lookup>
+            const storage_impl<>& get_impl() const {
+                static_assert(polyfill::always_false_v<Lookup>, "No such storage implementation");
+            }
+
+            std::nullptr_t get_table() const {
+                return nullptr;
+            }
+
             std::string find_table_name(std::type_index) const {
                 return {};
             }
@@ -481,20 +356,66 @@ namespace sqlite_orm {
             template<class L>
             void for_each(const L&) {}
 
-            int foreign_keys_count() {
+            int foreign_keys_count() const {
                 return 0;
             }
-
-            template<class O>
-            const void* find_table() const {
-                return nullptr;
-            }
         };
+    }
+}
 
-        template<class T>
-        struct is_storage_impl : std::false_type {};
+#include "storage_traits.h"
 
-        template<class... Ts>
-        struct is_storage_impl<storage_impl<Ts...>> : std::true_type {};
+// interface functions
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        const auto* lookup_table(const S& strg) {
+            return find_impl<Lookup>(strg).get_table();
+        }
+
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        std::string lookup_table_name(const S& strg) {
+            if(auto* table = lookup_table<Lookup>(strg)) {
+                return table->name;
+            }
+
+            return {};
+        }
+
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        const std::string& get_table_name(const S& strg) {
+            return pick_impl<Lookup>(strg).table.name;
+        }
+
+        /**
+         *  Find column name by its type and member pointer.
+         */
+        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
+        const std::string* find_column_name(const S& strg, F O::*field) {
+            return pick_impl<O>(strg).table.find_column_name(field);
+        }
+
+        /**
+         *  Find column name by its type and member pointer.
+         */
+        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
+        const std::string* find_column_name(const S& strg, const column_pointer<O, F>& cp) {
+            return pick_impl<O>(strg).table.find_column_name(cp.field);
+        }
+
+        template<class Label, size_t I, class S, satisfies<is_storage_impl, S> = true>
+        constexpr decltype(auto) materialize_column_pointer(const S&,
+                                                            const column_pointer<Label, polyfill::index_constant<I>>&) {
+            using timpl_type = storage_pick_impl_t<S, Label>;
+            return cte_getter_v<typename timpl_type::table_type::object_type, I>;
+        }
+
+        template<class Label, size_t I, class S, satisfies<is_storage_impl, S> = true>
+        const std::string* find_column_name(const S& strg,
+                                            const column_pointer<Label, polyfill::index_constant<I>>& cp) {
+            auto field = materialize_column_pointer(strg, cp);
+            return pick_impl<Label>(strg).table.find_column_name(field);
+        }
     }
 }

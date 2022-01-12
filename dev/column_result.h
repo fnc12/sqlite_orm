@@ -10,6 +10,7 @@
 #include "rowid.h"
 #include "alias.h"
 #include "column.h"
+#include "cte_types.h"
 #include "storage_traits.h"
 #include "function.h"
 
@@ -82,7 +83,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class X, class S>
-        struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+        struct column_result_t<St, built_in_function_t<unique_ptr_result_of<X>, S, X>, void> {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
@@ -127,7 +128,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class L, class R>
-        struct column_result_t<St, internal::div_t<L, R>, void> {
+        struct column_result_t<St, div_t<L, R>, void> {
             using type = double;
         };
 
@@ -198,6 +199,12 @@ namespace sqlite_orm {
 
         template<class St, class T, class F>
         struct column_result_t<St, column_pointer<T, F>> : column_result_t<St, F, void> {};
+
+        template<class St, class Label, size_t I>
+        struct column_result_t<St, column_pointer<Label, polyfill::index_constant<I>>>
+            : column_result_t<St,
+                              cte_getter_t<typename storage_pick_impl_t<St, Label>::table_type::object_type, I>,
+                              void> {};
 
         template<class St, class... Args>
         struct column_result_t<St, columns_t<Args...>, void> {

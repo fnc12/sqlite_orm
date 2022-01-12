@@ -48,6 +48,7 @@
 #include "table_name_collector.h"
 #include "object_from_column_builder.h"
 #include "table.h"
+#include "cte_types.h"
 #include "column.h"
 #include "util.h"
 
@@ -92,7 +93,7 @@ namespace sqlite_orm {
             friend storage_impl<CTETables..., Ts...> storage_impl_cat(const storage_t<Ts...>& storage,
                                                                       CTETables&&... cteTables) {
                 return {std::forward<CTETables>(cteTables)...,
-                        storage.impl.get_impl<typename Ts::object_type>().table...};
+                        pick_impl<typename Ts::object_type>(storage.impl).table...};
             }
 
             template<class I>
@@ -168,7 +169,10 @@ namespace sqlite_orm {
                 using is_without_rowid = std::integral_constant<bool, table_type::is_without_rowid>;
 
                 static_if<is_without_rowid{}>(
-                    [](auto&) {},  // all right. it's a "without_rowid" table
+                    [](auto&) {
+                        static_assert(std::is_void<table_type::cte_label_type>::value,
+                                      "Attempting to execute 'insert' request for a CTE mapping.");
+                    },
                     [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
                         std::ignore = tImpl;
                         static_assert(
@@ -185,13 +189,13 @@ namespace sqlite_orm {
             }
 
             template<class O>
-            auto& get_impl() const {
-                return this->impl.template get_impl<O>();
+            storage_pick_impl_t<const self, O>& get_impl() const {
+                return pick_impl<O>(this->impl);
             }
 
             template<class O>
-            auto& get_impl() {
-                return this->impl.template get_impl<O>();
+            storage_pick_impl_t<self, O>& get_impl() {
+                return pick_impl<O>(this->impl);
             }
 
           public:
@@ -789,8 +793,14 @@ namespace sqlite_orm {
             }
 
             template<class F, class O>
-            const std::string* column_name(F O::*memberPointer) const {
-                return this->impl.column_name(memberPointer);
+            [[deprecated("Use the more accurately named function `find_column_name()`")]] const std::string*
+            column_name(F O::*memberPointer) const {
+                return internal::find_column_name(this->impl, memberPointer);
+            }
+
+            template<class F, class O>
+            const std::string* find_column_name(F O::*memberPointer) const {
+                return internal::find_column_name(this->impl, memberPointer);
             }
 
           protected:
@@ -1518,7 +1528,7 @@ namespace sqlite_orm {
                     }
                 });
                 std::vector<R> res;
-                auto tableInfoPointer = this->impl.template find_table<R>();
+                auto tableInfoPointer = lookup_table<R>(this->impl);
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);
@@ -1750,12 +1760,6 @@ namespace sqlite_orm {
                 return res;
             }
         };  // struct storage_t
-
-        template<class T>
-        struct is_storage : std::false_type {};
-
-        template<class... Ts>
-        struct is_storage<storage_t<Ts...>> : std::true_type {};
     }
 
     template<class... Ts>

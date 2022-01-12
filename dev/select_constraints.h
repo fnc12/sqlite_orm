@@ -468,7 +468,9 @@ namespace sqlite_orm {
         return {move(cte), std::move(expression)};
     }
 
-    // a single CTE
+    /** A single CTE.
+     *  Example : with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
+     */
     template<class E, class Label, class Select>
     internal::with_t<E, internal::common_table_expression<Label, Select>>
     with(internal::common_table_expression<Label, Select> cte, E expression) {

@@ -74,6 +74,42 @@ namespace sqlite_orm {
             template<template<class...> class Op, class... Args>
             SQLITE_ORM_INLINE_VAR constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
+
+            template<template<typename...> typename Base, typename... Fs>
+            Base<Fs...>& as_template_base(Base<Fs...>& base) {
+                return base;
+            }
+            template<template<typename...> typename Base, typename... Fs>
+            const Base<Fs...>& as_template_base(const Base<Fs...>& base) {
+                return base;
+            }
+            template<template<typename...> typename Base, typename... Fs>
+            Base<Fs...>&& as_template_base(Base<Fs...>&& base) {
+                return std::move(base);
+            }
+            template<template<typename...> typename Base, typename... Fs>
+            const Base<Fs...>&& as_template_base(const Base<Fs...>&& base) {
+                return std::move(base);
+            }
+
+            /** @short Deduce template base specialization from a derived type */
+            template<template<typename...> class Base, class Derived>
+            using as_template_base_t = decltype(as_template_base<Base>(std::declval<Derived>()));
+
+            template<template<typename...> class Base, class Derived, typename SFINAE = void>
+            struct is_template_base_of : std::false_type {};
+
+            template<template<typename...> class Base, class Derived>
+            struct is_template_base_of<Base, Derived, polyfill::void_t<as_template_base_t<Base, Derived>>>
+                : std::true_type {};
+
+            template<template<typename...> class Base, class Derived>
+            using is_template_base_of_t = typename is_template_base_of<Base, Derived>::type;
+
+            template<template<typename...> class Base, class Derived>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_template_base_of_v = is_template_base_of<Base, Derived>::value;
         }
     }
+
+    namespace polyfill = internal::polyfill;
 }

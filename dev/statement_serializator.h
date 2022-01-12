@@ -63,7 +63,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const C& context) {
                 std::stringstream ss;
                 ss << "excluded.";
-                if(auto columnNamePointer = context.impl.column_name(statement.expression)) {
+                if(auto columnNamePointer = find_column_name(context.impl, statement.expression)) {
                     ss << "\"" << *columnNamePointer << "\"";
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
@@ -290,9 +290,9 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& m, const C& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << "\"" << context.impl.find_table_name(typeid(O)) << "\".";
+                    ss << "\"" << lookup_table_name<O>(context.impl) << "\".";
                 }
-                if(auto columnnamePointer = context.column_name(m)) {
+                if(auto columnnamePointer = find_column_name(context.impl, m)) {
                     ss << "\"" << *columnnamePointer << "\"";
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
@@ -339,7 +339,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& s, const C& context) {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << "'" << context.impl.find_table_name(typeid(O)) << "'.";
+                    ss << "'" << lookup_table_name<O>(context.impl) << "'.";
                 }
                 ss << static_cast<std::string>(s);
                 return ss.str();
@@ -354,7 +354,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& s, const C& context) {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << "'" << context.impl.find_table_name(typeid(O)) << "'.";
+                    ss << "'" << lookup_table_name<O>(context.impl) << "'.";
                 }
                 ss << static_cast<std::string>(s);
                 return ss.str();
@@ -369,7 +369,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& s, const C& context) {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << "'" << context.impl.find_table_name(typeid(O)) << "'.";
+                    ss << "'" << lookup_table_name<O>(context.impl) << "'.";
                 }
                 ss << static_cast<std::string>(s);
                 return ss.str();
@@ -445,17 +445,17 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class F>
-        struct statement_serializator<column_pointer<T, F>, void> {
-            using statement_type = column_pointer<T, F>;
+        template<class O, class F>
+        struct statement_serializator<column_pointer<O, F>, void> {
+            using statement_type = column_pointer<O, F>;
 
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << "'" << context.impl.find_table_name(typeid(T)) << "'.";
+                    ss << "'" << lookup_table_name<O>(context.impl) << "'.";
                 }
-                if(auto columnNamePointer = context.impl.column_name_simple(c.field)) {
+                if(auto columnNamePointer = find_column_name(context.impl, c)) {
                     ss << "\"" << *columnNamePointer << "\"";
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
@@ -793,7 +793,7 @@ namespace sqlite_orm {
                     res += "(";
                     decltype(columnsCount) columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
-                        if(auto columnNamePointer = context.column_name(column)) {
+                        if(auto columnNamePointer = find_column_name(context.impl, column)) {
                             res += *columnNamePointer;
                             if(columnIndex < columnsCount - 1) {
                                 res += ", ";
@@ -822,7 +822,7 @@ namespace sqlite_orm {
                     res += "(";
                     decltype(columnsCount) columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
-                        if(auto columnNamePointer = context.column_name(column)) {
+                        if(auto columnNamePointer = find_column_name(context.impl, column)) {
                             res += *columnNamePointer;
                             if(columnIndex < columnsCount - 1) {
                                 res += ", ";
@@ -870,7 +870,7 @@ namespace sqlite_orm {
                 constexpr const size_t columnsCount = std::tuple_size<columns_type_t>::value;
                 columnNames.reserve(columnsCount);
                 iterate_tuple(fk.columns, [&columnNames, &context](auto& v) {
-                    if(auto columnNamePointer = context.impl.column_name(v)) {
+                    if(auto columnNamePointer = find_column_name(context.impl, v)) {
                         columnNames.push_back(*columnNamePointer);
                     } else {
                         columnNames.push_back({});
@@ -891,11 +891,11 @@ namespace sqlite_orm {
                 {
                     using first_reference_t = typename std::tuple_element<0, references_type_t>::type;
                     using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
-                    auto refTableName = context.impl.find_table_name(typeid(first_reference_mapped_type));
+                    auto refTableName = lookup_table_name<first_reference_mapped_type>(context.impl);
                     ss << '\'' << refTableName << '\'';
                 }
                 iterate_tuple(fk.references, [&referencesNames, &context](auto& v) {
-                    if(auto columnNamePointer = context.impl.column_name(v)) {
+                    if(auto columnNamePointer = find_column_name(context.impl, v)) {
                         referencesNames.push_back(*columnNamePointer);
                     } else {
                         referencesNames.push_back({});
@@ -1719,7 +1719,7 @@ namespace sqlite_orm {
                     join_iterator<Args...>()([&collector, &context](const auto& c) {
                         using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
                         using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
-                        auto crossJoinedTableName = context.impl.find_table_name(typeid(cross_join_type));
+                        auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.impl);
                         auto tableAliasString = alias_extractor<original_join_type>::get();
                         std::pair<std::string, std::string> tableNameWithAlias(std::move(crossJoinedTableName),
                                                                                std::move(tableAliasString));
@@ -1795,7 +1795,7 @@ namespace sqlite_orm {
                 using head_t = typename std::tuple_element<0, elements_type>::type::column_type;
                 using indexed_type = typename table_type<head_t>::type;
                 ss << "INDEX IF NOT EXISTS '" << statement.name << "' ON '"
-                   << context.impl.find_table_name(typeid(indexed_type)) << "' (";
+                   << lookup_table_name<indexed_type>(context.impl) << "' (";
                 std::vector<std::string> columnNames;
                 iterate_tuple(statement.elements, [&columnNames, &context](auto& v) {
                     auto columnName = serialize(v, context);
@@ -1827,8 +1827,8 @@ namespace sqlite_orm {
                     using from_type = std::remove_cv_t<std::remove_pointer_t<decltype(itemPointer)>>;
 
                     auto aliasString = alias_extractor<from_type>::get();
-                    ss << "'" << context.impl.get_table_name<typename mapped_type_proxy<from_type>::type>() << "'";
-                    if(aliasString.length()) {
+                    ss << "'" << lookup_table_name<typename mapped_type_proxy<from_type>::type>(context.impl) << "'";
+                    if(!aliasString.empty()) {
                         ss << " '" << aliasString << "'";
                     }
                     if(index < std::tuple_size<tuple>::value - 1) {
@@ -1910,7 +1910,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << context.impl.find_table_name(typeid(O)) << "'";
+                ss << " '" << lookup_table_name<O>(context.impl) << "'";
                 return ss.str();
             }
         };
@@ -1924,7 +1924,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_extractor<T>::get();
-                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                ss << " '" << lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl) << "' ";
                 if(aliasString.length()) {
                     ss << "'" << aliasString << "' ";
                 }
@@ -1956,7 +1956,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_extractor<T>::get();
-                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                ss << " '" << lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl) << "' ";
                 if(aliasString.length()) {
                     ss << "'" << aliasString << "' ";
                 }
@@ -1974,7 +1974,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_extractor<T>::get();
-                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                ss << " '" << lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl) << "' ";
                 if(aliasString.length()) {
                     ss << "'" << aliasString << "' ";
                 }
@@ -1992,7 +1992,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " ";
                 auto aliasString = alias_extractor<T>::get();
-                ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
+                ss << " '" << lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl) << "' ";
                 if(aliasString.length()) {
                     ss << "'" << aliasString << "' ";
                 }
@@ -2009,7 +2009,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c) << " ";
-                ss << " '" << context.impl.find_table_name(typeid(O)) << "'";
+                ss << " '" << lookup_table_name<O>(context.impl) << "'";
                 return ss.str();
             }
         };
