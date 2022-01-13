@@ -14983,6 +14983,7 @@ namespace sqlite_orm {
                     columnsContext.skip_table_name = true;
                     auto index = 0;
                     iterate_tuple(ins.columns.columns, [&ss, &columnsContext, &index](auto& memberPointer) {
+                        constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                         auto columnName = serialize(memberPointer, columnsContext);
                         if(!columnName.empty()) {
                             ss << columnName;
@@ -15002,6 +15003,7 @@ namespace sqlite_orm {
                 auto index = 0;
                 auto& object = get_ref(ins.obj);
                 iterate_tuple(ins.columns.columns, [&ss, &context, &index, &object](auto& memberPointer) {
+                    constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                     using member_pointer_type = typename std::decay<decltype(memberPointer)>::type;
                     static_assert(!is_setter<member_pointer_type>::value,
                                   "Unable to use setter within insert explicit");
