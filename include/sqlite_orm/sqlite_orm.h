@@ -63,6 +63,7 @@ __pragma(push_macro("min"))
         arguments_count_does_not_match,
         function_not_found,
         index_is_out_of_bounds,
+        value_is_null,
     };
 }
 
@@ -110,6 +111,8 @@ namespace sqlite_orm {
                     return "Function not found";
                 case orm_error_code::index_is_out_of_bounds:
                     return "Index is out of bounds";
+                case orm_error_code::value_is_null:
+                    return "Value is null";
                 default:
                     return "unknown error";
             }
@@ -9638,16 +9641,16 @@ namespace sqlite_orm {
 
             std::vector<std::string> composite_key_columns_names() const {
                 std::vector<std::string> res;
-                this->for_each_primary_key([this, &res](auto& c) {
-                    res = this->composite_key_columns_names(c);
+                this->for_each_primary_key([this, &res](auto& primaryKey) {
+                    res = this->composite_key_columns_names(primaryKey);
                 });
                 return res;
             }
 
             std::vector<std::string> primary_key_column_names() const {
                 std::vector<std::string> res;
-                this->for_each_column_with<primary_key_t<>>([&res](auto& c) {
-                    res.push_back(c.name);
+                this->for_each_column_with<primary_key_t<>>([&res](auto& column) {
+                    res.push_back(column.name);
                 });
                 if(!res.size()) {
                     res = this->composite_key_columns_names();
@@ -9655,13 +9658,32 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class L>
+            void for_each_primary_key_column(const L& lambda) const {
+                this->for_each_column_with<primary_key_t<>>([&lambda](auto& column) {
+                    if(column.member_pointer) {
+                        lambda(column.member_pointer);
+                    } else {
+                        lambda(column.getter);
+                    }
+                });
+                this->for_each_primary_key([this, &lambda](auto& primaryKey) {
+                    this->for_each_column_in_primary_key(primaryKey, lambda);
+                });
+            }
+
+            template<class L, class... Args>
+            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, const L& lambda) const {
+                iterate_tuple(primarykey.columns, lambda);
+            }
+
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& pk) const {
                 std::vector<std::string> res;
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
-                iterate_tuple(pk.columns, [this, &res](auto& v) {
-                    if(auto columnName = this->find_column_name(v)) {
+                iterate_tuple(pk.columns, [this, &res](auto& memberPointer) {
+                    if(auto* columnName = this->find_column_name(memberPointer)) {
                         res.push_back(*columnName);
                     } else {
                         res.push_back({});
@@ -15541,15 +15563,20 @@ namespace sqlite_orm {
                 auto& tImpl = context.impl.template get_impl<T>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << tImpl.table.name << "' ";
-                ss << "WHERE ";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ? ";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << "AND ";
+                ss << "WHERE";
+                auto index = 0;
+                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl](auto& memberPointer) {
+                    if(index > 0) {
+                        ss << " AND";
                     }
-                }
+                    if(auto* columnNamePointer = tImpl.table.find_column_name(memberPointer)) {
+                        ss << " \"" << *columnNamePointer << "\""
+                           << " = ?";
+                    } else {
+                        throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::column_not_found));
+                    }
+                    ++index;
+                });
                 return ss.str();
             }
         };
@@ -17587,17 +17614,23 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto& tImpl = this->get_impl<object_type>();
-                auto& o = statement.expression.obj;
+                auto& object = statement.expression.obj;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.expression.columns.columns, [&o, &index, &stmt, &tImpl, db](auto& m) {
-                    using column_type = typename std::decay<decltype(m)>::type;
-                    using field_type = typename column_result_t<self, column_type>::type;
-                    const field_type* value = tImpl.table.template get_object_field_pointer<field_type>(o, m);
-                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
-                });
+                iterate_tuple(
+                    statement.expression.columns.columns,
+                    [&object, &index, &stmt, &tImpl, db](auto& memberPointer) {
+                        using column_type = typename std::decay<decltype(memberPointer)>::type;
+                        using field_type = typename column_result_t<self, column_type>::type;
+                        const auto* value =
+                            tImpl.table.template get_object_field_pointer<field_type>(object, memberPointer);
+                        if(!value) {
+                            throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::value_is_null));
+                        }
+                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                    sqlite3_errmsg(db));
+                        }
+                    });
                 perform_step(db, stmt);
                 return sqlite3_last_insert_rowid(db);
             }

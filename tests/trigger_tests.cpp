@@ -33,14 +33,13 @@ TEST_CASE("triggers_basics") {
             after()
                 .update_of(&TestInsert::x)
                 .on<TestInsert>()
-                .begin(
-                    insert(test_insert),
-                    insert(into<TestInsert>(),
-                           columns(&TestInsert::id, &TestInsert::text, &TestInsert::x, &TestInsert::y),
-                           values(std::make_tuple(123, "HelloTrigger", 12, 13))),
-                    // insert(test_insert, columns(&TestInsert::id, &TestInsert::text)), // TODO Missing serialisation (has '?')
-                    replace(TestInsert{8, "replace", 3, 4}),
-                    replace(test_insert))
+                .begin(insert(test_insert),
+                       insert(into<TestInsert>(),
+                              columns(&TestInsert::id, &TestInsert::text, &TestInsert::x, &TestInsert::y),
+                              values(std::make_tuple(123, "HelloTrigger", 12, 13))),
+                       insert(test_insert, columns(&TestInsert::id, &TestInsert::text, &TestInsert::x, &TestInsert::y)),
+                       replace(TestInsert{8, "replace", 3, 4}),
+                       replace(test_insert))
                 .end()),
         make_trigger("trigger_update",
                      after()

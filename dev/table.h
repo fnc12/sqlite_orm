@@ -115,16 +115,16 @@ namespace sqlite_orm {
 
             std::vector<std::string> composite_key_columns_names() const {
                 std::vector<std::string> res;
-                this->for_each_primary_key([this, &res](auto& c) {
-                    res = this->composite_key_columns_names(c);
+                this->for_each_primary_key([this, &res](auto& primaryKey) {
+                    res = this->composite_key_columns_names(primaryKey);
                 });
                 return res;
             }
 
             std::vector<std::string> primary_key_column_names() const {
                 std::vector<std::string> res;
-                this->for_each_column_with<primary_key_t<>>([&res](auto& c) {
-                    res.push_back(c.name);
+                this->for_each_column_with<primary_key_t<>>([&res](auto& column) {
+                    res.push_back(column.name);
                 });
                 if(!res.size()) {
                     res = this->composite_key_columns_names();
@@ -132,13 +132,32 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class L>
+            void for_each_primary_key_column(const L& lambda) const {
+                this->for_each_column_with<primary_key_t<>>([&lambda](auto& column) {
+                    if(column.member_pointer) {
+                        lambda(column.member_pointer);
+                    } else {
+                        lambda(column.getter);
+                    }
+                });
+                this->for_each_primary_key([this, &lambda](auto& primaryKey) {
+                    this->for_each_column_in_primary_key(primaryKey, lambda);
+                });
+            }
+
+            template<class L, class... Args>
+            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, const L& lambda) const {
+                iterate_tuple(primarykey.columns, lambda);
+            }
+
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& pk) const {
                 std::vector<std::string> res;
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
-                iterate_tuple(pk.columns, [this, &res](auto& v) {
-                    if(auto columnName = this->find_column_name(v)) {
+                iterate_tuple(pk.columns, [this, &res](auto& memberPointer) {
+                    if(auto* columnName = this->find_column_name(memberPointer)) {
                         res.push_back(*columnName);
                     } else {
                         res.push_back({});
