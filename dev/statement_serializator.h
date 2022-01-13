@@ -5,26 +5,35 @@
 #include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
+#include <cstddef>  // std::nullptr_t
+#include <memory>
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "member_traits/is_getter.h"
+#include "member_traits/is_setter.h"
+#include "ast/upsert_clause.h"
+#include "ast/excluded.h"
+#include "ast/group_by.h"
+#include "ast/into.h"
 #include "core_functions.h"
 #include "constraints.h"
 #include "conditions.h"
 #include "column.h"
+#include "indexed_column.h"
+#include "function.h"
+#include "prepared_statement.h"
 #include "rowid.h"
 #include "type_printer.h"
 #include "table_name_collector.h"
 #include "column_names_getter.h"
 #include "order_by_serializator.h"
+#include "statement_binder.h"
 #include "values.h"
+#include "triggers.h"
 #include "table_type.h"
-#include "indexed_column.h"
-#include "function.h"
-#include "ast/upsert_clause.h"
-#include "ast/excluded.h"
-#include "ast/group_by.h"
+#include "index.h"
 
 namespace sqlite_orm {
 
@@ -1798,6 +1807,118 @@ namespace sqlite_orm {
                     }
                     ++index;
                 });
+                return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializator<trigger_timing, void> {
+            using statement_type = trigger_timing;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case trigger_timing::trigger_before:
+                        return "BEFORE";
+                    case trigger_timing::trigger_after:
+                        return "AFTER";
+                    case trigger_timing::trigger_instead_of:
+                        return "INSTEAD OF";
+                    default:
+                        return "";
+                }
+            }
+        };
+
+        template<>
+        struct statement_serializator<trigger_type, void> {
+            using statement_type = trigger_type;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case trigger_type::trigger_delete:
+                        return "DELETE";
+                    case trigger_type::trigger_insert:
+                        return "INSERT";
+                    case trigger_type::trigger_update:
+                        return "UPDATE";
+                    default:
+                        return "";
+                }
+            }
+        };
+
+        template<>
+        struct statement_serializator<trigger_type_base_t, void> {
+            using statement_type = trigger_type_base_t;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+
+                ss << serialize(statement.timing, context) << " " << serialize(statement.type, context);
+                return ss.str();
+            }
+        };
+
+        template<class... Cs>
+        struct statement_serializator<trigger_update_type_t<Cs...>, void> {
+            using statement_type = trigger_update_type_t<Cs...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                std::string sep = "";
+
+                ss << serialize(statement.timing, context) << " UPDATE OF ";
+                iterate_tuple(statement.columns, [&ss, &sep, &context](auto& v) {
+                    auto name = context.column_name(v);
+
+                    if(name == nullptr)
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    ss << sep << "'" << *name << "'";
+                    sep = ", ";
+                });
+                return ss.str();
+            }
+        };
+
+        template<class T, class Trigger>
+        struct statement_serializator<trigger_base_t<T, Trigger>, void> {
+            using statement_type = trigger_base_t<T, Trigger>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+
+                ss << serialize(statement.type_base, context);
+                ss << " ON '" << context.impl.find_table_name(typeid(T)) << "' ";
+                ss << (statement.do_for_each_row ? "FOR EACH ROW " : "");
+                // TODO add WHEN clause
+                return ss.str();
+            }
+        };
+
+        template<class... S>
+        struct statement_serializator<trigger_t<S...>, void> {
+            using statement_type = trigger_t<S...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "CREATE ";
+
+                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << serialize(statement.base, context);
+                C c{context};
+
+                c.replace_bindable_with_question = false;
+                ss << "BEGIN ";
+                iterate_tuple(statement.elements, [&ss, &c](auto& v) {
+                    ss << serialize(v, c) << ";";
+                });
+                ss << " END";
+
                 return ss.str();
             }
         };

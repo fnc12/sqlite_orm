@@ -46,9 +46,11 @@
 #include "expression_object_type.h"
 #include "statement_serializator.h"
 #include "table_name_collector.h"
+#include "triggers.h"
 #include "object_from_column_builder.h"
 #include "table.h"
 #include "column.h"
+#include "index.h"
 
 namespace sqlite_orm {
 
@@ -805,6 +807,22 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 auto query = serialize(tableImpl.table, context);
                 perform_void_exec(db, query);
+                return res;
+            }
+
+            template<class... Tss, class... Cols>
+            sync_schema_result
+            sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
+                auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                // context.replace_bindable_with_question = true;
+                auto query = serialize(tableImpl.table, context);
+                auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
+                }
                 return res;
             }
 

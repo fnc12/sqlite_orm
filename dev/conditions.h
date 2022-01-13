@@ -9,6 +9,7 @@
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
+#include "serializator_context.h"
 #include "tags.h"
 #include "expression.h"
 

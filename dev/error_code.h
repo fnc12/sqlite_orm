@@ -5,6 +5,7 @@
 #include <sqlite3.h>
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
+#include <type_traits>
 
 namespace sqlite_orm {
 

@@ -9,6 +9,7 @@
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>  //  std::vector
 #include <cstring>  //  strlen
+#include <locale>
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
@@ -17,6 +18,7 @@
 #include "pointer_value.h"
 #include "journal_mode.h"
 #include "error_code.h"
+#include "is_std_ptr.h"
 
 namespace sqlite_orm {
 
