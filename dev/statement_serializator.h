@@ -1873,7 +1873,11 @@ namespace sqlite_orm {
 
                 ss << serialize(statement.timing, context) << " UPDATE OF ";
                 iterate_tuple(statement.columns, [&ss, &sep, &context](auto& v) {
-                    ss << sep << "'" << *context.column_name(v) << "'";
+                    auto name = context.column_name(v);
+
+                    if(name == nullptr)
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    ss << sep << "'" << *name << "'";
                     sep = ", ";
                 });
                 return ss.str();
@@ -1896,28 +1900,6 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class... S>
-        struct statement_serializator<partial_trigger_t<T, S...>, void> {
-            using statement_type = partial_trigger_t<T, S...>;
-
-            template<class C>
-            std::string operator()(const statement_type& statement, const C& context) const {
-                std::stringstream ss;
-
-                ss << serialize(statement.base, context);
-
-                C c{context};
-
-                c.replace_bindable_with_question = false;
-                ss << "BEGIN ";
-                iterate_tuple(statement.statements, [&ss, &c](auto& v) {
-                    ss << serialize(v, c) << ";";
-                });
-                ss << " END";
-                return ss.str();
-            }
-        };
-
         template<class... S>
         struct statement_serializator<trigger_t<S...>, void> {
             using statement_type = trigger_t<S...>;
@@ -1925,10 +1907,17 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                std::string timing = "BEFORE";
                 ss << "CREATE ";
 
-                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << serialize(statement.part, context);
+                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << serialize(statement.base, context);
+                C c{context};
+
+                c.replace_bindable_with_question = false;
+                ss << "BEGIN ";
+                iterate_tuple(statement.elements, [&ss, &c](auto& v) {
+                    ss << serialize(v, c) << ";";
+                });
+                ss << " END";
 
                 return ss.str();
             }

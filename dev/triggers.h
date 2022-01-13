@@ -21,7 +21,7 @@ namespace sqlite_orm {
          * This class is an intermediate SQLite trigger, to be used with
          * `make_trigger` to create a full trigger.
          *  T is the base of the trigger (contains its type, timing and associated table)
-         *  S is the list of trigger statments
+         *  S is the list of trigger statements
          */
         template<class T, class... S>
         struct partial_trigger_t {
@@ -37,7 +37,7 @@ namespace sqlite_orm {
             T base;
 
             partial_trigger_t(T trigger_base, S... statements) :
-                statements(std::make_tuple<S...>(std::forward<S>(statements)...)), base(trigger_base) {}
+                statements(std::make_tuple<S...>(std::forward<S>(statements)...)), base(std::move(trigger_base)) {}
 
             partial_trigger_t &end() {
                 return *this;
@@ -58,18 +58,19 @@ namespace sqlite_orm {
              * Name of the trigger
              */
             std::string name;
+
             /**
-             * Contains more data about the trigger
+             * Base of the trigger (contains its type, timing and associated table)
              */
-            partial_trigger_t<T, S...> part;
+            T base;
+
             /**
              * Statements of the triggers (to be executed when the trigger fires)
-             * (reference to partial_trigger::statements for conveniance)
              */
-            const elements_type &elements;
+            elements_type elements;
 
-            trigger_t(const std::string &name, const partial_trigger_t<T, S...> &part) :
-                name(name), part(part), elements(part.statements) {}
+            trigger_t(const std::string &name, T trigger_base, elements_type statements) :
+                name(name), base(std::move(trigger_base)), elements(std::move(statements)) {}
         };
 
         /**
@@ -100,10 +101,10 @@ namespace sqlite_orm {
              */
             // void when = NOT_IMPLEMENTED;
 
-            trigger_base_t(trigger_type_base type_base) : type_base(type_base) {}
+            trigger_base_t(trigger_type_base type_base) : type_base(std::move(type_base)) {}
 
             trigger_base_t &for_each_row() {
-                do_for_each_row = true;
+                this->do_for_each_row = true;
                 return *this;
             }
             // trigger_base_t &when(void); // TODO
@@ -132,7 +133,7 @@ namespace sqlite_orm {
             trigger_type_base_t(trigger_timing timing, trigger_type type) : timing(timing), type(type) {}
 
             template<class T>
-            trigger_base_t<T, trigger_type_base_t> on(void) {
+            trigger_base_t<T, trigger_type_base_t> on() {
                 return {*this};
             }
         };
@@ -155,7 +156,7 @@ namespace sqlite_orm {
                 trigger_type_base_t(timing, type), columns(std::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
 
             template<class T>
-            trigger_base_t<T, trigger_update_type_t<Cs...>> on(void) {
+            trigger_base_t<T, trigger_update_type_t<Cs...>> on() {
                 return {*this};
             }
         };
@@ -165,15 +166,15 @@ namespace sqlite_orm {
 
             trigger_timing_t(trigger_timing timing) : timing(timing) {}
 
-            trigger_type_base_t delete_(void) {
+            trigger_type_base_t delete_() {
                 return {timing, trigger_type::trigger_delete};
             }
 
-            trigger_type_base_t insert(void) {
+            trigger_type_base_t insert() {
                 return {timing, trigger_type::trigger_insert};
             }
 
-            trigger_type_base_t update(void) {
+            trigger_type_base_t update() {
                 return {timing, trigger_type::trigger_update};
             }
 
@@ -187,18 +188,18 @@ namespace sqlite_orm {
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(const std::string &name,
                                               const internal::partial_trigger_t<T, S...> &part) {
-        return {name, part};
+        return {name, std::move(part.base), std::move(part.statements)};
     }
 
-    inline internal::trigger_timing_t before(void) {
+    inline internal::trigger_timing_t before() {
         return {internal::trigger_timing_t(internal::trigger_timing::trigger_before)};
     }
 
-    inline internal::trigger_timing_t after(void) {
+    inline internal::trigger_timing_t after() {
         return {internal::trigger_timing_t(internal::trigger_timing::trigger_after)};
     }
 
-    inline internal::trigger_timing_t instead_of(void) {
+    inline internal::trigger_timing_t instead_of() {
         return {internal::trigger_timing_t(internal::trigger_timing::trigger_instead_of)};
     }
 }

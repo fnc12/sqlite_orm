@@ -79,7 +79,7 @@ TEST_CASE("triggers_basics") {
                    primary_key(&TestUpdate::id)));
     storage.sync_schema();
 
-    {
+    SECTION("insert") {
         storage.insert(TestInsert{0, "SQLite trigger", 8, 2});
         REQUIRE(storage.count<TestInsert>() == 1);
         auto records = storage.get_all<TestInsert>();
@@ -88,7 +88,7 @@ TEST_CASE("triggers_basics") {
         storage.update(t);
         REQUIRE(storage.count<TestInsert>() == 5);
     }
-    {
+    SECTION("update") {
         storage.replace(test_update);
         REQUIRE(storage.count<TestUpdate>() == 1);
         auto records = storage.get_all<TestUpdate>();
@@ -96,7 +96,7 @@ TEST_CASE("triggers_basics") {
         REQUIRE(t.text == "update");
         REQUIRE(t.x == 42);
     }
-    {
+    SECTION("delete") {
         storage.replace(test_delete);
         storage.insert(TestDelete{0, "test", 1, 2});
         storage.insert(TestDelete{0, "test", 1, 2});
