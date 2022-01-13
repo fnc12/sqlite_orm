@@ -7,6 +7,7 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "cxx_polyfill.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_helper.h"
 #include "optional_container.h"
@@ -244,10 +245,24 @@ namespace sqlite_orm {
             using label_type = Label;
             using expression_type = Select;
 
+            std::vector<std::string> columnNames;
             expression_type expression;
 
-            common_table_expression(expression_type expression) : expression{std::move(expression)} {
+            common_table_expression(std::vector<std::string> columnNames, expression_type expression) :
+                columnNames{move(columnNames)}, expression{std::move(expression)} {
                 this->expression.highest_level = false;
+            }
+        };
+        template<class... CTEs>
+        using common_table_expressions = std::tuple<CTEs...>;
+
+        template<typename Label>
+        struct cte_maker {
+            std::vector<std::string> columnNames;
+
+            template<class Select>
+            internal::common_table_expression<Label, Select> operator()(Select sel) && {
+                return {move(this->columnNames), std::move(sel)};
             }
         };
 
@@ -256,14 +271,13 @@ namespace sqlite_orm {
          */
         template<class E, class... CTEs>
         struct with_t : with_string {
-            using cte_type = std::tuple<CTEs...>;
+            using cte_type = common_table_expressions<CTEs...>;
             using expression_type = E;
 
             cte_type cte;
             expression_type expression;
 
-            with_t(std::tuple<CTEs...> cte, expression_type expression) :
-                cte{move(cte)}, expression{std::move(expression)} {
+            with_t(cte_type cte, expression_type expression) : cte{move(cte)}, expression{std::move(expression)} {
                 this->expression.highest_level = true;
             }
         };
@@ -412,9 +426,16 @@ namespace sqlite_orm {
     }
 
     /**
+     *  Explicitly refer to a column, used in contexts
+     *  where the automatic object mapping deduction needs to be overridden,
+     *  or when you need to refer to a column in a CTE.
+     *  
      *  Use it like this:
      *  struct MyType : BaseType { ... };
      *  storage.select(column<MyType>(&BaseType::id));
+     *  // ... or
+     *  struct MyType : BaseType { ... };
+     *  storage.with(cte<cte_1>()(select(&Object::id), select(column<cte_1>(0_col)));
      */
     template<class T, class F>
     internal::column_pointer<T, F> column(F f) {
@@ -456,9 +477,14 @@ namespace sqlite_orm {
         return {std::move(lhs), std::move(rhs)};
     }
 
-    template<class Label, class Select>
-    internal::common_table_expression<Label, Select> cte(Select sel) {
-        return {std::move(sel)};
+    /**
+     *  Example : cte<cte_1>()(select(&Object::id));
+     */
+    template<class Label,
+             class... ColumnNames,
+             std::enable_if_t<polyfill::conjunction_v<std::is_convertible<ColumnNames, std::string>...>, bool> = true>
+    internal::cte_maker<Label> cte(ColumnNames... columnNames) {
+        return {{std::move(columnNames)...}};
     }
 
     // tuple of CTEs

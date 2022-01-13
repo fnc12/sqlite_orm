@@ -27,7 +27,7 @@ namespace sqlite_orm {
             serializator_context_builder(const storage_type& storage_) : storage(storage_) {}
 
             serializator_context<impl_type> operator()() const {
-                return {this->storage.impl};
+                return {obtain_const_impl(this->storage)};
             }
 
             const storage_type& storage;

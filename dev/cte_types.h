@@ -16,6 +16,7 @@ namespace sqlite_orm {
           public:
             using fields_type = std::tuple<Fs...>;
             using index_sequence = std::index_sequence_for<Fs...>;
+            // this type name is used to detect the mapping from label to object
             using cte_label_type = Label;
 
             template<size_t I>

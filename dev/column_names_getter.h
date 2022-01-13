@@ -3,6 +3,7 @@
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
+#include <system_error>
 
 #include "error_code.h"
 #include "select_constraints.h"

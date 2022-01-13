@@ -4,6 +4,7 @@
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
+#include "type_traits.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
@@ -30,6 +31,9 @@ namespace sqlite_orm {
         template<class St, class T, class SFINAE = void>
         struct column_result_t;
 
+        template<class St, class T>
+        using column_result_of_t = typename column_result_t<St, T>::type;
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class St, class T>
         struct column_result_t<St, as_optional_t<T>, void> {
@@ -41,8 +45,8 @@ namespace sqlite_orm {
         template<class St, class O, class F>
         struct column_result_t<St,
                                F O::*,
-                               typename std::enable_if<std::is_member_pointer<F O::*>::value &&
-                                                       !std::is_member_function_pointer<F O::*>::value>::type> {
+                               std::enable_if_t<std::is_member_pointer<F O::*>::value &&
+                                                !std::is_member_function_pointer<F O::*>::value>> {
             using type = F;
         };
 
@@ -60,7 +64,7 @@ namespace sqlite_orm {
          *  Common case for all getter types. Getter types are defined in column.h file
          */
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<is_getter<T>::value>::type> {
+        struct column_result_t<St, T, match_if<is_getter, T>> {
             using type = typename getter_traits<T>::field_type;
         };
 
@@ -68,7 +72,7 @@ namespace sqlite_orm {
          *  Common case for all setter types. Setter types are defined in column.h file
          */
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<is_setter<T>::value>::type> {
+        struct column_result_t<St, T, match_if<is_setter, T>> {
             using type = typename setter_traits<T>::field_type;
         };
 
@@ -198,7 +202,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class F>
-        struct column_result_t<St, column_pointer<T, F>> : column_result_t<St, F, void> {};
+        struct column_result_t<St, column_pointer<T, F>> : column_result_t<St, F> {};
 
         template<class St, class Label, size_t I>
         struct column_result_t<St, column_pointer<Label, polyfill::index_constant<I>>>
@@ -212,7 +216,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class... Args>
-        struct column_result_t<St, select_t<T, Args...>> : column_result_t<St, T, void> {};
+        struct column_result_t<St, select_t<T, Args...>> : column_result_t<St, T> {};
 
         template<class St, class T>
         struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
@@ -234,7 +238,7 @@ namespace sqlite_orm {
          *  Result for the most simple queries like `SELECT 1`
          */
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+        struct column_result_t<St, T, match_if<std::is_arithmetic, T>> {
             using type = T;
         };
 
@@ -252,7 +256,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class E>
-        struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, typename std::decay<E>::type, void> {};
+        struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, typename std::decay<E>::type> {};
 
         template<class St, class T>
         struct column_result_t<St, asterisk_t<T>, void> {
@@ -290,6 +294,6 @@ namespace sqlite_orm {
         };
 
         template<class St, class T>
-        struct column_result_t<St, std::reference_wrapper<T>, void> : column_result_t<St, T, void> {};
+        struct column_result_t<St, std::reference_wrapper<T>, void> : column_result_t<St, T> {};
     }
 }

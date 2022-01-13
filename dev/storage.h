@@ -18,6 +18,7 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "type_traits.h"
 #include "alias.h"
 #include "row_extractor_builder.h"
 #include "error_code.h"
@@ -48,8 +49,8 @@
 #include "table_name_collector.h"
 #include "object_from_column_builder.h"
 #include "table.h"
-#include "cte_types.h"
 #include "column.h"
+#include "cte_storage.h"
 #include "util.h"
 
 namespace sqlite_orm {
@@ -77,23 +78,20 @@ namespace sqlite_orm {
           protected:
             impl_type impl;
 
-            template<class T, class S, class... Args>
-            friend struct view_t;
-
-            template<class S>
-            friend struct dynamic_order_by_t;
-
-            template<class V>
-            friend struct iterator_t;
-
-            template<class S>
-            friend struct serializator_context_builder;
-
-            template<typename... CTETables>
-            friend storage_impl<CTETables..., Ts...> storage_impl_cat(const storage_t<Ts...>& storage,
-                                                                      CTETables&&... cteTables) {
-                return {std::forward<CTETables>(cteTables)...,
-                        pick_impl<typename Ts::object_type>(storage.impl).table...};
+            /**
+             *  Obtain a storage_t's const storage_impl.
+             *  
+             *  @note Historically, `serializator_context_builder` was declared friend, along with
+             *  a few other library stock objects, in order limit access to the storage_impl.
+             *  However, one could gain access to a storage_t's storage_impl through
+             *  `serializator_context_builder`, hence leading the whole friend declaration mambo-jumbo
+             *  ad absurdum.
+             *  Providing a free function is way better and cleaner.
+             *
+             *  Hence, friend was replaced by `obtain_const_impl()` and `pick_const_impl()`.
+             */
+            friend const impl_type& obtain_const_impl(const self& storage) noexcept {
+                return storage.impl;
             }
 
             template<class I>
@@ -156,21 +154,22 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                using mapped_types_tuples = std::tuple<typename Ts::object_type...>;
+                using mapped_types_tuples = std::tuple<object_type_t<Ts>...>;
                 static_assert(tuple_helper::has_type<O, mapped_types_tuples>::value, "type is not mapped to a storage");
             }
 
             template<class O>
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
-                using table_type = typename std::decay<decltype(tImpl.table)>::type;
-                using elements_type = typename std::decay<decltype(tImpl.table.elements)>::type;
+                using storage_impl_type = std::remove_cvref_t<decltype(tImpl)>;
+                using table_type = typename storage_impl_type::table_type;
+                using elements_type = typename table_type::elements_type;
 
                 using is_without_rowid = std::integral_constant<bool, table_type::is_without_rowid>;
 
                 static_if<is_without_rowid{}>(
                     [](auto&) {
-                        static_assert(std::is_void<table_type::cte_label_type>::value,
+                        static_assert(std::is_void<typename table_type::cte_label_type>::value,
                                       "Attempting to execute 'insert' request for a CTE mapping.");
                     },
                     [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
@@ -188,14 +187,13 @@ namespace sqlite_orm {
                     })(tImpl);
             }
 
-            template<class O>
-            storage_pick_impl_t<const self, O>& get_impl() const {
-                return pick_impl<O>(this->impl);
+            template<class Lookup>
+            storage_pick_impl_t<self, Lookup>& get_impl() {
+                return this->impl;
             }
-
-            template<class O>
-            storage_pick_impl_t<self, O>& get_impl() {
-                return pick_impl<O>(this->impl);
+            template<class Lookup>
+            storage_pick_impl_t<const self, Lookup>& get_impl() const {
+                return this->impl;
             }
 
           public:
@@ -448,7 +446,7 @@ namespace sqlite_orm {
                      class O,
                      class... Args,
                      class Tuple = std::tuple<Args...>,
-                     typename SFINAE = typename std::enable_if<std::tuple_size<Tuple>::value >= 1>::type>
+                     std::enable_if_t<std::tuple_size<Tuple>::value >= 1> = true>
             std::string group_concat(F O::*m, Args&&... args) {
                 return this->group_concat_internal(m, {}, std::forward<Args>(args)...);
             }
@@ -551,7 +549,7 @@ namespace sqlite_orm {
              *  For a single column use `auto rows = storage.select(&User::id, where(...));
              *  For multicolumns use `auto rows = storage.select(columns(&User::id, &User::name), where(...));
              */
-            template<class T, class... Args, class R = typename column_result_t<self, T>::type>
+            template<class T, class... Args, class R = column_result_of_t<self, T>>
             std::vector<R> select(T m, Args... args) {
                 static_assert(!is_base_of_template<T, compound_operator>::value ||
                                   std::tuple_size<std::tuple<Args...>>::value == 0,
@@ -560,11 +558,29 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
-            template<class T>
-            std::enable_if_t<is_prepared_statement<T>::value, std::string> dump(const T& preparedStatement) const {
-                const auto& impl = impl_for_expression(preparedStatement.expression);
-                using context_t = serializator_context<decltype(impl)>;
-                context_t context{impl};
+            /**
+             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+             */
+            template<class Label, class Select, class T, class... Args>
+            auto with(common_table_expression<Label, Select> cte, select_t<T, Args...> sel) {
+                auto statement = this->prepare(sqlite_orm::with(move(cte), std::move(sel)));
+                return this->execute(statement);
+            }
+
+            /**
+             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+             */
+            template<class... CTEs, class T, class... Args>
+            auto with(common_table_expressions<CTEs...> cte, select_t<T, Args...> sel) {
+                auto statement = this->prepare(sqlite_orm::with(move(cte), std::move(sel)));
+                return this->execute(statement);
+            }
+
+            template<class T, satisfies<is_prepared_statement, T> = true>
+            std::string dump(const T& preparedStatement) const {
+                const auto& exprImpl = storage_for_expression(*this, preparedStatement.expression);
+                using context_t = serializator_context<std::remove_cvref_t<decltype(exprImpl)>>;
+                context_t context{exprImpl};
                 return serialize(preparedStatement.expression, context);
             }
 
@@ -572,9 +588,8 @@ namespace sqlite_orm {
              *  Returns a string representation of object of a class mapped to the storage.
              *  Type of string has json-like style.
              */
-            template<class O>
-            typename std::enable_if<storage_traits::type_is_mapped<self, O>::value, std::string>::type
-            dump(const O& o) {
+            template<class O, satisfies<storage_traits::type_is_mapped, self, O> = true>
+            std::string dump(const O& o) {
                 auto& tImpl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "{ ";
@@ -904,23 +919,14 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 
-            template<class S>
-            const impl_type& impl_for_expression(const S& /*statement*/) const {
-                return this->impl;
-            }
-            template<class... CTEs, class E>
-            decltype(auto) impl_for_expression(const with_t<E, CTEs...>& statement) const {
-                return make_cte_storage(*this, statement);
-            }
-
             template<typename S>
             prepared_statement_t<S> prepare_impl(S statement) {
                 auto con = this->get_connection();
                 sqlite3_stmt* stmt;
                 auto db = con.get();
-                const auto& impl = impl_for_expression(statement);
-                using context_t = serializator_context<decltype(impl)>;
-                context_t context{impl};
+                const auto& exprImpl = storage_for_expression(*this, statement);
+                using context_t = serializator_context<std::remove_cvref_t<decltype(exprImpl)>>;
+                context_t context{exprImpl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
                 auto query = serialize(statement, context);
@@ -997,10 +1003,10 @@ namespace sqlite_orm {
                 return this->impl.table_exists(tableName, con.get());
             }
 
-            template<class E, class... CTEs>
-            std::enable_if_t<is_base_of_template<E, select_t>::value, prepared_statement_t<with_t<E, CTEs...>>>
-            prepare(with_t<E, CTEs...> sel) {
-                return prepare_impl<with_t<E, CTEs...>>(std::move(sel));
+            template<class... CTEs, class T, class... Args>
+            prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>
+            prepare(with_t<select_t<T, Args...>, CTEs...> sel) {
+                return prepare_impl<with_t<select_t<T, Args...>, CTEs...>>(std::move(sel));
             }
 
             template<class T, class... Args>
@@ -1170,8 +1176,7 @@ namespace sqlite_orm {
                 return sqlite3_last_insert_rowid(db);
             }
 
-            template<class T,
-                     typename std::enable_if<(is_replace_range<T>::value || is_replace<T>::value)>::type* = nullptr>
+            template<class T, std::enable_if_t<is_replace_range<T>::value || is_replace<T>::value, bool> = true>
             void execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
@@ -1227,8 +1232,7 @@ namespace sqlite_orm {
                 perform_step(db, stmt);
             }
 
-            template<class T,
-                     typename std::enable_if<(is_insert_range<T>::value || is_insert<T>::value)>::type* = nullptr>
+            template<class T, std::enable_if_t<is_insert_range<T>::value || is_insert<T>::value, bool> = true>
             int64 execute(const prepared_statement_t<T>& statement) {
                 using statement_type = typename std::decay<decltype(statement)>::type;
                 using expression_type = typename statement_type::expression_type;
@@ -1552,13 +1556,17 @@ namespace sqlite_orm {
                 return res;
             }
 
-            template<class... CTEs, class T, class... Args, class R = typename column_result_t<self, T>::type>
-            std::vector<R> execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
+            template<class... CTEs, class T, class... Args>
+            auto execute(const prepared_statement_t<with_t<select_t<T, Args...>, CTEs...>>& statement) {
+                using S =
+                    decltype(storage_for_expression(*this, std::declval<with_t<select_t<T, Args...>, CTEs...>>()));
+                using R = column_result_of_t<S, T>;
                 return _execute_select<R>(statement);
             }
 
-            template<class T, class... Args, class R = typename column_result_t<self, T>::type>
-            std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
+            template<class T, class... Args>
+            auto execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
+                using R = column_result_of_t<self, T>;
                 return _execute_select<R>(statement);
             }
 

@@ -19,6 +19,7 @@
 #include "type_printer.h"
 #include "table_name_collector.h"
 #include "column_names_getter.h"
+#include "cte_column_names_collector.h"
 #include "order_by_serializator.h"
 #include "values.h"
 #include "table_type.h"
@@ -487,7 +488,19 @@ namespace sqlite_orm {
                 cteContext.use_parentheses = true;
 
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " as ";
+                ss << static_cast<std::string>(c);
+                std::vector<std::string> columnNames = collect_cte_column_names(c.expression, c.columnNames, context);
+                {
+                    ss << '(';
+                    for(size_t i = 0, n = columnNames.size(); i < n; ++i) {
+                        ss << "\"" << columnNames[i] << "\"";
+                        if(i < n - 1) {
+                            ss << ", ";
+                        }
+                    }
+                    ss << ')';
+                }
+                ss << " AS ";
                 ss << serialize(c.expression, cteContext);
                 return ss.str();
             }

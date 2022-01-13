@@ -7,6 +7,7 @@
 #include <algorithm>  //  std::reverse, std::find_if
 
 #include "cxx_polyfill.h"
+#include "type_traits.h"
 #include "column_result.h"
 #include "static_magic.h"
 #include "typed_comparator.h"
@@ -24,10 +25,7 @@ namespace sqlite_orm {
          *  A mapped data type's CTE alias by which a CTE table descriptor can be found.
          */
         template<typename O>
-        using cte_label_t = typename O::cte_label_type;
-
-        template<typename O>
-        using cte_label_of_t = polyfill::detected_or_t<void, cte_label_t, O>;
+        using cte_label_of_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
 
         struct basic_table {
 

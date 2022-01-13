@@ -42,16 +42,6 @@ namespace sqlite_orm {
             alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
 
-        /**
-         *  Column expression with CTE alias attached like 'cte_1.ID'. This is not a column alias
-         */
-        template<class Label>
-        struct cte_alias_column_t {
-            using label_type = Label;
-
-            std::string column;
-        };
-
         template<class T, class SFINAE = void>
         struct alias_extractor;
 
@@ -100,15 +90,6 @@ namespace sqlite_orm {
         static_assert(std::is_member_pointer<C>::value,
                       "alias_column argument must be a member pointer mapped to a storage");
         return {c};
-    }
-
-    /**
-     *  @return column with table alias attached. Place it instead of a column statement in case you need to specify a
-     *  column with table alias prefix like 'a.column'. For more information please look through self_join.cpp example
-     */
-    template<class Label>
-    internal::cte_alias_column_t<Label> cte_column(std::string alias) {
-        return {alias};
     }
 
     template<class T, class E>

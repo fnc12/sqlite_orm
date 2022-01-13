@@ -185,9 +185,9 @@ namespace sqlite_orm {
             }
 
             std::string find_table_name(std::type_index ti) const {
-                std::type_index thisTypeIndex{typeid(std::conditional_t<std::is_void<typename H::cte_label_type>::value,
-                                                                        typename H::object_type,
-                                                                        typename H::cte_label_type>)};
+                std::type_index thisTypeIndex{typeid(std::conditional_t<std::is_void<cte_label_type_t<H>>::value,
+                                                                        object_type_t<H>,
+                                                                        cte_label_type_t<H>>)};
                 if(thisTypeIndex == ti) {
                     return this->table.name;
                 } else {
@@ -340,12 +340,13 @@ namespace sqlite_orm {
         template<>
         struct storage_impl<> : storage_impl_base {
 
+            // Provided just to be on the safe side
             template<class Lookup>
             const storage_impl<>& get_impl() const {
                 static_assert(polyfill::always_false_v<Lookup>, "No such storage implementation");
             }
 
-            std::nullptr_t get_table() const {
+            const void* get_table() const {
                 return nullptr;
             }
 
@@ -363,24 +364,27 @@ namespace sqlite_orm {
     }
 }
 
-#include "storage_traits.h"
+#include "storage_lookup.h"
 
 // interface functions
 namespace sqlite_orm {
     namespace internal {
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        const auto* lookup_table(const S& strg) {
+        auto lookup_table(const S& strg) {
             return find_impl<Lookup>(strg).get_table();
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& strg) {
-            if(auto* table = lookup_table<Lookup>(strg)) {
-                return table->name;
-            }
-
-            return {};
+            auto table = lookup_table<Lookup>(strg);
+            return static_if<std::is_same<decltype(table), const void*>{}>(
+                [](const void*) {
+                    return std::string{};
+                },
+                [](auto table) {
+                    return table->name;
+                })(table);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
