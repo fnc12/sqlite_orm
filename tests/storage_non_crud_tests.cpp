@@ -602,13 +602,6 @@ TEST_CASE("Explicit insert") {
                 REQUIRE(visitFromStorage.usedId() == visit.usedId());
                 storage.remove<Visit>(visitFromStorage.usedId());
             }
-            SECTION("setter") {
-                visit.setId(storage.insert(visit, columns(&Visit::setUsedId)));
-                auto visitFromStorage = storage.get<Visit>(visit.id());
-                REQUIRE(visitFromStorage.createdAt() == 10);
-                REQUIRE(visitFromStorage.usedId() == visit.usedId());
-                storage.remove<Visit>(visitFromStorage.usedId());
-            }
         }
         SECTION("two columns") {
             Visit visit2;
@@ -621,13 +614,6 @@ TEST_CASE("Explicit insert") {
                 REQUIRE(visitFromStorage.usedId() == visit2.usedId());
                 storage.remove<Visit>(visit2.id());
             }
-            SECTION("setters") {
-                auto insertedId = storage.insert(visit2, columns(&Visit::setId, &Visit::setUsedId));
-                REQUIRE(visit2.id() == insertedId);
-                auto visitFromStorage = storage.get<Visit>(visit2.id());
-                REQUIRE(visitFromStorage.usedId() == visit2.usedId());
-                storage.remove<Visit>(visit2.id());
-            }
         }
         SECTION("one column primary key") {
             Visit visit3;
@@ -635,14 +621,6 @@ TEST_CASE("Explicit insert") {
             SECTION("getter") {
                 try {
                     storage.insert(visit3, columns(&Visit::id));
-                    REQUIRE(false);
-                } catch(const std::system_error &) {
-                    //        cout << e.what() << endl;
-                }
-            }
-            SECTION("setter") {
-                try {
-                    storage.insert(visit3, columns(&Visit::setId));
                     REQUIRE(false);
                 } catch(const std::system_error &) {
                     //        cout << e.what() << endl;
