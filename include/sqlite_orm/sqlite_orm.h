@@ -9577,35 +9577,36 @@ namespace sqlite_orm {
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
             template<class F, class C>
-            const F* get_object_field_pointer(const object_type& obj, C c) const {
+            const F* get_object_field_pointer(const object_type& object, C memberPointer) const {
                 const F* res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &c, &obj](auto& col) {
-                    using column_type = typename std::remove_reference<decltype(col)>::type;
+                this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
+                    using column_type = typename std::remove_reference<decltype(column)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
                     using getter_type = typename column_type::getter_type;
                     using setter_type = typename column_type::setter_type;
                     // Make static_if have at least one input as a workaround for GCC bug:
                     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
                     if(!res) {
-                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.member_pointer, c_)) {
-                                res = &(obj.*col.member_pointer);
-                            }
-                        })(c);
+                        static_if<std::is_same<C, member_pointer_t>{}>(
+                            [&res, &object, &column](const C& memberPointer) {
+                                if(compare_any(column.member_pointer, memberPointer)) {
+                                    res = &(object.*column.member_pointer);
+                                }
+                            })(memberPointer);
                     }
                     if(!res) {
-                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.getter, c_)) {
-                                res = &((obj).*(col.getter))();
+                        static_if<std::is_same<C, getter_type>{}>([&res, &object, &column](const C& memberPointer) {
+                            if(compare_any(column.getter, memberPointer)) {
+                                res = &(object.*(column.getter))();
                             }
-                        })(c);
+                        })(memberPointer);
                     }
                     if(!res) {
-                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.setter, c_)) {
-                                res = &((obj).*(col.getter))();
+                        static_if<std::is_same<C, setter_type>{}>([&res, &object, &column](const C& memberPointer) {
+                            if(compare_any(column.setter, memberPointer)) {
+                                res = &(object.*(column.getter))();
                             }
-                        })(c);
+                        })(memberPointer);
                     }
                 });
                 return res;
@@ -13780,6 +13781,16 @@ namespace sqlite_orm {
             using type = typename replace_range_t<std::reference_wrapper<It>, L, O>::object_type;
         };
 
+        template<class T, class... Ids>
+        struct expression_object_type<remove_t<T, Ids...>> {
+            using type = T;
+        };
+
+        template<class T, class... Ids>
+        struct expression_object_type<remove_t<std::reference_wrapper<T>, Ids...>> {
+            using type = T;
+        };
+
         template<class T>
         struct expression_object_type<insert_t<T>> {
             using type = typename std::decay<T>::type;
@@ -15559,19 +15570,24 @@ namespace sqlite_orm {
             using statement_type = remove_t<T, Ids...>;
 
             template<class C>
-            std::string operator()(const statement_type&, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 auto& tImpl = context.impl.template get_impl<T>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << tImpl.table.name << "' ";
                 ss << "WHERE";
+                std::vector<std::string> idsStrings;
+                idsStrings.reserve(std::tuple_size<typename statement_type::ids_type>::value);
+                iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
+                    idsStrings.push_back(serialize(idValue, context));
+                });
                 auto index = 0;
-                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl](auto& memberPointer) {
+                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl, &idsStrings](auto& memberPointer) {
                     if(index > 0) {
                         ss << " AND";
                     }
                     if(auto* columnNamePointer = tImpl.table.find_column_name(memberPointer)) {
                         ss << " \"" << *columnNamePointer << "\""
-                           << " = ?";
+                           << " = " << idsStrings[index];
                     } else {
                         throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::column_not_found));
                     }
@@ -17529,23 +17545,25 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> rem) {
-                return prepare_impl<remove_t<T, Ids...>>(std::move(rem));
+            prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                return this->prepare_impl<remove_t<T, Ids...>>(std::move(statement));
             }
 
             template<class T>
-            prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
-                using object_type = typename expression_object_type<decltype(ins)>::type;
+            prepared_statement_t<insert_t<T>> prepare(insert_t<T> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_t<T>>(std::move(ins));
+                return this->prepare_impl<insert_t<T>>(std::move(statement));
             }
 
             template<class T>
             prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
                 using object_type = typename expression_object_type<decltype(rep)>::type;
                 this->assert_mapped_type<object_type>();
-                return prepare_impl<replace_t<T>>(std::move(rep));
+                return this->prepare_impl<replace_t<T>>(std::move(rep));
             }
 
             template<class It, class L, class O>
@@ -17553,19 +17571,21 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
+                return this->prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
             }
 
             template<class It, class L, class O>
-            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> rep) {
-                return prepare_impl<replace_range_t<It, L, O>>(std::move(rep));
+            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                return this->prepare_impl<replace_range_t<It, L, O>>(std::move(statement));
             }
 
             template<class T, class... Cols>
             prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
                 using object_type = typename expression_object_type<decltype(ins)>::type;
                 this->assert_mapped_type<object_type>();
-                return prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
+                return this->prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
             }
 
             template<class... Args>

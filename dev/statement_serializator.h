@@ -1366,19 +1366,24 @@ namespace sqlite_orm {
             using statement_type = remove_t<T, Ids...>;
 
             template<class C>
-            std::string operator()(const statement_type&, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 auto& tImpl = context.impl.template get_impl<T>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << tImpl.table.name << "' ";
                 ss << "WHERE";
+                std::vector<std::string> idsStrings;
+                idsStrings.reserve(std::tuple_size<typename statement_type::ids_type>::value);
+                iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
+                    idsStrings.push_back(serialize(idValue, context));
+                });
                 auto index = 0;
-                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl](auto& memberPointer) {
+                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl, &idsStrings](auto& memberPointer) {
                     if(index > 0) {
                         ss << " AND";
                     }
                     if(auto* columnNamePointer = tImpl.table.find_column_name(memberPointer)) {
                         ss << " \"" << *columnNamePointer << "\""
-                           << " = ?";
+                           << " = " << idsStrings[index];
                     } else {
                         throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::column_not_found));
                     }

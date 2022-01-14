@@ -55,7 +55,7 @@ TEST_CASE("triggers_basics") {
                 .on<TestDelete>()
                 .begin(
                     // select(columns(&TestDelete::id), where(greater_than(&TestDelete::x, select(avg(&TestDelete::x))))), // TODO  near "(": syntax error: SQL logic error (expression is surronded by parenthesis and SQL returns an error for that)
-                    // remove<TestDelete>(test_delete.id),  // TODO Missing serialisation (has '?')
+                    remove<TestDelete>(test_delete.id),
                     remove_all<TestDelete>(where(c(&TestDelete::text) != "test")))
                 .end()),
         make_table("test_insert",
@@ -100,8 +100,6 @@ TEST_CASE("triggers_basics") {
         storage.insert(TestDelete{0, "test", 1, 2});
         storage.insert(TestDelete{0, "test", 1, 2});
         storage.insert(TestDelete{0, "will be removed", 1, 2});
-        // TODO It should be 2, but since there is a pb with one of the remove(), it's 3
-        // REQUIRE(storage.count<TestUpdate>() == 2);
-        REQUIRE(storage.count<TestDelete>() == 3);
+        REQUIRE(storage.count<TestDelete>() == 2);
     }
 }
