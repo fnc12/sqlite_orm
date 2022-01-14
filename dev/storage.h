@@ -575,6 +575,29 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
+            /**
+             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+             */
+            template<class Label,
+                     class Select,
+                     class Compound,
+                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            auto with(common_table_expression<Label, Select> cte, Compound sel) {
+                auto statement = this->prepare(sqlite_orm::with(move(cte), sqlite_orm::select(std::move(sel))));
+                return this->execute(statement);
+            }
+
+            /**
+             *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
+             */
+            template<class... CTEs,
+                     class Compound,
+                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            auto with(common_table_expressions<CTEs...> cte, Compound sel) {
+                auto statement = this->prepare(sqlite_orm::with(move(cte), sqlite_orm::select(std::move(sel))));
+                return this->execute(statement);
+            }
+
             template<class T, satisfies<is_prepared_statement, T> = true>
             std::string dump(const T& preparedStatement) const {
                 const auto& exprImpl = storage_for_expression(*this, preparedStatement.expression);

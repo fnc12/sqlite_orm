@@ -264,6 +264,12 @@ namespace sqlite_orm {
             internal::common_table_expression<Label, select_t<T, Args...>> operator()(select_t<T, Args...> sel) && {
                 return {move(this->explicitColumnNames), std::move(sel)};
             }
+
+            template<class Compound,
+                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            internal::common_table_expression<Label, select_t<Compound>> operator()(Compound sel) && {
+                return {move(this->explicitColumnNames), {std::move(sel)}};
+            }
         };
 
         /**

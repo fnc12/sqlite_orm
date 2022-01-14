@@ -218,8 +218,8 @@ namespace sqlite_orm {
         struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
             using left_type = typename T::left_type;
             using right_type = typename T::right_type;
-            using left_result = typename column_result_t<St, left_type>::type;
-            using right_result = typename column_result_t<St, right_type>::type;
+            using left_result = column_result_of_t<St, left_type>;
+            using right_result = column_result_of_t<St, right_type>;
             static_assert(std::is_same<left_result, right_result>::value,
                           "Compound subselect queries must return same types");
             using type = left_result;

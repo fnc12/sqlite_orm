@@ -38,6 +38,23 @@ namespace sqlite_orm {
             return collector(t, context);
         }
 
+        // For compound statements we just need to collect the column alias names of the left expression
+        template<class Compound>
+        struct cte_column_names_collector<Compound, std::enable_if_t<is_base_of_template<Compound, compound_operator>::value>> {
+            using expression_type = Compound;
+
+            template<class Ctx>
+            std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
+                auto newContext = context;
+                newContext.skip_table_name = true;
+                std::string columnName = serialize(t.left, newContext);
+                if(columnName.empty()) {
+                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                }
+                return {move(columnName)};
+            }
+        };
+
         template<class As>
         struct cte_column_names_collector<As, match_specialization_of<As, as_t>> {
             using expression_type = As;
