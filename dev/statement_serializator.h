@@ -1370,15 +1370,20 @@ namespace sqlite_orm {
                 auto& tImpl = context.impl.template get_impl<T>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << tImpl.table.name << "' ";
-                ss << "WHERE ";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ? ";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << "AND ";
+                ss << "WHERE";
+                auto index = 0;
+                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl](auto& memberPointer) {
+                    if(index > 0) {
+                        ss << " AND";
                     }
-                }
+                    if(auto* columnNamePointer = tImpl.table.find_column_name(memberPointer)) {
+                        ss << " \"" << *columnNamePointer << "\""
+                           << " = ?";
+                    } else {
+                        throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::column_not_found));
+                    }
+                    ++index;
+                });
                 return ss.str();
             }
         };

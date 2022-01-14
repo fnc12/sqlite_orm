@@ -1139,17 +1139,23 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto& tImpl = this->get_impl<object_type>();
-                auto& o = statement.expression.obj;
+                auto& object = statement.expression.obj;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.expression.columns.columns, [&o, &index, &stmt, &tImpl, db](auto& m) {
-                    using column_type = typename std::decay<decltype(m)>::type;
-                    using field_type = typename column_result_t<self, column_type>::type;
-                    const field_type* value = tImpl.table.template get_object_field_pointer<field_type>(o, m);
-                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
-                });
+                iterate_tuple(
+                    statement.expression.columns.columns,
+                    [&object, &index, &stmt, &tImpl, db](auto& memberPointer) {
+                        using column_type = typename std::decay<decltype(memberPointer)>::type;
+                        using field_type = typename column_result_t<self, column_type>::type;
+                        const auto* value =
+                            tImpl.table.template get_object_field_pointer<field_type>(object, memberPointer);
+                        if(!value) {
+                            throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::value_is_null));
+                        }
+                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                    sqlite3_errmsg(db));
+                        }
+                    });
                 perform_step(db, stmt);
                 return sqlite3_last_insert_rowid(db);
             }
