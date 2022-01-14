@@ -22,10 +22,10 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  A mapped data type's CTE alias by which a CTE table descriptor can be found.
+         *  A data type's label type, void otherwise.
          */
         template<typename O>
-        using cte_label_of_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
+        using label_of_t = polyfill::detected_or_t<void, label_type_t, O>;
 
         struct basic_table {
 
@@ -44,7 +44,7 @@ namespace sqlite_orm {
         struct table_t : basic_table {
             using super = basic_table;
             using object_type = O;
-            using cte_label_type = cte_label_of_t<O>;
+            using label_type = label_of_t<O>;
             using elements_type = std::tuple<Cs...>;
 
             static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);

@@ -11,6 +11,8 @@ namespace sqlite_orm {
 
     template<char C, char... Chars>
     struct cte_label {
+        using label_tag = cte_label_tag;
+
         static constexpr char str[] = {C, Chars..., '\0'};
 
         static constexpr const char* label() {
@@ -48,7 +50,10 @@ namespace sqlite_orm {
         }
     }
 
-    // index_constant<> from numeric literal
+    /**
+     *  index_constant<> from numeric literal.
+     *  E.g. 0_col, 1_col
+     */
     template<char... Chars>
     [[nodiscard]] constexpr decltype(auto) operator"" _col() {
         return polyfill::index_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},

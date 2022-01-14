@@ -72,7 +72,7 @@ namespace sqlite_orm {
         make_cte_table_using_column_indices(const S& storage, const CTE& cte, std::index_sequence<CIs...>) {
             using context_type = serializator_context<typename S::impl_type>;
             context_type context{obtain_const_impl(storage)};
-            std::vector<std::string> columnNames = collect_cte_column_names(cte.expression, cte.columnNames, context);
+            std::vector<std::string> columnNames = collect_cte_column_names(cte.expression, cte.explicitColumnNames, context);
 
             return create_cte_table_t<O, typename O::index_sequence>{
                 cte.label(),

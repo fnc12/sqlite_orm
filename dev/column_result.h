@@ -197,18 +197,14 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class C>
-        struct column_result_t<St, alias_column_t<T, C>, void> {
-            using type = typename column_result_t<St, C>::type;
-        };
+        struct column_result_t<St, alias_column_t<T, C>, void> : column_result_t<St, C> {};
 
         template<class St, class T, class F>
-        struct column_result_t<St, column_pointer<T, F>> : column_result_t<St, F> {};
+        struct column_result_t<St, column_pointer<T, F>, void> : column_result_t<St, F> {};
 
         template<class St, class Label, size_t I>
-        struct column_result_t<St, column_pointer<Label, polyfill::index_constant<I>>>
-            : column_result_t<St,
-                              cte_getter_t<typename storage_pick_impl_t<St, Label>::table_type::object_type, I>,
-                              void> {};
+        struct column_result_t<St, column_pointer<Label, polyfill::index_constant<I>>, void>
+            : column_result_t<St, cte_getter_t<storage_object_type_t<storage_pick_impl_t<St, Label>>, I>> {};
 
         template<class St, class... Args>
         struct column_result_t<St, columns_t<Args...>, void> {

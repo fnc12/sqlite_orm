@@ -34,23 +34,22 @@ namespace sqlite_orm {
          *  A data type's CTE alias, otherwise T itself is used as a CTE alias.
          */
         template<typename T>
-        using detected_cte_label_t = polyfill::detected_or_t<T, cte_label_type_t, T>;
+        using detected_cte_label_t = polyfill::detected_or_t<T, label_type_t, T>;
 
         /**
          *  std::true_type if given object is mapped, std::false_type otherwise
          */
         template<typename S, typename O>
-        using object_type_matches =
-            typename polyfill::conjunction<std::is_void<typename S::table_type::cte_label_type>,
-                                           std::is_same<O, typename S::table_type::object_type>>::type;
+        using object_type_matches = typename polyfill::conjunction<std::is_void<storage_label_type_t<S>>,
+                                                                   std::is_same<O, storage_object_type_t<S>>>::type;
 
         /**
          *  std::true_type if object is mapped via given (CTE) label, std::false_type otherwise
          */
         template<typename S, typename Label>
         using label_type_matches = typename polyfill::conjunction<
-            std::negation<std::is_void<typename S::table_type::cte_label_type>>,
-            std::is_same<detected_cte_label_t<Label>, typename S::table_type::cte_label_type>>::type;
+            std::negation<std::is_void<storage_label_type_t<S>>>,
+            std::is_same<detected_cte_label_t<Label>, storage_label_type_t<S>>>::type;
 
         template<typename S, typename Lookup>
         using lookup_type_matches =

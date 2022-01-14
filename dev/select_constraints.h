@@ -245,24 +245,24 @@ namespace sqlite_orm {
             using label_type = Label;
             using expression_type = Select;
 
-            std::vector<std::string> columnNames;
+            std::vector<std::string> explicitColumnNames;
             expression_type expression;
 
-            common_table_expression(std::vector<std::string> columnNames, expression_type expression) :
-                columnNames{move(columnNames)}, expression{std::move(expression)} {
-                this->expression.highest_level = false;
+            common_table_expression(std::vector<std::string> explicitColumnNames, expression_type expression) :
+                explicitColumnNames{move(explicitColumnNames)}, expression{std::move(expression)} {
+                this->expression.highest_level = true;
             }
         };
         template<class... CTEs>
         using common_table_expressions = std::tuple<CTEs...>;
 
         template<typename Label>
-        struct cte_maker {
-            std::vector<std::string> columnNames;
+        struct cte_builder {
+            std::vector<std::string> explicitColumnNames;
 
-            template<class Select>
-            internal::common_table_expression<Label, Select> operator()(Select sel) && {
-                return {move(this->columnNames), std::move(sel)};
+            template<class T, class... Args>
+            internal::common_table_expression<Label, select_t<T, Args...>> operator()(select_t<T, Args...> sel) && {
+                return {move(this->explicitColumnNames), std::move(sel)};
             }
         };
 
@@ -483,8 +483,8 @@ namespace sqlite_orm {
     template<class Label,
              class... ColumnNames,
              std::enable_if_t<polyfill::conjunction_v<std::is_convertible<ColumnNames, std::string>...>, bool> = true>
-    internal::cte_maker<Label> cte(ColumnNames... columnNames) {
-        return {{std::move(columnNames)...}};
+    internal::cte_builder<Label> cte(ColumnNames... explicitColumnNames) {
+        return {{std::move(explicitColumnNames)...}};
     }
 
     // tuple of CTEs

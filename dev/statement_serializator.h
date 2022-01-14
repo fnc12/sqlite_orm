@@ -214,11 +214,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 auto aliasString = alias_extractor<T>::get();
-                if(c.serializeAliasOnly) {
-                    return aliasString;
-                } else {
-                    return serialize(c.expression, context) + " AS " + aliasString;
-                }
+                return serialize(c.expression, context) + " AS " + aliasString;
             }
         };
 
@@ -484,12 +480,14 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
+                // A CTE always starts a new 'highest level' context
                 Ctx cteContext = context;
-                cteContext.use_parentheses = true;
+                cteContext.use_parentheses = false;
 
                 std::stringstream ss;
                 ss << static_cast<std::string>(c);
-                std::vector<std::string> columnNames = collect_cte_column_names(c.expression, c.columnNames, context);
+                std::vector<std::string> columnNames =
+                    collect_cte_column_names(c.expression, c.explicitColumnNames, context);
                 {
                     ss << '(';
                     for(size_t i = 0, n = columnNames.size(); i < n; ++i) {
@@ -501,7 +499,7 @@ namespace sqlite_orm {
                     ss << ')';
                 }
                 ss << " AS ";
-                ss << serialize(c.expression, cteContext);
+                ss << '(' << serialize(c.expression, cteContext) << ')';
                 return ss.str();
             }
         };
@@ -1705,7 +1703,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& sel, const C& context) const {
                 std::stringstream ss;
-                const auto isCompoundOperator = is_base_of_template<T, compound_operator>::value;
+                constexpr bool isCompoundOperator = is_base_of_template<T, compound_operator>::value;
                 if(!isCompoundOperator) {
                     if(!sel.highest_level && context.use_parentheses) {
                         ss << "(";
@@ -1757,7 +1755,7 @@ namespace sqlite_orm {
                 iterate_tuple(sel.conditions, [&context, &ss](auto& v) {
                     ss << ' ' << serialize(v, context);
                 });
-                if(!is_base_of_template<T, compound_operator>::value) {
+                if(!isCompoundOperator) {
                     if(!sel.highest_level && context.use_parentheses) {
                         ss << ")";
                     }

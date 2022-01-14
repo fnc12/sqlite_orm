@@ -185,9 +185,9 @@ namespace sqlite_orm {
             }
 
             std::string find_table_name(std::type_index ti) const {
-                std::type_index thisTypeIndex{typeid(std::conditional_t<std::is_void<cte_label_type_t<H>>::value,
+                std::type_index thisTypeIndex{typeid(std::conditional_t<std::is_void<label_type_t<H>>::value,
                                                                         object_type_t<H>,
-                                                                        cte_label_type_t<H>>)};
+                                                                        label_type_t<H>>)};
                 if(thisTypeIndex == ti) {
                     return this->table.name;
                 } else {
@@ -346,7 +346,7 @@ namespace sqlite_orm {
                 static_assert(polyfill::always_false_v<Lookup>, "No such storage implementation");
             }
 
-            const void* get_table() const {
+            std::nullptr_t get_table() const {
                 return nullptr;
             }
 
@@ -378,8 +378,8 @@ namespace sqlite_orm {
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& strg) {
             auto table = lookup_table<Lookup>(strg);
-            return static_if<std::is_same<decltype(table), const void*>{}>(
-                [](const void*) {
+            return static_if<std::is_same<decltype(table), std::nullptr_t>{}>(
+                [](std::nullptr_t) {
                     return std::string{};
                 },
                 [](auto table) {
@@ -412,7 +412,7 @@ namespace sqlite_orm {
         constexpr decltype(auto) materialize_column_pointer(const S&,
                                                             const column_pointer<Label, polyfill::index_constant<I>>&) {
             using timpl_type = storage_pick_impl_t<S, Label>;
-            return cte_getter_v<typename timpl_type::table_type::object_type, I>;
+            return cte_getter_v<storage_object_type_t<timpl_type>, I>;
         }
 
         template<class Label, size_t I, class S, satisfies<is_storage_impl, S> = true>

@@ -70,9 +70,6 @@ namespace sqlite_orm {
             using expression_type = E;
 
             expression_type expression;
-            // Whether to only serialize the alias;
-            // this is used together with refed_as() when selecting an aliased column from a subselect.
-            bool serializeAliasOnly = false;
         };
 
         template<class T>
@@ -95,11 +92,6 @@ namespace sqlite_orm {
     template<class T, class E>
     internal::as_t<T, E> as(E expression) {
         return {std::move(expression)};
-    }
-
-    template<class T, class E>
-    internal::as_t<T, E> refed_as(E expression) {
-        return {std::move(expression), true};
     }
 
     template<class T>

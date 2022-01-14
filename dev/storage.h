@@ -161,15 +161,14 @@ namespace sqlite_orm {
             template<class O>
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
-                using storage_impl_type = std::remove_cvref_t<decltype(tImpl)>;
-                using table_type = typename storage_impl_type::table_type;
+                using table_type = table_type_t<std::remove_cvref_t<decltype(tImpl)>>;
                 using elements_type = typename table_type::elements_type;
 
                 using is_without_rowid = std::integral_constant<bool, table_type::is_without_rowid>;
 
                 static_if<is_without_rowid{}>(
                     [](auto&) {
-                        static_assert(std::is_void<typename table_type::cte_label_type>::value,
+                        static_assert(std::is_void<label_type_t<table_type>>::value,
                                       "Attempting to execute 'insert' request for a CTE mapping.");
                     },
                     [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((

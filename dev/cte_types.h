@@ -7,7 +7,14 @@
 #include "start_macros.h"
 
 namespace sqlite_orm {
+
+    /**
+     *  Classification of a label as a 'CTE' label.
+     */
+    struct cte_label_tag {};
+
     namespace internal {
+
         /*
          *  Tuple data structure for CTEs
          */
@@ -17,7 +24,7 @@ namespace sqlite_orm {
             using fields_type = std::tuple<Fs...>;
             using index_sequence = std::index_sequence_for<Fs...>;
             // this type name is used to detect the mapping from label to object
-            using cte_label_type = Label;
+            using label_type = Label;
 
             template<size_t I>
             decltype(auto) cget() const noexcept {
