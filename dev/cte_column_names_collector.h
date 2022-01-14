@@ -47,11 +47,7 @@ namespace sqlite_orm {
             std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
                 auto newContext = context;
                 newContext.skip_table_name = true;
-                std::string columnName = serialize(t.left, newContext);
-                if(columnName.empty()) {
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
-                }
-                return {move(columnName)};
+                return get_cte_column_names(t.left.col, context);
             }
         };
 

@@ -753,7 +753,7 @@ namespace sqlite_orm {
          */
         template<class F, class O>
         struct using_t {
-            F O::*column = nullptr;
+            column_pointer<O, F> column;
 
             operator std::string() const {
                 return "USING";
@@ -1000,8 +1000,12 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    internal::using_t<F, O> using_(F O::*p) {
+    internal::using_t<F O::*, O> using_(F O::*p) {
         return {std::move(p)};
+    }
+    template<class F, class O>
+    internal::using_t<F, O> using_(internal::column_pointer<O, F> cp) {
+        return {std::move(cp)};
     }
 
     template<class T>

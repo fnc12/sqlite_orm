@@ -603,6 +603,7 @@ namespace sqlite_orm {
                 const auto& exprImpl = storage_for_expression(*this, preparedStatement.expression);
                 using context_t = serializator_context<std::remove_cvref_t<decltype(exprImpl)>>;
                 context_t context{exprImpl};
+                context.skip_table_name = false;
                 return serialize(preparedStatement.expression, context);
             }
 
