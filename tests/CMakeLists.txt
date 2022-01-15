@@ -70,23 +70,28 @@ add_executable(unit_tests
     statement_serializator_tests/column_constraints/generated.cpp
     statement_serializator_tests/column_constraints/default.cpp
     statement_serializator_tests/column_constraints/primary_key.cpp
-	statement_serializator_tests/column_names.cpp
 	statement_serializator_tests/column_constraints/autoincrement.cpp
-	statement_serializator_tests/arithmetic_operators.cpp
-	statement_serializator_tests/core_functions.cpp
-	statement_serializator_tests/comparison_operators.cpp
 	statement_serializator_tests/column_constraints/unique.cpp
-	statement_serializator_tests/foreign_key.cpp
-	statement_serializator_tests/collate.cpp
 	statement_serializator_tests/column_constraints/check.cpp
-	statement_serializator_tests/index.cpp
-	statement_serializator_tests/indexed_column.cpp
-    statement_serializator_tests/logical_operators.cpp
-    statement_serializator_tests/select_constraints.cpp
-    statement_serializator_tests/insert_replace.cpp
     statement_serializator_tests/bound_pointer.cpp
     statement_serializator_tests/ast/upsert_clause.cpp
     statement_serializator_tests/ast/excluded.cpp
+    statement_serializator_tests/arithmetic_operators.cpp
+    statement_serializator_tests/base_types.cpp
+    statement_serializator_tests/collate.cpp
+    statement_serializator_tests/comparison_operators.cpp
+    statement_serializator_tests/core_functions.cpp
+    statement_serializator_tests/rowid.cpp
+    statement_serializator_tests/column_names.cpp
+    statement_serializator_tests/foreign_key.cpp
+    statement_serializator_tests/index.cpp
+    statement_serializator_tests/indexed_column.cpp
+    statement_serializator_tests/logical_operators.cpp
+    statement_serializator_tests/select.cpp
+    statement_serializator_tests/select_constraints.cpp
+    statement_serializator_tests/insert_replace.cpp
+    statement_serializator_tests/update.cpp
+    statement_serializator_tests/remove.cpp
     storage_tests.cpp
     storage_non_crud_tests.cpp
 	unique_cases/get_all_with_two_tables.cpp

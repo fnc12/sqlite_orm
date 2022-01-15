@@ -1054,23 +1054,25 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> rem) {
-                return prepare_impl<remove_t<T, Ids...>>(std::move(rem));
+            prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                return this->prepare_impl<remove_t<T, Ids...>>(std::move(statement));
             }
 
             template<class T>
-            prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
-                using object_type = typename expression_object_type<decltype(ins)>::type;
+            prepared_statement_t<insert_t<T>> prepare(insert_t<T> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_t<T>>(std::move(ins));
+                return this->prepare_impl<insert_t<T>>(std::move(statement));
             }
 
             template<class T>
             prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
                 using object_type = typename expression_object_type<decltype(rep)>::type;
                 this->assert_mapped_type<object_type>();
-                return prepare_impl<replace_t<T>>(std::move(rep));
+                return this->prepare_impl<replace_t<T>>(std::move(rep));
             }
 
             template<class It, class L, class O>
@@ -1078,19 +1080,21 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
+                return this->prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
             }
 
             template<class It, class L, class O>
-            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> rep) {
-                return prepare_impl<replace_range_t<It, L, O>>(std::move(rep));
+            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                return this->prepare_impl<replace_range_t<It, L, O>>(std::move(statement));
             }
 
             template<class T, class... Cols>
             prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
                 using object_type = typename expression_object_type<decltype(ins)>::type;
                 this->assert_mapped_type<object_type>();
-                return prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
+                return this->prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
             }
 
             template<class... Args>

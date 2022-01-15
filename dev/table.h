@@ -51,35 +51,36 @@ namespace sqlite_orm {
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
             template<class F, class C>
-            const F* get_object_field_pointer(const object_type& obj, C c) const {
+            const F* get_object_field_pointer(const object_type& object, C memberPointer) const {
                 const F* res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &c, &obj](auto& col) {
-                    using column_type = typename std::remove_reference<decltype(col)>::type;
+                this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
+                    using column_type = typename std::remove_reference<decltype(column)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
                     using getter_type = typename column_type::getter_type;
                     using setter_type = typename column_type::setter_type;
                     // Make static_if have at least one input as a workaround for GCC bug:
                     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
                     if(!res) {
-                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.member_pointer, c_)) {
-                                res = &(obj.*col.member_pointer);
-                            }
-                        })(c);
+                        static_if<std::is_same<C, member_pointer_t>{}>(
+                            [&res, &object, &column](const C& memberPointer) {
+                                if(compare_any(column.member_pointer, memberPointer)) {
+                                    res = &(object.*column.member_pointer);
+                                }
+                            })(memberPointer);
                     }
                     if(!res) {
-                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.getter, c_)) {
-                                res = &((obj).*(col.getter))();
+                        static_if<std::is_same<C, getter_type>{}>([&res, &object, &column](const C& memberPointer) {
+                            if(compare_any(column.getter, memberPointer)) {
+                                res = &(object.*(column.getter))();
                             }
-                        })(c);
+                        })(memberPointer);
                     }
                     if(!res) {
-                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.setter, c_)) {
-                                res = &((obj).*(col.getter))();
+                        static_if<std::is_same<C, setter_type>{}>([&res, &object, &column](const C& memberPointer) {
+                            if(compare_any(column.setter, memberPointer)) {
+                                res = &(object.*(column.getter))();
                             }
-                        })(c);
+                        })(memberPointer);
                     }
                 });
                 return res;
