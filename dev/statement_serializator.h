@@ -42,6 +42,21 @@ namespace sqlite_orm {
             return serializator(t, context);
         }
 
+        /**
+         *  Constant which gets never replaced in a bindable context.
+         *  Used together with order_by(1_nth_col).
+         */
+        template<unsigned int N>
+        struct statement_serializator<nth_constant<N>, void> {
+            using statement_type = nth_constant<N>;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& /*expression*/, const Ctx&) {
+                static_assert(N > 0);
+                return std::to_string(N);
+            }
+        };
+
         template<class T>
         struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
             using statement_type = T;

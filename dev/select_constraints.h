@@ -261,13 +261,13 @@ namespace sqlite_orm {
             std::vector<std::string> explicitColumnNames;
 
             template<class T, class... Args>
-            internal::common_table_expression<Label, select_t<T, Args...>> operator()(select_t<T, Args...> sel) && {
+            common_table_expression<Label, select_t<T, Args...>> operator()(select_t<T, Args...> sel) && {
                 return {move(this->explicitColumnNames), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            internal::common_table_expression<Label, select_t<Compound>> operator()(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>> operator()(Compound sel) && {
                 return {move(this->explicitColumnNames), {std::move(sel)}};
             }
         };
@@ -440,12 +440,19 @@ namespace sqlite_orm {
      *  struct MyType : BaseType { ... };
      *  storage.select(column<MyType>(&BaseType::id));
      *  // ... or
-     *  struct MyType : BaseType { ... };
+     *  struct Object { ... };
      *  storage.with(cte<cte_1>()(select(&Object::id), select(column<cte_1>(0_col)));
      */
-    template<class T, class F>
-    internal::column_pointer<T, F> column(F f) {
+    template<class O, class F>
+    internal::column_pointer<O, F> column(F f) {
         return {std::move(f)};
+    }
+    /**
+     *  Turn 1_nth_col-> 0_col
+     */
+    template<class O, unsigned int I>
+    auto column(internal::nth_constant<I>) {
+        return column<O>(polyfill::index_constant<I - 1>{});
     }
 
     /**

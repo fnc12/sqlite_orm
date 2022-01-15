@@ -6,6 +6,7 @@
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <sstream>  //  std::stringstream
 
+#include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
@@ -1197,10 +1198,24 @@ namespace sqlite_orm {
     /**
      * ORDER BY column
      * Example: storage.select(&User::name, order_by(&User::id))
+     * 
+     * Note: choosing a column by a numeric literal isn't supported, i.e. order_by(2),
+     * use order_by(2_nth_col) instead
      */
-    template<class O>
+    template<class O, internal::satisfies_not<std::is_arithmetic, O> = true>
     internal::order_by_t<O> order_by(O o) {
         return {std::move(o)};
+    }
+
+    /**
+     * Note: index_constant<> is used for 0-based indexing,
+     * use order_by(2_nth_col) instead
+     */
+    template<size_t I>
+    internal::order_by_t<polyfill::index_constant<I>> order_by(polyfill::index_constant<I> n) {
+        static_assert(polyfill::always_false_v<polyfill::index_constant<I>>,
+                      "Please use 1_nth_col, 2_nth_col, ... instead");
+        return {n};
     }
 
     /**

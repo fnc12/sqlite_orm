@@ -52,4 +52,9 @@ namespace sqlite_orm {
         template<typename T>
         using expression_type_t = typename T::expression_type;
     }
+
+    namespace internal {
+        template<unsigned int N>
+        using nth_constant = std::integral_constant<unsigned int, N>;
+    }
 }

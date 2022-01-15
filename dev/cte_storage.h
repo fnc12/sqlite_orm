@@ -62,6 +62,10 @@ namespace sqlite_orm {
         template<typename O, typename IdxSeq>
         using create_cte_table_t = typename create_cte_table<O, IdxSeq>::type;
 
+        /**
+         *  Concatenate newly created tables with those from an existing storage, forming a
+         *  new storage object
+         */
         template<typename... Ts, typename... CTETables>
         storage_impl<CTETables..., Ts...> storage_impl_cat(const storage_impl<Ts...>& storage,
                                                            CTETables&&... cteTables) {
@@ -131,6 +135,7 @@ namespace sqlite_orm {
                                         column_result_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>>>(
                 impl,
                 get<TI1>(cte));
+
             return storage_impl_cat(impl, std::move(tbl));
         }
 
@@ -145,9 +150,12 @@ namespace sqlite_orm {
                                         column_result_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>>>(
                 impl,
                 get<TI1>(cte));
-            return make_recursive_cte_storage_using_table_indices(storage_impl_cat(impl, std::move(tbl)),
-                                                                  cte,
-                                                                  std::index_sequence<TIn...>{});
+
+            return make_recursive_cte_storage_using_table_indices(
+                // Because CTEs can depend on their predecessor we recursively pass in a new storage object
+                storage_impl_cat(impl, std::move(tbl)),
+                cte,
+                std::index_sequence<TIn...>{});
         }
 
         /**
