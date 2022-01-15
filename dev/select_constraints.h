@@ -492,6 +492,12 @@ namespace sqlite_orm {
 
     /**
      *  Example : cte<cte_1>()(select(&Object::id));
+     *  The list of column names is optional;
+     *  if provided the number of columns must match the number of columns of the subselect.
+     *  The column names will be merged with the subselect:
+     *  1. column names of subselect
+     *  2. explicit columns
+     *  3. fill in empty column names with stringified column index
      */
     template<class Label,
              class... ColumnNames,

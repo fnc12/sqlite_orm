@@ -29,8 +29,8 @@ struct Employee {
 
 /**
  *  This is how custom alias is made:
- *  1) it must have `type` alias which is equal to your mapped class
- *  2) is must have static function with `get()` signature and return type with `operator<<`
+ *  1) it must have a `type` alias which is equal to your mapped class
+ *  2) it must have a static function with `get()` signature and return type with `operator<<`
  */
 template<class T>
 struct custom_alias : sqlite_orm::alias_tag {
