@@ -599,12 +599,18 @@ namespace sqlite_orm {
             }
 
             template<class T, satisfies<is_prepared_statement, T> = true>
-            std::string dump(const T& preparedStatement) const {
-                const auto& exprImpl = storage_for_expression(*this, preparedStatement.expression);
+            std::string dump(const T& preparedStatement, bool asBindable = true) const {
+                return this->dump(preparedStatement.expression, asBindable);
+            }
+
+            template<class E, satisfies_not<is_prepared_statement, E> = true>
+            std::string dump(const E& expression, bool asBindable = false) const {
+                const auto& exprImpl = storage_for_expression(*this, expression);
                 using context_t = serializator_context<std::remove_cvref_t<decltype(exprImpl)>>;
                 context_t context{exprImpl};
+                context.replace_bindable_with_question = asBindable;
                 context.skip_table_name = false;
-                return serialize(preparedStatement.expression, context);
+                return serialize(expression, context);
             }
 
             /**
