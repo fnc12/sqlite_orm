@@ -179,11 +179,6 @@ namespace sqlite_orm {
                 return *this;
             }
 
-            // indirected access to table, for simplified programming
-            const table_type* get_table() const {
-                return &this->table;
-            }
-
             std::string find_table_name(std::type_index ti) const {
                 std::type_index thisTypeIndex{typeid(std::conditional_t<std::is_void<label_type_t<H>>::value,
                                                                         object_type_t<H>,
@@ -346,10 +341,6 @@ namespace sqlite_orm {
                 static_assert(polyfill::always_false_v<Lookup>, "No such storage implementation");
             }
 
-            std::nullptr_t get_table() const {
-                return nullptr;
-            }
-
             std::string find_table_name(std::type_index) const {
                 return {};
             }
@@ -372,19 +363,26 @@ namespace sqlite_orm {
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto lookup_table(const S& strg) {
-            return find_impl<Lookup>(strg).get_table();
+            const auto& tImpl = find_impl<Lookup>(strg);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(
+                [](const storage_impl<>&) {
+                    return nullptr;
+                },
+                [](const auto& tImpl) {
+                    return &tImpl.table;
+                })(tImpl);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& strg) {
-            auto table = lookup_table<Lookup>(strg);
-            return static_if<std::is_same<decltype(table), std::nullptr_t>{}>(
-                [](std::nullptr_t) {
+            const auto& tImpl = find_impl<Lookup>(strg);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(
+                [](const storage_impl<>&) {
                     return std::string{};
                 },
-                [](auto table) {
-                    return table->name;
-                })(table);
+                [](const auto& tImpl) {
+                    return tImpl.table.name;
+                })(tImpl);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
