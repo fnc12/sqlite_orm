@@ -1834,6 +1834,59 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<old_t<T>, void> {
+            using statement_type = old_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "OLD.";
+                auto newContext = context;
+                newContext.skip_table_name = true;
+                ss << serialize(statement.expression, newContext);
+                return ss.str();
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<new_t<T>, void> {
+            using statement_type = new_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "NEW.";
+                auto newContext = context;
+                newContext.skip_table_name = true;
+                ss << serialize(statement.expression, newContext);
+                return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializator<raise_t, void> {
+            using statement_type = raise_t;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement.type) {
+                    case decltype(statement.type)::ignore:
+                        return "RAISE(IGNORE)";
+
+                    case decltype(statement.type)::rollback:
+                        return "RAISE(ROLLBACK, " + serialize(statement.message, context) + ")";
+
+                    case decltype(statement.type)::abort:
+                        return "RAISE(ABORT, " + serialize(statement.message, context) + ")";
+
+                    case decltype(statement.type)::fail:
+                        return "RAISE(FAIL, " + serialize(statement.message, context) + ")";
+                }
+                return {};
+            }
+        };
+
         template<>
         struct statement_serializator<trigger_timing, void> {
             using statement_type = trigger_timing;
@@ -1907,18 +1960,22 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class Trigger>
-        struct statement_serializator<trigger_base_t<T, Trigger>, void> {
-            using statement_type = trigger_base_t<T, Trigger>;
+        template<class T, class W, class Trigger>
+        struct statement_serializator<trigger_base_t<T, W, Trigger>, void> {
+            using statement_type = trigger_base_t<T, W, Trigger>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
 
                 ss << serialize(statement.type_base, context);
-                ss << " ON '" << context.impl.find_table_name(typeid(T)) << "' ";
-                ss << (statement.do_for_each_row ? "FOR EACH ROW " : "");
-                // TODO add WHEN clause
+                ss << " ON '" << context.impl.find_table_name(typeid(T)) << "'";
+                if(statement.do_for_each_row) {
+                    ss << " FOR EACH ROW";
+                }
+                statement.container_when.apply([&ss, &context](auto& value) {
+                    ss << " WHEN " << serialize(value, context);
+                });
                 return ss.str();
             }
         };
@@ -1933,12 +1990,17 @@ namespace sqlite_orm {
                 ss << "CREATE ";
 
                 ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << serialize(statement.base, context);
-                C c{context};
-
-                c.replace_bindable_with_question = false;
-                ss << "BEGIN ";
-                iterate_tuple(statement.elements, [&ss, &c](auto& v) {
-                    ss << serialize(v, c) << ";";
+                ss << " BEGIN ";
+                iterate_tuple(statement.elements, [&ss, &context](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    if(is_select<element_type>::value) {
+                        auto newContext = context;
+                        newContext.use_parentheses = false;
+                        ss << serialize(element, newContext);
+                    } else {
+                        ss << serialize(element, context);
+                    }
+                    ss << ";";
                 });
                 ss << " END";
 

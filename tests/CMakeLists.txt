@@ -84,7 +84,10 @@ add_executable(unit_tests
     statement_serializator_tests/rowid.cpp
     statement_serializator_tests/column_names.cpp
     statement_serializator_tests/foreign_key.cpp
-    statement_serializator_tests/index.cpp
+    statement_serializator_tests/schema/index.cpp
+    statement_serializator_tests/schema/trigger.cpp
+    statement_serializator_tests/schema/new_old.cpp
+    statement_serializator_tests/schema/raise.cpp
     statement_serializator_tests/indexed_column.cpp
     statement_serializator_tests/logical_operators.cpp
     statement_serializator_tests/select.cpp
