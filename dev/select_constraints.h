@@ -240,10 +240,11 @@ namespace sqlite_orm {
         /**
          *  Labeled (aliased) CTE expression.
          */
-        template<class Label, class Select>
+        template<class Label, class Select, class nExplicitCols>
         struct common_table_expression : public Label {
             using label_type = Label;
             using expression_type = Select;
+            static constexpr size_t explicit_column_count = nExplicitCols::value;
 
             std::vector<std::string> explicitColumnNames;
             expression_type expression;
@@ -256,18 +257,19 @@ namespace sqlite_orm {
         template<class... CTEs>
         using common_table_expressions = std::tuple<CTEs...>;
 
-        template<typename Label>
+        template<typename Label, class nExplicitCols>
         struct cte_builder {
             std::vector<std::string> explicitColumnNames;
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>> operator()(select_t<T, Args...> sel) && {
+            common_table_expression<Label, select_t<T, Args...>, nExplicitCols>
+            operator()(select_t<T, Args...> sel) && {
                 return {move(this->explicitColumnNames), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>> operator()(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, nExplicitCols> operator()(Compound sel) && {
                 return {move(this->explicitColumnNames), {std::move(sel)}};
             }
         };
@@ -502,23 +504,24 @@ namespace sqlite_orm {
     template<class Label,
              class... ColumnNames,
              std::enable_if_t<polyfill::conjunction_v<std::is_convertible<ColumnNames, std::string>...>, bool> = true>
-    internal::cte_builder<Label> cte(ColumnNames... explicitColumnNames) {
+    internal::cte_builder<Label, polyfill::index_constant<sizeof...(ColumnNames)>>
+    cte(ColumnNames... explicitColumnNames) {
         return {{std::move(explicitColumnNames)...}};
     }
 
     // tuple of CTEs
-    template<class E, class... Labels, class... Selects>
-    internal::with_t<E, internal::common_table_expression<Labels, Selects>...>
-    with(std::tuple<internal::common_table_expression<Labels, Selects>...> cte, E expression) {
+    template<class E, class... Labels, class... Selects, class... nExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Labels, Selects, nExplicitCols>...>
+    with(std::tuple<internal::common_table_expression<Labels, Selects, nExplicitCols>...> cte, E expression) {
         return {move(cte), std::move(expression)};
     }
 
     /** A single CTE.
      *  Example : with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
      */
-    template<class E, class Label, class Select>
-    internal::with_t<E, internal::common_table_expression<Label, Select>>
-    with(internal::common_table_expression<Label, Select> cte, E expression) {
+    template<class E, class Label, class Select, class nExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Label, Select, nExplicitCols>>
+    with(internal::common_table_expression<Label, Select, nExplicitCols> cte, E expression) {
         return {std::make_tuple(move(cte)), std::move(expression)};
     }
 

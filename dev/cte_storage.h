@@ -129,12 +129,12 @@ namespace sqlite_orm {
                                                                       const common_table_expressions<CTEs...>& cte,
                                                                       std::index_sequence<TI1>) {
             using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
-
-            auto tbl = make_cte_table<
+            using O =
                 create_column_results_t<label_type_t<cte_t>,
-                                        column_result_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>>>(
-                impl,
-                get<TI1>(cte));
+                                        column_result_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>>;
+            static_assert(!cte_t::explicit_column_count || cte_t::explicit_column_count == O::index_sequence::size());
+
+            auto tbl = make_cte_table<O>(impl, get<TI1>(cte));
 
             return storage_impl_cat(impl, std::move(tbl));
         }
@@ -144,12 +144,12 @@ namespace sqlite_orm {
                                                                       const common_table_expressions<CTEs...>& cte,
                                                                       std::index_sequence<TI1, TIn...>) {
             using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
-
-            auto tbl = make_cte_table<
+            using O =
                 create_column_results_t<label_type_t<cte_t>,
-                                        column_result_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>>>(
-                impl,
-                get<TI1>(cte));
+                                        column_result_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>>;
+            static_assert(!cte_t::explicit_column_count || cte_t::explicit_column_count == O::index_sequence::size());
+
+            auto tbl = make_cte_table<O>(impl, get<TI1>(cte));
 
             return make_recursive_cte_storage_using_table_indices(
                 // Because CTEs can depend on their predecessor we recursively pass in a new storage object

@@ -560,8 +560,8 @@ namespace sqlite_orm {
             /**
              *  Using a CTE, select a single column into std::vector<T> or multiple columns into std::vector<std::tuple<...>>.
              */
-            template<class Label, class Select, class T, class... Args>
-            auto with(common_table_expression<Label, Select> cte, select_t<T, Args...> sel) {
+            template<class Label, class Select, class nExplicitCols, class T, class... Args>
+            auto with(common_table_expression<Label, Select, nExplicitCols> cte, select_t<T, Args...> sel) {
                 auto statement = this->prepare(sqlite_orm::with(move(cte), std::move(sel)));
                 return this->execute(statement);
             }
@@ -580,9 +580,10 @@ namespace sqlite_orm {
              */
             template<class Label,
                      class Select,
+                     class nExplicitCols,
                      class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            auto with(common_table_expression<Label, Select> cte, Compound sel) {
+            auto with(common_table_expression<Label, Select, nExplicitCols> cte, Compound sel) {
                 auto statement = this->prepare(sqlite_orm::with(move(cte), sqlite_orm::select(std::move(sel))));
                 return this->execute(statement);
             }
