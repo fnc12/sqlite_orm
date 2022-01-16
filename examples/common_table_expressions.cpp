@@ -3,6 +3,9 @@
  */
 
 #include <tuple>
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>
+#endif
 #include <iostream>
 #include <sqlite_orm/sqlite_orm.h>
 
