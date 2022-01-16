@@ -45,17 +45,21 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct alias_extractor;
 
-        template<class T>
-        struct alias_extractor<T, typename std::enable_if<std::is_base_of<alias_tag, T>::value>::type> {
+        template<class A>
+        struct alias_extractor<A, typename std::enable_if<std::is_base_of<alias_tag, A>::value>::type> {
+            using object_type = typename A::type;
+
             static std::string get() {
                 std::stringstream ss;
-                ss << T::get();
+                ss << A::get();
                 return ss.str();
             }
         };
 
         template<class T>
         struct alias_extractor<T, typename std::enable_if<!std::is_base_of<alias_tag, T>::value>::type> {
+            using object_type = T;
+
             static std::string get() {
                 return {};
             }

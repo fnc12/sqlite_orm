@@ -5,6 +5,7 @@
 #include <functional>  //  std::function
 #include <typeindex>  //  std::type_index
 
+#include "static_magic.h"
 #include "select_constraints.h"
 #include "alias.h"
 #include "core_functions.h"
@@ -61,8 +62,15 @@ namespace sqlite_orm {
             template<class T>
             void operator()(const asterisk_t<T> &) const {
                 if(this->find_table_name) {
-                    auto tableName = this->find_table_name(typeid(T));
-                    table_names.insert(std::make_pair(move(tableName), ""));
+                    static_if<std::is_base_of<alias_tag, T>{}>(
+                        [this]() {
+                            auto tableName = this->find_table_name(typeid(typename alias_extractor<T>::object_type));
+                            table_names.insert(std::make_pair(move(tableName), alias_extractor<T>::get()));
+                        },
+                        [this]() {
+                            auto tableName = this->find_table_name(typeid(T));
+                            table_names.insert(std::make_pair(move(tableName), ""));
+                        })();
                 }
             }
 

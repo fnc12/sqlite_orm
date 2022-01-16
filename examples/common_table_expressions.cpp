@@ -62,6 +62,74 @@ void all_integers_between(int from, int end) {
             cout << n << ", ";
         }
         cout << endl;
+        cout << endl;
+    }
+}
+
+void supervisor_chain() {
+    //CREATE TABLE org(
+    //    name TEXT PRIMARY KEY,
+    //    boss TEXT REFERENCES org
+    //) WITHOUT ROWID;
+    //INSERT INTO org VALUES('Alice', NULL);
+    //INSERT INTO org VALUES('Bob', 'Alice');
+    //INSERT INTO org VALUES('Cindy', 'Alice');
+    //INSERT INTO org VALUES('Dave', 'Bob');
+    //INSERT INTO org VALUES('Emma', 'Bob');
+    //INSERT INTO org VALUES('Fred', 'Cindy');
+    //INSERT INTO org VALUES('Gail', 'Cindy');
+    //CREATE TABLE org(
+    //  name TEXT PRIMARY KEY,
+    //  boss TEXT REFERENCES org,
+    //  height INT,
+    //  -- other content omitted
+    //);
+    struct Org {
+        std::string name;
+        std::optional<std::string> boss;
+        double height;
+    };
+
+    auto storage = make_storage("",
+                                make_table<Org>("org",
+                                                make_column("name", &Org::name, primary_key()),
+                                                make_column("boss", &Org::boss),
+                                                foreign_key(&Org::boss).references(&Org::name)));
+    storage.sync_schema();
+
+    storage.replace<Org>({"Alice", nullopt});
+    storage.replace<Org>({"Bob", "Alice"});
+    storage.replace<Org>({"Cindy", "Alice"});
+    storage.replace<Org>({"Dave", "Bob"});
+    storage.replace<Org>({"Emma", "Bob"});
+    storage.replace<Org>({"Fred", "Cindy"});
+    storage.replace<Org>({"Gail", "Cindy"});
+
+    // supervisor chain of Fred
+    {
+        //WITH RECURSIVE
+        //    chain AS(
+        //        SELECT * from org WHERE name = 'Fred'
+        //        UNION ALL
+        //        SELECT parent.* FROM org parent, chain
+        //        WHERE parent.name = chain.boss
+        //    )
+        //    SELECT name FROM chain;
+        auto ast = with(
+            cte<cte_1>()(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
+                                   select(asterisk<alias_a<Org>>(),
+                                          where(c(alias_column<alias_a<Org>>(&Org::name)) == column<cte_1>(1_col))))),
+            select(column<cte_1>(0_col)));
+        string sql = storage.dump(ast);
+
+        auto stmt = storage.prepare(ast);
+        auto results = storage.execute(stmt);
+        cout << "Hierarchy chain of Fred:\n";
+        for(const string& name: results) {
+            cout << name << ", ";
+        }
+        cout << endl;
+        cout << endl;
     }
 }
 
@@ -88,14 +156,15 @@ void works_for_alice() {
 
     storage.replace<Org>({"Alice", nullopt, 160.});
     storage.replace<Org>({"Bob", nullopt, 177.});
-    storage.replace<Org>({"Foo", "Alice", 165.});
+    storage.replace<Org>({"Dave", "Alice", 169.});
+    storage.replace<Org>({"Cindy", "Dave", 165.});
     storage.replace<Org>({"Bar", "Bob", 159.});
 
-    c(&Org::height) + 1;
-
-    //WITH RECURSIVE
-    //    works_for_alice(n) AS(
-    //        VALUES('Alice')
+    // average height of Alice's team
+    {
+        //WITH RECURSIVE
+        //    works_for_alice(n) AS(
+        //        VALUES('Alice')
     //        UNION
     //        SELECT name FROM org, works_for_alice
     //        WHERE org.boss = works_for_alice.n
@@ -124,7 +193,8 @@ void works_for_alice() {
 
         auto stmt = storage.prepare(ast);
         auto results = storage.execute(stmt);
-        cout << "Average height Alice's team: " << results.at(0) << endl;
+        cout << "Average height of Alice's team: " << results.at(0) << endl;
+        cout << endl;
     }
 }
 
@@ -221,6 +291,7 @@ void family_tree() {
     for(const string& name: results) {
         cout << name << endl;
     }
+    cout << endl;
 }
 
 void depth_or_breadth_first() {
@@ -318,12 +389,14 @@ void depth_or_breadth_first() {
         for(const string& name: results) {
             cout << name << endl;
         }
+        cout << endl;
     }
 }
 
 int main() {
     try {
         all_integers_between(1, 10);
+        supervisor_chain();
         works_for_alice();
         family_tree();
         depth_or_breadth_first();
