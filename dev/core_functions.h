@@ -1793,19 +1793,23 @@ namespace sqlite_orm {
     }
 
     /**
-     *  MAX(X) aggregate function.
+     *  MAX(X, ...) aggregate or simple multi-argument function.
+     *  The return type is deduced from the first argument.
      */
-    template<class X>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+    template<class X, class... Rest>
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Rest...>
+    max(X x, Rest... rest) {
+        return {std::tuple<X, Rest...>{std::move(x), std::move(rest)...}};
     }
 
     /**
-     *  MIN(X) aggregate function.
+     *  MIN(X, ...) aggregate or simple multi-argument function.
+     *  The return type is deduced from the first argument.
      */
-    template<class X>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
-        return {std::tuple<X>{std::forward<X>(x)}};
+    template<class X, class... Rest>
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Rest...>
+    min(X x, Rest... rest) {
+        return {std::tuple<X, Rest...>{std::move(x), std::move(rest)...}};
     }
 
     /**
