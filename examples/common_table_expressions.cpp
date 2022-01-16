@@ -403,6 +403,62 @@ void depth_or_breadth_first() {
 #endif
 }
 
+void apfelmaennchen() {
+    auto storage = make_storage("");
+
+    //WITH RECURSIVE
+    //    xaxis(x) AS(VALUES(-2.0) UNION ALL SELECT x + 0.05 FROM xaxis WHERE x < 1.2),
+    //    yaxis(y) AS(VALUES(-1.0) UNION ALL SELECT y + 0.1 FROM yaxis WHERE y < 1.0),
+    //    m(iter, cx, cy, x, y) AS(
+    //        SELECT 0, x, y, 0.0, 0.0 FROM xaxis, yaxis
+    //        UNION ALL
+    //        SELECT iter + 1, cx, cy, x * x - y * y + cx, 2.0 * x * y + cy FROM m
+    //        WHERE(x * x + y * y) < 4.0 AND iter < 28
+    //    ),
+    //    m2(iter, cx, cy) AS(
+    //        SELECT max(iter), cx, cy FROM m GROUP BY cx, cy
+    //    ),
+    //    a(t) AS(
+    //        SELECT group_concat(substr(' .+*#', 1 + min(iter / 7, 4), 1), '')
+    //        FROM m2 GROUP BY cy
+    //    )
+    //    SELECT group_concat(rtrim(t), x'0a') FROM a;
+    auto ast = with(
+        make_tuple(
+            cte<cte_1>("x")(
+                union_all(select(-2.0), select(column<cte_1>(0_col) + c(0.05), where(column<cte_1>(0_col) < 1.2)))),
+            cte<cte_2>("y")(
+                union_all(select(-1.0), select(column<cte_2>(0_col) + c(0.1), where(column<cte_2>(0_col) < 1.0)))),
+            cte<cte_3>("iter", "cx", "cy", "x", "y")(
+                union_all(select(columns(0, column<cte_1>(0_col), column<cte_2>(0_col), 0.0, 0.0)),
+                          select(columns(column<cte_3>(0_col) + c(1),
+                                         column<cte_3>(1_col),
+                                         column<cte_3>(2_col),
+                                         column<cte_3>(3_col) * c(column<cte_3>(3_col)) -
+                                             column<cte_3>(4_col) * c(column<cte_3>(4_col)) + column<cte_3>(1_col),
+                                         c(2.0) * column<cte_3>(3_col) * column<cte_3>(4_col) + column<cte_3>(2_col)),
+                                 where((column<cte_3>(3_col) * c(column<cte_3>(3_col)) +
+                                        column<cte_3>(4_col) * c(column<cte_3>(4_col))) < c(4.0) &&
+                                       column<cte_3>(0_col) < 28)))),
+            cte<cte_4>("iter", "cx", "cy")(
+                select(columns(max<>(column<cte_3>(0_col)), column<cte_3>(1_col), column<cte_3>(2_col)),
+                       group_by(column<cte_3>(1_col), column<cte_3>(2_col)))),
+            cte<cte_5>("t")(select(group_concat(substr(" .+*#", 1 + min<>(column<cte_4>(0_col) / c(7.0), 4.0), 1), ""),
+                                   group_by(column<cte_4>(2_col))))),
+        select(group_concat(rtrim(column<cte_5>(0_col)), "\n")));
+
+    string sql = storage.dump(ast);
+
+    auto stmt = storage.prepare(ast);
+    auto results = storage.execute(stmt);
+
+    cout << "Apfelmaennchen (Mandelbrot set):\n";
+    for(const string& rowString: results) {
+        cout << rowString << endl;
+    }
+    cout << endl;
+}
+
 int main() {
     try {
         all_integers_between(1, 10);
@@ -410,6 +466,7 @@ int main() {
         works_for_alice();
         family_tree();
         depth_or_breadth_first();
+        apfelmaennchen();
     } catch(const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }
