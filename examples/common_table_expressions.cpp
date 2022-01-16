@@ -9,7 +9,9 @@
 using std::cout;
 using std::endl;
 using std::make_tuple;
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 using std::nullopt;
+#endif
 using std::string;
 using std::system_error;
 using namespace sqlite_orm;
@@ -67,6 +69,7 @@ void all_integers_between(int from, int end) {
 }
 
 void supervisor_chain() {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     //CREATE TABLE org(
     //    name TEXT PRIMARY KEY,
     //    boss TEXT REFERENCES org
@@ -131,9 +134,11 @@ void supervisor_chain() {
         cout << endl;
         cout << endl;
     }
+#endif
 }
 
 void works_for_alice() {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     //CREATE TABLE org(
     //  name TEXT PRIMARY KEY,
     //  boss TEXT REFERENCES org,
@@ -196,9 +201,11 @@ void works_for_alice() {
         cout << "Average height of Alice's team: " << results.at(0) << endl;
         cout << endl;
     }
+#endif
 }
 
 void family_tree() {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     //CREATE TABLE family(
     //    name TEXT PRIMARY KEY,
     //    mom TEXT REFERENCES family,
@@ -292,9 +299,11 @@ void family_tree() {
         cout << name << endl;
     }
     cout << endl;
+#endif
 }
 
 void depth_or_breadth_first() {
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     //CREATE TABLE org(
     //    name TEXT PRIMARY KEY,
     //    boss TEXT REFERENCES org
@@ -391,6 +400,7 @@ void depth_or_breadth_first() {
         }
         cout << endl;
     }
+#endif
 }
 
 int main() {
