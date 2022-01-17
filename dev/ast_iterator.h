@@ -196,7 +196,7 @@ namespace sqlite_orm {
 
             template<class L>
             void operator()(const node_type& c, const L& l) const {
-                iterate_ast(c.expression, l);
+                iterate_ast(c.subselect, l);
             }
         };
 

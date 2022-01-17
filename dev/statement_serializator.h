@@ -505,7 +505,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << static_cast<std::string>(c);
                 std::vector<std::string> columnNames =
-                    collect_cte_column_names(c.expression, c.explicitColumnNames, context);
+                    collect_cte_column_names(get_cte_driving_subselect(c.subselect), c.explicitColumnNames, context);
                 {
                     ss << '(';
                     for(size_t i = 0, n = columnNames.size(); i < n; ++i) {
@@ -517,7 +517,7 @@ namespace sqlite_orm {
                     ss << ')';
                 }
                 ss << " AS ";
-                ss << '(' << serialize(c.expression, cteContext) << ')';
+                ss << '(' << serialize(c.subselect, cteContext) << ')';
                 return ss.str();
             }
         };

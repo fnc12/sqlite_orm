@@ -114,7 +114,7 @@ namespace sqlite_orm {
             context_type context{impl};
 
             std::vector<std::string> columnNames =
-                collect_cte_column_names(get_cte_driving_subselect(cte.expression), cte.explicitColumnNames, context);
+                collect_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumnNames, context);
 
             return create_cte_table_t<M, typename M::index_sequence>{
                 cte.label(),

@@ -248,11 +248,11 @@ namespace sqlite_orm {
             static constexpr size_t explicit_column_count = nExplicitCols::value;
 
             std::vector<std::string> explicitColumnNames;
-            expression_type expression;
+            expression_type subselect;
 
-            common_table_expression(std::vector<std::string> explicitColumnNames, expression_type expression) :
-                explicitColumnNames{move(explicitColumnNames)}, expression{std::move(expression)} {
-                this->expression.highest_level = true;
+            common_table_expression(std::vector<std::string> explicitColumnNames, expression_type subselect) :
+                explicitColumnNames{move(explicitColumnNames)}, subselect{std::move(subselect)} {
+                this->subselect.highest_level = true;
             }
         };
         template<class... CTEs>
