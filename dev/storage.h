@@ -189,6 +189,16 @@ namespace sqlite_orm {
             }
 
           public:
+            template<class T>
+            void drop_trigger(const T& triggerName) {
+                std::stringstream ss;
+                ss << "DROP TRIGGER " << triggerName;
+                auto query = ss.str();
+                auto con = this->get_connection();
+                auto db = con.get();
+                perform_void_exec(db, query);
+            }
+
             template<class T, class... Args>
             view_t<T, self, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<T>();
@@ -570,15 +580,15 @@ namespace sqlite_orm {
                 ss << "{ ";
                 using pair = std::pair<std::string, std::string>;
                 std::vector<pair> pairs;
-                tImpl.table.for_each_column([&pairs, &o](auto& c) {
-                    using column_type = typename std::decay<decltype(c)>::type;
+                tImpl.table.for_each_column([&pairs, &o](auto& column) {
+                    using column_type = typename std::decay<decltype(column)>::type;
                     using field_type = typename column_type::field_type;
-                    pair p{c.name, std::string()};
-                    if(c.member_pointer) {
-                        p.second = field_printer<field_type>()(o.*c.member_pointer);
+                    pair p{column.name, std::string()};
+                    if(column.member_pointer) {
+                        p.second = field_printer<field_type>()(o.*column.member_pointer);
                     } else {
                         using getter_type = typename column_type::getter_type;
-                        field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                        field_value_holder<getter_type> valueHolder{(o.*(column.getter))()};
                         p.second = field_printer<field_type>()(valueHolder.value);
                     }
                     pairs.push_back(move(p));
@@ -649,11 +659,8 @@ namespace sqlite_orm {
             int insert(const O& o) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
-
-                return call_insert_impl_and_catch_constraint_failed([this, &o]() {
-                    auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
-                    return int(this->execute(statement));
-                });
+                auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
+                return int(this->execute(statement));
             }
 
             /**
@@ -738,11 +745,8 @@ namespace sqlite_orm {
                 if(from == to) {
                     return;
                 }
-
-                call_insert_impl_and_catch_constraint_failed([this, from, to]() {
-                    auto statement = this->prepare(sqlite_orm::insert_range(from, to));
-                    this->execute(statement);
-                });
+                auto statement = this->prepare(sqlite_orm::insert_range(from, to));
+                this->execute(statement);
             }
 
             template<class T, class It, class L>
@@ -752,10 +756,8 @@ namespace sqlite_orm {
                 if(from == to) {
                     return;
                 }
-                call_insert_impl_and_catch_constraint_failed([this, from, to, transformer = std::move(transformer)]() {
-                    auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
-                    this->execute(statement);
-                });
+                auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
+                this->execute(statement);
             }
 
             /**

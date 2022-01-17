@@ -7097,6 +7097,8 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_helper.h"
 
+// #include "optional_container.h"
+
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
 // (Could be implemented with a normal trigger that insert or update an internal table and then retreive
 // the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
@@ -7166,11 +7168,13 @@ namespace sqlite_orm {
         /**
          * Base of a trigger. Contains the trigger type/timming and the table type
          * T is the table type
+         * W is `when` expression type
          * Type is the trigger base type (type+timing)
          */
-        template<class T, class Type>
+        template<class T, class W, class Type>
         struct trigger_base_t {
             using table_type = T;
+            using when_type = W;
             using trigger_type_base = Type;
 
             /**
@@ -7181,26 +7185,31 @@ namespace sqlite_orm {
              * Value used to determine if we execute the trigger on each row or on each statement
              * (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
              * so this value is more of a placeholder for a later update)
-             * Defaults to true in SQLite documentation
              */
-            bool do_for_each_row = true;
+            bool do_for_each_row = false;
             /**
              * When expression (if any)
              * If a WHEN expression is specified, the trigger will only execute
              * if the expression evaluates to true when the trigger is fired
              */
-            // void when = NOT_IMPLEMENTED;
+            optional_container<when_type> container_when;
 
-            trigger_base_t(trigger_type_base type_base) : type_base(std::move(type_base)) {}
+            trigger_base_t(trigger_type_base type_base_) : type_base(std::move(type_base_)) {}
 
             trigger_base_t& for_each_row() {
                 this->do_for_each_row = true;
                 return *this;
             }
-            // trigger_base_t &when(void); // TODO
+
+            template<class WW>
+            trigger_base_t<T, WW, Type> when(WW expression) {
+                trigger_base_t<T, WW, Type> res(this->type_base);
+                res.container_when.field = std::move(expression);
+                return res;
+            }
 
             template<class... S>
-            partial_trigger_t<trigger_base_t<T, Type>, S...> begin(S... statements) {
+            partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
                 return {*this, std::forward<S>(statements)...};
             }
         };
@@ -7223,7 +7232,7 @@ namespace sqlite_orm {
             trigger_type_base_t(trigger_timing timing, trigger_type type) : timing(timing), type(type) {}
 
             template<class T>
-            trigger_base_t<T, trigger_type_base_t> on() {
+            trigger_base_t<T, void, trigger_type_base_t> on() {
                 return {*this};
             }
         };
@@ -7246,7 +7255,7 @@ namespace sqlite_orm {
                 trigger_type_base_t(timing, type), columns(std::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
 
             template<class T>
-            trigger_base_t<T, trigger_update_type_t<Cs...>> on() {
+            trigger_base_t<T, void, trigger_update_type_t<Cs...>> on() {
                 return {*this};
             }
         };
@@ -7273,12 +7282,81 @@ namespace sqlite_orm {
                 return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
             }
         };
+
+        struct raise_t {
+            enum class type_t {
+                ignore,
+                rollback,
+                abort,
+                fail,
+            };
+
+            type_t type = type_t::ignore;
+            std::string message;
+        };
+
+        template<class T>
+        struct new_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
+
+        template<class T>
+        struct old_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
     }  // NAMESPACE internal
 
+    /**
+     *  NEW.expression function used within TRIGGER expressions
+     */
+    template<class T>
+    internal::new_t<T> new_(T expression) {
+        return {std::move(expression)};
+    }
+
+    /**
+     *  OLD.expression function used within TRIGGER expressions
+     */
+    template<class T>
+    internal::old_t<T> old(T expression) {
+        return {std::move(expression)};
+    }
+
+    /**
+     *  RAISE(IGNORE) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_ignore() {
+        return {internal::raise_t::type_t::ignore, {}};
+    }
+
+    /**
+     *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_rollback(std::string message) {
+        return {internal::raise_t::type_t::rollback, move(message)};
+    }
+
+    /**
+     *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_abort(std::string message) {
+        return {internal::raise_t::type_t::abort, move(message)};
+    }
+
+    /**
+     *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_fail(std::string message) {
+        return {internal::raise_t::type_t::fail, move(message)};
+    }
+
     template<class T, class... S>
-    internal::trigger_t<T, S...> make_trigger(const std::string& name,
-                                              const internal::partial_trigger_t<T, S...>& part) {
-        return {name, std::move(part.base), std::move(part.statements)};
+    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
+        return {move(name), std::move(part.base), std::move(part.statements)};
     }
 
     inline internal::trigger_timing_t before() {
@@ -8290,22 +8368,6 @@ namespace sqlite_orm {
             if(rc != SQLITE_OK) {
                 throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                         sqlite3_errmsg(db));
-            }
-        }
-
-        template<class T>
-        inline auto call_insert_impl_and_catch_constraint_failed(const T& insert_impl) {
-            try {
-                return insert_impl();
-            } catch(const std::system_error& e) {
-                if(e.code() == std::error_code(SQLITE_CONSTRAINT, get_sqlite_error_category())) {
-                    std::stringstream ss;
-                    ss << "Attempting to execute 'insert' request resulted in an error like \"" << e.what()
-                       << "\". Perhaps ordinary 'insert' is not acceptable for this table and you should try "
-                          "'replace' or 'insert' with explicit column listing?";
-                    throw std::system_error(e.code(), ss.str());
-                }
-                throw;
             }
         }
     }
@@ -16038,6 +16100,59 @@ namespace sqlite_orm {
             }
         };
 
+        template<class T>
+        struct statement_serializator<old_t<T>, void> {
+            using statement_type = old_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "OLD.";
+                auto newContext = context;
+                newContext.skip_table_name = true;
+                ss << serialize(statement.expression, newContext);
+                return ss.str();
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<new_t<T>, void> {
+            using statement_type = new_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "NEW.";
+                auto newContext = context;
+                newContext.skip_table_name = true;
+                ss << serialize(statement.expression, newContext);
+                return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializator<raise_t, void> {
+            using statement_type = raise_t;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement.type) {
+                    case decltype(statement.type)::ignore:
+                        return "RAISE(IGNORE)";
+
+                    case decltype(statement.type)::rollback:
+                        return "RAISE(ROLLBACK, " + serialize(statement.message, context) + ")";
+
+                    case decltype(statement.type)::abort:
+                        return "RAISE(ABORT, " + serialize(statement.message, context) + ")";
+
+                    case decltype(statement.type)::fail:
+                        return "RAISE(FAIL, " + serialize(statement.message, context) + ")";
+                }
+                return {};
+            }
+        };
+
         template<>
         struct statement_serializator<trigger_timing, void> {
             using statement_type = trigger_timing;
@@ -16111,18 +16226,22 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, class Trigger>
-        struct statement_serializator<trigger_base_t<T, Trigger>, void> {
-            using statement_type = trigger_base_t<T, Trigger>;
+        template<class T, class W, class Trigger>
+        struct statement_serializator<trigger_base_t<T, W, Trigger>, void> {
+            using statement_type = trigger_base_t<T, W, Trigger>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
 
                 ss << serialize(statement.type_base, context);
-                ss << " ON '" << context.impl.find_table_name(typeid(T)) << "' ";
-                ss << (statement.do_for_each_row ? "FOR EACH ROW " : "");
-                // TODO add WHEN clause
+                ss << " ON '" << context.impl.find_table_name(typeid(T)) << "'";
+                if(statement.do_for_each_row) {
+                    ss << " FOR EACH ROW";
+                }
+                statement.container_when.apply([&ss, &context](auto& value) {
+                    ss << " WHEN " << serialize(value, context);
+                });
                 return ss.str();
             }
         };
@@ -16137,12 +16256,17 @@ namespace sqlite_orm {
                 ss << "CREATE ";
 
                 ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << serialize(statement.base, context);
-                C c{context};
-
-                c.replace_bindable_with_question = false;
-                ss << "BEGIN ";
-                iterate_tuple(statement.elements, [&ss, &c](auto& v) {
-                    ss << serialize(v, c) << ";";
+                ss << " BEGIN ";
+                iterate_tuple(statement.elements, [&ss, &context](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    if(is_select<element_type>::value) {
+                        auto newContext = context;
+                        newContext.use_parentheses = false;
+                        ss << serialize(element, newContext);
+                    } else {
+                        ss << serialize(element, context);
+                    }
+                    ss << ";";
                 });
                 ss << " END";
 
@@ -16680,6 +16804,16 @@ namespace sqlite_orm {
             }
 
           public:
+            template<class T>
+            void drop_trigger(const T& triggerName) {
+                std::stringstream ss;
+                ss << "DROP TRIGGER " << triggerName;
+                auto query = ss.str();
+                auto con = this->get_connection();
+                auto db = con.get();
+                perform_void_exec(db, query);
+            }
+
             template<class T, class... Args>
             view_t<T, self, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<T>();
@@ -17061,15 +17195,15 @@ namespace sqlite_orm {
                 ss << "{ ";
                 using pair = std::pair<std::string, std::string>;
                 std::vector<pair> pairs;
-                tImpl.table.for_each_column([&pairs, &o](auto& c) {
-                    using column_type = typename std::decay<decltype(c)>::type;
+                tImpl.table.for_each_column([&pairs, &o](auto& column) {
+                    using column_type = typename std::decay<decltype(column)>::type;
                     using field_type = typename column_type::field_type;
-                    pair p{c.name, std::string()};
-                    if(c.member_pointer) {
-                        p.second = field_printer<field_type>()(o.*c.member_pointer);
+                    pair p{column.name, std::string()};
+                    if(column.member_pointer) {
+                        p.second = field_printer<field_type>()(o.*column.member_pointer);
                     } else {
                         using getter_type = typename column_type::getter_type;
-                        field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                        field_value_holder<getter_type> valueHolder{(o.*(column.getter))()};
                         p.second = field_printer<field_type>()(valueHolder.value);
                     }
                     pairs.push_back(move(p));
@@ -17140,11 +17274,8 @@ namespace sqlite_orm {
             int insert(const O& o) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
-
-                return call_insert_impl_and_catch_constraint_failed([this, &o]() {
-                    auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
-                    return int(this->execute(statement));
-                });
+                auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
+                return int(this->execute(statement));
             }
 
             /**
@@ -17229,11 +17360,8 @@ namespace sqlite_orm {
                 if(from == to) {
                     return;
                 }
-
-                call_insert_impl_and_catch_constraint_failed([this, from, to]() {
-                    auto statement = this->prepare(sqlite_orm::insert_range(from, to));
-                    this->execute(statement);
-                });
+                auto statement = this->prepare(sqlite_orm::insert_range(from, to));
+                this->execute(statement);
             }
 
             template<class T, class It, class L>
@@ -17243,10 +17371,8 @@ namespace sqlite_orm {
                 if(from == to) {
                     return;
                 }
-                call_insert_impl_and_catch_constraint_failed([this, from, to, transformer = std::move(transformer)]() {
-                    auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
-                    this->execute(statement);
-                });
+                auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
+                this->execute(statement);
             }
 
             /**

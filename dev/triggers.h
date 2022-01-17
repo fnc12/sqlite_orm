@@ -6,6 +6,7 @@
 #include <tuple>
 
 #include "tuple_helper/tuple_helper.h"
+#include "optional_container.h"
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
 // (Could be implemented with a normal trigger that insert or update an internal table and then retreive
@@ -76,11 +77,13 @@ namespace sqlite_orm {
         /**
          * Base of a trigger. Contains the trigger type/timming and the table type
          * T is the table type
+         * W is `when` expression type
          * Type is the trigger base type (type+timing)
          */
-        template<class T, class Type>
+        template<class T, class W, class Type>
         struct trigger_base_t {
             using table_type = T;
+            using when_type = W;
             using trigger_type_base = Type;
 
             /**
@@ -91,26 +94,31 @@ namespace sqlite_orm {
              * Value used to determine if we execute the trigger on each row or on each statement
              * (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
              * so this value is more of a placeholder for a later update)
-             * Defaults to true in SQLite documentation
              */
-            bool do_for_each_row = true;
+            bool do_for_each_row = false;
             /**
              * When expression (if any)
              * If a WHEN expression is specified, the trigger will only execute
              * if the expression evaluates to true when the trigger is fired
              */
-            // void when = NOT_IMPLEMENTED;
+            optional_container<when_type> container_when;
 
-            trigger_base_t(trigger_type_base type_base) : type_base(std::move(type_base)) {}
+            trigger_base_t(trigger_type_base type_base_) : type_base(std::move(type_base_)) {}
 
             trigger_base_t &for_each_row() {
                 this->do_for_each_row = true;
                 return *this;
             }
-            // trigger_base_t &when(void); // TODO
+
+            template<class WW>
+            trigger_base_t<T, WW, Type> when(WW expression) {
+                trigger_base_t<T, WW, Type> res(this->type_base);
+                res.container_when.field = std::move(expression);
+                return res;
+            }
 
             template<class... S>
-            partial_trigger_t<trigger_base_t<T, Type>, S...> begin(S... statements) {
+            partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
                 return {*this, std::forward<S>(statements)...};
             }
         };
@@ -133,7 +141,7 @@ namespace sqlite_orm {
             trigger_type_base_t(trigger_timing timing, trigger_type type) : timing(timing), type(type) {}
 
             template<class T>
-            trigger_base_t<T, trigger_type_base_t> on() {
+            trigger_base_t<T, void, trigger_type_base_t> on() {
                 return {*this};
             }
         };
@@ -156,7 +164,7 @@ namespace sqlite_orm {
                 trigger_type_base_t(timing, type), columns(std::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
 
             template<class T>
-            trigger_base_t<T, trigger_update_type_t<Cs...>> on() {
+            trigger_base_t<T, void, trigger_update_type_t<Cs...>> on() {
                 return {*this};
             }
         };
@@ -183,12 +191,81 @@ namespace sqlite_orm {
                 return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
             }
         };
+
+        struct raise_t {
+            enum class type_t {
+                ignore,
+                rollback,
+                abort,
+                fail,
+            };
+
+            type_t type = type_t::ignore;
+            std::string message;
+        };
+
+        template<class T>
+        struct new_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
+
+        template<class T>
+        struct old_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
     }  // NAMESPACE internal
 
+    /**
+     *  NEW.expression function used within TRIGGER expressions
+     */
+    template<class T>
+    internal::new_t<T> new_(T expression) {
+        return {std::move(expression)};
+    }
+
+    /**
+     *  OLD.expression function used within TRIGGER expressions
+     */
+    template<class T>
+    internal::old_t<T> old(T expression) {
+        return {std::move(expression)};
+    }
+
+    /**
+     *  RAISE(IGNORE) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_ignore() {
+        return {internal::raise_t::type_t::ignore, {}};
+    }
+
+    /**
+     *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_rollback(std::string message) {
+        return {internal::raise_t::type_t::rollback, move(message)};
+    }
+
+    /**
+     *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_abort(std::string message) {
+        return {internal::raise_t::type_t::abort, move(message)};
+    }
+
+    /**
+     *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_fail(std::string message) {
+        return {internal::raise_t::type_t::fail, move(message)};
+    }
+
     template<class T, class... S>
-    internal::trigger_t<T, S...> make_trigger(const std::string &name,
-                                              const internal::partial_trigger_t<T, S...> &part) {
-        return {name, std::move(part.base), std::move(part.statements)};
+    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...> &part) {
+        return {move(name), std::move(part.base), std::move(part.statements)};
     }
 
     inline internal::trigger_timing_t before() {
