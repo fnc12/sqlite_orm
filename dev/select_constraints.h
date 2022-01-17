@@ -243,7 +243,7 @@ namespace sqlite_orm {
          */
         template<class Label, class Select, class nExplicitCols>
         struct common_table_expression : public Label {
-            using label_type = Label;
+            using cte_label_type = Label;
             using expression_type = Select;
             static constexpr size_t explicit_column_count = nExplicitCols::value;
 

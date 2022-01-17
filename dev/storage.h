@@ -168,7 +168,7 @@ namespace sqlite_orm {
 
                 static_if<is_without_rowid{}>(
                     [](auto&) {
-                        static_assert(std::is_void<label_type_t<table_type>>::value,
+                        static_assert(std::is_void<cte_label_type_t<table_type>>::value,
                                       "Attempting to execute 'insert' request for a CTE mapping.");
                     },
                     [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((

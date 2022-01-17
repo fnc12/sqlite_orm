@@ -25,10 +25,10 @@ namespace sqlite_orm {
          *  A data type's label type, void otherwise.
          */
         template<typename O>
-        using label_of_t = polyfill::detected_or_t<void, label_type_t, O>;
+        using label_of_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
 
         template<typename O>
-        using object_type_of_t = polyfill::detected_or_t<O, object_type_t, O>;
+        using mapped_object_type_of_t = polyfill::detected_or_t<O, cte_object_type_t, O>;
 
         struct basic_table {
 
@@ -43,15 +43,16 @@ namespace sqlite_orm {
          * 
          *  Can be either for a table mapped to storage or for a common table expression (CTE).
          * 
-         *  The template parameter O is either a data structure object (i.e. direct mapping from storage to data)
+         *  The template parameter O is either a regular data structure object (i.e. direct mapping from storage to data)
          *  or an abstract 'mapper' object with a label attached.
+         *  The driving force behind this 'mapper' abstraction is the presence of a T::cte_label_type.
          */
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
             using super = basic_table;
-            using mapper_type = O;
-            using object_type = object_type_of_t<O>;
-            using label_type = label_of_t<O>;
+            using cte_mapper_type = O;
+            using cte_label_type = label_of_t<O>;
+            using object_type = mapped_object_type_of_t<O>;
             using elements_type = std::tuple<Cs...>;
 
             static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);

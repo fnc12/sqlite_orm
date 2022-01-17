@@ -24,7 +24,7 @@ namespace sqlite_orm {
           public:
             using fields_type = fields_t<Fs...>;
             // this type name is used to detect the mapping from label to mapper
-            using label_type = Label;
+            using cte_label_type = Label;
 
             template<size_t I>
             decltype(auto) cget() const noexcept {
@@ -45,8 +45,8 @@ namespace sqlite_orm {
           public:
             using index_sequence = std::index_sequence_for<Fs...>;
             // this type name is used to detect the mapping from label to object
-            using label_type = Label;
-            using object_type = column_results<Label, Fs...>;
+            using cte_label_type = Label;
+            using cte_object_type = column_results<Label, Fs...>;
             using expressions_type = tuplify_t<Expression>;
         };
 

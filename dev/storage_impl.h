@@ -181,8 +181,9 @@ namespace sqlite_orm {
             }
 
             std::string find_table_name(std::type_index ti) const {
-                std::type_index thisTypeIndex{typeid(
-                    std::conditional_t<std::is_void<label_type_t<H>>::value, object_type_t<H>, label_type_t<H>>)};
+                std::type_index thisTypeIndex{typeid(std::conditional_t<std::is_void<cte_label_type_t<H>>::value,
+                                                                        object_type_t<H>,
+                                                                        cte_label_type_t<H>>)};
                 if(thisTypeIndex == ti) {
                     return this->table.name;
                 } else {
@@ -423,9 +424,9 @@ namespace sqlite_orm {
         template<class Label, class O, class F, F O::*m, class S, satisfies<is_storage_impl, S> = true>
         constexpr decltype(auto) materialize_column_pointer(const S&, const column_pointer<Label, ice_t<m>>&) {
             using timpl_type = storage_pick_impl_t<S, Label>;
-            using mapper_type = storage_mapper_type_t<timpl_type>;
-            constexpr auto I = tuple_index_of_v<ice_t<m>, typename mapper_type::expressions_type>;
-            return cte_getter_v<object_type_t<mapper_type>, I>;
+            using cte_mapper_type = storage_cte_mapper_type_t<timpl_type>;
+            constexpr auto I = tuple_index_of_v<ice_t<m>, typename cte_mapper_type::expressions_type>;
+            return cte_getter_v<cte_object_type_t<cte_mapper_type>, I>;
         }
 
         template<class Label, class O, class F, F O::*m, class S, satisfies<is_storage_impl, S> = true>

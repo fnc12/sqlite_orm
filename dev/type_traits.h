@@ -42,7 +42,10 @@ namespace sqlite_orm {
         using object_type_t = typename T::object_type;
 
         template<typename T>
-        using label_type_t = typename T::label_type;
+        using cte_label_type_t = typename T::cte_label_type;
+
+        template<typename T>
+        using cte_object_type_t = typename T::cte_object_type;
 
         template<typename T>
         using table_type_t = typename T::table_type;
@@ -51,10 +54,10 @@ namespace sqlite_orm {
         using storage_object_type_t = typename S::table_type::object_type;
 
         template<typename S>
-        using storage_mapper_type_t = typename S::table_type::mapper_type;
+        using storage_cte_mapper_type_t = typename S::table_type::cte_mapper_type;
 
         template<typename S>
-        using storage_label_type_t = typename S::table_type::label_type;
+        using storage_cte_label_type_t = typename S::table_type::cte_label_type;
 
         template<typename T>
         using expression_type_t = typename T::expression_type;

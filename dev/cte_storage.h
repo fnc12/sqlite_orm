@@ -31,12 +31,12 @@ namespace sqlite_orm {
 
         template<typename O, size_t CI>
         struct create_cte_column {
-            using object_type = O;
+            using cte_object_type = O;
             using field_type = std::tuple_element_t<CI, typename O::fields_type>;
             using getter_type = cte_getter_t<O, CI>;
             using setter_type = cte_setter_t<O, CI>;
 
-            using type = column_t<object_type, field_type, getter_type, setter_type>;
+            using type = column_t<cte_object_type, field_type, getter_type, setter_type>;
         };
 
         /**
@@ -50,8 +50,9 @@ namespace sqlite_orm {
 
         template<typename Label, typename Expression, typename... Fs, size_t... CIs>
         struct create_cte_table<subselect_mapper<Label, Expression, Fs...>, std::index_sequence<CIs...>> {
-            using mapper_type = subselect_mapper<Label, Expression, Fs...>;
-            using table_type = table_t<mapper_type, true, create_cte_column_t<object_type_t<mapper_type>, CIs>...>;
+            using cte_mapper_type = subselect_mapper<Label, Expression, Fs...>;
+            using table_type =
+                table_t<cte_mapper_type, true, create_cte_column_t<cte_object_type_t<cte_mapper_type>, CIs>...>;
 
             using type = table_type;
         };
@@ -81,13 +82,13 @@ namespace sqlite_orm {
          *  interested in the column results of the left expression.
          */
         template<class Select>
-        decltype(auto) get_cte_driving_expression(const Select& subSelect);
+        decltype(auto) get_cte_driving_subselect(const Select& subSelect);
 
         /**
          *  Return given select expression.
          */
         template<class Select>
-        decltype(auto) get_cte_driving_expression(const Select& subSelect) {
+        decltype(auto) get_cte_driving_subselect(const Select& subSelect) {
             return subSelect;
         }
 
@@ -97,23 +98,23 @@ namespace sqlite_orm {
         template<class Compound,
                  class... Args,
                  std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-        decltype(auto) get_cte_driving_expression(const select_t<Compound, Args...>& subSelect) {
+        decltype(auto) get_cte_driving_subselect(const select_t<Compound, Args...>& subSelect) {
             return subSelect.col.left;
         }
 
         template<typename Select>
-        using cte_driving_expression_t =
-            std::remove_cvref_t<decltype(get_cte_driving_expression(std::declval<Select>()))>;
+        using cte_driving_subselect_t =
+            std::remove_cvref_t<decltype(get_cte_driving_subselect(std::declval<Select>()))>;
 
         template<typename M, typename S, typename CTE, size_t... CIs>
         create_cte_table_t<M, typename M::index_sequence>
         make_cte_table_using_column_indices(const S& impl, const CTE& cte, std::index_sequence<CIs...>) {
-            using O = object_type_t<M>;
+            using O = cte_object_type_t<M>;
             using context_type = serializator_context<S>;
             context_type context{impl};
 
             std::vector<std::string> columnNames =
-                collect_cte_column_names(get_cte_driving_expression(cte.expression), cte.explicitColumnNames, context);
+                collect_cte_column_names(get_cte_driving_subselect(cte.expression), cte.explicitColumnNames, context);
 
             return create_cte_table_t<M, typename M::index_sequence>{
                 cte.label(),
@@ -132,9 +133,9 @@ namespace sqlite_orm {
                                                                       std::index_sequence<TI1>) {
             using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
             using M =
-                create_column_results_t<label_type_t<cte_t>,
-                                        column_expression_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>,
-                                        column_result_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>>;
+                create_column_results_t<cte_label_type_t<cte_t>,
+                                        column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
+                                        column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
             static_assert(!cte_t::explicit_column_count || cte_t::explicit_column_count == M::index_sequence::size());
 
             auto tbl = make_cte_table<M>(impl, get<TI1>(cte));
@@ -148,9 +149,9 @@ namespace sqlite_orm {
                                                                       std::index_sequence<TI1, TIn...>) {
             using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
             using M =
-                create_column_results_t<label_type_t<cte_t>,
-                                        column_expression_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>,
-                                        column_result_of_t<S, cte_driving_expression_t<expression_type_t<cte_t>>>>;
+                create_column_results_t<cte_label_type_t<cte_t>,
+                                        column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
+                                        column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
             static_assert(!cte_t::explicit_column_count || cte_t::explicit_column_count == M::index_sequence::size());
 
             auto tbl = make_cte_table<M>(impl, get<TI1>(cte));
