@@ -67,8 +67,8 @@ void all_integers_between(int from, int end) {
             cout << n << ", ";
         }
         cout << endl;
-        cout << endl;
     }
+    cout << endl;
 }
 
 void supervisor_chain() {
@@ -84,16 +84,9 @@ void supervisor_chain() {
     //INSERT INTO org VALUES('Emma', 'Bob');
     //INSERT INTO org VALUES('Fred', 'Cindy');
     //INSERT INTO org VALUES('Gail', 'Cindy');
-    //CREATE TABLE org(
-    //  name TEXT PRIMARY KEY,
-    //  boss TEXT REFERENCES org,
-    //  height INT,
-    //  -- other content omitted
-    //);
     struct Org {
         std::string name;
         std::optional<std::string> boss;
-        double height;
     };
 
     auto storage = make_storage("",
@@ -135,8 +128,8 @@ void supervisor_chain() {
             cout << name << ", ";
         }
         cout << endl;
-        cout << endl;
     }
+        cout << endl;
 #endif
 }
 
@@ -202,8 +195,8 @@ void works_for_alice() {
         auto stmt = storage.prepare(ast);
         auto results = storage.execute(stmt);
         cout << "Average height of Alice's team: " << results.at(0) << endl;
-        cout << endl;
     }
+    cout << endl;
 #endif
 }
 
@@ -255,14 +248,15 @@ void family_tree() {
     //    WHERE ancestor_of_alice.name = family.name
     //    AND died IS NULL
     //    ORDER BY born;
-    auto ast = with(make_tuple(cte<cte_1>("name", "parent")(union_(select(columns(&Family::name, &Family::mom)),
-                                                                   select(columns(&Family::name, &Family::dad)))),
-                               cte<cte_2>("name")(
-                                   union_all(select(column<cte_1>(1_col), where(column<cte_1>(0_col) == "Alice")),
-                                             select(column<cte_1>(1_col), join<cte_2>(using_(column<cte_1>(0_col))))))),
-                    select(&Family::name,
-                           where(is_equal(column<cte_2>(0_col), &Family::name) && is_null(&Family::died)),
-                           order_by(&Family::born)));
+    auto ast =
+        with(make_tuple(cte<cte_1>("name", "parent")(union_(select(columns(c_v<&Family::name>, &Family::mom)),
+                                                            select(columns(&Family::name, &Family::dad)))),
+                        cte<cte_2>("name")(union_all(
+                            select(column<cte_1>(1_col), where(column<cte_1>(c_v<&Family::name>) == "Alice")),
+                            select(column<cte_1>(1_col), join<cte_2>(using_(column<cte_1>(c_v<&Family::name>))))))),
+             select(&Family::name,
+                    where(is_equal(column<cte_2>(0_col), &Family::name) && is_null(&Family::died)),
+                    order_by(&Family::born)));
 
     //WITH cte_1("name", "parent")
     //    AS(
@@ -373,6 +367,7 @@ void depth_or_breadth_first() {
             cout << name << endl;
         }
     }
+    cout << endl;
 
     // depth-first pattern
     {
@@ -401,8 +396,8 @@ void depth_or_breadth_first() {
         for(const string& name: results) {
             cout << name << endl;
         }
-        cout << endl;
     }
+    cout << endl;
 #endif
 }
 
@@ -426,29 +421,36 @@ void apfelmaennchen() {
     //        FROM m2 GROUP BY cy
     //    )
     //    SELECT group_concat(rtrim(t), x'0a') FROM a;
+    using cte_xaxis = cte_label<'x', 'a', 'x', 'i', 's'>;
+    using cte_yaxis = cte_label<'y', 'a', 'x', 'i', 's'>;
+    using cte_m = cte_label<'m'>;
+    using cte_m2 = cte_label<'m', '2'>;
+    using cte_a = cte_label<'a'>;
     auto ast = with(
         make_tuple(
-            cte<cte_1>("x")(
-                union_all(select(-2.0), select(column<cte_1>(0_col) + c(0.05), where(column<cte_1>(0_col) < 1.2)))),
-            cte<cte_2>("y")(
-                union_all(select(-1.0), select(column<cte_2>(0_col) + c(0.1), where(column<cte_2>(0_col) < 1.0)))),
-            cte<cte_3>("iter", "cx", "cy", "x", "y")(
-                union_all(select(columns(0, column<cte_1>(0_col), column<cte_2>(0_col), 0.0, 0.0)),
-                          select(columns(column<cte_3>(0_col) + c(1),
-                                         column<cte_3>(1_col),
-                                         column<cte_3>(2_col),
-                                         column<cte_3>(3_col) * c(column<cte_3>(3_col)) -
-                                             column<cte_3>(4_col) * c(column<cte_3>(4_col)) + column<cte_3>(1_col),
-                                         c(2.0) * column<cte_3>(3_col) * column<cte_3>(4_col) + column<cte_3>(2_col)),
-                                 where((column<cte_3>(3_col) * c(column<cte_3>(3_col)) +
-                                        column<cte_3>(4_col) * c(column<cte_3>(4_col))) < c(4.0) &&
-                                       column<cte_3>(0_col) < 28)))),
-            cte<cte_4>("iter", "cx", "cy")(
-                select(columns(max<>(column<cte_3>(0_col)), column<cte_3>(1_col), column<cte_3>(2_col)),
-                       group_by(column<cte_3>(1_col), column<cte_3>(2_col)))),
-            cte<cte_5>("t")(select(group_concat(substr(" .+*#", 1 + min<>(column<cte_4>(0_col) / c(7.0), 4.0), 1), ""),
-                                   group_by(column<cte_4>(2_col))))),
-        select(group_concat(rtrim(column<cte_5>(0_col)), "\n")));
+            cte<cte_xaxis>("x")(
+                union_all(select(-2.0),
+                          select(column<cte_xaxis>(0_col) + c(0.05), where(column<cte_xaxis>(0_col) < 1.2)))),
+            cte<cte_yaxis>("y")(
+                union_all(select(-1.0),
+                          select(column<cte_yaxis>(0_col) + c(0.1), where(column<cte_yaxis>(0_col) < 1.0)))),
+            cte<cte_m>("iter", "cx", "cy", "x", "y")(
+                union_all(select(columns(0, column<cte_xaxis>(0_col), column<cte_yaxis>(0_col), 0.0, 0.0)),
+                          select(columns(column<cte_m>(0_col) + c(1),
+                                         column<cte_m>(1_col),
+                                         column<cte_m>(2_col),
+                                         column<cte_m>(3_col) * c(column<cte_m>(3_col)) -
+                                             column<cte_m>(4_col) * c(column<cte_m>(4_col)) + column<cte_m>(1_col),
+                                         c(2.0) * column<cte_m>(3_col) * column<cte_m>(4_col) + column<cte_m>(2_col)),
+                                 where((column<cte_m>(3_col) * c(column<cte_m>(3_col)) +
+                                        column<cte_m>(4_col) * c(column<cte_m>(4_col))) < c(4.0) &&
+                                       column<cte_m>(0_col) < 28)))),
+            cte<cte_m2>("iter", "cx", "cy")(select(
+                columns(max<>(column<cte_m>(0_col)), column<cte_m>(1_col), column<cte_m>(2_col)),
+                group_by(column<cte_m>(1_col), column<cte_m>(2_col)))),
+            cte<cte_a>("t")(select(group_concat(substr(" .+*#", 1 + min<>(column<cte_m2>(0_col) / c(7.0), 4.0), 1), ""),
+                                   group_by(column<cte_m2>(2_col))))),
+        select(group_concat(rtrim(column<cte_a>(0_col)), "\n")));
 
     string sql = storage.dump(ast);
 

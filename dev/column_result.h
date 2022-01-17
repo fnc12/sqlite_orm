@@ -20,6 +20,8 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
+         *  Obains the result type of expressions that form the columns of a select statement.
+         *  
          *  This is a proxy class used to define what type must have result type depending on select
          *  arguments (member pointer, aggregate functions, etc). Below you can see specializations
          *  for different types. E.g. specialization for internal::length_t has `type` int cause
@@ -34,6 +36,15 @@ namespace sqlite_orm {
         template<class St, class T>
         using column_result_of_t = typename column_result_t<St, T>::type;
 
+        template<class St, class T, class SFINAE = void>
+        struct column_expression_type;
+
+        /**
+         *  Obains the expressions that form the columns of a subselect statement.
+         */
+        template<class St, class T>
+        using column_expression_of_t = typename column_expression_type<St, T>::type;
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class St, class T>
         struct column_result_t<St, as_optional_t<T>, void> {
@@ -47,6 +58,11 @@ namespace sqlite_orm {
                                F O::*,
                                std::enable_if_t<std::is_member_pointer<F O::*>::value &&
                                                 !std::is_member_function_pointer<F O::*>::value>> {
+            using type = F;
+        };
+
+        template<class St, class O, class F, F O::*m>
+        struct column_result_t<St, ice_t<m>, void> {
             using type = F;
         };
 
@@ -206,9 +222,14 @@ namespace sqlite_orm {
         struct column_result_t<St, column_pointer<Label, polyfill::index_constant<I>>, void>
             : column_result_t<St, cte_getter_t<storage_object_type_t<storage_pick_impl_t<St, Label>>, I>> {};
 
+        template<class St, class Label, class O, class F, F O::*m>
+        struct column_result_t<St, column_pointer<Label, ice_t<m>>, void> {
+            using type = typename ice_t<m>::value_type;
+        };
+
         template<class St, class... Args>
         struct column_result_t<St, columns_t<Args...>, void> {
-            using type = std::tuple<typename column_result_t<St, typename std::decay<Args>::type>::type...>;
+            using type = fields_t<column_result_of_t<St, std::decay_t<Args>>...>;
         };
 
         template<class St, class T, class... Args>
@@ -261,7 +282,7 @@ namespace sqlite_orm {
 
         template<class St, class A>
         struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
-            using type = typename storage_traits::storage_mapped_columns<St, typename A::type>::type;
+            using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
         };
 
         template<class St, class T>
@@ -296,5 +317,40 @@ namespace sqlite_orm {
 
         template<class St, class T>
         struct column_result_t<St, std::reference_wrapper<T>, void> : column_result_t<St, T> {};
+
+        template<class St, class T, class SFINAE>
+        struct column_expression_type {
+            using type = T;
+        };
+
+        template<class St, class T>
+        struct column_expression_type<St, std::reference_wrapper<T>, void> : column_expression_type<St, T> {};
+
+        // No CTE for object expressions.
+        template<class St, class T>
+        struct column_expression_type<St, object_t<T>, void>;
+
+        template<class St, class T>
+        struct column_expression_type<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
+            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
+        };
+
+        template<class St, class A>
+        struct column_expression_type<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
+            using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
+        };
+
+        template<class St, class O, class F, F O::*m>
+        struct column_expression_type<St, ice_t<m>, void> {
+            using type = ice_t<m>;
+        };
+
+        template<class St, class... Args>
+        struct column_expression_type<St, columns_t<Args...>, void> {
+            using type = std::tuple<column_expression_of_t<St, std::decay_t<Args>>...>;
+        };
+
+        template<class St, class T, class... Args>
+        struct column_expression_type<St, select_t<T, Args...>> : column_expression_type<St, T> {};
     }
 }

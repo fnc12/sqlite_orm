@@ -27,6 +27,9 @@ namespace sqlite_orm {
         template<typename O>
         using label_of_t = polyfill::detected_or_t<void, label_type_t, O>;
 
+        template<typename O>
+        using object_type_of_t = polyfill::detected_or_t<O, object_type_t, O>;
+
         struct basic_table {
 
             /**
@@ -39,11 +42,15 @@ namespace sqlite_orm {
          *  Table descriptor.
          * 
          *  Can be either for a table mapped to storage or for a common table expression (CTE).
+         * 
+         *  The template parameter O is either a data structure object (i.e. direct mapping from storage to data)
+         *  or an abstract 'mapper' object with a label attached.
          */
         template<class O, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
             using super = basic_table;
-            using object_type = O;
+            using mapper_type = O;
+            using object_type = object_type_of_t<O>;
             using label_type = label_of_t<O>;
             using elements_type = std::tuple<Cs...>;
 

@@ -5,6 +5,7 @@
 
 #include "cxx_polyfill.h"
 #include "start_macros.h"
+#include "type_traits.h"
 
 namespace sqlite_orm {
 
@@ -15,15 +16,14 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /*
+        /**
          *  Tuple data structure for CTEs
          */
         template<typename Label, typename... Fs>
-        class column_results : std::tuple<Fs...> {
+        class column_results : fields_t<Fs...> {
           public:
-            using fields_type = std::tuple<Fs...>;
-            using index_sequence = std::index_sequence_for<Fs...>;
-            // this type name is used to detect the mapping from label to object
+            using fields_type = fields_t<Fs...>;
+            // this type name is used to detect the mapping from label to mapper
             using label_type = Label;
 
             template<size_t I>
@@ -34,6 +34,20 @@ namespace sqlite_orm {
             void set(std::tuple_element_t<I, fields_type> v) noexcept {
                 std::get<I>(polyfill::as_template_base<std::tuple>(*this)) = std::move(v);
             }
+        };
+
+        /**
+         *  This class maps an expression of a subselect (basically select_t<>::return_type) to
+         *  a tuple of fields (a column_results<Label, Fields>)
+         */
+        template<typename Label, typename Expression, typename... Fs>
+        class subselect_mapper {
+          public:
+            using index_sequence = std::index_sequence_for<Fs...>;
+            // this type name is used to detect the mapping from label to object
+            using label_type = Label;
+            using object_type = column_results<Label, Fs...>;
+            using expressions_type = tuplify_t<Expression>;
         };
 
         template<class O, size_t I>

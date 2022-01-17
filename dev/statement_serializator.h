@@ -457,6 +457,9 @@ namespace sqlite_orm {
             }
         };
 
+        template<class O, class F, F O::*m>
+        struct statement_serializator<ice_t<m>, void> : statement_serializator<typename ice_t<m>::value_type> {};
+
         template<class O, class F>
         struct statement_serializator<column_pointer<O, F>, void> {
             using statement_type = column_pointer<O, F>;

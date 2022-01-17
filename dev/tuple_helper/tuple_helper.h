@@ -1,7 +1,8 @@
 #pragma once
 
-#include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
+#include <cstddef>
 #include <type_traits>  //  std::false_type, std::true_type
+#include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 
 #include "../static_magic.h"
 

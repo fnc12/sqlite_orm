@@ -1,6 +1,7 @@
 #pragma once
 
 #include <type_traits>
+#include <tuple>
 
 #include "cxx_polyfill.h"
 
@@ -35,6 +36,9 @@ namespace sqlite_orm {
     // type name template aliases for syntactic sugar
     namespace internal {
         template<typename T>
+        using type_t = typename T::type;
+
+        template<typename T>
         using object_type_t = typename T::object_type;
 
         template<typename T>
@@ -47,6 +51,9 @@ namespace sqlite_orm {
         using storage_object_type_t = typename S::table_type::object_type;
 
         template<typename S>
+        using storage_mapper_type_t = typename S::table_type::mapper_type;
+
+        template<typename S>
         using storage_label_type_t = typename S::table_type::label_type;
 
         template<typename T>
@@ -56,5 +63,49 @@ namespace sqlite_orm {
     namespace internal {
         template<unsigned int N>
         using nth_constant = std::integral_constant<unsigned int, N>;
+
+        template<typename... Fs>
+        using fields_t = std::tuple<Fs...>;
+
+#if __cplusplus >= 201703L  // use of C++17 or higher
+        template<auto c>
+        using ice_t = std::integral_constant<decltype(c), c>;
+
+        // cudos to OznOg https://stackoverflow.com/a/64606884/279251
+        template<class X, class Tuple>
+        struct tuple_index_of;
+
+        template<class X, class... T>
+        struct tuple_index_of<X, std::tuple<T...>> {
+            template<size_t... idx>
+            static constexpr ptrdiff_t find_idx(std::index_sequence<idx...>) {
+                return std::max({static_cast<ptrdiff_t>(std::is_same<X, T>::value ? idx : -1)...});
+            }
+
+            static constexpr ptrdiff_t value = find_idx(std::index_sequence_for<T...>{});
+        };
+        template<class X, class Tuple>
+        inline constexpr ptrdiff_t tuple_index_of_v = tuple_index_of<X, Tuple>::value;
+#endif
+
+        template<typename T>
+        struct tuplify {
+            using type = T;
+        };
+        template<typename... Ts>
+        struct tuplify<std::tuple<Ts...>> {
+            using type = std::tuple<Ts...>;
+        };
+
+        template<typename T>
+        using tuplify_t = typename tuplify<T>::type;
     }
+
+#if __cplusplus >= 201703L  // use of C++17 or higher
+    /**
+     *  Capture a compile-time value as an integral constant.
+     */
+    template<auto c>
+    inline constexpr internal::ice_t<c> c_v{};
+#endif
 }

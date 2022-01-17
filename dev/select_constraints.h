@@ -8,6 +8,7 @@
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "cxx_polyfill.h"
+#include "type_traits.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_helper.h"
 #include "optional_container.h"
@@ -443,14 +444,16 @@ namespace sqlite_orm {
      *  storage.select(column<MyType>(&BaseType::id));
      *  // ... or
      *  struct Object { ... };
-     *  storage.with(cte<cte_1>()(select(&Object::id), select(column<cte_1>(0_col)));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
+     *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(c_v<&Object::id>)));
      */
     template<class O, class F>
     internal::column_pointer<O, F> column(F f) {
         return {std::move(f)};
     }
+
     /**
-     *  Turn 1_nth_col-> 0_col
+     *  Turn 1_nth_col -> 0_col
      */
     template<class O, unsigned int I>
     auto column(internal::nth_constant<I>) {
