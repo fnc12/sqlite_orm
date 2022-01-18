@@ -46,18 +46,18 @@ namespace sqlite_orm {
             /**
              *  T - table type.
              */
-            template<class T>
+            template<class T, template<class> class TranfsormOp>
             struct table_types;
 
             /**
              *  type is std::tuple of field types of mapped colums.
              */
-            template<class O, bool WithoutRowId, class... Args>
-            struct table_types<table_t<O, WithoutRowId, Args...>> {
+            template<class O, bool WithoutRowId, class... Args, template<class> class TransformOp>
+            struct table_types<table_t<O, WithoutRowId, Args...>, TransformOp> {
                 using args_tuple = std::tuple<Args...>;
                 using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
 
-                using type = typename tuple_transformer<columns_tuple, column_field_type>::type;
+                using type = typename tuple_transformer<columns_tuple, TransformOp>::type;
             };
 
             /**
@@ -67,7 +67,7 @@ namespace sqlite_orm {
             template<class S>
             struct storage_mapped_columns_impl {
                 using table_type = typename S::table_type;
-                using type = typename table_types<table_type>::type;
+                using type = typename table_types<table_type, column_field_type>::type;
             };
 
             template<>
@@ -81,6 +81,26 @@ namespace sqlite_orm {
              */
             template<class S, class O>
             struct storage_mapped_columns : storage_mapped_columns_impl<storage_find_impl_t<S, O>> {};
+
+            /**
+             *  S - storage_impl type for specific mapped type
+             *  O - mapped data type
+             */
+            template<class S>
+            struct storage_mapped_column_expressions_impl : table_types<table_type_t<S>, column_field_expression> {};
+
+            template<>
+            struct storage_mapped_column_expressions_impl<storage_impl<>> {
+                using type = std::tuple<>;
+            };
+
+            /**
+             *  S - storage
+             *  O - mapped data type
+             */
+            template<class S, class O>
+            struct storage_mapped_column_expressions
+                : storage_mapped_column_expressions_impl<storage_find_impl_t<S, O>> {};
 
             /**
              *  C is any column type: column_t or constraint type

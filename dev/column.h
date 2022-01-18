@@ -5,15 +5,24 @@
 #include <memory>  //  std::unique_ptr
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if, std::is_member_pointer, std::is_member_function_pointer
 
+#include "cxx_polyfill.h"
+#include "type_traits.h"
 #include "type_is_nullable.h"
 #include "tuple_helper/tuple_helper.h"
 #include "default_value_extractor.h"
 #include "constraints.h"
 #include "member_traits/member_traits.h"
+#include "member_traits/field_member_traits.h"
 
 namespace sqlite_orm {
 
     namespace internal {
+
+        /**
+         *  typename T::value_type if is_integral_constant_v<T>
+         */
+        template<typename T>
+        using ice_value_type_t = std::enable_if_t<is_integral_constant_v<T>, value_type_t<T>>;
 
         struct basic_column {
 
@@ -32,7 +41,14 @@ namespace sqlite_orm {
         template<class O, class T, class G /* = const T& (O::*)() const*/, class S /* = void (O::*)(T)*/, class... Op>
         struct column_t : basic_column {
             using object_type = O;
-            using field_type = T;
+            // the passed in type is either `integral_constant<F O::*member>` or the return type
+            using _ice_or_field_type = T;
+            // `F O::*` from `integral_constant<F O::*member>` or `T`
+            using _member_pointer_or_field_type = polyfill::detected_or_t<T, ice_value_type_t, T>;
+            // `F` from `F O::*` or `T`
+            using field_type = polyfill::detected_or_t<_member_pointer_or_field_type,
+                                                       field_type_t,
+                                                       field_member_traits<_member_pointer_or_field_type>>;
             using constraints_type = std::tuple<Op...>;
             using member_pointer_t = field_type object_type::*;
             using getter_type = G;
@@ -200,6 +216,20 @@ namespace sqlite_orm {
             using type = typename column_t<O, T, Op...>::field_type;
         };
 
+        template<class T, class SFINAE = void>
+        struct column_field_expression {
+            using type = void;
+        };
+
+        template<class O, class T, class... Op>
+        struct column_field_expression<column_t<O, T, Op...>, match_if_not<is_integral_constant, T>> {
+            using type = typename column_t<O, T, Op...>::member_pointer_t;
+        };
+
+        // match `F O::*member`
+        template<class O, class F, F O::*m, class... Op>
+        struct column_field_expression<column_t<O, ice_t<m>, Op...>, void> : ice_t<m> {};
+
         template<class T>
         struct column_constraints_type {
             using type = std::tuple<>;
@@ -224,6 +254,23 @@ namespace sqlite_orm {
         static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         static_assert(internal::is_field_member_pointer<T O::*>::value,
+                      "second argument expected as a member field pointer, not member function pointer");
+        return {name, m, nullptr, nullptr, std::make_tuple(constraints...)};
+    }
+
+    /**
+     *  Column builder function. You should use it to create columns instead of constructor
+     */
+    template<class T,
+             T m,
+             class O = typename internal::field_member_traits<T>::object_type,
+             class F = typename internal::field_member_traits<T>::field_type,
+             class... Op>
+    internal::column_t<O, std::integral_constant<T, m>, const F& (O::*)() const, void (O::*)(F), Op...>
+    make_column(const std::string& name, std::integral_constant<T, m>, Op... constraints) {
+        static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+                      "Incorrect constraints pack");
+        static_assert(internal::is_field_member_pointer<T>::value,
                       "second argument expected as a member field pointer, not member function pointer");
         return {name, m, nullptr, nullptr, std::make_tuple(constraints...)};
     }

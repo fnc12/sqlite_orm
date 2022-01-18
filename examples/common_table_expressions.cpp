@@ -91,8 +91,8 @@ void supervisor_chain() {
 
     auto storage = make_storage("",
                                 make_table<Org>("org",
-                                                make_column("name", &Org::name, primary_key()),
-                                                make_column("boss", &Org::boss),
+                                                make_column("name", c_v<&Org::name>, primary_key()),
+                                                make_column("boss", c_v<&Org::boss>),
                                                 foreign_key(&Org::boss).references(&Org::name)));
     storage.sync_schema();
 
@@ -114,11 +114,11 @@ void supervisor_chain() {
         //        WHERE parent.name = chain.boss
         //    )
         //    SELECT name FROM chain;
-        auto ast = with(
-            cte<cte_1>()(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
-                                   select(asterisk<alias_a<Org>>(),
-                                          where(c(alias_column<alias_a<Org>>(&Org::name)) == column<cte_1>(1_col))))),
-            select(column<cte_1>(0_col)));
+        auto ast = with(cte<cte_1>()(union_all(select(asterisk<Org>(), where(&Org::name == c("Fred"))),
+                                               select(asterisk<alias_a<Org>>(),
+                                                      where(c(alias_column<alias_a<Org>>(&Org::name)) ==
+                                                            column<cte_1>(c_v<&Org::boss>))))),
+                        select(column<cte_1>(c_v<&Org::name>)));
         string sql = storage.dump(ast);
 
         auto stmt = storage.prepare(ast);

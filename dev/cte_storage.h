@@ -17,17 +17,17 @@ namespace sqlite_orm {
 
         // F = field_type
         template<typename Label, typename Expression, typename F>
-        struct create_column_results {
+        struct create_cte_mapper {
             using type = subselect_mapper<Label, Expression, F>;
         };
 
         template<typename Label, typename Expression, typename... Fs>
-        struct create_column_results<Label, Expression, std::tuple<Fs...>> {
+        struct create_cte_mapper<Label, Expression, std::tuple<Fs...>> {
             using type = subselect_mapper<Label, Expression, Fs...>;
         };
 
         template<typename Label, typename Expression, typename... Fs>
-        using create_column_results_t = typename create_column_results<Label, Expression, Fs...>::type;
+        using create_cte_mapper_t = typename create_cte_mapper<Label, Expression, Fs...>::type;
 
         template<typename O, size_t CI>
         struct create_cte_column {
@@ -132,11 +132,10 @@ namespace sqlite_orm {
                                                                       const common_table_expressions<CTEs...>& cte,
                                                                       std::index_sequence<TI1>) {
             using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
-            using M =
-                create_column_results_t<cte_label_type_t<cte_t>,
-                                        column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
-                                        column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
-            static_assert(!cte_t::explicit_column_count || cte_t::explicit_column_count == M::index_sequence::size());
+            using M = create_cte_mapper_t<cte_label_type_t<cte_t>,
+                                          column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
+                                          column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
+            static_assert(cte_t::explicit_column_count == 0 || cte_t::explicit_column_count == M::index_sequence::size());
 
             auto tbl = make_cte_table<M>(impl, get<TI1>(cte));
 
@@ -148,11 +147,10 @@ namespace sqlite_orm {
                                                                       const common_table_expressions<CTEs...>& cte,
                                                                       std::index_sequence<TI1, TIn...>) {
             using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
-            using M =
-                create_column_results_t<cte_label_type_t<cte_t>,
-                                        column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
-                                        column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
-            static_assert(!cte_t::explicit_column_count || cte_t::explicit_column_count == M::index_sequence::size());
+            using M = create_cte_mapper_t<cte_label_type_t<cte_t>,
+                                          column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
+                                          column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
+            static_assert(cte_t::explicit_column_count == 0 || cte_t::explicit_column_count == M::index_sequence::size());
 
             auto tbl = make_cte_table<M>(impl, get<TI1>(cte));
 

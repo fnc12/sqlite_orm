@@ -399,12 +399,9 @@ namespace sqlite_orm {
             return pick_impl<O>(strg).table.find_column_name(field);
         }
 
-        /**
-         *  Find column name by its type and member pointer.
-         */
-        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& strg, const column_pointer<O, F>& cp) {
-            return pick_impl<O>(strg).table.find_column_name(cp.field);
+        template<class Label, class O, class F, class S, satisfies<is_storage_impl, S> = true>
+        constexpr decltype(auto) materialize_column_pointer(const S&, const column_pointer<O, F>& cp) {
+            return cp.field;
         }
 
         template<class Label, size_t I, class S, satisfies<is_storage_impl, S> = true>
@@ -414,25 +411,25 @@ namespace sqlite_orm {
             return cte_getter_v<storage_object_type_t<timpl_type>, I>;
         }
 
-        template<class Label, size_t I, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& strg,
-                                            const column_pointer<Label, polyfill::index_constant<I>>& cp) {
-            auto field = materialize_column_pointer(strg, cp);
-            return pick_impl<Label>(strg).table.find_column_name(field);
-        }
-
         template<class Label, class O, class F, F O::*m, class S, satisfies<is_storage_impl, S> = true>
         constexpr decltype(auto) materialize_column_pointer(const S&, const column_pointer<Label, ice_t<m>>&) {
             using timpl_type = storage_pick_impl_t<S, Label>;
             using cte_mapper_type = storage_cte_mapper_type_t<timpl_type>;
+            // lookup index in column_results object (aka fields tuple) by member pointer
             constexpr auto I = tuple_index_of_v<ice_t<m>, typename cte_mapper_type::expressions_type>;
             return cte_getter_v<cte_object_type_t<cte_mapper_type>, I>;
         }
 
-        template<class Label, class O, class F, F O::*m, class S, satisfies<is_storage_impl, S> = true>
-        const std::string* find_column_name(const S& strg, const column_pointer<Label, ice_t<m>>& cp) {
+        /**
+         *  Find column name by:
+         *  1. by explicit object type and member pointer.
+         *  2. by label type and index constant.
+         *  3. by label type and member pointer constant.
+         */
+        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
+        const std::string* find_column_name(const S& strg, const column_pointer<O, F>& cp) {
             auto field = materialize_column_pointer(strg, cp);
-            return pick_impl<Label>(strg).table.find_column_name(field);
+            return pick_impl<O>(strg).table.find_column_name(field);
         }
     }
 }

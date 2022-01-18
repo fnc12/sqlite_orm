@@ -4,6 +4,7 @@
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
+#include "cxx_polyfill.h"
 #include "type_traits.h"
 #include "core_functions.h"
 #include "select_constraints.h"
@@ -224,7 +225,7 @@ namespace sqlite_orm {
 
         template<class St, class Label, class O, class F, F O::*m>
         struct column_result_t<St, column_pointer<Label, ice_t<m>>, void> {
-            using type = typename ice_t<m>::value_type;
+            using type = F;
         };
 
         template<class St, class... Args>
@@ -328,22 +329,23 @@ namespace sqlite_orm {
 
         // No CTE for object expressions.
         template<class St, class T>
-        struct column_expression_type<St, object_t<T>, void>;
+        struct column_expression_type<St, object_t<T>, void> {
+            static_assert(polyfill::always_false_v<T>, "Selecting an object in a subselect is not allowed.");
+        };
 
         template<class St, class T>
-        struct column_expression_type<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
-            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
-        };
+        struct column_expression_type<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>>
+            : storage_traits::storage_mapped_column_expressions<St, T> {};
 
         template<class St, class A>
         struct column_expression_type<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
-            using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
+            // Currently unimplemented - need to form alias_column_t<> expressions
+            static_assert(polyfill::always_false_v<A>,
+                          "Selecting all columms from an aliased table is currently unimplemented.");
         };
 
         template<class St, class O, class F, F O::*m>
-        struct column_expression_type<St, ice_t<m>, void> {
-            using type = ice_t<m>;
-        };
+        struct column_expression_type<St, ice_t<m>, void> : ice_t<m> {};
 
         template<class St, class... Args>
         struct column_expression_type<St, columns_t<Args...>, void> {

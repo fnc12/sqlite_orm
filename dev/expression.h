@@ -1,3 +1,9 @@
+#pragma once
+#include <utility>
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>
+#endif
+
 #include "operators.h"
 
 namespace sqlite_orm {

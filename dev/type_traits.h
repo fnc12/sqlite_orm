@@ -33,10 +33,28 @@ namespace sqlite_orm {
         using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>, bool>;
     }
 
+    // type traits not quite polyfill, however used throughout the program
+    namespace internal {
+        template<typename T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_integral_constant_v = false;
+
+        template<typename T, T N>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_integral_constant_v<std::integral_constant<T, N>> = true;
+
+        template<typename T>
+        struct is_integral_constant : polyfill::bool_constant<is_integral_constant_v<T>> {};
+    }
+
     // type name template aliases for syntactic sugar
     namespace internal {
         template<typename T>
         using type_t = typename T::type;
+
+        template<typename T>
+        using value_type_t = typename T::value_type;
+
+        template<typename T>
+        using field_type_t = typename T::field_type;
 
         template<typename T>
         using object_type_t = typename T::object_type;
