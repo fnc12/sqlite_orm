@@ -40,6 +40,17 @@ namespace sqlite_orm {
             using std::void_t;
 #endif
 
+#if __cplusplus < 202002L
+            template<class T>
+            struct remove_cvref : std::remove_cv<std::remove_reference_t<T>> {};
+
+            template<class T>
+            using remove_cvref_t = typename remove_cvref<T>::type;
+#else
+            using std::remove_cvref;
+            using std::remove_cvref_t;
+#endif
+
 #if __cplusplus < 202312L  // before C++23
             template<typename Type, template<typename...> class Primary>
             SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;

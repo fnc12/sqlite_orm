@@ -93,7 +93,7 @@ namespace sqlite_orm {
         // No CTE for object expressions.
         template<class Object>
         struct cte_column_names_collector<Object, match_specialization_of<Object, object_t>> {
-            static_assert(polyfill::always_false_v<Object>, "object_t not supported for subselects.");
+            static_assert(polyfill::always_false_v<Object>, "Selecting an object in a subselect is not allowed.");
         };
 
         template<class Columns>
@@ -107,9 +107,11 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = true;
                 iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
+                    using value_type = polyfill::remove_cvref_t<decltype(m)>;
+
                     std::string columnName;
-                    if constexpr(polyfill::is_specialization_of_v<std::remove_cvref_t<decltype(m)>, as_t>) {
-                        columnName = alias_extractor<typename std::remove_cvref_t<decltype(m)>::alias_type>::get();
+                    if constexpr(polyfill::is_specialization_of_v<value_type, as_t>) {
+                        columnName = alias_extractor<typename value_type::alias_type>::get();
                     } else {
                         columnName = serialize(m, newContext);
                     }

@@ -104,7 +104,7 @@ namespace sqlite_orm {
 
         template<typename Select>
         using cte_driving_subselect_t =
-            std::remove_cvref_t<decltype(get_cte_driving_subselect(std::declval<Select>()))>;
+            polyfill::remove_cvref_t<decltype(get_cte_driving_subselect(std::declval<Select>()))>;
 
         template<typename M, typename S, typename CTE, size_t... CIs>
         create_cte_table_t<M, typename M::index_sequence>

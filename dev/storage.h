@@ -161,7 +161,7 @@ namespace sqlite_orm {
             template<class O>
             void assert_insertable_type() const {
                 auto& tImpl = this->get_impl<O>();
-                using table_type = table_type_t<std::remove_cvref_t<decltype(tImpl)>>;
+                using table_type = table_type_t<polyfill::remove_cvref_t<decltype(tImpl)>>;
                 using elements_type = typename table_type::elements_type;
 
                 using is_without_rowid = std::integral_constant<bool, table_type::is_without_rowid>;
@@ -607,7 +607,7 @@ namespace sqlite_orm {
             template<class E, satisfies_not<is_prepared_statement, E> = true>
             std::string dump(const E& expression, bool asBindable = false) const {
                 const auto& exprImpl = storage_for_expression(*this, expression);
-                using context_t = serializator_context<std::remove_cvref_t<decltype(exprImpl)>>;
+                using context_t = serializator_context<polyfill::remove_cvref_t<decltype(exprImpl)>>;
                 context_t context{exprImpl};
                 context.replace_bindable_with_question = asBindable;
                 context.skip_table_name = false;
@@ -955,7 +955,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt;
                 auto db = con.get();
                 const auto& exprImpl = storage_for_expression(*this, statement);
-                using context_t = serializator_context<std::remove_cvref_t<decltype(exprImpl)>>;
+                using context_t = serializator_context<polyfill::remove_cvref_t<decltype(exprImpl)>>;
                 context_t context{exprImpl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
