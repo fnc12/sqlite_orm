@@ -17,11 +17,15 @@ TEST_CASE("column_expression_of_t") {
         // not compile-time mapped
         int64 boss = 0;
     };
+    struct Derived : Org {};
 
-    auto storage =
-        make_storage("", make_table("org", make_column("id", c_v<&Org::id>), make_column("boss", &Org::boss)));
+    auto storage = make_storage(
+        "",
+        make_table("org", make_column("id", c_v<&Org::id>), make_column("boss", &Org::boss)),
+        make_table<Derived>("derived", make_column("id", c_v<&Derived::id>), make_column("boss", &Derived::boss)));
     using storage_type = decltype(storage);
 
+    runTest<storage_type, int>(1);
     runTest<storage_type, internal::rowid_t>(rowid());
     runTest<storage_type, int64 Org::*>(&Org::id);
     // std::reference_wrapper
@@ -39,4 +43,10 @@ TEST_CASE("column_expression_of_t") {
                        internal::alias_column_t<alias_a<Org>, int64 Org::*>>>(asterisk<alias_a<Org>>());
     // object_t not allowed
     //runTest<storage_type, Org>(object<Org>());
+
+    // just like other types, column pointer isn't explicitly handled by column_expression_of_t;
+    // assert expectation nevertheless
+    runTest<storage_type, internal::column_pointer<Derived, int64 Org::*>>(column<Derived>(&Org::id));
+    runTest<storage_type, internal::column_pointer<cte_1, internal::ice_t<&Org::id>>>(column<cte_1>(c_v<&Org::id>));
+    runTest<storage_type, internal::column_pointer<cte_1, polyfill::index_constant<0u>>>(column<cte_1>(0_col));
 }
