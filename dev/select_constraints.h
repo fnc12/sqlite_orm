@@ -273,6 +273,45 @@ namespace sqlite_orm {
             common_table_expression<Label, select_t<Compound>, nExplicitCols> operator()(Compound sel) && {
                 return {move(this->explicitColumnNames), {std::move(sel)}};
             }
+
+            template<class T, class... Args>
+            common_table_expression<Label, select_t<T, Args...>, nExplicitCols> as(select_t<T, Args...> sel) && {
+                return {move(this->explicitColumnNames), std::move(sel)};
+            }
+
+            template<class Compound,
+                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            common_table_expression<Label, select_t<Compound>, nExplicitCols> as(Compound sel) && {
+                return {move(this->explicitColumnNames), {std::move(sel)}};
+            }
+
+            template<class T, class... Args>
+            common_table_expression<Label, select_t<T, Args...>, nExplicitCols>
+            materialized(select_t<T, Args...> sel) && {
+                static_assert(polyfill::always_false_v<T>, "`WITH ... AS MATERIALIZED` is unimplemented");
+                return {move(this->explicitColumnNames), std::move(sel)};
+            }
+
+            template<class Compound,
+                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            common_table_expression<Label, select_t<Compound>, nExplicitCols> materialized(Compound sel) && {
+                static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS MATERIALIZED` is unimplemented");
+                return {move(this->explicitColumnNames), {std::move(sel)}};
+            }
+
+            template<class T, class... Args>
+            common_table_expression<Label, select_t<T, Args...>, nExplicitCols>
+            not_materialized(select_t<T, Args...> sel) && {
+                static_assert(polyfill::always_false_v<T>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
+                return {move(this->explicitColumnNames), std::move(sel)};
+            }
+
+            template<class Compound,
+                     std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
+            common_table_expression<Label, select_t<Compound>, nExplicitCols> not_materialized(Compound sel) && {
+                static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
+                return {move(this->explicitColumnNames), {std::move(sel)}};
+            }
         };
 
         /**

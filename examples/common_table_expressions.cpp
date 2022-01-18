@@ -68,6 +68,19 @@ void all_integers_between(int from, int end) {
         }
         cout << endl;
     }
+
+    // variant 3, limit-clause, explicit as() call
+    {
+        cout << "Integer range (limit-clause) [" << from << ", " << end
+             << "]"
+                "\n";
+        for(int n:
+            storage.with(cte<cte_1>("x").as(union_all(select(from), select(column<cte_1>(0_col) + c(1), limit(end)))),
+                         select(column<cte_1>(0_col)))) {
+                cout << n << ", ";
+            }
+        cout << endl;
+    }
     cout << endl;
 }
 
