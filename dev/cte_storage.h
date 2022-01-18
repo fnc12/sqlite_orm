@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "column_result.h"
+#include "column_expression.h"
 #include "select_constraints.h"
 #include "table.h"
 #include "cte_types.h"
