@@ -30,7 +30,8 @@ namespace sqlite_orm {
         };
 
         template<class St, class T>
-        struct column_expression_type<St, std::reference_wrapper<T>, void> : column_expression_type<St, T> {};
+        struct column_expression_type<St, std::reference_wrapper<T>, void>
+            : std::add_lvalue_reference<column_expression_of_t<St, T>> {};
 
         // No CTE for object expressions.
         template<class St, class T>

@@ -26,8 +26,8 @@ TEST_CASE("column_expression_of_t") {
     runTest<storage_type, int64 Org::*>(&Org::id);
     // std::reference_wrapper
     {
-        int64 x;
-        runTest<storage_type, int64>(std::ref(x));
+        const int64 x = 42;
+        runTest<storage_type, const int64&>(std::ref(x));
     }
     runTest<storage_type, std::integral_constant<int64 Org::*, &Org::id>>(internal::ice_t<&Org::id>{});
     runTest<storage_type, internal::ice_t<&Org::id>>(c_v<&Org::id>);
