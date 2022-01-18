@@ -15,6 +15,7 @@
 #include "cte_types.h"
 #include "storage_traits.h"
 #include "function.h"
+#include "tuple_helper/tuple_transformer.h"
 
 namespace sqlite_orm {
 
@@ -337,12 +338,17 @@ namespace sqlite_orm {
         struct column_expression_type<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>>
             : storage_traits::storage_mapped_column_expressions<St, T> {};
 
-        template<class St, class A>
-        struct column_expression_type<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
-            // Currently unimplemented - need to form alias_column_t<> expressions
-            static_assert(polyfill::always_false_v<A>,
-                          "Selecting all columms from an aliased table is currently unimplemented.");
+        template<class A>
+        struct add_column_alias {
+            template<typename ColExpr>
+            struct apply {
+                using type = alias_column_t<A, ColExpr>;
+            };
         };
+        template<class St, class A>
+        struct column_expression_type<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>>
+            : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<St, type_t<A>>::type,
+                                add_column_alias<A>::template apply> {};
 
         template<class St, class O, class F, F O::*m>
         struct column_expression_type<St, ice_t<m>, void> : ice_t<m> {};

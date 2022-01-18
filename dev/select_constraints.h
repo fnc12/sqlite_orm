@@ -276,7 +276,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Expression with prepended CTEs.
+         *  WITH object type - expression with prepended CTEs.
          */
         template<class E, class... CTEs>
         struct with_t : with_string {
