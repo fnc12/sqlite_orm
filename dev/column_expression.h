@@ -15,33 +15,33 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class St, class T, class SFINAE = void>
+        template<class St, class E, class SFINAE = void>
         struct column_expression_type;
 
         /**
          *  Obains the expressions that form the columns of a subselect statement.
          */
-        template<class St, class T>
-        using column_expression_of_t = typename column_expression_type<St, T>::type;
+        template<class St, class E>
+        using column_expression_of_t = typename column_expression_type<St, E>::type;
 
-        template<class St, class T, class SFINAE>
+        template<class St, class E, class SFINAE>
         struct column_expression_type {
-            using type = T;
+            using type = E;
         };
 
-        template<class St, class T>
-        struct column_expression_type<St, std::reference_wrapper<T>, void>
-            : std::add_lvalue_reference<column_expression_of_t<St, T>> {};
+        template<class St, class E>
+        struct column_expression_type<St, std::reference_wrapper<E>, void>
+            : std::add_lvalue_reference<column_expression_of_t<St, E>> {};
 
         // No CTE for object expressions.
-        template<class St, class T>
-        struct column_expression_type<St, object_t<T>, void> {
-            static_assert(polyfill::always_false_v<T>, "Selecting an object in a subselect is not allowed.");
+        template<class St, class E>
+        struct column_expression_type<St, object_t<E>, void> {
+            static_assert(polyfill::always_false_v<E>, "Selecting an object in a subselect is not allowed.");
         };
 
-        template<class St, class T>
-        struct column_expression_type<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>>
-            : storage_traits::storage_mapped_column_expressions<St, T> {};
+        template<class St, class E>
+        struct column_expression_type<St, asterisk_t<E>, match_if_not<std::is_base_of, alias_tag, E>>
+            : storage_traits::storage_mapped_column_expressions<St, E> {};
 
         template<class A>
         struct add_column_alias {
@@ -63,7 +63,7 @@ namespace sqlite_orm {
             using type = std::tuple<column_expression_of_t<St, std::decay_t<Args>>...>;
         };
 
-        template<class St, class T, class... Args>
-        struct column_expression_type<St, select_t<T, Args...>> : column_expression_type<St, T> {};
+        template<class St, class E, class... Args>
+        struct column_expression_type<St, select_t<E, Args...>> : column_expression_type<St, E> {};
     }
 }

@@ -51,9 +51,9 @@ namespace sqlite_orm {
         };
 
         template<class O, size_t I>
-        SQLITE_ORM_INLINE_VAR auto cte_getter_v = &(O::template cget<I>);
+        SQLITE_ORM_INLINE_VAR auto cte_getter_v = &O::template cget<I>;
         template<class O, size_t I>
-        SQLITE_ORM_INLINE_VAR auto cte_setter_v = &(O::template set<I>);
+        SQLITE_ORM_INLINE_VAR auto cte_setter_v = &O::template set<I>;
 
         template<class O, size_t I>
         using cte_getter_t = decltype(cte_getter_v<O, I>);

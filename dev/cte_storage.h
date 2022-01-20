@@ -136,22 +136,28 @@ namespace sqlite_orm {
             using M = create_cte_mapper_t<cte_label_type_t<cte_t>,
                                           column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
                                           column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
-            static_assert(cte_t::explicit_column_count == 0 || cte_t::explicit_column_count == M::index_sequence::size());
+            static_assert(cte_t::explicit_column_count == 0 ||
+                              cte_t::explicit_column_count == M::index_sequence::size(),
+                          "Number of explicit columns of common table expression doesn't match the number of columns "
+                          "in the subselect.");
 
             auto tbl = make_cte_table<M>(impl, get<TI1>(cte));
 
             return storage_impl_cat(impl, std::move(tbl));
         }
 
-        template<typename S, typename... CTEs, size_t TI1, size_t... TIn>
+        template<typename S, typename... CTEs, size_t TI1, size_t TI2, size_t... TIn>
         decltype(auto) make_recursive_cte_storage_using_table_indices(const S& impl,
                                                                       const common_table_expressions<CTEs...>& cte,
-                                                                      std::index_sequence<TI1, TIn...>) {
+                                                                      std::index_sequence<TI1, TI2, TIn...>) {
             using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
             using M = create_cte_mapper_t<cte_label_type_t<cte_t>,
                                           column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
                                           column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
-            static_assert(cte_t::explicit_column_count == 0 || cte_t::explicit_column_count == M::index_sequence::size());
+            static_assert(cte_t::explicit_column_count == 0 ||
+                              cte_t::explicit_column_count == M::index_sequence::size(),
+                          "Number of explicit columns of common table expression doesn't match the number of columns "
+                          "in the subselect.");
 
             auto tbl = make_cte_table<M>(impl, get<TI1>(cte));
 
@@ -159,7 +165,7 @@ namespace sqlite_orm {
                 // Because CTEs can depend on their predecessor we recursively pass in a new storage object
                 storage_impl_cat(impl, std::move(tbl)),
                 cte,
-                std::index_sequence<TIn...>{});
+                std::index_sequence<TI2, TIn...>{});
         }
 
         /**

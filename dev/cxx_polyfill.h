@@ -108,19 +108,19 @@ namespace sqlite_orm {
             SQLITE_ORM_INLINE_VAR constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
 
-            template<template<typename...> typename Base, typename... Fs>
+            template<template<typename...> class Base, typename... Fs>
             Base<Fs...>& as_template_base(Base<Fs...>& base) {
                 return base;
             }
-            template<template<typename...> typename Base, typename... Fs>
+            template<template<typename...> class Base, typename... Fs>
             const Base<Fs...>& as_template_base(const Base<Fs...>& base) {
                 return base;
             }
-            template<template<typename...> typename Base, typename... Fs>
+            template<template<typename...> class Base, typename... Fs>
             Base<Fs...>&& as_template_base(Base<Fs...>&& base) {
                 return std::move(base);
             }
-            template<template<typename...> typename Base, typename... Fs>
+            template<template<typename...> class Base, typename... Fs>
             const Base<Fs...>&& as_template_base(const Base<Fs...>&& base) {
                 return std::move(base);
             }

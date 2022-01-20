@@ -45,14 +45,17 @@ namespace sqlite_orm {
 
             /**
              *  T - table type.
+             *  TransformOp - Unary metafunction that transforms a column into a type.
+             *                (Note that multiple arguments are accepted to allow for
+             *                 metafunctions that need SFINAE specialization)
              */
-            template<class T, template<class> class TranfsormOp>
+            template<class T, template<class...> class TransformOp>
             struct table_types;
 
             /**
              *  type is std::tuple of field types of mapped colums.
              */
-            template<class O, bool WithoutRowId, class... Args, template<class> class TransformOp>
+            template<class O, bool WithoutRowId, class... Args, template<class...> class TransformOp>
             struct table_types<table_t<O, WithoutRowId, Args...>, TransformOp> {
                 using args_tuple = std::tuple<Args...>;
                 using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
