@@ -14,11 +14,6 @@
 #include <utility>  //  std::forward, std::pair
 #include <algorithm>  //  std::find
 
-#include <iostream>
-
-using std::cout;
-using std::endl;
-
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -1679,10 +1674,8 @@ namespace sqlite_orm {
                     storageImpl.table.for_each_foreign_key([&storageImpl, this, &object, &res](auto& foreignKey) {
                         using ForeignKey = typename std::decay<decltype(foreignKey)>::type;
                         using TargetType = typename ForeignKey::target_type;
-                        using SourceType = typename ForeignKey::source_type;
-                        
-                        static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object]{
-                            cout << "ForeignKey = " << SourceType::name() << " TargetType = " << TargetType::name() << endl;
+
+                        static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)";
                             ss << " FROM " << storageImpl.table.name;
@@ -1710,32 +1703,24 @@ namespace sqlite_orm {
                                 columnIndex = 1;
                                 iterate_tuple(
                                     foreignKey.references,
-                                    [&columnIndex, stmt, &object, db, this](auto memberPointer) {
-                                        std::ignore = columnIndex;
-                                        std::ignore = stmt;
-                                        std::ignore = object;
-                                        std::ignore = db;
+                                    [&columnIndex, stmt, &object, db, this](auto& memberPointer) {
                                         using MemberPointer = typename std::decay<decltype(memberPointer)>::type;
-//                                        using field_type = typename member_traits<MemberPointer>::field_type;
-                                        using object_type = typename member_traits<MemberPointer>::object_type;
-                                        auto columnName = this->impl.column_name(memberPointer);
-                                        std::ignore = columnName;
-                                        cout << "reference object_type = " << object_type::name() << endl;
-                                        using ObjectType = typename std::decay<decltype(object)>::type;
-                                        auto objectTypesAreEqual = std::is_same<ObjectType, object_type>::value;
-                                        cout << "objectTypesAreEqual = " << objectTypesAreEqual << endl;
-                                        cout << "object::name = " << object.name() << endl;
-//                                        auto objectCopy = object;
-//                                        auto &nonConstObject = const_cast<O &>(object);
-//                                        auto value = (objectCopy).*memberPointer;
-//                                        std::ignore = value;
-                                        /*if(SQLITE_OK != statement_binder<field_type>().bind(stmt,
-                                                                                            columnIndex++,
-                                                                                            object.*memberPointer)) {
+                                        using field_type = typename member_traits<MemberPointer>::field_type;
+
+                                        auto& tImpl = this->get_impl<O>();
+                                        auto value =
+                                            tImpl.table.template get_object_field_pointer<field_type>(object,
+                                                                                                      memberPointer);
+                                        if(!value) {
+                                            throw std::system_error(
+                                                std::make_error_code(sqlite_orm::orm_error_code::value_is_null));
+                                        }
+                                        if(SQLITE_OK !=
+                                           statement_binder<field_type>().bind(stmt, columnIndex++, *value)) {
                                             throw std::system_error(
                                                 std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                                 sqlite3_errmsg(db));
-                                        }*/
+                                        }
                                     });
                                 if(SQLITE_ROW != sqlite3_step(stmt)) {
                                     throw std::system_error(
