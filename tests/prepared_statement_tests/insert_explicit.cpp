@@ -69,7 +69,7 @@ TEST_CASE("Prepared insert explicit") {
                 try {
                     storage.execute(statement);
                     REQUIRE(false);
-                } catch(const std::system_error& e) {
+                } catch(const std::system_error&) {
                     REQUIRE(storage.count<User>(where(is_equal(&User::name, "Nate Dogg"))) == 0);
                 } catch(...) {
                     REQUIRE(false);
