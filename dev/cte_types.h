@@ -46,6 +46,7 @@ namespace sqlite_orm {
             using index_sequence = std::index_sequence_for<Fs...>;
             // this type name is used to detect the mapping from label to object
             using cte_label_type = Label;
+            // this type name is used to detect the mapping from label to object
             using cte_object_type = column_results<Label, Fs...>;
             using expressions_type = tuplify_t<Expression>;
         };

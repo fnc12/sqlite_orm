@@ -65,13 +65,13 @@ namespace sqlite_orm {
         using create_cte_table_t = typename create_cte_table<M, IdxSeq>::type;
 
         /**
-         *  Concatenate newly created tables with those from an existing storage, forming a
-         *  new storage object
+         *  Concatenate newly created tables with those from an existing storage implementation,
+         *  forming a new storage implementation object.
          */
         template<typename... Ts, typename... CTETables>
         storage_impl<CTETables..., Ts...> storage_impl_cat(const storage_impl<Ts...>& storage,
                                                            CTETables&&... cteTables) {
-            return {std::forward<CTETables>(cteTables)..., pick_impl<object_type_t<Ts>>(storage).table...};
+            return {std::forward<CTETables>(cteTables)..., pick_impl<Ts>(storage).table...};
         }
 
         /**

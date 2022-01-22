@@ -31,35 +31,64 @@ namespace sqlite_orm {
         struct is_storage_impl<const storage_impl<Ts...>> : std::true_type {};
 
         /**
-         *  A data type's CTE label, otherwise T itself is used as a CTE alias.
+         *  A data type's label type, void otherwise.
+         */
+        template<typename O>
+        using label_of_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
+
+        /**
+         *  A data type's label type, void otherwise.
+         */
+        template<typename O>
+        using storage_label_of_t = polyfill::detected_or_t<void, storage_cte_label_type_t, O>;
+
+        /**
+         *  A data type's CTE label, otherwise T itself is used as a CTE label.
          * 
-         *  Note: This is useful if operating on a storage implementation pack,
-         *  which already contains a mapping for a label.
+         *  Note: This is useful if the cte object type `column_reuslts` gets ever looked up,
+         *  and we want to ensure that the lookup happens by label instead.
          */
         template<typename T>
-        using detected_cte_label_t = polyfill::detected_or_t<T, cte_label_type_t, T>;
+        using cte_label_or_nested_t = polyfill::detected_or_t<T, cte_label_type_t, T>;
+
+        /**
+         *  std::true_type if given 'table' type matches, std::false_type otherwise.
+         *  
+         *  A 'table' type is one of: table_t<>, index_t<> [, subselect_mapper<>]
+         */
+        template<typename S, typename T>
+        using table_type_matches = std::is_same<T, table_type_t<S>>;
 
         /**
          *  std::true_type if given object is mapped, std::false_type otherwise.
+         * 
+         *  Note: unlike table_t<>, index_t<> doesn't have a nested I::cte_label_type typename,
+         *  that's why we use storage_label_of_t<> for a fallback to void.
          */
         template<typename S, typename O>
-        using object_type_matches = typename polyfill::conjunction<std::is_void<storage_cte_label_type_t<S>>,
+        using object_type_matches = typename polyfill::conjunction<std::is_void<storage_label_of_t<S>>,
                                                                    std::is_same<O, storage_object_type_t<S>>>::type;
 
         /**
          *  std::true_type if given label is mapped, std::false_type otherwise
+         * 
+         *  Note: unlike table_t<>, index_t<> doesn't have a nested index_t::cte_label_type typename,
+         *  that's why we use storage_label_of_t<> for a fallback to void.
          */
         template<typename S, typename Label>
-        using cte_label_type_matches = typename polyfill::conjunction<
-            std::negation<std::is_void<storage_cte_label_type_t<S>>>,
-            std::is_same<detected_cte_label_t<Label>, storage_cte_label_type_t<S>>>::type;
+        using cte_label_type_matches =
+            typename polyfill::conjunction<std::negation<std::is_void<storage_label_of_t<S>>>,
+                                           std::is_same<cte_label_or_nested_t<Label>, storage_label_of_t<S>>>::type;
 
         /**
-         *  std::true_type if given lookup type (object or label) is mapped, std::false_type otherwise.
+         *  std::true_type if given lookup type ('table' type, object or label) is mapped, std::false_type otherwise.
+         * 
+         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain (in storage_impl_cat()).
          */
         template<typename S, typename Lookup>
-        using lookup_type_matches =
-            typename polyfill::disjunction<object_type_matches<S, Lookup>, cte_label_type_matches<S, Lookup>>::type;
+        using lookup_type_matches = typename polyfill::disjunction<table_type_matches<S, Lookup>,
+                                                                   object_type_matches<S, Lookup>,
+                                                                   cte_label_type_matches<S, Lookup>>::type;
     }
 
     // pick/lookup metafunctions
@@ -133,7 +162,7 @@ namespace sqlite_orm {
 
         /**
          *  S - storage_t or storage_impl type, possibly const-qualified
-         *  Lookup - mapped data type or CTE label
+         *  Lookup - 'table' type, mapped data type or CTE label
          */
         template<class S, class Lookup>
         using storage_pick_impl_t =
@@ -141,7 +170,7 @@ namespace sqlite_orm {
 
         /**
          *  S - storage_t or storage_impl type, possibly const-qualified
-         *  Lookup - mapped data type or CTE label
+         *  Lookup - 'table' type, mapped data type or CTE label
          */
         template<class S, class Lookup>
         using storage_find_impl_t =

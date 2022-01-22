@@ -59,18 +59,22 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T>
+            template<class T, satisfies_not<std::is_base_of, alias_tag, T> = true>
             void operator()(const asterisk_t<T> &) const {
                 if(this->find_table_name) {
-                    static_if<std::is_base_of<alias_tag, T>{}>(
-                        [this]() {
-                            auto tableName = this->find_table_name(typeid(typename alias_extractor<T>::object_type));
-                            table_names.insert(std::make_pair(move(tableName), alias_extractor<T>::get()));
-                        },
-                        [this]() {
-                            auto tableName = this->find_table_name(typeid(T));
-                            table_names.insert(std::make_pair(move(tableName), ""));
-                        })();
+                    auto tableName = this->find_table_name(typeid(T));
+                    table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
+
+            template<class T, satisfies<std::is_base_of, alias_tag, T> = true>
+            void operator()(const asterisk_t<T> &) const {
+                if(this->find_table_name) {
+                    // note: not all alias classes have a nested A::type
+                    static_assert(polyfill::is_detected_v<type_t, T>,
+                                  "alias<O> must have a nested alias<O>::type typename");
+                    auto tableName = this->find_table_name(typeid(type_t<T>));
+                    table_names.insert(std::make_pair(move(tableName), alias_extractor<T>::get()));
                 }
             }
 

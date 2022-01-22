@@ -181,9 +181,8 @@ namespace sqlite_orm {
             }
 
             std::string find_table_name(std::type_index ti) const {
-                std::type_index thisTypeIndex{typeid(std::conditional_t<std::is_void<cte_label_type_t<H>>::value,
-                                                                        object_type_t<H>,
-                                                                        cte_label_type_t<H>>)};
+                std::type_index thisTypeIndex{
+                    typeid(std::conditional_t<std::is_void<label_of_t<H>>::value, object_type_t<H>, label_of_t<H>>)};
                 if(thisTypeIndex == ti) {
                     return this->table.name;
                 } else {
@@ -399,7 +398,7 @@ namespace sqlite_orm {
             return pick_impl<O>(strg).table.find_column_name(field);
         }
 
-        template<class Label, class O, class F, class S, satisfies<is_storage_impl, S> = true>
+        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
         constexpr decltype(auto) materialize_column_pointer(const S&, const column_pointer<O, F>& cp) {
             return cp.field;
         }

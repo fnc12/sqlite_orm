@@ -49,7 +49,7 @@ namespace sqlite_orm {
              *                (Note that multiple arguments are accepted to allow for
              *                 metafunctions that need SFINAE specialization)
              */
-            template<class T, template<class...> class TransformOp>
+            template<class T, template<class...> class TransformOp = column_field_type>
             struct table_types;
 
             /**
