@@ -1674,7 +1674,8 @@ namespace sqlite_orm {
                     storageImpl.table.for_each_foreign_key([&storageImpl, this, &object, &res](auto& foreignKey) {
                         using ForeignKey = typename std::decay<decltype(foreignKey)>::type;
                         using TargetType = typename ForeignKey::target_type;
-                        if(std::is_same<TargetType, O>::value) {
+
+                        static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)";
                             ss << " FROM " << storageImpl.table.name;
@@ -1702,26 +1703,24 @@ namespace sqlite_orm {
                                 columnIndex = 1;
                                 iterate_tuple(
                                     foreignKey.references,
-                                    [&columnIndex, stmt, &object, db](auto& memberPointer) {
+                                    [&columnIndex, stmt, &object, db, this](auto& memberPointer) {
                                         using MemberPointer = typename std::decay<decltype(memberPointer)>::type;
                                         using field_type = typename member_traits<MemberPointer>::field_type;
-                                        //                                    if(column.member_pointer) {
-                                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt,
-                                                                                            columnIndex++,
-                                                                                            object.*memberPointer)) {
+
+                                        auto& tImpl = this->get_impl<O>();
+                                        auto value =
+                                            tImpl.table.template get_object_field_pointer<field_type>(object,
+                                                                                                      memberPointer);
+                                        if(!value) {
+                                            throw std::system_error(
+                                                std::make_error_code(sqlite_orm::orm_error_code::value_is_null));
+                                        }
+                                        if(SQLITE_OK !=
+                                           statement_binder<field_type>().bind(stmt, columnIndex++, *value)) {
                                             throw std::system_error(
                                                 std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                                 sqlite3_errmsg(db));
                                         }
-                                        /*} else {
-                                        using getter_type = typename column_type::getter_type;
-                                        field_value_holder<getter_type> valueHolder{((object).*(column.getter))()};
-                                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, columnIndex++, valueHolder.value)) {
-                                            throw std::system_error(
-                                                std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                                        }
-                                    }*/
                                     });
                                 if(SQLITE_ROW != sqlite3_step(stmt)) {
                                     throw std::system_error(
@@ -1740,7 +1739,7 @@ namespace sqlite_orm {
                                     std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                     sqlite3_errmsg(db));
                             }
-                        }
+                        })();
                     });
                 });
                 return res;
