@@ -111,7 +111,7 @@ namespace sqlite_orm {
 
         template<typename T>
         struct tuplify {
-            using type = T;
+            using type = std::tuple<T>;
         };
         template<typename... Ts>
         struct tuplify<std::tuple<Ts...>> {
