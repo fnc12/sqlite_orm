@@ -25,7 +25,7 @@ namespace sqlite_orm {
          *  A data type's label type, void otherwise.
          */
         template<typename O>
-        using label_of_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
+        using label_of_or_void_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
 
         /** 
          *  If O is a subselect_mapper then returns its nested O::cte_object_type typename,
@@ -57,7 +57,7 @@ namespace sqlite_orm {
             // this typename is used in contexts where it is known that the 'table' holds a subselect_mapper
             // instead of a regular object type
             using cte_mapper_type = O;
-            using cte_label_type = label_of_t<O>;
+            using cte_label_type = label_of_or_void_t<O>;
             using object_type = mapped_object_type_for_t<O>;
             using elements_type = std::tuple<Cs...>;
 

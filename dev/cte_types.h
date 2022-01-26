@@ -48,7 +48,7 @@ namespace sqlite_orm {
             using cte_label_type = Label;
             // this type name is used to detect the mapping from label to object
             using cte_object_type = column_results<Label, Fs...>;
-            using expressions_type = tuplify_t<Expression>;
+            using expressions_tuple = tuplify_t<Expression>;
         };
 
         template<class O, size_t I>

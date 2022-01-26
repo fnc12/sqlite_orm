@@ -34,7 +34,7 @@ namespace sqlite_orm {
          *  A data type's label type, void otherwise.
          */
         template<typename O>
-        using label_of_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
+        using label_of_or_void_t = polyfill::detected_or_t<void, cte_label_type_t, O>;
 
         /**
          *  A data type's label type, void otherwise.

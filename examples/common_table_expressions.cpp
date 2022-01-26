@@ -77,8 +77,8 @@ void all_integers_between(int from, int end) {
         for(int n:
             storage.with(cte<cte_1>("x").as(union_all(select(from), select(column<cte_1>(0_col) + c(1), limit(end)))),
                          select(column<cte_1>(0_col)))) {
-                cout << n << ", ";
-            }
+            cout << n << ", ";
+        }
         cout << endl;
     }
     cout << endl;
@@ -142,7 +142,7 @@ void supervisor_chain() {
         }
         cout << endl;
     }
-        cout << endl;
+    cout << endl;
 #endif
 }
 
@@ -179,9 +179,9 @@ void works_for_alice() {
         //WITH RECURSIVE
         //    works_for_alice(n) AS(
         //        VALUES('Alice')
-    //        UNION
-    //        SELECT name FROM org, works_for_alice
-    //        WHERE org.boss = works_for_alice.n
+        //        UNION
+        //        SELECT name FROM org, works_for_alice
+        //        WHERE org.boss = works_for_alice.n
         //    )
         //    SELECT avg(height) FROM org
         //    WHERE org.name IN works_for_alice;
@@ -190,20 +190,20 @@ void works_for_alice() {
             select(avg(&Org::height), from<Org>(), where(in(&Org::name, select(column<cte_1>(0_col))))));
 
         //WITH cte_1("n")
-    //    AS(
-    //        SELECT 'Alice'
-    //        UNION
-    //        SELECT "org"."name" FROM 'cte_1', 'org'
-    //        WHERE("org"."boss" = 'cte_1'."n")
-    //    )
-    //    SELECT AVG("org"."height")
-    //    FROM 'org'
-    //    WHERE(
-    //        "name" IN(
-    //            SELECT 'cte_1'."n" FROM 'cte_1'
-    //        )
-    //    )
-    string sql = storage.dump(ast);
+        //    AS(
+        //        SELECT 'Alice'
+        //        UNION
+        //        SELECT "org"."name" FROM 'cte_1', 'org'
+        //        WHERE("org"."boss" = 'cte_1'."n")
+        //    )
+        //    SELECT AVG("org"."height")
+        //    FROM 'org'
+        //    WHERE(
+        //        "name" IN(
+        //            SELECT 'cte_1'."n" FROM 'cte_1'
+        //        )
+        //    )
+        string sql = storage.dump(ast);
 
         auto stmt = storage.prepare(ast);
         auto results = storage.execute(stmt);
@@ -477,6 +477,58 @@ void apfelmaennchen() {
     cout << endl;
 }
 
+void show_mapping_and_backreferencing() {
+    struct Object {
+        int64 id;
+    };
+
+    // column alias
+    struct cnt : alias_tag {
+        static constexpr std::string_view get() {
+            return "counter";
+        }
+    };
+
+    auto storage = make_storage("", make_table("object", make_column("id", &Object::id)));
+
+    // map column via alias_holder into cte,
+    // back-reference via `column_pointer<cte_1, alias_holder>`
+    {
+        auto ast =
+            with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(column<cte_1>(get<cnt>()) + c(1), limit(10)))),
+                 select(column<cte_1>(get<cnt>())));
+
+        string sql = storage.dump(ast);
+    }
+    // map column via alias_holder into cte,
+    // back-reference via `cte_1::als_v<>`
+    {
+        auto ast = with(cte<cte_1>("x")(union_all(select(as<cnt>(1)), select(cte_1::als_v<cnt> + c(1), limit(10)))),
+                        select(cte_1::als_v<cnt>));
+
+        string sql = storage.dump(ast);
+    }
+
+    // map column via integral pointer-to-member into cte,
+    // back-reference via `column_pointer<cte_1, ice_t<>>`
+    {
+        auto ast = with(cte<cte_1>("x")(union_all(select(c_v<&Object::id>),
+                                                  select(column<cte_1>(c_v<&Object::id>) + c(1), limit(10)))),
+                        select(column<cte_1>(c_v<&Object::id>)));
+
+        string sql = storage.dump(ast);
+    }
+    // map column via integral pointer-to-member into cte,
+    // back-reference via `cte_1::col_v<>`
+    {
+        auto ast = with(
+            cte<cte_1>("x")(union_all(select(c_v<&Object::id>), select(cte_1::col_v<&Object::id> + c(1), limit(10)))),
+            select(cte_1::col_v<&Object::id>));
+
+        string sql = storage.dump(ast);
+    }
+}
+
 int main() {
     try {
         all_integers_between(1, 10);
@@ -485,6 +537,7 @@ int main() {
         family_tree();
         depth_or_breadth_first();
         apfelmaennchen();
+        show_mapping_and_backreferencing();
     } catch(const system_error& e) {
         cout << "[" << e.code() << "] " << e.what();
     }

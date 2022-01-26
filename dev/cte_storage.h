@@ -46,7 +46,7 @@ namespace sqlite_orm {
         template<typename O, size_t CI>
         using create_cte_column_t = typename create_cte_column<O, CI>::type;
 
-        template<typename M, typename IdxSeq>
+        template<typename Mapper, typename IdxSeq>
         struct create_cte_table;
 
         template<typename Label, typename Expression, typename... Fs, size_t... CIs>
@@ -61,8 +61,8 @@ namespace sqlite_orm {
         /**
          *  Metafunction to create a CTE table_t type.
          */
-        template<typename M, typename IdxSeq>
-        using create_cte_table_t = typename create_cte_table<M, IdxSeq>::type;
+        template<typename Mapper, typename IdxSeq>
+        using create_cte_table_t = typename create_cte_table<Mapper, IdxSeq>::type;
 
         /**
          *  Concatenate newly created tables with those from an existing storage implementation,
@@ -107,65 +107,67 @@ namespace sqlite_orm {
         using cte_driving_subselect_t =
             polyfill::remove_cvref_t<decltype(get_cte_driving_subselect(std::declval<Select>()))>;
 
-        template<typename M, typename S, typename CTE, size_t... CIs>
-        create_cte_table_t<M, typename M::index_sequence>
+        template<typename Mapper, typename S, typename CTE, size_t... CIs>
+        create_cte_table_t<Mapper, typename Mapper::index_sequence>
         make_cte_table_using_column_indices(const S& impl, const CTE& cte, std::index_sequence<CIs...>) {
-            using O = cte_object_type_t<M>;
+            using O = cte_object_type_t<Mapper>;
             using context_type = serializator_context<S>;
             context_type context{impl};
 
             std::vector<std::string> columnNames =
                 collect_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumnNames, context);
 
-            return create_cte_table_t<M, typename M::index_sequence>{
+            return create_cte_table_t<Mapper, typename Mapper::index_sequence>{
                 cte.label(),
                 std::make_tuple(
                     make_column<>(move(columnNames.at(CIs)), cte_getter_v<O, CIs>, cte_setter_v<O, CIs>)...)};
         }
 
-        template<typename M, typename S, typename CTE>
-        create_cte_table_t<M, typename M::index_sequence> make_cte_table(const S& impl, const CTE& cte) {
-            return make_cte_table_using_column_indices<M>(impl, cte, typename M::index_sequence{});
+        template<typename Mapper, typename S, typename CTE>
+        create_cte_table_t<Mapper, typename Mapper::index_sequence> make_cte_table(const S& impl, const CTE& cte) {
+            return make_cte_table_using_column_indices<Mapper>(impl, cte, typename Mapper::index_sequence{});
         }
 
-        template<typename S, typename... CTEs, size_t TI1>
+        template<typename S, typename... CTEs, size_t Ii>
         decltype(auto) make_recursive_cte_storage_using_table_indices(const S& impl,
                                                                       const common_table_expressions<CTEs...>& cte,
-                                                                      std::index_sequence<TI1>) {
-            using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
-            using M = create_cte_mapper_t<cte_label_type_t<cte_t>,
-                                          column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
-                                          column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
-            static_assert(cte_t::explicit_column_count == 0 ||
-                              cte_t::explicit_column_count == M::index_sequence::size(),
+                                                                      std::index_sequence<Ii>) {
+            using cte_type = std::tuple_element_t<Ii, common_table_expressions<CTEs...>>;
+            using subselect_type = cte_driving_subselect_t<expression_type_t<cte_type>>;
+            using mapper_type = create_cte_mapper_t<cte_label_type_t<cte_type>,
+                                                    column_expression_of_t<S, subselect_type>,
+                                                    column_result_of_t<S, subselect_type>>;
+            static_assert(cte_type::explicit_column_count == 0 ||
+                              cte_type::explicit_column_count == mapper_type::index_sequence::size(),
                           "Number of explicit columns of common table expression doesn't match the number of columns "
                           "in the subselect.");
 
-            auto tbl = make_cte_table<M>(impl, get<TI1>(cte));
+            auto tbl = make_cte_table<mapper_type>(impl, get<Ii>(cte));
 
             return storage_impl_cat(impl, std::move(tbl));
         }
 
-        template<typename S, typename... CTEs, size_t TI1, size_t TI2, size_t... TIn>
+        template<typename S, typename... CTEs, size_t Ii, size_t Ij, size_t... In>
         decltype(auto) make_recursive_cte_storage_using_table_indices(const S& impl,
                                                                       const common_table_expressions<CTEs...>& cte,
-                                                                      std::index_sequence<TI1, TI2, TIn...>) {
-            using cte_t = std::tuple_element_t<TI1, common_table_expressions<CTEs...>>;
-            using M = create_cte_mapper_t<cte_label_type_t<cte_t>,
-                                          column_expression_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>,
-                                          column_result_of_t<S, cte_driving_subselect_t<expression_type_t<cte_t>>>>;
-            static_assert(cte_t::explicit_column_count == 0 ||
-                              cte_t::explicit_column_count == M::index_sequence::size(),
+                                                                      std::index_sequence<Ii, Ij, In...>) {
+            using cte_type = std::tuple_element_t<Ii, common_table_expressions<CTEs...>>;
+            using subselect_type = cte_driving_subselect_t<expression_type_t<cte_type>>;
+            using mapper_type = create_cte_mapper_t<cte_label_type_t<cte_type>,
+                                                    column_expression_of_t<S, subselect_type>,
+                                                    column_result_of_t<S, subselect_type>>;
+            static_assert(cte_type::explicit_column_count == 0 ||
+                              cte_type::explicit_column_count == mapper_type::index_sequence::size(),
                           "Number of explicit columns of common table expression doesn't match the number of columns "
                           "in the subselect.");
 
-            auto tbl = make_cte_table<M>(impl, get<TI1>(cte));
+            auto tbl = make_cte_table<mapper_type>(impl, get<Ii>(cte));
 
             return make_recursive_cte_storage_using_table_indices(
                 // Because CTEs can depend on their predecessor we recursively pass in a new storage object
                 storage_impl_cat(impl, std::move(tbl)),
                 cte,
-                std::index_sequence<TI2, TIn...>{});
+                std::index_sequence<Ij, In...>{});
         }
 
         /**
