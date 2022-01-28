@@ -79,6 +79,9 @@ namespace sqlite_orm {
 
         template<typename T>
         using expression_type_t = typename T::expression_type;
+
+        template<class As>
+        using alias_type_t = typename As::alias_type;
     }
 
     namespace internal {

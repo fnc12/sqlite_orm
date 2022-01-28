@@ -435,9 +435,6 @@ namespace sqlite_orm {
             return cte_getter_v<cte_object_type_t<cte_mapper_type>, I>;
         }
 
-        template<class As>
-        using alias_type_t = typename As::alias_type;
-
         // as_t::alias_type or nonesuch
         template<class T>
         using alias_type_or_none = polyfill::detected<alias_type_t, T>;
@@ -451,7 +448,7 @@ namespace sqlite_orm {
                                                             const column_pointer<Label, alias_holder<Alias>>&) {
             using timpl_type = storage_pick_impl_t<S, Label>;
             using cte_mapper_type = storage_cte_mapper_type_t<timpl_type>;
-            // filter all column alias expressions [`as_t<>`]
+            // filter all column alias expressions [`as_t<A>`]
             using alias_types_tuple =
                 typename tuple_transformer<typename cte_mapper_type::expressions_tuple, alias_type_or_none>::type;
 

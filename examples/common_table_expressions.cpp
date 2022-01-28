@@ -499,6 +499,7 @@ void show_mapping_and_backreferencing() {
                  select(column<cte_1>(get<cnt>())));
 
         string sql = storage.dump(ast);
+        auto stmt = storage.prepare(ast);
     }
     // map column via alias_holder into cte,
     // back-reference via `cte_1::als_v<>`
@@ -507,6 +508,7 @@ void show_mapping_and_backreferencing() {
                         select(cte_1::als_v<cnt>));
 
         string sql = storage.dump(ast);
+        auto stmt = storage.prepare(ast);
     }
 
     // map column via integral pointer-to-member into cte,
@@ -517,6 +519,7 @@ void show_mapping_and_backreferencing() {
                         select(column<cte_1>(c_v<&Object::id>)));
 
         string sql = storage.dump(ast);
+        auto stmt = storage.prepare(ast);
     }
     // map column via integral pointer-to-member into cte,
     // back-reference via `cte_1::col_v<>`
@@ -526,6 +529,7 @@ void show_mapping_and_backreferencing() {
             select(cte_1::col_v<&Object::id>));
 
         string sql = storage.dump(ast);
+        auto stmt = storage.prepare(ast);
     }
 }
 
