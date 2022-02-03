@@ -1790,9 +1790,18 @@ namespace sqlite_orm {
                 ss << "INDEX IF NOT EXISTS '" << statement.name << "' ON '"
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
-                iterate_tuple(statement.elements, [&columnNames, &context](auto& v) {
-                    auto columnName = serialize(v, context);
-                    columnNames.push_back(move(columnName));
+                std::string whereString;
+                iterate_tuple(statement.elements, [&columnNames, &context, &whereString](auto& value) {
+                    using value_type = typename std::decay<decltype(value)>::type;
+                    if(!is_where<value_type>::value) {
+                        auto newContext = context;
+                        newContext.use_parentheses = false;
+                        auto whereString = serialize(value, newContext);
+                        columnNames.push_back(move(whereString));
+                    } else {
+                        auto columnName = serialize(value, context);
+                        whereString = move(columnName);
+                    }
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << columnNames[i];
@@ -1801,6 +1810,9 @@ namespace sqlite_orm {
                     }
                 }
                 ss << ")";
+                if(!whereString.empty()) {
+                    ss << ' ' << whereString;
+                }
                 return ss.str();
             }
         };

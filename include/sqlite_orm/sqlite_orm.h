@@ -8486,6 +8486,15 @@ namespace sqlite_orm {
         };
 
         template<class C>
+        struct indexed_column_maker<where_t<C>> {
+            using type = where_t<C>;
+
+            type operator()(type wher) const {
+                return {std::move(wher)};
+            }
+        };
+
+        template<class C>
         struct indexed_column_maker<indexed_column_t<C>> {
             using type = indexed_column_t<C>;
 
@@ -8537,12 +8546,18 @@ namespace sqlite_orm {
     template<class... Cols>
     internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_index(const std::string& name,
                                                                                          Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
         return {name, false, std::make_tuple(internal::make_indexed_column(cols)...)};
     }
 
     template<class... Cols>
     internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_unique_index(const std::string& name,
                                                                                                 Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
         return {name, true, std::make_tuple(internal::make_indexed_column(cols)...)};
     }
 }
@@ -16055,9 +16070,18 @@ namespace sqlite_orm {
                 ss << "INDEX IF NOT EXISTS '" << statement.name << "' ON '"
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
-                iterate_tuple(statement.elements, [&columnNames, &context](auto& v) {
-                    auto columnName = serialize(v, context);
-                    columnNames.push_back(move(columnName));
+                std::string whereString;
+                iterate_tuple(statement.elements, [&columnNames, &context, &whereString](auto& value) {
+                    using value_type = typename std::decay<decltype(value)>::type;
+                    if(!is_where<value_type>::value) {
+                        auto newContext = context;
+                        newContext.use_parentheses = false;
+                        auto whereString = serialize(value, newContext);
+                        columnNames.push_back(move(whereString));
+                    } else {
+                        auto columnName = serialize(value, context);
+                        whereString = move(columnName);
+                    }
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << columnNames[i];
@@ -16066,6 +16090,9 @@ namespace sqlite_orm {
                     }
                 }
                 ss << ")";
+                if(!whereString.empty()) {
+                    ss << ' ' << whereString;
+                }
                 return ss.str();
             }
         };

@@ -46,6 +46,15 @@ namespace sqlite_orm {
         };
 
         template<class C>
+        struct indexed_column_maker<where_t<C>> {
+            using type = where_t<C>;
+
+            type operator()(type wher) const {
+                return {std::move(wher)};
+            }
+        };
+
+        template<class C>
         struct indexed_column_maker<indexed_column_t<C>> {
             using type = indexed_column_t<C>;
 
