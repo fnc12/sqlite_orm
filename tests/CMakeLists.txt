@@ -95,6 +95,7 @@ add_executable(unit_tests
     statement_serializator_tests/insert_replace.cpp
     statement_serializator_tests/update.cpp
     statement_serializator_tests/remove.cpp
+    statement_serializator_tests/aggregate_functions.cpp
     storage_tests.cpp
     storage_non_crud_tests.cpp
 	unique_cases/get_all_with_two_tables.cpp

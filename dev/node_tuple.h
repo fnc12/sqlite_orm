@@ -287,6 +287,12 @@ namespace sqlite_orm {
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 
+        template<class R, class S, class... Args>
+        struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> {
+            using node_type = built_in_aggregate_function_t<R, S, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
         template<class F, class... Args>
         struct node_tuple<function_call<F, Args...>, void> {
             using node_type = function_call<F, Args...>;

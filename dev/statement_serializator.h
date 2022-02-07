@@ -62,6 +62,19 @@ namespace sqlite_orm {
             }
         };
 
+        template<class F, class W>
+        struct statement_serializator<filtetered_aggregate_function<F, W>, void> {
+            using statement_type = filtetered_aggregate_function<F, W>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) {
+                std::stringstream ss;
+                ss << serialize(statement.function, context);
+                ss << " FILTER (WHERE " << serialize(statement.where, context) << ")";
+                return ss.str();
+            }
+        };
+
         template<class T>
         struct statement_serializator<excluded_t<T>, void> {
             using statement_type = excluded_t<T>;
@@ -188,6 +201,10 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+
+        template<class R, class S, class... Args>
+        struct statement_serializator<built_in_aggregate_function_t<R, S, Args...>, void>
+            : statement_serializator<built_in_function_t<R, S, Args...>, void> {};
 
         template<class F, class... Args>
         struct statement_serializator<function_call<F, Args...>, void> {
@@ -732,10 +749,10 @@ namespace sqlite_orm {
             using statement_type = exists_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                ss << serialize(c.t, context);
+                ss << "EXISTS ";
+                ss << serialize(statement.expression, context);
                 return ss.str();
             }
         };

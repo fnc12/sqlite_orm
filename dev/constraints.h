@@ -281,11 +281,6 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_column(const L&) {}
-
-            template<class... Opts>
-            constexpr bool has_every() const {
-                return false;
-            }
         };
 
         template<class A, class B>

@@ -79,20 +79,6 @@ namespace sqlite_orm {
                 return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
             }
 
-            template<class O1, class O2, class... Opts>
-            constexpr bool has_every() const {
-                if(has<O1>() && has<O2>()) {
-                    return true;
-                } else {
-                    return has_every<Opts...>();
-                }
-            }
-
-            template<class O1>
-            constexpr bool has_every() const {
-                return has<O1>();
-            }
-
             /**
              *  Simplified interface for `DEFAULT` constraint
              *  @return string representation of default value if it exists otherwise nullptr
