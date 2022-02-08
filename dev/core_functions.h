@@ -45,7 +45,7 @@ namespace sqlite_orm {
         };
 
         template<class F, class W>
-        struct filtetered_aggregate_function {
+        struct filtered_aggregate_function {
             using function_type = F;
             using where_expression = W;
 
@@ -58,9 +58,12 @@ namespace sqlite_orm {
 
         template<class R, class S, class... Args>
         struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
+            using super = built_in_function_t<R, S, Args...>;
+
+            using super::super;
 
             template<class W>
-            filtetered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
+            filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
                 return {*this, std::move(wh.expression)};
             }
         };
@@ -277,7 +280,7 @@ namespace sqlite_orm {
             using type = T;
 
             template<class W>
-            filtetered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
+            filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
                 return {*this, std::move(wh.expression)};
             }
         };

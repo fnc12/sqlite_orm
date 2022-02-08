@@ -293,6 +293,14 @@ namespace sqlite_orm {
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
         };
 
+        template<class F, class W>
+        struct node_tuple<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
+            using left_tuple = typename node_tuple<F>::type;
+            using right_tuple = typename node_tuple<W>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
+        };
+
         template<class F, class... Args>
         struct node_tuple<function_call<F, Args...>, void> {
             using node_type = function_call<F, Args...>;

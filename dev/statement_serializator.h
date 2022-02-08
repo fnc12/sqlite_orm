@@ -63,8 +63,8 @@ namespace sqlite_orm {
         };
 
         template<class F, class W>
-        struct statement_serializator<filtetered_aggregate_function<F, W>, void> {
-            using statement_type = filtetered_aggregate_function<F, W>;
+        struct statement_serializator<filtered_aggregate_function<F, W>, void> {
+            using statement_type = filtered_aggregate_function<F, W>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) {

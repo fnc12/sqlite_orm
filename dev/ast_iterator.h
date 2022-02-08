@@ -467,8 +467,8 @@ namespace sqlite_orm {
         };
 
         template<class F, class W>
-        struct ast_iterator<filtetered_aggregate_function<F, W>, void> {
-            using node_type = filtetered_aggregate_function<F, W>;
+        struct ast_iterator<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
 
             template<class L>
             void operator()(const node_type& node, const L& lambda) const {

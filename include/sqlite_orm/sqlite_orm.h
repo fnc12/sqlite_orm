@@ -4171,7 +4171,7 @@ namespace sqlite_orm {
         };
 
         template<class F, class W>
-        struct filtetered_aggregate_function {
+        struct filtered_aggregate_function {
             using function_type = F;
             using where_expression = W;
 
@@ -4184,9 +4184,12 @@ namespace sqlite_orm {
 
         template<class R, class S, class... Args>
         struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
+            using super = built_in_function_t<R, S, Args...>;
+
+            using super::super;
 
             template<class W>
-            filtetered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
+            filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
                 return {*this, std::move(wh.expression)};
             }
         };
@@ -4403,7 +4406,7 @@ namespace sqlite_orm {
             using type = T;
 
             template<class W>
-            filtetered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
+            filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
                 return {*this, std::move(wh.expression)};
             }
         };
@@ -12196,8 +12199,8 @@ namespace sqlite_orm {
         };
 
         template<class F, class W>
-        struct ast_iterator<filtetered_aggregate_function<F, W>, void> {
-            using node_type = filtetered_aggregate_function<F, W>;
+        struct ast_iterator<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
 
             template<class L>
             void operator()(const node_type& node, const L& lambda) const {
@@ -14389,8 +14392,8 @@ namespace sqlite_orm {
         };
 
         template<class F, class W>
-        struct statement_serializator<filtetered_aggregate_function<F, W>, void> {
-            using statement_type = filtetered_aggregate_function<F, W>;
+        struct statement_serializator<filtered_aggregate_function<F, W>, void> {
+            using statement_type = filtered_aggregate_function<F, W>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) {
@@ -18785,6 +18788,14 @@ __pragma(pop_macro("min"))
         struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> {
             using node_type = built_in_aggregate_function_t<R, S, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class F, class W>
+        struct node_tuple<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
+            using left_tuple = typename node_tuple<F>::type;
+            using right_tuple = typename node_tuple<W>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
         template<class F, class... Args>
