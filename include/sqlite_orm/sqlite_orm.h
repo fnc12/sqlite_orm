@@ -1255,11 +1255,6 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_column(const L&) {}
-
-            template<class... Opts>
-            constexpr bool has_every() const {
-                return false;
-            }
         };
 
         template<class A, class B>
@@ -2109,20 +2104,6 @@ namespace sqlite_orm {
             template<class Opt>
             constexpr bool has() const {
                 return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
-            }
-
-            template<class O1, class O2, class... Opts>
-            constexpr bool has_every() const {
-                if(has<O1>() && has<O2>()) {
-                    return true;
-                } else {
-                    return has_every<Opts...>();
-                }
-            }
-
-            template<class O1>
-            constexpr bool has_every() const {
-                return has<O1>();
             }
 
             /**
@@ -3354,22 +3335,6 @@ namespace sqlite_orm {
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
 
-        struct exists_string {
-            operator std::string() const {
-                return "EXISTS";
-            }
-        };
-
-        template<class T>
-        struct exists_t : condition_t, exists_string, internal::negatable_t {
-            using type = T;
-            using self = exists_t<type>;
-
-            type t;
-
-            exists_t(T t_) : t(std::move(t_)) {}
-        };
-
         struct cast_string {
             operator std::string() const {
                 return "CAST";
@@ -3837,19 +3802,6 @@ namespace sqlite_orm {
     }
 
     /**
-     *  EXISTS(condition).
-     *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
-         where(exists(select(asterisk<Customer>(),
-         where(is_equal(&Customer::grade, 3) and
-         is_equal(&Agent::code, &Customer::agentCode))))),
-         order_by(&Agent::comission));
-     */
-    template<class T>
-    internal::exists_t<T> exists(T t) {
-        return {std::move(t)};
-    }
-
-    /**
      *  CAST(X AS type).
      *  Example: cast<std::string>(&User::id)
      */
@@ -4218,6 +4170,30 @@ namespace sqlite_orm {
             built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
         };
 
+        template<class F, class W>
+        struct filtered_aggregate_function {
+            using function_type = F;
+            using where_expression = W;
+
+            function_type function;
+            where_expression where;
+        };
+
+        template<class C>
+        struct where_t;
+
+        template<class R, class S, class... Args>
+        struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
+            using super = built_in_function_t<R, S, Args...>;
+
+            using super::super;
+
+            template<class W>
+            filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
+                return {*this, std::move(wh.expression)};
+            }
+        };
+
         struct typeof_string {
             serialize_result_type serialize() const {
                 return "TYPEOF";
@@ -4428,6 +4404,11 @@ namespace sqlite_orm {
         template<class T>
         struct count_asterisk_t : count_string {
             using type = T;
+
+            template<class W>
+            filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
+                return {*this, std::move(wh.expression)};
+            }
         };
 
         /**
@@ -5923,7 +5904,7 @@ namespace sqlite_orm {
      *  TOTAL(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<double, internal::total_string, X> total(X x) {
+    internal::built_in_aggregate_function_t<double, internal::total_string, X> total(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -5931,7 +5912,7 @@ namespace sqlite_orm {
      *  SUM(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
+    internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -5939,7 +5920,7 @@ namespace sqlite_orm {
      *  COUNT(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<int, internal::count_string, X> count(X x) {
+    internal::built_in_aggregate_function_t<int, internal::count_string, X> count(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -5963,7 +5944,7 @@ namespace sqlite_orm {
      *  AVG(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<double, internal::avg_string, X> avg(X x) {
+    internal::built_in_aggregate_function_t<double, internal::avg_string, X> avg(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -5971,7 +5952,7 @@ namespace sqlite_orm {
      *  MAX(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
+    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -5979,7 +5960,7 @@ namespace sqlite_orm {
      *  MIN(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
+    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -5987,7 +5968,7 @@ namespace sqlite_orm {
      *  GROUP_CONCAT(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
+    internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -5995,7 +5976,7 @@ namespace sqlite_orm {
      *  GROUP_CONCAT(X, Y) aggregate function.
      */
     template<class X, class Y>
-    internal::built_in_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
+    internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #ifdef SQLITE_ENABLE_JSON1
@@ -9073,7 +9054,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct function_base {
+        struct user_defined_function_base {
             using func_call = std::function<
                 void(sqlite3_context* context, void* functionPointer, int argsCount, sqlite3_value** values)>;
             using final_call = std::function<void(sqlite3_context* context, void* functionPointer)>;
@@ -9083,37 +9064,37 @@ namespace sqlite_orm {
             std::function<int*()> create;
             void (*destroy)(int*) = nullptr;
 
-            function_base(decltype(name) name_,
-                          decltype(argumentsCount) argumentsCount_,
-                          decltype(create) create_,
-                          decltype(destroy) destroy_) :
+            user_defined_function_base(decltype(name) name_,
+                                       decltype(argumentsCount) argumentsCount_,
+                                       decltype(create) create_,
+                                       decltype(destroy) destroy_) :
                 name(move(name_)),
                 argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
         };
 
-        struct scalar_function_t : function_base {
+        struct user_defined_scalar_function_t : user_defined_function_base {
             func_call run;
 
-            scalar_function_t(decltype(name) name_,
-                              int argumentsCount_,
-                              decltype(create) create_,
-                              decltype(run) run_,
-                              decltype(destroy) destroy_) :
-                function_base{move(name_), argumentsCount_, move(create_), destroy_},
+            user_defined_scalar_function_t(decltype(name) name_,
+                                           int argumentsCount_,
+                                           decltype(create) create_,
+                                           decltype(run) run_,
+                                           decltype(destroy) destroy_) :
+                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
                 run(move(run_)) {}
         };
 
-        struct aggregate_function_t : function_base {
+        struct user_defined_aggregate_function_t : user_defined_function_base {
             func_call step;
             final_call finalCall;
 
-            aggregate_function_t(decltype(name) name_,
-                                 int argumentsCount_,
-                                 decltype(create) create_,
-                                 decltype(step) step_,
-                                 decltype(finalCall) finalCall_,
-                                 decltype(destroy) destroy_) :
-                function_base{move(name_), argumentsCount_, move(create_), destroy_},
+            user_defined_aggregate_function_t(decltype(name) name_,
+                                              int argumentsCount_,
+                                              decltype(create) create_,
+                                              decltype(step) step_,
+                                              decltype(finalCall) finalCall_,
+                                              decltype(destroy) destroy_) :
+                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
                 step(move(step_)), finalCall(move(finalCall_)) {}
         };
 
@@ -9383,6 +9364,11 @@ namespace sqlite_orm {
             using type = R;
         };
 
+        template<class St, class R, class S, class... Args>
+        struct column_result_t<St, built_in_aggregate_function_t<R, S, Args...>, void> {
+            using type = R;
+        };
+
         template<class St, class F, class... Args>
         struct column_result_t<St, function_call<F, Args...>, void> {
             using type = typename callable_arguments<F>::return_type;
@@ -9390,6 +9376,11 @@ namespace sqlite_orm {
 
         template<class St, class X, class S>
         struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
+        };
+
+        template<class St, class X, class S>
+        struct column_result_t<St, built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
@@ -11725,6 +11716,40 @@ namespace sqlite_orm {
 
 // #include "ast/group_by.h"
 
+// #include "ast/exists.h"
+
+#include <utility>  //  std::move
+
+// #include "tags.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T>
+        struct exists_t : condition_t, negatable_t {
+            using expression_type = T;
+            using self = exists_t<expression_type>;
+
+            expression_type expression;
+
+            exists_t(expression_type expression_) : expression(std::move(expression_)) {}
+        };
+    }
+
+    /**
+     *  EXISTS(condition).
+     *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
+         where(exists(select(asterisk<Customer>(),
+         where(is_equal(&Customer::grade, 3) and
+         is_equal(&Agent::code, &Customer::agentCode))))),
+         order_by(&Agent::comission));
+     */
+    template<class T>
+    internal::exists_t<T> exists(T expression) {
+        return {std::move(expression)};
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -12061,8 +12086,8 @@ namespace sqlite_orm {
             using node_type = exists_t<T>;
 
             template<class L>
-            void operator()(const node_type& e, const L& l) const {
-                iterate_ast(e.t, l);
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -12158,8 +12183,29 @@ namespace sqlite_orm {
             using node_type = built_in_function_t<R, S, Args...>;
 
             template<class L>
-            void operator()(const node_type& f, const L& l) const {
-                iterate_ast(f.args, l);
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.args, lambda);
+            }
+        };
+
+        template<class R, class S, class... Args>
+        struct ast_iterator<built_in_aggregate_function_t<R, S, Args...>, void> {
+            using node_type = built_in_aggregate_function_t<R, S, Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.args, lambda);
+            }
+        };
+
+        template<class F, class W>
+        struct ast_iterator<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.function, lambda);
+                iterate_ast(node.where, lambda);
             }
         };
 
@@ -13275,7 +13321,7 @@ namespace sqlite_orm {
                 if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
                     argsCount = -1;
                 }
-                this->scalarFunctions.emplace_back(new scalar_function_t{
+                this->scalarFunctions.emplace_back(new user_defined_scalar_function_t{
                     move(name),
                     argsCount,
                     []() -> int* {
@@ -13295,7 +13341,8 @@ namespace sqlite_orm {
 
                 if(this->connection->retain_count() > 0) {
                     auto db = this->connection->get();
-                    try_to_create_function(db, static_cast<scalar_function_t&>(*this->scalarFunctions.back()));
+                    try_to_create_function(db,
+                                           static_cast<user_defined_scalar_function_t&>(*this->scalarFunctions.back()));
                 }
             }
 
@@ -13335,7 +13382,7 @@ namespace sqlite_orm {
                 if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
                     argsCount = -1;
                 }
-                this->aggregateFunctions.emplace_back(new aggregate_function_t{
+                this->aggregateFunctions.emplace_back(new user_defined_aggregate_function_t{
                     move(name),
                     argsCount,
                     /* create = */
@@ -13361,7 +13408,9 @@ namespace sqlite_orm {
 
                 if(this->connection->retain_count() > 0) {
                     auto db = this->connection->get();
-                    try_to_create_function(db, static_cast<aggregate_function_t&>(*this->aggregateFunctions.back()));
+                    try_to_create_function(
+                        db,
+                        static_cast<user_defined_aggregate_function_t&>(*this->aggregateFunctions.back()));
                 }
             }
 
@@ -13631,11 +13680,11 @@ namespace sqlite_orm {
                 }
 
                 for(auto& functionPointer: this->scalarFunctions) {
-                    try_to_create_function(db, static_cast<scalar_function_t&>(*functionPointer));
+                    try_to_create_function(db, static_cast<user_defined_scalar_function_t&>(*functionPointer));
                 }
 
                 for(auto& functionPointer: this->aggregateFunctions) {
-                    try_to_create_function(db, static_cast<aggregate_function_t&>(*functionPointer));
+                    try_to_create_function(db, static_cast<user_defined_aggregate_function_t&>(*functionPointer));
                 }
 
                 if(this->on_open) {
@@ -13644,7 +13693,7 @@ namespace sqlite_orm {
             }
 
             void delete_function_impl(const std::string& name,
-                                      std::vector<std::unique_ptr<function_base>>& functionsVector) const {
+                                      std::vector<std::unique_ptr<user_defined_function_base>>& functionsVector) const {
                 auto it = find_if(functionsVector.begin(), functionsVector.end(), [&name](auto& functionPointer) {
                     return functionPointer->name == name;
                 });
@@ -13673,7 +13722,7 @@ namespace sqlite_orm {
                 }
             }
 
-            void try_to_create_function(sqlite3* db, scalar_function_t& function) {
+            void try_to_create_function(sqlite3* db, user_defined_scalar_function_t& function) {
                 auto resultCode = sqlite3_create_function_v2(db,
                                                              function.name.c_str(),
                                                              function.argumentsCount,
@@ -13689,7 +13738,7 @@ namespace sqlite_orm {
                 }
             }
 
-            void try_to_create_function(sqlite3* db, aggregate_function_t& function) {
+            void try_to_create_function(sqlite3* db, user_defined_aggregate_function_t& function) {
                 auto resultCode = sqlite3_create_function(db,
                                                           function.name.c_str(),
                                                           function.argumentsCount,
@@ -13707,7 +13756,7 @@ namespace sqlite_orm {
             static void
             aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<aggregate_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_aggregate_function_t*>(functionVoidPointer);
                 auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
                 auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
                 if(*aggregateContextIntPointer == nullptr) {
@@ -13718,7 +13767,7 @@ namespace sqlite_orm {
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<aggregate_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_aggregate_function_t*>(functionVoidPointer);
                 auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
                 auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
                 functionPointer->finalCall(context, *aggregateContextIntPointer);
@@ -13727,7 +13776,7 @@ namespace sqlite_orm {
 
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<scalar_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_scalar_function_t*>(functionVoidPointer);
                 std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
                                                                      functionPointer->destroy);
                 if(functionPointer->argumentsCount != -1 && functionPointer->argumentsCount != argsCount) {
@@ -13805,8 +13854,8 @@ namespace sqlite_orm {
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;
-            std::vector<std::unique_ptr<function_base>> scalarFunctions;
-            std::vector<std::unique_ptr<function_base>> aggregateFunctions;
+            std::vector<std::unique_ptr<user_defined_function_base>> scalarFunctions;
+            std::vector<std::unique_ptr<user_defined_function_base>> aggregateFunctions;
         };
     }
 }
@@ -14342,6 +14391,19 @@ namespace sqlite_orm {
             }
         };
 
+        template<class F, class W>
+        struct statement_serializator<filtered_aggregate_function<F, W>, void> {
+            using statement_type = filtered_aggregate_function<F, W>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) {
+                std::stringstream ss;
+                ss << serialize(statement.function, context);
+                ss << " FILTER (WHERE " << serialize(statement.where, context) << ")";
+                return ss.str();
+            }
+        };
+
         template<class T>
         struct statement_serializator<excluded_t<T>, void> {
             using statement_type = excluded_t<T>;
@@ -14468,6 +14530,10 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
+
+        template<class R, class S, class... Args>
+        struct statement_serializator<built_in_aggregate_function_t<R, S, Args...>, void>
+            : statement_serializator<built_in_function_t<R, S, Args...>, void> {};
 
         template<class F, class... Args>
         struct statement_serializator<function_call<F, Args...>, void> {
@@ -15012,10 +15078,10 @@ namespace sqlite_orm {
             using statement_type = exists_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                ss << serialize(c.t, context);
+                ss << "EXISTS ";
+                ss << serialize(statement.expression, context);
                 return ss.str();
             }
         };
@@ -18716,6 +18782,20 @@ __pragma(pop_macro("min"))
         struct node_tuple<built_in_function_t<R, S, Args...>, void> {
             using node_type = built_in_function_t<R, S, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class R, class S, class... Args>
+        struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> {
+            using node_type = built_in_aggregate_function_t<R, S, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class F, class W>
+        struct node_tuple<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
+            using left_tuple = typename node_tuple<F>::type;
+            using right_tuple = typename node_tuple<W>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
         template<class F, class... Args>
