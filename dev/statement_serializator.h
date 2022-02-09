@@ -912,7 +912,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
-                return static_cast<std::string>(statement) + " " + serialize(statement.expression, context);
+                return "CHECK (" + serialize(statement.expression, context) + ")";
             }
         };
 #if SQLITE_VERSION_NUMBER >= 3031000

@@ -27,12 +27,12 @@ TEST_CASE("statement_serializator check") {
         std::string expected;
         SECTION("with parentheses") {
             value = serialize(ch, context);
-            expected = "CHECK (\"col3\" > 0)";
+            expected = "CHECK ((\"col3\" > 0))";
         }
         SECTION("without parentheses") {
             context.use_parentheses = false;
             value = serialize(ch, context);
-            expected = "CHECK \"col3\" > 0";
+            expected = "CHECK (\"col3\" > 0)";
         }
         REQUIRE(value == expected);
     }
@@ -60,12 +60,12 @@ TEST_CASE("statement_serializator check") {
         std::string expected;
         SECTION("with parentheses") {
             value = serialize(ch, context);
-            expected = "CHECK (0 < \"PRICE\")";
+            expected = "CHECK ((0 < \"PRICE\"))";
         }
         SECTION("without parentheses") {
             context.use_parentheses = false;
             value = serialize(ch, context);
-            expected = "CHECK 0 < \"PRICE\"";
+            expected = "CHECK (0 < \"PRICE\")";
         }
         REQUIRE(value == expected);
     }

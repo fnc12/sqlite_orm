@@ -1306,20 +1306,13 @@ namespace sqlite_orm {
             }
         };
 
-        struct check_string {
-            operator std::string() const {
-                return "CHECK";
-            }
-        };
-
         template<class T>
-        struct check_t : check_string {
+        struct check_t {
             using expression_type = T;
 
             expression_type expression;
-
-            check_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
+
         struct basic_generated_always {
             enum class storage_type {
                 not_specified,
@@ -15241,7 +15234,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
-                return static_cast<std::string>(statement) + " " + serialize(statement.expression, context);
+                return "CHECK (" + serialize(statement.expression, context) + ")";
             }
         };
 #if SQLITE_VERSION_NUMBER >= 3031000
