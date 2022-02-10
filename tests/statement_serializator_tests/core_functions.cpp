@@ -5,132 +5,384 @@ using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator core functions") {
     internal::serializator_context_base context;
-    {
-        auto value = serialize(length("hi"), context);
-        REQUIRE(value == "LENGTH('hi')");
+    std::string value;
+    decltype(value) expected;
+    SECTION("LENGTH") {
+        auto expression = length("hi");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(LENGTH('hi'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "LENGTH('hi')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(sqlite_orm::abs(-100), context);
-        REQUIRE(value == "ABS(-100)");
+    SECTION("ABS") {
+        auto expression = sqlite_orm::abs(-100);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(ABS(-100))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "ABS(-100)";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(lower("dancefloor"), context);
-        REQUIRE(value == "LOWER('dancefloor')");
+    SECTION("LOWER") {
+        auto expression = lower("dancefloor");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(LOWER('dancefloor'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "LOWER('dancefloor')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(upper("call"), context);
-        REQUIRE(value == "UPPER('call')");
+    SECTION("UPPER") {
+        auto expression = upper("call");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(UPPER('call'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "UPPER('call')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(total_changes(), context);
-        REQUIRE(value == "TOTAL_CHANGES()");
+    SECTION("TOTAL_CHANGES") {
+        auto expression = total_changes();
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(TOTAL_CHANGES())";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "TOTAL_CHANGES()";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(changes(), context);
-        REQUIRE(value == "CHANGES()");
+    SECTION("CHANGES") {
+        auto expression = changes();
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(CHANGES())";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "CHANGES()";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(trim("hey"), context);
-        REQUIRE(value == "TRIM('hey')");
+    SECTION("TRIM(X)") {
+        auto expression = trim("hey");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(TRIM('hey'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "TRIM('hey')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(trim("hey", "h"), context);
-        REQUIRE(value == "TRIM('hey', 'h')");
+    SECTION("TRIM(X,Y)") {
+        auto expression = trim("hey", "h");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(TRIM('hey', 'h'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "TRIM('hey', 'h')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(ltrim("hey"), context);
-        REQUIRE(value == "LTRIM('hey')");
+    SECTION("LTRIM(X)") {
+        auto expression = ltrim("hey");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(LTRIM('hey'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "LTRIM('hey')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(ltrim("hey", "h"), context);
-        REQUIRE(value == "LTRIM('hey', 'h')");
+    SECTION("LTRIM(X,Y)") {
+        auto expression = ltrim("hey", "h");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(LTRIM('hey', 'h'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "LTRIM('hey', 'h')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(rtrim("hey"), context);
-        REQUIRE(value == "RTRIM('hey')");
+    SECTION("RTRIM(X)") {
+        auto expression = rtrim("hey");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(RTRIM('hey'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "RTRIM('hey')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(rtrim("hey", "h"), context);
-        REQUIRE(value == "RTRIM('hey', 'h')");
+    SECTION("RTRIM(X,Y)") {
+        auto expression = rtrim("hey", "h");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(RTRIM('hey', 'h'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "RTRIM('hey', 'h')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(hex("love"), context);
-        REQUIRE(value == "HEX('love')");
+    SECTION("HEX") {
+        auto expression = hex("love");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(HEX('love'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "HEX('love')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(quote("one"), context);
-        REQUIRE(value == "QUOTE('one')");
+    SECTION("QUOTE") {
+        auto expression = quote("one");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(QUOTE('one'))";
+            ;
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "QUOTE('one')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(randomblob(5), context);
-        REQUIRE(value == "RANDOMBLOB(5)");
+    SECTION("RANDOMBLOB") {
+        auto expression = randomblob(5);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(RANDOMBLOB(5))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "RANDOMBLOB(5)";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(instr("hi", "i"), context);
-        REQUIRE(value == "INSTR('hi', 'i')");
+    SECTION("INSTR") {
+        auto expression = instr("hi", "i");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(INSTR('hi', 'i'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "INSTR('hi', 'i')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(replace("contigo", "o", "a"), context);
-        REQUIRE(value == "REPLACE('contigo', 'o', 'a')");
+    SECTION("REPLACE") {
+        auto expression = replace("contigo", "o", "a");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(REPLACE('contigo', 'o', 'a'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "REPLACE('contigo', 'o', 'a')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(sqlite_orm::round(10.5), context);
-        REQUIRE(value == "ROUND(10.5)");
+    SECTION("ROUND(X)") {
+        auto expression = sqlite_orm::round(10.5);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(ROUND(10.5))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "ROUND(10.5)";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(sqlite_orm::round(10.5, 0.5), context);
-        REQUIRE(value == "ROUND(10.5, 0.5)");
+    SECTION("ROUND(X,Y)") {
+        auto expression = sqlite_orm::round(10.5, 0.5);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(ROUND(10.5, 0.5))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "ROUND(10.5, 0.5)";
+        }
+        value = serialize(expression, context);
     }
 #if SQLITE_VERSION_NUMBER >= 3007016
-    {
-        auto value = serialize(char_(40, 45), context);
-        REQUIRE(value == "CHAR(40, 45)");
+    SECTION("CHAR") {
+        auto expression = char_(40, 45);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(CHAR(40, 45))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "CHAR(40, 45)";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(sqlite_orm::random(), context);
-        REQUIRE(value == "RANDOM()");
+    SECTION("RANDOM") {
+        auto expression = sqlite_orm::random();
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(RANDOM())";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "RANDOM()";
+        }
+        value = serialize(expression, context);
     }
 #endif
-    {
-        auto value = serialize(coalesce<std::string>(10, 15), context);
-        REQUIRE(value == "COALESCE(10, 15)");
+    SECTION("COALESCE") {
+        auto expression = coalesce<std::string>(10, 15);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(COALESCE(10, 15))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "COALESCE(10, 15)";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(date("now"), context);
-        REQUIRE(value == "DATE('now')");
+    SECTION("DATE") {
+        auto expression = date("now");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(DATE('now'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "DATE('now')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(time("12:00", "localtime"), context);
-        REQUIRE(value == "TIME('12:00', 'localtime')");
+    SECTION("TIME") {
+        auto expression = time("12:00", "localtime");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(TIME('12:00', 'localtime'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "TIME('12:00', 'localtime')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(datetime("now"), context);
-        REQUIRE(value == "DATETIME('now')");
+    SECTION("DATETIME") {
+        auto expression = datetime("now");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(DATETIME('now'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "DATETIME('now')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(julianday("now"), context);
-        REQUIRE(value == "JULIANDAY('now')");
+    SECTION("JULIANDAY") {
+        auto expression = julianday("now");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(JULIANDAY('now'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "JULIANDAY('now')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(strftime("%s", "2014-10-07 02:34:56"), context);
-        REQUIRE(value == "STRFTIME('%s', '2014-10-07 02:34:56')");
+    SECTION("STRFTIME") {
+        auto expression = strftime("%s", "2014-10-07 02:34:56");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(STRFTIME('%s', '2014-10-07 02:34:56'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "STRFTIME('%s', '2014-10-07 02:34:56')";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(zeroblob(5), context);
-        REQUIRE(value == "ZEROBLOB(5)");
+    SECTION("ZEROBLOB") {
+        auto expression = zeroblob(5);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(ZEROBLOB(5))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "ZEROBLOB(5)";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(substr("Zara", 2), context);
-        REQUIRE(value == "SUBSTR('Zara', 2)");
+    SECTION("SUBSTR(X,Y)") {
+        auto expression = substr("Zara", 2);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(SUBSTR('Zara', 2))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "SUBSTR('Zara', 2)";
+        }
+        value = serialize(expression, context);
     }
-    {
-        auto value = serialize(substr("Natasha", 3, 2), context);
-        REQUIRE(value == "SUBSTR('Natasha', 3, 2)");
+    SECTION("SUBSTR(X,Y,Z)") {
+        auto expression = substr("Natasha", 3, 2);
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(SUBSTR('Natasha', 3, 2))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "SUBSTR('Natasha', 3, 2)";
+        }
+        value = serialize(expression, context);
     }
-    {
+    SECTION("SOUNDEX") {
 #ifdef SQLITE_SOUNDEX
-        auto value = serialize(soundex("Vaso"), context);
-        REQUIRE(value == "SOUNDEX('Vaso')");
+        auto expression = soundex("Vaso");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "(SOUNDEX('Vaso'))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "SOUNDEX('Vaso')";
+        }
+        value = serialize(expression, context);
 #endif
     }
+    REQUIRE(value == expected);
 }

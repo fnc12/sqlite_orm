@@ -26,6 +26,7 @@ TEST_CASE("statement_serializator check") {
         std::string value;
         std::string expected;
         SECTION("with parentheses") {
+            context.use_parentheses = true;
             value = serialize(ch, context);
             expected = "CHECK ((\"col3\" > 0))";
         }
@@ -59,6 +60,7 @@ TEST_CASE("statement_serializator check") {
         std::string value;
         std::string expected;
         SECTION("with parentheses") {
+            context.use_parentheses = true;
             value = serialize(ch, context);
             expected = "CHECK ((0 < \"PRICE\"))";
         }
