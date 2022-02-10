@@ -2,6 +2,22 @@
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
+
+TEST_CASE("issue893") {
+    struct Object {
+        std::string name;
+        int nameLen;
+        int number;
+    };
+    auto storage =
+        make_storage("",
+                     make_table("objects",
+                                make_column("name", &Object::name),
+                                make_column("name_len", &Object::nameLen, generated_always_as(length(&Object::name))),
+                                make_column("number", &Object::number)));
+    storage.sync_schema();
+}
+
 #if SQLITE_VERSION_NUMBER >= 3031000
 TEST_CASE("statement_serializator generated") {
     using internal::serialize;
@@ -28,32 +44,37 @@ TEST_CASE("statement_serializator generated") {
     SECTION("full") {
         auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b));
         value = serialize(constraint, context);
-        expected = "GENERATED ALWAYS AS (\"a\" * ABS(\"b\"))";
+        expected = "GENERATED ALWAYS AS (\"a\" * (ABS(\"b\")))";
     }
     SECTION("full virtual") {
         auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_();
         value = serialize(constraint, context);
-        expected = "GENERATED ALWAYS AS (\"a\" * ABS(\"b\")) VIRTUAL";
+        expected = "GENERATED ALWAYS AS (\"a\" * (ABS(\"b\"))) VIRTUAL";
     }
     SECTION("full stored") {
         auto constraint = generated_always_as(&Type::a * sqlite_orm::abs(&Type::b)).stored();
         value = serialize(constraint, context);
-        expected = "GENERATED ALWAYS AS (\"a\" * ABS(\"b\")) STORED";
+        expected = "GENERATED ALWAYS AS (\"a\" * (ABS(\"b\"))) STORED";
     }
     SECTION("not full") {
         auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b));
         value = serialize(constraint, context);
-        expected = "AS (\"a\" * ABS(\"b\"))";
+        expected = "AS (\"a\" * (ABS(\"b\")))";
     }
     SECTION("not full virtual") {
         auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b)).virtual_();
         value = serialize(constraint, context);
-        expected = "AS (\"a\" * ABS(\"b\")) VIRTUAL";
+        expected = "AS (\"a\" * (ABS(\"b\"))) VIRTUAL";
     }
     SECTION("not full stored") {
         auto constraint = as(&Type::a * sqlite_orm::abs(&Type::b)).stored();
         value = serialize(constraint, context);
-        expected = "AS (\"a\" * ABS(\"b\")) STORED";
+        expected = "AS (\"a\" * (ABS(\"b\"))) STORED";
+    }
+    SECTION("length") {
+        auto constraint = generated_always_as(length(&Type::a));
+        value = serialize(constraint, context);
+        expected = "GENERATED ALWAYS AS (LENGTH(\"a\"))";
     }
     REQUIRE(value == expected);
 }

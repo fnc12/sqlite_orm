@@ -184,6 +184,9 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
                 ss << statement.serialize() << "(";
                 std::vector<std::string> args;
                 using args_type = typename std::decay<decltype(statement)>::type::args_type;
@@ -198,6 +201,9 @@ namespace sqlite_orm {
                     }
                 }
                 ss << ")";
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
                 return ss.str();
             }
         };

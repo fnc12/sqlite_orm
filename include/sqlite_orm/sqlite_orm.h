@@ -5888,7 +5888,7 @@ namespace sqlite_orm {
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */
     template<class X>
-    internal::core_function_t<std::string, internal::soundex_string, X> soundex(X x) {
+    internal::built_in_function_t<std::string, internal::soundex_string, X> soundex(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -14506,6 +14506,9 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
                 ss << statement.serialize() << "(";
                 std::vector<std::string> args;
                 using args_type = typename std::decay<decltype(statement)>::type::args_type;
@@ -14520,6 +14523,9 @@ namespace sqlite_orm {
                     }
                 }
                 ss << ")";
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
                 return ss.str();
             }
         };
