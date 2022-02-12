@@ -407,14 +407,14 @@ namespace sqlite_orm {
             using statement_type = binary_operator<L, R, Ds...>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
-                auto lhs = serialize(c.lhs, context);
-                auto rhs = serialize(c.rhs, context);
+            std::string operator()(const statement_type& statement, const C& context) const {
+                auto lhs = serialize(statement.lhs, context);
+                auto rhs = serialize(statement.rhs, context);
                 std::stringstream ss;
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                ss << lhs << " " << static_cast<std::string>(c) << " " << rhs;
+                ss << lhs << " " << statement.serialize() << " " << rhs;
                 if(context.use_parentheses) {
                     ss << ')';
                 }
@@ -570,10 +570,10 @@ namespace sqlite_orm {
             using statement_type = bitwise_not_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                auto cString = serialize(c.argument, context);
+                ss << statement.serialize() << " ";
+                auto cString = serialize(statement.argument, context);
                 ss << " (" << cString << " )";
                 return ss.str();
             }
@@ -1193,7 +1193,7 @@ namespace sqlite_orm {
                 iterate_tuple(statement.assigns,
                               [&ss, &context, &leftContext, &assignIndex, assignsCount](auto& value) {
                                   ss << ' ' << serialize(value.lhs, leftContext);
-                                  ss << ' ' << static_cast<std::string>(value) << ' ';
+                                  ss << ' ' << value.serialize() << ' ';
                                   ss << serialize(value.rhs, context);
                                   if(assignIndex < assignsCount - 1) {
                                       ss << ",";
@@ -1226,7 +1226,7 @@ namespace sqlite_orm {
                         iterate_tuple(upd.set.assigns, [&context, &leftContext, &setPairs](auto& asgn) {
                             std::stringstream sss;
                             sss << serialize(asgn.lhs, leftContext);
-                            sss << " " << static_cast<std::string>(asgn) << " ";
+                            sss << " " << asgn.serialize() << " ";
                             sss << serialize(asgn.rhs, context);
                             setPairs.push_back(sss.str());
                         });

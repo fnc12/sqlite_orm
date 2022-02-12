@@ -574,21 +574,21 @@ namespace sqlite_orm {
              */
             template<class O>
             typename std::enable_if<storage_traits::type_is_mapped<self, O>::value, std::string>::type
-            dump(const O& o) {
+            dump(const O& object) {
                 auto& tImpl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "{ ";
                 using pair = std::pair<std::string, std::string>;
                 std::vector<pair> pairs;
-                tImpl.table.for_each_column([&pairs, &o](auto& column) {
+                tImpl.table.for_each_column([&pairs, &object](auto& column) {
                     using column_type = typename std::decay<decltype(column)>::type;
                     using field_type = typename column_type::field_type;
                     pair p{column.name, std::string()};
                     if(column.member_pointer) {
-                        p.second = field_printer<field_type>()(o.*column.member_pointer);
+                        p.second = field_printer<field_type>()(object.*column.member_pointer);
                     } else {
                         using getter_type = typename column_type::getter_type;
-                        field_value_holder<getter_type> valueHolder{(o.*(column.getter))()};
+                        field_value_holder<getter_type> valueHolder{(object.*(column.getter))()};
                         p.second = field_printer<field_type>()(valueHolder.value);
                     }
                     pairs.push_back(move(p));
@@ -818,7 +818,6 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                // context.replace_bindable_with_question = true;
                 auto query = serialize(tableImpl.table, context);
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
                 if(rc != SQLITE_OK) {
@@ -832,6 +831,11 @@ namespace sqlite_orm {
             sync_schema_result sync_table(const storage_impl<table_t<T, WithoutRowId, Args...>, Tss...>& tImpl,
                                           sqlite3* db,
                                           bool preserve) {
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+                if(std::is_same<T, dbstat>::value) {
+                    return sync_schema_result::already_in_sync;
+                }
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
                 auto res = sync_schema_result::already_in_sync;
 
                 auto schema_stat = tImpl.schema_status(db, preserve);
