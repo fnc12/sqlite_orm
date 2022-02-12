@@ -1671,6 +1671,24 @@ namespace sqlite_orm {
     }
 }
 
+// #include "serialize_result_type.h"
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>  //  string_view
+#else
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        using serialize_result_type = std::string_view;
+#else
+        using serialize_result_type = std::string;
+#endif
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1692,7 +1710,7 @@ namespace sqlite_orm {
         };
 
         struct conc_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "||";
             }
         };
@@ -1704,7 +1722,7 @@ namespace sqlite_orm {
         using conc_t = binary_operator<L, R, conc_string>;
 
         struct add_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "+";
             }
         };
@@ -1716,7 +1734,7 @@ namespace sqlite_orm {
         using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
 
         struct sub_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "-";
             }
         };
@@ -1728,7 +1746,7 @@ namespace sqlite_orm {
         using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
 
         struct mul_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "*";
             }
         };
@@ -1740,7 +1758,7 @@ namespace sqlite_orm {
         using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
 
         struct div_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "/";
             }
         };
@@ -1752,7 +1770,7 @@ namespace sqlite_orm {
         using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
         struct mod_operator_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "%";
             }
         };
@@ -1764,7 +1782,7 @@ namespace sqlite_orm {
         using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
         struct bitwise_shift_left_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<<";
             }
         };
@@ -1776,7 +1794,7 @@ namespace sqlite_orm {
         using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
         struct bitwise_shift_right_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">>";
             }
         };
@@ -1788,7 +1806,7 @@ namespace sqlite_orm {
         using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
         struct bitwise_and_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "&";
             }
         };
@@ -1800,7 +1818,7 @@ namespace sqlite_orm {
         using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
         struct bitwise_or_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "|";
             }
         };
@@ -1812,7 +1830,7 @@ namespace sqlite_orm {
         using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
         struct bitwise_not_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "~";
             }
         };
@@ -1830,7 +1848,7 @@ namespace sqlite_orm {
         };
 
         struct assign_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "=";
             }
         };
@@ -4112,22 +4130,6 @@ namespace sqlite_orm {
 // #include "operators.h"
 
 // #include "serialize_result_type.h"
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>  //  string_view
-#else
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        using serialize_result_type = std::string_view;
-#else
-        using serialize_result_type = std::string;
-#endif
-    }
-}
 
 // #include "tuple_helper/count_tuple.h"
 
@@ -9601,6 +9603,27 @@ namespace sqlite_orm {
 
 // #include "column.h"
 
+// #include "dbstat.h"
+
+#include <string>  //  std::string
+
+namespace sqlite_orm {
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    struct dbstat {
+        std::string name;
+        std::string path;
+        int pageno = 0;
+        std::string pagetype;
+        int ncell = 0;
+        int payload = 0;
+        int unused = 0;
+        int mx_payload = 0;
+        int pgoffset = 0;
+        int pgsize = 0;
+    };
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -9924,6 +9947,21 @@ namespace sqlite_orm {
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    inline auto make_dbstat_table() {
+        return make_table("dbstat",
+                          make_column("name", &dbstat::name),
+                          make_column("path", &dbstat::path),
+                          make_column("pageno", &dbstat::pageno),
+                          make_column("pagetype", &dbstat::pagetype),
+                          make_column("ncell", &dbstat::ncell),
+                          make_column("payload", &dbstat::payload),
+                          make_column("unused", &dbstat::unused),
+                          make_column("mx_payload", &dbstat::mx_payload),
+                          make_column("pgoffset", &dbstat::pgoffset),
+                          make_column("pgsize", &dbstat::pgsize));
+    }
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }
 #pragma once
 
@@ -14729,14 +14767,14 @@ namespace sqlite_orm {
             using statement_type = binary_operator<L, R, Ds...>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
-                auto lhs = serialize(c.lhs, context);
-                auto rhs = serialize(c.rhs, context);
+            std::string operator()(const statement_type& statement, const C& context) const {
+                auto lhs = serialize(statement.lhs, context);
+                auto rhs = serialize(statement.rhs, context);
                 std::stringstream ss;
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                ss << lhs << " " << static_cast<std::string>(c) << " " << rhs;
+                ss << lhs << " " << statement.serialize() << " " << rhs;
                 if(context.use_parentheses) {
                     ss << ')';
                 }
@@ -14892,10 +14930,10 @@ namespace sqlite_orm {
             using statement_type = bitwise_not_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                auto cString = serialize(c.argument, context);
+                ss << statement.serialize() << " ";
+                auto cString = serialize(statement.argument, context);
                 ss << " (" << cString << " )";
                 return ss.str();
             }
@@ -15515,7 +15553,7 @@ namespace sqlite_orm {
                 iterate_tuple(statement.assigns,
                               [&ss, &context, &leftContext, &assignIndex, assignsCount](auto& value) {
                                   ss << ' ' << serialize(value.lhs, leftContext);
-                                  ss << ' ' << static_cast<std::string>(value) << ' ';
+                                  ss << ' ' << value.serialize() << ' ';
                                   ss << serialize(value.rhs, context);
                                   if(assignIndex < assignsCount - 1) {
                                       ss << ",";
@@ -15548,7 +15586,7 @@ namespace sqlite_orm {
                         iterate_tuple(upd.set.assigns, [&context, &leftContext, &setPairs](auto& asgn) {
                             std::stringstream sss;
                             sss << serialize(asgn.lhs, leftContext);
-                            sss << " " << static_cast<std::string>(asgn) << " ";
+                            sss << " " << asgn.serialize() << " ";
                             sss << serialize(asgn.rhs, context);
                             setPairs.push_back(sss.str());
                         });
@@ -17280,21 +17318,21 @@ namespace sqlite_orm {
              */
             template<class O>
             typename std::enable_if<storage_traits::type_is_mapped<self, O>::value, std::string>::type
-            dump(const O& o) {
+            dump(const O& object) {
                 auto& tImpl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "{ ";
                 using pair = std::pair<std::string, std::string>;
                 std::vector<pair> pairs;
-                tImpl.table.for_each_column([&pairs, &o](auto& column) {
+                tImpl.table.for_each_column([&pairs, &object](auto& column) {
                     using column_type = typename std::decay<decltype(column)>::type;
                     using field_type = typename column_type::field_type;
                     pair p{column.name, std::string()};
                     if(column.member_pointer) {
-                        p.second = field_printer<field_type>()(o.*column.member_pointer);
+                        p.second = field_printer<field_type>()(object.*column.member_pointer);
                     } else {
                         using getter_type = typename column_type::getter_type;
-                        field_value_holder<getter_type> valueHolder{(o.*(column.getter))()};
+                        field_value_holder<getter_type> valueHolder{(object.*(column.getter))()};
                         p.second = field_printer<field_type>()(valueHolder.value);
                     }
                     pairs.push_back(move(p));
@@ -17524,7 +17562,6 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                // context.replace_bindable_with_question = true;
                 auto query = serialize(tableImpl.table, context);
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
                 if(rc != SQLITE_OK) {
@@ -17538,6 +17575,11 @@ namespace sqlite_orm {
             sync_schema_result sync_table(const storage_impl<table_t<T, WithoutRowId, Args...>, Tss...>& tImpl,
                                           sqlite3* db,
                                           bool preserve) {
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+                if(std::is_same<T, dbstat>::value) {
+                    return sync_schema_result::already_in_sync;
+                }
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
                 auto res = sync_schema_result::already_in_sync;
 
                 auto schema_stat = tImpl.schema_status(db, preserve);
