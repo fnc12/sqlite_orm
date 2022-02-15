@@ -86,3 +86,27 @@ TEST_CASE("Escaped index name") {
                                 make_table("users", make_column("group", &User::group)));
     storage.sync_schema();
 }
+
+TEST_CASE("Compound index") {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+    auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
+
+    using storage_impl_t = internal::storage_impl<decltype(table)>;
+    auto storageImpl = storage_impl_t{table};
+    using context_t = internal::serializator_context<storage_impl_t>;
+    context_t context{storageImpl};
+    std::string value;
+    decltype(value) expected;
+
+    auto index =
+        make_index("idx_users_id_and_name", indexed_column(&User::id).asc(), indexed_column(&User::name).asc());
+    value = internal::serialize(index, context);
+    expected = "CREATE INDEX IF NOT EXISTS 'idx_users_id_and_name' ON 'users' (\"id\" ASC, \"name\" ASC)";
+    REQUIRE(value == expected);
+    auto storage = make_storage("compound_index.sqlite", index, table);
+    storage.sync_schema();
+    storage.insert(User{1, "juan"});
+}
