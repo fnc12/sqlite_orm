@@ -2,9 +2,14 @@
   <img src="https://github.com/fnc12/sqlite_orm/blob/master/logo.png" alt="Sublime's custom image" width="557"/>
 </p>
 
-[![Donate using PayPal](https://img.shields.io/badge/donate-PayPal-brightgreen.svg)](https://paypal.me/fnc12)
-[![Twitter URL](https://img.shields.io/twitter/url/https/twitter.com/fold_left.svg?style=social&label=Follow%20%40sqlite_orm)](https://twitter.com/sqlite_orm)
-
+[![C++](https://img.shields.io/badge/c++-%2300599C.svg?style=for-the-badge&logo=c%2B%2B&logoColor=white)](https://en.cppreference.com/w/)
+[![SQLite](https://img.shields.io/badge/sqlite-%2307405e.svg?style=for-the-badge&logo=sqlite&logoColor=white)](https://www.sqlite.org/index.html)
+[![GitHub Actions](https://img.shields.io/badge/githubactions-%232671E5.svg?style=for-the-badge&logo=githubactions&logoColor=white)](https://github.com/fnc12/sqlite_orm/actions)
+[![CMake](https://img.shields.io/badge/CMake-%23008FBA.svg?style=for-the-badge&logo=cmake&logoColor=white)](https://github.com/fnc12/sqlite_orm/blob/dev/CMakeLists.txt)
+[![Stack Overflow](https://img.shields.io/badge/-Stackoverflow-FE7A16?style=for-the-badge&logo=stack-overflow&logoColor=white)](https://stackoverflow.com/search?q=sqlite_orm)
+[![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/fnc12)
+[![Twitter](https://img.shields.io/badge/sqlite_orm-%231DA1F2.svg?style=for-the-badge&logo=Twitter&logoColor=white)](https://twitter.com/sqlite_orm)
+[![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://patreon.com/fnc12)
 
 # SQLite ORM
 SQLite ORM light header only library for modern C++. Please read the license precisely. The project has AGPL license for open source project and MIT license after purchasing it for 50$ (using [PayPal](https://paypal.me/fnc12) or any different way (contact using email fnc12@me.com)).
