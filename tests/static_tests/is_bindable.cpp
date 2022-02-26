@@ -21,6 +21,8 @@ TEST_CASE("is_bindable") {
     static_assert(internal::is_bindable<std::nullptr_t>::value, "null must be bindable");
     static_assert(internal::is_bindable<std::unique_ptr<int>>::value, "unique_ptr must be bindable");
     static_assert(internal::is_bindable<std::shared_ptr<int>>::value, "shared_ptr must be bindable");
+    static_assert(internal::is_bindable<pointer_binding<carray_pvt, std::nullptr_t, null_xdestroy_t>>::value,
+                  "pointer_binding must be bindable");
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     static_assert(internal::is_bindable<std::optional<int>>::value, "optional must be bindable");

@@ -30,6 +30,11 @@ TEST_CASE("bindable_pointer") {
         value = serialize(ast, context);
         expected = "remember(1, null)";
     }
+    SECTION("nullptr as function argument") {
+        auto ast = func<remember_fn>(1, nullptr);
+        value = serialize(ast, context);
+        expected = "remember(1, null)";
+    }
 
     REQUIRE(value == expected);
 }
