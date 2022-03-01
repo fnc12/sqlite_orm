@@ -455,13 +455,56 @@ int main(int, char**) {
         //      (SELECT agent_code
         //      FROM customer
         //      WHERE payment_amt=1400);
+
         auto rows = storage.select(
             columns(&Order::agentCode, &Order::num, &Order::amount, &Order::custCode),
+            from<Order>(),
             where(not exists(select(&Customer::agentCode, where(is_equal(&Customer::paymentAmt, 1400))))));
         cout << "AGENT_CODE  ORD_NUM     ORD_AMOUNT  CUST_CODE" << endl;
         for(auto& row: rows) {
             cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
                  << endl;
+        }
+    }
+    {
+
+        //  SELECT "orders"."AGENT_CODE", "orders"."ORD_NUM", "orders"."ORD_AMOUNT", "orders"."CUST_CODE", 'c'."PAYMENT_AMT"
+        //  FROM 'orders' INNER JOIN  'customer' 'c' ON('c'."AGENT_CODE" = "orders"."AGENT_CODE")
+        //  WHERE(NOT(EXISTS
+        //      (
+        //          SELECT 'd'."AGENT_CODE" FROM 'customer' 'd' WHERE((('c'."PAYMENT_AMT" = 7000) AND('d'."AGENT_CODE" = 'c'."AGENT_CODE")))))
+        //      )
+        //  ORDER BY 'c'."PAYMENT_AMT"
+
+        using als = alias_c<Customer>;
+        using als_2 = alias_d<Customer>;
+
+        double amount = 2000;
+        auto where_clause =
+            select(alias_column<als_2>(&Customer::agentCode),
+                   from<als_2>(),
+                   where(is_equal(alias_column<als>(&Customer::paymentAmt), std::ref(amount)) and
+                         (alias_column<als_2>(&Customer::agentCode) == c(alias_column<als>(&Customer::agentCode)))));
+
+        amount = 7000;
+
+        auto statement =
+            storage.prepare(select(columns(&Order::agentCode,
+                                           &Order::num,
+                                           &Order::amount,
+                                           &Order::custCode,
+                                           alias_column<als>(&Customer::paymentAmt)),
+                                   from<Order>(),
+                                   inner_join<als>(on(alias_column<als>(&Customer::agentCode) == c(&Order::agentCode))),
+                                   where(not exists(where_clause)),
+                                   order_by(alias_column<als>(&Customer::paymentAmt))));
+
+        auto sql = statement.expanded_sql();
+        auto rows = storage.execute(statement);
+        cout << endl;
+        for(auto& row: rows) {
+            cout << std::get<0>(row) << '\t' << std::get<1>(row) << '\t' << std::get<2>(row) << '\t' << std::get<3>(row)
+                 << '\t' << std::get<4>(row) << endl;
         }
     }
     return 0;
