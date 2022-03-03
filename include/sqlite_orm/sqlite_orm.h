@@ -64,6 +64,7 @@ __pragma(push_macro("min"))
         function_not_found,
         index_is_out_of_bounds,
         value_is_null,
+        no_tables_specified,
     };
 }
 
@@ -113,6 +114,8 @@ namespace sqlite_orm {
                     return "Index is out of bounds";
                 case orm_error_code::value_is_null:
                     return "Value is null";
+                case orm_error_code::no_tables_specified:
+                    return "No tables specified";
                 default:
                     return "unknown error";
             }
@@ -6379,19 +6382,11 @@ namespace sqlite_orm {
         template<class... Args>
         struct is_columns<columns_t<Args...>> : std::true_type {};
 
-        struct set_string {
-            operator std::string() const {
-                return "SET";
-            }
-        };
-
         template<class... Args>
-        struct set_t : set_string {
+        struct set_t {
             using assigns_type = std::tuple<Args...>;
 
             assigns_type assigns;
-
-            set_t(assigns_type assigns_) : assigns(move(assigns_)) {}
         };
 
         /**
@@ -15554,7 +15549,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(statement);
+                ss << "SET";
                 auto assignsCount = std::tuple_size<typename statement_type::assigns_type>::value;
                 decltype(assignsCount) assignIndex = 0;
                 auto leftContext = context;
@@ -15586,32 +15581,31 @@ namespace sqlite_orm {
                 });
                 iterate_ast(upd.set.assigns, collector);
                 if(!collector.table_names.empty()) {
-                    if(collector.table_names.size() == 1) {
-                        ss << " '" << collector.table_names.begin()->first << "' ";
-                        ss << static_cast<std::string>(upd.set) << " ";
+                    if(collector.table_names.size() >= 1) {
+                        ss << " '" << collector.table_names.begin()->first << "' SET";
                         std::vector<std::string> setPairs;
                         auto leftContext = context;
                         leftContext.skip_table_name = true;
                         iterate_tuple(upd.set.assigns, [&context, &leftContext, &setPairs](auto& asgn) {
                             std::stringstream sss;
                             sss << serialize(asgn.lhs, leftContext);
-                            sss << " " << asgn.serialize() << " ";
+                            sss << ' ' << asgn.serialize() << ' ';
                             sss << serialize(asgn.rhs, context);
                             setPairs.push_back(sss.str());
                         });
                         auto setPairsCount = setPairs.size();
                         for(size_t i = 0; i < setPairsCount; ++i) {
-                            ss << setPairs[i] << " ";
+                            ss << ' ' << setPairs[i];
                             if(i < setPairsCount - 1) {
-                                ss << ", ";
+                                ss << ",";
                             }
                         }
                         iterate_tuple(upd.conditions, [&context, &ss](auto& v) {
-                            ss << serialize(v, context);
+                            ss << ' ' << serialize(v, context);
                         });
                         return ss.str();
                     } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::too_many_tables_specified));
+                        throw std::system_error(std::make_error_code(orm_error_code::no_tables_specified));
                     }
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::incorrect_set_fields_specified));
