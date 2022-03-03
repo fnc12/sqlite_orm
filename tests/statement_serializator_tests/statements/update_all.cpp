@@ -50,11 +50,11 @@ TEST_CASE("statement_serializator update_all") {
     auto storageImpl = storage_impl_t{contactsTable, customersTable};
     using context_t = internal::serializator_context<storage_impl_t>;
     context_t context{storageImpl};
-    
-    auto statement = update_all(set(c(&Contact::phone) = select(&Customer::phone,
-                                                                from<Customer>(),
-                                                                where(c(&Customer::id) == 1))));
+
+    auto statement =
+        update_all(set(c(&Contact::phone) = select(&Customer::phone, from<Customer>(), where(c(&Customer::id) == 1))));
     auto value = serialize(statement, context);
-    decltype(value) expected = "UPDATE 'contacts' SET \"phone\" = (SELECT \"customers\".\"Phone\" FROM 'customers' WHERE ((\"CustomerId\" = 1)))";
+    decltype(value) expected = "UPDATE 'contacts' SET \"phone\" = (SELECT \"customers\".\"Phone\" FROM 'customers' "
+                               "WHERE ((\"CustomerId\" = 1)))";
     REQUIRE(expected == value);
 }

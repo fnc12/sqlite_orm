@@ -1181,9 +1181,8 @@ int main(int, char** argv) {
         }
         cout << endl;
     }
-    
-    storage.update_all(set(c(&Contact::phone) = select(&Customer::phone,
-                                                       from<Customer>(),
-                                                       where(c(&Customer::id) == 1))));
+
+    storage.update_all(
+        set(c(&Contact::phone) = select(&Customer::phone, from<Customer>(), where(c(&Customer::id) == 1))));
     return 0;
 }
