@@ -130,7 +130,7 @@ namespace sqlite_orm {
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
             using node_type = typename std::decay<decltype(node)>::type;
-            if(internal::is_bindable<node_type>::value) {
+            if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
             if(index == N) {
@@ -153,7 +153,7 @@ namespace sqlite_orm {
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
             using node_type = typename std::decay<decltype(node)>::type;
-            if(internal::is_bindable<node_type>::value) {
+            if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
             if(index == N) {

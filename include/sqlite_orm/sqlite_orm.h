@@ -514,6 +514,17 @@ namespace sqlite_orm {
             using std::void_t;
 #endif
 
+#if __cplusplus < 202002L  // before C++20
+            template<class T>
+            struct remove_cvref : std::remove_cv<std::remove_reference_t<T>> {};
+
+            template<class T>
+            using remove_cvref_t = typename remove_cvref<T>::type;
+#else
+            using std::remove_cvref;
+            using std::remove_cvref_t;
+#endif
+
 #if __cplusplus < 202312L  // before C++23
             template<typename Type, template<typename...> class Primary>
             SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
@@ -2589,14 +2600,59 @@ namespace sqlite_orm {
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 
+// #include "start_macros.h"
+
+// #include "cxx_polyfill.h"
+
+// #include "is_std_ptr.h"
+
+namespace sqlite_orm {
+
+    /**
+     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
+     */
+    template<typename T>
+    struct is_std_ptr : std::false_type {};
+
+    template<typename T>
+    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
+        using element_type = typename std::shared_ptr<T>::element_type;
+
+        static std::shared_ptr<T> make(const T& v) {
+            return std::make_shared<T>(v);
+        }
+    };
+
+    template<typename T>
+    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
+        using element_type = typename std::unique_ptr<T>::element_type;
+
+        static std::unique_ptr<T> make(const T& v) {
+            return std::make_unique<T>(v);
+        }
+    };
+}
+
 namespace sqlite_orm {
 
     /**
      *  Is used to print members mapped to objects in storage_t::dump member function.
      *  Other developers can create own specialization to map custom types
      */
-    template<class T, typename Enable = void>
-    struct field_printer {
+    template<class T, typename SFINAE = void>
+    struct field_printer;
+
+    namespace internal {
+        template<class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v<T, polyfill::void_t<decltype(field_printer<T>{})>> = true;
+        template<class T>
+        using is_printable = polyfill::bool_constant<is_printable_v<T>>;
+    }
+
+    template<class T>
+    struct field_printer<T, std::enable_if_t<std::is_arithmetic<T>::value>> {
         std::string operator()(const T& t) const {
             std::stringstream stream;
             stream << t;
@@ -2629,7 +2685,7 @@ namespace sqlite_orm {
     };
 
     /**
-     *  char is neigher signer char nor unsigned char so it has its own specialization
+     *  char is neither signdr char nor unsigned char so it has its own specialization
      */
     template<>
     struct field_printer<char, void> {
@@ -2640,10 +2696,10 @@ namespace sqlite_orm {
         }
     };
 
-    template<>
-    struct field_printer<std::string, void> {
-        std::string operator()(const std::string& string) const {
-            return string;
+    template<class T>
+    struct field_printer<T, std::enable_if_t<std::is_base_of<std::string, T>::value>> {
+        std::string operator()(std::string string) const {
+            return move(string);
         }
     };
 
@@ -2659,8 +2715,8 @@ namespace sqlite_orm {
         }
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
-    template<>
-    struct field_printer<std::wstring, void> {
+    template<class T>
+    struct field_printer<T, std::enable_if_t<std::is_base_of<std::wstring, T>::value>> {
         std::string operator()(const std::wstring& wideString) const {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return converter.to_bytes(wideString);
@@ -2682,23 +2738,12 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<std::shared_ptr<T>, void> {
-        std::string operator()(const std::shared_ptr<T>& t) const {
+    struct field_printer<T, std::enable_if_t<is_std_ptr<T>::value>> {
+        std::string operator()(const T& t) const {
             if(t) {
-                return field_printer<T>()(*t);
+                return field_printer<typename T::element_type>()(*t);
             } else {
-                return field_printer<std::nullptr_t>()(nullptr);
-            }
-        }
-    };
-
-    template<class T>
-    struct field_printer<std::unique_ptr<T>, void> {
-        std::string operator()(const std::unique_ptr<T>& t) const {
-            if(t) {
-                return field_printer<T>()(*t);
-            } else {
-                return field_printer<std::nullptr_t>()(nullptr);
+                return field_printer<std::nullptr_t>{}(nullptr);
             }
         }
     };
@@ -2710,21 +2755,11 @@ namespace sqlite_orm {
             if(t.has_value()) {
                 return field_printer<T>()(*t);
             } else {
-                return field_printer<std::nullptr_t>()(nullptr);
+                return field_printer<std::nullopt_t>{}(std::nullopt);
             }
         }
     };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-    template<typename P, typename T, typename D>
-    class pointer_binding;
-
-    template<class P, class T, class D>
-    struct field_printer<pointer_binding<P, T, D>, void> {
-        std::string operator()(const pointer_binding<P, T, D>&) const {
-            return field_printer<std::nullptr_t>()(nullptr);
-        }
-    };
 }
 #pragma once
 
@@ -7285,43 +7320,18 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
-#ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
-#include <utility>  //  std::declval
-#include <locale>  //  std::wstring_convert
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cstring>  //  ::strncpy, ::strlen
+#include <cwchar>  //  ::wcsncpy, ::wcslen
+#endif
+
+// #include "start_macros.h"
+
+// #include "cxx_polyfill.h"
 
 // #include "is_std_ptr.h"
-
-namespace sqlite_orm {
-
-    /**
-     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
-     */
-    template<typename T>
-    struct is_std_ptr : std::false_type {};
-
-    template<typename T>
-    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
-        using element_type = T;
-
-        static std::shared_ptr<T> make(const T& v) {
-            return std::make_shared<T>(v);
-        }
-    };
-
-    template<typename T>
-    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
-        using element_type = T;
-
-        static std::unique_ptr<T> make(const T& v) {
-            return std::make_unique<T>(v);
-        }
-    };
-}
 
 // #include "arithmetic_tag.h"
 
@@ -7335,7 +7345,7 @@ namespace sqlite_orm {
      *  Helper class used for binding fields to sqlite3 statements.
      */
     template<class V, typename Enable = void>
-    struct statement_binder : std::false_type {};
+    struct statement_binder;
 
     /**
      *  Specialization for 'pointer-passing interface'.
@@ -7404,65 +7414,90 @@ namespace sqlite_orm {
      *  Specialization for std::string and C-string.
      */
     template<class V>
-    struct statement_binder<V,
-                            std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char*>::value
+    struct statement_binder<
+        V,
+        std::enable_if_t<std::is_base_of<std::string, V>::value || std::is_same<V, const char*>::value
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                             || std::is_same<V, std::string_view>::value
+                         || std::is_same_v<V, std::string_view>
 #endif
-                                             >> {
+                         >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
-            return sqlite3_bind_text(stmt, index, std::get<0>(stringData), std::get<1>(stringData), SQLITE_TRANSIENT);
+            return sqlite3_bind_text(stmt, index, stringData.first, stringData.second, SQLITE_TRANSIENT);
         }
 
         void result(sqlite3_context* context, const V& value) const {
             auto stringData = this->string_data(value);
-            auto stringDataLength = std::get<1>(stringData);
-            auto dataCopy = new char[stringDataLength + 1];
+            auto dataCopy = new char[stringData.second + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            auto stringChars = std::get<0>(stringData);
-            ::strncpy(dataCopy, stringChars, stringDataLength + 1);
-            sqlite3_result_text(context, dataCopy, stringDataLength, obtain_xdestroy_for(deleter, dataCopy));
+            ::strncpy(dataCopy, stringData.first, stringData.second + 1);
+            sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
         }
 
       private:
-        std::tuple<const char*, int> string_data(const std::string& s) const {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        std::pair<const char*, int> string_data(const std::string_view& s) const {
+            return {s.data(), int(s.size())};
+        }
+#else
+        std::pair<const char*, int> string_data(const std::string& s) const {
             return {s.c_str(), int(s.size())};
         }
 
-        std::tuple<const char*, int> string_data(const char* s) const {
-            auto length = int(::strlen(s));
-            return {s, length};
-        }
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        std::tuple<const char*, int> string_data(const std::string_view& s) const {
-            return {s.data(), int(s.size())};
+        std::pair<const char*, int> string_data(const char* s) const {
+            return {s, int(::strlen(s))};
         }
 #endif
     };
 
-#ifndef SQLITE_ORM_OMITS_CODECVT
     /**
      *  Specialization for std::wstring and C-wstring.
      */
     template<class V>
-    struct statement_binder<
-        V,
-        std::enable_if_t<std::is_same<V, std::wstring>::value || std::is_same<V, const wchar_t*>::value>> {
+    struct statement_binder<V,
+                            std::enable_if_t<sizeof(wchar_t) == 2 && (std::is_base_of<std::wstring, V>::value ||
+                                                                      std::is_same<V, const wchar_t*>::value
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                                                                      || std::is_same_v<V, std::wstring_view>
+#endif
+                                                                      )>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-            std::string utf8Str = converter.to_bytes(value);
-            return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
+            auto stringData = this->string_data(value);
+            return sqlite3_bind_text16(stmt,
+                                       index,
+                                       stringData.first,
+                                       stringData.second * sizeof(wchar_t),
+                                       SQLITE_TRANSIENT);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_text16(context, (const void*)value.data(), int(value.length()), nullptr);
+            auto stringData = this->string_data(value);
+            auto dataCopy = new wchar_t[stringData.second + 1];
+            constexpr auto deleter = std::default_delete<wchar_t[]>{};
+            ::wcsncpy(dataCopy, stringData.first, stringData.second + 1);
+            sqlite3_result_text16(context,
+                                  dataCopy,
+                                  stringData.second * sizeof(wchar_t),
+                                  obtain_xdestroy_for(deleter, dataCopy));
         }
+
+      private:
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
+            return {s.data(), int(s.size())};
+        }
+#else
+        std::pair<const wchar_t*, int> string_data(const std::wstring& s) const {
+            return {s.c_str(), int(s.size())};
+        }
+
+        std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
+            return {s, int(::wcslen(s))};
+        }
+#endif
     };
-#endif  //  SQLITE_ORM_OMITS_CODECVT
 
     /**
      *  Specialization for std::nullptr_t.
@@ -7516,7 +7551,7 @@ namespace sqlite_orm {
     };
 
     /**
-     *  Specialization for optional type (std::vector<char>).
+     *  Specialization for binary data (std::vector<char>).
      */
     template<>
     struct statement_binder<std::vector<char>, void> {
@@ -7562,8 +7597,12 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
         template<class T>
-        using is_bindable = std::integral_constant<bool, !std::is_base_of<std::false_type, statement_binder<T>>::value>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>{})>> = true;
+        template<class T>
+        using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
 
         struct conditional_binder_base {
             sqlite3_stmt* stmt = nullptr;
@@ -13638,9 +13677,11 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif  //  SQLITE_ORM_OMITS_CODECVT
+
+// #include "start_macros.h"
 
 // #include "core_functions.h"
 
@@ -13652,7 +13693,11 @@ namespace sqlite_orm {
 
 // #include "rowid.h"
 
+// #include "pointer_value.h"
+
 // #include "type_printer.h"
+
+// #include "field_printer.h"
 
 // #include "table_name_collector.h"
 
@@ -13975,17 +14020,78 @@ namespace sqlite_orm {
             return serializator(t, context);
         }
 
+        /**
+         *  Serializer for bindable types.
+         */
         template<class T>
-        struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
+        struct statement_serializator<T, std::enable_if_t<is_bindable_v<T>>> {
             using statement_type = T;
 
             template<class C>
-            std::string operator()(const statement_type& statement, const C& context) {
+            std::string operator()(const T& statement, const C& context) const {
                 if(context.replace_bindable_with_question) {
                     return "?";
                 } else {
-                    return field_printer<T>{}(statement);
+                    return this->do_serialize(statement);
                 }
+            }
+
+          private:
+            template<class X,
+                     std::enable_if_t<is_printable_v<X> && !std::is_base_of<std::string, X>::value
+#ifndef SQLITE_ORM_OMITS_CODECVT
+                                          && !std::is_base_of<std::wstring, X>::value
+#endif
+                                      ,
+                                      bool> = true>
+            std::string do_serialize(const X& c) const {
+                static_assert(std::is_same<X, T>::value, "");
+
+                // implementation detail: utilizing field_printer
+                return field_printer<X>{}(c);
+            }
+
+            std::string do_serialize(const std::string& c) const {
+                // implementation detail: utilizing field_printer
+                return "'" + field_printer<std::string>{}(c) + "'";
+            }
+
+            std::string do_serialize(const char* c) const {
+                return std::string("'") + c + "'";
+            }
+#ifndef SQLITE_ORM_OMITS_CODECVT
+            std::string do_serialize(const std::wstring& c) const {
+                // implementation detail: utilizing field_printer
+                return "'" + field_printer<std::wstring>{}(c) + "'";
+            }
+
+            std::string do_serialize(const wchar_t* c) const {
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                return std::string("'") + converter.to_bytes(c) + "'";
+            }
+#endif
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+            std::string do_serialize(const std::string_view& c) const {
+                return "'" + std::string(c) + "'";
+            }
+#ifndef SQLITE_ORM_OMITS_CODECVT
+            std::string do_serialize(const std::wstring_view& c) const {
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                return "'" + converter.to_bytes(c.data(), c.data() + c.size()) + "'";
+            }
+#endif
+#endif
+            /**
+             *  Specialization for binary data (std::vector<char>).
+             */
+            std::string do_serialize(const std::vector<char>& t) const {
+                return "x'" + field_printer<std::vector<char>>{}(t) + "'";
+            }
+
+            template<class P, class PT, class D>
+            std::string do_serialize(const pointer_binding<P, PT, D>&) const {
+                // always serialize null (security reasons)
+                return field_printer<std::nullptr_t>{}(nullptr);
             }
         };
 
@@ -14026,26 +14132,6 @@ namespace sqlite_orm {
             }
         };
 
-        template<>
-        struct statement_serializator<std::nullptr_t, void> {
-            using statement_type = std::nullptr_t;
-
-            template<class C>
-            std::string operator()(const statement_type&, const C&) {
-                return "?";
-            }
-        };
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        template<>
-        struct statement_serializator<std::nullopt_t, void> {
-            using statement_type = std::nullopt_t;
-
-            template<class C>
-            std::string operator()(const statement_type&, const C&) {
-                return "?";
-            }
-        };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<alias_holder<T>, void> {
             using statement_type = alias_holder<T>;
@@ -14167,50 +14253,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
-
-        template<>
-        struct statement_serializator<std::string, void> {
-            using statement_type = std::string;
-
-            template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
-                if(context.replace_bindable_with_question) {
-                    return "?";
-                } else {
-                    return "'" + c + "'";
-                }
-            }
-        };
-
-        template<>
-        struct statement_serializator<const char*, void> {
-            using statement_type = const char*;
-
-            template<class C>
-            std::string operator()(const char* c, const C& context) const {
-                if(context.replace_bindable_with_question) {
-                    return "?";
-                } else {
-                    return std::string("'") + c + "'";
-                }
-            }
-        };
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        template<>
-        struct statement_serializator<std::string_view, void> {
-            using statement_type = std::string_view;
-
-            template<class C>
-            std::string operator()(const std::string_view& c, const C& context) const {
-                if(context.replace_bindable_with_question) {
-                    return "?";
-                } else {
-                    return "'" + std::string(c) + "'";
-                }
-            }
-        };
-#endif
 
         template<class O, class F>
         struct statement_serializator<F O::*, void> {
@@ -16115,7 +16157,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
-
     }
 }
 
@@ -18338,7 +18379,7 @@ namespace sqlite_orm {
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
             using node_type = typename std::decay<decltype(node)>::type;
-            if(internal::is_bindable<node_type>::value) {
+            if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
             if(index == N) {
@@ -18361,7 +18402,7 @@ namespace sqlite_orm {
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
             using node_type = typename std::decay<decltype(node)>::type;
-            if(internal::is_bindable<node_type>::value) {
+            if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
             if(index == N) {
