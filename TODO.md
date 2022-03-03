@@ -7,7 +7,6 @@
 * `ATTACH`
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
 * CREATE VIEW and other view operations https://sqlite.org/lang_createview.html
-* triggers
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
 * `WINDOW`
 * `SAVEPOINT` https://www.sqlite.org/lang_savepoint.html
@@ -22,5 +21,7 @@
 * strict tables https://sqlite.org/stricttables.html
 * static assert when UPDATE is called with no PKs
 * `json_each` and `json_tree` functions for JSON1 extension
+* update hook
+* `RAISE`
 
 Please feel free to add any feature that isn't listed here and not implemented yet.

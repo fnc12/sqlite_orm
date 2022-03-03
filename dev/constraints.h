@@ -1,13 +1,17 @@
 #pragma once
 
+#include <ostream>  //  std::ostream
+#include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::make_tuple
-#include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
-#include <ostream>  //  std::ostream
 
+#include "collate_argument.h"
+#include "error_code.h"
 #include "table_type.h"
+#include "tuple_helper/same_or_void.h"
 #include "tuple_helper/tuple_helper.h"
+#include "type_printer.h"
 
 namespace sqlite_orm {
 
@@ -277,11 +281,6 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_column(const L&) {}
-
-            template<class... Opts>
-            constexpr bool has_every() const {
-                return false;
-            }
         };
 
         template<class A, class B>
@@ -333,20 +332,13 @@ namespace sqlite_orm {
             }
         };
 
-        struct check_string {
-            operator std::string() const {
-                return "CHECK";
-            }
-        };
-
         template<class T>
-        struct check_t : check_string {
+        struct check_t {
             using expression_type = T;
 
             expression_type expression;
-
-            check_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
+
         struct basic_generated_always {
             enum class storage_type {
                 not_specified,

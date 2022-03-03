@@ -70,23 +70,32 @@ add_executable(unit_tests
     statement_serializator_tests/column_constraints/generated.cpp
     statement_serializator_tests/column_constraints/default.cpp
     statement_serializator_tests/column_constraints/primary_key.cpp
-	statement_serializator_tests/column_names.cpp
 	statement_serializator_tests/column_constraints/autoincrement.cpp
-	statement_serializator_tests/arithmetic_operators.cpp
-	statement_serializator_tests/core_functions.cpp
-	statement_serializator_tests/comparison_operators.cpp
 	statement_serializator_tests/column_constraints/unique.cpp
-	statement_serializator_tests/foreign_key.cpp
-	statement_serializator_tests/collate.cpp
 	statement_serializator_tests/column_constraints/check.cpp
-	statement_serializator_tests/index.cpp
-	statement_serializator_tests/indexed_column.cpp
-    statement_serializator_tests/logical_operators.cpp
-    statement_serializator_tests/select_constraints.cpp
-    statement_serializator_tests/insert_replace.cpp
     statement_serializator_tests/bound_pointer.cpp
     statement_serializator_tests/ast/upsert_clause.cpp
     statement_serializator_tests/ast/excluded.cpp
+    statement_serializator_tests/arithmetic_operators.cpp
+    statement_serializator_tests/base_types.cpp
+    statement_serializator_tests/collate.cpp
+    statement_serializator_tests/comparison_operators.cpp
+    statement_serializator_tests/core_functions.cpp
+    statement_serializator_tests/rowid.cpp
+    statement_serializator_tests/column_names.cpp
+    statement_serializator_tests/foreign_key.cpp
+    statement_serializator_tests/schema/index.cpp
+    statement_serializator_tests/schema/trigger.cpp
+    statement_serializator_tests/schema/new_old.cpp
+    statement_serializator_tests/schema/raise.cpp
+    statement_serializator_tests/indexed_column.cpp
+    statement_serializator_tests/logical_operators.cpp
+    statement_serializator_tests/select.cpp
+    statement_serializator_tests/select_constraints.cpp
+    statement_serializator_tests/insert_replace.cpp
+    statement_serializator_tests/update.cpp
+    statement_serializator_tests/remove.cpp
+    statement_serializator_tests/aggregate_functions.cpp
     storage_tests.cpp
     storage_non_crud_tests.cpp
 	unique_cases/get_all_with_two_tables.cpp
@@ -95,6 +104,7 @@ add_executable(unit_tests
 	unique_cases/issue525.cpp
 	unique_cases/delete_with_two_fields.cpp
 	unique_cases/join_iterator_ctor_compilation_error.cpp
+    unique_cases/issue86.cpp
 	get_all_custom_containers.cpp
 	select_constraints_tests.cpp
 	backup_tests.cpp
@@ -102,12 +112,13 @@ add_executable(unit_tests
     json.cpp
     tuple_helper_tests.cpp
     row_id.cpp
+    trigger_tests.cpp
     ast_iterator_tests.cpp
     unique_cases/issue663.cpp
-    unique_cases/nonstandart_primary_key.cpp
     static_tests/has_some_type.cpp
     static_tests/is_primary_key_insertable.cpp
-    static_tests/is_column_with_insertable_primary_key.cpp)
+    static_tests/is_column_with_insertable_primary_key.cpp
+)
 
 if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")

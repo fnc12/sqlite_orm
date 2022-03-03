@@ -1,5 +1,7 @@
 #pragma once
 
+#include <type_traits>
+
 #include "setters.h"
 
 namespace sqlite_orm {

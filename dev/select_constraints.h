@@ -12,6 +12,7 @@
 #include "optional_container.h"
 #include "ast/where.h"
 #include "ast/group_by.h"
+#include "core_functions.h"
 
 namespace sqlite_orm {
 

@@ -24,21 +24,5 @@ namespace sqlite_orm {
                                         sqlite3_errmsg(db));
             }
         }
-
-        template<class T>
-        inline auto call_insert_impl_and_catch_constraint_failed(const T& insert_impl) {
-            try {
-                return insert_impl();
-            } catch(const std::system_error& e) {
-                if(e.code() == std::error_code(SQLITE_CONSTRAINT, get_sqlite_error_category())) {
-                    std::stringstream ss;
-                    ss << "Attempting to execute 'insert' request resulted in an error like \"" << e.what()
-                       << "\". Perhaps ordinary 'insert' is not acceptable for this table and you should try "
-                          "'replace' or 'insert' with explicit column listing?";
-                    throw std::system_error(e.code(), ss.str());
-                }
-                throw;
-            }
-        }
     }
 }

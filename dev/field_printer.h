@@ -1,5 +1,6 @@
 #pragma once
 
+#include <locale>  // std::wstring_convert
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector

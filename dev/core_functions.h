@@ -7,9 +7,10 @@
 #include <vector>  //  std::vector
 
 #include "conditions.h"
-#include "operators.h"
 #include "is_base_of_template.h"
+#include "operators.h"
 #include "serialize_result_type.h"
+#include "tuple_helper/count_tuple.h"
 
 namespace sqlite_orm {
 
@@ -41,6 +42,30 @@ namespace sqlite_orm {
             args_type args;
 
             built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
+        };
+
+        template<class F, class W>
+        struct filtered_aggregate_function {
+            using function_type = F;
+            using where_expression = W;
+
+            function_type function;
+            where_expression where;
+        };
+
+        template<class C>
+        struct where_t;
+
+        template<class R, class S, class... Args>
+        struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
+            using super = built_in_function_t<R, S, Args...>;
+
+            using super::super;
+
+            template<class W>
+            filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
+                return {*this, std::move(wh.expression)};
+            }
         };
 
         struct typeof_string {
@@ -253,6 +278,11 @@ namespace sqlite_orm {
         template<class T>
         struct count_asterisk_t : count_string {
             using type = T;
+
+            template<class W>
+            filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
+                return {*this, std::move(wh.expression)};
+            }
         };
 
         /**
@@ -1739,7 +1769,7 @@ namespace sqlite_orm {
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */
     template<class X>
-    internal::core_function_t<std::string, internal::soundex_string, X> soundex(X x) {
+    internal::built_in_function_t<std::string, internal::soundex_string, X> soundex(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -1748,7 +1778,7 @@ namespace sqlite_orm {
      *  TOTAL(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<double, internal::total_string, X> total(X x) {
+    internal::built_in_aggregate_function_t<double, internal::total_string, X> total(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -1756,7 +1786,7 @@ namespace sqlite_orm {
      *  SUM(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
+    internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -1764,7 +1794,7 @@ namespace sqlite_orm {
      *  COUNT(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<int, internal::count_string, X> count(X x) {
+    internal::built_in_aggregate_function_t<int, internal::count_string, X> count(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -1788,7 +1818,7 @@ namespace sqlite_orm {
      *  AVG(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<double, internal::avg_string, X> avg(X x) {
+    internal::built_in_aggregate_function_t<double, internal::avg_string, X> avg(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -1796,7 +1826,7 @@ namespace sqlite_orm {
      *  MAX(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
+    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -1804,7 +1834,7 @@ namespace sqlite_orm {
      *  MIN(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
+    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -1812,7 +1842,7 @@ namespace sqlite_orm {
      *  GROUP_CONCAT(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
+    internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -1820,7 +1850,7 @@ namespace sqlite_orm {
      *  GROUP_CONCAT(X, Y) aggregate function.
      */
     template<class X, class Y>
-    internal::built_in_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
+    internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #ifdef SQLITE_ENABLE_JSON1

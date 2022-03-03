@@ -40,6 +40,7 @@ __pragma(push_macro("min"))
 #include <sqlite3.h>
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
+#include <type_traits>
 
         namespace sqlite_orm {
 
@@ -62,6 +63,7 @@ __pragma(push_macro("min"))
         arguments_count_does_not_match,
         function_not_found,
         index_is_out_of_bounds,
+        value_is_null,
     };
 }
 
@@ -109,6 +111,8 @@ namespace sqlite_orm {
                     return "Function not found";
                 case orm_error_code::index_is_out_of_bounds:
                     return "Index is out of bounds";
+                case orm_error_code::value_is_null:
+                    return "Value is null";
                 default:
                     return "unknown error";
             }
@@ -906,11 +910,15 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <ostream>  //  std::ostream
+#include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::make_tuple
-#include <sstream>  //  std::stringstream
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
-#include <ostream>  //  std::ostream
+
+// #include "collate_argument.h"
+
+// #include "error_code.h"
 
 // #include "table_type.h"
 
@@ -1193,6 +1201,8 @@ namespace sqlite_orm {
 
 // #include "member_traits/is_setter.h"
 
+#include <type_traits>
+
 // #include "setters.h"
 
 namespace sqlite_orm {
@@ -1265,7 +1275,11 @@ namespace sqlite_orm {
     }
 }
 
+// #include "tuple_helper/same_or_void.h"
+
 // #include "tuple_helper/tuple_helper.h"
+
+// #include "type_printer.h"
 
 namespace sqlite_orm {
 
@@ -1535,11 +1549,6 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_column(const L&) {}
-
-            template<class... Opts>
-            constexpr bool has_every() const {
-                return false;
-            }
         };
 
         template<class A, class B>
@@ -1591,20 +1600,13 @@ namespace sqlite_orm {
             }
         };
 
-        struct check_string {
-            operator std::string() const {
-                return "CHECK";
-            }
-        };
-
         template<class T>
-        struct check_t : check_string {
+        struct check_t {
             using expression_type = T;
 
             expression_type expression;
-
-            check_t(expression_type expression_) : expression(std::move(expression_)) {}
         };
+
         struct basic_generated_always {
             enum class storage_type {
                 not_specified,
@@ -1963,6 +1965,24 @@ namespace sqlite_orm {
     }
 }
 
+// #include "serialize_result_type.h"
+
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>  //  string_view
+#else
+#include <string>  //  std::string
+#endif
+
+namespace sqlite_orm {
+    namespace internal {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        using serialize_result_type = std::string_view;
+#else
+        using serialize_result_type = std::string;
+#endif
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1984,7 +2004,7 @@ namespace sqlite_orm {
         };
 
         struct conc_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "||";
             }
         };
@@ -1996,7 +2016,7 @@ namespace sqlite_orm {
         using conc_t = binary_operator<L, R, conc_string>;
 
         struct add_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "+";
             }
         };
@@ -2008,7 +2028,7 @@ namespace sqlite_orm {
         using add_t = binary_operator<L, R, add_string, arithmetic_t, negatable_t>;
 
         struct sub_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "-";
             }
         };
@@ -2020,7 +2040,7 @@ namespace sqlite_orm {
         using sub_t = binary_operator<L, R, sub_string, arithmetic_t, negatable_t>;
 
         struct mul_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "*";
             }
         };
@@ -2032,7 +2052,7 @@ namespace sqlite_orm {
         using mul_t = binary_operator<L, R, mul_string, arithmetic_t, negatable_t>;
 
         struct div_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "/";
             }
         };
@@ -2044,7 +2064,7 @@ namespace sqlite_orm {
         using div_t = binary_operator<L, R, div_string, arithmetic_t, negatable_t>;
 
         struct mod_operator_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "%";
             }
         };
@@ -2056,7 +2076,7 @@ namespace sqlite_orm {
         using mod_t = binary_operator<L, R, mod_operator_string, arithmetic_t, negatable_t>;
 
         struct bitwise_shift_left_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "<<";
             }
         };
@@ -2068,7 +2088,7 @@ namespace sqlite_orm {
         using bitwise_shift_left_t = binary_operator<L, R, bitwise_shift_left_string, arithmetic_t, negatable_t>;
 
         struct bitwise_shift_right_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return ">>";
             }
         };
@@ -2080,7 +2100,7 @@ namespace sqlite_orm {
         using bitwise_shift_right_t = binary_operator<L, R, bitwise_shift_right_string, arithmetic_t, negatable_t>;
 
         struct bitwise_and_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "&";
             }
         };
@@ -2092,7 +2112,7 @@ namespace sqlite_orm {
         using bitwise_and_t = binary_operator<L, R, bitwise_and_string, arithmetic_t, negatable_t>;
 
         struct bitwise_or_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "|";
             }
         };
@@ -2104,7 +2124,7 @@ namespace sqlite_orm {
         using bitwise_or_t = binary_operator<L, R, bitwise_or_string, arithmetic_t, negatable_t>;
 
         struct bitwise_not_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "~";
             }
         };
@@ -2122,7 +2142,7 @@ namespace sqlite_orm {
         };
 
         struct assign_string {
-            operator std::string() const {
+            serialize_result_type serialize() const {
                 return "=";
             }
         };
@@ -2391,20 +2411,6 @@ namespace sqlite_orm {
                 return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
             }
 
-            template<class O1, class O2, class... Opts>
-            constexpr bool has_every() const {
-                if(has<O1>() && has<O2>()) {
-                    return true;
-                } else {
-                    return has_every<Opts...>();
-                }
-            }
-
-            template<class O1>
-            constexpr bool has_every() const {
-                return has<O1>();
-            }
-
             /**
              *  Simplified interface for `DEFAULT` constraint
              *  @return string representation of default value if it exists otherwise nullptr
@@ -2588,6 +2594,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <locale>  // std::wstring_convert
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
@@ -2806,6 +2813,8 @@ namespace sqlite_orm {
         };
     }
 }
+
+// #include "serializator_context.h"
 
 // #include "tags.h"
 
@@ -3655,22 +3664,6 @@ namespace sqlite_orm {
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
 
-        struct exists_string {
-            operator std::string() const {
-                return "EXISTS";
-            }
-        };
-
-        template<class T>
-        struct exists_t : condition_t, exists_string, internal::negatable_t {
-            using type = T;
-            using self = exists_t<type>;
-
-            type t;
-
-            exists_t(T t_) : t(std::move(t_)) {}
-        };
-
         struct cast_string {
             operator std::string() const {
                 return "CAST";
@@ -4138,19 +4131,6 @@ namespace sqlite_orm {
     }
 
     /**
-     *  EXISTS(condition).
-     *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
-         where(exists(select(asterisk<Customer>(),
-         where(is_equal(&Customer::grade, 3) and
-         is_equal(&Agent::code, &Customer::agentCode))))),
-         order_by(&Agent::comission));
-     */
-    template<class T>
-    internal::exists_t<T> exists(T t) {
-        return {std::move(t)};
-    }
-
-    /**
      *  CAST(X AS type).
      *  Example: cast<std::string>(&User::id)
      */
@@ -4426,8 +4406,6 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
-// #include "operators.h"
-
 // #include "is_base_of_template.h"
 
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
@@ -4467,23 +4445,11 @@ namespace sqlite_orm {
     }
 }
 
+// #include "operators.h"
+
 // #include "serialize_result_type.h"
 
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-#include <string_view>  //  string_view
-#else
-#include <string>  //  std::string
-#endif
-
-namespace sqlite_orm {
-    namespace internal {
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        using serialize_result_type = std::string_view;
-#else
-        using serialize_result_type = std::string;
-#endif
-    }
-}
+// #include "tuple_helper/count_tuple.h"
 
 namespace sqlite_orm {
 
@@ -4515,6 +4481,30 @@ namespace sqlite_orm {
             args_type args;
 
             built_in_function_t(args_type&& args_) : args(std::move(args_)) {}
+        };
+
+        template<class F, class W>
+        struct filtered_aggregate_function {
+            using function_type = F;
+            using where_expression = W;
+
+            function_type function;
+            where_expression where;
+        };
+
+        template<class C>
+        struct where_t;
+
+        template<class R, class S, class... Args>
+        struct built_in_aggregate_function_t : built_in_function_t<R, S, Args...> {
+            using super = built_in_function_t<R, S, Args...>;
+
+            using super::super;
+
+            template<class W>
+            filtered_aggregate_function<built_in_aggregate_function_t<R, S, Args...>, W> filter(where_t<W> wh) {
+                return {*this, std::move(wh.expression)};
+            }
         };
 
         struct typeof_string {
@@ -4727,6 +4717,11 @@ namespace sqlite_orm {
         template<class T>
         struct count_asterisk_t : count_string {
             using type = T;
+
+            template<class W>
+            filtered_aggregate_function<count_asterisk_t<T>, W> filter(where_t<W> wh) {
+                return {*this, std::move(wh.expression)};
+            }
         };
 
         /**
@@ -6213,7 +6208,7 @@ namespace sqlite_orm {
      *  SOUNDEX(X) function https://www.sqlite.org/lang_corefunc.html#soundex
      */
     template<class X>
-    internal::core_function_t<std::string, internal::soundex_string, X> soundex(X x) {
+    internal::built_in_function_t<std::string, internal::soundex_string, X> soundex(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 #endif
@@ -6222,7 +6217,7 @@ namespace sqlite_orm {
      *  TOTAL(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<double, internal::total_string, X> total(X x) {
+    internal::built_in_aggregate_function_t<double, internal::total_string, X> total(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -6230,7 +6225,7 @@ namespace sqlite_orm {
      *  SUM(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
+    internal::built_in_aggregate_function_t<std::unique_ptr<double>, internal::sum_string, X> sum(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -6238,7 +6233,7 @@ namespace sqlite_orm {
      *  COUNT(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<int, internal::count_string, X> count(X x) {
+    internal::built_in_aggregate_function_t<int, internal::count_string, X> count(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -6262,7 +6257,7 @@ namespace sqlite_orm {
      *  AVG(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<double, internal::avg_string, X> avg(X x) {
+    internal::built_in_aggregate_function_t<double, internal::avg_string, X> avg(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -6270,7 +6265,7 @@ namespace sqlite_orm {
      *  MAX(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
+    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X> max(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -6278,7 +6273,7 @@ namespace sqlite_orm {
      *  MIN(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
+    internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X> min(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -6286,7 +6281,7 @@ namespace sqlite_orm {
      *  GROUP_CONCAT(X) aggregate function.
      */
     template<class X>
-    internal::built_in_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
+    internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X> group_concat(X x) {
         return {std::tuple<X>{std::forward<X>(x)}};
     }
 
@@ -6294,7 +6289,7 @@ namespace sqlite_orm {
      *  GROUP_CONCAT(X, Y) aggregate function.
      */
     template<class X, class Y>
-    internal::built_in_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
+    internal::built_in_aggregate_function_t<std::string, internal::group_concat_string, X, Y> group_concat(X x, Y y) {
         return {std::tuple<X, Y>{std::forward<X>(x), std::forward<Y>(y)}};
     }
 #ifdef SQLITE_ENABLE_JSON1
@@ -6637,6 +6632,8 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 }
+
+// #include "core_functions.h"
 
 namespace sqlite_orm {
 
@@ -7104,6 +7101,289 @@ namespace sqlite_orm {
 }
 #pragma once
 
+#include <memory>
+#include <sstream>
+#include <string>
+#include <tuple>
+
+// #include "tuple_helper/tuple_helper.h"
+
+// #include "optional_container.h"
+
+// NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
+// (Could be implemented with a normal trigger that insert or update an internal table and then retreive
+// the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
+// It could be an interesting feature to bring to sqlite_orm that other libraries don't have ?
+
+namespace sqlite_orm {
+    namespace internal {
+        enum class trigger_timing { trigger_before, trigger_after, trigger_instead_of };
+        enum class trigger_type { trigger_delete, trigger_insert, trigger_update };
+
+        /**
+         * This class is an intermediate SQLite trigger, to be used with
+         * `make_trigger` to create a full trigger.
+         *  T is the base of the trigger (contains its type, timing and associated table)
+         *  S is the list of trigger statements
+         */
+        template<class T, class... S>
+        struct partial_trigger_t {
+            using statements_type = std::tuple<S...>;
+
+            /**
+             * Statements of the triggers (to be executed when the trigger fires)
+             */
+            statements_type statements;
+            /**
+             * Base of the trigger (contains its type, timing and associated table)
+             */
+            T base;
+
+            partial_trigger_t(T trigger_base, S... statements) :
+                statements(std::make_tuple<S...>(std::forward<S>(statements)...)), base(std::move(trigger_base)) {}
+
+            partial_trigger_t& end() {
+                return *this;
+            }
+        };
+
+        /**
+         * This class represent a SQLite trigger
+         *  T is the base of the trigger (contains its type, timing and associated table)
+         *  S is the list of trigger statments
+         */
+        template<class T, class... S>
+        struct trigger_t {
+            using object_type = void;  // Not sure
+            using elements_type = typename partial_trigger_t<T, S...>::statements_type;
+
+            /**
+             * Name of the trigger
+             */
+            std::string name;
+
+            /**
+             * Base of the trigger (contains its type, timing and associated table)
+             */
+            T base;
+
+            /**
+             * Statements of the triggers (to be executed when the trigger fires)
+             */
+            elements_type elements;
+
+            trigger_t(const std::string& name, T trigger_base, elements_type statements) :
+                name(name), base(std::move(trigger_base)), elements(std::move(statements)) {}
+        };
+
+        /**
+         * Base of a trigger. Contains the trigger type/timming and the table type
+         * T is the table type
+         * W is `when` expression type
+         * Type is the trigger base type (type+timing)
+         */
+        template<class T, class W, class Type>
+        struct trigger_base_t {
+            using table_type = T;
+            using when_type = W;
+            using trigger_type_base = Type;
+
+            /**
+             * Contains the trigger type and timing
+             */
+            trigger_type_base type_base;
+            /**
+             * Value used to determine if we execute the trigger on each row or on each statement
+             * (SQLite doesn't support the FOR EACH STATEMENT syntax yet: https://sqlite.org/lang_createtrigger.html#description
+             * so this value is more of a placeholder for a later update)
+             */
+            bool do_for_each_row = false;
+            /**
+             * When expression (if any)
+             * If a WHEN expression is specified, the trigger will only execute
+             * if the expression evaluates to true when the trigger is fired
+             */
+            optional_container<when_type> container_when;
+
+            trigger_base_t(trigger_type_base type_base_) : type_base(std::move(type_base_)) {}
+
+            trigger_base_t& for_each_row() {
+                this->do_for_each_row = true;
+                return *this;
+            }
+
+            template<class WW>
+            trigger_base_t<T, WW, Type> when(WW expression) {
+                trigger_base_t<T, WW, Type> res(this->type_base);
+                res.container_when.field = std::move(expression);
+                return res;
+            }
+
+            template<class... S>
+            partial_trigger_t<trigger_base_t<T, W, Type>, S...> begin(S... statements) {
+                return {*this, std::forward<S>(statements)...};
+            }
+        };
+
+        /**
+         * Contains the trigger type and timing
+         */
+        struct trigger_type_base_t {
+            /**
+             * Value indicating if the trigger is run BEFORE, AFTER or INSTEAD OF
+             * the statement that fired it.
+             */
+            trigger_timing timing;
+            /**
+             * The type of the statement that would cause the trigger to fire.
+             * Can be DELETE, INSERT, or UPDATE.
+             */
+            trigger_type type;
+
+            trigger_type_base_t(trigger_timing timing, trigger_type type) : timing(timing), type(type) {}
+
+            template<class T>
+            trigger_base_t<T, void, trigger_type_base_t> on() {
+                return {*this};
+            }
+        };
+
+        /**
+         * Special case for UPDATE OF (columns)
+         * Contains the trigger type and timing
+         */
+        template<class... Cs>
+        struct trigger_update_type_t : trigger_type_base_t {
+            using columns_type = std::tuple<Cs...>;
+
+            /**
+             * Contains the columns the trigger is watching. Will only
+             * trigger if one of theses columns is updated.
+             */
+            columns_type columns;
+
+            trigger_update_type_t(trigger_timing timing, trigger_type type, Cs... columns) :
+                trigger_type_base_t(timing, type), columns(std::make_tuple<Cs...>(std::forward<Cs>(columns)...)) {}
+
+            template<class T>
+            trigger_base_t<T, void, trigger_update_type_t<Cs...>> on() {
+                return {*this};
+            }
+        };
+
+        struct trigger_timing_t {
+            trigger_timing timing;
+
+            trigger_timing_t(trigger_timing timing) : timing(timing) {}
+
+            trigger_type_base_t delete_() {
+                return {timing, trigger_type::trigger_delete};
+            }
+
+            trigger_type_base_t insert() {
+                return {timing, trigger_type::trigger_insert};
+            }
+
+            trigger_type_base_t update() {
+                return {timing, trigger_type::trigger_update};
+            }
+
+            template<class... Cs>
+            trigger_update_type_t<Cs...> update_of(Cs... columns) {
+                return {timing, trigger_type::trigger_update, std::forward<Cs>(columns)...};
+            }
+        };
+
+        struct raise_t {
+            enum class type_t {
+                ignore,
+                rollback,
+                abort,
+                fail,
+            };
+
+            type_t type = type_t::ignore;
+            std::string message;
+        };
+
+        template<class T>
+        struct new_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
+
+        template<class T>
+        struct old_t {
+            using expression_type = T;
+
+            expression_type expression;
+        };
+    }  // NAMESPACE internal
+
+    /**
+     *  NEW.expression function used within TRIGGER expressions
+     */
+    template<class T>
+    internal::new_t<T> new_(T expression) {
+        return {std::move(expression)};
+    }
+
+    /**
+     *  OLD.expression function used within TRIGGER expressions
+     */
+    template<class T>
+    internal::old_t<T> old(T expression) {
+        return {std::move(expression)};
+    }
+
+    /**
+     *  RAISE(IGNORE) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_ignore() {
+        return {internal::raise_t::type_t::ignore, {}};
+    }
+
+    /**
+     *  RAISE(ROLLBACK, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_rollback(std::string message) {
+        return {internal::raise_t::type_t::rollback, move(message)};
+    }
+
+    /**
+     *  RAISE(ABORT, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_abort(std::string message) {
+        return {internal::raise_t::type_t::abort, move(message)};
+    }
+
+    /**
+     *  RAISE(FAIL, %message%) expression used within TRIGGER expressions
+     */
+    inline internal::raise_t raise_fail(std::string message) {
+        return {internal::raise_t::type_t::fail, move(message)};
+    }
+
+    template<class T, class... S>
+    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
+        return {move(name), std::move(part.base), std::move(part.statements)};
+    }
+
+    inline internal::trigger_timing_t before() {
+        return {internal::trigger_timing_t(internal::trigger_timing::trigger_before)};
+    }
+
+    inline internal::trigger_timing_t after() {
+        return {internal::trigger_timing_t(internal::trigger_timing::trigger_after)};
+    }
+
+    inline internal::trigger_timing_t instead_of() {
+        return {internal::trigger_timing_t(internal::trigger_timing::trigger_instead_of)};
+    }
+}
+#pragma once
+
 #include <memory>  // std::unique_ptr
 #include <sqlite3.h>
 #include <type_traits>  // std::integral_constant
@@ -7149,6 +7429,288 @@ namespace sqlite_orm {
 // #include "start_macros.h"
 
 // #include "xdestroy_handling.h"
+
+#include <type_traits>  // std::integral_constant
+#ifdef __cpp_lib_concepts
+#include <concepts>
+#endif
+
+// #include "start_macros.h"
+
+// #include "cxx_polyfill.h"
+
+#include <type_traits>
+
+// #include "start_macros.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace polyfill {
+#if __cplusplus < 201703L  // before C++17
+            template<class...>
+            using void_t = void;
+
+            template<bool v>
+            using bool_constant = std::integral_constant<bool, v>;
+#else
+            using std::bool_constant;
+            using std::void_t;
+#endif
+
+#if __cplusplus < 202312L  // before C++23
+            template<typename Type, template<typename...> class Primary>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
+
+            template<template<typename...> class Primary, class... Types>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
+
+            template<typename Type, template<typename...> class Primary>
+            struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
+
+            template<typename... T>
+            using is_specialization_of_t = typename is_specialization_of<T...>::type;
+#else
+            using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
+#endif
+
+            template<typename...>
+            SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
+
+            template<size_t I>
+            using index_constant = std::integral_constant<size_t, I>;
+        }
+    }
+}
+
+namespace sqlite_orm {
+
+    using xdestroy_fn_t = void (*)(void*);
+    using null_xdestroy_t = std::integral_constant<xdestroy_fn_t, nullptr>;
+    SQLITE_ORM_INLINE_VAR constexpr null_xdestroy_t null_xdestroy_f{};
+}
+
+namespace sqlite_orm {
+    namespace internal {
+#ifdef __cpp_concepts
+        /**
+         *  Constraints a deleter to be state-less.
+         */
+        template<typename D>
+        concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
+
+        /**
+         *  Constraints a deleter to be an integral function constant.
+         */
+        template<typename D>
+        concept integral_fp_c = requires {
+            typename D::value_type;
+            D::value;
+            requires std::is_function_v<std::remove_pointer_t<typename D::value_type>>;
+        };
+
+        /**
+         *  Constraints a deleter to be or to yield a function pointer.
+         */
+        template<typename D>
+        concept can_yield_fp = requires(D d) {
+            // yielding function pointer by using the plus trick
+            {+d};
+            requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
+        };
+#endif
+
+#ifdef __cpp_lib_concepts
+        /**
+         *  Yield a deleter's function pointer.
+         */
+        template<can_yield_fp D>
+        struct yield_fp_of {
+            using type = decltype(+std::declval<D>());
+        };
+#else
+
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_stateless_deleter_v =
+            std::is_empty<D>::value&& std::is_default_constructible<D>::value;
+
+        template<typename D, typename SFINAE = void>
+        struct is_integral_fp_c : std::false_type {};
+        template<typename D>
+        struct is_integral_fp_c<
+            D,
+            polyfill::void_t<typename D::value_type,
+                             decltype(D::value),
+                             std::enable_if_t<std::is_function<std::remove_pointer_t<typename D::value_type>>::value>>>
+            : std::true_type {};
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_integral_fp_c_v = is_integral_fp_c<D>::value;
+
+        template<typename D, typename SFINAE = void>
+        struct can_yield_fp : std::false_type {};
+        template<typename D>
+        struct can_yield_fp<
+            D,
+            polyfill::void_t<
+                decltype(+std::declval<D>()),
+                std::enable_if_t<std::is_function<std::remove_pointer_t<decltype(+std::declval<D>())>>::value>>>
+            : std::true_type {};
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool can_yield_fp_v = can_yield_fp<D>::value;
+
+        template<typename D, bool = can_yield_fp_v<D>>
+        struct yield_fp_of {
+            using type = polyfill::void_t<>;
+        };
+        template<typename D>
+        struct yield_fp_of<D, true> {
+            using type = decltype(+std::declval<D>());
+        };
+#endif
+        template<typename D>
+        using yielded_fn_t = typename yield_fp_of<D>::type;
+
+#ifdef __cpp_lib_concepts
+        template<typename D>
+        concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
+                                            (can_yield_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+
+        template<typename D>
+        concept can_yield_xdestroy = can_yield_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
+
+        template<typename D, typename P>
+        concept needs_xdestroy_proxy = (stateless_deleter<D> &&
+                                        (!can_yield_fp<D> || !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+
+        /**
+         *  xDestroy function that constructs and invokes the stateless deleter.
+         *  
+         *  Requires that the deleter can be called with the q-qualified pointer argument;
+         *  it doesn't check so explicitly, but a compiler error will occur.
+         */
+        template<typename D, typename P>
+        requires(!integral_fp_c<D>) void xdestroy_proxy(void* p) noexcept {
+            // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
+            auto o = (P*)p;
+            // ignoring return code
+            (void)D{}(o);
+        }
+
+        /**
+         *  xDestroy function that invokes the integral function pointer constant.
+         *  
+         *  Performs a const-cast of the argument pointer in order to allow for C API functions
+         *  that take a non-const parameter, but user code passes a pointer to a const object.
+         */
+        template<integral_fp_c D, typename P>
+        void xdestroy_proxy(void* p) noexcept {
+            // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
+            auto o = (std::remove_cv_t<P>*)(P*)p;
+            // ignoring return code
+            (void)D{}(o);
+        }
+#else
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_unusable_for_xdestroy_v =
+            !is_stateless_deleter_v<D> && (can_yield_fp_v<D> && !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+
+        template<typename D>
+        SQLITE_ORM_INLINE_VAR constexpr bool can_yield_xdestroy_v =
+            can_yield_fp_v<D>&& std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value;
+
+        template<typename D, typename P>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            needs_xdestroy_proxy_v = is_stateless_deleter_v<D> &&
+                                     (!can_yield_fp_v<D> || !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+
+        template<typename D, typename P>
+        std::enable_if_t<!is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+            // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
+            auto o = (P*)p;
+            // ignoring return code
+            (void)D{}(o);
+        }
+
+        template<typename D, typename P>
+        std::enable_if_t<is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+            // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
+            auto o = (std::remove_cv_t<P>*)(P*)p;
+            // ignoring return code
+            (void)D{}(o);
+        }
+#endif
+    }
+}
+
+namespace sqlite_orm {
+
+#ifdef __cpp_lib_concepts
+    /**
+     *  Prohibits using a yielded function pointer, which is not of type xdestroy_fn_t.
+     *  
+     *  Explicitly declared for better error messages.
+     */
+    template<typename D, typename P>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::is_unusable_for_xdestroy<D>) {
+        static_assert(std::is_same<D, void>::value,
+                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+        return nullptr;
+    }
+
+    /**
+     *  Obtains a proxy 'xDestroy' function pointer [of type void(*)(void*)]
+     *  for a deleter in a type-safe way.
+     *  
+     *  The deleter can be one of:
+     *         - integral function constant
+     *         - state-less (empty) deleter
+     *         - non-capturing lambda
+     *  
+     *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
+     *  is invocable with the non-q-qualified pointer value.
+     */
+    template<typename D, typename P>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::needs_xdestroy_proxy<D, P>) {
+        return internal::xdestroy_proxy<D, P>;
+    }
+
+    /**
+     *  Directly obtains a 'xDestroy' function pointer [of type void(*)(void*)]
+     *  from a deleter in a type-safe way.
+     *  
+     *  The deleter can be one of:
+     *         - function pointer of type xdestroy_fn_t
+     *         - structure holding a function pointer
+     *         - integral function constant
+     *         - non-capturing lambda
+     *  ... and yield a function pointer of type xdestroy_fn_t.
+     *  
+     *  Type-safety is garanteed by checking whether the deleter or yielded function pointer
+     *  is invocable with the non-q-qualified pointer value.
+     */
+    template<typename D, typename P>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept requires(internal::can_yield_xdestroy<D>) {
+        return d;
+    }
+#else
+    template<typename D, typename P>
+    constexpr std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D, P*) {
+        static_assert(std::is_same<D, void>::value,
+                      "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
+        return nullptr;
+    }
+
+    template<typename D, typename P>
+    constexpr std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, xdestroy_fn_t> obtain_xdestroy_for(D,
+                                                                                                          P*) noexcept {
+        return internal::xdestroy_proxy<D, P>;
+    }
+
+    template<typename D, typename P>
+    constexpr std::enable_if_t<internal::can_yield_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D d, P*) noexcept {
+        return d;
+    }
+#endif
+}
 
 namespace sqlite_orm {
 
@@ -7677,6 +8239,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>  //  std::vector
 #include <cstring>  //  strlen
+#include <locale>
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
@@ -7748,6 +8311,8 @@ namespace sqlite_orm {
 }
 
 // #include "error_code.h"
+
+// #include "is_std_ptr.h"
 
 namespace sqlite_orm {
 
@@ -8102,22 +8667,6 @@ namespace sqlite_orm {
                                         sqlite3_errmsg(db));
             }
         }
-
-        template<class T>
-        inline auto call_insert_impl_and_catch_constraint_failed(const T& insert_impl) {
-            try {
-                return insert_impl();
-            } catch(const std::system_error& e) {
-                if(e.code() == std::error_code(SQLITE_CONSTRAINT, get_sqlite_error_category())) {
-                    std::stringstream ss;
-                    ss << "Attempting to execute 'insert' request resulted in an error like \"" << e.what()
-                       << "\". Perhaps ordinary 'insert' is not acceptable for this table and you should try "
-                          "'replace' or 'insert' with explicit column listing?";
-                    throw std::system_error(e.code(), ss.str());
-                }
-                throw;
-            }
-        }
     }
 }
 #pragma once
@@ -8235,6 +8784,15 @@ namespace sqlite_orm {
         };
 
         template<class C>
+        struct indexed_column_maker<where_t<C>> {
+            using type = where_t<C>;
+
+            type operator()(type wher) const {
+                return {std::move(wher)};
+            }
+        };
+
+        template<class C>
         struct indexed_column_maker<indexed_column_t<C>> {
             using type = indexed_column_t<C>;
 
@@ -8286,12 +8844,18 @@ namespace sqlite_orm {
     template<class... Cols>
     internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_index(const std::string& name,
                                                                                          Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
         return {name, false, std::make_tuple(internal::make_indexed_column(cols)...)};
     }
 
     template<class... Cols>
     internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_unique_index(const std::string& name,
                                                                                                 Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
         return {name, true, std::make_tuple(internal::make_indexed_column(cols)...)};
     }
 }
@@ -8408,6 +8972,8 @@ namespace sqlite_orm {
 // #include "storage_traits.h"
 #include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type, std::integral_constant
 #include <tuple>  //  std::tuple
+
+// #include "tuple_helper/tuple_transformer.h"
 
 namespace sqlite_orm {
 
@@ -8805,7 +9371,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct function_base {
+        struct user_defined_function_base {
             using func_call = std::function<
                 void(sqlite3_context* context, void* functionPointer, int argsCount, sqlite3_value** values)>;
             using final_call = std::function<void(sqlite3_context* context, void* functionPointer)>;
@@ -8815,37 +9381,37 @@ namespace sqlite_orm {
             std::function<int*()> create;
             void (*destroy)(int*) = nullptr;
 
-            function_base(decltype(name) name_,
-                          decltype(argumentsCount) argumentsCount_,
-                          decltype(create) create_,
-                          decltype(destroy) destroy_) :
+            user_defined_function_base(decltype(name) name_,
+                                       decltype(argumentsCount) argumentsCount_,
+                                       decltype(create) create_,
+                                       decltype(destroy) destroy_) :
                 name(move(name_)),
                 argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
         };
 
-        struct scalar_function_t : function_base {
+        struct user_defined_scalar_function_t : user_defined_function_base {
             func_call run;
 
-            scalar_function_t(decltype(name) name_,
-                              int argumentsCount_,
-                              decltype(create) create_,
-                              decltype(run) run_,
-                              decltype(destroy) destroy_) :
-                function_base{move(name_), argumentsCount_, move(create_), destroy_},
+            user_defined_scalar_function_t(decltype(name) name_,
+                                           int argumentsCount_,
+                                           decltype(create) create_,
+                                           decltype(run) run_,
+                                           decltype(destroy) destroy_) :
+                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
                 run(move(run_)) {}
         };
 
-        struct aggregate_function_t : function_base {
+        struct user_defined_aggregate_function_t : user_defined_function_base {
             func_call step;
             final_call finalCall;
 
-            aggregate_function_t(decltype(name) name_,
-                                 int argumentsCount_,
-                                 decltype(create) create_,
-                                 decltype(step) step_,
-                                 decltype(finalCall) finalCall_,
-                                 decltype(destroy) destroy_) :
-                function_base{move(name_), argumentsCount_, move(create_), destroy_},
+            user_defined_aggregate_function_t(decltype(name) name_,
+                                              int argumentsCount_,
+                                              decltype(create) create_,
+                                              decltype(step) step_,
+                                              decltype(finalCall) finalCall_,
+                                              decltype(destroy) destroy_) :
+                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
                 step(move(step_)), finalCall(move(finalCall_)) {}
         };
 
@@ -9115,6 +9681,11 @@ namespace sqlite_orm {
             using type = R;
         };
 
+        template<class St, class R, class S, class... Args>
+        struct column_result_t<St, built_in_aggregate_function_t<R, S, Args...>, void> {
+            using type = R;
+        };
+
         template<class St, class F, class... Args>
         struct column_result_t<St, function_call<F, Args...>, void> {
             using type = typename callable_arguments<F>::return_type;
@@ -9122,6 +9693,11 @@ namespace sqlite_orm {
 
         template<class St, class X, class S>
         struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
+        };
+
+        template<class St, class X, class S>
+        struct column_result_t<St, built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
@@ -9349,6 +9925,27 @@ namespace sqlite_orm {
 
 // #include "column.h"
 
+// #include "dbstat.h"
+
+#include <string>  //  std::string
+
+namespace sqlite_orm {
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    struct dbstat {
+        std::string name;
+        std::string path;
+        int pageno = 0;
+        std::string pagetype;
+        int ncell = 0;
+        int payload = 0;
+        int unused = 0;
+        int mx_payload = 0;
+        int pgoffset = 0;
+        int pgsize = 0;
+    };
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -9385,35 +9982,36 @@ namespace sqlite_orm {
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
             template<class F, class C>
-            const F* get_object_field_pointer(const object_type& obj, C c) const {
+            const F* get_object_field_pointer(const object_type& object, C memberPointer) const {
                 const F* res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &c, &obj](auto& col) {
-                    using column_type = typename std::remove_reference<decltype(col)>::type;
+                this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
+                    using column_type = typename std::remove_reference<decltype(column)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
                     using getter_type = typename column_type::getter_type;
                     using setter_type = typename column_type::setter_type;
                     // Make static_if have at least one input as a workaround for GCC bug:
                     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
                     if(!res) {
-                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.member_pointer, c_)) {
-                                res = &(obj.*col.member_pointer);
-                            }
-                        })(c);
+                        static_if<std::is_same<C, member_pointer_t>{}>(
+                            [&res, &object, &column](const C& memberPointer) {
+                                if(compare_any(column.member_pointer, memberPointer)) {
+                                    res = &(object.*column.member_pointer);
+                                }
+                            })(memberPointer);
                     }
                     if(!res) {
-                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.getter, c_)) {
-                                res = &((obj).*(col.getter))();
+                        static_if<std::is_same<C, getter_type>{}>([&res, &object, &column](const C& memberPointer) {
+                            if(compare_any(column.getter, memberPointer)) {
+                                res = &(object.*(column.getter))();
                             }
-                        })(c);
+                        })(memberPointer);
                     }
                     if(!res) {
-                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.setter, c_)) {
-                                res = &((obj).*(col.getter))();
+                        static_if<std::is_same<C, setter_type>{}>([&res, &object, &column](const C& memberPointer) {
+                            if(compare_any(column.setter, memberPointer)) {
+                                res = &(object.*(column.getter))();
                             }
-                        })(c);
+                        })(memberPointer);
                     }
                 });
                 return res;
@@ -9449,16 +10047,16 @@ namespace sqlite_orm {
 
             std::vector<std::string> composite_key_columns_names() const {
                 std::vector<std::string> res;
-                this->for_each_primary_key([this, &res](auto& c) {
-                    res = this->composite_key_columns_names(c);
+                this->for_each_primary_key([this, &res](auto& primaryKey) {
+                    res = this->composite_key_columns_names(primaryKey);
                 });
                 return res;
             }
 
             std::vector<std::string> primary_key_column_names() const {
                 std::vector<std::string> res;
-                this->for_each_column_with<primary_key_t<>>([&res](auto& c) {
-                    res.push_back(c.name);
+                this->for_each_column_with<primary_key_t<>>([&res](auto& column) {
+                    res.push_back(column.name);
                 });
                 if(!res.size()) {
                     res = this->composite_key_columns_names();
@@ -9466,13 +10064,32 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class L>
+            void for_each_primary_key_column(const L& lambda) const {
+                this->for_each_column_with<primary_key_t<>>([&lambda](auto& column) {
+                    if(column.member_pointer) {
+                        lambda(column.member_pointer);
+                    } else {
+                        lambda(column.getter);
+                    }
+                });
+                this->for_each_primary_key([this, &lambda](auto& primaryKey) {
+                    this->for_each_column_in_primary_key(primaryKey, lambda);
+                });
+            }
+
+            template<class L, class... Args>
+            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, const L& lambda) const {
+                iterate_tuple(primarykey.columns, lambda);
+            }
+
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& pk) const {
                 std::vector<std::string> res;
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
-                iterate_tuple(pk.columns, [this, &res](auto& v) {
-                    if(auto columnName = this->find_column_name(v)) {
+                iterate_tuple(pk.columns, [this, &res](auto& memberPointer) {
+                    if(auto* columnName = this->find_column_name(memberPointer)) {
                         res.push_back(*columnName);
                     } else {
                         res.push_back({});
@@ -9652,6 +10269,21 @@ namespace sqlite_orm {
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    inline auto make_dbstat_table() {
+        return make_table("dbstat",
+                          make_column("name", &dbstat::name),
+                          make_column("path", &dbstat::path),
+                          make_column("pageno", &dbstat::pageno),
+                          make_column("pagetype", &dbstat::pagetype),
+                          make_column("ncell", &dbstat::ncell),
+                          make_column("payload", &dbstat::payload),
+                          make_column("unused", &dbstat::unused),
+                          make_column("mx_payload", &dbstat::mx_payload),
+                          make_column("pgoffset", &dbstat::pgoffset),
+                          make_column("pgsize", &dbstat::pgsize));
+    }
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }
 #pragma once
 
@@ -11437,6 +12069,40 @@ namespace sqlite_orm {
 
 // #include "ast/group_by.h"
 
+// #include "ast/exists.h"
+
+#include <utility>  //  std::move
+
+// #include "tags.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class T>
+        struct exists_t : condition_t, negatable_t {
+            using expression_type = T;
+            using self = exists_t<expression_type>;
+
+            expression_type expression;
+
+            exists_t(expression_type expression_) : expression(std::move(expression_)) {}
+        };
+    }
+
+    /**
+     *  EXISTS(condition).
+     *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
+         where(exists(select(asterisk<Customer>(),
+         where(is_equal(&Customer::grade, 3) and
+         is_equal(&Agent::code, &Customer::agentCode))))),
+         order_by(&Agent::comission));
+     */
+    template<class T>
+    internal::exists_t<T> exists(T expression) {
+        return {std::move(expression)};
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -11773,8 +12439,8 @@ namespace sqlite_orm {
             using node_type = exists_t<T>;
 
             template<class L>
-            void operator()(const node_type& e, const L& l) const {
-                iterate_ast(e.t, l);
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -11870,8 +12536,29 @@ namespace sqlite_orm {
             using node_type = built_in_function_t<R, S, Args...>;
 
             template<class L>
-            void operator()(const node_type& f, const L& l) const {
-                iterate_ast(f.args, l);
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.args, lambda);
+            }
+        };
+
+        template<class R, class S, class... Args>
+        struct ast_iterator<built_in_aggregate_function_t<R, S, Args...>, void> {
+            using node_type = built_in_aggregate_function_t<R, S, Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.args, lambda);
+            }
+        };
+
+        template<class F, class W>
+        struct ast_iterator<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.function, lambda);
+                iterate_ast(node.where, lambda);
             }
         };
 
@@ -12492,6 +13179,13 @@ namespace sqlite_orm {
                 connection(std::move(connection_)),
                 commit_func(std::move(commit_func_)), rollback_func(std::move(rollback_func_)) {}
 
+            transaction_guard_t(transaction_guard_t&& other) :
+                commit_on_destroy(other.commit_on_destroy), connection(std::move(other.connection)),
+                commit_func(move(other.commit_func)), rollback_func(move(other.rollback_func)),
+                gotta_fire(other.gotta_fire) {
+                other.gotta_fire = false;
+            }
+
             ~transaction_guard_t() {
                 if(this->gotta_fire) {
                     if(!this->commit_on_destroy) {
@@ -12501,6 +13195,8 @@ namespace sqlite_orm {
                     }
                 }
             }
+
+            transaction_guard_t& operator=(transaction_guard_t&&) = delete;
 
             /**
              *  Call `COMMIT` explicitly. After this call
@@ -12987,7 +13683,7 @@ namespace sqlite_orm {
                 if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
                     argsCount = -1;
                 }
-                this->scalarFunctions.emplace_back(new scalar_function_t{
+                this->scalarFunctions.emplace_back(new user_defined_scalar_function_t{
                     move(name),
                     argsCount,
                     []() -> int* {
@@ -13007,7 +13703,8 @@ namespace sqlite_orm {
 
                 if(this->connection->retain_count() > 0) {
                     auto db = this->connection->get();
-                    try_to_create_function(db, static_cast<scalar_function_t&>(*this->scalarFunctions.back()));
+                    try_to_create_function(db,
+                                           static_cast<user_defined_scalar_function_t&>(*this->scalarFunctions.back()));
                 }
             }
 
@@ -13047,7 +13744,7 @@ namespace sqlite_orm {
                 if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
                     argsCount = -1;
                 }
-                this->aggregateFunctions.emplace_back(new aggregate_function_t{
+                this->aggregateFunctions.emplace_back(new user_defined_aggregate_function_t{
                     move(name),
                     argsCount,
                     /* create = */
@@ -13073,7 +13770,9 @@ namespace sqlite_orm {
 
                 if(this->connection->retain_count() > 0) {
                     auto db = this->connection->get();
-                    try_to_create_function(db, static_cast<aggregate_function_t&>(*this->aggregateFunctions.back()));
+                    try_to_create_function(
+                        db,
+                        static_cast<user_defined_aggregate_function_t&>(*this->aggregateFunctions.back()));
                 }
             }
 
@@ -13343,11 +14042,11 @@ namespace sqlite_orm {
                 }
 
                 for(auto& functionPointer: this->scalarFunctions) {
-                    try_to_create_function(db, static_cast<scalar_function_t&>(*functionPointer));
+                    try_to_create_function(db, static_cast<user_defined_scalar_function_t&>(*functionPointer));
                 }
 
                 for(auto& functionPointer: this->aggregateFunctions) {
-                    try_to_create_function(db, static_cast<aggregate_function_t&>(*functionPointer));
+                    try_to_create_function(db, static_cast<user_defined_aggregate_function_t&>(*functionPointer));
                 }
 
                 if(this->on_open) {
@@ -13356,7 +14055,7 @@ namespace sqlite_orm {
             }
 
             void delete_function_impl(const std::string& name,
-                                      std::vector<std::unique_ptr<function_base>>& functionsVector) const {
+                                      std::vector<std::unique_ptr<user_defined_function_base>>& functionsVector) const {
                 auto it = find_if(functionsVector.begin(), functionsVector.end(), [&name](auto& functionPointer) {
                     return functionPointer->name == name;
                 });
@@ -13385,7 +14084,7 @@ namespace sqlite_orm {
                 }
             }
 
-            void try_to_create_function(sqlite3* db, scalar_function_t& function) {
+            void try_to_create_function(sqlite3* db, user_defined_scalar_function_t& function) {
                 auto resultCode = sqlite3_create_function_v2(db,
                                                              function.name.c_str(),
                                                              function.argumentsCount,
@@ -13401,7 +14100,7 @@ namespace sqlite_orm {
                 }
             }
 
-            void try_to_create_function(sqlite3* db, aggregate_function_t& function) {
+            void try_to_create_function(sqlite3* db, user_defined_aggregate_function_t& function) {
                 auto resultCode = sqlite3_create_function(db,
                                                           function.name.c_str(),
                                                           function.argumentsCount,
@@ -13419,7 +14118,7 @@ namespace sqlite_orm {
             static void
             aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<aggregate_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_aggregate_function_t*>(functionVoidPointer);
                 auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
                 auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
                 if(*aggregateContextIntPointer == nullptr) {
@@ -13430,7 +14129,7 @@ namespace sqlite_orm {
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<aggregate_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_aggregate_function_t*>(functionVoidPointer);
                 auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
                 auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
                 functionPointer->finalCall(context, *aggregateContextIntPointer);
@@ -13439,7 +14138,7 @@ namespace sqlite_orm {
 
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<scalar_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_scalar_function_t*>(functionVoidPointer);
                 std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
                                                                      functionPointer->destroy);
                 if(functionPointer->argumentsCount != -1 && functionPointer->argumentsCount != argsCount) {
@@ -13517,8 +14216,8 @@ namespace sqlite_orm {
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;
-            std::vector<std::unique_ptr<function_base>> scalarFunctions;
-            std::vector<std::unique_ptr<function_base>> aggregateFunctions;
+            std::vector<std::unique_ptr<user_defined_function_base>> scalarFunctions;
+            std::vector<std::unique_ptr<user_defined_function_base>> aggregateFunctions;
         };
     }
 }
@@ -13567,6 +14266,16 @@ namespace sqlite_orm {
         template<class It, class L, class O>
         struct expression_object_type<replace_range_t<std::reference_wrapper<It>, L, O>> {
             using type = typename replace_range_t<std::reference_wrapper<It>, L, O>::object_type;
+        };
+
+        template<class T, class... Ids>
+        struct expression_object_type<remove_t<T, Ids...>> {
+            using type = T;
+        };
+
+        template<class T, class... Ids>
+        struct expression_object_type<remove_t<std::reference_wrapper<T>, Ids...>> {
+            using type = T;
         };
 
         template<class T>
@@ -13690,6 +14399,12 @@ namespace sqlite_orm {
 // #include "conditions.h"
 
 // #include "column.h"
+
+// #include "indexed_column.h"
+
+// #include "function.h"
+
+// #include "prepared_statement.h"
 
 // #include "rowid.h"
 
@@ -13993,19 +14708,15 @@ namespace sqlite_orm {
     }
 }
 
+// #include "statement_binder.h"
+
 // #include "values.h"
+
+// #include "triggers.h"
 
 // #include "table_type.h"
 
-// #include "indexed_column.h"
-
-// #include "function.h"
-
-// #include "ast/upsert_clause.h"
-
-// #include "ast/excluded.h"
-
-// #include "ast/group_by.h"
+// #include "index.h"
 
 namespace sqlite_orm {
 
@@ -14092,6 +14803,19 @@ namespace sqlite_orm {
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<std::nullptr_t>{}(nullptr);
+            }
+        };
+
+        template<class F, class W>
+        struct statement_serializator<filtered_aggregate_function<F, W>, void> {
+            using statement_type = filtered_aggregate_function<F, W>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) {
+                std::stringstream ss;
+                ss << serialize(statement.function, context);
+                ss << " FILTER (WHERE " << serialize(statement.where, context) << ")";
+                return ss.str();
             }
         };
 
@@ -14184,6 +14908,9 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
+                if(context.use_parentheses) {
+                    ss << '(';
+                }
                 ss << statement.serialize() << "(";
                 std::vector<std::string> args;
                 using args_type = typename std::decay<decltype(statement)>::type::args_type;
@@ -14198,9 +14925,16 @@ namespace sqlite_orm {
                     }
                 }
                 ss << ")";
+                if(context.use_parentheses) {
+                    ss << ')';
+                }
                 return ss.str();
             }
         };
+
+        template<class R, class S, class... Args>
+        struct statement_serializator<built_in_aggregate_function_t<R, S, Args...>, void>
+            : statement_serializator<built_in_function_t<R, S, Args...>, void> {};
 
         template<class F, class... Args>
         struct statement_serializator<function_call<F, Args...>, void> {
@@ -14353,14 +15087,14 @@ namespace sqlite_orm {
             using statement_type = binary_operator<L, R, Ds...>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
-                auto lhs = serialize(c.lhs, context);
-                auto rhs = serialize(c.rhs, context);
+            std::string operator()(const statement_type& statement, const C& context) const {
+                auto lhs = serialize(statement.lhs, context);
+                auto rhs = serialize(statement.rhs, context);
                 std::stringstream ss;
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                ss << lhs << " " << static_cast<std::string>(c) << " " << rhs;
+                ss << lhs << " " << statement.serialize() << " " << rhs;
                 if(context.use_parentheses) {
                     ss << ')';
                 }
@@ -14516,10 +15250,10 @@ namespace sqlite_orm {
             using statement_type = bitwise_not_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                auto cString = serialize(c.argument, context);
+                ss << statement.serialize() << " ";
+                auto cString = serialize(statement.argument, context);
                 ss << " (" << cString << " )";
                 return ss.str();
             }
@@ -14701,10 +15435,10 @@ namespace sqlite_orm {
             using statement_type = exists_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
-                ss << serialize(c.t, context);
+                ss << "EXISTS ";
+                ss << serialize(statement.expression, context);
                 return ss.str();
             }
         };
@@ -14864,7 +15598,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
-                return static_cast<std::string>(statement) + " " + serialize(statement.expression, context);
+                return "CHECK (" + serialize(statement.expression, context) + ")";
             }
         };
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -15019,40 +15753,53 @@ namespace sqlite_orm {
                 auto& tImpl = context.impl.template get_impl<object_type>();
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' ";
-                std::vector<std::string> columnNames;
-                columnNames.reserve(colsCount);
+                ss << "(";
                 {
                     auto columnsContext = context;
                     columnsContext.skip_table_name = true;
-                    iterate_tuple(ins.columns.columns, [&columnNames, &columnsContext](auto& m) {
-                        auto columnName = serialize(m, columnsContext);
+                    auto index = 0;
+                    iterate_tuple(ins.columns.columns, [&ss, &columnsContext, &index](auto& memberPointer) {
+                        constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
+                        auto columnName = serialize(memberPointer, columnsContext);
                         if(!columnName.empty()) {
-                            columnNames.push_back(columnName);
+                            ss << columnName;
+                            if(index < colsCount - 1) {
+                                ss << ",";
+                            } else {
+                                ss << ")";
+                            }
+                            ss << " ";
+                            ++index;
                         } else {
                             throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
                         }
                     });
                 }
-                ss << "(";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
-                    }
-                    ss << " ";
-                }
                 ss << "VALUES (";
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << "?";
-                    if(i < columnNames.size() - 1) {
-                        ss << ",";
+                auto index = 0;
+                auto& object = get_ref(ins.obj);
+                iterate_tuple(ins.columns.columns, [&ss, &context, &index, &object](auto& memberPointer) {
+                    constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
+                    using member_pointer_type = typename std::decay<decltype(memberPointer)>::type;
+                    static_assert(!is_setter<member_pointer_type>::value,
+                                  "Unable to use setter within insert explicit");
+
+                    std::string valueString;
+                    static_if<is_getter<member_pointer_type>{}>(
+                        [&valueString, &memberPointer, &context](auto& object) {
+                            valueString = serialize((object.*memberPointer)(), context);
+                        },
+                        [&valueString, &memberPointer, &context](auto& object) {
+                            valueString = serialize(object.*memberPointer, context);
+                        })(object);
+                    ss << valueString;
+                    if(index < colsCount - 1) {
+                        ss << ", ";
                     } else {
                         ss << ")";
                     }
-                    ss << " ";
-                }
+                    ++index;
+                });
                 return ss.str();
             }
         };
@@ -15126,7 +15873,7 @@ namespace sqlite_orm {
                 iterate_tuple(statement.assigns,
                               [&ss, &context, &leftContext, &assignIndex, assignsCount](auto& value) {
                                   ss << ' ' << serialize(value.lhs, leftContext);
-                                  ss << ' ' << static_cast<std::string>(value) << ' ';
+                                  ss << ' ' << value.serialize() << ' ';
                                   ss << serialize(value.rhs, context);
                                   if(assignIndex < assignsCount - 1) {
                                       ss << ",";
@@ -15159,7 +15906,7 @@ namespace sqlite_orm {
                         iterate_tuple(upd.set.assigns, [&context, &leftContext, &setPairs](auto& asgn) {
                             std::stringstream sss;
                             sss << serialize(asgn.lhs, leftContext);
-                            sss << " " << static_cast<std::string>(asgn) << " ";
+                            sss << " " << asgn.serialize() << " ";
                             sss << serialize(asgn.rhs, context);
                             setPairs.push_back(sss.str());
                         });
@@ -15322,19 +16069,29 @@ namespace sqlite_orm {
             using statement_type = remove_t<T, Ids...>;
 
             template<class C>
-            std::string operator()(const statement_type&, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 auto& tImpl = context.impl.template get_impl<T>();
                 std::stringstream ss;
                 ss << "DELETE FROM '" << tImpl.table.name << "' ";
-                ss << "WHERE ";
-                auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << "\"" << primaryKeyColumnNames[i] << "\""
-                       << " = ? ";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << "AND ";
+                ss << "WHERE";
+                std::vector<std::string> idsStrings;
+                idsStrings.reserve(std::tuple_size<typename statement_type::ids_type>::value);
+                iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
+                    idsStrings.push_back(serialize(idValue, context));
+                });
+                auto index = 0;
+                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl, &idsStrings](auto& memberPointer) {
+                    if(index > 0) {
+                        ss << " AND";
                     }
-                }
+                    if(auto* columnNamePointer = tImpl.table.find_column_name(memberPointer)) {
+                        ss << " \"" << *columnNamePointer << "\""
+                           << " = " << idsStrings[index];
+                    } else {
+                        throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::column_not_found));
+                    }
+                    ++index;
+                });
                 return ss.str();
             }
         };
@@ -15736,9 +16493,18 @@ namespace sqlite_orm {
                 ss << "INDEX IF NOT EXISTS '" << statement.name << "' ON '"
                    << context.impl.find_table_name(typeid(indexed_type)) << "' (";
                 std::vector<std::string> columnNames;
-                iterate_tuple(statement.elements, [&columnNames, &context](auto& v) {
-                    auto columnName = serialize(v, context);
-                    columnNames.push_back(move(columnName));
+                std::string whereString;
+                iterate_tuple(statement.elements, [&columnNames, &context, &whereString](auto& value) {
+                    using value_type = typename std::decay<decltype(value)>::type;
+                    if(!is_where<value_type>::value) {
+                        auto newContext = context;
+                        newContext.use_parentheses = false;
+                        auto whereString = serialize(value, newContext);
+                        columnNames.push_back(move(whereString));
+                    } else {
+                        auto columnName = serialize(value, context);
+                        whereString = move(columnName);
+                    }
                 });
                 for(size_t i = 0; i < columnNames.size(); ++i) {
                     ss << columnNames[i];
@@ -15747,6 +16513,9 @@ namespace sqlite_orm {
                     }
                 }
                 ss << ")";
+                if(!whereString.empty()) {
+                    ss << ' ' << whereString;
+                }
                 return ss.str();
             }
         };
@@ -15776,6 +16545,180 @@ namespace sqlite_orm {
                     }
                     ++index;
                 });
+                return ss.str();
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<old_t<T>, void> {
+            using statement_type = old_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "OLD.";
+                auto newContext = context;
+                newContext.skip_table_name = true;
+                ss << serialize(statement.expression, newContext);
+                return ss.str();
+            }
+        };
+
+        template<class T>
+        struct statement_serializator<new_t<T>, void> {
+            using statement_type = new_t<T>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "NEW.";
+                auto newContext = context;
+                newContext.skip_table_name = true;
+                ss << serialize(statement.expression, newContext);
+                return ss.str();
+            }
+        };
+
+        template<>
+        struct statement_serializator<raise_t, void> {
+            using statement_type = raise_t;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement.type) {
+                    case decltype(statement.type)::ignore:
+                        return "RAISE(IGNORE)";
+
+                    case decltype(statement.type)::rollback:
+                        return "RAISE(ROLLBACK, " + serialize(statement.message, context) + ")";
+
+                    case decltype(statement.type)::abort:
+                        return "RAISE(ABORT, " + serialize(statement.message, context) + ")";
+
+                    case decltype(statement.type)::fail:
+                        return "RAISE(FAIL, " + serialize(statement.message, context) + ")";
+                }
+                return {};
+            }
+        };
+
+        template<>
+        struct statement_serializator<trigger_timing, void> {
+            using statement_type = trigger_timing;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case trigger_timing::trigger_before:
+                        return "BEFORE";
+                    case trigger_timing::trigger_after:
+                        return "AFTER";
+                    case trigger_timing::trigger_instead_of:
+                        return "INSTEAD OF";
+                    default:
+                        return "";
+                }
+            }
+        };
+
+        template<>
+        struct statement_serializator<trigger_type, void> {
+            using statement_type = trigger_type;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                switch(statement) {
+                    case trigger_type::trigger_delete:
+                        return "DELETE";
+                    case trigger_type::trigger_insert:
+                        return "INSERT";
+                    case trigger_type::trigger_update:
+                        return "UPDATE";
+                    default:
+                        return "";
+                }
+            }
+        };
+
+        template<>
+        struct statement_serializator<trigger_type_base_t, void> {
+            using statement_type = trigger_type_base_t;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+
+                ss << serialize(statement.timing, context) << " " << serialize(statement.type, context);
+                return ss.str();
+            }
+        };
+
+        template<class... Cs>
+        struct statement_serializator<trigger_update_type_t<Cs...>, void> {
+            using statement_type = trigger_update_type_t<Cs...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                std::string sep = "";
+
+                ss << serialize(statement.timing, context) << " UPDATE OF ";
+                iterate_tuple(statement.columns, [&ss, &sep, &context](auto& v) {
+                    auto name = context.column_name(v);
+
+                    if(name == nullptr)
+                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    ss << sep << "'" << *name << "'";
+                    sep = ", ";
+                });
+                return ss.str();
+            }
+        };
+
+        template<class T, class W, class Trigger>
+        struct statement_serializator<trigger_base_t<T, W, Trigger>, void> {
+            using statement_type = trigger_base_t<T, W, Trigger>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+
+                ss << serialize(statement.type_base, context);
+                ss << " ON '" << context.impl.find_table_name(typeid(T)) << "'";
+                if(statement.do_for_each_row) {
+                    ss << " FOR EACH ROW";
+                }
+                statement.container_when.apply([&ss, &context](auto& value) {
+                    ss << " WHEN " << serialize(value, context);
+                });
+                return ss.str();
+            }
+        };
+
+        template<class... S>
+        struct statement_serializator<trigger_t<S...>, void> {
+            using statement_type = trigger_t<S...>;
+
+            template<class C>
+            std::string operator()(const statement_type& statement, const C& context) const {
+                std::stringstream ss;
+                ss << "CREATE ";
+
+                ss << "TRIGGER IF NOT EXISTS '" << statement.name << "' " << serialize(statement.base, context);
+                ss << " BEGIN ";
+                iterate_tuple(statement.elements, [&ss, &context](auto& element) {
+                    using element_type = typename std::decay<decltype(element)>::type;
+                    if(is_select<element_type>::value) {
+                        auto newContext = context;
+                        newContext.use_parentheses = false;
+                        ss << serialize(element, newContext);
+                    } else {
+                        ss << serialize(element, context);
+                    }
+                    ss << ";";
+                });
+                ss << " END";
+
                 return ss.str();
             }
         };
@@ -16162,11 +17105,15 @@ namespace sqlite_orm {
 
 // #include "table_name_collector.h"
 
+// #include "triggers.h"
+
 // #include "object_from_column_builder.h"
 
 // #include "table.h"
 
 // #include "column.h"
+
+// #include "index.h"
 
 namespace sqlite_orm {
 
@@ -16305,6 +17252,16 @@ namespace sqlite_orm {
             }
 
           public:
+            template<class T>
+            void drop_trigger(const T& triggerName) {
+                std::stringstream ss;
+                ss << "DROP TRIGGER " << triggerName;
+                auto query = ss.str();
+                auto con = this->get_connection();
+                auto db = con.get();
+                perform_void_exec(db, query);
+            }
+
             template<class T, class... Args>
             view_t<T, self, Args...> iterate(Args&&... args) {
                 this->assert_mapped_type<T>();
@@ -16680,21 +17637,21 @@ namespace sqlite_orm {
              */
             template<class O>
             typename std::enable_if<storage_traits::type_is_mapped<self, O>::value, std::string>::type
-            dump(const O& o) {
+            dump(const O& object) {
                 auto& tImpl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "{ ";
                 using pair = std::pair<std::string, std::string>;
                 std::vector<pair> pairs;
-                tImpl.table.for_each_column([&pairs, &o](auto& c) {
-                    using column_type = typename std::decay<decltype(c)>::type;
+                tImpl.table.for_each_column([&pairs, &object](auto& column) {
+                    using column_type = typename std::decay<decltype(column)>::type;
                     using field_type = typename column_type::field_type;
-                    pair p{c.name, std::string()};
-                    if(c.member_pointer) {
-                        p.second = field_printer<field_type>()(o.*c.member_pointer);
+                    pair p{column.name, std::string()};
+                    if(column.member_pointer) {
+                        p.second = field_printer<field_type>()(object.*column.member_pointer);
                     } else {
                         using getter_type = typename column_type::getter_type;
-                        field_value_holder<getter_type> valueHolder{((o).*(c.getter))()};
+                        field_value_holder<getter_type> valueHolder{(object.*(column.getter))()};
                         p.second = field_printer<field_type>()(valueHolder.value);
                     }
                     pairs.push_back(move(p));
@@ -16765,11 +17722,8 @@ namespace sqlite_orm {
             int insert(const O& o) {
                 this->assert_mapped_type<O>();
                 this->assert_insertable_type<O>();
-
-                return call_insert_impl_and_catch_constraint_failed([this, &o]() {
-                    auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
-                    return int(this->execute(statement));
-                });
+                auto statement = this->prepare(sqlite_orm::insert(std::ref(o)));
+                return int(this->execute(statement));
             }
 
             /**
@@ -16854,11 +17808,8 @@ namespace sqlite_orm {
                 if(from == to) {
                     return;
                 }
-
-                call_insert_impl_and_catch_constraint_failed([this, from, to]() {
-                    auto statement = this->prepare(sqlite_orm::insert_range(from, to));
-                    this->execute(statement);
-                });
+                auto statement = this->prepare(sqlite_orm::insert_range(from, to));
+                this->execute(statement);
             }
 
             template<class T, class It, class L>
@@ -16868,10 +17819,8 @@ namespace sqlite_orm {
                 if(from == to) {
                     return;
                 }
-                call_insert_impl_and_catch_constraint_failed([this, from, to, transformer = std::move(transformer)]() {
-                    auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
-                    this->execute(statement);
-                });
+                auto statement = this->prepare(sqlite_orm::insert_range<T>(from, to, std::move(transformer)));
+                this->execute(statement);
             }
 
             /**
@@ -16926,10 +17875,30 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class... Tss, class... Cols>
+            sync_schema_result
+            sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
+                auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
+                using context_t = serializator_context<impl_type>;
+                context_t context{this->impl};
+                auto query = serialize(tableImpl.table, context);
+                auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
+                if(rc != SQLITE_OK) {
+                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                            sqlite3_errmsg(db));
+                }
+                return res;
+            }
+
             template<class T, bool WithoutRowId, class... Args, class... Tss>
             sync_schema_result sync_table(const storage_impl<table_t<T, WithoutRowId, Args...>, Tss...>& tImpl,
                                           sqlite3* db,
                                           bool preserve) {
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+                if(std::is_same<T, dbstat>::value) {
+                    return sync_schema_result::already_in_sync;
+                }
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
                 auto res = sync_schema_result::already_in_sync;
 
                 auto schema_stat = tImpl.schema_status(db, preserve);
@@ -17154,23 +18123,25 @@ namespace sqlite_orm {
             }
 
             template<class T, class... Ids>
-            prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> rem) {
-                return prepare_impl<remove_t<T, Ids...>>(std::move(rem));
+            prepared_statement_t<remove_t<T, Ids...>> prepare(remove_t<T, Ids...> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                return this->prepare_impl<remove_t<T, Ids...>>(std::move(statement));
             }
 
             template<class T>
-            prepared_statement_t<insert_t<T>> prepare(insert_t<T> ins) {
-                using object_type = typename expression_object_type<decltype(ins)>::type;
+            prepared_statement_t<insert_t<T>> prepare(insert_t<T> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_t<T>>(std::move(ins));
+                return this->prepare_impl<insert_t<T>>(std::move(statement));
             }
 
             template<class T>
             prepared_statement_t<replace_t<T>> prepare(replace_t<T> rep) {
                 using object_type = typename expression_object_type<decltype(rep)>::type;
                 this->assert_mapped_type<object_type>();
-                return prepare_impl<replace_t<T>>(std::move(rep));
+                return this->prepare_impl<replace_t<T>>(std::move(rep));
             }
 
             template<class It, class L, class O>
@@ -17178,19 +18149,21 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<decltype(statement)>::type;
                 this->assert_mapped_type<object_type>();
                 this->assert_insertable_type<object_type>();
-                return prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
+                return this->prepare_impl<insert_range_t<It, L, O>>(std::move(statement));
             }
 
             template<class It, class L, class O>
-            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> rep) {
-                return prepare_impl<replace_range_t<It, L, O>>(std::move(rep));
+            prepared_statement_t<replace_range_t<It, L, O>> prepare(replace_range_t<It, L, O> statement) {
+                using object_type = typename expression_object_type<decltype(statement)>::type;
+                this->assert_mapped_type<object_type>();
+                return this->prepare_impl<replace_range_t<It, L, O>>(std::move(statement));
             }
 
             template<class T, class... Cols>
             prepared_statement_t<insert_explicit<T, Cols...>> prepare(insert_explicit<T, Cols...> ins) {
                 using object_type = typename expression_object_type<decltype(ins)>::type;
                 this->assert_mapped_type<object_type>();
-                return prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
+                return this->prepare_impl<insert_explicit<T, Cols...>>(std::move(ins));
             }
 
             template<class... Args>
@@ -17239,17 +18212,23 @@ namespace sqlite_orm {
                 auto db = con.get();
                 auto stmt = statement.stmt;
                 auto& tImpl = this->get_impl<object_type>();
-                auto& o = statement.expression.obj;
+                auto& object = statement.expression.obj;
                 sqlite3_reset(stmt);
-                iterate_tuple(statement.expression.columns.columns, [&o, &index, &stmt, &tImpl, db](auto& m) {
-                    using column_type = typename std::decay<decltype(m)>::type;
-                    using field_type = typename column_result_t<self, column_type>::type;
-                    const field_type* value = tImpl.table.template get_object_field_pointer<field_type>(o, m);
-                    if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                    }
-                });
+                iterate_tuple(
+                    statement.expression.columns.columns,
+                    [&object, &index, &stmt, &tImpl, db](auto& memberPointer) {
+                        using column_type = typename std::decay<decltype(memberPointer)>::type;
+                        using field_type = typename column_result_t<self, column_type>::type;
+                        const auto* value =
+                            tImpl.table.template get_object_field_pointer<field_type>(object, memberPointer);
+                        if(!value) {
+                            throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::value_is_null));
+                        }
+                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
+                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                                    sqlite3_errmsg(db));
+                        }
+                    });
                 perform_step(db, stmt);
                 return sqlite3_last_insert_rowid(db);
             }
@@ -17762,7 +18741,8 @@ namespace sqlite_orm {
                     storageImpl.table.for_each_foreign_key([&storageImpl, this, &object, &res](auto& foreignKey) {
                         using ForeignKey = typename std::decay<decltype(foreignKey)>::type;
                         using TargetType = typename ForeignKey::target_type;
-                        if(std::is_same<TargetType, O>::value) {
+
+                        static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)";
                             ss << " FROM " << storageImpl.table.name;
@@ -17790,26 +18770,24 @@ namespace sqlite_orm {
                                 columnIndex = 1;
                                 iterate_tuple(
                                     foreignKey.references,
-                                    [&columnIndex, stmt, &object, db](auto& memberPointer) {
+                                    [&columnIndex, stmt, &object, db, this](auto& memberPointer) {
                                         using MemberPointer = typename std::decay<decltype(memberPointer)>::type;
                                         using field_type = typename member_traits<MemberPointer>::field_type;
-                                        //                                    if(column.member_pointer) {
-                                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt,
-                                                                                            columnIndex++,
-                                                                                            object.*memberPointer)) {
+
+                                        auto& tImpl = this->get_impl<O>();
+                                        auto value =
+                                            tImpl.table.template get_object_field_pointer<field_type>(object,
+                                                                                                      memberPointer);
+                                        if(!value) {
+                                            throw std::system_error(
+                                                std::make_error_code(sqlite_orm::orm_error_code::value_is_null));
+                                        }
+                                        if(SQLITE_OK !=
+                                           statement_binder<field_type>().bind(stmt, columnIndex++, *value)) {
                                             throw std::system_error(
                                                 std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                                 sqlite3_errmsg(db));
                                         }
-                                        /*} else {
-                                        using getter_type = typename column_type::getter_type;
-                                        field_value_holder<getter_type> valueHolder{((object).*(column.getter))()};
-                                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, columnIndex++, valueHolder.value)) {
-                                            throw std::system_error(
-                                                std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
-                                        }
-                                    }*/
                                     });
                                 if(SQLITE_ROW != sqlite3_step(stmt)) {
                                     throw std::system_error(
@@ -17828,7 +18806,7 @@ namespace sqlite_orm {
                                     std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
                                     sqlite3_errmsg(db));
                             }
-                        }
+                        })();
                     });
                 });
                 return res;
@@ -18164,6 +19142,20 @@ __pragma(pop_macro("min"))
         struct node_tuple<built_in_function_t<R, S, Args...>, void> {
             using node_type = built_in_function_t<R, S, Args...>;
             using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class R, class S, class... Args>
+        struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> {
+            using node_type = built_in_aggregate_function_t<R, S, Args...>;
+            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+        };
+
+        template<class F, class W>
+        struct node_tuple<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
+            using left_tuple = typename node_tuple<F>::type;
+            using right_tuple = typename node_tuple<W>::type;
+            using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
         template<class F, class... Args>

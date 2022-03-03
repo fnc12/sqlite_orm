@@ -1,6 +1,8 @@
 #include <type_traits>  //  std::is_same, std::enable_if, std::true_type, std::false_type, std::integral_constant
 #include <tuple>  //  std::tuple
 
+#include "tuple_helper/tuple_transformer.h"
+
 namespace sqlite_orm {
 
     namespace internal {

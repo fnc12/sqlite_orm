@@ -16,6 +16,7 @@
 #include "ast/where.h"
 #include "ast/into.h"
 #include "ast/group_by.h"
+#include "ast/exists.h"
 
 namespace sqlite_orm {
 
@@ -353,8 +354,8 @@ namespace sqlite_orm {
             using node_type = exists_t<T>;
 
             template<class L>
-            void operator()(const node_type& e, const L& l) const {
-                iterate_ast(e.t, l);
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.expression, lambda);
             }
         };
 
@@ -450,8 +451,29 @@ namespace sqlite_orm {
             using node_type = built_in_function_t<R, S, Args...>;
 
             template<class L>
-            void operator()(const node_type& f, const L& l) const {
-                iterate_ast(f.args, l);
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.args, lambda);
+            }
+        };
+
+        template<class R, class S, class... Args>
+        struct ast_iterator<built_in_aggregate_function_t<R, S, Args...>, void> {
+            using node_type = built_in_aggregate_function_t<R, S, Args...>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.args, lambda);
+            }
+        };
+
+        template<class F, class W>
+        struct ast_iterator<filtered_aggregate_function<F, W>, void> {
+            using node_type = filtered_aggregate_function<F, W>;
+
+            template<class L>
+            void operator()(const node_type& node, const L& lambda) const {
+                iterate_ast(node.function, lambda);
+                iterate_ast(node.where, lambda);
             }
         };
 

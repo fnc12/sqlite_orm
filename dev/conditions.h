@@ -9,6 +9,7 @@
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
+#include "serializator_context.h"
 #include "tags.h"
 #include "expression.h"
 
@@ -781,22 +782,6 @@ namespace sqlite_orm {
             inner_join_t(on_type constraint_) : constraint(std::move(constraint_)) {}
         };
 
-        struct exists_string {
-            operator std::string() const {
-                return "EXISTS";
-            }
-        };
-
-        template<class T>
-        struct exists_t : condition_t, exists_string, internal::negatable_t {
-            using type = T;
-            using self = exists_t<type>;
-
-            type t;
-
-            exists_t(T t_) : t(std::move(t_)) {}
-        };
-
         struct cast_string {
             operator std::string() const {
                 return "CAST";
@@ -1261,19 +1246,6 @@ namespace sqlite_orm {
     template<class A, class T, class E>
     internal::like_t<A, T, E> like(A a, T t, E e) {
         return {std::move(a), std::move(t), {std::move(e)}};
-    }
-
-    /**
-     *  EXISTS(condition).
-     *  Example: storage.select(columns(&Agent::code, &Agent::name, &Agent::workingArea, &Agent::comission),
-         where(exists(select(asterisk<Customer>(),
-         where(is_equal(&Customer::grade, 3) and
-         is_equal(&Agent::code, &Customer::agentCode))))),
-         order_by(&Agent::comission));
-     */
-    template<class T>
-    internal::exists_t<T> exists(T t) {
-        return {std::move(t)};
     }
 
     /**
