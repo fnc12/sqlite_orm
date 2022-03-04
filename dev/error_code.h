@@ -29,6 +29,7 @@ namespace sqlite_orm {
         function_not_found,
         index_is_out_of_bounds,
         value_is_null,
+        no_tables_specified,
     };
 
 }
@@ -79,6 +80,8 @@ namespace sqlite_orm {
                     return "Index is out of bounds";
                 case orm_error_code::value_is_null:
                     return "Value is null";
+                case orm_error_code::no_tables_specified:
+                    return "No tables specified";
                 default:
                     return "unknown error";
             }
