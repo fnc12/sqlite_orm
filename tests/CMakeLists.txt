@@ -90,11 +90,12 @@ add_executable(unit_tests
     statement_serializator_tests/schema/raise.cpp
     statement_serializator_tests/indexed_column.cpp
     statement_serializator_tests/logical_operators.cpp
-    statement_serializator_tests/select.cpp
+    statement_serializator_tests/statements/select.cpp
     statement_serializator_tests/select_constraints.cpp
-    statement_serializator_tests/insert_replace.cpp
-    statement_serializator_tests/update.cpp
-    statement_serializator_tests/remove.cpp
+    statement_serializator_tests/statements/insert_replace.cpp
+    statement_serializator_tests/statements/update.cpp
+    statement_serializator_tests/statements/remove.cpp
+    statement_serializator_tests/statements/update_all.cpp
     statement_serializator_tests/aggregate_functions.cpp
     storage_tests.cpp
     storage_non_crud_tests.cpp

@@ -76,19 +76,11 @@ namespace sqlite_orm {
         template<class... Args>
         struct is_columns<columns_t<Args...>> : std::true_type {};
 
-        struct set_string {
-            operator std::string() const {
-                return "SET";
-            }
-        };
-
         template<class... Args>
-        struct set_t : set_string {
+        struct set_t {
             using assigns_type = std::tuple<Args...>;
 
             assigns_type assigns;
-
-            set_t(assigns_type assigns_) : assigns(move(assigns_)) {}
         };
 
         /**
