@@ -1,10 +1,12 @@
 #pragma once
 
+#include <type_traits>
 #include <string>  //  std::string
-#include <sqlite3.h>
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
+#include <cstddef>
+#include <sqlite3.h>
 
 #include "cxx_polyfill.h"
 

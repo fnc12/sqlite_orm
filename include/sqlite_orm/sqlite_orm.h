@@ -2452,7 +2452,7 @@ namespace sqlite_orm {
     };
 
     /**
-     *  char is neither signdr char nor unsigned char so it has its own specialization
+     *  char is neither signed char nor unsigned char so it has its own specialization
      */
     template<>
     struct field_printer<char, void> {
@@ -9069,11 +9069,13 @@ namespace sqlite_orm {
 
 // #include "function.h"
 
+#include <type_traits>
 #include <string>  //  std::string
-#include <sqlite3.h>
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
+#include <cstddef>
+#include <sqlite3.h>
 
 // #include "cxx_polyfill.h"
 
