@@ -73,7 +73,7 @@ add_executable(unit_tests
 	statement_serializator_tests/column_constraints/autoincrement.cpp
 	statement_serializator_tests/column_constraints/unique.cpp
 	statement_serializator_tests/column_constraints/check.cpp
-    statement_serializator_tests/bound_pointer.cpp
+    statement_serializator_tests/bindables.cpp
     statement_serializator_tests/ast/upsert_clause.cpp
     statement_serializator_tests/ast/excluded.cpp
     statement_serializator_tests/arithmetic_operators.cpp

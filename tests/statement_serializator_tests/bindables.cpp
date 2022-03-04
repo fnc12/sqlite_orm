@@ -144,80 +144,62 @@ TEST_CASE("bindables") {
     }
 
     SECTION("bindable_types") {
-        using Tuple = tuple<string
+        using Tuple = tuple<string,
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                            ,
                             std::wstring,
-                            StringVeneer<wchar_t>
+                            StringVeneer<wchar_t>,
 #endif
-                            ,
                             unique_ptr<int>,
                             shared_ptr<int>,
-                            vector<char>
+                            vector<char>,
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                            ,
-                            std::optional<int>
+                            std::optional<int>,
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                            ,
-                            std::string_view
+                            std::string_view,
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                            ,
-                            std::wstring_view
+                            std::wstring_view,
 #endif
 #endif
-                            ,
                             StringVeneer<char>,
                             Custom>;
 
-        Tuple t{""
+        Tuple t{"",
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                ,
                 L"",
-                L""
+                L"",
 #endif
-                ,
                 nullptr,
                 nullptr,
-                vector<char>{}
+                vector<char>{},
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                ,
-                std::nullopt
+                std::nullopt,
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                ,
-                ""
+                "",
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                ,
-                L""
+                L"",
 #endif
 #endif
-                ,
                 "",
                 Custom{}};
-        array<string, std::tuple_size<Tuple>::value> e{"''"
+        array<string, std::tuple_size<Tuple>::value> e{"''",
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                                                       ,
                                                        "''",
-                                                       "''"
+                                                       "''",
 #endif
-                                                       ,
                                                        "null",
                                                        "null",
-                                                       "x''"
+                                                       "x''",
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                                                       ,
-                                                       "null"
+                                                       "null",
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                       ,
-                                                       "''"
+                                                       "''",
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                                                       ,
-                                                       "''"
+                                                       "''",
 #endif
 #endif
-                                                       ,
                                                        "''",
                                                        "custom"};
 
