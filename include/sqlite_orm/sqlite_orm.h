@@ -14894,7 +14894,7 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << "'" << context.impl.find_table_name(typeid(T)) << "'.";
                 }
-                if(auto columnNamePointer = context.impl.column_name_simple(c.field)) {
+                if(auto columnNamePointer = context.impl.column_name(c)) {
                     ss << "\"" << *columnNamePointer << "\"";
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
