@@ -2455,7 +2455,7 @@ namespace sqlite_orm {
     };
 
     /**
-     *  char is neither signdr char nor unsigned char so it has its own specialization
+     *  char is neither signed char nor unsigned char so it has its own specialization
      */
     template<>
     struct field_printer<char, void> {
@@ -2469,7 +2469,7 @@ namespace sqlite_orm {
     template<class T>
     struct field_printer<T, std::enable_if_t<std::is_base_of<std::string, T>::value>> {
         std::string operator()(std::string string) const {
-            return move(string);
+            return string;
         }
     };
 
