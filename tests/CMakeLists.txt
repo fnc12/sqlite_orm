@@ -128,6 +128,8 @@ endif()
 target_precompile_headers(unit_tests PRIVATE
     <sqlite_orm/sqlite_orm.h>
     <catch2/catch.hpp>)
+# tests.cpp contains CATCH_CONFIG_MAIN
+set_source_files_properties(tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
 target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2)
 
