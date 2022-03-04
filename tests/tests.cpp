@@ -1,4 +1,7 @@
 #include <sqlite_orm/sqlite_orm.h>
+
+#define CATCH_CONFIG_MAIN
+
 #include <catch2/catch.hpp>
 
 #include <cassert>  //  assert
