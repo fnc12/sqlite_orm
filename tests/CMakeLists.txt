@@ -125,6 +125,10 @@ if(SQLITE_ORM_OMITS_CODECVT)
 	target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
 endif()
 
+target_precompile_headers(unit_tests PRIVATE
+    <sqlite_orm/sqlite_orm.h>
+    <catch2/catch.hpp>)
+
 target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2)
 
 add_test(NAME "All_in_one_unit_test"
