@@ -4,7 +4,7 @@
 using namespace sqlite_orm;
 
 TEST_CASE("check") {
-    {
+    SECTION("table level") {
         struct Contact {
             int id = 0;
             std::string firstName;
@@ -22,19 +22,31 @@ TEST_CASE("check") {
                                                check(length(&Contact::phone) >= 10)));
         storage.sync_schema();
     }
-    {
+    SECTION("column level") {
         struct Book {
             int id = 0;
             std::string name;
             std::string pubName;
             int price = 0;
         };
-        auto storage = make_storage({},
-                                    make_table("BOOK",
-                                               make_column("Book_id", &Book::id, primary_key()),
-                                               make_column("Book_name", &Book::name),
-                                               make_column("Pub_name", &Book::pubName),
-                                               make_column("PRICE", &Book::price, check(c(&Book::price) > 0))));
-        storage.sync_schema();
+        SECTION(">") {
+            auto storage = make_storage({},
+                                        make_table("BOOK",
+                                                   make_column("Book_id", &Book::id, primary_key()),
+                                                   make_column("Book_name", &Book::name),
+                                                   make_column("Pub_name", &Book::pubName),
+                                                   make_column("PRICE", &Book::price, check(c(&Book::price) > 0))));
+            storage.sync_schema();
+        }
+        SECTION("like") {
+            auto storage = make_storage({},
+                                        make_table("BOOK",
+                                                   make_column("Book_id", &Book::id, primary_key()),
+                                                   make_column("Book_name", &Book::name),
+                                                   make_column("Pub_name", &Book::pubName),
+                                                   make_column("PRICE", &Book::price, check(c(&Book::price) > 0)),
+                                                   check(like(&Book::pubName, "M%"))));
+            storage.sync_schema();
+        }
     }
 }

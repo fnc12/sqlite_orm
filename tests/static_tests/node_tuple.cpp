@@ -187,6 +187,141 @@ TEST_CASE("Node tuple") {
         using InTuple = node_tuple<In>::type;
         static_assert(is_same<InTuple, std::tuple<decltype(&User::id), std::vector<int>>>::value, "in_t");
     }
+    SECTION("exists(select(&User::name, where(in(&User::id, {6, 7, 9}))))") {
+        auto c = exists(select(&User::name, where(in(&User::id, {6, 7, 9}))));
+        using Con = decltype(c);
+        using Tuple = node_tuple<Con>::type;
+        using Expected = std::tuple<decltype(&User::name), decltype(&User::id), std::vector<int>>;
+        static_assert(is_same<Tuple, Expected>::value, "exists(select(&User::name, where(in(&User::id, {6, 7, 9}))))");
+    }
+    SECTION("aggregate functions") {
+        SECTION("avg") {
+            auto node = avg(&User::id);
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id)>;
+            static_assert(is_same<Tuple, Expected>::value, "avg");
+        }
+        SECTION("avg filter") {
+            auto node = avg(&User::id).filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "avg filter");
+        }
+        SECTION("count(*)") {
+            auto node = count<User>();
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(node)>;
+            static_assert(is_same<Tuple, Expected>::value, "count(*)");
+        }
+        SECTION("count(*) filter") {
+            auto node = count<User>().filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(count<User>()), decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "count(*) filter");
+        }
+        SECTION("count(X)") {
+            auto node = count(&User::id);
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id)>;
+            static_assert(is_same<Tuple, Expected>::value, "count(X)");
+        }
+        SECTION("count(X) filter") {
+            auto node = count(&User::id).filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "count(X) filter");
+        }
+        SECTION("group_concat(X)") {
+            auto node = group_concat(&User::id);
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id)>;
+            static_assert(is_same<Tuple, Expected>::value, "group_concat(X)");
+        }
+        SECTION("group_concat(X) filter") {
+            auto node = group_concat(&User::id).filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "group_concat(X) filter");
+        }
+        SECTION("group_concat(X,Y)") {
+            auto node = group_concat(&User::id, std::string("-"));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), std::string>;
+            static_assert(is_same<Tuple, Expected>::value, "group_concat(X,Y)");
+        }
+        SECTION("group_concat(X,Y) filter") {
+            auto node = group_concat(&User::id, std::string("-")).filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), std::string, decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "group_concat(X,Y) filter");
+        }
+        SECTION("max(X)") {
+            auto node = max(&User::id);
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id)>;
+            static_assert(is_same<Tuple, Expected>::value, "group_concat(X,Y)");
+        }
+        SECTION("max(X) filter") {
+            auto node = max(&User::id).filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "max(X) filter");
+        }
+        SECTION("min(X)") {
+            auto node = min(&User::id);
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id)>;
+            static_assert(is_same<Tuple, Expected>::value, "min(X)");
+        }
+        SECTION("min(X) filter") {
+            auto node = min(&User::id).filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "min(X) filter");
+        }
+        SECTION("sum(X)") {
+            auto node = sum(&User::id);
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id)>;
+            static_assert(is_same<Tuple, Expected>::value, "sum(X)");
+        }
+        SECTION("sum(X) filter") {
+            auto node = sum(&User::id).filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "sum(X) filter");
+        }
+        SECTION("total(X)") {
+            auto node = total(&User::id);
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id)>;
+            static_assert(is_same<Tuple, Expected>::value, "total(X)");
+        }
+        SECTION("total(X) filter") {
+            auto node = total(&User::id).filter(where(length(&User::name) > 5));
+            using Node = decltype(node);
+            using Tuple = node_tuple<Node>::type;
+            using Expected = std::tuple<decltype(&User::id), decltype(&User::name), int>;
+            static_assert(is_same<Tuple, Expected>::value, "total(X) filter");
+        }
+    }
     SECTION("compound operator") {
         SECTION("union_(select(1), select(2))") {
             auto un = union_(select(1), select(2));

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <locale>  // std::wstring_convert
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
@@ -12,14 +13,30 @@
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 
+#include "start_macros.h"
+#include "cxx_polyfill.h"
+#include "is_std_ptr.h"
+
 namespace sqlite_orm {
 
     /**
      *  Is used to print members mapped to objects in storage_t::dump member function.
      *  Other developers can create own specialization to map custom types
      */
-    template<class T, typename Enable = void>
-    struct field_printer {
+    template<class T, typename SFINAE = void>
+    struct field_printer;
+
+    namespace internal {
+        template<class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v<T, polyfill::void_t<decltype(field_printer<T>{})>> = true;
+        template<class T>
+        using is_printable = polyfill::bool_constant<is_printable_v<T>>;
+    }
+
+    template<class T>
+    struct field_printer<T, std::enable_if_t<std::is_arithmetic<T>::value>> {
         std::string operator()(const T& t) const {
             std::stringstream stream;
             stream << t;
@@ -52,7 +69,7 @@ namespace sqlite_orm {
     };
 
     /**
-     *  char is neigher signer char nor unsigned char so it has its own specialization
+     *  char is neither signed char nor unsigned char so it has its own specialization
      */
     template<>
     struct field_printer<char, void> {
@@ -63,10 +80,10 @@ namespace sqlite_orm {
         }
     };
 
-    template<>
-    struct field_printer<std::string, void> {
-        std::string operator()(const std::string& string) const {
-            return string;
+    template<class T>
+    struct field_printer<T, std::enable_if_t<std::is_base_of<std::string, T>::value>> {
+        std::string operator()(std::string string) const {
+            return move(string);
         }
     };
 
@@ -82,8 +99,8 @@ namespace sqlite_orm {
         }
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
-    template<>
-    struct field_printer<std::wstring, void> {
+    template<class T>
+    struct field_printer<T, std::enable_if_t<std::is_base_of<std::wstring, T>::value>> {
         std::string operator()(const std::wstring& wideString) const {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
             return converter.to_bytes(wideString);
@@ -105,23 +122,12 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<std::shared_ptr<T>, void> {
-        std::string operator()(const std::shared_ptr<T>& t) const {
+    struct field_printer<T, std::enable_if_t<is_std_ptr<T>::value>> {
+        std::string operator()(const T& t) const {
             if(t) {
-                return field_printer<T>()(*t);
+                return field_printer<typename T::element_type>()(*t);
             } else {
-                return field_printer<std::nullptr_t>()(nullptr);
-            }
-        }
-    };
-
-    template<class T>
-    struct field_printer<std::unique_ptr<T>, void> {
-        std::string operator()(const std::unique_ptr<T>& t) const {
-            if(t) {
-                return field_printer<T>()(*t);
-            } else {
-                return field_printer<std::nullptr_t>()(nullptr);
+                return field_printer<std::nullptr_t>{}(nullptr);
             }
         }
     };
@@ -133,19 +139,9 @@ namespace sqlite_orm {
             if(t.has_value()) {
                 return field_printer<T>()(*t);
             } else {
-                return field_printer<std::nullptr_t>()(nullptr);
+                return field_printer<std::nullopt_t>{}(std::nullopt);
             }
         }
     };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-
-    template<typename P, typename T, typename D>
-    class pointer_binding;
-
-    template<class P, class T, class D>
-    struct field_printer<pointer_binding<P, T, D>, void> {
-        std::string operator()(const pointer_binding<P, T, D>&) const {
-            return field_printer<std::nullptr_t>()(nullptr);
-        }
-    };
 }

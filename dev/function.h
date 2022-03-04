@@ -19,7 +19,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct function_base {
+        struct user_defined_function_base {
             using func_call = std::function<
                 void(sqlite3_context *context, void *functionPointer, int argsCount, sqlite3_value **values)>;
             using final_call = std::function<void(sqlite3_context *context, void *functionPointer)>;
@@ -29,37 +29,37 @@ namespace sqlite_orm {
             std::function<int *()> create;
             void (*destroy)(int *) = nullptr;
 
-            function_base(decltype(name) name_,
-                          decltype(argumentsCount) argumentsCount_,
-                          decltype(create) create_,
-                          decltype(destroy) destroy_) :
+            user_defined_function_base(decltype(name) name_,
+                                       decltype(argumentsCount) argumentsCount_,
+                                       decltype(create) create_,
+                                       decltype(destroy) destroy_) :
                 name(move(name_)),
                 argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
         };
 
-        struct scalar_function_t : function_base {
+        struct user_defined_scalar_function_t : user_defined_function_base {
             func_call run;
 
-            scalar_function_t(decltype(name) name_,
-                              int argumentsCount_,
-                              decltype(create) create_,
-                              decltype(run) run_,
-                              decltype(destroy) destroy_) :
-                function_base{move(name_), argumentsCount_, move(create_), destroy_},
+            user_defined_scalar_function_t(decltype(name) name_,
+                                           int argumentsCount_,
+                                           decltype(create) create_,
+                                           decltype(run) run_,
+                                           decltype(destroy) destroy_) :
+                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
                 run(move(run_)) {}
         };
 
-        struct aggregate_function_t : function_base {
+        struct user_defined_aggregate_function_t : user_defined_function_base {
             func_call step;
             final_call finalCall;
 
-            aggregate_function_t(decltype(name) name_,
-                                 int argumentsCount_,
-                                 decltype(create) create_,
-                                 decltype(step) step_,
-                                 decltype(finalCall) finalCall_,
-                                 decltype(destroy) destroy_) :
-                function_base{move(name_), argumentsCount_, move(create_), destroy_},
+            user_defined_aggregate_function_t(decltype(name) name_,
+                                              int argumentsCount_,
+                                              decltype(create) create_,
+                                              decltype(step) step_,
+                                              decltype(finalCall) finalCall_,
+                                              decltype(destroy) destroy_) :
+                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
                 step(move(step_)), finalCall(move(finalCall_)) {}
         };
 

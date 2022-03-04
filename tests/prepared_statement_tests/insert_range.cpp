@@ -49,7 +49,7 @@ TEST_CASE("Prepared insert range") {
             try {
                 auto statement = storage.prepare(insert_range(users.begin(), users.end()));
                 REQUIRE(false);
-            } catch(const std::system_error &e) {
+            } catch(const std::system_error &) {
                 //..
             }
         }
@@ -62,7 +62,7 @@ TEST_CASE("Prepared insert range") {
                                                                         return *pointer;
                                                                     }));
                 REQUIRE(false);
-            } catch(const std::system_error &e) {
+            } catch(const std::system_error &) {
                 //..
             }
         }

@@ -13,6 +13,123 @@ TEST_CASE("ast_iterator") {
     auto lambda = [&typeIndexes](auto &value) {
         typeIndexes.push_back(typeid(value));
     };
+    SECTION("aggregate functions") {
+        SECTION("avg") {
+            auto node = avg(&User::id);
+            expected.push_back(typeid(&User::id));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("avg filter") {
+            auto node = avg(&User::id).filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("count(*)") {
+            auto node = count<User>();
+            expected.push_back(typeid(node));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("count(*) filter") {
+            auto node = count<User>().filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(decltype(count<User>())));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("count(X)") {
+            auto node = count(&User::id);
+            expected.push_back(typeid(&User::id));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("count(X) filter") {
+            auto node = count(&User::id).filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("group_concat(X)") {
+            auto node = group_concat(&User::id);
+            expected.push_back(typeid(&User::id));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("group_concat(X) filter") {
+            auto node = group_concat(&User::id).filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("group_concat(X,Y)") {
+            auto node = group_concat(&User::id, std::string("-"));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(std::string));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("group_concat(X,Y) filter") {
+            auto node = group_concat(&User::id, std::string("-")).filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(std::string));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("max(X)") {
+            auto node = max(&User::id);
+            expected.push_back(typeid(&User::id));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("max(X) filter") {
+            auto node = max(&User::id).filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("min(X)") {
+            auto node = min(&User::id);
+            expected.push_back(typeid(&User::id));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("min(X) filter") {
+            auto node = min(&User::id).filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("sum(X)") {
+            auto node = sum(&User::id);
+            expected.push_back(typeid(&User::id));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("sum(X) filter") {
+            auto node = sum(&User::id).filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("total(X)") {
+            auto node = total(&User::id);
+            expected.push_back(typeid(&User::id));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("total(X) filter") {
+            auto node = total(&User::id).filter(where(length(&User::name) > 5));
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(&User::name));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+    }
+    SECTION("exists") {
+        auto node = exists(select(5));
+        expected.push_back(typeid(int));
+        internal::iterate_ast(node, lambda);
+    }
     SECTION("order_by") {
         auto node = order_by(c(&User::id) == 0);
         expected.push_back(typeid(&User::id));
