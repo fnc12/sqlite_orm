@@ -97,7 +97,7 @@ class Amalgamation(object):
             t = TranslationUnit(file_path, self, True)
             amalgamation += t.content
 
-        with open(self.target, 'w') as f:
+        with open(self.target, mode='w', newline='\n') as f:
             f.write(amalgamation)
 
         print("...done!\n")
