@@ -1,10 +1,12 @@
 #pragma once
 
+#include <type_traits>
 #include <string>  //  std::string
-#include <sqlite3.h>
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
+#include <cstddef>
+#include <sqlite3.h>
 
 #include "cxx_polyfill.h"
 
@@ -190,6 +192,11 @@ namespace sqlite_orm {
 
         template<size_t I, class FnArg, class CallArg, class EnableIfTag = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_same_pvt_v = expected_pointer_value<I, FnArg, CallArg>();
+
+        // Always allow binding nullptr to a pointer argument
+        template<size_t I, class PointerArg>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
 #if __cplusplus >= 201703L  // using C++17 or higher
         template<size_t I, const char *PointerArg, const char *Binding>
