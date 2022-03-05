@@ -5,12 +5,13 @@
 #include <type_traits>  //  std::enable_if, std::remove_pointer
 #include <vector>  //  std::vector
 #include <algorithm>  //  std::iter_swap
+#ifndef SQLITE_ORM_OMITS_CODECVT
+#include <codecvt>  //  std::codecvt_utf8_utf16
+#endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <cstddef>  // std::nullptr_t
 #include <memory>
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-#include <optional>
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "start_macros.h"
 #include "member_traits/is_getter.h"
 #include "member_traits/is_setter.h"
 #include "ast/upsert_clause.h"
@@ -25,7 +26,9 @@
 #include "function.h"
 #include "prepared_statement.h"
 #include "rowid.h"
+#include "pointer_value.h"
 #include "type_printer.h"
+#include "field_printer.h"
 #include "table_name_collector.h"
 #include "column_names_getter.h"
 #include "order_by_serializator.h"
@@ -48,17 +51,78 @@ namespace sqlite_orm {
             return serializator(t, context);
         }
 
+        /**
+         *  Serializer for bindable types.
+         */
         template<class T>
-        struct statement_serializator<T, typename std::enable_if<is_bindable<T>::value>::type> {
+        struct statement_serializator<T, std::enable_if_t<is_bindable_v<T>>> {
             using statement_type = T;
 
             template<class C>
-            std::string operator()(const statement_type& statement, const C& context) {
+            std::string operator()(const T& statement, const C& context) const {
                 if(context.replace_bindable_with_question) {
                     return "?";
                 } else {
-                    return field_printer<T>{}(statement);
+                    return this->do_serialize(statement);
                 }
+            }
+
+          private:
+            template<class X,
+                     std::enable_if_t<is_printable_v<X> && !std::is_base_of<std::string, X>::value
+#ifndef SQLITE_ORM_OMITS_CODECVT
+                                          && !std::is_base_of<std::wstring, X>::value
+#endif
+                                      ,
+                                      bool> = true>
+            std::string do_serialize(const X& c) const {
+                static_assert(std::is_same<X, T>::value, "");
+
+                // implementation detail: utilizing field_printer
+                return field_printer<X>{}(c);
+            }
+
+            std::string do_serialize(const std::string& c) const {
+                // implementation detail: utilizing field_printer
+                return "'" + field_printer<std::string>{}(c) + "'";
+            }
+
+            std::string do_serialize(const char* c) const {
+                return std::string("'") + c + "'";
+            }
+#ifndef SQLITE_ORM_OMITS_CODECVT
+            std::string do_serialize(const std::wstring& c) const {
+                // implementation detail: utilizing field_printer
+                return "'" + field_printer<std::wstring>{}(c) + "'";
+            }
+
+            std::string do_serialize(const wchar_t* c) const {
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                return std::string("'") + converter.to_bytes(c) + "'";
+            }
+#endif
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+            std::string do_serialize(const std::string_view& c) const {
+                return "'" + std::string(c) + "'";
+            }
+#ifndef SQLITE_ORM_OMITS_CODECVT
+            std::string do_serialize(const std::wstring_view& c) const {
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                return "'" + converter.to_bytes(c.data(), c.data() + c.size()) + "'";
+            }
+#endif
+#endif
+            /**
+             *  Specialization for binary data (std::vector<char>).
+             */
+            std::string do_serialize(const std::vector<char>& t) const {
+                return "x'" + field_printer<std::vector<char>>{}(t) + "'";
+            }
+
+            template<class P, class PT, class D>
+            std::string do_serialize(const pointer_binding<P, PT, D>&) const {
+                // always serialize null (security reasons)
+                return field_printer<std::nullptr_t>{}(nullptr);
             }
         };
 
@@ -112,26 +176,6 @@ namespace sqlite_orm {
             }
         };
 
-        template<>
-        struct statement_serializator<std::nullptr_t, void> {
-            using statement_type = std::nullptr_t;
-
-            template<class C>
-            std::string operator()(const statement_type&, const C&) {
-                return "?";
-            }
-        };
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        template<>
-        struct statement_serializator<std::nullopt_t, void> {
-            using statement_type = std::nullopt_t;
-
-            template<class C>
-            std::string operator()(const statement_type&, const C&) {
-                return "?";
-            }
-        };
-#endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
         struct statement_serializator<alias_holder<T>, void> {
             using statement_type = alias_holder<T>;
@@ -263,50 +307,6 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
-
-        template<>
-        struct statement_serializator<std::string, void> {
-            using statement_type = std::string;
-
-            template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
-                if(context.replace_bindable_with_question) {
-                    return "?";
-                } else {
-                    return "'" + c + "'";
-                }
-            }
-        };
-
-        template<>
-        struct statement_serializator<const char*, void> {
-            using statement_type = const char*;
-
-            template<class C>
-            std::string operator()(const char* c, const C& context) const {
-                if(context.replace_bindable_with_question) {
-                    return "?";
-                } else {
-                    return std::string("'") + c + "'";
-                }
-            }
-        };
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        template<>
-        struct statement_serializator<std::string_view, void> {
-            using statement_type = std::string_view;
-
-            template<class C>
-            std::string operator()(const std::string_view& c, const C& context) const {
-                if(context.replace_bindable_with_question) {
-                    return "?";
-                } else {
-                    return "'" + std::string(c) + "'";
-                }
-            }
-        };
-#endif
 
         template<class O, class F>
         struct statement_serializator<F O::*, void> {
@@ -2419,6 +2419,5 @@ namespace sqlite_orm {
                 return ss.str();
             }
         };
-
     }
 }

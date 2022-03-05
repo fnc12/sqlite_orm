@@ -63,7 +63,7 @@ TEST_CASE("filtered index") {
         try {
             storage.insert(Test{1, std::nullopt});
             REQUIRE(false);
-        } catch(const std::system_error &error) {
+        } catch(const std::system_error &) {
             REQUIRE(true);
         }
     }

@@ -30,11 +30,11 @@ int main() {
                                                        generated_always_as(&Product::price * c(&Product::quantity)))));
     storage.sync_schema();
 
-    storage.replace(Product{1, "Hammer", 10, 9.99});
-    storage.replace(Product{2, "Saw", 5, 11.34});
-    storage.replace(Product{3, "Wrench", 7, 37.00});
-    storage.replace(Product{4, "Chisel", 9, 23.00});
-    storage.replace(Product{5, "Bandage", 70, 120.00});
+    storage.replace(Product{1, "Hammer", 10, 9.99f});
+    storage.replace(Product{2, "Saw", 5, 11.34f});
+    storage.replace(Product{3, "Wrench", 7, 37.00f});
+    storage.replace(Product{4, "Chisel", 9, 23.00f});
+    storage.replace(Product{5, "Bandage", 70, 120.00f});
 
     cout << "Products:" << endl;
     for(auto &product: storage.iterate<Product>()) {

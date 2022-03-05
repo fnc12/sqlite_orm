@@ -73,7 +73,7 @@ add_executable(unit_tests
 	statement_serializator_tests/column_constraints/autoincrement.cpp
 	statement_serializator_tests/column_constraints/unique.cpp
 	statement_serializator_tests/column_constraints/check.cpp
-    statement_serializator_tests/bound_pointer.cpp
+    statement_serializator_tests/bindables.cpp
     statement_serializator_tests/ast/upsert_clause.cpp
     statement_serializator_tests/ast/excluded.cpp
     statement_serializator_tests/arithmetic_operators.cpp
@@ -125,6 +125,12 @@ if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
 	target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
 endif()
+
+target_precompile_headers(unit_tests PRIVATE
+    <sqlite_orm/sqlite_orm.h>
+    <catch2/catch.hpp>)
+# tests.cpp contains CATCH_CONFIG_MAIN
+set_source_files_properties(tests.cpp PROPERTIES SKIP_PRECOMPILE_HEADERS ON)
 
 target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2)
 
