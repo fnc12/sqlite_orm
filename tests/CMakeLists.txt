@@ -44,6 +44,7 @@ add_executable(unit_tests
 	prepared_statement_tests/insert_explicit.cpp
 	pragma_tests.cpp
 	simple_query.cpp
+	static_tests/is_printable.cpp
 	static_tests/is_bindable.cpp
 	static_tests/iterator_t.cpp
 	static_tests/arithmetic_operators_result_type.cpp
