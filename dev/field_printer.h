@@ -122,10 +122,14 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<T, std::enable_if_t<is_std_ptr<T>::value>> {
+    struct field_printer<T,
+                         std::enable_if_t<is_std_ptr<T>::value &&
+                                          internal::is_printable_v<std::remove_cv_t<typename T::element_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename T::element_type>;
+
         std::string operator()(const T& t) const {
             if(t) {
-                return field_printer<typename T::element_type>()(*t);
+                return field_printer<unqualified_type>()(*t);
             } else {
                 return field_printer<std::nullptr_t>{}(nullptr);
             }
@@ -134,10 +138,14 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<std::optional<T>, void> {
-        std::string operator()(const std::optional<T>& t) const {
+    struct field_printer<T,
+                         std::enable_if_t<internal::polyfill::is_specialization_of_v<T, std::optional> &&
+                                          internal::is_printable_v<std::remove_cv_t<typename T::value_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename T::value_type>;
+
+        std::string operator()(const T& t) const {
             if(t.has_value()) {
-                return field_printer<T>()(*t);
+                return field_printer<unqualified_type>()(*t);
             } else {
                 return field_printer<std::nullopt_t>{}(std::nullopt);
             }

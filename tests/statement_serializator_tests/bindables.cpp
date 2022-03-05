@@ -154,6 +154,7 @@ TEST_CASE("bindables") {
                             vector<char>,
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                             std::optional<int>,
+                            std::optional<Custom>,
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                             std::string_view,
@@ -162,7 +163,8 @@ TEST_CASE("bindables") {
 #endif
 #endif
                             StringVeneer<char>,
-                            Custom>;
+                            Custom,
+                            std::unique_ptr<Custom>>;
 
         Tuple t{"",
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -174,6 +176,7 @@ TEST_CASE("bindables") {
                 vector<char>{},
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 std::nullopt,
+                std::nullopt,
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                 "",
@@ -182,7 +185,8 @@ TEST_CASE("bindables") {
 #endif
 #endif
                 "",
-                Custom{}};
+                Custom{},
+                nullptr};
         array<string, std::tuple_size<Tuple>::value> e{"''",
 #ifndef SQLITE_ORM_OMITS_CODECVT
                                                        "''",
@@ -193,6 +197,7 @@ TEST_CASE("bindables") {
                                                        "x''",
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                                        "null",
+                                                       "null",
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                                        "''",
@@ -201,7 +206,8 @@ TEST_CASE("bindables") {
 #endif
 #endif
                                                        "''",
-                                                       "custom"};
+                                                       "custom",
+                                                       "null"};
 
         test_tuple(t, context, e);
     }

@@ -26,6 +26,17 @@ namespace sqlite_orm {
     template<class V, typename Enable = void>
     struct statement_binder;
 
+    namespace internal {
+
+        template<class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>{})>> = true;
+        template<class T>
+        using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
+
+    }
+
     /**
      *  Specialization for 'pointer-passing interface'.
      */
@@ -209,22 +220,16 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class V>
-    struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename is_std_ptr<V>::element_type;
+    struct statement_binder<
+        V,
+        std::enable_if_t<is_std_ptr<V>::value && internal::is_bindable_v<std::remove_cv_t<typename V::element_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             if(value) {
-                return statement_binder<value_type>().bind(stmt, index, *value);
+                return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
-            }
-        }
-
-        void result(sqlite3_context* context, const V& value) const {
-            if(value) {
-                statement_binder<value_type>().result(context, value);
-            } else {
-                statement_binder<std::nullptr_t>().result(context, nullptr);
             }
         }
     };
@@ -252,36 +257,23 @@ namespace sqlite_orm {
     };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct statement_binder<std::optional<T>, void> {
-        using value_type = T;
+    template<class V>
+    struct statement_binder<V,
+                            std::enable_if_t<internal::polyfill::is_specialization_of_v<V, std::optional> &&
+                                             internal::is_bindable_v<std::remove_cv_t<typename V::value_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
-        int bind(sqlite3_stmt* stmt, int index, const std::optional<T>& value) const {
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             if(value) {
-                return statement_binder<value_type>().bind(stmt, index, *value);
+                return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullopt_t>().bind(stmt, index, std::nullopt);
-            }
-        }
-
-        void result(sqlite3_context* context, const std::optional<T>& value) const {
-            if(value) {
-                statement_binder<value_type>().result(context, value);
-            } else {
-                statement_binder<std::nullopt_t>().result(context, std::nullopt);
             }
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     namespace internal {
-
-        template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>{})>> = true;
-        template<class T>
-        using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
 
         struct conditional_binder_base {
             sqlite3_stmt* stmt = nullptr;

@@ -1,4 +1,6 @@
 #pragma once
+#include <type_traits>
+#include <memory>
 
 namespace sqlite_orm {
 
@@ -12,8 +14,8 @@ namespace sqlite_orm {
     struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
         using element_type = typename std::shared_ptr<T>::element_type;
 
-        static std::shared_ptr<T> make(const T& v) {
-            return std::make_shared<T>(v);
+        static std::shared_ptr<T> make(std::remove_cv_t<T>&& v) {
+            return std::make_shared<T>(std::move(v));
         }
     };
 
@@ -21,8 +23,8 @@ namespace sqlite_orm {
     struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
         using element_type = typename std::unique_ptr<T>::element_type;
 
-        static std::unique_ptr<T> make(const T& v) {
-            return std::make_unique<T>(v);
+        static auto make(std::remove_cv_t<T>&& v) {
+            return std::make_unique<T>(std::move(v));
         }
     };
 }

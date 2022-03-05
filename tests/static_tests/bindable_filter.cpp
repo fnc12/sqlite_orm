@@ -52,6 +52,8 @@ TEST_CASE("bindable_filter") {
                                  std::nullptr_t,
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                                  std::nullopt_t,
+                                 std::optional<int>,
+                                 std::optional<Custom>,
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
                                  std::string_view,
@@ -62,7 +64,8 @@ TEST_CASE("bindable_filter") {
                                  std::unique_ptr<int>,
                                  std::shared_ptr<int>,
                                  static_pointer_binding<std::nullptr_t, carray_pvt>,
-                                 Custom>;
+                                 Custom,
+                                 std::unique_ptr<Custom>>;
         using Res = bindable_filter<Tuple>::type;
         static_assert(is_same<Res, Tuple>::value, "");
     }
