@@ -191,7 +191,7 @@ TEST_CASE("Issue 663 - fail test") {
         storage.insert_range(inputUsers.begin(), inputUsers.end());
         REQUIRE(false);
     } catch(const std::system_error& e) {
-        REQUIRE(e.code() == std::make_error_code(orm_error_code::cannot_use_default_value));
+        REQUIRE(e.code() == make_error_code(orm_error_code::cannot_use_default_value));
         REQUIRE(storage.count<User>() == 0);
     }
 }

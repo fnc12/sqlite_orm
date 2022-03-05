@@ -1151,21 +1151,21 @@ namespace sqlite_orm {
                 auto& tImpl = this->get_impl<object_type>();
                 auto& object = statement.expression.obj;
                 sqlite3_reset(stmt);
-                iterate_tuple(
-                    statement.expression.columns.columns,
-                    [&object, &index, &stmt, &tImpl, db](auto& memberPointer) {
-                        using column_type = typename std::decay<decltype(memberPointer)>::type;
-                        using field_type = typename column_result_t<self, column_type>::type;
-                        const auto* value =
-                            tImpl.table.template get_object_field_pointer<field_type>(object, memberPointer);
-                        if(!value) {
-                            throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::value_is_null));
-                        }
-                        if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
-                        }
-                    });
+                iterate_tuple(statement.expression.columns.columns,
+                              [&object, &index, &stmt, &tImpl, db](auto& memberPointer) {
+                                  using column_type = typename std::decay<decltype(memberPointer)>::type;
+                                  using field_type = typename column_result_t<self, column_type>::type;
+                                  const auto* value =
+                                      tImpl.table.template get_object_field_pointer<field_type>(object, memberPointer);
+                                  if(!value) {
+                                      throw std::system_error(orm_error_code::value_is_null);
+                                  }
+                                  if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
+                                      throw std::system_error(
+                                          std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
+                                          sqlite3_errmsg(db));
+                                  }
+                              });
                 perform_step(db, stmt);
                 return sqlite3_last_insert_rowid(db);
             }
@@ -1457,7 +1457,7 @@ namespace sqlite_orm {
                         return res;
                     } break;
                     case SQLITE_DONE: {
-                        throw std::system_error(std::make_error_code(sqlite_orm::orm_error_code::not_found));
+                        throw std::system_error(orm_error_code::not_found);
                     } break;
                     default: {
                         throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
@@ -1692,8 +1692,7 @@ namespace sqlite_orm {
                                 if(auto columnName = storageImpl.table.find_column_name(column)) {
                                     ss << ' ' << *columnName << " = ?";
                                 } else {
-                                    throw std::system_error(
-                                        std::make_error_code(sqlite_orm::orm_error_code::column_not_found));
+                                    throw std::system_error(orm_error_code::column_not_found);
                                 }
                                 ++columnIndex;
                             });
@@ -1716,8 +1715,7 @@ namespace sqlite_orm {
                                             tImpl.table.template get_object_field_pointer<field_type>(object,
                                                                                                       memberPointer);
                                         if(!value) {
-                                            throw std::system_error(
-                                                std::make_error_code(sqlite_orm::orm_error_code::value_is_null));
+                                            throw std::system_error(orm_error_code::value_is_null);
                                         }
                                         if(SQLITE_OK !=
                                            statement_binder<field_type>().bind(stmt, columnIndex++, *value)) {
