@@ -35,6 +35,103 @@ __pragma(push_macro("min"))
 #endif
 #pragma once
 
+#include <type_traits>
+
+// #include "cxx_polyfill.h"
+
+#include <type_traits>
+
+    // #include "start_macros.h"
+
+    namespace sqlite_orm {
+    namespace internal {
+        namespace polyfill {
+#if __cplusplus < 201703L  // before C++17
+            template<class...>
+            using void_t = void;
+
+            template<bool v>
+            using bool_constant = std::integral_constant<bool, v>;
+#else
+            using std::bool_constant;
+            using std::void_t;
+#endif
+
+#if __cplusplus < 202002L  // before C++20
+            template<class T>
+            struct remove_cvref : std::remove_cv<std::remove_reference_t<T>> {};
+
+            template<class T>
+            using remove_cvref_t = typename remove_cvref<T>::type;
+#else
+            using std::remove_cvref;
+            using std::remove_cvref_t;
+#endif
+
+#if __cplusplus < 202312L  // before C++23
+            template<typename Type, template<typename...> class Primary>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
+
+            template<template<typename...> class Primary, class... Types>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
+
+            template<typename Type, template<typename...> class Primary>
+            struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
+
+            template<typename... T>
+            using is_specialization_of_t = typename is_specialization_of<T...>::type;
+#else
+            using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
+#endif
+
+            template<typename...>
+            SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
+
+            template<size_t I>
+            using index_constant = std::integral_constant<size_t, I>;
+        }
+    }
+}
+
+namespace sqlite_orm {
+    // C++ generic traits used throughout the library
+    namespace internal {
+        // enable_if for types
+        template<template<typename...> class Op, class... Args>
+        using match_if = std::enable_if_t<Op<Args...>::value>;
+
+        // enable_if for types
+        template<template<typename...> class Op, class... Args>
+        using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
+
+        // enable_if for types
+        template<class T, template<typename...> class Primary>
+        using match_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>>;
+
+        // enable_if for functions
+        template<template<typename...> class Op, class... Args>
+        using satisfies = std::enable_if_t<Op<Args...>::value, bool>;
+
+        // enable_if for functions
+        template<template<typename...> class Op, class... Args>
+        using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
+
+        // enable_if for functions
+        template<class T, template<typename...> class Primary>
+        using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>, bool>;
+    }
+
+    // type traits not quite polyfill, however used throughout the program
+    namespace internal {}
+
+    // type name template aliases for syntactic sugar
+    namespace internal {
+        template<typename T>
+        using object_type_t = typename T::object_type;
+    }
+}
+#pragma once
+
 #include <system_error>  // std::error_code, std::system_error
 #include <string>  //  std::string
 #include <sqlite3.h>
@@ -42,7 +139,7 @@ __pragma(push_macro("min"))
 #include <sstream>  //  std::ostringstream
 #include <type_traits>
 
-        namespace sqlite_orm {
+namespace sqlite_orm {
 
     enum class orm_error_code {
         not_found = 1,
@@ -66,6 +163,7 @@ __pragma(push_macro("min"))
         value_is_null,
         no_tables_specified,
     };
+
 }
 
 namespace sqlite_orm {
@@ -2319,60 +2417,6 @@ namespace sqlite_orm {
 // #include "start_macros.h"
 
 // #include "cxx_polyfill.h"
-
-#include <type_traits>
-
-// #include "start_macros.h"
-
-namespace sqlite_orm {
-    namespace internal {
-        namespace polyfill {
-#if __cplusplus < 201703L  // before C++17
-            template<class...>
-            using void_t = void;
-
-            template<bool v>
-            using bool_constant = std::integral_constant<bool, v>;
-#else
-            using std::bool_constant;
-            using std::void_t;
-#endif
-
-#if __cplusplus < 202002L  // before C++20
-            template<class T>
-            struct remove_cvref : std::remove_cv<std::remove_reference_t<T>> {};
-
-            template<class T>
-            using remove_cvref_t = typename remove_cvref<T>::type;
-#else
-            using std::remove_cvref;
-            using std::remove_cvref_t;
-#endif
-
-#if __cplusplus < 202312L  // before C++23
-            template<typename Type, template<typename...> class Primary>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
-
-            template<template<typename...> class Primary, class... Types>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v<Primary<Types...>, Primary> = true;
-
-            template<typename Type, template<typename...> class Primary>
-            struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
-
-            template<typename... T>
-            using is_specialization_of_t = typename is_specialization_of<T...>::type;
-#else
-            using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
-#endif
-
-            template<typename...>
-            SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
-
-            template<size_t I>
-            using index_constant = std::integral_constant<size_t, I>;
-        }
-    }
-}
 
 // #include "is_std_ptr.h"
 
@@ -10018,6 +10062,8 @@ namespace sqlite_orm {
 #include <algorithm>  //  std::find_if
 #include <typeindex>  //  std::type_index
 
+// #include "type_traits.h"
+
 // #include "error_code.h"
 
 // #include "statement_finalizer.h"
@@ -10209,81 +10255,54 @@ namespace sqlite_orm {
             }
 
 #endif
-
             /**
-             *  Is used to get column name by member pointer to a base class.
-             *  Main difference between `column_name` and `column_name_simple` is that
-             *  `column_name` has SFINAE check for type equality but `column_name_simple` has not.
+             *  Find column name by its type and member pointer. Uses SFINAE to skip inequal type O.
              */
             template<class O, class F>
-            const std::string* column_name_simple(F O::*m) const {
-                return this->table.find_column_name(m);
+            const std::string* column_name(F O::*m) const {
+                return this->get_impl<O>().table.find_column_name(m);
             }
 
             /**
-             *  Cute function used to find column name by its type and member pointer. Uses SFINAE to
-             *  skip inequal type O.
+             *  Find column name by its explicit type and member pointer. Uses SFINAE to skip inequal type O.
              */
-            template<class O, class F, class HH = typename H::object_type>
-            const std::string* column_name(F O::*m,
-                                           typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->table.find_column_name(m);
+            template<class O, class F>
+            const std::string* column_name(const column_pointer<O, F>& c) const {
+                return this->get_impl<O>().table.find_column_name(c.field);
             }
 
-            /**
-             *  Opposite version of function defined above. Just calls same function in superclass.
-             */
-            template<class O, class F, class HH = typename H::object_type>
-            const std::string*
-            column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->super::column_name(m);
-            }
-
-            template<class T, class F, class HH = typename H::object_type>
-            const std::string* column_name(const column_pointer<T, F>& c,
-                                           typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
-                return this->column_name_simple(c.field);
-            }
-
-            template<class T, class F, class HH = typename H::object_type>
-            const std::string*
-            column_name(const column_pointer<T, F>& c,
-                        typename std::enable_if<!std::is_same<T, HH>::value>::type* = nullptr) const {
-                return this->super::column_name(c);
-            }
-
-            template<class O, class HH = typename H::object_type>
-            const auto& get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
+            const auto& get_impl() const {
                 return *this;
             }
 
-            template<class O, class HH = typename H::object_type>
-            const auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
+            const auto& get_impl() const {
                 return this->super::template get_impl<O>();
             }
 
-            template<class O, class HH = typename H::object_type>
-            auto& get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) {
+            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
+            auto& get_impl() {
                 return *this;
             }
 
-            template<class O, class HH = typename H::object_type>
-            auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) {
+            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
+            auto& get_impl() {
                 return this->super::template get_impl<O>();
             }
 
-            template<class O, class HH = typename H::object_type>
-            const auto* find_table(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
+            const auto* find_table() const {
                 return &this->table;
             }
 
-            template<class O, class HH = typename H::object_type>
-            const auto* find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
+            const auto* find_table() const {
                 return this->super::template find_table<O>();
             }
 
             std::string find_table_name(std::type_index ti) const {
-                std::type_index thisTypeIndex{typeid(typename H::object_type)};
+                std::type_index thisTypeIndex{typeid(object_type_t<H>)};
                 if(thisTypeIndex == ti) {
                     return this->table.name;
                 } else {
@@ -14894,7 +14913,7 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << "'" << context.impl.find_table_name(typeid(T)) << "'.";
                 }
-                if(auto columnNamePointer = context.impl.column_name_simple(c.field)) {
+                if(auto columnNamePointer = context.impl.column_name(c)) {
                     ss << "\"" << *columnNamePointer << "\"";
                 } else {
                     throw std::system_error(std::make_error_code(orm_error_code::column_not_found));

@@ -12,6 +12,7 @@
 #include <algorithm>  //  std::find_if
 #include <typeindex>  //  std::type_index
 
+#include "type_traits.h"
 #include "error_code.h"
 #include "statement_finalizer.h"
 #include "row_extractor.h"
@@ -168,81 +169,54 @@ namespace sqlite_orm {
             }
 
 #endif
-
             /**
-             *  Is used to get column name by member pointer to a base class.
-             *  Main difference between `column_name` and `column_name_simple` is that
-             *  `column_name` has SFINAE check for type equality but `column_name_simple` has not.
+             *  Find column name by its type and member pointer. Uses SFINAE to skip inequal type O.
              */
             template<class O, class F>
-            const std::string* column_name_simple(F O::*m) const {
-                return this->table.find_column_name(m);
+            const std::string* column_name(F O::*m) const {
+                return this->get_impl<O>().table.find_column_name(m);
             }
 
             /**
-             *  Cute function used to find column name by its type and member pointer. Uses SFINAE to
-             *  skip inequal type O.
+             *  Find column name by its explicit type and member pointer. Uses SFINAE to skip inequal type O.
              */
-            template<class O, class F, class HH = typename H::object_type>
-            const std::string* column_name(F O::*m,
-                                           typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->table.find_column_name(m);
+            template<class O, class F>
+            const std::string* column_name(const column_pointer<O, F>& c) const {
+                return this->get_impl<O>().table.find_column_name(c.field);
             }
 
-            /**
-             *  Opposite version of function defined above. Just calls same function in superclass.
-             */
-            template<class O, class F, class HH = typename H::object_type>
-            const std::string*
-            column_name(F O::*m, typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
-                return this->super::column_name(m);
-            }
-
-            template<class T, class F, class HH = typename H::object_type>
-            const std::string* column_name(const column_pointer<T, F>& c,
-                                           typename std::enable_if<std::is_same<T, HH>::value>::type* = nullptr) const {
-                return this->column_name_simple(c.field);
-            }
-
-            template<class T, class F, class HH = typename H::object_type>
-            const std::string*
-            column_name(const column_pointer<T, F>& c,
-                        typename std::enable_if<!std::is_same<T, HH>::value>::type* = nullptr) const {
-                return this->super::column_name(c);
-            }
-
-            template<class O, class HH = typename H::object_type>
-            const auto& get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
+            const auto& get_impl() const {
                 return *this;
             }
 
-            template<class O, class HH = typename H::object_type>
-            const auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
+            const auto& get_impl() const {
                 return this->super::template get_impl<O>();
             }
 
-            template<class O, class HH = typename H::object_type>
-            auto& get_impl(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) {
+            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
+            auto& get_impl() {
                 return *this;
             }
 
-            template<class O, class HH = typename H::object_type>
-            auto& get_impl(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) {
+            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
+            auto& get_impl() {
                 return this->super::template get_impl<O>();
             }
 
-            template<class O, class HH = typename H::object_type>
-            const auto* find_table(typename std::enable_if<std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
+            const auto* find_table() const {
                 return &this->table;
             }
 
-            template<class O, class HH = typename H::object_type>
-            const auto* find_table(typename std::enable_if<!std::is_same<O, HH>::value>::type* = nullptr) const {
+            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
+            const auto* find_table() const {
                 return this->super::template find_table<O>();
             }
 
             std::string find_table_name(std::type_index ti) const {
-                std::type_index thisTypeIndex{typeid(typename H::object_type)};
+                std::type_index thisTypeIndex{typeid(object_type_t<H>)};
                 if(thisTypeIndex == ti) {
                     return this->table.name;
                 } else {
