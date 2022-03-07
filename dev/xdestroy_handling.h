@@ -177,7 +177,7 @@ namespace sqlite_orm {
      */
     template<typename D, typename P>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::is_unusable_for_xdestroy<D>) {
-        static_assert(std::is_same<D, void>::value,
+        static_assert(internal::polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
@@ -218,21 +218,20 @@ namespace sqlite_orm {
         return d;
     }
 #else
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D, P*) {
-        static_assert(std::is_same<D, void>::value,
+    template<typename D, typename P, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) {
+        static_assert(internal::polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, xdestroy_fn_t> obtain_xdestroy_for(D,
-                                                                                                          P*) noexcept {
+    template<typename D, typename P, std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept {
         return internal::xdestroy_proxy<D, P>;
     }
 
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::can_yield_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D d, P*) noexcept {
+    template<typename D, typename P, std::enable_if_t<internal::can_yield_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept {
         return d;
     }
 #endif

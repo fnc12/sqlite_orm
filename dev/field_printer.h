@@ -99,6 +99,9 @@ namespace sqlite_orm {
         }
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
+    /**
+     *  Specialization for std::wstring (UTF-16 assumed).
+     */
     template<class T>
     struct field_printer<T, std::enable_if_t<std::is_base_of<std::wstring, T>::value>> {
         std::string operator()(const std::wstring& wideString) const {
