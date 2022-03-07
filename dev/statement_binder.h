@@ -130,17 +130,18 @@ namespace sqlite_orm {
 #endif
     };
 
+#ifndef SQLITE_ORM_OMITS_CODECVT
     /**
-     *  Specialization for std::wstring and C-wstring.
+     *  Specialization for std::wstring and C-wstring (UTF-16 assumed).
      */
     template<class V>
-    struct statement_binder<V,
-                            std::enable_if_t<sizeof(wchar_t) == 2 && (std::is_base_of<std::wstring, V>::value ||
-                                                                      std::is_same<V, const wchar_t*>::value
+    struct statement_binder<
+        V,
+        std::enable_if_t<(std::is_base_of<std::wstring, V>::value || std::is_same<V, const wchar_t*>::value
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                      || std::is_same_v<V, std::wstring_view>
+                          || std::is_same_v<V, std::wstring_view>
 #endif
-                                                                      )>> {
+                          )>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -177,6 +178,7 @@ namespace sqlite_orm {
         }
 #endif
     };
+#endif
 
     /**
      *  Specialization for std::nullptr_t.
