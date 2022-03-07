@@ -148,7 +148,7 @@ namespace sqlite_orm {
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
     /**
-     *  Specialization for std::wstring.
+     *  Specialization for std::wstring (UTF-16 assumed).
      */
     template<>
     struct row_extractor<std::wstring, void> {
@@ -162,10 +162,8 @@ namespace sqlite_orm {
         }
 
         std::wstring extract(sqlite3_stmt* stmt, int columnIndex) const {
-            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
-            if(cStr) {
-                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-                return converter.from_bytes(cStr);
+            if(auto cStr = (const wchar_t*)sqlite3_column_text16(stmt, columnIndex)) {
+                return cStr;
             } else {
                 return {};
             }

@@ -32,9 +32,6 @@ namespace sqlite_orm {
         using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>, bool>;
     }
 
-    // type traits not quite polyfill, however used throughout the program
-    namespace internal {}
-
     // type name template aliases for syntactic sugar
     namespace internal {
         template<typename T>

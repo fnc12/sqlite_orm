@@ -121,9 +121,6 @@ namespace sqlite_orm {
         using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>, bool>;
     }
 
-    // type traits not quite polyfill, however used throughout the program
-    namespace internal {}
-
     // type name template aliases for syntactic sugar
     namespace internal {
         template<typename T>
@@ -2534,6 +2531,9 @@ namespace sqlite_orm {
         }
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
+    /**
+     *  Specialization for std::wstring (UTF-16 assumed).
+     */
     template<class T>
     struct field_printer<T, std::enable_if_t<std::is_base_of<std::wstring, T>::value>> {
         std::string operator()(const std::wstring& wideString) const {
@@ -7420,7 +7420,7 @@ namespace sqlite_orm {
      */
     template<typename D, typename P>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::is_unusable_for_xdestroy<D>) {
-        static_assert(std::is_same<D, void>::value,
+        static_assert(internal::polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
@@ -7461,21 +7461,20 @@ namespace sqlite_orm {
         return d;
     }
 #else
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D, P*) {
-        static_assert(std::is_same<D, void>::value,
+    template<typename D, typename P, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) {
+        static_assert(internal::polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, xdestroy_fn_t> obtain_xdestroy_for(D,
-                                                                                                          P*) noexcept {
+    template<typename D, typename P, std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept {
         return internal::xdestroy_proxy<D, P>;
     }
 
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::can_yield_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D d, P*) noexcept {
+    template<typename D, typename P, std::enable_if_t<internal::can_yield_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept {
         return d;
     }
 #endif
@@ -7793,17 +7792,18 @@ namespace sqlite_orm {
 #endif
     };
 
+#ifndef SQLITE_ORM_OMITS_CODECVT
     /**
-     *  Specialization for std::wstring and C-wstring.
+     *  Specialization for std::wstring and C-wstring (UTF-16 assumed).
      */
     template<class V>
-    struct statement_binder<V,
-                            std::enable_if_t<sizeof(wchar_t) == 2 && (std::is_base_of<std::wstring, V>::value ||
-                                                                      std::is_same<V, const wchar_t*>::value
+    struct statement_binder<
+        V,
+        std::enable_if_t<(std::is_base_of<std::wstring, V>::value || std::is_same<V, const wchar_t*>::value
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                      || std::is_same_v<V, std::wstring_view>
+                          || std::is_same_v<V, std::wstring_view>
 #endif
-                                                                      )>> {
+                          )>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -7840,6 +7840,7 @@ namespace sqlite_orm {
         }
 #endif
     };
+#endif
 
     /**
      *  Specialization for std::nullptr_t.
@@ -8203,7 +8204,7 @@ namespace sqlite_orm {
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
     /**
-     *  Specialization for std::wstring.
+     *  Specialization for std::wstring (UTF-16 assumed).
      */
     template<>
     struct row_extractor<std::wstring, void> {
@@ -8217,10 +8218,8 @@ namespace sqlite_orm {
         }
 
         std::wstring extract(sqlite3_stmt* stmt, int columnIndex) const {
-            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
-            if(cStr) {
-                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-                return converter.from_bytes(cStr);
+            if(auto cStr = (const wchar_t*)sqlite3_column_text16(stmt, columnIndex)) {
+                return cStr;
             } else {
                 return {};
             }
