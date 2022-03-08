@@ -121,9 +121,6 @@ namespace sqlite_orm {
         using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>, bool>;
     }
 
-    // type traits not quite polyfill, however used throughout the program
-    namespace internal {}
-
     // type name template aliases for syntactic sugar
     namespace internal {
         template<typename T>
@@ -7769,53 +7766,27 @@ namespace sqlite_orm {
 #endif
     };
 
-    /**
-     *  Specialization for std::wstring and C-wstring.
-     */
+#ifndef SQLITE_ORM_OMITS_CODECVT
     template<class V>
-    struct statement_binder<V,
-                            std::enable_if_t<sizeof(wchar_t) == 2 && (std::is_base_of<std::wstring, V>::value ||
-                                                                      std::is_same<V, const wchar_t*>::value
+    struct statement_binder<
+        V,
+        std::enable_if_t<std::is_base_of<std::wstring, V>::value || std::is_same<V, const wchar_t*>::value
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                                      || std::is_same_v<V, std::wstring_view>
+                         || std::is_same_v<V, std::wstring_view>
 #endif
-                                                                      )>> {
+                         >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            auto stringData = this->string_data(value);
-            return sqlite3_bind_text16(stmt,
-                                       index,
-                                       stringData.first,
-                                       stringData.second * sizeof(wchar_t),
-                                       SQLITE_TRANSIENT);
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            std::string utf8Str = converter.to_bytes(std::data(value), std::data(value) + std::size(value));
+            return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            auto stringData = this->string_data(value);
-            auto dataCopy = new wchar_t[stringData.second + 1];
-            constexpr auto deleter = std::default_delete<wchar_t[]>{};
-            ::wcsncpy(dataCopy, stringData.first, stringData.second + 1);
-            sqlite3_result_text16(context,
-                                  dataCopy,
-                                  stringData.second * sizeof(wchar_t),
-                                  obtain_xdestroy_for(deleter, dataCopy));
+            sqlite3_result_text16(context, (const void*)std::data(value), int(std::size(value)), nullptr);
         }
-
-      private:
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
-            return {s.data(), int(s.size())};
-        }
-#else
-        std::pair<const wchar_t*, int> string_data(const std::wstring& s) const {
-            return {s.c_str(), int(s.size())};
-        }
-
-        std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
-            return {s, int(::wcslen(s))};
-        }
-#endif
     };
+#endif
 
     /**
      *  Specialization for std::nullptr_t.
