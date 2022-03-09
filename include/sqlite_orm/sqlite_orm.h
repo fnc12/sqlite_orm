@@ -7793,52 +7793,24 @@ namespace sqlite_orm {
     };
 
 #ifndef SQLITE_ORM_OMITS_CODECVT
-    /**
-     *  Specialization for std::wstring and C-wstring (UTF-16 assumed).
-     */
     template<class V>
     struct statement_binder<
         V,
-        std::enable_if_t<(std::is_base_of<std::wstring, V>::value || std::is_same<V, const wchar_t*>::value
+        std::enable_if_t<std::is_base_of<std::wstring, V>::value || std::is_same<V, const wchar_t*>::value
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                          || std::is_same_v<V, std::wstring_view>
+                         || std::is_same_v<V, std::wstring_view>
 #endif
-                          )>> {
+                         >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
-            auto stringData = this->string_data(value);
-            return sqlite3_bind_text16(stmt,
-                                       index,
-                                       stringData.first,
-                                       stringData.second * sizeof(wchar_t),
-                                       SQLITE_TRANSIENT);
+            std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+            std::string utf8Str = converter.to_bytes(std::data(value), std::data(value) + std::size(value));
+            return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            auto stringData = this->string_data(value);
-            auto dataCopy = new wchar_t[stringData.second + 1];
-            constexpr auto deleter = std::default_delete<wchar_t[]>{};
-            ::wcsncpy(dataCopy, stringData.first, stringData.second + 1);
-            sqlite3_result_text16(context,
-                                  dataCopy,
-                                  stringData.second * sizeof(wchar_t),
-                                  obtain_xdestroy_for(deleter, dataCopy));
+            sqlite3_result_text16(context, (const void*)std::data(value), int(std::size(value)), nullptr);
         }
-
-      private:
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
-            return {s.data(), int(s.size())};
-        }
-#else
-        std::pair<const wchar_t*, int> string_data(const std::wstring& s) const {
-            return {s.c_str(), int(s.size())};
-        }
-
-        std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
-            return {s, int(::wcslen(s))};
-        }
-#endif
     };
 #endif
 
@@ -8204,7 +8176,7 @@ namespace sqlite_orm {
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
     /**
-     *  Specialization for std::wstring (UTF-16 assumed).
+     *  Specialization for std::wstring.
      */
     template<>
     struct row_extractor<std::wstring, void> {
@@ -8218,8 +8190,10 @@ namespace sqlite_orm {
         }
 
         std::wstring extract(sqlite3_stmt* stmt, int columnIndex) const {
-            if(auto cStr = (const wchar_t*)sqlite3_column_text16(stmt, columnIndex)) {
-                return cStr;
+            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
+            if(cStr) {
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                return converter.from_bytes(cStr);
             } else {
                 return {};
             }
@@ -8298,6 +8272,21 @@ namespace sqlite_orm {
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<>
+    struct row_extractor<std::nullptr_t> {
+        std::nullptr_t extract(const char* /*row_value*/) const {
+            return nullptr;
+        }
+
+        std::nullptr_t extract(sqlite3_stmt* /*stmt*/, int /*columnIndex*/) const {
+            return nullptr;
+        }
+
+        std::nullptr_t extract(sqlite3_value* /*value*/) const {
+            return nullptr;
+        }
+    };
     /**
      *  Specialization for std::vector<char>.
      */
@@ -9471,6 +9460,11 @@ namespace sqlite_orm {
         template<class St, class T>
         struct column_result_t<St, count_asterisk_t<T>, void> {
             using type = int;
+        };
+
+        template<class St>
+        struct column_result_t<St, std::nullptr_t, void> {
+            using type = std::nullptr_t;
         };
 
         template<class St>

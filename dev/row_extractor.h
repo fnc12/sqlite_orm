@@ -148,7 +148,7 @@ namespace sqlite_orm {
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
     /**
-     *  Specialization for std::wstring (UTF-16 assumed).
+     *  Specialization for std::wstring.
      */
     template<>
     struct row_extractor<std::wstring, void> {
@@ -162,8 +162,10 @@ namespace sqlite_orm {
         }
 
         std::wstring extract(sqlite3_stmt* stmt, int columnIndex) const {
-            if(auto cStr = (const wchar_t*)sqlite3_column_text16(stmt, columnIndex)) {
-                return cStr;
+            auto cStr = (const char*)sqlite3_column_text(stmt, columnIndex);
+            if(cStr) {
+                std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
+                return converter.from_bytes(cStr);
             } else {
                 return {};
             }
@@ -242,6 +244,21 @@ namespace sqlite_orm {
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<>
+    struct row_extractor<std::nullptr_t> {
+        std::nullptr_t extract(const char* /*row_value*/) const {
+            return nullptr;
+        }
+
+        std::nullptr_t extract(sqlite3_stmt* /*stmt*/, int /*columnIndex*/) const {
+            return nullptr;
+        }
+
+        std::nullptr_t extract(sqlite3_value* /*value*/) const {
+            return nullptr;
+        }
+    };
     /**
      *  Specialization for std::vector<char>.
      */

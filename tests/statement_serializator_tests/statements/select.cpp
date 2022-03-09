@@ -16,16 +16,31 @@ TEST_CASE("statement_serializator select_t") {
     std::string stringValue;
     decltype(stringValue) expected;
     SECTION("simple") {
-        auto statement = select(1);
-        SECTION("!highest_level") {
-            statement.highest_level = false;
-            stringValue = serialize(statement, context);
-            expected = "(SELECT 1)";
+        SECTION("1") {
+            auto statement = select(1);
+            SECTION("!highest_level") {
+                statement.highest_level = false;
+                stringValue = serialize(statement, context);
+                expected = "(SELECT 1)";
+            }
+            SECTION("highest_level") {
+                statement.highest_level = true;
+                stringValue = serialize(statement, context);
+                expected = "SELECT 1";
+            }
         }
-        SECTION("highest_level") {
-            statement.highest_level = true;
-            stringValue = serialize(statement, context);
-            expected = "SELECT 1";
+        SECTION("null") {
+            auto statement = select(nullptr);
+            SECTION("!highest_level") {
+                statement.highest_level = false;
+                stringValue = serialize(statement, context);
+                expected = "(SELECT null)";
+            }
+            SECTION("highest_level") {
+                statement.highest_level = true;
+                stringValue = serialize(statement, context);
+                expected = "SELECT null";
+            }
         }
     }
     SECTION("row") {
@@ -71,6 +86,19 @@ TEST_CASE("statement_serializator select_t") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
                 expected = "SELECT \"users\".\"id\" FROM 'users'";
+            }
+        }
+        SECTION("null") {
+            auto statement = select(columns(nullptr));
+            SECTION("!highest_level") {
+                statement.highest_level = false;
+                stringValue = serialize(statement, context);
+                expected = "(SELECT null)";
+            }
+            SECTION("highest_level") {
+                statement.highest_level = true;
+                stringValue = serialize(statement, context);
+                expected = "SELECT null";
             }
         }
     }
