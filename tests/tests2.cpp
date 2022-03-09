@@ -687,8 +687,8 @@ TEST_CASE("obtain_xdestroy_for") {
     };
 
     {
-        constexpr int *int_nullptr = (int *)nullptr;
-        constexpr const int *const_int_nullptr = (const int *)nullptr;
+        constexpr int *int_nullptr = nullptr;
+        constexpr const int *const_int_nullptr = nullptr;
 
         // null_xdestroy_f(int*)
         constexpr xdestroy_fn_t xDestroy1 = obtain_xdestroy_for(null_xdestroy_f, int_nullptr);

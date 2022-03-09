@@ -2417,6 +2417,9 @@ namespace sqlite_orm {
 
 // #include "is_std_ptr.h"
 
+#include <type_traits>
+#include <memory>
+
 namespace sqlite_orm {
 
     /**
@@ -2429,8 +2432,8 @@ namespace sqlite_orm {
     struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
         using element_type = typename std::shared_ptr<T>::element_type;
 
-        static std::shared_ptr<T> make(const T& v) {
-            return std::make_shared<T>(v);
+        static std::shared_ptr<T> make(std::remove_cv_t<T>&& v) {
+            return std::make_shared<T>(std::move(v));
         }
     };
 
@@ -2438,8 +2441,8 @@ namespace sqlite_orm {
     struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
         using element_type = typename std::unique_ptr<T>::element_type;
 
-        static std::unique_ptr<T> make(const T& v) {
-            return std::make_unique<T>(v);
+        static auto make(std::remove_cv_t<T>&& v) {
+            return std::make_unique<T>(std::move(v));
         }
     };
 }
@@ -2526,6 +2529,9 @@ namespace sqlite_orm {
         }
     };
 #ifndef SQLITE_ORM_OMITS_CODECVT
+    /**
+     *  Specialization for std::wstring (UTF-16 assumed).
+     */
     template<class T>
     struct field_printer<T, std::enable_if_t<std::is_base_of<std::wstring, T>::value>> {
         std::string operator()(const std::wstring& wideString) const {
@@ -2549,10 +2555,14 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<T, std::enable_if_t<is_std_ptr<T>::value>> {
+    struct field_printer<T,
+                         std::enable_if_t<is_std_ptr<T>::value &&
+                                          internal::is_printable_v<std::remove_cv_t<typename T::element_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename T::element_type>;
+
         std::string operator()(const T& t) const {
             if(t) {
-                return field_printer<typename T::element_type>()(*t);
+                return field_printer<unqualified_type>()(*t);
             } else {
                 return field_printer<std::nullptr_t>{}(nullptr);
             }
@@ -2561,10 +2571,14 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<std::optional<T>, void> {
-        std::string operator()(const std::optional<T>& t) const {
+    struct field_printer<T,
+                         std::enable_if_t<internal::polyfill::is_specialization_of_v<T, std::optional> &&
+                                          internal::is_printable_v<std::remove_cv_t<typename T::value_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename T::value_type>;
+
+        std::string operator()(const T& t) const {
             if(t.has_value()) {
-                return field_printer<T>()(*t);
+                return field_printer<unqualified_type>()(*t);
             } else {
                 return field_printer<std::nullopt_t>{}(std::nullopt);
             }
@@ -7404,7 +7418,7 @@ namespace sqlite_orm {
      */
     template<typename D, typename P>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::is_unusable_for_xdestroy<D>) {
-        static_assert(std::is_same<D, void>::value,
+        static_assert(internal::polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
@@ -7445,21 +7459,20 @@ namespace sqlite_orm {
         return d;
     }
 #else
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D, P*) {
-        static_assert(std::is_same<D, void>::value,
+    template<typename D, typename P, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) {
+        static_assert(internal::polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
 
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, xdestroy_fn_t> obtain_xdestroy_for(D,
-                                                                                                          P*) noexcept {
+    template<typename D, typename P, std::enable_if_t<internal::needs_xdestroy_proxy_v<D, P>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept {
         return internal::xdestroy_proxy<D, P>;
     }
 
-    template<typename D, typename P>
-    constexpr std::enable_if_t<internal::can_yield_xdestroy_v<D>, xdestroy_fn_t> obtain_xdestroy_for(D d, P*) noexcept {
+    template<typename D, typename P, std::enable_if_t<internal::can_yield_xdestroy_v<D>, bool> = true>
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept {
         return d;
     }
 #endif
@@ -7662,6 +7675,17 @@ namespace sqlite_orm {
     template<class V, typename Enable = void>
     struct statement_binder;
 
+    namespace internal {
+
+        template<class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>{})>> = true;
+        template<class T>
+        using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
+
+    }
+
     /**
      *  Specialization for 'pointer-passing interface'.
      */
@@ -7819,22 +7843,16 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class V>
-    struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename is_std_ptr<V>::element_type;
+    struct statement_binder<
+        V,
+        std::enable_if_t<is_std_ptr<V>::value && internal::is_bindable_v<std::remove_cv_t<typename V::element_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             if(value) {
-                return statement_binder<value_type>().bind(stmt, index, *value);
+                return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
-            }
-        }
-
-        void result(sqlite3_context* context, const V& value) const {
-            if(value) {
-                statement_binder<value_type>().result(context, value);
-            } else {
-                statement_binder<std::nullptr_t>().result(context, nullptr);
             }
         }
     };
@@ -7862,36 +7880,23 @@ namespace sqlite_orm {
     };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct statement_binder<std::optional<T>, void> {
-        using value_type = T;
+    template<class V>
+    struct statement_binder<V,
+                            std::enable_if_t<internal::polyfill::is_specialization_of_v<V, std::optional> &&
+                                             internal::is_bindable_v<std::remove_cv_t<typename V::value_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
-        int bind(sqlite3_stmt* stmt, int index, const std::optional<T>& value) const {
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             if(value) {
-                return statement_binder<value_type>().bind(stmt, index, *value);
+                return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullopt_t>().bind(stmt, index, std::nullopt);
-            }
-        }
-
-        void result(sqlite3_context* context, const std::optional<T>& value) const {
-            if(value) {
-                statement_binder<value_type>().result(context, value);
-            } else {
-                statement_binder<std::nullopt_t>().result(context, std::nullopt);
             }
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     namespace internal {
-
-        template<class T, class SFINAE = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>{})>> = true;
-        template<class T>
-        using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
 
         struct conditional_binder_base {
             sqlite3_stmt* stmt = nullptr;
@@ -8204,11 +8209,11 @@ namespace sqlite_orm {
 
     template<class V>
     struct row_extractor<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename is_std_ptr<V>::element_type;
+        using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         V extract(const char* row_value) const {
             if(row_value) {
-                return is_std_ptr<V>::make(row_extractor<value_type>().extract(row_value));
+                return is_std_ptr<V>::make(row_extractor<unqualified_type>().extract(row_value));
             } else {
                 return {};
             }
@@ -8217,7 +8222,7 @@ namespace sqlite_orm {
         V extract(sqlite3_stmt* stmt, int columnIndex) const {
             auto type = sqlite3_column_type(stmt, columnIndex);
             if(type != SQLITE_NULL) {
-                return is_std_ptr<V>::make(row_extractor<value_type>().extract(stmt, columnIndex));
+                return is_std_ptr<V>::make(row_extractor<unqualified_type>().extract(stmt, columnIndex));
             } else {
                 return {};
             }
@@ -8226,7 +8231,7 @@ namespace sqlite_orm {
         V extract(sqlite3_value* value) const {
             auto type = sqlite3_value_type(value);
             if(type != SQLITE_NULL) {
-                return is_std_ptr<V>::make(row_extractor<value_type>().extract(value));
+                return is_std_ptr<V>::make(row_extractor<unqualified_type>().extract(value));
             } else {
                 return {};
             }
@@ -8234,31 +8239,31 @@ namespace sqlite_orm {
     };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct row_extractor<std::optional<T>, void> {
-        using value_type = T;
+    template<class V>
+    struct row_extractor<V, std::enable_if_t<internal::polyfill::is_specialization_of_v<V, std::optional>>> {
+        using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
-        std::optional<T> extract(const char* row_value) const {
+        V extract(const char* row_value) const {
             if(row_value) {
-                return std::make_optional(row_extractor<value_type>().extract(row_value));
+                return std::make_optional(row_extractor<unqualified_type>().extract(row_value));
             } else {
                 return std::nullopt;
             }
         }
 
-        std::optional<T> extract(sqlite3_stmt* stmt, int columnIndex) const {
+        V extract(sqlite3_stmt* stmt, int columnIndex) const {
             auto type = sqlite3_column_type(stmt, columnIndex);
             if(type != SQLITE_NULL) {
-                return std::make_optional(row_extractor<value_type>().extract(stmt, columnIndex));
+                return std::make_optional(row_extractor<unqualified_type>().extract(stmt, columnIndex));
             } else {
                 return std::nullopt;
             }
         }
 
-        std::optional<T> extract(sqlite3_value* value) const {
+        V extract(sqlite3_value* value) const {
             auto type = sqlite3_value_type(value);
             if(type != SQLITE_NULL) {
-                return std::make_optional(row_extractor<value_type>().extract(value));
+                return std::make_optional(row_extractor<unqualified_type>().extract(value));
             } else {
                 return std::nullopt;
             }

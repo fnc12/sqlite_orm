@@ -61,13 +61,17 @@ TEST_CASE("is_bindable") {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     static_assert(is_bindable_v<std::nullopt_t>, "nullopt must be bindable");
     static_assert(is_bindable_v<std::optional<int>>, "optional must be bindable");
+    static_assert(is_bindable_v<std::optional<Custom>>, "optional<Custom> must be bindable");
+    static_assert(!is_bindable_v<std::optional<User>>, "optional<User> cannot be bindable");
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
     static_assert(is_bindable_v<static_pointer_binding<nullptr_t, carray_pvt>>, "pointer binding must be bindable");
 
     static_assert(is_bindable_v<Custom>, "Custom must be bindable");
+    static_assert(is_bindable_v<std::unique_ptr<Custom>>, "unique_ptr<Custom> must be bindable");
 
     static_assert(!is_bindable_v<void>, "void cannot be bindable");
     static_assert(!is_bindable_v<User>, "User cannot be bindable");
+    static_assert(!is_bindable_v<std::unique_ptr<User>>, "unique_ptr<User> cannot be bindable");
     {
         auto isEqual = is_equal(&User::id, 5);
         static_assert(!is_bindable_v<decltype(isEqual)>, "is_equal cannot be bindable");
