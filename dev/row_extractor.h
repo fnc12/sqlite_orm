@@ -244,6 +244,21 @@ namespace sqlite_orm {
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
+
+    template<>
+    struct row_extractor<std::nullptr_t> {
+        std::nullptr_t extract(const char* /*row_value*/) const {
+            return nullptr;
+        }
+
+        std::nullptr_t extract(sqlite3_stmt* /*stmt*/, int /*columnIndex*/) const {
+            return nullptr;
+        }
+
+        std::nullptr_t extract(sqlite3_value* /*value*/) const {
+            return nullptr;
+        }
+    };
     /**
      *  Specialization for std::vector<char>.
      */

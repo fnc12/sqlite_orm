@@ -39,15 +39,23 @@ TEST_CASE("Prepared select") {
 
     SECTION("one simple argument") {
         SECTION("by val") {
-            auto statement = storage.prepare(select(10));
-            auto str = storage.dump(statement);
-            REQUIRE(get<0>(statement) == 10);
-            auto rows = storage.execute(statement);
-            REQUIRE_THAT(rows, UnorderedEquals<int>({10}));
-            get<0>(statement) = 20;
-            REQUIRE(get<0>(statement) == 20);
-            auto rows2 = storage.execute(statement);
-            REQUIRE_THAT(rows2, UnorderedEquals<int>({20}));
+            SECTION("int") {
+                auto statement = storage.prepare(select(10));
+                auto str = storage.dump(statement);
+                REQUIRE(get<0>(statement) == 10);
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<int>({10}));
+                get<0>(statement) = 20;
+                REQUIRE(get<0>(statement) == 20);
+                auto rows2 = storage.execute(statement);
+                REQUIRE_THAT(rows2, UnorderedEquals<int>({20}));
+            }
+            SECTION("null") {
+                auto statement = storage.prepare(select(nullptr));
+                REQUIRE(get<0>(statement) == nullptr);
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<std::nullptr_t>({nullptr}));
+            }
         }
         SECTION("by ref") {
             auto id = 10;
