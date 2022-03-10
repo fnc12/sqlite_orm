@@ -56,6 +56,12 @@ TEST_CASE("Prepared select") {
                 auto rows = storage.execute(statement);
                 REQUIRE_THAT(rows, UnorderedEquals<std::nullptr_t>({nullptr}));
             }
+            SECTION("optional") {
+                auto statement = storage.prepare(select(std::optional<int>()));
+                REQUIRE(get<0>(statement) == std::nullopt);
+                auto rows = storage.execute(statement);
+                REQUIRE_THAT(rows, UnorderedEquals<std::optional<int>>({std::nullopt}));
+            }
         }
         SECTION("by ref") {
             auto id = 10;
