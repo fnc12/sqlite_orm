@@ -2,7 +2,7 @@
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
-
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("issue937") {
     struct Employee {
         int m_empno;
@@ -67,3 +67,4 @@ TEST_CASE("issue937") {
     auto sql = statement.expanded_sql();
     auto rows = storage.execute(statement);
 }
+#endif
