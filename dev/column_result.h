@@ -102,6 +102,11 @@ namespace sqlite_orm {
         };
 
         template<class St>
+        struct column_result_t<St, std::nullptr_t, void> {
+            using type = std::nullptr_t;
+        };
+
+        template<class St>
         struct column_result_t<St, count_asterisk_without_type, void> {
             using type = int;
         };
