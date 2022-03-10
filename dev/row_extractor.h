@@ -349,10 +349,10 @@ namespace sqlite_orm {
                 if(auto res = internal::journal_mode_from_string(row_value)) {
                     return std::move(*res);
                 } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::incorrect_journal_mode_string));
+                    throw std::system_error(orm_error_code::incorrect_journal_mode_string);
                 }
             } else {
-                throw std::system_error(std::make_error_code(orm_error_code::incorrect_journal_mode_string));
+                throw std::system_error(orm_error_code::incorrect_journal_mode_string);
             }
         }
 

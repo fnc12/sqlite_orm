@@ -7,7 +7,6 @@
 #include <cstddef>  //  std::ptrdiff_t
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
-#include <ios>  //  std::make_error_code
 
 #include "row_extractor.h"
 #include "statement_finalizer.h"
@@ -64,7 +63,7 @@ namespace sqlite_orm {
 
             const value_type& operator*() const {
                 if(!this->stmt || !this->current) {
-                    throw std::system_error(std::make_error_code(orm_error_code::trying_to_dereference_null_iterator));
+                    throw std::system_error(orm_error_code::trying_to_dereference_null_iterator);
                 }
                 return *this->current;
             }

@@ -5,7 +5,7 @@
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <utility>  //  std::move
-#include <system_error>  //  std::system_error, std::error_code, std::make_error_code
+#include <system_error>  //  std::system_error, std::error_code
 #include <vector>  //  std::vector
 #include <memory>  //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
@@ -380,7 +380,7 @@ namespace sqlite_orm {
                 perform_void_exec(db, "COMMIT");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
-                    throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                    throw std::system_error(orm_error_code::no_active_transaction);
                 }
             }
 
@@ -389,7 +389,7 @@ namespace sqlite_orm {
                 perform_void_exec(db, "ROLLBACK");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
-                    throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                    throw std::system_error(orm_error_code::no_active_transaction);
                 }
             }
 
@@ -600,7 +600,7 @@ namespace sqlite_orm {
                         }
                     }
                 } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::function_not_found));
+                    throw std::system_error(orm_error_code::function_not_found);
                 }
             }
 
@@ -662,7 +662,7 @@ namespace sqlite_orm {
                 std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
                                                                      functionPointer->destroy);
                 if(functionPointer->argumentsCount != -1 && functionPointer->argumentsCount != argsCount) {
-                    throw std::system_error(std::make_error_code(orm_error_code::arguments_count_does_not_match));
+                    throw std::system_error(orm_error_code::arguments_count_does_not_match);
                 }
                 functionPointer->run(context, functionPointer, argsCount, values);
             }
