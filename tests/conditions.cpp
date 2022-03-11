@@ -19,12 +19,15 @@ TEST_CASE("order by") {
 
     SECTION("column") {
         std::vector<int> expected{0, 1};
+        // select n from object order by n
         auto rows = storage.select(&Object::n, order_by(&Object::n));
         REQUIRE(rows == expected);
     }
     SECTION("bindable") {
         std::vector<int> expected{1, 0};
-        auto rows = storage.select(&Object::n,  order_by(1));
+        // select n from object order by ?
+        // ? = 1
+        auto rows = storage.select(&Object::n, order_by(1));
         REQUIRE(rows == expected);
     }
 }
