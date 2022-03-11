@@ -67,6 +67,7 @@ add_executable(unit_tests
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
 	constraints/check.cpp
+    conditions.cpp
 	table_tests.cpp
     statement_serializator_tests/column_constraints/generated.cpp
     statement_serializator_tests/column_constraints/default.cpp
@@ -93,6 +94,7 @@ add_executable(unit_tests
     statement_serializator_tests/logical_operators.cpp
     statement_serializator_tests/statements/select.cpp
     statement_serializator_tests/select_constraints.cpp
+    statement_serializator_tests/conditions.cpp
     statement_serializator_tests/statements/insert_replace.cpp
     statement_serializator_tests/statements/update.cpp
     statement_serializator_tests/statements/remove.cpp
