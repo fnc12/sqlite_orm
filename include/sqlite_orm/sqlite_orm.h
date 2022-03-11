@@ -14398,16 +14398,20 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 auto columnName = serialize(orderBy.expression, newContext);
-                ss << columnName << " ";
+                ss << columnName;
                 if(orderBy._collate_argument.length()) {
-                    ss << "COLLATE " << orderBy._collate_argument << " ";
+                    ss << " "
+                          "COLLATE "
+                       << orderBy._collate_argument;
                 }
                 switch(orderBy.asc_desc) {
                     case 1:
-                        ss << "ASC";
+                        ss << " "
+                              "ASC";
                         break;
                     case -1:
-                        ss << "DESC";
+                        ss << " "
+                              "DESC";
                         break;
                 }
                 return ss.str();
@@ -16493,8 +16497,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& orderBy, const C& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                auto orderByString = serialize_order_by(orderBy, context);
-                ss << orderByString << " ";
+                ss << serialize_order_by(orderBy, context);
                 return ss.str();
             }
         };

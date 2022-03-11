@@ -2064,8 +2064,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& orderBy, const C& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                auto orderByString = serialize_order_by(orderBy, context);
-                ss << orderByString << " ";
+                ss << serialize_order_by(orderBy, context);
                 return ss.str();
             }
         };
