@@ -109,6 +109,7 @@ add_executable(unit_tests
 	unique_cases/delete_with_two_fields.cpp
 	unique_cases/join_iterator_ctor_compilation_error.cpp
     unique_cases/issue86.cpp
+    unique_cases/issue937.cpp
 	get_all_custom_containers.cpp
 	select_constraints_tests.cpp
 	backup_tests.cpp
