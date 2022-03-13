@@ -2448,12 +2448,14 @@ namespace sqlite_orm {
                 }
                 ss << "VALUES ";
                 {
+                    auto newContext = context;
+                    newContext.use_parentheses = true;
                     auto index = 0;
                     auto& tuple = statement.tuple;
                     using tuple_type = typename std::decay<decltype(tuple)>::type;
                     using TupleSize = std::tuple_size<tuple_type>;
-                    iterate_tuple(tuple, [&context, &index, &ss](auto& value) {
-                        ss << serialize(value, context);
+                    iterate_tuple(tuple, [&newContext, &index, &ss](auto& value) {
+                        ss << serialize(value, newContext);
                         if(index < TupleSize::value - 1) {
                             ss << ", ";
                         }
