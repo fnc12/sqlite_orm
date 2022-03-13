@@ -28,7 +28,7 @@ namespace sqlite_orm {
                 if(columnName.length()) {
                     return {move(columnName)};
                 } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    throw std::system_error(orm_error_code::column_not_found);
                 }
             }
         };
@@ -100,7 +100,7 @@ namespace sqlite_orm {
                     if(columnName.length()) {
                         columnNames.push_back(std::move(columnName));
                     } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                        throw std::system_error(orm_error_code::column_not_found);
                     }
                 });
                 return columnNames;

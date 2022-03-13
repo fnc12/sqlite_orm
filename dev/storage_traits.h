@@ -5,6 +5,7 @@
 
 #include "type_traits.h"
 #include "storage_lookup.h"
+#include "tuple_helper/tuple_transformer.h"
 
 namespace sqlite_orm {
     namespace internal {

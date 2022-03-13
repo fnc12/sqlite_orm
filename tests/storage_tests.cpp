@@ -208,3 +208,60 @@ TEST_CASE("find_column_name") {
     REQUIRE(*storage.find_column_name(&Visit::date) == "date");
     REQUIRE(storage.find_column_name(&Visit::notUsed) == nullptr);
 }
+
+TEST_CASE("issue880") {
+    struct Fondo {
+        int id = 0;
+        std::string abreviacion;
+        std::string nombre;
+        int tipo_cupon = 0;
+
+        enum TipoCupon { mensual = 1, trimestral = 3 };
+    };
+
+    struct Inversion {
+        int id = 0;
+        int num_participaciones;
+        int fkey_fondo;
+    };
+
+    struct Rendimiento {
+        int id = 0;
+        int fkey_fondo;
+        double rendimiento_unitario;
+    };
+
+    struct X {
+        int id = 0;
+        int fkey_Rendimiento;
+    };
+
+    auto storage =
+        make_storage({},
+                     make_table("Fondos",
+                                make_column("id_fondo", &Fondo::id, autoincrement(), primary_key()),
+                                make_column("nombre", &Fondo::nombre),
+                                make_column("abrev", &Fondo::abreviacion),
+                                make_column("tipo_cupon", &Fondo::tipo_cupon)),
+                     make_table("Inversiones",
+                                make_column("id_inversion", &Inversion::id, autoincrement(), primary_key()),
+                                make_column("fkey_fondo", &Inversion::fkey_fondo),
+                                make_column("num_participaciones", &Inversion::num_participaciones),
+                                foreign_key(&Inversion::fkey_fondo).references(&Fondo::id)),
+                     make_table("Rendimientos",
+                                make_column("id_rendimiento", &Rendimiento::id, autoincrement(), primary_key()),
+                                make_column("rend_unitario", &Rendimiento::rendimiento_unitario),
+                                make_column("fkey_fondo", &Rendimiento::fkey_fondo),
+                                foreign_key(&Rendimiento::fkey_fondo).references(&Fondo::id)),
+                     make_table("X",
+                                make_column("id_X", &X::id, autoincrement(), primary_key()),
+                                make_column("fkey_rendimiento", &X::fkey_Rendimiento),
+                                foreign_key(&X::fkey_Rendimiento).references(&Rendimiento::id)));
+    storage.sync_schema();
+
+    Fondo fondo{5};
+    storage.has_dependent_rows(fondo);
+
+    Inversion inversion;
+    storage.has_dependent_rows(inversion);
+}

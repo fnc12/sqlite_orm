@@ -7,7 +7,6 @@
 * `ATTACH`
 * blob incremental I/O https://sqlite.org/c3ref/blob_open.html
 * CREATE VIEW and other view operations https://sqlite.org/lang_createview.html
-* triggers
 * query static check for correct order (e.g. `GROUP BY` after `WHERE`)
 * `WINDOW`
 * `SAVEPOINT` https://www.sqlite.org/lang_savepoint.html
@@ -19,8 +18,10 @@
 * `UPDATE FROM` support https://sqlite.org/lang_update.html#upfrom
 * `iif()` function https://sqlite.org/lang_corefunc.html#iif
 * add strong typed collate syntax (more info [here](https://github.com/fnc12/sqlite_orm/issues/767#issuecomment-887689672))
-* raw `INSERT`: `storage.insert_into<User>(&User::id, values(5));` or `storage.insert_into<User>(columns(&User::id, &User::name), values(5, "Puff Diddy"));` or `storage.insert_into<User>(columns(), default_values());`
 * strict tables https://sqlite.org/stricttables.html
 * static assert when UPDATE is called with no PKs
+* `json_each` and `json_tree` functions for JSON1 extension
+* update hook
+* `RAISE`
 
 Please feel free to add any feature that isn't listed here and not implemented yet.

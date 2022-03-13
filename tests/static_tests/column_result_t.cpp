@@ -124,7 +124,7 @@ TEST_CASE("column_result_of_t 2") {
     runTest<storage_type, std::tuple<int64, int64>>(asterisk<alias_a<Org>>());
     runTest<storage_type, Org>(object<Org>());
     runTest<storage_type, int64>(column<Derived>(&Org::id));
-    runTest<storage_type, int64>(column<cte_1>(c_v<&Org::id>));
-    // this needs a 'CTE' expression storage
+    // these need a 'CTE' expression storage
+    //runTest<storage_type, int64>(column<cte_1>(c_v<&Org::id>));
     //runTest<storage_type, int64>(column<cte_1>(0_col));
 }

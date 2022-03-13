@@ -4,15 +4,15 @@
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::true_type, std::false_type
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
-#ifndef SQLITE_ORM_OMITS_CODECVT
-#include <codecvt>  //  std::codecvt_utf8_utf16
-#endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
-#include <utility>  //  std::declval
-#include <locale>  //  std::wstring_convert
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cstring>  //  ::strncpy, ::strlen
+#include <cwchar>  //  ::wcsncpy, ::wcslen
+#endif
 
+#include "start_macros.h"
+#include "cxx_polyfill.h"
 #include "is_std_ptr.h"
 #include "arithmetic_tag.h"
 #include "xdestroy_handling.h"
@@ -24,7 +24,18 @@ namespace sqlite_orm {
      *  Helper class used for binding fields to sqlite3 statements.
      */
     template<class V, typename Enable = void>
-    struct statement_binder : std::false_type {};
+    struct statement_binder;
+
+    namespace internal {
+
+        template<class T, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>{})>> = true;
+        template<class T>
+        using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
+
+    }
 
     /**
      *  Specialization for 'pointer-passing interface'.
@@ -93,65 +104,64 @@ namespace sqlite_orm {
      *  Specialization for std::string and C-string.
      */
     template<class V>
-    struct statement_binder<V,
-                            std::enable_if_t<std::is_same<V, std::string>::value || std::is_same<V, const char*>::value
+    struct statement_binder<
+        V,
+        std::enable_if_t<std::is_base_of<std::string, V>::value || std::is_same<V, const char*>::value
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                             || std::is_same<V, std::string_view>::value
+                         || std::is_same_v<V, std::string_view>
 #endif
-                                             >> {
+                         >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
-            return sqlite3_bind_text(stmt, index, std::get<0>(stringData), std::get<1>(stringData), SQLITE_TRANSIENT);
+            return sqlite3_bind_text(stmt, index, stringData.first, stringData.second, SQLITE_TRANSIENT);
         }
 
         void result(sqlite3_context* context, const V& value) const {
             auto stringData = this->string_data(value);
-            auto stringDataLength = std::get<1>(stringData);
-            auto dataCopy = new char[stringDataLength + 1];
+            auto dataCopy = new char[stringData.second + 1];
             constexpr auto deleter = std::default_delete<char[]>{};
-            auto stringChars = std::get<0>(stringData);
-            ::strncpy(dataCopy, stringChars, stringDataLength + 1);
-            sqlite3_result_text(context, dataCopy, stringDataLength, obtain_xdestroy_for(deleter, dataCopy));
+            ::strncpy(dataCopy, stringData.first, stringData.second + 1);
+            sqlite3_result_text(context, dataCopy, stringData.second, obtain_xdestroy_for(deleter, dataCopy));
         }
 
       private:
-        std::tuple<const char*, int> string_data(const std::string& s) const {
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        std::pair<const char*, int> string_data(const std::string_view& s) const {
+            return {s.data(), int(s.size())};
+        }
+#else
+        std::pair<const char*, int> string_data(const std::string& s) const {
             return {s.c_str(), int(s.size())};
         }
 
-        std::tuple<const char*, int> string_data(const char* s) const {
-            auto length = int(::strlen(s));
-            return {s, length};
-        }
-
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-        std::tuple<const char*, int> string_data(const std::string_view& s) const {
-            return {s.data(), int(s.size())};
+        std::pair<const char*, int> string_data(const char* s) const {
+            return {s, int(::strlen(s))};
         }
 #endif
     };
 
 #ifndef SQLITE_ORM_OMITS_CODECVT
-    /**
-     *  Specialization for std::wstring and C-wstring.
-     */
     template<class V>
     struct statement_binder<
         V,
-        std::enable_if_t<std::is_same<V, std::wstring>::value || std::is_same<V, const wchar_t*>::value>> {
+        std::enable_if_t<std::is_base_of<std::wstring, V>::value || std::is_same<V, const wchar_t*>::value
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                         || std::is_same_v<V, std::wstring_view>
+#endif
+                         >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-            std::string utf8Str = converter.to_bytes(value);
+            std::string utf8Str = converter.to_bytes(std::data(value), std::data(value) + std::size(value));
             return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_text16(context, (const void*)value.data(), int(value.length()), nullptr);
+            sqlite3_result_text16(context, (const void*)std::data(value), int(std::size(value)), nullptr);
         }
     };
-#endif  //  SQLITE_ORM_OMITS_CODECVT
+#endif
 
     /**
      *  Specialization for std::nullptr_t.
@@ -184,28 +194,22 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<class V>
-    struct statement_binder<V, std::enable_if_t<is_std_ptr<V>::value>> {
-        using value_type = typename is_std_ptr<V>::element_type;
+    struct statement_binder<
+        V,
+        std::enable_if_t<is_std_ptr<V>::value && internal::is_bindable_v<std::remove_cv_t<typename V::element_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename V::element_type>;
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             if(value) {
-                return statement_binder<value_type>().bind(stmt, index, *value);
+                return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
-            }
-        }
-
-        void result(sqlite3_context* context, const V& value) const {
-            if(value) {
-                statement_binder<value_type>().result(context, value);
-            } else {
-                statement_binder<std::nullptr_t>().result(context, nullptr);
             }
         }
     };
 
     /**
-     *  Specialization for optional type (std::vector<char>).
+     *  Specialization for binary data (std::vector<char>).
      */
     template<>
     struct statement_binder<std::vector<char>, void> {
@@ -227,32 +231,23 @@ namespace sqlite_orm {
     };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    template<class T>
-    struct statement_binder<std::optional<T>, void> {
-        using value_type = T;
+    template<class V>
+    struct statement_binder<V,
+                            std::enable_if_t<internal::polyfill::is_specialization_of_v<V, std::optional> &&
+                                             internal::is_bindable_v<std::remove_cv_t<typename V::value_type>>>> {
+        using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
-        int bind(sqlite3_stmt* stmt, int index, const std::optional<T>& value) const {
+        int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             if(value) {
-                return statement_binder<value_type>().bind(stmt, index, *value);
+                return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
                 return statement_binder<std::nullopt_t>().bind(stmt, index, std::nullopt);
-            }
-        }
-
-        void result(sqlite3_context* context, const std::optional<T>& value) const {
-            if(value) {
-                statement_binder<value_type>().result(context, value);
-            } else {
-                statement_binder<std::nullopt_t>().result(context, std::nullopt);
             }
         }
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     namespace internal {
-
-        template<class T>
-        using is_bindable = std::integral_constant<bool, !std::is_base_of<std::false_type, statement_binder<T>>::value>;
 
         struct conditional_binder_base {
             sqlite3_stmt* stmt = nullptr;

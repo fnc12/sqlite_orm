@@ -44,6 +44,10 @@ namespace sqlite_orm {
             using type = std::optional<typename column_result_t<St, T>::type>;
         };
 
+        template<class St, class T>
+        struct column_result_t<St, std::optional<T>, void> {
+            using type = std::optional<T>;
+        };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class St, class O, class F>
@@ -90,6 +94,11 @@ namespace sqlite_orm {
             using type = R;
         };
 
+        template<class St, class R, class S, class... Args>
+        struct column_result_t<St, built_in_aggregate_function_t<R, S, Args...>, void> {
+            using type = R;
+        };
+
         template<class St, class F, class... Args>
         struct column_result_t<St, function_call<F, Args...>, void> {
             using type = typename callable_arguments<F>::return_type;
@@ -100,9 +109,19 @@ namespace sqlite_orm {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
+        template<class St, class X, class S>
+        struct column_result_t<St, built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
+        };
+
         template<class St, class T>
         struct column_result_t<St, count_asterisk_t<T>, void> {
             using type = int;
+        };
+
+        template<class St>
+        struct column_result_t<St, std::nullptr_t, void> {
+            using type = std::nullptr_t;
         };
 
         template<class St>

@@ -93,7 +93,7 @@ namespace sqlite_orm {
         ~pointer_binding() {
             if(p_) {
                 if(auto xDestroy = get_xdestroy()) {
-                    // note: C-casting `P* -> void*` like statement_binder<pointer_binding<P, T, D>
+                    // note: C-casting `P* -> void*` like statement_binder<pointer_binding<P, T, D>>
                     xDestroy((void*)p_);
                 }
             }

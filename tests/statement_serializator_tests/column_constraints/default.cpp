@@ -5,19 +5,29 @@ using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator default") {
     internal::serializator_context_base context;
-    {  //  int literal
+    std::string value;
+    decltype(value) expected;
+    SECTION("int literal") {
         auto def = default_value(1);
-        auto value = serialize(def, context);
-        REQUIRE(value == "DEFAULT (1)");
+        value = serialize(def, context);
+        expected = "DEFAULT (1)";
     }
-    {  //  string literal
+    SECTION("string literal") {
         auto def = default_value("hi");
-        auto value = serialize(def, context);
-        REQUIRE(value == "DEFAULT ('hi')");
+        value = serialize(def, context);
+        expected = "DEFAULT ('hi')";
     }
-    {  //  func
+    SECTION("func") {
         auto def = default_value(datetime("now"));
-        auto value = serialize(def, context);
-        REQUIRE(value == "DEFAULT (DATETIME('now'))");
+        SECTION("use_parentheses") {
+            context.use_parentheses = true;
+            expected = "DEFAULT ((DATETIME('now')))";
+        }
+        SECTION("!use_parentheses") {
+            context.use_parentheses = false;
+            expected = "DEFAULT (DATETIME('now'))";
+        }
+        value = serialize(def, context);
     }
+    REQUIRE(value == expected);
 }

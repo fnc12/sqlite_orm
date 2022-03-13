@@ -40,7 +40,7 @@ namespace sqlite_orm {
             using std::void_t;
 #endif
 
-#if __cplusplus < 202002L
+#if __cplusplus < 202002L  // before C++20
             template<class T>
             struct remove_cvref : std::remove_cv<std::remove_reference_t<T>> {};
 

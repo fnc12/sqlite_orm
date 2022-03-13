@@ -5,7 +5,7 @@
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <utility>  //  std::move
-#include <system_error>  //  std::system_error, std::error_code, std::make_error_code
+#include <system_error>  //  std::system_error, std::error_code
 #include <vector>  //  std::vector
 #include <memory>  //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
@@ -203,7 +203,7 @@ namespace sqlite_orm {
                 if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
                     argsCount = -1;
                 }
-                this->scalarFunctions.emplace_back(new scalar_function_t{
+                this->scalarFunctions.emplace_back(new user_defined_scalar_function_t{
                     move(name),
                     argsCount,
                     []() -> int* {
@@ -223,7 +223,8 @@ namespace sqlite_orm {
 
                 if(this->connection->retain_count() > 0) {
                     auto db = this->connection->get();
-                    try_to_create_function(db, static_cast<scalar_function_t&>(*this->scalarFunctions.back()));
+                    try_to_create_function(db,
+                                           static_cast<user_defined_scalar_function_t&>(*this->scalarFunctions.back()));
                 }
             }
 
@@ -263,7 +264,7 @@ namespace sqlite_orm {
                 if(std::is_same<args_tuple, std::tuple<arg_values>>::value) {
                     argsCount = -1;
                 }
-                this->aggregateFunctions.emplace_back(new aggregate_function_t{
+                this->aggregateFunctions.emplace_back(new user_defined_aggregate_function_t{
                     move(name),
                     argsCount,
                     /* create = */
@@ -289,7 +290,9 @@ namespace sqlite_orm {
 
                 if(this->connection->retain_count() > 0) {
                     auto db = this->connection->get();
-                    try_to_create_function(db, static_cast<aggregate_function_t&>(*this->aggregateFunctions.back()));
+                    try_to_create_function(
+                        db,
+                        static_cast<user_defined_aggregate_function_t&>(*this->aggregateFunctions.back()));
                 }
             }
 
@@ -377,7 +380,7 @@ namespace sqlite_orm {
                 perform_void_exec(db, "COMMIT");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
-                    throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                    throw std::system_error(orm_error_code::no_active_transaction);
                 }
             }
 
@@ -386,7 +389,7 @@ namespace sqlite_orm {
                 perform_void_exec(db, "ROLLBACK");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
-                    throw std::system_error(std::make_error_code(orm_error_code::no_active_transaction));
+                    throw std::system_error(orm_error_code::no_active_transaction);
                 }
             }
 
@@ -559,11 +562,11 @@ namespace sqlite_orm {
                 }
 
                 for(auto& functionPointer: this->scalarFunctions) {
-                    try_to_create_function(db, static_cast<scalar_function_t&>(*functionPointer));
+                    try_to_create_function(db, static_cast<user_defined_scalar_function_t&>(*functionPointer));
                 }
 
                 for(auto& functionPointer: this->aggregateFunctions) {
-                    try_to_create_function(db, static_cast<aggregate_function_t&>(*functionPointer));
+                    try_to_create_function(db, static_cast<user_defined_aggregate_function_t&>(*functionPointer));
                 }
 
                 if(this->on_open) {
@@ -572,7 +575,7 @@ namespace sqlite_orm {
             }
 
             void delete_function_impl(const std::string& name,
-                                      std::vector<std::unique_ptr<function_base>>& functionsVector) const {
+                                      std::vector<std::unique_ptr<user_defined_function_base>>& functionsVector) const {
                 auto it = find_if(functionsVector.begin(), functionsVector.end(), [&name](auto& functionPointer) {
                     return functionPointer->name == name;
                 });
@@ -597,11 +600,11 @@ namespace sqlite_orm {
                         }
                     }
                 } else {
-                    throw std::system_error(std::make_error_code(orm_error_code::function_not_found));
+                    throw std::system_error(orm_error_code::function_not_found);
                 }
             }
 
-            void try_to_create_function(sqlite3* db, scalar_function_t& function) {
+            void try_to_create_function(sqlite3* db, user_defined_scalar_function_t& function) {
                 auto resultCode = sqlite3_create_function_v2(db,
                                                              function.name.c_str(),
                                                              function.argumentsCount,
@@ -617,7 +620,7 @@ namespace sqlite_orm {
                 }
             }
 
-            void try_to_create_function(sqlite3* db, aggregate_function_t& function) {
+            void try_to_create_function(sqlite3* db, user_defined_aggregate_function_t& function) {
                 auto resultCode = sqlite3_create_function(db,
                                                           function.name.c_str(),
                                                           function.argumentsCount,
@@ -635,7 +638,7 @@ namespace sqlite_orm {
             static void
             aggregate_function_step_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<aggregate_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_aggregate_function_t*>(functionVoidPointer);
                 auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
                 auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
                 if(*aggregateContextIntPointer == nullptr) {
@@ -646,7 +649,7 @@ namespace sqlite_orm {
 
             static void aggregate_function_final_callback(sqlite3_context* context) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<aggregate_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_aggregate_function_t*>(functionVoidPointer);
                 auto aggregateContextVoidPointer = sqlite3_aggregate_context(context, sizeof(int**));
                 auto aggregateContextIntPointer = static_cast<int**>(aggregateContextVoidPointer);
                 functionPointer->finalCall(context, *aggregateContextIntPointer);
@@ -655,11 +658,11 @@ namespace sqlite_orm {
 
             static void scalar_function_callback(sqlite3_context* context, int argsCount, sqlite3_value** values) {
                 auto functionVoidPointer = sqlite3_user_data(context);
-                auto functionPointer = static_cast<scalar_function_t*>(functionVoidPointer);
+                auto functionPointer = static_cast<user_defined_scalar_function_t*>(functionVoidPointer);
                 std::unique_ptr<int, void (*)(int*)> callablePointer(functionPointer->create(),
                                                                      functionPointer->destroy);
                 if(functionPointer->argumentsCount != -1 && functionPointer->argumentsCount != argsCount) {
-                    throw std::system_error(std::make_error_code(orm_error_code::arguments_count_does_not_match));
+                    throw std::system_error(orm_error_code::arguments_count_does_not_match);
                 }
                 functionPointer->run(context, functionPointer, argsCount, values);
             }
@@ -733,8 +736,8 @@ namespace sqlite_orm {
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;
-            std::vector<std::unique_ptr<function_base>> scalarFunctions;
-            std::vector<std::unique_ptr<function_base>> aggregateFunctions;
+            std::vector<std::unique_ptr<user_defined_function_base>> scalarFunctions;
+            std::vector<std::unique_ptr<user_defined_function_base>> aggregateFunctions;
         };
     }
 }

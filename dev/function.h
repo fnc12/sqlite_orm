@@ -1,10 +1,12 @@
 #pragma once
 
+#include <type_traits>
 #include <string>  //  std::string
-#include <sqlite3.h>
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
+#include <cstddef>
+#include <sqlite3.h>
 
 #include "cxx_polyfill.h"
 
@@ -19,7 +21,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct function_base {
+        struct user_defined_function_base {
             using func_call = std::function<
                 void(sqlite3_context *context, void *functionPointer, int argsCount, sqlite3_value **values)>;
             using final_call = std::function<void(sqlite3_context *context, void *functionPointer)>;
@@ -29,37 +31,37 @@ namespace sqlite_orm {
             std::function<int *()> create;
             void (*destroy)(int *) = nullptr;
 
-            function_base(decltype(name) name_,
-                          decltype(argumentsCount) argumentsCount_,
-                          decltype(create) create_,
-                          decltype(destroy) destroy_) :
+            user_defined_function_base(decltype(name) name_,
+                                       decltype(argumentsCount) argumentsCount_,
+                                       decltype(create) create_,
+                                       decltype(destroy) destroy_) :
                 name(move(name_)),
                 argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
         };
 
-        struct scalar_function_t : function_base {
+        struct user_defined_scalar_function_t : user_defined_function_base {
             func_call run;
 
-            scalar_function_t(decltype(name) name_,
-                              int argumentsCount_,
-                              decltype(create) create_,
-                              decltype(run) run_,
-                              decltype(destroy) destroy_) :
-                function_base{move(name_), argumentsCount_, move(create_), destroy_},
+            user_defined_scalar_function_t(decltype(name) name_,
+                                           int argumentsCount_,
+                                           decltype(create) create_,
+                                           decltype(run) run_,
+                                           decltype(destroy) destroy_) :
+                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
                 run(move(run_)) {}
         };
 
-        struct aggregate_function_t : function_base {
+        struct user_defined_aggregate_function_t : user_defined_function_base {
             func_call step;
             final_call finalCall;
 
-            aggregate_function_t(decltype(name) name_,
-                                 int argumentsCount_,
-                                 decltype(create) create_,
-                                 decltype(step) step_,
-                                 decltype(finalCall) finalCall_,
-                                 decltype(destroy) destroy_) :
-                function_base{move(name_), argumentsCount_, move(create_), destroy_},
+            user_defined_aggregate_function_t(decltype(name) name_,
+                                              int argumentsCount_,
+                                              decltype(create) create_,
+                                              decltype(step) step_,
+                                              decltype(finalCall) finalCall_,
+                                              decltype(destroy) destroy_) :
+                user_defined_function_base{move(name_), argumentsCount_, move(create_), destroy_},
                 step(move(step_)), finalCall(move(finalCall_)) {}
         };
 
@@ -190,6 +192,11 @@ namespace sqlite_orm {
 
         template<size_t I, class FnArg, class CallArg, class EnableIfTag = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_same_pvt_v = expected_pointer_value<I, FnArg, CallArg>();
+
+        // Always allow binding nullptr to a pointer argument
+        template<size_t I, class PointerArg>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
 #if __cplusplus >= 201703L  // using C++17 or higher
         template<size_t I, const char *PointerArg, const char *Binding>

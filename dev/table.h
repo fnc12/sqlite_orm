@@ -16,6 +16,7 @@
 #include "table_info.h"
 #include "type_printer.h"
 #include "column.h"
+#include "dbstat.h"
 
 namespace sqlite_orm {
 
@@ -76,35 +77,36 @@ namespace sqlite_orm {
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
             template<class F, class C>
-            const F* get_object_field_pointer(const object_type& obj, C c) const {
+            const F* get_object_field_pointer(const object_type& object, C memberPointer) const {
                 const F* res = nullptr;
-                this->for_each_column_with_field_type<F>([&res, &c, &obj](auto& col) {
-                    using column_type = typename std::remove_reference<decltype(col)>::type;
+                this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
+                    using column_type = typename std::remove_reference<decltype(column)>::type;
                     using member_pointer_t = typename column_type::member_pointer_t;
                     using getter_type = typename column_type::getter_type;
                     using setter_type = typename column_type::setter_type;
                     // Make static_if have at least one input as a workaround for GCC bug:
                     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
                     if(!res) {
-                        static_if<std::is_same<C, member_pointer_t>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.member_pointer, c_)) {
-                                res = &(obj.*col.member_pointer);
-                            }
-                        })(c);
+                        static_if<std::is_same<C, member_pointer_t>{}>(
+                            [&res, &object, &column](const C& memberPointer) {
+                                if(compare_any(column.member_pointer, memberPointer)) {
+                                    res = &(object.*column.member_pointer);
+                                }
+                            })(memberPointer);
                     }
                     if(!res) {
-                        static_if<std::is_same<C, getter_type>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.getter, c_)) {
-                                res = &((obj).*(col.getter))();
+                        static_if<std::is_same<C, getter_type>{}>([&res, &object, &column](const C& memberPointer) {
+                            if(compare_any(column.getter, memberPointer)) {
+                                res = &(object.*(column.getter))();
                             }
-                        })(c);
+                        })(memberPointer);
                     }
                     if(!res) {
-                        static_if<std::is_same<C, setter_type>{}>([&res, &obj, &col](const C& c_) {
-                            if(compare_any(col.setter, c_)) {
-                                res = &((obj).*(col.getter))();
+                        static_if<std::is_same<C, setter_type>{}>([&res, &object, &column](const C& memberPointer) {
+                            if(compare_any(column.setter, memberPointer)) {
+                                res = &(object.*(column.getter))();
                             }
-                        })(c);
+                        })(memberPointer);
                     }
                 });
                 return res;
@@ -140,16 +142,16 @@ namespace sqlite_orm {
 
             std::vector<std::string> composite_key_columns_names() const {
                 std::vector<std::string> res;
-                this->for_each_primary_key([this, &res](auto& c) {
-                    res = this->composite_key_columns_names(c);
+                this->for_each_primary_key([this, &res](auto& primaryKey) {
+                    res = this->composite_key_columns_names(primaryKey);
                 });
                 return res;
             }
 
             std::vector<std::string> primary_key_column_names() const {
                 std::vector<std::string> res;
-                this->for_each_column_with<primary_key_t<>>([&res](auto& c) {
-                    res.push_back(c.name);
+                this->for_each_column_with<primary_key_t<>>([&res](auto& column) {
+                    res.push_back(column.name);
                 });
                 if(!res.size()) {
                     res = this->composite_key_columns_names();
@@ -157,13 +159,32 @@ namespace sqlite_orm {
                 return res;
             }
 
+            template<class L>
+            void for_each_primary_key_column(const L& lambda) const {
+                this->for_each_column_with<primary_key_t<>>([&lambda](auto& column) {
+                    if(column.member_pointer) {
+                        lambda(column.member_pointer);
+                    } else {
+                        lambda(column.getter);
+                    }
+                });
+                this->for_each_primary_key([this, &lambda](auto& primaryKey) {
+                    this->for_each_column_in_primary_key(primaryKey, lambda);
+                });
+            }
+
+            template<class L, class... Args>
+            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, const L& lambda) const {
+                iterate_tuple(primarykey.columns, lambda);
+            }
+
             template<class... Args>
             std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& pk) const {
                 std::vector<std::string> res;
                 using pk_columns_tuple = decltype(pk.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
-                iterate_tuple(pk.columns, [this, &res](auto& v) {
-                    if(auto columnName = this->find_column_name(v)) {
+                iterate_tuple(pk.columns, [this, &res](auto& memberPointer) {
+                    if(auto* columnName = this->find_column_name(memberPointer)) {
                         res.push_back(*columnName);
                     } else {
                         res.push_back({});
@@ -343,4 +364,19 @@ namespace sqlite_orm {
     internal::table_t<O, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
+#ifdef SQLITE_ENABLE_DBSTAT_VTAB
+    inline auto make_dbstat_table() {
+        return make_table("dbstat",
+                          make_column("name", &dbstat::name),
+                          make_column("path", &dbstat::path),
+                          make_column("pageno", &dbstat::pageno),
+                          make_column("pagetype", &dbstat::pagetype),
+                          make_column("ncell", &dbstat::ncell),
+                          make_column("payload", &dbstat::payload),
+                          make_column("unused", &dbstat::unused),
+                          make_column("mx_payload", &dbstat::mx_payload),
+                          make_column("pgoffset", &dbstat::pgoffset),
+                          make_column("pgsize", &dbstat::pgsize));
+    }
+#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }

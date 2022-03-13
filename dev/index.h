@@ -30,12 +30,18 @@ namespace sqlite_orm {
     template<class... Cols>
     internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_index(const std::string& name,
                                                                                          Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
         return {name, false, std::make_tuple(internal::make_indexed_column(cols)...)};
     }
 
     template<class... Cols>
     internal::index_t<typename internal::indexed_column_maker<Cols>::type...> make_unique_index(const std::string& name,
                                                                                                 Cols... cols) {
+        using cols_tuple = std::tuple<Cols...>;
+        static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
+                      "amount of where arguments can be 0 or 1");
         return {name, true, std::make_tuple(internal::make_indexed_column(cols)...)};
     }
 }

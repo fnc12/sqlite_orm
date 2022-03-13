@@ -62,7 +62,7 @@ TEST_CASE("Transaction guard") {
     };
 
     auto storage = make_storage(
-        "test_transaction_guard.sqlite",
+        {},
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
 
     storage.sync_schema();
@@ -87,7 +87,7 @@ TEST_CASE("Transaction guard") {
         }
     }
     SECTION("check that one can call other transaction functions without exceptions") {
-        storage.transaction([&] {
+        storage.transaction([] {
             return false;
         });
     }
@@ -131,7 +131,7 @@ TEST_CASE("Transaction guard") {
             REQUIRE(countNow == countBefore + 1);
         }
     }
-    SECTION("work witout exception") {
+    SECTION("work without exception") {
         auto countBefore = storage.count<Object>();
         try {
             auto guard = storage.transaction_guard();
@@ -142,5 +142,18 @@ TEST_CASE("Transaction guard") {
         }
         auto countNow = storage.count<Object>();
         REQUIRE(countNow == countBefore + 1);
+    }
+    SECTION("move ctor") {
+        std::vector<internal::transaction_guard_t> guards;
+        auto countBefore = storage.count<Object>();
+        {
+            auto guard = storage.transaction_guard();
+            storage.insert(Object{0, "Lincoln"});
+            guards.push_back(std::move(guard));
+            REQUIRE(storage.count<Object>() == countBefore + 1);
+        }
+        REQUIRE(storage.count<Object>() == countBefore + 1);
+        guards.clear();
+        REQUIRE(storage.count<Object>() == countBefore);
     }
 }

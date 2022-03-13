@@ -599,7 +599,7 @@ TEST_CASE("pointer-passing") {
         SECTION("unbound is deleted") {
             try {
                 unique_ptr<int64, delete_int64> x{new int64(42)};
-                auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(std::move(x))));
+                auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(move(x))));
                 auto stmt = storage.prepare(std::move(ast));
                 throw std::system_error{0, std::system_category()};
             } catch(const std::system_error &) {
@@ -611,7 +611,7 @@ TEST_CASE("pointer-passing") {
         SECTION("deleted with prepared statement") {
             {
                 unique_ptr<int64, delete_int64> x{new int64(42)};
-                auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(std::move(x))));
+                auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(move(x))));
                 auto stmt = storage.prepare(std::move(ast));
 
                 storage.execute(stmt);
@@ -687,8 +687,8 @@ TEST_CASE("obtain_xdestroy_for") {
     };
 
     {
-        constexpr int *int_nullptr = (int *)nullptr;
-        constexpr const int *const_int_nullptr = (const int *)nullptr;
+        constexpr int *int_nullptr = nullptr;
+        constexpr const int *const_int_nullptr = nullptr;
 
         // null_xdestroy_f(int*)
         constexpr xdestroy_fn_t xDestroy1 = obtain_xdestroy_for(null_xdestroy_f, int_nullptr);

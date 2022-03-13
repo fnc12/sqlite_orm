@@ -162,8 +162,8 @@ TEST_CASE("issue521") {
 
         // --- Insert two rows
         pocosToInsert.clear();
-        pocosToInsert.push_back({-1, "Michael", 10, 10.10});
-        pocosToInsert.push_back({-1, "Joyce", 20, 20.20});
+        pocosToInsert.push_back({-1, "Michael", 10, 10.10f});
+        pocosToInsert.push_back({-1, "Joyce", 20, 20.20f});
 
         for(auto& poco: pocosToInsert) {
             auto insertedId = storage.insert(poco);

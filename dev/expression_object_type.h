@@ -42,6 +42,16 @@ namespace sqlite_orm {
             using type = typename replace_range_t<std::reference_wrapper<It>, L, O>::object_type;
         };
 
+        template<class T, class... Ids>
+        struct expression_object_type<remove_t<T, Ids...>> {
+            using type = T;
+        };
+
+        template<class T, class... Ids>
+        struct expression_object_type<remove_t<std::reference_wrapper<T>, Ids...>> {
+            using type = T;
+        };
+
         template<class T>
         struct expression_object_type<insert_t<T>> {
             using type = typename std::decay<T>::type;

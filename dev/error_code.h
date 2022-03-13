@@ -5,6 +5,7 @@
 #include <sqlite3.h>
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
+#include <type_traits>
 
 namespace sqlite_orm {
 
@@ -27,6 +28,8 @@ namespace sqlite_orm {
         arguments_count_does_not_match,
         function_not_found,
         index_is_out_of_bounds,
+        value_is_null,
+        no_tables_specified,
     };
 
 }
@@ -75,6 +78,10 @@ namespace sqlite_orm {
                     return "Function not found";
                 case orm_error_code::index_is_out_of_bounds:
                     return "Index is out of bounds";
+                case orm_error_code::value_is_null:
+                    return "Value is null";
+                case orm_error_code::no_tables_specified:
+                    return "No tables specified";
                 default:
                     return "unknown error";
             }
@@ -120,9 +127,11 @@ namespace sqlite_orm {
 
 namespace std {
     template<>
-    struct is_error_code_enum<sqlite_orm::orm_error_code> : std::true_type {};
+    struct is_error_code_enum<sqlite_orm::orm_error_code> : true_type {};
+}
 
-    inline std::error_code make_error_code(sqlite_orm::orm_error_code errorCode) {
-        return std::error_code(static_cast<int>(errorCode), sqlite_orm::get_orm_error_category());
+namespace sqlite_orm {
+    inline std::error_code make_error_code(orm_error_code errorCode) noexcept {
+        return {static_cast<int>(errorCode), get_orm_error_category()};
     }
 }
