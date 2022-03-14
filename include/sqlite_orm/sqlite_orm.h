@@ -9633,7 +9633,7 @@ namespace sqlite_orm {
 
         template<class St, class T>
         struct column_result_t<St, asterisk_t<T>, void> {
-            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
+            using type = typename storage_traits::storage_mapped_columns<St, typename mapped_type_proxy<T>::type>::type;
         };
 
         template<class St, class T>
