@@ -3454,9 +3454,9 @@ namespace sqlite_orm {
         /**
          *  USING argument holder.
          */
-        template<class F, class O>
+        template<class T, class M>
         struct using_t {
-            F O::*column = nullptr;
+            column_pointer<T, M> column;
 
             operator std::string() const {
                 return "USING";
@@ -3687,8 +3687,12 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    internal::using_t<F, O> using_(F O::*p) {
-        return {std::move(p)};
+    internal::using_t<O, F O::*> using_(F O::*p) {
+        return {p};
+    }
+    template<class T, class M>
+    internal::using_t<T, M> using_(internal::column_pointer<T, M> cp) {
+        return {std::move(cp)};
     }
 
     template<class T>
@@ -16760,15 +16764,15 @@ namespace sqlite_orm {
             }
         };
 
-        template<class F, class O>
-        struct statement_serializator<using_t<F, O>, void> {
-            using statement_type = using_t<F, O>;
+        template<class T, class M>
+        struct statement_serializator<using_t<T, M>, void> {
+            using statement_type = using_t<T, M>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 auto newContext = context;
                 newContext.skip_table_name = true;
-                return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + " )";
+                return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + ")";
             }
         };
 
@@ -18924,6 +18928,12 @@ __pragma(pop_macro("min"))
         struct node_tuple<on_t<T>, void> {
             using node_type = on_t<T>;
             using type = typename node_tuple<T>::type;
+        };
+
+        template<class T, class M>
+        struct node_tuple<using_t<T, M>, void> {
+            using node_type = using_t<T, M>;
+            using type = typename node_tuple<M>::type;
         };
 
         template<class T, class O>
