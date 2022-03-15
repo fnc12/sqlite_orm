@@ -125,6 +125,20 @@ TEST_CASE("ast_iterator") {
             internal::iterate_ast(node, lambda);
         }
     }
+    SECTION("scalar functions") {
+        SECTION("max(X,Y)") {
+            auto node = max(&User::id, 4);
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("min(X,Y)") {
+            auto node = min(&User::id, 4);
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+    }
     SECTION("on") {
         auto node = on(&User::id == c(0));
         expected.push_back(typeid(&User::id));
