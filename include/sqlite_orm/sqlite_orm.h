@@ -18934,6 +18934,8 @@ __pragma(pop_macro("min"))
             using type = typename node_tuple<T>::type;
         };
 
+        // note: not strictly necessary as there's no binding support for USING;
+        // we provide it nevertheless, in line with on_t.
         template<class T, class M>
         struct node_tuple<using_t<T, M>, void> {
             using node_type = using_t<T, M>;
