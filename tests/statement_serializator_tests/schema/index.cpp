@@ -48,7 +48,7 @@ TEST_CASE("statement_serializator index") {
     SECTION("where") {
         auto index = make_index("idx", &User::id, where(is_not_null(&User::id)));
         value = internal::serialize(index, context);
-        expected = "CREATE INDEX IF NOT EXISTS 'idx' ON 'users' (\"id\") WHERE (\"id\" IS NOT NULL)";
+        expected = "CREATE INDEX IF NOT EXISTS 'idx' ON 'users' (\"id\") WHERE (\"users\".\"id\" IS NOT NULL)";
     }
     REQUIRE(value == expected);
 }

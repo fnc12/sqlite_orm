@@ -42,11 +42,11 @@ TEST_CASE("statement_serializator update") {
                 auto expression = update_all(set(assign(&A::value, 5)), where(is_equal(&A::address, 1)));
                 SECTION("with question marks") {
                     context.replace_bindable_with_question = true;
-                    expected = "UPDATE 'table' SET \"value\" = ? WHERE ((\"address\" = ?))";
+                    expected = "UPDATE 'table' SET \"value\" = ? WHERE ((\"table\".\"address\" = ?))";
                 }
                 SECTION("without question marks") {
                     context.replace_bindable_with_question = false;
-                    expected = "UPDATE 'table' SET \"value\" = 5 WHERE ((\"address\" = 1))";
+                    expected = "UPDATE 'table' SET \"value\" = 5 WHERE ((\"table\".\"address\" = 1))";
                 }
                 value = serialize(expression, context);
             }
