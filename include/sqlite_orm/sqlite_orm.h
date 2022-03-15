@@ -12324,8 +12324,20 @@ namespace sqlite_orm {
             using node_type = on_t<T>;
 
             template<class L>
-            void operator()(const node_type& o, const L& l) const {
-                iterate_ast(o.arg, l);
+            void operator()(const node_type& o, const L& lambda) const {
+                iterate_ast(o.arg, lambda);
+            }
+        };
+
+        // note: not strictly necessary as there's no binding support for USING;
+        // we provide it nevertheless, in line with on_t.
+        template<class T>
+        struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of_v<T, using_t>>> {
+            using node_type = T;
+
+            template<class L>
+            void operator()(const node_type& o, const L& lambda) const {
+                iterate_ast(o.column, lambda);
             }
         };
 
@@ -18939,7 +18951,7 @@ __pragma(pop_macro("min"))
         template<class T, class M>
         struct node_tuple<using_t<T, M>, void> {
             using node_type = using_t<T, M>;
-            using type = typename node_tuple<M>::type;
+            using type = typename node_tuple<column_pointer<T, M>>::type;
         };
 
         template<class T, class O>
