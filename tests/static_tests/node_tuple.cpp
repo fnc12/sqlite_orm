@@ -799,7 +799,7 @@ TEST_CASE("Node tuple") {
             auto j = join<User>(using_(&User::id));
             using Join = decltype(j);
             using Tuple = node_tuple<Join>::type;
-            using Expected = std::tuple<decltype(&User::id)>;
+            using Expected = std::tuple<internal::column_pointer<User, decltype(&User::id)>>;
             static_assert(is_same<Tuple, Expected>::value, "join using");
         }
         SECTION("join using explicit column") {
@@ -807,7 +807,7 @@ TEST_CASE("Node tuple") {
             auto j = join<User>(using_(column<Derived>(&User::id)));
             using Join = decltype(j);
             using Tuple = node_tuple<Join>::type;
-            using Expected = std::tuple<decltype(&User::id)>;
+            using Expected = std::tuple<internal::column_pointer<Derived, decltype(&User::id)>>;
             static_assert(is_same<Tuple, Expected>::value, "join using explicit column");
         }
         SECTION("left_outer_join") {

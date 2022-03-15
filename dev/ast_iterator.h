@@ -492,8 +492,18 @@ namespace sqlite_orm {
             using node_type = on_t<T>;
 
             template<class L>
-            void operator()(const node_type& o, const L& l) const {
-                iterate_ast(o.arg, l);
+            void operator()(const node_type& o, const L& lambda) const {
+                iterate_ast(o.arg, lambda);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of_v<T, using_t>>> {
+            using node_type = T;
+
+            template<class L>
+            void operator()(const node_type& o, const L& lambda) const {
+                iterate_ast(o.column, lambda);
             }
         };
 
