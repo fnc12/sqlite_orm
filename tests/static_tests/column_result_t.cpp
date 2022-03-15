@@ -37,7 +37,8 @@ TEST_CASE("column_result_of_t 1") {
         int id = 0;
         std::string comment;
     };
-    auto storage = make_storage({});
+    auto storage =
+        make_storage({}, make_table("users", make_column("id", &User::id), make_column("name", &User::name)));
 
     using Storage = decltype(storage);
     runTest<Storage, int>(&User::id);
@@ -101,6 +102,8 @@ TEST_CASE("column_result_of_t 1") {
     runTest<Storage, int64>(rowid<User>());
     runTest<Storage, int64>(oid<User>());
     runTest<Storage, int64>(_rowid_<User>());
+    runTest<Storage, std::tuple<int, std::string>>(asterisk<User>());
+    runTest<Storage, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
 }
 
 TEST_CASE("column_result_of_t 2") {
@@ -120,8 +123,6 @@ TEST_CASE("column_result_of_t 2") {
 
     runTest<storage_type, int64>(c_v<&Org::id>);
     runTest<storage_type, std::tuple<int64, int64>>(columns(c_v<&Org::id>, &Org::boss));
-    runTest<storage_type, std::tuple<int64, int64>>(asterisk<Org>());
-    runTest<storage_type, std::tuple<int64, int64>>(asterisk<alias_a<Org>>());
     runTest<storage_type, Org>(object<Org>());
     runTest<storage_type, int64>(column<Derived>(&Org::id));
     // these need a 'CTE' expression storage
