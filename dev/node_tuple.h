@@ -319,6 +319,14 @@ namespace sqlite_orm {
             using type = typename node_tuple<T>::type;
         };
 
+        // note: not strictly necessary as there's no binding support for USING;
+        // we provide it nevertheless, in line with on_t.
+        template<class T, class M>
+        struct node_tuple<using_t<T, M>, void> {
+            using node_type = using_t<T, M>;
+            using type = typename node_tuple<column_pointer<T, M>>::type;
+        };
+
         template<class T, class O>
         struct node_tuple<join_t<T, O>, void> {
             using node_type = join_t<T, O>;
