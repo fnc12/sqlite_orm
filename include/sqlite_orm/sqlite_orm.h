@@ -47,13 +47,17 @@ __pragma(push_macro("min"))
     namespace internal {
         namespace polyfill {
 #if __cplusplus < 201703L  // before C++17
-            template<class...>
-            using void_t = void;
-
             template<bool v>
             using bool_constant = std::integral_constant<bool, v>;
+
+            template<class B>
+            struct negation : bool_constant<!bool(B::value)> {};
+
+            template<class...>
+            using void_t = void;
 #else
             using std::bool_constant;
+            using std::negation;
             using std::void_t;
 #endif
 
@@ -102,7 +106,7 @@ namespace sqlite_orm {
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>
-        using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
+        using match_if_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value>;
 
         // enable_if for types
         template<class T, template<typename...> class Primary>
@@ -114,7 +118,7 @@ namespace sqlite_orm {
 
         // enable_if for functions
         template<template<typename...> class Op, class... Args>
-        using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
+        using satisfies_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value, bool>;
 
         // enable_if for functions
         template<class T, template<typename...> class Primary>
