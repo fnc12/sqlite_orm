@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # coding=utf-8
 
 # amalgamate.py - Amalgamate C source and header files.
@@ -97,7 +97,7 @@ class Amalgamation(object):
             t = TranslationUnit(file_path, self, True)
             amalgamation += t.content
 
-        with open(self.target, 'w') as f:
+        with open(self.target, mode='w', newline='\n') as f:
             f.write(amalgamation)
 
         print("...done!\n")

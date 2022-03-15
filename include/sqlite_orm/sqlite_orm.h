@@ -9396,6 +9396,10 @@ namespace sqlite_orm {
             using type = std::optional<typename column_result_t<St, T>::type>;
         };
 
+        template<class St, class T>
+        struct column_result_t<St, std::optional<T>, void> {
+            using type = std::optional<T>;
+        };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class St, class O, class F>
@@ -9625,7 +9629,7 @@ namespace sqlite_orm {
 
         template<class St, class T>
         struct column_result_t<St, asterisk_t<T>, void> {
-            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
+            using type = typename storage_traits::storage_mapped_columns<St, typename mapped_type_proxy<T>::type>::type;
         };
 
         template<class St, class T>

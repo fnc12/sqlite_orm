@@ -63,6 +63,9 @@ add_executable(unit_tests
     static_tests/function_static_tests.cpp
     static_tests/aggregate_function_return_types.cpp
     static_tests/column_result_t.cpp
+    static_tests/has_some_type.cpp
+    static_tests/is_primary_key_insertable.cpp
+    static_tests/is_column_with_insertable_primary_key.cpp
 	constraints/default.cpp
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
@@ -107,6 +110,7 @@ add_executable(unit_tests
 	unique_cases/delete_with_two_fields.cpp
 	unique_cases/join_iterator_ctor_compilation_error.cpp
     unique_cases/issue86.cpp
+    unique_cases/issue937.cpp
 	get_all_custom_containers.cpp
 	select_constraints_tests.cpp
 	backup_tests.cpp
@@ -117,9 +121,6 @@ add_executable(unit_tests
     trigger_tests.cpp
     ast_iterator_tests.cpp
     unique_cases/issue663.cpp
-    static_tests/has_some_type.cpp
-    static_tests/is_primary_key_insertable.cpp
-    static_tests/is_column_with_insertable_primary_key.cpp
 )
 
 if(SQLITE_ORM_OMITS_CODECVT)
