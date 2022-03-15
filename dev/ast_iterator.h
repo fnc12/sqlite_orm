@@ -497,6 +497,8 @@ namespace sqlite_orm {
             }
         };
 
+        // note: not strictly necessary as there's no binding support for USING;
+        // we provide it nevertheless, in line with on_t.
         template<class T>
         struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of_v<T, using_t>>> {
             using node_type = T;
