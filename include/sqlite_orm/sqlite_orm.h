@@ -15283,7 +15283,7 @@ namespace sqlite_orm {
                 newContext.skip_table_name = true;
                 std::string columnName = serialize(t, newContext);
                 if(columnName.empty()) {
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    throw std::system_error(orm_error_code::column_not_found);
                 }
                 return {move(columnName)};
             }
@@ -15378,7 +15378,7 @@ namespace sqlite_orm {
                     if(!columnName.empty()) {
                         columnNames.push_back(move(columnName));
                     } else {
-                        throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                        throw std::system_error(orm_error_code::column_not_found);
                     }
                 });
                 return columnNames;
@@ -15404,7 +15404,7 @@ namespace sqlite_orm {
             // 2. override column names from cte expression
             if(!explicitColumnNames.empty()) {
                 if(explicitColumnNames.size() != columnNames.size()) {
-                    throw std::system_error(std::make_error_code(orm_error_code::column_not_found));
+                    throw std::system_error(orm_error_code::column_not_found);
                 }
 
                 for(size_t i = 0, n = explicitColumnNames.size(); i < n; ++i) {
