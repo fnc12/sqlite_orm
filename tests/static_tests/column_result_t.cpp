@@ -108,4 +108,7 @@ TEST_CASE("column_result_t") {
     runTest<Storage, int64>(_rowid_<User>());
     runTest<Storage, std::tuple<int, std::string>>(asterisk<User>());
     runTest<Storage, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
+    runTest<Storage, std::tuple<int, std::string>>(columns(&User::id, &User::name));
+    runTest<Storage, int>(column<User>(&User::id));
+    runTest<Storage, User>(object<User>());
 }
