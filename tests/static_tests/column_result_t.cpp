@@ -37,7 +37,8 @@ TEST_CASE("column_result_t") {
         int id = 0;
         std::string comment;
     };
-    auto storage = make_storage({});
+    auto storage =
+        make_storage({}, make_table("users", make_column("id", &User::id), make_column("name", &User::name)));
 
     using Storage = decltype(storage);
     runTest<Storage, int>(&User::id);
@@ -101,4 +102,6 @@ TEST_CASE("column_result_t") {
     runTest<Storage, int64>(rowid<User>());
     runTest<Storage, int64>(oid<User>());
     runTest<Storage, int64>(_rowid_<User>());
+    runTest<Storage, std::tuple<int, std::string>>(asterisk<User>());
+    runTest<Storage, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
 }

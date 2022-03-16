@@ -2326,15 +2326,15 @@ namespace sqlite_orm {
             }
         };
 
-        template<class F, class O>
-        struct statement_serializator<using_t<F, O>, void> {
-            using statement_type = using_t<F, O>;
+        template<class T, class M>
+        struct statement_serializator<using_t<T, M>, void> {
+            using statement_type = using_t<T, M>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 auto newContext = context;
                 newContext.skip_table_name = true;
-                return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + " )";
+                return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + ")";
             }
         };
 
