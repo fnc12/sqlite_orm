@@ -42,7 +42,7 @@ namespace sqlite_orm {
 
             void extract_value() {
                 auto& storage = this->view->storage;
-                auto& impl = storage.template get_impl<value_type>();
+                auto& impl = pick_const_impl<value_type>(storage);
                 this->current = std::make_shared<value_type>();
                 object_from_column_builder<value_type> builder{*this->current, this->stmt->get()};
                 impl.table.for_each_column(builder);

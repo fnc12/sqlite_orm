@@ -35,6 +35,15 @@ namespace sqlite_orm {
     // type name template aliases for syntactic sugar
     namespace internal {
         template<typename T>
+        using type_t = typename T::type;
+
+        template<typename T>
         using object_type_t = typename T::object_type;
+
+        template<typename T>
+        using table_type_t = typename T::table_type;
+
+        template<typename S>
+        using storage_object_type_t = typename S::table_type::object_type;
     }
 }

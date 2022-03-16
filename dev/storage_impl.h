@@ -23,6 +23,7 @@
 #include "table_info.h"
 #include "sync_schema_result.h"
 #include "field_value_holder.h"
+#include "storage_lookup.h"
 
 namespace sqlite_orm {
 
@@ -140,8 +141,9 @@ namespace sqlite_orm {
 
         template<class H, class... Ts>
         struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
-            using table_type = H;
             using super = storage_impl<Ts...>;
+            using self = storage_impl<H, Ts...>;
+            using table_type = H;
 
             storage_impl(H h, Ts... ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
 
@@ -158,7 +160,7 @@ namespace sqlite_orm {
             /**
              *  Returns foreign keys count in table definition
              */
-            int foreign_keys_count() {
+            int foreign_keys_count() const {
                 auto res = 0;
                 iterate_tuple(this->table.elements, [&res](auto& c) {
                     if(is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
@@ -169,54 +171,10 @@ namespace sqlite_orm {
             }
 
 #endif
-            /**
-             *  Find column name by its type and member pointer. Uses SFINAE to skip inequal type O.
-             */
-            template<class O, class F>
-            const std::string* column_name(F O::*m) const {
-                return this->get_impl<O>().table.find_column_name(m);
-            }
-
-            /**
-             *  Find column name by its explicit type and member pointer. Uses SFINAE to skip inequal type O.
-             */
-            template<class O, class F>
-            const std::string* column_name(const column_pointer<O, F>& c) const {
-                return this->get_impl<O>().table.find_column_name(c.field);
-            }
-
-            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
-            const auto& get_impl() const {
-                return *this;
-            }
-
-            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
-            const auto& get_impl() const {
-                return this->super::template get_impl<O>();
-            }
-
-            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
-            auto& get_impl() {
-                return *this;
-            }
-
-            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
-            auto& get_impl() {
-                return this->super::template get_impl<O>();
-            }
-
-            template<class O, satisfies<std::is_same, O, object_type_t<H>> = true>
-            const auto* find_table() const {
-                return &this->table;
-            }
-
-            template<class O, satisfies_not<std::is_same, O, object_type_t<H>> = true>
-            const auto* find_table() const {
-                return this->super::template find_table<O>();
-            }
 
             std::string find_table_name(std::type_index ti) const {
                 std::type_index thisTypeIndex{typeid(object_type_t<H>)};
+
                 if(thisTypeIndex == ti) {
                     return this->table.name;
                 } else {
@@ -343,8 +301,6 @@ namespace sqlite_orm {
             }
 
           private:
-            using self = storage_impl<H, Ts...>;
-
             const basic_generated_always::storage_type*
             find_column_generated_storage_type(const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
@@ -378,20 +334,71 @@ namespace sqlite_orm {
             template<class L>
             void for_each(const L&) {}
 
-            int foreign_keys_count() {
+            int foreign_keys_count() const {
                 return 0;
             }
-
-            template<class O>
-            const void* find_table() const {
-                return nullptr;
-            }
         };
+    }
+}
 
-        template<class T>
-        struct is_storage_impl : std::false_type {};
+// interface functions
+namespace sqlite_orm {
+    namespace internal {
 
-        template<class... Ts>
-        struct is_storage_impl<storage_impl<Ts...>> : std::true_type {};
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        auto lookup_table(const S& strg) {
+            const auto& tImpl = find_impl<Lookup>(strg);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(
+                [](const storage_impl<>&) {
+                    return nullptr;
+                },
+                [](const auto& tImpl) {
+                    return &tImpl.table;
+                })(tImpl);
+        }
+
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        std::string lookup_table_name(const S& strg) {
+            const auto& tImpl = find_impl<Lookup>(strg);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(
+                [](const storage_impl<>&) {
+                    return std::string{};
+                },
+                [](const auto& tImpl) {
+                    return tImpl.table.name;
+                })(tImpl);
+        }
+
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        const std::string& get_table_name(const S& strg) {
+            return pick_impl<Lookup>(strg).table.name;
+        }
+
+        /**
+         *  Find column name by its type and member pointer.
+         */
+        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
+        const std::string* find_column_name(const S& strg, F O::*field) {
+            return pick_impl<O>(strg).table.find_column_name(field);
+        }
+
+        /**
+         *  Materialize column pointer:
+         *  1. by explicit object type and member pointer.
+         */
+        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
+        constexpr decltype(auto) materialize_column_pointer(const S&, const column_pointer<O, F>& cp) {
+            return cp.field;
+        }
+
+        /**
+         *  Find column name by:
+         *  1. by explicit object type and member pointer.
+         */
+        template<class O, class F, class S, satisfies<is_storage_impl, S> = true>
+        const std::string* find_column_name(const S& strg, const column_pointer<O, F>& cp) {
+            auto field = materialize_column_pointer(strg, cp);
+            return pick_impl<O>(strg).table.find_column_name(field);
+        }
     }
 }

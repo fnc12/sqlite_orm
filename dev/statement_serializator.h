@@ -147,7 +147,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const C& context) {
                 std::stringstream ss;
                 ss << "excluded.";
-                if(auto columnNamePointer = context.impl.column_name(statement.expression)) {
+                if(auto columnNamePointer = find_column_name(context.impl, statement.expression)) {
                     ss << "\"" << *columnNamePointer << "\"";
                 } else {
                     throw std::system_error(orm_error_code::column_not_found);
@@ -318,7 +318,7 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << "\"" << context.impl.find_table_name(typeid(O)) << "\".";
                 }
-                if(auto columnnamePointer = context.column_name(m)) {
+                if(auto columnnamePointer = find_column_name(context.impl, m)) {
                     ss << "\"" << *columnnamePointer << "\"";
                 } else {
                     throw std::system_error(orm_error_code::column_not_found);
@@ -481,7 +481,7 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << "'" << context.impl.find_table_name(typeid(T)) << "'.";
                 }
-                if(auto columnNamePointer = context.impl.column_name(c)) {
+                if(auto columnNamePointer = find_column_name(context.impl, c)) {
                     ss << "\"" << *columnNamePointer << "\"";
                 } else {
                     throw std::system_error(orm_error_code::column_not_found);
@@ -786,7 +786,7 @@ namespace sqlite_orm {
                     res += "(";
                     decltype(columnsCount) columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
-                        if(auto columnNamePointer = context.column_name(column)) {
+                        if(auto columnNamePointer = find_column_name(context.impl, column)) {
                             res += *columnNamePointer;
                             if(columnIndex < columnsCount - 1) {
                                 res += ", ";
@@ -815,7 +815,7 @@ namespace sqlite_orm {
                     res += "(";
                     decltype(columnsCount) columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
-                        if(auto columnNamePointer = context.column_name(column)) {
+                        if(auto columnNamePointer = find_column_name(context.impl, column)) {
                             res += *columnNamePointer;
                             if(columnIndex < columnsCount - 1) {
                                 res += ", ";
@@ -863,7 +863,7 @@ namespace sqlite_orm {
                 constexpr const size_t columnsCount = std::tuple_size<columns_type_t>::value;
                 columnNames.reserve(columnsCount);
                 iterate_tuple(fk.columns, [&columnNames, &context](auto& v) {
-                    if(auto columnNamePointer = context.impl.column_name(v)) {
+                    if(auto columnNamePointer = find_column_name(context.impl, v)) {
                         columnNames.push_back(*columnNamePointer);
                     } else {
                         columnNames.push_back({});
@@ -888,7 +888,7 @@ namespace sqlite_orm {
                     ss << '\'' << refTableName << '\'';
                 }
                 iterate_tuple(fk.references, [&referencesNames, &context](auto& v) {
-                    if(auto columnNamePointer = context.impl.column_name(v)) {
+                    if(auto columnNamePointer = find_column_name(context.impl, v)) {
                         referencesNames.push_back(*columnNamePointer);
                     } else {
                         referencesNames.push_back({});
@@ -1001,7 +1001,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& rem, const C& context) const {
-                auto& tImpl = context.impl.template get_impl<T>();
+                auto& tImpl = pick_impl<T>(context.impl);
                 std::stringstream ss;
                 ss << "DELETE FROM '" << tImpl.table.name << "' ";
                 iterate_tuple(rem.conditions, [&context, &ss](auto& v) {
@@ -1019,7 +1019,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const C& context) const {
                 using expression_type = typename std::decay<decltype(statement)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
+                auto& tImpl = pick_impl<object_type>(context.impl);
                 std::stringstream ss;
                 ss << "REPLACE INTO '" << tImpl.table.name << "' (";
 
@@ -1070,7 +1070,7 @@ namespace sqlite_orm {
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 using expression_type = typename std::decay<decltype(ins)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
+                auto& tImpl = pick_impl<object_type>(context.impl);
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' ";
                 ss << "(";
@@ -1132,7 +1132,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const C& context) const {
                 using expression_type = typename std::decay<decltype(statement)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
+                auto& tImpl = pick_impl<object_type>(context.impl);
 
                 std::stringstream ss;
                 ss << "UPDATE '" << tImpl.table.name << "' SET";
@@ -1256,7 +1256,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
+                auto& tImpl = pick_impl<object_type>(context.impl);
 
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' ";
@@ -1318,7 +1318,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                auto& tImpl = context.impl.template get_impl<T>();
+                auto& tImpl = pick_impl<T>(context.impl);
                 ss << "INTO " << tImpl.table.name;
                 return ss.str();
             }
@@ -1389,7 +1389,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
-                auto& tImpl = context.impl.template get_impl<T>();
+                auto& tImpl = pick_impl<T>(context.impl);
                 std::stringstream ss;
                 ss << "DELETE FROM '" << tImpl.table.name << "' ";
                 ss << "WHERE";
@@ -1424,7 +1424,7 @@ namespace sqlite_orm {
                 auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
                 using expression_type = typename std::decay<decltype(rep)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
+                auto& tImpl = pick_impl<object_type>(context.impl);
                 std::stringstream ss;
                 ss << "REPLACE INTO '" << tImpl.table.name << "' (";
 
@@ -1475,7 +1475,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const C& context) const {
                 const auto valuesCount = static_cast<int>(std::distance(statement.range.first, statement.range.second));
                 using object_type = typename expression_object_type<statement_type>::type;
-                auto& tImpl = context.impl.template get_impl<object_type>();
+                auto& tImpl = pick_impl<object_type>(context.impl);
 
                 std::stringstream ss;
                 ss << "INSERT INTO '" << tImpl.table.name << "' ";
@@ -1544,7 +1544,7 @@ namespace sqlite_orm {
             iterate_ast(get.conditions, collector);
             std::stringstream ss;
             ss << "SELECT";
-            auto& tImpl = context.impl.template get_impl<primary_type>();
+            auto& tImpl = pick_impl<primary_type>(context.impl);
             auto columnIndex = 0;
             auto columnsCount = tImpl.table.count_columns_amount();
             tImpl.table.for_each_column([&ss, &columnIndex, columnsCount, &tImpl](auto& column) {
@@ -1610,7 +1610,7 @@ namespace sqlite_orm {
         template<class T, class C>
         std::string serialize_get_impl(const T&, const C& context) {
             using primary_type = typename T::type;
-            auto& tImpl = context.impl.template get_impl<primary_type>();
+            auto& tImpl = pick_impl<primary_type>(context.impl);
             std::stringstream ss;
             ss << "SELECT";
             auto columnIndex = 0;
@@ -1983,7 +1983,7 @@ namespace sqlite_orm {
 
                 ss << serialize(statement.timing, context) << " UPDATE OF ";
                 iterate_tuple(statement.columns, [&ss, &sep, &context](auto& v) {
-                    auto name = context.column_name(v);
+                    auto name = find_column_name(context.impl, v);
 
                     if(name == nullptr)
                         throw std::system_error(orm_error_code::column_not_found);

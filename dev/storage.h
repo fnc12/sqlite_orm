@@ -18,6 +18,7 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "type_traits.h"
 #include "alias.h"
 #include "row_extractor_builder.h"
 #include "error_code.h"
@@ -77,17 +78,21 @@ namespace sqlite_orm {
           protected:
             impl_type impl;
 
-            template<class T, class S, class... Args>
-            friend struct view_t;
-
-            template<class S>
-            friend struct dynamic_order_by_t;
-
-            template<class V>
-            friend struct iterator_t;
-
-            template<class S>
-            friend struct serializator_context_builder;
+            /**
+             *  Obtain a storage_t's const storage_impl.
+             *  
+             *  @note Historically, `serializator_context_builder` was declared friend, along with
+             *  a few other library stock objects, in order limit access to the storage_impl.
+             *  However, one could gain access to a storage_t's storage_impl through
+             *  `serializator_context_builder`, hence leading the whole friend declaration mambo-jumbo
+             *  ad absurdum.
+             *  Providing a free function is way better and cleaner.
+             *
+             *  Hence, friend was replaced by `obtain_const_impl()` and `pick_const_impl()`.
+             */
+            friend const impl_type& obtain_const_impl(const self& storage) noexcept {
+                return storage.impl;
+            }
 
             template<class I>
             void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
@@ -180,12 +185,12 @@ namespace sqlite_orm {
 
             template<class O>
             auto& get_impl() const {
-                return this->impl.template get_impl<O>();
+                return pick_impl<O>(this->impl);
             }
 
             template<class O>
             auto& get_impl() {
-                return this->impl.template get_impl<O>();
+                return pick_impl<O>(this->impl);
             }
 
           public:
@@ -785,8 +790,14 @@ namespace sqlite_orm {
             }
 
             template<class F, class O>
-            const std::string* column_name(F O::*memberPointer) const {
-                return this->impl.column_name(memberPointer);
+            [[deprecated("Use the more accurately named function `find_column_name()`")]] const std::string*
+            column_name(F O::*memberPointer) const {
+                return internal::find_column_name(this->impl, memberPointer);
+            }
+
+            template<class F, class O>
+            const std::string* find_column_name(F O::*memberPointer) const {
+                return internal::find_column_name(this->impl, memberPointer);
             }
 
           protected:
@@ -1528,7 +1539,7 @@ namespace sqlite_orm {
                     }
                 });
                 std::vector<R> res;
-                auto tableInfoPointer = this->impl.template find_table<R>();
+                auto tableInfoPointer = lookup_table<R>(this->impl);
                 int stepRes;
                 do {
                     stepRes = sqlite3_step(stmt);
@@ -1747,12 +1758,6 @@ namespace sqlite_orm {
                 return res;
             }
         };  // struct storage_t
-
-        template<class T>
-        struct is_storage : std::false_type {};
-
-        template<class... Ts>
-        struct is_storage<storage_t<Ts...>> : std::true_type {};
     }
 
     template<class... Ts>
