@@ -126,6 +126,21 @@ namespace sqlite_orm {
             }
         };
 
+        /**
+         *  Constant which gets never replaced in a bindable context.
+         *  Used together with order_by(1_nth_col).
+         */
+        template<unsigned int N>
+        struct statement_serializator<nth_constant<N>, void> {
+            using statement_type = nth_constant<N>;
+
+            template<class C>
+            std::string operator()(const statement_type& /*expression*/, const C& /*context*/) {
+                static_assert(N > 0, "Column number must be greater than 0.");
+                return std::to_string(N);
+            }
+        };
+
         template<class F, class W>
         struct statement_serializator<filtered_aggregate_function<F, W>, void> {
             using statement_type = filtered_aggregate_function<F, W>;

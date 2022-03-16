@@ -130,6 +130,26 @@ namespace sqlite_orm {
         template<typename T>
         using object_type_t = typename T::object_type;
     }
+
+    namespace internal {
+#if __cplusplus >= 201703L  // use of C++17 or higher
+        constexpr size_t _10_pow(size_t n) {
+            if(n == 0) {
+                return 1;
+            } else {
+                return 10 * _10_pow(n - 1);
+            }
+        }
+
+        template<class... Chars, size_t... Is>
+        constexpr size_t n_from_literal(std::index_sequence<Is...>, Chars... chars) {
+            return (((chars - '0') * _10_pow(sizeof...(Is) - 1u - Is /*reversed index sequence*/)) + ...);
+        }
+
+        template<unsigned int N>
+        using nth_constant = std::integral_constant<unsigned int, N>;
+#endif
+    }
 }
 #pragma once
 
@@ -2600,6 +2620,8 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <sstream>  //  std::stringstream
 
+// #include "type_traits.h"
+
 // #include "collate_argument.h"
 
 // #include "constraints.h"
@@ -3885,12 +3907,50 @@ namespace sqlite_orm {
         return {std::move(l), std::move(r)};
     }
 
+#if __cplusplus >= 201703L  // use of C++17 or higher
+    /**
+     *  integral_constant<unsigned int, N> from numeric literal.
+     *  E.g. 1_nth_col, 2_nth_col
+     *  
+     *  @note Design desicion:
+     *  A user-defined numeric literal is the C++ way to capture a numeric literal as a compile-time value,
+     *  with the intention to form a literal positional ordinal in the SQL statement.
+     *  It isn't possible with built-in literals.
+     *  The user-defined literal might seem a bit inconvenient at first,
+     *  however has the advantage of giving the literal contextual meaning.
+     */
+    template<char... Chars>
+    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _nth_col() {
+        constexpr auto n =
+            internal::nth_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{}, Chars...)>{};
+        static_assert(n > 0u, "Column number must be greater than 0.");
+        return n;
+    }
+#endif
+
     /**
      * ORDER BY column
-     * Example: storage.select(&User::name, order_by(&User::id))
+     * Examples:
+     * storage.select(&User::name, order_by(&User::id))
+     * storage.select(&User::name, order_by(1_nth_col))
      */
     template<class O>
     internal::order_by_t<O> order_by(O o) {
+        static_assert(!std::is_arithmetic<O>::value && !std::is_base_of<std::string, O>::value &&
+                          !std::is_same<std::decay_t<O>, const char*>::value
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                          && !std::is_same<O, std::string_view>::value
+#endif
+#ifndef SQLITE_ORM_OMITS_CODECVT
+                          && !std::is_base_of<std::wstring, O>::value &&
+                          !std::is_same<std::decay_t<O>, const wchar_t*>::value
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+                          && !std::is_same<O, std::wstring_view>::value
+#endif
+#endif
+                      ,
+                      "Binding a single value to an ORDER-BY expression is possible but not useful.\n"
+                      "If your intention is to order by kth column then please use `order_by(1_nth_col)`");
         return {std::move(o)};
     }
 
@@ -14568,6 +14628,21 @@ namespace sqlite_orm {
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<std::nullptr_t>{}(nullptr);
+            }
+        };
+
+        /**
+         *  Constant which gets never replaced in a bindable context.
+         *  Used together with order_by(1_nth_col).
+         */
+        template<unsigned int N>
+        struct statement_serializator<nth_constant<N>, void> {
+            using statement_type = nth_constant<N>;
+
+            template<class C>
+            std::string operator()(const statement_type& /*expression*/, const C& /*context*/) {
+                static_assert(N > 0, "Column number must be greater than 0.");
+                return std::to_string(N);
             }
         };
 
