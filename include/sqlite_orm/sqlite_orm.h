@@ -47,13 +47,17 @@ __pragma(push_macro("min"))
     namespace internal {
         namespace polyfill {
 #if __cplusplus < 201703L  // before C++17
-            template<class...>
-            using void_t = void;
-
             template<bool v>
             using bool_constant = std::integral_constant<bool, v>;
+
+            template<class B>
+            struct negation : bool_constant<!bool(B::value)> {};
+
+            template<class...>
+            using void_t = void;
 #else
             using std::bool_constant;
+            using std::negation;
             using std::void_t;
 #endif
 
@@ -102,7 +106,7 @@ namespace sqlite_orm {
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>
-        using match_if_not = std::enable_if_t<std::negation<Op<Args...>>::value>;
+        using match_if_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value>;
 
         // enable_if for types
         template<class T, template<typename...> class Primary>
@@ -114,7 +118,7 @@ namespace sqlite_orm {
 
         // enable_if for functions
         template<template<typename...> class Op, class... Args>
-        using satisfies_not = std::enable_if_t<std::negation<Op<Args...>>::value, bool>;
+        using satisfies_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value, bool>;
 
         // enable_if for functions
         template<class T, template<typename...> class Primary>
@@ -3454,9 +3458,9 @@ namespace sqlite_orm {
         /**
          *  USING argument holder.
          */
-        template<class F, class O>
+        template<class T, class M>
         struct using_t {
-            F O::*column = nullptr;
+            column_pointer<T, M> column;
 
             operator std::string() const {
                 return "USING";
@@ -3687,8 +3691,12 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    internal::using_t<F, O> using_(F O::*p) {
-        return {std::move(p)};
+    internal::using_t<O, F O::*> using_(F O::*p) {
+        return {p};
+    }
+    template<class T, class M>
+    internal::using_t<T, M> using_(internal::column_pointer<T, M> cp) {
+        return {std::move(cp)};
     }
 
     template<class T>
@@ -7803,14 +7811,31 @@ namespace sqlite_orm {
                          >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+            auto stringData = this->string_data(value);
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-            std::string utf8Str = converter.to_bytes(std::data(value), std::data(value) + std::size(value));
+            std::string utf8Str = converter.to_bytes(stringData.first, stringData.first + stringData.second);
             return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_text16(context, (const void*)std::data(value), int(std::size(value)), nullptr);
+            auto stringData = this->string_data(value);
+            sqlite3_result_text16(context, stringData.first, stringData.second, nullptr);
         }
+
+      private:
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
+            return {s.data(), int(s.size())};
+        }
+#else
+        std::pair<const wchar_t*, int> string_data(const std::wstring& s) const {
+            return {s.c_str(), int(s.size())};
+        }
+
+        std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
+            return {s, int(::wcslen(s))};
+        }
+#endif
     };
 #endif
 
@@ -16760,15 +16785,15 @@ namespace sqlite_orm {
             }
         };
 
-        template<class F, class O>
-        struct statement_serializator<using_t<F, O>, void> {
-            using statement_type = using_t<F, O>;
+        template<class T, class M>
+        struct statement_serializator<using_t<T, M>, void> {
+            using statement_type = using_t<T, M>;
 
             template<class C>
             std::string operator()(const statement_type& statement, const C& context) const {
                 auto newContext = context;
                 newContext.skip_table_name = true;
-                return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + " )";
+                return static_cast<std::string>(statement) + " (" + serialize(statement.column, newContext) + ")";
             }
         };
 
@@ -18924,6 +18949,14 @@ __pragma(pop_macro("min"))
         struct node_tuple<on_t<T>, void> {
             using node_type = on_t<T>;
             using type = typename node_tuple<T>::type;
+        };
+
+        // note: not strictly necessary as there's no binding support for USING;
+        // we provide it nevertheless, in line with on_t.
+        template<class T, class M>
+        struct node_tuple<using_t<T, M>, void> {
+            using node_type = using_t<T, M>;
+            using type = typename node_tuple<M>::type;
         };
 
         template<class T, class O>
