@@ -8,13 +8,17 @@ namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
 #if __cplusplus < 201703L  // before C++17
-            template<class...>
-            using void_t = void;
-
             template<bool v>
             using bool_constant = std::integral_constant<bool, v>;
+
+            template<class B>
+            struct negation : bool_constant<!bool(B::value)> {};
+
+            template<class...>
+            using void_t = void;
 #else
             using std::bool_constant;
+            using std::negation;
             using std::void_t;
 #endif
 
