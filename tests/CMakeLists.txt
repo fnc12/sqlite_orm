@@ -129,6 +129,10 @@ if(SQLITE_ORM_OMITS_CODECVT)
 	target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
 endif()
 
+if (MSVC)
+	add_compile_options(/MP) # Enable multi parrallel build
+endif()
+
 target_precompile_headers(unit_tests PRIVATE
     <sqlite_orm/sqlite_orm.h>
     <catch2/catch.hpp>)
