@@ -125,6 +125,17 @@ TEST_CASE("ast_iterator") {
             internal::iterate_ast(node, lambda);
         }
     }
+    SECTION("on") {
+        auto node = on(&User::id == c(0));
+        expected.push_back(typeid(&User::id));
+        expected.push_back(typeid(int));
+        internal::iterate_ast(node, lambda);
+    }
+    SECTION("using") {
+        auto node = using_(&User::id);
+        expected.push_back(typeid(internal::column_pointer<User, decltype(&User::id)>{&User::id}));
+        internal::iterate_ast(node, lambda);
+    }
     SECTION("exists") {
         auto node = exists(select(5));
         expected.push_back(typeid(int));
