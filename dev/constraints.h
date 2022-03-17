@@ -328,7 +328,7 @@ namespace sqlite_orm {
                     case decltype(argument)::rtrim:
                         return "RTRIM";
                 }
-                throw std::system_error(orm_error_code::invalid_collate_argument_enum);
+                throw std::system_error{orm_error_code::invalid_collate_argument_enum};
             }
         };
 

@@ -134,7 +134,7 @@ namespace sqlite_orm {
                 if(rc == SQLITE_OK) {
                     return result;
                 } else {
-                    throw std::system_error{sqlite3_errcode(db), get_sqlite_error_category(), sqlite3_errmsg(db)};
+                    throw_translated_sqlite_error(db);
                 }
             }
 

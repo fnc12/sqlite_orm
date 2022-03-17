@@ -50,7 +50,7 @@ namespace sqlite_orm {
                     &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::system_error{sqlite3_errcode(db), get_sqlite_error_category(), sqlite3_errmsg(db)};
+                    throw_translated_sqlite_error(db);
                 }
                 return result;
             }
@@ -124,7 +124,7 @@ namespace sqlite_orm {
                     &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::system_error{sqlite3_errcode(db), get_sqlite_error_category(), sqlite3_errmsg(db)};
+                    throw_translated_sqlite_error(db);
                 }
                 return result;
             }

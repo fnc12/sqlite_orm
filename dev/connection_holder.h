@@ -19,9 +19,7 @@ namespace sqlite_orm {
                 if(1 == this->_retain_count) {
                     auto rc = sqlite3_open(this->filename.c_str(), &this->db);
                     if(rc != SQLITE_OK) {
-                        throw std::system_error{sqlite3_errcode(this->db),
-                                                get_sqlite_error_category(),
-                                                sqlite3_errmsg(this->db)};
+                        throw_translated_sqlite_error(db);
                     }
                 }
             }
@@ -31,9 +29,7 @@ namespace sqlite_orm {
                 if(0 == this->_retain_count) {
                     auto rc = sqlite3_close(this->db);
                     if(rc != SQLITE_OK) {
-                        throw std::system_error{sqlite3_errcode(this->db),
-                                                get_sqlite_error_category(),
-                                                sqlite3_errmsg(this->db)};
+                        throw_translated_sqlite_error(db);
                     }
                 }
             }
