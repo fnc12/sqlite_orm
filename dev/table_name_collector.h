@@ -58,7 +58,7 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T>
+            template<class T, satisfies_not<std::is_base_of, alias_tag, T> = true>
             void operator()(const asterisk_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));

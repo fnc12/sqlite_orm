@@ -29,10 +29,13 @@ namespace sqlite_orm {
         template<class St, class T, class SFINAE = void>
         struct column_result_t;
 
+        template<class St, class T>
+        using column_result_of_t = typename column_result_t<St, T>::type;
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class St, class T>
         struct column_result_t<St, as_optional_t<T>, void> {
-            using type = std::optional<typename column_result_t<St, T>::type>;
+            using type = std::optional<column_result_of_t<St, T>>;
         };
 
         template<class St, class T>
@@ -63,7 +66,7 @@ namespace sqlite_orm {
          *  Common case for all getter types. Getter types are defined in column.h file
          */
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<is_getter<T>::value>::type> {
+        struct column_result_t<St, T, match_if<is_getter, T>> {
             using type = typename getter_traits<T>::field_type;
         };
 
@@ -71,7 +74,7 @@ namespace sqlite_orm {
          *  Common case for all setter types. Setter types are defined in column.h file
          */
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<is_setter<T>::value>::type> {
+        struct column_result_t<St, T, match_if<is_setter, T>> {
             using type = typename setter_traits<T>::field_type;
         };
 
@@ -211,34 +214,32 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class C>
-        struct column_result_t<St, alias_column_t<T, C>, void> {
-            using type = typename column_result_t<St, C>::type;
-        };
+        struct column_result_t<St, alias_column_t<T, C>, void> : column_result_t<St, C> {};
 
         template<class St, class T, class F>
-        struct column_result_t<St, column_pointer<T, F>> : column_result_t<St, F, void> {};
+        struct column_result_t<St, column_pointer<T, F>, void> : column_result_t<St, F> {};
 
         template<class St, class... Args>
         struct column_result_t<St, columns_t<Args...>, void> {
-            using type = std::tuple<typename column_result_t<St, typename std::decay<Args>::type>::type...>;
+            using type = std::tuple<column_result_of_t<St, std::decay_t<Args>>...>;
         };
 
         template<class St, class T, class... Args>
-        struct column_result_t<St, select_t<T, Args...>> : column_result_t<St, T, void> {};
+        struct column_result_t<St, select_t<T, Args...>> : column_result_t<St, T> {};
 
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, compound_operator>::value>> {
             using left_type = typename T::left_type;
             using right_type = typename T::right_type;
-            using left_result = typename column_result_t<St, left_type>::type;
-            using right_result = typename column_result_t<St, right_type>::type;
+            using left_result = column_result_of_t<St, left_type>;
+            using right_result = column_result_of_t<St, right_type>;
             static_assert(std::is_same<left_result, right_result>::value,
                           "Compound subselect queries must return same types");
             using type = left_result;
         };
 
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, binary_condition>::value>> {
             using type = typename T::result_type;
         };
 
@@ -246,7 +247,7 @@ namespace sqlite_orm {
          *  Result for the most simple queries like `SELECT 1`
          */
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+        struct column_result_t<St, T, match_if<std::is_arithmetic, T>> {
             using type = T;
         };
 
@@ -264,11 +265,16 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class E>
-        struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, typename std::decay<E>::type, void> {};
+        struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, std::decay_t<E>> {};
 
         template<class St, class T>
-        struct column_result_t<St, asterisk_t<T>, void> {
-            using type = typename storage_traits::storage_mapped_columns<St, typename mapped_type_proxy<T>::type>::type;
+        struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
+            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
+        };
+
+        template<class St, class A>
+        struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
+            using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
         };
 
         template<class St, class T>
@@ -302,6 +308,6 @@ namespace sqlite_orm {
         };
 
         template<class St, class T>
-        struct column_result_t<St, std::reference_wrapper<T>, void> : column_result_t<St, T, void> {};
+        struct column_result_t<St, std::reference_wrapper<T>, void> : column_result_t<St, T> {};
     }
 }

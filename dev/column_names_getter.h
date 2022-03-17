@@ -53,9 +53,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::vector<std::string> operator()(const expression_type&, const C&) const {
-                std::vector<std::string> res;
-                res.push_back("*");
-                return res;
+                return {"*"};
             }
         };
 
@@ -65,9 +63,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::vector<std::string> operator()(const expression_type&, const C&) const {
-                std::vector<std::string> res;
-                res.push_back("*");
-                return res;
+                return {"*"};
             }
         };
 
