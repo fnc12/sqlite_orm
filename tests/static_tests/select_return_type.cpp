@@ -15,7 +15,7 @@ TEST_CASE("Select return types") {
 
         using SelectVectorTuple = decltype(storage.select(columns(&User::id)));
         auto ids = storage.select(columns(&User::id));
-        static_assert(std::is_same<decltype(ids), SelectVectorTuple>::value, "");
+        STATIC_REQUIRE(std::is_same<decltype(ids), SelectVectorTuple>::value);
         static_assert(std::is_same<SelectVectorTuple, std::vector<std::tuple<int>>>::value,
                       "Incorrect select id vector type");
         using IdsTuple = SelectVectorTuple::value_type;
