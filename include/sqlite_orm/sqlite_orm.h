@@ -14512,7 +14512,7 @@ namespace sqlite_orm {
                 newContext.skip_table_name = false;
                 auto columnName = serialize(orderBy.expression, newContext);
                 ss << columnName;
-                if(orderBy._collate_argument.length()) {
+                if(!orderBy._collate_argument.empty()) {
                     ss << " "
                           "COLLATE "
                        << orderBy._collate_argument;
