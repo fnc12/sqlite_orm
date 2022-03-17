@@ -2,7 +2,6 @@
 
 #include <sqlite3.h>
 #include <string>  //  std::string
-#include <system_error>  //  std::system_error
 
 #include "error_code.h"
 

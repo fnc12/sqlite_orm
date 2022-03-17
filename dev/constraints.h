@@ -1,5 +1,6 @@
 #pragma once
 
+#include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string

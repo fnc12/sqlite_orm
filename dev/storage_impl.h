@@ -3,7 +3,6 @@
 #include <string>  //  std::string
 #include <sqlite3.h>
 #include <cstddef>  //  std::nullptr_t
-#include <system_error>  //  std::system_error
 #include <sstream>  //  std::stringstream
 #include <stdlib.h>  //  std::atoi
 #include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference, std::false_type, std::true_type

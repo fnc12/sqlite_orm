@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>  //  std::unique/shared_ptr, std::make_unique/shared
+#include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <sqlite3.h>
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type

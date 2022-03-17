@@ -1,5 +1,6 @@
 #pragma once
 
+#include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper

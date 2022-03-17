@@ -4,7 +4,6 @@
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
 #include <sqlite3.h>
-#include <system_error>  //  std::system_error
 #include <tuple>  //  std::tuple, std::make_tuple
 
 #include "row_extractor.h"
