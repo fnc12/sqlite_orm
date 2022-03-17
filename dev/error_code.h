@@ -148,7 +148,7 @@ namespace sqlite_orm {
     }
 
     inline std::system_error sqlite_to_system_error(int ev) {
-        return {sqlite_errc(ev), sqlite3_errstr(ev)};
+        return {sqlite_errc(ev)};
     }
 
     inline std::system_error sqlite_to_system_error(sqlite3* db) {
