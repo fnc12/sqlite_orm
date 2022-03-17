@@ -63,8 +63,12 @@ TEST_CASE("column_result_t") {
     runTest<Storage, std::string>(sqlite_orm::typeof_(&User::id));
     runTest<Storage, std::string>(sqlite_orm::lower(&User::id));
     runTest<Storage, std::string>(sqlite_orm::upper(&User::id));
+    runTest<Storage, std::unique_ptr<int>>(max(&User::id, 4));
+    runTest<Storage, std::unique_ptr<int>>(min(&User::id, 4));
     runTest<Storage, std::unique_ptr<int>>(max(&User::id));
     runTest<Storage, std::unique_ptr<std::string>>(max(&User::name));
+    runTest<Storage, std::unique_ptr<int>>(min(&User::id));
+    runTest<Storage, std::unique_ptr<std::string>>(min(&User::name));
     runTest<Storage, int>(count<User>());
     runTest<Storage, int>(count());
     {
@@ -104,4 +108,7 @@ TEST_CASE("column_result_t") {
     runTest<Storage, int64>(_rowid_<User>());
     runTest<Storage, std::tuple<int, std::string>>(asterisk<User>());
     runTest<Storage, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
+    runTest<Storage, std::tuple<int, std::string>>(columns(&User::id, &User::name));
+    runTest<Storage, int>(column<User>(&User::id));
+    runTest<Storage, User>(object<User>());
 }

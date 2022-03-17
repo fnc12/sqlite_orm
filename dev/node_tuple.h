@@ -324,7 +324,7 @@ namespace sqlite_orm {
         template<class T, class M>
         struct node_tuple<using_t<T, M>, void> {
             using node_type = using_t<T, M>;
-            using type = typename node_tuple<M>::type;
+            using type = typename node_tuple<column_pointer<T, M>>::type;
         };
 
         template<class T, class O>

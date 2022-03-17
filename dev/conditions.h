@@ -353,14 +353,6 @@ namespace sqlite_orm {
 
         struct in_base {
             bool negative = false;  //  used in not_in
-
-            operator std::string() const {
-                if(!this->negative) {
-                    return "IN";
-                } else {
-                    return "NOT IN";
-                }
-            }
         };
 
         /**

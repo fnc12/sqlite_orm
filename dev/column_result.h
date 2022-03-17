@@ -93,8 +93,8 @@ namespace sqlite_orm {
             using type = typename callable_arguments<F>::return_type;
         };
 
-        template<class St, class X, class S>
-        struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+        template<class St, class X, class... Rest, class S>
+        struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X, Rest...>, void> {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
