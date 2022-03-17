@@ -645,13 +645,19 @@ namespace sqlite_orm {
             using statement_type = dynamic_in_t<L, A>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.left, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " ";
+                auto leftString = serialize(statement.left, context);
+                ss << leftString << " ";
+                if(!statement.negative) {
+                    ss << "IN";
+                } else {
+                    ss << "NOT IN";
+                }
+                ss << " ";
                 auto newContext = context;
                 newContext.use_parentheses = true;
-                ss << serialize(c.argument, newContext);
+                ss << serialize(statement.argument, newContext);
                 return ss.str();
             }
         };
@@ -661,14 +667,20 @@ namespace sqlite_orm {
             using statement_type = dynamic_in_t<L, std::vector<E>>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.left, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " (";
-                for(size_t index = 0; index < c.argument.size(); ++index) {
-                    auto& value = c.argument[index];
+                auto leftString = serialize(statement.left, context);
+                ss << leftString << " ";
+                if(!statement.negative) {
+                    ss << "IN";
+                } else {
+                    ss << "NOT IN";
+                }
+                ss << " (";
+                for(size_t index = 0; index < statement.argument.size(); ++index) {
+                    auto& value = statement.argument[index];
                     ss << serialize(value, context);
-                    if(index < c.argument.size() - 1) {
+                    if(index < statement.argument.size() - 1) {
                         ss << ", ";
                     }
                 }
@@ -682,14 +694,25 @@ namespace sqlite_orm {
             using statement_type = in_t<L, Args...>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.left, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " (";
+                auto leftString = serialize(statement.left, context);
+                ss << leftString << " ";
+                if(!statement.negative) {
+                    ss << "IN";
+                } else {
+                    ss << "NOT IN";
+                }
+                ss << " ";
                 std::vector<std::string> args;
                 using args_type = std::tuple<Args...>;
                 args.reserve(std::tuple_size<args_type>::value);
-                iterate_tuple(c.argument, [&args, &context](auto& v) {
+                const auto theOnlySelect = std::tuple_size<args_type>::value == 1 &&
+                                           is_select<typename std::tuple_element<0, args_type>::type>::value;
+                if(!theOnlySelect) {
+                    ss << "(";
+                }
+                iterate_tuple(statement.argument, [&args, &context](auto& v) {
                     args.push_back(serialize(v, context));
                 });
                 for(size_t i = 0; i < args.size(); ++i) {
@@ -698,7 +721,9 @@ namespace sqlite_orm {
                         ss << ", ";
                     }
                 }
-                ss << ")";
+                if(!theOnlySelect) {
+                    ss << ")";
+                }
                 return ss.str();
             }
         };
