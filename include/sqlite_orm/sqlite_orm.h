@@ -3081,14 +3081,6 @@ namespace sqlite_orm {
 
         struct in_base {
             bool negative = false;  //  used in not_in
-
-            operator std::string() const {
-                if(!this->negative) {
-                    return "IN";
-                } else {
-                    return "NOT IN";
-                }
-            }
         };
 
         /**
@@ -4364,7 +4356,7 @@ namespace sqlite_orm {
             using string_type = S;
             using args_type = std::tuple<Args...>;
 
-            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            static constexpr size_t args_size = std::tuple_size<args_type>::value;
 
             args_type args;
 
@@ -6166,6 +6158,26 @@ namespace sqlite_orm {
     }
 
     /**
+     *  MAX(X, Y, ...) scalar function.
+     *  The return type is the type of the first argument.
+     */
+    template<class X, class Y, class... Rest>
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
+    max(X x, Y y, Rest... rest) {
+        return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
+    }
+
+    /**
+     *  MIN(X, Y, ...) scalar function.
+     *  The return type is the type of the first argument.
+     */
+    template<class X, class Y, class... Rest>
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
+    min(X x, Y y, Rest... rest) {
+        return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
+    }
+
+    /**
      *  GROUP_CONCAT(X) aggregate function.
      */
     template<class X>
@@ -7871,14 +7883,31 @@ namespace sqlite_orm {
                          >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+            auto stringData = this->string_data(value);
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-            std::string utf8Str = converter.to_bytes(std::data(value), std::data(value) + std::size(value));
+            std::string utf8Str = converter.to_bytes(stringData.first, stringData.first + stringData.second);
             return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_text16(context, (const void*)std::data(value), int(std::size(value)), nullptr);
+            auto stringData = this->string_data(value);
+            sqlite3_result_text16(context, stringData.first, stringData.second, nullptr);
         }
+
+      private:
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
+            return {s.data(), int(s.size())};
+        }
+#else
+        std::pair<const wchar_t*, int> string_data(const std::wstring& s) const {
+            return {s.c_str(), int(s.size())};
+        }
+
+        std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
+            return {s, int(::wcslen(s))};
+        }
+#endif
     };
 #endif
 
@@ -9519,8 +9548,8 @@ namespace sqlite_orm {
             using type = typename callable_arguments<F>::return_type;
         };
 
-        template<class St, class X, class S>
-        struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+        template<class St, class X, class... Rest, class S>
+        struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X, Rest...>, void> {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
@@ -12384,8 +12413,20 @@ namespace sqlite_orm {
             using node_type = on_t<T>;
 
             template<class L>
-            void operator()(const node_type& o, const L& l) const {
-                iterate_ast(o.arg, l);
+            void operator()(const node_type& o, const L& lambda) const {
+                iterate_ast(o.arg, lambda);
+            }
+        };
+
+        // note: not strictly necessary as there's no binding support for USING;
+        // we provide it nevertheless, in line with on_t.
+        template<class T>
+        struct ast_iterator<T, std::enable_if_t<polyfill::is_specialization_of_v<T, using_t>>> {
+            using node_type = T;
+
+            template<class L>
+            void operator()(const node_type& o, const L& lambda) const {
+                iterate_ast(o.column, lambda);
             }
         };
 
@@ -15165,13 +15206,19 @@ namespace sqlite_orm {
             using statement_type = dynamic_in_t<L, A>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.left, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " ";
+                auto leftString = serialize(statement.left, context);
+                ss << leftString << " ";
+                if(!statement.negative) {
+                    ss << "IN";
+                } else {
+                    ss << "NOT IN";
+                }
+                ss << " ";
                 auto newContext = context;
                 newContext.use_parentheses = true;
-                ss << serialize(c.argument, newContext);
+                ss << serialize(statement.argument, newContext);
                 return ss.str();
             }
         };
@@ -15181,14 +15228,20 @@ namespace sqlite_orm {
             using statement_type = dynamic_in_t<L, std::vector<E>>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.left, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " (";
-                for(size_t index = 0; index < c.argument.size(); ++index) {
-                    auto& value = c.argument[index];
+                auto leftString = serialize(statement.left, context);
+                ss << leftString << " ";
+                if(!statement.negative) {
+                    ss << "IN";
+                } else {
+                    ss << "NOT IN";
+                }
+                ss << " (";
+                for(size_t index = 0; index < statement.argument.size(); ++index) {
+                    auto& value = statement.argument[index];
                     ss << serialize(value, context);
-                    if(index < c.argument.size() - 1) {
+                    if(index < statement.argument.size() - 1) {
                         ss << ", ";
                     }
                 }
@@ -15202,14 +15255,25 @@ namespace sqlite_orm {
             using statement_type = in_t<L, Args...>;
 
             template<class C>
-            std::string operator()(const statement_type& c, const C& context) const {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
-                auto leftString = serialize(c.left, context);
-                ss << leftString << " " << static_cast<std::string>(c) << " (";
+                auto leftString = serialize(statement.left, context);
+                ss << leftString << " ";
+                if(!statement.negative) {
+                    ss << "IN";
+                } else {
+                    ss << "NOT IN";
+                }
+                ss << " ";
                 std::vector<std::string> args;
                 using args_type = std::tuple<Args...>;
                 args.reserve(std::tuple_size<args_type>::value);
-                iterate_tuple(c.argument, [&args, &context](auto& v) {
+                const auto theOnlySelect = std::tuple_size<args_type>::value == 1 &&
+                                           is_select<typename std::tuple_element<0, args_type>::type>::value;
+                if(!theOnlySelect) {
+                    ss << "(";
+                }
+                iterate_tuple(statement.argument, [&args, &context](auto& v) {
                     args.push_back(serialize(v, context));
                 });
                 for(size_t i = 0; i < args.size(); ++i) {
@@ -15218,7 +15282,9 @@ namespace sqlite_orm {
                         ss << ", ";
                     }
                 }
-                ss << ")";
+                if(!theOnlySelect) {
+                    ss << ")";
+                }
                 return ss.str();
             }
         };
@@ -19017,7 +19083,7 @@ __pragma(pop_macro("min"))
         template<class T, class M>
         struct node_tuple<using_t<T, M>, void> {
             using node_type = using_t<T, M>;
-            using type = typename node_tuple<M>::type;
+            using type = typename node_tuple<column_pointer<T, M>>::type;
         };
 
         template<class T, class O>

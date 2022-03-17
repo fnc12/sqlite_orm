@@ -152,14 +152,31 @@ namespace sqlite_orm {
                          >> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
+            auto stringData = this->string_data(value);
             std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-            std::string utf8Str = converter.to_bytes(std::data(value), std::data(value) + std::size(value));
+            std::string utf8Str = converter.to_bytes(stringData.first, stringData.first + stringData.second);
             return statement_binder<decltype(utf8Str)>().bind(stmt, index, utf8Str);
         }
 
         void result(sqlite3_context* context, const V& value) const {
-            sqlite3_result_text16(context, (const void*)std::data(value), int(std::size(value)), nullptr);
+            auto stringData = this->string_data(value);
+            sqlite3_result_text16(context, stringData.first, stringData.second, nullptr);
         }
+
+      private:
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+        std::pair<const wchar_t*, int> string_data(const std::wstring_view& s) const {
+            return {s.data(), int(s.size())};
+        }
+#else
+        std::pair<const wchar_t*, int> string_data(const std::wstring& s) const {
+            return {s.c_str(), int(s.size())};
+        }
+
+        std::pair<const wchar_t*, int> string_data(const wchar_t* s) const {
+            return {s, int(::wcslen(s))};
+        }
+#endif
     };
 #endif
 
