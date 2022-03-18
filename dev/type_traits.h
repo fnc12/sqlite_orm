@@ -54,7 +54,7 @@ namespace sqlite_orm {
         }
 
         template<unsigned int N>
-        using nth_constant = std::integral_constant<unsigned int, N>;
+        struct positional_ordinal : std::integral_constant<unsigned int, N> {};
 #endif
     }
 }

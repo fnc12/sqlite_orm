@@ -147,7 +147,7 @@ namespace sqlite_orm {
         }
 
         template<unsigned int N>
-        using nth_constant = std::integral_constant<unsigned int, N>;
+        struct positional_ordinal : std::integral_constant<unsigned int, N> {};
 #endif
     }
 }
@@ -3943,7 +3943,8 @@ namespace sqlite_orm {
     template<char... Chars>
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _nth_col() {
         constexpr auto n =
-            internal::nth_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{}, Chars...)>{};
+            internal::positional_ordinal<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
+                                                                  Chars...)>{};
         static_assert(n > 0u, "Column number must be greater than 0.");
         return n;
     }
@@ -14687,8 +14688,8 @@ namespace sqlite_orm {
          *  Used together with order_by(1_nth_col).
          */
         template<unsigned int N>
-        struct statement_serializator<nth_constant<N>, void> {
-            using statement_type = nth_constant<N>;
+        struct statement_serializator<positional_ordinal<N>, void> {
+            using statement_type = positional_ordinal<N>;
 
             template<class C>
             std::string operator()(const statement_type& /*expression*/, const C& /*context*/) {

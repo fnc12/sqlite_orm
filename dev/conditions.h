@@ -1187,7 +1187,8 @@ namespace sqlite_orm {
     template<char... Chars>
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _nth_col() {
         constexpr auto n =
-            internal::nth_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{}, Chars...)>{};
+            internal::positional_ordinal<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
+                                                                  Chars...)>{};
         static_assert(n > 0u, "Column number must be greater than 0.");
         return n;
     }

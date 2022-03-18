@@ -11,8 +11,8 @@ TEST_CASE("statement_serializator conditions") {
         // must assert
         //constexpr auto n = 0_nth_col;
 
-        STATIC_REQUIRE(std::is_same_v<internal::nth_constant<1u>, decltype(1_nth_col)>);
-        STATIC_REQUIRE(std::is_same_v<internal::nth_constant<10u>, decltype(10_nth_col)>);
+        STATIC_REQUIRE(std::is_same_v<internal::positional_ordinal<1u>, decltype(1_nth_col)>);
+        STATIC_REQUIRE(std::is_same_v<internal::positional_ordinal<10u>, decltype(10_nth_col)>);
 #endif
     }
     SECTION("literals") {

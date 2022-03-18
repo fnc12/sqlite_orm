@@ -132,8 +132,8 @@ namespace sqlite_orm {
          *  Used together with order_by(1_nth_col).
          */
         template<unsigned int N>
-        struct statement_serializator<nth_constant<N>, void> {
-            using statement_type = nth_constant<N>;
+        struct statement_serializator<positional_ordinal<N>, void> {
+            using statement_type = positional_ordinal<N>;
 
             template<class C>
             std::string operator()(const statement_type& /*expression*/, const C& /*context*/) {
