@@ -3930,7 +3930,7 @@ namespace sqlite_orm {
 
 #if __cplusplus >= 201703L  // use of C++17 or higher
     /**
-     *  integral_constant<unsigned int, N> from numeric literal.
+     *  positional_ordinal<N> from numeric literal.
      *  E.g. 1_nth_col, 2_nth_col
      *  
      *  @note Design desicion:
