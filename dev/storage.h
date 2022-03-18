@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>  //  std::unique/shared_ptr, std::make_unique/shared
+#include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <sqlite3.h>
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
@@ -332,11 +333,11 @@ namespace sqlite_orm {
 
             /**
              *  Select * by id routine.
-             *  throws std::system_error(orm_error_code::not_found, orm_error_category) if object not found with given
+             *  throws std::system_error{orm_error_code::not_found} if object not found with given
              * id. throws std::system_error with orm_error_category in case of db error. O is an object type to be
              * extracted. Must be specified explicitly.
              *  @return Object of type O where id is equal parameter passed or throws
-             * `std::system_error(orm_error_code::not_found, orm_error_category)` if there is no object with such id.
+             * `std::system_error{orm_error_code::not_found}` if there is no object with such id.
              */
             template<class O, class... Ids>
             O get(Ids... ids) {
@@ -821,8 +822,7 @@ namespace sqlite_orm {
                 auto query = serialize(tableImpl.table, context);
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
+                    throw_translated_sqlite_error(db);
                 }
                 return res;
             }
@@ -923,8 +923,7 @@ namespace sqlite_orm {
                 if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) == SQLITE_OK) {
                     return prepared_statement_t<S>{std::forward<S>(statement), stmt, con};
                 } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
+                    throw_translated_sqlite_error(db);
                 }
             }
 
@@ -1114,8 +1113,7 @@ namespace sqlite_orm {
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                     if(SQLITE_OK != binder(node)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 perform_step(db, stmt);
@@ -1132,8 +1130,7 @@ namespace sqlite_orm {
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                     if(SQLITE_OK != binder(node)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 perform_step(db, stmt);
@@ -1158,12 +1155,10 @@ namespace sqlite_orm {
                                   const auto* value =
                                       tImpl.table.template get_object_field_pointer<field_type>(object, memberPointer);
                                   if(!value) {
-                                      throw std::system_error(orm_error_code::value_is_null);
+                                      throw std::system_error{orm_error_code::value_is_null};
                                   }
                                   if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, *value)) {
-                                      throw std::system_error(
-                                          std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                          sqlite3_errmsg(db));
+                                      throw_translated_sqlite_error(db);
                                   }
                               });
                 perform_step(db, stmt);
@@ -1193,17 +1188,13 @@ namespace sqlite_orm {
                         if(column.member_pointer) {
                             if(SQLITE_OK !=
                                statement_binder<field_type>().bind(stmt, index++, object.*column.member_pointer)) {
-                                throw std::system_error(
-                                    std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                    sqlite3_errmsg(db));
+                                throw_translated_sqlite_error(db);
                             }
                         } else {
                             using getter_type = typename column_type::getter_type;
                             field_value_holder<getter_type> valueHolder{((object).*(column.getter))()};
                             if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
-                                throw std::system_error(
-                                    std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                    sqlite3_errmsg(db));
+                                throw_translated_sqlite_error(db);
                             }
                         }
                     });
@@ -1250,17 +1241,13 @@ namespace sqlite_orm {
                             if(column.member_pointer) {
                                 if(SQLITE_OK !=
                                    statement_binder<field_type>().bind(stmt, index++, object.*column.member_pointer)) {
-                                    throw std::system_error(
-                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
+                                    throw_translated_sqlite_error(db);
                                 }
                             } else {
                                 using getter_type = typename column_type::getter_type;
                                 field_value_holder<getter_type> valueHolder{((object).*(column.getter))()};
                                 if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
-                                    throw std::system_error(
-                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
+                                    throw_translated_sqlite_error(db);
                                 }
                             }
                         }
@@ -1297,8 +1284,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, [stmt, &index, db](auto& v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 perform_step(db, stmt);
@@ -1325,17 +1311,13 @@ namespace sqlite_orm {
                             auto bind_res =
                                 statement_binder<field_type>().bind(stmt, index++, o.*column.member_pointer);
                             if(SQLITE_OK != bind_res) {
-                                throw std::system_error(
-                                    std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                    sqlite3_errmsg(db));
+                                throw_translated_sqlite_error(db);
                             }
                         } else {
                             using getter_type = typename column_type::getter_type;
                             field_value_holder<getter_type> valueHolder{((o).*(column.getter))()};
                             if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
-                                throw std::system_error(
-                                    std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                    sqlite3_errmsg(db));
+                                throw_translated_sqlite_error(db);
                             }
                         }
                     }
@@ -1347,17 +1329,13 @@ namespace sqlite_orm {
                         if(column.member_pointer) {
                             if(SQLITE_OK !=
                                statement_binder<field_type>().bind(stmt, index++, o.*column.member_pointer)) {
-                                throw std::system_error(
-                                    std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                    sqlite3_errmsg(db));
+                                throw_translated_sqlite_error(db);
                             }
                         } else {
                             using getter_type = typename column_type::getter_type;
                             field_value_holder<getter_type> valueHolder{((o).*(column.getter))()};
                             if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, valueHolder.value)) {
-                                throw std::system_error(
-                                    std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                    sqlite3_errmsg(db));
+                                throw_translated_sqlite_error(db);
                             }
                         }
                     }
@@ -1376,8 +1354,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, [stmt, &index, db](auto& v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 auto stepRes = sqlite3_step(stmt);
@@ -1392,8 +1369,7 @@ namespace sqlite_orm {
                         return {};
                     } break;
                     default: {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 }
             }
@@ -1410,8 +1386,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, [stmt, &index, db](auto& v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 auto stepRes = sqlite3_step(stmt);
@@ -1426,8 +1401,7 @@ namespace sqlite_orm {
                         return {};
                     } break;
                     default: {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 }
             }
@@ -1444,8 +1418,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, [stmt, &index, db](auto& v) {
                     using field_type = typename std::decay<decltype(v)>::type;
                     if(SQLITE_OK != statement_binder<field_type>().bind(stmt, index++, v)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 auto stepRes = sqlite3_step(stmt);
@@ -1457,11 +1430,10 @@ namespace sqlite_orm {
                         return res;
                     } break;
                     case SQLITE_DONE: {
-                        throw std::system_error(orm_error_code::not_found);
+                        throw std::system_error{orm_error_code::not_found};
                     } break;
                     default: {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 }
             }
@@ -1477,8 +1449,7 @@ namespace sqlite_orm {
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                     if(SQLITE_OK != binder(node)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 perform_step(db, stmt);
@@ -1496,8 +1467,7 @@ namespace sqlite_orm {
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                         if(SQLITE_OK != binder(node)) {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
+                            throw_translated_sqlite_error(db);
                         }
                     });
                 });
@@ -1505,8 +1475,7 @@ namespace sqlite_orm {
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                     if(SQLITE_OK != binder(node)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 perform_step(db, stmt);
@@ -1523,8 +1492,7 @@ namespace sqlite_orm {
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                     if(SQLITE_OK != binder(node)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 std::vector<R> res;
@@ -1544,8 +1512,7 @@ namespace sqlite_orm {
                         case SQLITE_DONE:
                             break;
                         default: {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
+                            throw_translated_sqlite_error(db);
                         }
                     }
                 } while(stepRes != SQLITE_DONE);
@@ -1564,8 +1531,7 @@ namespace sqlite_orm {
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                     if(SQLITE_OK != binder(node)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 R res;
@@ -1582,8 +1548,7 @@ namespace sqlite_orm {
                         case SQLITE_DONE:
                             break;
                         default: {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
+                            throw_translated_sqlite_error(db);
                         }
                     }
                 } while(stepRes != SQLITE_DONE);
@@ -1602,8 +1567,7 @@ namespace sqlite_orm {
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                     if(SQLITE_OK != binder(node)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 R res;
@@ -1620,8 +1584,7 @@ namespace sqlite_orm {
                         case SQLITE_DONE:
                             break;
                         default: {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
+                            throw_translated_sqlite_error(db);
                         }
                     }
                 } while(stepRes != SQLITE_DONE);
@@ -1641,8 +1604,7 @@ namespace sqlite_orm {
                     using node_type = typename std::decay<decltype(node)>::type;
                     conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                     if(SQLITE_OK != binder(node)) {
-                        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                        throw_translated_sqlite_error(db);
                     }
                 });
                 R res;
@@ -1659,8 +1621,7 @@ namespace sqlite_orm {
                         case SQLITE_DONE:
                             break;
                         default: {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
+                            throw_translated_sqlite_error(db);
                         }
                     }
                 } while(stepRes != SQLITE_DONE);
@@ -1692,7 +1653,7 @@ namespace sqlite_orm {
                                 if(auto columnName = storageImpl.table.find_column_name(column)) {
                                     ss << ' ' << *columnName << " = ?";
                                 } else {
-                                    throw std::system_error(orm_error_code::column_not_found);
+                                    throw std::system_error{orm_error_code::column_not_found};
                                 }
                                 ++columnIndex;
                             });
@@ -1715,31 +1676,23 @@ namespace sqlite_orm {
                                             tImpl.table.template get_object_field_pointer<field_type>(object,
                                                                                                       memberPointer);
                                         if(!value) {
-                                            throw std::system_error(orm_error_code::value_is_null);
+                                            throw std::system_error{orm_error_code::value_is_null};
                                         }
                                         if(SQLITE_OK !=
                                            statement_binder<field_type>().bind(stmt, columnIndex++, *value)) {
-                                            throw std::system_error(
-                                                std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                sqlite3_errmsg(db));
+                                            throw_translated_sqlite_error(db);
                                         }
                                     });
                                 if(SQLITE_ROW != sqlite3_step(stmt)) {
-                                    throw std::system_error(
-                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
+                                    throw_translated_sqlite_error(db);
                                 }
                                 auto countResult = sqlite3_column_int(stmt, 0);
                                 res = countResult > 0;
                                 if(SQLITE_DONE != sqlite3_step(stmt)) {
-                                    throw std::system_error(
-                                        std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                        sqlite3_errmsg(db));
+                                    throw_translated_sqlite_error(db);
                                 }
                             } else {
-                                throw std::system_error(
-                                    std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                    sqlite3_errmsg(db));
+                                throw_translated_sqlite_error(db);
                             }
                         })();
                     });
