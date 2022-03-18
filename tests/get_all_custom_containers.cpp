@@ -41,7 +41,7 @@ struct Tester {
     template<class E, class T>
     void testContainer(const T& users) const {
         REQUIRE(std::equal(users.begin(), users.end(), this->expected.begin(), this->expected.end(), Comparator{}));
-        static_assert(std::is_same<T, E>::value, "");
+        STATIC_REQUIRE(std::is_same<T, E>::value);
     }
 
     template<class E, class S, class T>

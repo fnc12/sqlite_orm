@@ -42,14 +42,14 @@ TEST_CASE("Foreign key") {
         using namespace internal::storage_traits;
 
         using Storage = decltype(storage);
-        static_assert(storage_foreign_keys_count<Storage, Location>::value == 1, "");
-        static_assert(storage_foreign_keys_count<Storage, Visit>::value == 0, "");
+        STATIC_REQUIRE(storage_foreign_keys_count<Storage, Location>::value == 1);
+        STATIC_REQUIRE(storage_foreign_keys_count<Storage, Visit>::value == 0);
 
         using LocationFks = storage_fk_references<Storage, Location>::type;
-        static_assert(std::is_same<LocationFks, std::tuple<Visit>>::value, "");
+        STATIC_REQUIRE(std::is_same<LocationFks, std::tuple<Visit>>::value);
 
         using VisitFks = storage_fk_references<Storage, Visit>::type;
-        static_assert(std::is_same<VisitFks, std::tuple<>>::value, "");
+        STATIC_REQUIRE(std::is_same<VisitFks, std::tuple<>>::value);
     }
     storage.sync_schema();
 

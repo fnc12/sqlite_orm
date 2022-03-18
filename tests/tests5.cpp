@@ -282,7 +282,7 @@ TEST_CASE("issue730") {
     using Rows = decltype(rows);
     using ExpectedRows = std::vector<std::tuple<int64_t, std::string, std::string, std::string>>;
 
-    static_assert(std::is_same<Rows, ExpectedRows>::value, "");
+    STATIC_REQUIRE(std::is_same<Rows, ExpectedRows>::value);
 }
 
 TEST_CASE("issue822") {

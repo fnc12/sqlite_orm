@@ -167,7 +167,7 @@ namespace sqlite_orm {
                 if(auto columnNamePointer = context.impl.column_name(statement.expression)) {
                     ss << "\"" << *columnNamePointer << "\"";
                 } else {
-                    throw std::system_error(orm_error_code::column_not_found);
+                    throw std::system_error{orm_error_code::column_not_found};
                 }
                 return ss.str();
             }
@@ -338,7 +338,7 @@ namespace sqlite_orm {
                 if(auto columnnamePointer = context.column_name(m)) {
                     ss << "\"" << *columnnamePointer << "\"";
                 } else {
-                    throw std::system_error(orm_error_code::column_not_found);
+                    throw std::system_error{orm_error_code::column_not_found};
                 }
                 return ss.str();
             }
@@ -501,7 +501,7 @@ namespace sqlite_orm {
                 if(auto columnNamePointer = context.impl.column_name(c)) {
                     ss << "\"" << *columnNamePointer << "\"";
                 } else {
-                    throw std::system_error(orm_error_code::column_not_found);
+                    throw std::system_error{orm_error_code::column_not_found};
                 }
                 return ss.str();
             }
@@ -835,7 +835,7 @@ namespace sqlite_orm {
                             }
                             ++columnIndex;
                         } else {
-                            throw std::system_error(orm_error_code::column_not_found);
+                            throw std::system_error{orm_error_code::column_not_found};
                         }
                     });
                     res += ")";
@@ -864,7 +864,7 @@ namespace sqlite_orm {
                             }
                             ++columnIndex;
                         } else {
-                            throw std::system_error(orm_error_code::column_not_found);
+                            throw std::system_error{orm_error_code::column_not_found};
                         }
                     });
                     res += ")";
@@ -1133,7 +1133,7 @@ namespace sqlite_orm {
                             ss << " ";
                             ++index;
                         } else {
-                            throw std::system_error(orm_error_code::column_not_found);
+                            throw std::system_error{orm_error_code::column_not_found};
                         }
                     });
                 }
@@ -1283,10 +1283,10 @@ namespace sqlite_orm {
                         });
                         return ss.str();
                     } else {
-                        throw std::system_error(orm_error_code::no_tables_specified);
+                        throw std::system_error{orm_error_code::no_tables_specified};
                     }
                 } else {
-                    throw std::system_error(orm_error_code::incorrect_set_fields_specified);
+                    throw std::system_error{orm_error_code::incorrect_set_fields_specified};
                 }
             }
         };
@@ -1449,7 +1449,7 @@ namespace sqlite_orm {
                         ss << " \"" << *columnNamePointer << "\""
                            << " = " << idsStrings[index];
                     } else {
-                        throw std::system_error(sqlite_orm::orm_error_code::column_not_found);
+                        throw std::system_error{orm_error_code::column_not_found};
                     }
                     ++index;
                 });
@@ -1570,7 +1570,7 @@ namespace sqlite_orm {
                         ss << " ";
                     }
                 } else if(valuesCount != 1) {
-                    throw std::system_error(orm_error_code::cannot_use_default_value);
+                    throw std::system_error{orm_error_code::cannot_use_default_value};
                 }
                 return ss.str();
             }
@@ -1676,7 +1676,7 @@ namespace sqlite_orm {
                 }
                 return ss.str();
             } else {
-                throw std::system_error(orm_error_code::table_has_no_primary_key_column);
+                throw std::system_error{orm_error_code::table_has_no_primary_key_column};
             }
         }
 
@@ -1830,7 +1830,7 @@ namespace sqlite_orm {
                             ss << " ASC";
                             break;
                         default:
-                            throw std::system_error(orm_error_code::incorrect_order);
+                            throw std::system_error{orm_error_code::incorrect_order};
                     }
                 }
                 return ss.str();
@@ -2028,7 +2028,7 @@ namespace sqlite_orm {
                     auto name = context.column_name(v);
 
                     if(name == nullptr)
-                        throw std::system_error(orm_error_code::column_not_found);
+                        throw std::system_error{orm_error_code::column_not_found};
                     ss << sep << "'" << *name << "'";
                     sep = ", ";
                 });
