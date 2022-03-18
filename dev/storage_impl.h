@@ -3,7 +3,6 @@
 #include <string>  //  std::string
 #include <sqlite3.h>
 #include <cstddef>  //  std::nullptr_t
-#include <system_error>  //  std::system_error, std::error_code
 #include <sstream>  //  std::stringstream
 #include <stdlib.h>  //  std::atoi
 #include <type_traits>  //  std::forward, std::enable_if, std::is_same, std::remove_reference, std::false_type, std::true_type
@@ -50,8 +49,7 @@ namespace sqlite_orm {
                     &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
+                    throw_translated_sqlite_error(db);
                 }
                 return result;
             }
@@ -125,8 +123,7 @@ namespace sqlite_orm {
                     &result,
                     nullptr);
                 if(rc != SQLITE_OK) {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
+                    throw_translated_sqlite_error(db);
                 }
                 return result;
             }

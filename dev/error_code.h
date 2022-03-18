@@ -9,6 +9,14 @@
 
 namespace sqlite_orm {
 
+    /** @short Enables classifying sqlite error codes.
+
+        @note We don't bother listing all possible values;
+        this also allows for compatibility with
+        'Construction rules for enum class values (P0138R2)'
+     */
+    enum class sqlite_errc {};
+
     enum class orm_error_code {
         not_found = 1,
         type_is_not_mapped_to_storage,
@@ -32,6 +40,14 @@ namespace sqlite_orm {
         no_tables_specified,
     };
 
+}
+
+namespace std {
+    template<>
+    struct is_error_code_enum<::sqlite_orm::sqlite_errc> : true_type {};
+
+    template<>
+    struct is_error_code_enum<::sqlite_orm::orm_error_code> : true_type {};
 }
 
 namespace sqlite_orm {
@@ -109,6 +125,14 @@ namespace sqlite_orm {
         return res;
     }
 
+    inline std::error_code make_error_code(sqlite_errc ev) noexcept {
+        return {static_cast<int>(ev), get_sqlite_error_category()};
+    }
+
+    inline std::error_code make_error_code(orm_error_code ev) noexcept {
+        return {static_cast<int>(ev), get_orm_error_category()};
+    }
+
     template<typename... T>
     std::string get_error_message(sqlite3* db, T&&... args) {
         std::ostringstream stream;
@@ -120,18 +144,22 @@ namespace sqlite_orm {
 
     template<typename... T>
     [[noreturn]] void throw_error(sqlite3* db, T&&... args) {
-        throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                get_error_message(db, std::forward<T>(args)...));
+        throw std::system_error{sqlite_errc(sqlite3_errcode(db)), get_error_message(db, std::forward<T>(args)...)};
     }
-}
 
-namespace std {
-    template<>
-    struct is_error_code_enum<sqlite_orm::orm_error_code> : true_type {};
-}
+    inline std::system_error sqlite_to_system_error(int ev) {
+        return {sqlite_errc(ev)};
+    }
 
-namespace sqlite_orm {
-    inline std::error_code make_error_code(orm_error_code errorCode) noexcept {
-        return {static_cast<int>(errorCode), get_orm_error_category()};
+    inline std::system_error sqlite_to_system_error(sqlite3* db) {
+        return {sqlite_errc(sqlite3_errcode(db)), sqlite3_errmsg(db)};
+    }
+
+    [[noreturn]] inline void throw_translated_sqlite_error(int ev) {
+        throw sqlite_to_system_error(ev);
+    }
+
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
+        throw sqlite_to_system_error(db);
     }
 }
