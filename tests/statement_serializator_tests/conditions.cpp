@@ -17,19 +17,23 @@ TEST_CASE("statement_serializator conditions") {
     }
     SECTION("literals") {
         SECTION("dump") {
+#if __cplusplus >= 201703L  // use of C++17 or higher
             context.replace_bindable_with_question = false;
             auto expr = 2_nth_col;
             auto value = serialize(expr, context);
             REQUIRE(value == "2");
+#endif
         }
         SECTION("bindable") {
+#if __cplusplus >= 201703L  // use of C++17 or higher
             context.replace_bindable_with_question = true;
             auto expr = 2_nth_col;
             auto value = serialize(expr, context);
             REQUIRE(value == "2");
+#endif
         }
     }
-#if 0  // outline; order_by statically asserts when passed bindable values
+#if 0  // outline; order_by statically asserts when passing bindable values
     SECTION("order by bindable") {
         order_by(std::wstring_view{L""});
         SECTION("dump") {
@@ -48,16 +52,20 @@ TEST_CASE("statement_serializator conditions") {
 #endif
     SECTION("order by kth column") {
         SECTION("dump") {
+#if __cplusplus >= 201703L  // use of C++17 or higher
             context.replace_bindable_with_question = false;
             auto expr = order_by(2_nth_col);
             auto value = serialize(expr, context);
             REQUIRE(value == "ORDER BY 2");
+#endif
         }
         SECTION("bindable") {
+#if __cplusplus >= 201703L  // use of C++17 or higher
             context.replace_bindable_with_question = true;
             auto expr = order_by(2_nth_col);
             auto value = serialize(expr, context);
             REQUIRE(value == "ORDER BY 2");
+#endif
         }
     }
     SECTION("using") {

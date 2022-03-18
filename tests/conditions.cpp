@@ -9,9 +9,9 @@ TEST_CASE("order by") {
         int n;
     };
 
-    auto storage = make_storage(
-        "",
-        make_table("object", make_column("id", &Object::id, primary_key()), make_column("n", &Object::n)));
+    auto storage =
+        make_storage("",
+                     make_table("object", make_column("id", &Object::id, primary_key()), make_column("n", &Object::n)));
     storage.sync_schema();
 
     storage.insert<Object>({0, 1});
@@ -23,6 +23,7 @@ TEST_CASE("order by") {
         auto rows = storage.select(&Object::n, order_by(&Object::n));
         REQUIRE(rows == expected);
     }
+#if 0  // outline; order_by statically asserts when passing bindable values
     SECTION("bindable") {
         std::vector<int> expected{1, 0};
         // select n from object order by ?
@@ -30,4 +31,5 @@ TEST_CASE("order by") {
         auto rows = storage.select(&Object::n, order_by(1));
         REQUIRE(rows == expected);
     }
+#endif
 }

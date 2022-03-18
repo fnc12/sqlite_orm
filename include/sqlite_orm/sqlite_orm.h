@@ -14672,6 +14672,7 @@ namespace sqlite_orm {
             }
         };
 
+#if __cplusplus >= 201703L  // use of C++17 or higher
         /**
          *  Constant which gets never replaced in a bindable context.
          *  Used together with order_by(1_nth_col).
@@ -14686,6 +14687,7 @@ namespace sqlite_orm {
                 return std::to_string(N);
             }
         };
+#endif
 
         template<class F, class W>
         struct statement_serializator<filtered_aggregate_function<F, W>, void> {
