@@ -24,6 +24,6 @@ TEST_CASE("tuple_helper static") {
         using ColumnsTuple = std::tuple<Column1, Column2, Column3, Column4>;
         using ColumnsMappedTypes = internal::tuple_transformer<ColumnsTuple, internal::column_field_type>::type;
         using Expected = std::tuple<int64_t, std::string, std::string, std::string>;
-        static_assert(std::is_same<ColumnsMappedTypes, Expected>::value, "");
+        STATIC_REQUIRE(std::is_same<ColumnsMappedTypes, Expected>::value);
     }
 }

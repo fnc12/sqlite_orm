@@ -60,10 +60,10 @@ TEST_CASE("Prepared get all optional") {
         using NodeTuple = internal::node_tuple<Expression>::type;
         using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
         {
-            static_assert(std::tuple_size<BindTuple>::value == 1, "");
+            STATIC_REQUIRE(std::tuple_size<BindTuple>::value == 1);
             {
                 using Arg0 = std::tuple_element<0, BindTuple>::type;
-                static_assert(std::is_same<Arg0, int>::value, "");
+                STATIC_REQUIRE(std::is_same<Arg0, int>::value);
             }
         }
         REQUIRE(get<0>(statement) == 3);
@@ -100,10 +100,10 @@ TEST_CASE("Prepared get all optional") {
         using NodeTuple = internal::node_tuple<Expression>::type;
         using BindTuple = typename internal::bindable_filter<NodeTuple>::type;
         {
-            static_assert(std::tuple_size<BindTuple>::value == 1, "");
+            STATIC_REQUIRE(std::tuple_size<BindTuple>::value == 1);
             {
                 using Arg0 = std::tuple_element<0, BindTuple>::type;
-                static_assert(std::is_same<Arg0, int>::value, "");
+                STATIC_REQUIRE(std::is_same<Arg0, int>::value);
             }
         }
         REQUIRE(get<0>(statement) == 3);

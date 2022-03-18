@@ -43,10 +43,10 @@ TEST_CASE("Prepared update all") {
         using Expression = Statement::expression_type;
         using SetTuple = internal::node_tuple<Expression>::set_tuple;
         using SetBind = internal::bindable_filter<SetTuple>::type;
-        static_assert(std::tuple_size<SetBind>::value == 1, "");
+        STATIC_REQUIRE(std::tuple_size<SetBind>::value == 1);
         {
             using Arg0 = std::tuple_element<0, SetBind>::type;
-            static_assert(std::is_same<Arg0, const char*>::value, "");
+            STATIC_REQUIRE(std::is_same<Arg0, const char*>::value);
         }
         REQUIRE(strcmp(get<0>(statement), "_") == 0);
         testSerializing(statement);
@@ -109,10 +109,10 @@ TEST_CASE("Prepared update all") {
         using Expression = Statement::expression_type;
         using SetTuple = internal::node_tuple<Expression>::set_tuple;
         using SetBind = internal::bindable_filter<SetTuple>::type;
-        static_assert(std::tuple_size<SetBind>::value == 1, "");
+        STATIC_REQUIRE(std::tuple_size<SetBind>::value == 1);
         {
             using Arg0 = std::tuple_element<0, SetBind>::type;
-            static_assert(std::is_same<Arg0, std::string>::value, "");
+            STATIC_REQUIRE(std::is_same<Arg0, std::string>::value);
         }
         REQUIRE(get<0>(statement) == "_");
         REQUIRE(&get<0>(statement) == &str);

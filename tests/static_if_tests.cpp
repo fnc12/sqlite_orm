@@ -53,7 +53,7 @@ TEST_CASE("static_if") {
             std::string name;
         };
         auto ch = check(length(&User::name) > 5);
-        static_assert(!internal::is_column<decltype(ch)>::value, "");
+        STATIC_REQUIRE(!internal::is_column<decltype(ch)>::value);
         int called = 0;
         internal::static_if<internal::is_column<decltype(ch)>{}>(
             [&called] {
