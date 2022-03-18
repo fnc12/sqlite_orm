@@ -16,7 +16,7 @@ TEST_CASE("table::find_column_name") {
         auto contactIdColumn = make_column("contact_id", &Contact::id, primary_key(), autoincrement());
         {
             using column_type = decltype(contactIdColumn);
-            static_assert(internal::is_column<column_type>::value, "");
+            STATIC_REQUIRE(internal::is_column<column_type>::value);
         }
 
         auto table = make_table("contacts",

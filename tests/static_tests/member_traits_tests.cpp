@@ -102,97 +102,97 @@ TEST_CASE("member_traits_tests") {
         }
     };
 
-    static_assert(is_field_member_pointer<decltype(&User::id)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByValConst)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByRefConst)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByRef)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByConstRefConst)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByConstRef)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByValConstNoexcept)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByValNoexcept)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByRefConstNoexcept)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByRefNoexcept)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByConstRefConstNoexcept)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::getIdByConstRefNoExcept)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::setIdByVal)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::setIdByRef)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::setIdByConstRef)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::setIdByValueNoexcept)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::setIdByRefNoExcept)>::value, "");
-    static_assert(!is_field_member_pointer<decltype(&User::setIdByConstRefNoexcept)>::value, "");
+    STATIC_REQUIRE(is_field_member_pointer<decltype(&User::id)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByValConst)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByRefConst)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByRef)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByConstRefConst)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByConstRef)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByValConstNoexcept)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByValNoexcept)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByRefConstNoexcept)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByRefNoexcept)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByConstRefConstNoexcept)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByConstRefNoExcept)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByVal)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByRef)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByConstRef)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByValueNoexcept)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByRefNoExcept)>::value);
+    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByConstRefNoexcept)>::value);
 
-    static_assert(!is_getter<decltype(&User::id)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByValConst)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByRefConst)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByRef)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByConstRefConst)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByConstRef)>::value, "");
+    STATIC_REQUIRE(!is_getter<decltype(&User::id)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByValConst)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByRefConst)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByRef)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRefConst)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRef)>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-    static_assert(is_getter<decltype(&User::getIdByValConstNoexcept)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByValNoexcept)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByRefConstNoexcept)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByRefNoexcept)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByConstRefConstNoexcept)>::value, "");
-    static_assert(is_getter<decltype(&User::getIdByConstRefNoExcept)>::value, "");
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByValConstNoexcept)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByValNoexcept)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByRefConstNoexcept)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByRefNoexcept)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRefConstNoexcept)>::value);
+    STATIC_REQUIRE(is_getter<decltype(&User::getIdByConstRefNoExcept)>::value);
 #endif
-    static_assert(!is_getter<decltype(&User::setIdByVal)>::value, "");
-    static_assert(!is_getter<decltype(&User::setIdByRef)>::value, "");
-    static_assert(!is_getter<decltype(&User::setIdByConstRef)>::value, "");
-    static_assert(!is_getter<decltype(&User::setIdByValueNoexcept)>::value, "");
-    static_assert(!is_getter<decltype(&User::setIdByRefNoExcept)>::value, "");
-    static_assert(!is_getter<decltype(&User::setIdByConstRefNoexcept)>::value, "");
+    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByVal)>::value);
+    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByRef)>::value);
+    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByConstRef)>::value);
+    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByValueNoexcept)>::value);
+    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByRefNoExcept)>::value);
+    STATIC_REQUIRE(!is_getter<decltype(&User::setIdByConstRefNoexcept)>::value);
 
-    static_assert(!is_setter<decltype(&User::id)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByValConst)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByRefConst)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByRef)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByConstRefConst)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByConstRef)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByValConstNoexcept)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByValNoexcept)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByRefConstNoexcept)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByRefNoexcept)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByConstRefConstNoexcept)>::value, "");
-    static_assert(!is_setter<decltype(&User::getIdByConstRefNoExcept)>::value, "");
-    static_assert(is_setter<decltype(&User::setIdByVal)>::value, "");
-    static_assert(is_setter<decltype(&User::setIdByRef)>::value, "");
-    static_assert(is_setter<decltype(&User::setIdByConstRef)>::value, "");
+    STATIC_REQUIRE(!is_setter<decltype(&User::id)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByValConst)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByRefConst)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByRef)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByConstRefConst)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByConstRef)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByValConstNoexcept)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByValNoexcept)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByRefConstNoexcept)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByRefNoexcept)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByConstRefConstNoexcept)>::value);
+    STATIC_REQUIRE(!is_setter<decltype(&User::getIdByConstRefNoExcept)>::value);
+    STATIC_REQUIRE(is_setter<decltype(&User::setIdByVal)>::value);
+    STATIC_REQUIRE(is_setter<decltype(&User::setIdByRef)>::value);
+    STATIC_REQUIRE(is_setter<decltype(&User::setIdByConstRef)>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-    static_assert(is_setter<decltype(&User::setIdByValueNoexcept)>::value, "");
-    static_assert(is_setter<decltype(&User::setIdByRefNoExcept)>::value, "");
-    static_assert(is_setter<decltype(&User::setIdByConstRefNoexcept)>::value, "");
+    STATIC_REQUIRE(is_setter<decltype(&User::setIdByValueNoexcept)>::value);
+    STATIC_REQUIRE(is_setter<decltype(&User::setIdByRefNoExcept)>::value);
+    STATIC_REQUIRE(is_setter<decltype(&User::setIdByConstRefNoexcept)>::value);
 #endif
 
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByValConst)>::object_type, User>::value, "");
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByValConst)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByValConst)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByValConst)>::field_type, int>::value);
 
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByRefConst)>::object_type, User>::value, "");
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByRefConst)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRefConst)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRefConst)>::field_type, int>::value);
 
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByRef)>::object_type, User>::value, "");
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByRef)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRef)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRef)>::field_type, int>::value);
 
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByConstRefConst)>::object_type, User>::value, "");
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByConstRefConst)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByConstRefConst)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByConstRefConst)>::field_type, int>::value);
 
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByConstRef)>::object_type, User>::value, "");
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByConstRef)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByConstRef)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByConstRef)>::field_type, int>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByValConstNoexcept)>::object_type, User>::value,
                   "");
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByValConstNoexcept)>::field_type, int>::value,
                   "");
 
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByValNoexcept)>::object_type, User>::value, "");
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByValNoexcept)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByValNoexcept)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByValNoexcept)>::field_type, int>::value);
 
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByRefConstNoexcept)>::object_type, User>::value,
                   "");
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByRefConstNoexcept)>::field_type, int>::value,
                   "");
 
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByRefNoexcept)>::object_type, User>::value, "");
-    static_assert(is_same<typename getter_traits<decltype(&User::getIdByRefNoexcept)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRefNoexcept)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRefNoexcept)>::field_type, int>::value);
 
     static_assert(
         is_same<typename getter_traits<decltype(&User::getIdByConstRefConstNoexcept)>::object_type, User>::value,
@@ -206,62 +206,62 @@ TEST_CASE("member_traits_tests") {
     static_assert(is_same<typename getter_traits<decltype(&User::getIdByConstRefNoExcept)>::field_type, int>::value,
                   "");
 #endif
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByVal)>::object_type, User>::value, "");
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByVal)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByVal)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByVal)>::field_type, int>::value);
 
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByRef)>::object_type, User>::value, "");
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByRef)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByRef)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByRef)>::field_type, int>::value);
 
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByConstRef)>::object_type, User>::value, "");
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByConstRef)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByConstRef)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByConstRef)>::field_type, int>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByValueNoexcept)>::object_type, User>::value, "");
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByValueNoexcept)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByValueNoexcept)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByValueNoexcept)>::field_type, int>::value);
 
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByRefNoExcept)>::object_type, User>::value, "");
-    static_assert(is_same<typename setter_traits<decltype(&User::setIdByRefNoExcept)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByRefNoExcept)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByRefNoExcept)>::field_type, int>::value);
 
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByConstRefNoexcept)>::object_type, User>::value,
                   "");
     static_assert(is_same<typename setter_traits<decltype(&User::setIdByConstRefNoexcept)>::field_type, int>::value,
                   "");
 #endif
-    static_assert(is_same<typename field_member_traits<decltype(&User::id)>::object_type, User>::value, "");
-    static_assert(is_same<typename field_member_traits<decltype(&User::id)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename field_member_traits<decltype(&User::id)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename field_member_traits<decltype(&User::id)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::id)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::id)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::id)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::id)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByValConst)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByValConst)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByValConst)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByValConst)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByRefConst)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByRefConst)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRefConst)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRefConst)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByRef)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByRef)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRef)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRef)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByConstRefConst)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByConstRefConst)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRefConst)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRefConst)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByConstRef)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByConstRef)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRef)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRef)>::field_type, int>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
     static_assert(is_same<typename member_traits<decltype(&User::getIdByValConstNoexcept)>::object_type, User>::value,
                   "");
     static_assert(is_same<typename member_traits<decltype(&User::getIdByValConstNoexcept)>::field_type, int>::value,
                   "");
 
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByValNoexcept)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByValNoexcept)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByValNoexcept)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByValNoexcept)>::field_type, int>::value);
 
     static_assert(is_same<typename member_traits<decltype(&User::getIdByRefConstNoexcept)>::object_type, User>::value,
                   "");
     static_assert(is_same<typename member_traits<decltype(&User::getIdByRefConstNoexcept)>::field_type, int>::value,
                   "");
 
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByRefNoexcept)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::getIdByRefNoexcept)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRefNoexcept)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRefNoexcept)>::field_type, int>::value);
 
     static_assert(
         is_same<typename member_traits<decltype(&User::getIdByConstRefConstNoexcept)>::object_type, User>::value,
@@ -275,20 +275,20 @@ TEST_CASE("member_traits_tests") {
     static_assert(is_same<typename member_traits<decltype(&User::getIdByConstRefNoExcept)>::field_type, int>::value,
                   "");
 #endif
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByVal)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByVal)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByVal)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByVal)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByRef)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByRef)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByRef)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByRef)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByConstRef)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByConstRef)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByConstRef)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByConstRef)>::field_type, int>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByValueNoexcept)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByValueNoexcept)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByValueNoexcept)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByValueNoexcept)>::field_type, int>::value);
 
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByRefNoExcept)>::object_type, User>::value, "");
-    static_assert(is_same<typename member_traits<decltype(&User::setIdByRefNoExcept)>::field_type, int>::value, "");
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByRefNoExcept)>::object_type, User>::value);
+    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByRefNoExcept)>::field_type, int>::value);
 
     static_assert(is_same<typename member_traits<decltype(&User::setIdByConstRefNoexcept)>::object_type, User>::value,
                   "");
