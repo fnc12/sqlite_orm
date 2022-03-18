@@ -1,6 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
+#include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <memory>
 
@@ -26,7 +27,7 @@ namespace sqlite_orm {
                 handle(sqlite3_backup_init(to_.get(), zDestName.c_str(), from_.get(), zSourceName.c_str())),
                 holder(move(holder_)), to(to_), from(from_) {
                 if(!this->handle) {
-                    throw std::system_error(orm_error_code::failed_to_init_a_backup);
+                    throw std::system_error{orm_error_code::failed_to_init_a_backup};
                 }
             }
 

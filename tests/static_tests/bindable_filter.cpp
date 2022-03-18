@@ -67,18 +67,18 @@ TEST_CASE("bindable_filter") {
                                  Custom,
                                  std::unique_ptr<Custom>>;
         using Res = bindable_filter<Tuple>::type;
-        static_assert(is_same<Res, Tuple>::value, "");
+        STATIC_REQUIRE(is_same<Res, Tuple>::value);
     }
     {
         using Tuple = std::tuple<decltype(&User::id), decltype(&User::name), int>;
         using Res = bindable_filter<Tuple>::type;
         using Expected = std::tuple<int>;
-        static_assert(is_same<Res, Expected>::value, "");
+        STATIC_REQUIRE(is_same<Res, Expected>::value);
     }
     {
         using Tuple = std::tuple<std::string, decltype(&User::name), float, decltype(&User::id), short>;
         using Res = bindable_filter<Tuple>::type;
         using Expected = std::tuple<std::string, float, short>;
-        static_assert(is_same<Res, Expected>::value, "");
+        STATIC_REQUIRE(is_same<Res, Expected>::value);
     }
 }

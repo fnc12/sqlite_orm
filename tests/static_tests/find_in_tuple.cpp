@@ -11,18 +11,18 @@ TEST_CASE("find_in_tuple") {
     using tuple = std::tuple<into_t<User>, columns_t<decltype(&User::id)>>;
     {
         using found = find_in_tuple<tuple, is_into>::type;
-        static_assert(std::is_same<found, into_t<User>>::value, "");
+        STATIC_REQUIRE(std::is_same<found, into_t<User>>::value);
     }
     {
         using found = find_in_tuple<tuple, is_columns>::type;
-        static_assert(std::is_same<found, columns_t<decltype(&User::id)>>::value, "");
+        STATIC_REQUIRE(std::is_same<found, columns_t<decltype(&User::id)>>::value);
     }
     {
         using found = find_in_tuple<tuple, is_column>::type;
-        static_assert(std::is_same<found, void>::value, "");
+        STATIC_REQUIRE(std::is_same<found, void>::value);
     }
     {
         using found = find_in_tuple<tuple, is_primary_key>::type;
-        static_assert(std::is_same<found, void>::value, "");
+        STATIC_REQUIRE(std::is_same<found, void>::value);
     }
 }

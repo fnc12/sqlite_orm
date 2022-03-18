@@ -30,14 +30,14 @@ TEST_CASE("storage traits") {
 
         using ArgsTuple = TableTypes::args_tuple;
         using ExpectedArgsTuple = std::tuple<Column1, Column2, Column3, Column4, UniqueC>;
-        static_assert(std::is_same<ArgsTuple, ExpectedArgsTuple>::value, "");
+        STATIC_REQUIRE(std::is_same<ArgsTuple, ExpectedArgsTuple>::value);
 
         using ColumnsTuple = TableTypes::columns_tuple;
         using ExpectedColumnsTuple = std::tuple<Column1, Column2, Column3, Column4>;
-        static_assert(std::is_same<ColumnsTuple, ExpectedColumnsTuple>::value, "");
+        STATIC_REQUIRE(std::is_same<ColumnsTuple, ExpectedColumnsTuple>::value);
 
         using ResultType = TableTypes::type;
         using ExpectedResultType = std::tuple<int64_t, std::string, std::string, std::string>;
-        static_assert(std::is_same<ResultType, ExpectedResultType>::value, "");
+        STATIC_REQUIRE(std::is_same<ResultType, ExpectedResultType>::value);
     }
 }
