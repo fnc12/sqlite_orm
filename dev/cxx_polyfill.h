@@ -78,4 +78,6 @@ namespace sqlite_orm {
             using index_constant = std::integral_constant<size_t, I>;
         }
     }
+
+    namespace polyfill = internal::polyfill;
 }
