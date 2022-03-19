@@ -55,7 +55,7 @@ __pragma(push_macro("min"))
             template<typename B1>
             struct conjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct conjunction<B1, Bn...> : std::conditional_t<B1::value, conjunction<Bn...>, B1> {};
+            struct conjunction<B1, Bn...> : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
             constexpr bool conjunction_v = conjunction<Bs...>::value;
 
@@ -92,7 +92,9 @@ __pragma(push_macro("min"))
             using std::remove_cvref_t;
 #endif
 
-#if __cplusplus < 202312L  // before C++23
+#if 1  // proposed but not pursued                                                                                     \
+    // is_specialization_of: https://github.com/cplusplus/papers/issues/812
+
             template<typename Type, template<typename...> class Primary>
             SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
 
@@ -115,6 +117,8 @@ __pragma(push_macro("min"))
             using index_constant = std::integral_constant<size_t, I>;
         }
     }
+
+    namespace polyfill = internal::polyfill;
 }
 
 namespace sqlite_orm {
@@ -1733,16 +1737,6 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
-
-            template<class O, class F>
-            const std::string* column_name(F O::*) const {
-                return nullptr;
-            }
-
-            template<class T, class F>
-            const std::string* column_name(const column_pointer<T, F>&) const {
-                return nullptr;
-            }
         };
 
         template<class I>
@@ -1772,24 +1766,208 @@ namespace sqlite_orm {
 
 }
 
+// #include "storage_lookup.h"
+
+#include <type_traits>
+
+// #include "cxx_polyfill.h"
+
+// #include "type_traits.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<class... Ts>
+        struct storage_t;
+
+        template<class... Ts>
+        struct storage_impl;
+
+        template<class T>
+        struct is_storage : std::false_type {};
+
+        template<class... Ts>
+        struct is_storage<storage_t<Ts...>> : std::true_type {};
+        template<class... Ts>
+        struct is_storage<const storage_t<Ts...>> : std::true_type {};
+
+        template<class T>
+        struct is_storage_impl : std::false_type {};
+
+        template<class... Ts>
+        struct is_storage_impl<storage_impl<Ts...>> : std::true_type {};
+        template<class... Ts>
+        struct is_storage_impl<const storage_impl<Ts...>> : std::true_type {};
+
+        /**
+         *  std::true_type if given 'table' type matches, std::false_type otherwise.
+         *  
+         *  A 'table' type is one of: table_t<>, index_t<>
+         */
+        template<typename S, typename T>
+        using table_type_matches = std::is_same<T, table_type_t<S>>;
+
+        /**
+         *  std::true_type if given object is mapped, std::false_type otherwise.
+         * 
+         *  Note: unlike table_t<>, index_t<>::object_type is always void.
+         */
+        template<typename S, typename O>
+        using object_type_matches =
+            typename polyfill::conjunction<polyfill::negation<std::is_void<storage_object_type_t<S>>>,
+                                           std::is_same<O, storage_object_type_t<S>>>::type;
+
+        /**
+         *  std::true_type if given lookup type ('table' type, object) is mapped, std::false_type otherwise.
+         * 
+         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain (in storage_impl_cat()).
+         */
+        template<typename S, typename Lookup>
+        using lookup_type_matches =
+            typename polyfill::disjunction<table_type_matches<S, Lookup>, object_type_matches<S, Lookup>>::type;
+    }
+
+    // pick/lookup metafunctions
+    namespace internal {
+
+        /**
+         *  S - storage_impl type
+         *  O - mapped data type
+         */
+        template<class S, class O, class SFINAE = void>
+        struct storage_pick_impl_type;
+
+        template<class S, class O>
+        struct storage_pick_impl_type<S, O, match_if<lookup_type_matches, S, O>> {
+            using type = S;
+        };
+
+        template<class S, class O>
+        struct storage_pick_impl_type<S, O, match_if_not<lookup_type_matches, S, O>>
+            : storage_pick_impl_type<typename S::super, O> {};
+
+        /**
+         *  Final specialisation
+         */
+        template<class O>
+        struct storage_pick_impl_type<storage_impl<>, O, void> {};
+
+        /**
+         *  storage_t specialization
+         */
+        template<class... Ts, class O>
+        struct storage_pick_impl_type<storage_t<Ts...>, O, void>
+            : storage_pick_impl_type<typename storage_t<Ts...>::impl_type, O> {};
+
+        /**
+         *  S - storage_impl type
+         *  O - mapped data type
+         */
+        template<class S, class O, class SFINAE = void>
+        struct storage_find_impl_type;
+
+        template<class S, class O>
+        struct storage_find_impl_type<S, O, match_if<lookup_type_matches, S, O>> {
+            using type = S;
+        };
+
+        template<class S, class O>
+        struct storage_find_impl_type<S, O, match_if_not<lookup_type_matches, S, O>>
+            : storage_find_impl_type<typename S::super, O> {};
+
+        /**
+         *  Final specialisation
+         */
+        template<class O>
+        struct storage_find_impl_type<storage_impl<>, O, void> {
+            using type = storage_impl<>;
+        };
+
+        /**
+         *  storage_t specialization
+         */
+        template<class... Ts, class O>
+        struct storage_find_impl_type<storage_t<Ts...>, O, void>
+            : storage_find_impl_type<typename storage_t<Ts...>::impl_type, O> {};
+    }
+
+    namespace internal {
+
+        template<typename T, typename U>
+        using reapply_const_of_t = std::conditional_t<std::is_const<T>::value, std::add_const_t<U>, U>;
+
+        /**
+         *  S - storage_t or storage_impl type, possibly const-qualified
+         *  Lookup - 'table' type, mapped data type
+         */
+        template<class S, class Lookup>
+        using storage_pick_impl_t =
+            reapply_const_of_t<S, type_t<storage_pick_impl_type<std::remove_const_t<S>, Lookup>>>;
+
+        /**
+         *  S - storage_t or storage_impl type, possibly const-qualified
+         *  Lookup - 'table' type, mapped data type
+         */
+        template<class S, class Lookup>
+        using storage_find_impl_t =
+            reapply_const_of_t<S, type_t<storage_find_impl_type<std::remove_const_t<S>, Lookup>>>;
+    }
+}
+
+// runtime lookup functions
+namespace sqlite_orm {
+    namespace internal {
+        /**
+         *  Given a storage implementation pack, pick the specific storage implementation for the given lookup type.
+         * 
+         *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
+         */
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        storage_pick_impl_t<S, Lookup>& pick_impl(S& impl) {
+            return impl;
+        }
+
+        /**
+         *  Given a storage implementation pack, find the specific storage implementation for the given lookup type.
+         * 
+         *  Note: This function returns the empty `storage_impl<>` if Lookup isn't mapped.
+         */
+        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
+        storage_find_impl_t<S, Lookup>& find_impl(S& impl) {
+            return impl;
+        }
+
+        /**
+         *  Given a storage, pick the specific const-qualified storage implementation for the lookup type.
+         * 
+         *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
+         */
+        template<class Lookup, class S, satisfies<is_storage, S> = true>
+        storage_pick_impl_t<const S, Lookup>& pick_const_impl(S& storage) {
+            return obtain_const_impl(storage);
+        }
+    }
+}
+
 namespace sqlite_orm {
 
     namespace internal {
 
         /**
-         *  This class is used in tuple interation to know whether tuple constains `default_value_t`
+         *  This class is used in tuple iteration to know whether tuple constains `default_value_t`
          *  constraint class and what it's value if it is
          */
         struct default_value_extractor {
 
             template<class A>
-            std::unique_ptr<std::string> operator()(const A&) {
+            std::unique_ptr<std::string> operator()(const A&) const {
                 return {};
             }
 
             template<class T>
-            std::unique_ptr<std::string> operator()(const default_t<T>& t) {
-                serializator_context_base context;
+            std::unique_ptr<std::string> operator()(const default_t<T>& t) const {
+                storage_impl<> storage;
+                serializator_context<storage_impl<>> context{storage};
                 return std::make_unique<std::string>(serialize(t.value, context));
             }
         };
@@ -2269,8 +2447,7 @@ namespace sqlite_orm {
             std::unique_ptr<std::string> default_value() const {
                 std::unique_ptr<std::string> res;
                 iterate_tuple(this->constraints, [&res](auto& v) {
-                    auto dft = internal::default_value_extractor()(v);
-                    if(dft) {
+                    if(auto dft = default_value_extractor()(v)) {
                         res = std::move(dft);
                     }
                 });
@@ -2619,7 +2796,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
     struct field_printer<T,
-                         std::enable_if_t<internal::polyfill::is_specialization_of_v<T, std::optional> &&
+                         std::enable_if_t<polyfill::is_specialization_of_v<T, std::optional> &&
                                           internal::is_printable_v<std::remove_cv_t<typename T::value_type>>>> {
         using unqualified_type = std::remove_cv_t<typename T::value_type>;
 
@@ -7481,7 +7658,7 @@ namespace sqlite_orm {
      */
     template<typename D, typename P>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) noexcept requires(internal::is_unusable_for_xdestroy<D>) {
-        static_assert(internal::polyfill::always_false_v<D>,
+        static_assert(polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
@@ -7524,7 +7701,7 @@ namespace sqlite_orm {
 #else
     template<typename D, typename P, std::enable_if_t<internal::is_unusable_for_xdestroy_v<D>, bool> = true>
     constexpr xdestroy_fn_t obtain_xdestroy_for(D, P*) {
-        static_assert(internal::polyfill::always_false_v<D>,
+        static_assert(polyfill::always_false_v<D>,
                       "A function pointer, which is not of type xdestroy_fn_t, is prohibited.");
         return nullptr;
     }
@@ -7962,7 +8139,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class V>
     struct statement_binder<V,
-                            std::enable_if_t<internal::polyfill::is_specialization_of_v<V, std::optional> &&
+                            std::enable_if_t<polyfill::is_specialization_of_v<V, std::optional> &&
                                              internal::is_bindable_v<std::remove_cv_t<typename V::value_type>>>> {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
@@ -8321,7 +8498,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class V>
-    struct row_extractor<V, std::enable_if_t<internal::polyfill::is_specialization_of_v<V, std::optional>>> {
+    struct row_extractor<V, std::enable_if_t<polyfill::is_specialization_of_v<V, std::optional>>> {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
         V extract(const char* row_value) const {
@@ -8799,187 +8976,6 @@ namespace sqlite_orm {
 // #include "type_traits.h"
 
 // #include "storage_lookup.h"
-
-#include <type_traits>
-
-// #include "cxx_polyfill.h"
-
-// #include "type_traits.h"
-
-namespace sqlite_orm {
-    namespace internal {
-
-        template<class... Ts>
-        struct storage_t;
-
-        template<class... Ts>
-        struct storage_impl;
-
-        template<class T>
-        struct is_storage : std::false_type {};
-
-        template<class... Ts>
-        struct is_storage<storage_t<Ts...>> : std::true_type {};
-        template<class... Ts>
-        struct is_storage<const storage_t<Ts...>> : std::true_type {};
-
-        template<class T>
-        struct is_storage_impl : std::false_type {};
-
-        template<class... Ts>
-        struct is_storage_impl<storage_impl<Ts...>> : std::true_type {};
-        template<class... Ts>
-        struct is_storage_impl<const storage_impl<Ts...>> : std::true_type {};
-
-        /**
-         *  std::true_type if given 'table' type matches, std::false_type otherwise.
-         *  
-         *  A 'table' type is one of: table_t<>, index_t<>
-         */
-        template<typename S, typename T>
-        using table_type_matches = std::is_same<T, table_type_t<S>>;
-
-        /**
-         *  std::true_type if given object is mapped, std::false_type otherwise.
-         * 
-         *  Note: unlike table_t<>, index_t<>::object_type is always void.
-         */
-        template<typename S, typename O>
-        using object_type_matches =
-            typename polyfill::conjunction<polyfill::negation<std::is_void<storage_object_type_t<S>>>,
-                                           std::is_same<O, storage_object_type_t<S>>>::type;
-
-        /**
-         *  std::true_type if given lookup type ('table' type, object) is mapped, std::false_type otherwise.
-         * 
-         *  Note: we allow lookup via S::table_type because it allows us to walk the storage_impl chain (in storage_impl_cat()).
-         */
-        template<typename S, typename Lookup>
-        using lookup_type_matches =
-            typename polyfill::disjunction<table_type_matches<S, Lookup>, object_type_matches<S, Lookup>>::type;
-    }
-
-    // pick/lookup metafunctions
-    namespace internal {
-
-        /**
-         *  S - storage_impl type
-         *  O - mapped data type
-         */
-        template<class S, class O, class SFINAE = void>
-        struct storage_pick_impl_type;
-
-        template<class S, class O>
-        struct storage_pick_impl_type<S, O, match_if<lookup_type_matches, S, O>> {
-            using type = S;
-        };
-
-        template<class S, class O>
-        struct storage_pick_impl_type<S, O, match_if_not<lookup_type_matches, S, O>>
-            : storage_pick_impl_type<typename S::super, O> {};
-
-        /**
-         *  Final specialisation
-         */
-        template<class O>
-        struct storage_pick_impl_type<storage_impl<>, O, void> {};
-
-        /**
-         *  storage_t specialization
-         */
-        template<class... Ts, class O>
-        struct storage_pick_impl_type<storage_t<Ts...>, O, void>
-            : storage_pick_impl_type<typename storage_t<Ts...>::impl_type, O> {};
-
-        /**
-         *  S - storage_impl type
-         *  O - mapped data type
-         */
-        template<class S, class O, class SFINAE = void>
-        struct storage_find_impl_type;
-
-        template<class S, class O>
-        struct storage_find_impl_type<S, O, match_if<lookup_type_matches, S, O>> {
-            using type = S;
-        };
-
-        template<class S, class O>
-        struct storage_find_impl_type<S, O, match_if_not<lookup_type_matches, S, O>>
-            : storage_find_impl_type<typename S::super, O> {};
-
-        /**
-         *  Final specialisation
-         */
-        template<class O>
-        struct storage_find_impl_type<storage_impl<>, O, void> {
-            using type = storage_impl<>;
-        };
-
-        /**
-         *  storage_t specialization
-         */
-        template<class... Ts, class O>
-        struct storage_find_impl_type<storage_t<Ts...>, O, void>
-            : storage_find_impl_type<typename storage_t<Ts...>::impl_type, O> {};
-    }
-
-    namespace internal {
-
-        template<typename T, typename U>
-        using reapply_const_of_t = std::conditional_t<std::is_const<T>::value, std::add_const_t<U>, U>;
-
-        /**
-         *  S - storage_t or storage_impl type, possibly const-qualified
-         *  Lookup - 'table' type, mapped data type
-         */
-        template<class S, class Lookup>
-        using storage_pick_impl_t =
-            reapply_const_of_t<S, type_t<storage_pick_impl_type<std::remove_const_t<S>, Lookup>>>;
-
-        /**
-         *  S - storage_t or storage_impl type, possibly const-qualified
-         *  Lookup - 'table' type, mapped data type
-         */
-        template<class S, class Lookup>
-        using storage_find_impl_t =
-            reapply_const_of_t<S, type_t<storage_find_impl_type<std::remove_const_t<S>, Lookup>>>;
-    }
-}
-
-// runtime lookup functions
-namespace sqlite_orm {
-    namespace internal {
-        /**
-         *  Given a storage implementation pack, pick the specific storage implementation for the given lookup type.
-         * 
-         *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
-         */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        storage_pick_impl_t<S, Lookup>& pick_impl(S& impl) {
-            return impl;
-        }
-
-        /**
-         *  Given a storage implementation pack, find the specific storage implementation for the given lookup type.
-         * 
-         *  Note: This function returns the empty `storage_impl<>` if Lookup isn't mapped.
-         */
-        template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
-        storage_find_impl_t<S, Lookup>& find_impl(S& impl) {
-            return impl;
-        }
-
-        /**
-         *  Given a storage, pick the specific const-qualified storage implementation for the lookup type.
-         * 
-         *  Note: This function requires Lookup to be mapped, otherwise it is removed from the overload resolution set.
-         */
-        template<class Lookup, class S, satisfies<is_storage, S> = true>
-        storage_pick_impl_t<const S, Lookup>& pick_const_impl(S& storage) {
-            return obtain_const_impl(storage);
-        }
-    }
-}
 
 // #include "tuple_helper/tuple_transformer.h"
 
@@ -9583,7 +9579,7 @@ namespace sqlite_orm {
         static_assert((argsCount == functionArgsCount &&
                        !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
                        internal::validate_pointer_value_types<function_args_tuple, args_tuple>(
-                           internal::polyfill::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
+                           polyfill::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
                           std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
                       "Number of arguments does not match");
         return {std::make_tuple(std::forward<Args>(args)...)};
@@ -14517,8 +14513,8 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        template<class T, class C>
-        std::string serialize(const T& t, const C& context);
+        template<class T, class I>
+        std::string serialize(const T& t, const serializator_context<I>& context);
 
         template<class T, class SFINAE = void>
         struct column_names_getter {
@@ -14703,8 +14699,8 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct statement_serializator;
 
-        template<class T, class C>
-        std::string serialize(const T& t, const C& context) {
+        template<class T, class I>
+        std::string serialize(const T& t, const serializator_context<I>& context) {
             statement_serializator<T> serializator;
             return serializator(t, context);
         }
@@ -14713,7 +14709,7 @@ namespace sqlite_orm {
          *  Serializer for bindable types.
          */
         template<class T>
-        struct statement_serializator<T, std::enable_if_t<is_bindable_v<T>>> {
+        struct statement_serializator<T, match_if<is_bindable, T>> {
             using statement_type = T;
 
             template<class C>
