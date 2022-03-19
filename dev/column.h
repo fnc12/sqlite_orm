@@ -86,8 +86,7 @@ namespace sqlite_orm {
             std::unique_ptr<std::string> default_value() const {
                 std::unique_ptr<std::string> res;
                 iterate_tuple(this->constraints, [&res](auto& v) {
-                    auto dft = internal::default_value_extractor()(v);
-                    if(dft) {
+                    if(auto dft = default_value_extractor()(v)) {
                         res = std::move(dft);
                     }
                 });

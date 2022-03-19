@@ -45,8 +45,8 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct statement_serializator;
 
-        template<class T, class C>
-        std::string serialize(const T& t, const C& context) {
+        template<class T, class I>
+        std::string serialize(const T& t, const serializator_context<I>& context) {
             statement_serializator<T> serializator;
             return serializator(t, context);
         }
@@ -55,7 +55,7 @@ namespace sqlite_orm {
          *  Serializer for bindable types.
          */
         template<class T>
-        struct statement_serializator<T, std::enable_if_t<is_bindable_v<T>>> {
+        struct statement_serializator<T, match_if<is_bindable, T>> {
             using statement_type = T;
 
             template<class C>

@@ -8,16 +8,6 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
-
-            template<class O, class F>
-            const std::string* column_name(F O::*) const {
-                return nullptr;
-            }
-
-            template<class T, class F>
-            const std::string* column_name(const column_pointer<T, F>&) const {
-                return nullptr;
-            }
         };
 
         template<class I>
