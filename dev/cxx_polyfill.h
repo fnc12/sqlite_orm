@@ -16,7 +16,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct conjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct conjunction<B1, Bn...> : std::conditional_t<B1::value, conjunction<Bn...>, B1> {};
+            struct conjunction<B1, Bn...> : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
             constexpr bool conjunction_v = conjunction<Bs...>::value;
 
@@ -53,7 +53,9 @@ namespace sqlite_orm {
             using std::remove_cvref_t;
 #endif
 
-#if __cplusplus < 202312L  // before C++23
+#if 1  // proposed but not pursued                                                                                     \
+    // is_specialization_of: https://github.com/cplusplus/papers/issues/812
+
             template<typename Type, template<typename...> class Primary>
             SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
 
