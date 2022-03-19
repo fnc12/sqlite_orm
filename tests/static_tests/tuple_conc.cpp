@@ -10,52 +10,50 @@ TEST_CASE("Tuple conc") {
     {
         using TupleL = std::tuple<int>;
         using TupleR = std::tuple<std::string>;
-        using ConcRes = conc_tuple<TupleL, TupleR>::type;
-        static_assert(std::is_same<ConcRes, std::tuple<int, std::string>>::value, "int + string didn't work");
+        using IntStringTuple = conc_tuple<TupleL, TupleR>::type;
+        STATIC_REQUIRE(std::is_same<IntStringTuple, std::tuple<int, std::string>>::value);
     }
     {
         using TupleL = std::tuple<int>;
         using TupleR = std::tuple<float>;
-        using ConcRes = conc_tuple<TupleL, TupleR>::type;
-        static_assert(std::is_same<ConcRes, std::tuple<int, float>>::value, "int + float didn't work");
+        using IntFloatTuple = conc_tuple<TupleL, TupleR>::type;
+        STATIC_REQUIRE(std::is_same<IntFloatTuple, std::tuple<int, float>>::value);
     }
     {
         using TupleL = std::tuple<>;
         using TupleR = std::tuple<float>;
-        using ConcRes = conc_tuple<TupleL, TupleR>::type;
-        static_assert(std::is_same<ConcRes, std::tuple<float>>::value, "none + float didn't work");
+        using NoneFloatTuple = conc_tuple<TupleL, TupleR>::type;
+        STATIC_REQUIRE(std::is_same<NoneFloatTuple, std::tuple<float>>::value);
     }
     {
         using TupleL = std::tuple<>;
         using TupleR = std::tuple<>;
-        using ConcRes = conc_tuple<TupleL, TupleR>::type;
-        static_assert(std::is_same<ConcRes, std::tuple<>>::value, "none + none didn't work");
+        using NoneNoneTuple = conc_tuple<TupleL, TupleR>::type;
+        STATIC_REQUIRE(std::is_same<NoneNoneTuple, std::tuple<>>::value);
     }
     {
         using TupleL = std::tuple<int, float>;
         using TupleR = std::tuple<double>;
-        using ConcRes = conc_tuple<TupleL, TupleR>::type;
-        static_assert(std::is_same<ConcRes, std::tuple<int, float, double>>::value, "int, float + double didn't work");
+        using IntFloatDoubleTuple = conc_tuple<TupleL, TupleR>::type;
+        STATIC_REQUIRE(std::is_same<IntFloatDoubleTuple, std::tuple<int, float, double>>::value);
     }
     {
         using Arg = std::tuple<int>;
-        using ConcRes = conc_tuple<Arg>::type;
-        static_assert(std::is_same<Arg, ConcRes>::value, "Single argument is incorrect");
+        using SingleArgTuple = conc_tuple<Arg>::type;
+        STATIC_REQUIRE(std::is_same<Arg, SingleArgTuple>::value);
     }
     {
         using Arg1 = std::tuple<int>;
         using Arg2 = std::tuple<float>;
         using Arg3 = std::tuple<std::string>;
-        using ConcRes = conc_tuple<Arg1, Arg2, Arg3>::type;
-        using Expected = std::tuple<int, float, std::string>;
-        static_assert(std::is_same<Expected, ConcRes>::value, "int + float + std::string");
+        using IntFloatStringTuple = conc_tuple<Arg1, Arg2, Arg3>::type;
+        STATIC_REQUIRE(std::is_same<IntFloatStringTuple, std::tuple<int, float, std::string>>::value);
     }
     {
         using Arg1 = std::tuple<int>;
         using Arg2 = std::tuple<float>;
         using Arg3 = std::tuple<>;
-        using ConcRes = conc_tuple<Arg1, Arg2, Arg3>::type;
-        using Expected = std::tuple<int, float>;
-        static_assert(std::is_same<Expected, ConcRes>::value, "int + float + (empty)");
+        using IntFloatEmptyTuple = conc_tuple<Arg1, Arg2, Arg3>::type;
+        STATIC_REQUIRE(std::is_same<IntFloatEmptyTuple, std::tuple<int, float>>::value);
     }
 }

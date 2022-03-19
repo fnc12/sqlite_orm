@@ -25,48 +25,47 @@ TEST_CASE("is_printable") {
     struct User {
         int id;
     };
-    static_assert(is_printable_v<bool>, "bool must be printable");
-    static_assert(is_printable_v<char>, "char must be printable");
-    static_assert(is_printable_v<signed char>, "char must be printable");
-    static_assert(is_printable_v<unsigned char>, "char must be printable");
-    static_assert(is_printable_v<short>, "short must be printable");
-    static_assert(is_printable_v<unsigned short>, "short must be printable");
-    static_assert(is_printable_v<int>, "int must be printable");
-    static_assert(is_printable_v<unsigned int>, "int must be printable");
-    static_assert(is_printable_v<long>, "long must be printable");
-    static_assert(is_printable_v<unsigned long>, "long must be printable");
-    static_assert(is_printable_v<float>, "float must be printable");
-    static_assert(is_printable_v<long long>, "long long must be printable");
-    static_assert(is_printable_v<unsigned long long>, "long long must be printable");
-    static_assert(is_printable_v<double>, "double must be printable");
-    static_assert(!is_printable_v<const char*>, "C string must not be printable");
-    static_assert(is_printable_v<std::string>, "string must be printable");
-    static_assert(is_printable_v<StringVeneer<char>>, "Derived string must be printable");
+    STATIC_REQUIRE(is_printable_v<bool>);
+    STATIC_REQUIRE(is_printable_v<char>);
+    STATIC_REQUIRE(is_printable_v<signed char>);
+    STATIC_REQUIRE(is_printable_v<unsigned char>);
+    STATIC_REQUIRE(is_printable_v<short>);
+    STATIC_REQUIRE(is_printable_v<unsigned short>);
+    STATIC_REQUIRE(is_printable_v<int>);
+    STATIC_REQUIRE(is_printable_v<unsigned int>);
+    STATIC_REQUIRE(is_printable_v<long>);
+    STATIC_REQUIRE(is_printable_v<unsigned long>);
+    STATIC_REQUIRE(is_printable_v<float>);
+    STATIC_REQUIRE(is_printable_v<long long>);
+    STATIC_REQUIRE(is_printable_v<unsigned long long>);
+    STATIC_REQUIRE(is_printable_v<double>);
+    STATIC_REQUIRE(!is_printable_v<const char*>);
+    STATIC_REQUIRE(is_printable_v<std::string>);
+    STATIC_REQUIRE(is_printable_v<StringVeneer<char>>);
 #ifndef SQLITE_ORM_OMITS_CODECVT
-    static_assert(!is_printable_v<const wchar_t*>, "wide C string must not be printable");
-    static_assert(is_printable_v<std::wstring>, "wstring must be printable");
-    static_assert(is_printable_v<StringVeneer<wchar_t>>, "Derived wstring must be printable");
+    STATIC_REQUIRE(!is_printable_v<const wchar_t*>);
+    STATIC_REQUIRE(is_printable_v<std::wstring>);
+    STATIC_REQUIRE(is_printable_v<StringVeneer<wchar_t>>);
 #endif
-    static_assert(is_printable_v<std::nullptr_t>, "null must be printable");
-    static_assert(is_printable_v<std::unique_ptr<int>>, "unique_ptr must be printable");
-    static_assert(is_printable_v<std::shared_ptr<int>>, "shared_ptr must be printable");
+    STATIC_REQUIRE(is_printable_v<std::nullptr_t>);
+    STATIC_REQUIRE(is_printable_v<std::unique_ptr<int>>);
+    STATIC_REQUIRE(is_printable_v<std::shared_ptr<int>>);
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-    static_assert(!is_printable_v<std::string_view>, "string view must not be printable");
-    static_assert(!is_printable_v<std::wstring_view>, "wstring view must not be printable");
+    STATIC_REQUIRE(!is_printable_v<std::string_view>);
+    STATIC_REQUIRE(!is_printable_v<std::wstring_view>);
 #endif
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    static_assert(is_printable_v<std::nullopt_t>, "nullopt must be printable");
-    static_assert(is_printable_v<std::optional<int>>, "optional must be printable");
-    static_assert(is_printable_v<std::optional<Custom>>, "optional<Custom> must be printable");
-    static_assert(!is_printable_v<std::optional<User>>, "optional<User> cannot be printable");
+    STATIC_REQUIRE(is_printable_v<std::nullopt_t>);
+    STATIC_REQUIRE(is_printable_v<std::optional<int>>);
+    STATIC_REQUIRE(is_printable_v<std::optional<Custom>>);
+    STATIC_REQUIRE(!is_printable_v<std::optional<User>>);
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-    static_assert(!is_printable_v<static_pointer_binding<nullptr_t, carray_pvt>>,
-                  "pointer binding must not be printable");
+    STATIC_REQUIRE(!is_printable_v<static_pointer_binding<nullptr_t, carray_pvt>>);
 
-    static_assert(is_printable_v<Custom>, "Custom must be printable");
-    static_assert(is_printable_v<std::unique_ptr<Custom>>, "unique_ptr<Custom> must be printable");
+    STATIC_REQUIRE(is_printable_v<Custom>);
+    STATIC_REQUIRE(is_printable_v<std::unique_ptr<Custom>>);
 
-    static_assert(!is_printable_v<void>, "void cannot be printable");
-    static_assert(!is_printable_v<User>, "User cannot be printable");
-    static_assert(!is_printable_v<std::unique_ptr<User>>, "unique_ptr<User> cannot be printable");
+    STATIC_REQUIRE(!is_printable_v<void>);
+    STATIC_REQUIRE(!is_printable_v<User>);
+    STATIC_REQUIRE(!is_printable_v<std::unique_ptr<User>>);
 }

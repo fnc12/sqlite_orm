@@ -604,20 +604,13 @@ namespace sqlite_orm {
             using type = A;
         };
 
-        template<class A, class B>
-        struct same_or_void<A, B> {
-            using type = void;
-        };
-
         template<class A>
         struct same_or_void<A, A> {
             using type = A;
         };
 
         template<class A, class... Args>
-        struct same_or_void<A, A, Args...> {
-            using type = typename same_or_void<A, Args...>::type;
-        };
+        struct same_or_void<A, A, Args...> : same_or_void<A, Args...> {};
 
     }
 }
