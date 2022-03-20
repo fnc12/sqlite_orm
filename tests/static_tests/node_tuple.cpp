@@ -387,16 +387,14 @@ TEST_CASE("Node tuple") {
             replace(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, std::string("Ellie"))));
         using Expression = decltype(expression);
         using Tuple = node_tuple<Expression>::type;
-        static_assert(is_same<Tuple, std::tuple<decltype(&User::id), decltype(&User::name), int, std::string>>::value,
-                      "");
+        STATIC_REQUIRE(is_same<Tuple, std::tuple<decltype(&User::id), decltype(&User::name), int, std::string>>::value);
     }
     SECTION("insert_raw_t") {
         auto expression =
             insert(into<User>(), columns(&User::id, &User::name), values(std::make_tuple(1, std::string("Ellie"))));
         using Expression = decltype(expression);
         using Tuple = node_tuple<Expression>::type;
-        static_assert(is_same<Tuple, std::tuple<decltype(&User::id), decltype(&User::name), int, std::string>>::value,
-                      "");
+        STATIC_REQUIRE(is_same<Tuple, std::tuple<decltype(&User::id), decltype(&User::name), int, std::string>>::value);
     }
     SECTION("tuple") {
         auto expression = std::make_tuple(1, std::string("hi"));

@@ -726,7 +726,7 @@ TEST_CASE("obtain_xdestroy_for") {
         };
         using lambda4_2_t = std::remove_const_t<decltype(lambda4_2)>;
         constexpr xdestroy_fn_t xDestroy4_2 = obtain_xdestroy_for(lambda4_2, int_nullptr);
-        static_assert(xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>);
+        STATIC_REQUIRE(xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>);
         REQUIRE((xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>));
 #endif
 
