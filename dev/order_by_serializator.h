@@ -28,15 +28,15 @@ namespace sqlite_orm {
                 newContext.skip_table_name = false;
                 auto columnName = serialize(orderBy.expression, newContext);
                 ss << columnName << " ";
-                if(orderBy._collate_argument.length()) {
-                    ss << "COLLATE " << orderBy._collate_argument << " ";
+                if(!orderBy._collate_argument.empty()) {
+                    ss << " COLLATE " << orderBy._collate_argument;
                 }
                 switch(orderBy.asc_desc) {
                     case 1:
-                        ss << "ASC";
+                        ss << " ASC";
                         break;
                     case -1:
-                        ss << "DESC";
+                        ss << " DESC";
                         break;
                 }
                 return ss.str();
