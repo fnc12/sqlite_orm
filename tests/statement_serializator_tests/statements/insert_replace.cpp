@@ -262,25 +262,22 @@ TEST_CASE("statement_serializator insert/replace") {
                     auto statement =
                         insert(or_abort(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
-                    expected =
-                        "INSERT OR ABORT INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
-                        "'users_backup'";
+                    expected = "INSERT OR ABORT INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
+                               "'users_backup'";
                 }
                 SECTION("or fail") {
                     auto statement =
                         insert(or_fail(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
-                    expected =
-                        "INSERT OR FAIL INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
-                        "'users_backup'";
+                    expected = "INSERT OR FAIL INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
+                               "'users_backup'";
                 }
                 SECTION("or ignore") {
                     auto statement =
                         insert(or_ignore(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
-                    expected =
-                        "INSERT OR IGNORE INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
-                        "'users_backup'";
+                    expected = "INSERT OR IGNORE INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
+                               "'users_backup'";
                 }
                 SECTION("or replace") {
                     auto statement =
