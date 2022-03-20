@@ -316,7 +316,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& m, const C& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << "\"" << context.impl.find_table_name(typeid(O)) << "\".";
+                    ss << "'" << context.impl.find_table_name(typeid(O)) << "'.";
                 }
                 if(auto columnnamePointer = context.column_name(m)) {
                     ss << "\"" << *columnnamePointer << "\"";

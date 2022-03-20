@@ -63,7 +63,7 @@ TEST_CASE("statement_serializator insert/replace") {
                 auto statement = replace(into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                 value = serialize(statement, context);
                 expected =
-                    "REPLACE INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM 'users_backup'";
+                    "REPLACE INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM 'users_backup'";
             }
         }
     }
@@ -255,7 +255,7 @@ TEST_CASE("statement_serializator insert/replace") {
                 SECTION("no constraint") {
                     auto statement = insert(into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
-                    expected = "INSERT INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
+                    expected = "INSERT INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
                                "'users_backup'";
                 }
                 SECTION("or abort") {
@@ -263,7 +263,7 @@ TEST_CASE("statement_serializator insert/replace") {
                         insert(or_abort(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
                     expected =
-                        "INSERT OR ABORT INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
+                        "INSERT OR ABORT INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
                         "'users_backup'";
                 }
                 SECTION("or fail") {
@@ -271,7 +271,7 @@ TEST_CASE("statement_serializator insert/replace") {
                         insert(or_fail(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
                     expected =
-                        "INSERT OR FAIL INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
+                        "INSERT OR FAIL INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
                         "'users_backup'";
                 }
                 SECTION("or ignore") {
@@ -279,7 +279,7 @@ TEST_CASE("statement_serializator insert/replace") {
                         insert(or_ignore(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
                     expected =
-                        "INSERT OR IGNORE INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
+                        "INSERT OR IGNORE INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
                         "'users_backup'";
                 }
                 SECTION("or replace") {
@@ -287,7 +287,7 @@ TEST_CASE("statement_serializator insert/replace") {
                         insert(or_replace(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
                     expected =
-                        "INSERT OR REPLACE INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
+                        "INSERT OR REPLACE INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
                         "'users_backup'";
                 }
                 SECTION("or rollback") {
@@ -295,7 +295,7 @@ TEST_CASE("statement_serializator insert/replace") {
                         insert(or_rollback(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
                     expected =
-                        "INSERT OR ROLLBACK INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
+                        "INSERT OR ROLLBACK INTO users SELECT 'users_backup'.\"id\", 'users_backup'.\"name\" FROM "
                         "'users_backup'";
                 }
             }

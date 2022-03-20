@@ -23,7 +23,7 @@ TEST_CASE("statement_serializator column names") {
                 SECTION("don't skip table name") {
                     context.skip_table_name = false;
                     auto value = serialize(&User::id, context);
-                    REQUIRE(value == "\"users\".\"id\"");
+                    REQUIRE(value == "'users'.\"id\"");
                 }
             }
             SECTION("name") {

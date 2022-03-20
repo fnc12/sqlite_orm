@@ -80,12 +80,12 @@ TEST_CASE("statement_serializator select_t") {
             SECTION("!highest_level") {
                 statement.highest_level = false;
                 stringValue = serialize(statement, context);
-                expected = "(SELECT \"users\".\"id\" FROM 'users')";
+                expected = "(SELECT 'users'.\"id\" FROM 'users')";
             }
             SECTION("highest_level") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
-                expected = "SELECT \"users\".\"id\" FROM 'users'";
+                expected = "SELECT 'users'.\"id\" FROM 'users'";
             }
         }
         SECTION("null") {
