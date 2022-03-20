@@ -47,8 +47,8 @@ namespace sqlite_orm {
 
         template<class T, class C>
         std::string serialize(const T& t, const C& context) {
-            statement_serializator<T> serializator;
-            return serializator(t, context);
+            statement_serializator<T> serializer;
+            return serializer(t, context);
         }
 
         /**

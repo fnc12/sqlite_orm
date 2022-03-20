@@ -34,8 +34,8 @@ namespace sqlite_orm {
 
         template<class T, class C>
         std::vector<std::string> get_column_names(const T& t, const C& context) {
-            column_names_getter<T> serializator;
-            return serializator(t, context);
+            column_names_getter<T> serializer;
+            return serializer(t, context);
         }
 
         template<class T>

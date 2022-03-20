@@ -13,8 +13,8 @@ namespace sqlite_orm {
 
         template<class T, class C>
         std::string serialize_order_by(const T& t, const C& context) {
-            order_by_serializator<T> serializator;
-            return serializator(t, context);
+            order_by_serializator<T> serializer;
+            return serializer(t, context);
         }
 
         template<class O>
