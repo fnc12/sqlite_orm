@@ -49,14 +49,22 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct column_names_getter<asterisk_t<T>, void> {
+        struct column_names_getter<asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
             using expression_type = asterisk_t<T>;
 
             template<class C>
-            std::vector<std::string> operator()(const expression_type&, const C&) const {
-                std::vector<std::string> res;
-                res.push_back("*");
-                return res;
+            std::vector<std::string> operator()(const expression_type&, const C&) {
+                return {"*"};
+            }
+        };
+
+        template<class A>
+        struct column_names_getter<asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
+            using expression_type = asterisk_t<A>;
+
+            template<class C>
+            std::vector<std::string> operator()(const expression_type&, const C&) {
+                return {"'" + alias_extractor<A>::get() + "'.*"};
             }
         };
 
@@ -66,9 +74,7 @@ namespace sqlite_orm {
 
             template<class C>
             std::vector<std::string> operator()(const expression_type&, const C&) const {
-                std::vector<std::string> res;
-                res.push_back("*");
-                return res;
+                return {"*"};
             }
         };
 
