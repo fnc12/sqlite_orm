@@ -144,7 +144,7 @@ namespace sqlite_orm {
             using statement_type = excluded_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& statement, const C& context) {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 std::stringstream ss;
                 ss << "excluded.";
                 if(auto columnNamePointer = find_column_name(context.impl, statement.expression)) {
@@ -161,7 +161,7 @@ namespace sqlite_orm {
             using statement_type = as_optional_t<T>;
 
             template<class C>
-            std::string operator()(const statement_type& statement, const C& context) {
+            std::string operator()(const statement_type& statement, const C& context) const {
                 return serialize(statement.value, context);
             }
         };
@@ -171,7 +171,7 @@ namespace sqlite_orm {
             using statement_type = std::reference_wrapper<T>;
 
             template<class C>
-            std::string operator()(const statement_type& s, const C& context) {
+            std::string operator()(const statement_type& s, const C& context) const {
                 return serialize(s.get(), context);
             }
         };
@@ -332,7 +332,7 @@ namespace sqlite_orm {
             using statement_type = rowid_t;
 
             template<class C>
-            std::string operator()(const statement_type& s, const C&) {
+            std::string operator()(const statement_type& s, const C&) const {
                 return static_cast<std::string>(s);
             }
         };
@@ -342,7 +342,7 @@ namespace sqlite_orm {
             using statement_type = oid_t;
 
             template<class C>
-            std::string operator()(const statement_type& s, const C&) {
+            std::string operator()(const statement_type& s, const C&) const {
                 return static_cast<std::string>(s);
             }
         };
@@ -352,7 +352,7 @@ namespace sqlite_orm {
             using statement_type = _rowid_t;
 
             template<class C>
-            std::string operator()(const statement_type& s, const C&) {
+            std::string operator()(const statement_type& s, const C&) const {
                 return static_cast<std::string>(s);
             }
         };
@@ -362,7 +362,7 @@ namespace sqlite_orm {
             using statement_type = table_rowid_t<O>;
 
             template<class C>
-            std::string operator()(const statement_type& s, const C& context) {
+            std::string operator()(const statement_type& s, const C& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
                     ss << "'" << context.impl.find_table_name(typeid(O)) << "'.";
@@ -377,7 +377,7 @@ namespace sqlite_orm {
             using statement_type = table_oid_t<O>;
 
             template<class C>
-            std::string operator()(const statement_type& s, const C& context) {
+            std::string operator()(const statement_type& s, const C& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
                     ss << "'" << context.impl.find_table_name(typeid(O)) << "'.";
@@ -392,7 +392,7 @@ namespace sqlite_orm {
             using statement_type = table__rowid_t<O>;
 
             template<class C>
-            std::string operator()(const statement_type& s, const C& context) {
+            std::string operator()(const statement_type& s, const C& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
                     ss << "'" << context.impl.find_table_name(typeid(O)) << "'.";

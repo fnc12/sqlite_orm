@@ -147,7 +147,7 @@ namespace sqlite_orm {
             table_type table;
 
             template<class L>
-            void for_each(const L& l) {
+            void for_each(const L& l) const {
                 this->super::for_each(l);
                 l(*this);
             }
@@ -329,7 +329,7 @@ namespace sqlite_orm {
             }
 
             template<class L>
-            void for_each(const L&) {}
+            void for_each(const L&) const {}
 
             int foreign_keys_count() const {
                 return 0;
