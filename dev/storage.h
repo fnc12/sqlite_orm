@@ -57,6 +57,13 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<class S, class E, class SFINAE = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_preparable_v = false;
+
+        template<class S, class E>
+        SQLITE_ORM_INLINE_VAR constexpr bool
+            is_preparable_v<S, E, polyfill::void_t<decltype(std::declval<S>().prepare(std::declval<E>()))>> = true;
+
         /**
          *  Storage class itself. Create an instanse to use it as an interfacto to sqlite db by calling `make_storage`
          *  function.
@@ -561,21 +568,41 @@ namespace sqlite_orm {
                 return this->execute(statement);
             }
 
-            template<class T>
-            typename std::enable_if<is_prepared_statement<T>::value, std::string>::type
-            dump(const T& preparedStatement) const {
+            template<class T, satisfies<is_prepared_statement, T> = true>
+            std::string dump(const T& preparedStatement, bool parametrized = true) const {
+                return this->dump(preparedStatement.expression, parametrized);
+            }
+
+            template<
+                class E,
+                class Ex = polyfill::remove_cvref_t<E>,
+                std::enable_if_t<!is_prepared_statement<Ex>::value && !storage_traits::type_is_mapped<self, Ex>::value,
+                                 bool> = true>
+            std::string dump(E&& expression, bool parametrized = false) const {
+                static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
+
+                decltype(auto) e2 = static_if<is_select<Ex>{}>(
+                    [](auto expression) {
+                        expression.highest_level = true;
+                        return expression;
+                    },
+                    [](const auto& expression) -> decltype(auto) {
+                        return (expression);
+                    })(std::forward<E>(expression));
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
-                return serialize(preparedStatement.expression, context);
+                context.replace_bindable_with_question = parametrized;
+                // just like prepare_impl()
+                context.skip_table_name = false;
+                return serialize(e2, context);
             }
 
             /**
              *  Returns a string representation of object of a class mapped to the storage.
              *  Type of string has json-like style.
              */
-            template<class O>
-            typename std::enable_if<storage_traits::type_is_mapped<self, O>::value, std::string>::type
-            dump(const O& object) {
+            template<class O, satisfies<storage_traits::type_is_mapped, self, O> = true>
+            std::string dump(const O& object) const {
                 auto& tImpl = this->get_impl<O>();
                 std::stringstream ss;
                 ss << "{ ";
