@@ -43,7 +43,8 @@
 		"dev/finish_macros.h",
 		"dev/node_tuple.h",
 		"dev/get_prepared_statement.h",
-		"dev/carray.h"
+		"dev/carray.h",
+        "dev/interface_definitions.h"
 	],
 	"include_paths": ["dev"]
 }

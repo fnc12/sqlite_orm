@@ -2,7 +2,6 @@
 
 #include <memory>  //  std::unique_ptr
 #include <string>  //  std::string
-#include <sstream>  //  std::stringstream
 
 #include "constraints.h"
 #include "serializator_context.h"
@@ -11,6 +10,9 @@
 namespace sqlite_orm {
 
     namespace internal {
+
+        template<class T, class I>
+        std::string serialize(const T& t, const serializator_context<I>& context);
 
         /**
          *  This class is used in tuple iteration to know whether tuple constains `default_value_t`
