@@ -570,6 +570,8 @@ namespace sqlite_orm {
             std::string dump(const T& preparedStatement) const {
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
+                // just like prepare_impl()
+                context.skip_table_name = false;
                 return serialize(preparedStatement.expression, context);
             }
 

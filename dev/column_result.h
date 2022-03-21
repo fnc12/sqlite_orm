@@ -4,6 +4,7 @@
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
+#include "type_traits.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
