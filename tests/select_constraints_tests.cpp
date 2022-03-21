@@ -63,14 +63,7 @@ TEST_CASE("select constraints") {
         }
         SECTION("object") {
             auto allEmployees = storage.select(object<Employee>());
-            std::vector<Employee> expected;
-            expected.push_back(paul);
-            expected.push_back(allen);
-            expected.push_back(teddy);
-            expected.push_back(mark);
-            expected.push_back(david);
-            expected.push_back(kim);
-            expected.push_back(james);
+            std::vector<Employee> expected{paul, allen, teddy, mark, david, kim, james};
             REQUIRE_THAT(allEmployees, UnorderedEquals(expected));
         }
     }
@@ -528,7 +521,7 @@ TEST_CASE("Dynamic order by") {
 
     auto rows = storage.get_all<User>(orderBy);
     REQUIRE(rows.size() == 4);
-    for(auto i = 0; i < int(rows.size()); ++i) {
+    for(size_t i = 0; i < rows.size(); ++i) {
         auto& row = rows[i];
         REQUIRE(row.id == expectedIds[i]);
     }
@@ -540,7 +533,6 @@ TEST_CASE("rows") {
     auto storage = make_storage({});
 
     auto rows = storage.select(is_equal(std::make_tuple(1, 2, 3), std::make_tuple(1, 2, 3)));
-    decltype(rows) expected;
-    expected.push_back(true);
+    decltype(rows) expected{true};
     REQUIRE(rows == expected);
 }

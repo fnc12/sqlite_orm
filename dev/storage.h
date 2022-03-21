@@ -592,6 +592,7 @@ namespace sqlite_orm {
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 context.replace_bindable_with_question = parametrized;
+                // just like prepare_impl()
                 context.skip_table_name = false;
                 return serialize(e2, context);
             }
