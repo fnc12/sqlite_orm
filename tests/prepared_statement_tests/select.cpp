@@ -297,3 +297,41 @@ SECTION("two columns with where + order by") {
     }
 }
 }
+
+TEST_CASE("dumping") {
+    auto storage = make_storage("");
+
+    std::string value, expected;
+
+    SECTION("expression") {
+        auto expression = select(1);
+        SECTION("default") {
+            value = storage.dump(expression);
+            expected = "SELECT 1";
+        }
+        SECTION("parametrized") {
+            value = storage.dump(expression, false);
+            expected = "SELECT 1";
+        }
+        SECTION("dump") {
+            value = storage.dump(expression, true);
+            expected = "SELECT ?";
+        }
+    }
+    SECTION("statement") {
+        auto statement = storage.prepare(select(1));
+        SECTION("default") {
+            value = storage.dump(statement);
+            expected = "SELECT ?";
+        }
+        SECTION("parametrized") {
+            value = storage.dump(statement, true);
+            expected = "SELECT ?";
+        }
+        SECTION("dump") {
+            value = storage.dump(statement, false);
+            expected = "SELECT 1";
+        }
+    }
+    REQUIRE(value == expected);
+}
