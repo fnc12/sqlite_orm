@@ -5,6 +5,8 @@
 #include <functional>  //  std::function
 #include <typeindex>  //  std::type_index
 
+#include "cxx_polyfill.h"
+#include "type_traits.h"
 #include "select_constraints.h"
 #include "alias.h"
 #include "core_functions.h"
@@ -22,7 +24,7 @@ namespace sqlite_orm {
 
             table_name_collector() = default;
 
-            table_name_collector(find_table_name_t _find_table_name) : find_table_name(std::move(_find_table_name)) {}
+            table_name_collector(find_table_name_t find_table_name) : find_table_name(move(find_table_name)) {}
 
             template<class T>
             table_name_set operator()(const T &) const {
@@ -58,11 +60,22 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T>
+            template<class T, satisfies_not<std::is_base_of, alias_tag, T> = true>
             void operator()(const asterisk_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
+                }
+            }
+
+            template<class T, satisfies<std::is_base_of, alias_tag, T> = true>
+            void operator()(const asterisk_t<T> &) const {
+                if(this->find_table_name) {
+                    // note: not all alias classes have a nested A::type
+                    static_assert(polyfill::is_detected_v<type_t, T>,
+                                  "alias<O> must have a nested alias<O>::type typename");
+                    auto tableName = this->find_table_name(typeid(type_t<T>));
+                    table_names.insert(std::make_pair(move(tableName), alias_extractor<T>::get()));
                 }
             }
 

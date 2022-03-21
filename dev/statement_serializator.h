@@ -47,8 +47,8 @@ namespace sqlite_orm {
 
         template<class T, class C>
         std::string serialize(const T& t, const C& context) {
-            statement_serializator<T> serializator;
-            return serializator(t, context);
+            statement_serializator<T> serializer;
+            return serializer(t, context);
         }
 
         /**
@@ -316,7 +316,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& m, const C& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << "\"" << context.impl.find_table_name(typeid(O)) << "\".";
+                    ss << "'" << context.impl.find_table_name(typeid(O)) << "'.";
                 }
                 if(auto columnnamePointer = context.column_name(m)) {
                     ss << "\"" << *columnnamePointer << "\"";
@@ -1773,7 +1773,7 @@ namespace sqlite_orm {
                             auto& tableNamePair = tableNames[i];
                             ss << "'" << tableNamePair.first << "'";
                             if(!tableNamePair.second.empty()) {
-                                ss << ' ' << tableNamePair.second;
+                                ss << " '" << tableNamePair.second << "'";
                             }
                             if(int(i) < int(tableNames.size()) - 1) {
                                 ss << ", ";
@@ -1878,10 +1878,10 @@ namespace sqlite_orm {
                 iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
                     using mapped_type = typename std::remove_pointer<decltype(itemPointer)>::type;
 
-                    auto aliasString = alias_extractor<mapped_type>::get();
                     ss << "'" << context.impl.find_table_name(typeid(typename mapped_type_proxy<mapped_type>::type))
                        << "'";
-                    if(aliasString.length()) {
+                    auto aliasString = alias_extractor<mapped_type>::get();
+                    if(!aliasString.empty()) {
                         ss << " '" << aliasString << "'";
                     }
                     if(index < std::tuple_size<tuple>::value - 1) {
@@ -2136,7 +2136,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
+                ss << static_cast<std::string>(c);
                 ss << " '" << context.impl.find_table_name(typeid(O)) << "'";
                 return ss.str();
             }
@@ -2149,10 +2149,10 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& l, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(l) << " ";
-                auto aliasString = alias_extractor<T>::get();
+                ss << static_cast<std::string>(l);
                 ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
-                if(aliasString.length()) {
+                auto aliasString = alias_extractor<T>::get();
+                if(!aliasString.empty()) {
                     ss << "'" << aliasString << "' ";
                 }
                 ss << serialize(l.constraint, context);
@@ -2181,10 +2181,10 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& l, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(l) << " ";
-                auto aliasString = alias_extractor<T>::get();
+                ss << static_cast<std::string>(l);
                 ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
-                if(aliasString.length()) {
+                auto aliasString = alias_extractor<T>::get();
+                if(!aliasString.empty()) {
                     ss << "'" << aliasString << "' ";
                 }
                 ss << serialize(l.constraint, context);
@@ -2199,10 +2199,10 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& l, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(l) << " ";
-                auto aliasString = alias_extractor<T>::get();
+                ss << static_cast<std::string>(l);
                 ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
-                if(aliasString.length()) {
+                auto aliasString = alias_extractor<T>::get();
+                if(!aliasString.empty()) {
                     ss << "'" << aliasString << "' ";
                 }
                 ss << serialize(l.constraint, context);
@@ -2217,10 +2217,10 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& l, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(l) << " ";
-                auto aliasString = alias_extractor<T>::get();
+                ss << static_cast<std::string>(l);
                 ss << " '" << context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)) << "' ";
-                if(aliasString.length()) {
+                auto aliasString = alias_extractor<T>::get();
+                if(!aliasString.empty()) {
                     ss << "'" << aliasString << "' ";
                 }
                 ss << serialize(l.constraint, context);
@@ -2235,7 +2235,7 @@ namespace sqlite_orm {
             template<class C>
             std::string operator()(const statement_type& c, const C& context) const {
                 std::stringstream ss;
-                ss << static_cast<std::string>(c) << " ";
+                ss << static_cast<std::string>(c);
                 ss << " '" << context.impl.find_table_name(typeid(O)) << "'";
                 return ss.str();
             }
