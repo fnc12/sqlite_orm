@@ -63,7 +63,7 @@ namespace sqlite_orm {
             using expression_type = asterisk_t<A>;
 
             template<class C>
-            std::vector<std::string> operator()(const expression_type&, const C&) {
+            std::vector<std::string> operator()(const expression_type&, const C&) const {
                 return {"'" + alias_extractor<A>::get() + "'.*"};
             }
         };
