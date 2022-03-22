@@ -123,7 +123,7 @@ namespace sqlite_orm {
     const auto& get(const internal::prepared_statement_t<T>& statement) {
         using statement_type = typename std::decay<decltype(statement)>::type;
         using expression_type = typename statement_type::expression_type;
-        using node_tuple = typename internal::node_tuple<expression_type>::type;
+        using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
         using result_tupe = typename std::tuple_element<static_cast<size_t>(N), bind_tuple>::type;
         const result_tupe* result = nullptr;
@@ -146,7 +146,7 @@ namespace sqlite_orm {
     auto& get(internal::prepared_statement_t<T>& statement) {
         using statement_type = typename std::decay<decltype(statement)>::type;
         using expression_type = typename statement_type::expression_type;
-        using node_tuple = typename internal::node_tuple<expression_type>::type;
+        using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
         using result_tupe = typename std::tuple_element<static_cast<size_t>(N), bind_tuple>::type;
         result_tupe* result = nullptr;
