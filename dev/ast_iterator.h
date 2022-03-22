@@ -655,12 +655,21 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<order_by_t<T>, void> {
+        struct ast_iterator<order_by_t<T>, match_if_not<is_bindable, T>> {
             using node_type = order_by_t<T>;
 
             template<class L>
             void operator()(const node_type& node, const L& l) const {
                 iterate_ast(node.expression, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<order_by_t<T>, match_if<is_bindable, T>> {
+            using node_type = order_by_t<T>;
+
+            template<class L>
+            void operator()(const node_type& /*node*/, const L& /*l*/) const {
             }
         };
 

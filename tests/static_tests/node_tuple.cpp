@@ -19,7 +19,9 @@ struct is_tuple<std::tuple<Args...>> : std::true_type {};
 TEST_CASE("Node tuple") {
     using internal::bindable_filter;
     using internal::node_tuple;
+    using internal::node_tuple_t;
     using std::is_same;
+    using std::tuple;
 
     struct User {
         int id = 0;
@@ -552,6 +554,15 @@ TEST_CASE("Node tuple") {
             using Expected = std::tuple<decltype(&User::name), std::string, const char*>;
             static_assert(is_same<NodeTuple, Expected>::value,
                           "like(&User::name, std::string(\"pattern\")).escape(\"%\")");
+        }
+    }
+    SECTION("order_by_t") {
+        SECTION("expression") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(&User::name == c(5)))>,
+                                   tuple<decltype(&User::name), int>>::value);
+        }
+        SECTION("literal") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(1))>, tuple<>>::value);
         }
     }
     SECTION("glob_t") {

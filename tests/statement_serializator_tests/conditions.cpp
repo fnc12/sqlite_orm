@@ -1,93 +1,26 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
+#include <string>
 
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator conditions") {
-    internal::serializator_context_base context;
+    internal::storage_impl<> storage;
+    internal::serializator_context<decltype(storage)> context{storage};
 
-    SECTION("static assertions") {
-#if __cplusplus >= 201703L  // use of C++17 or higher
-        // must assert
-        //constexpr auto n = 0_nth_col;
+    std::string value, expected;
 
-        STATIC_REQUIRE(std::is_same_v<internal::positional_ordinal<1u>, decltype(1_nth_col)>);
-        STATIC_REQUIRE(std::is_same_v<internal::positional_ordinal<10u>, decltype(10_nth_col)>);
-#endif
-    }
-    SECTION("literals") {
-        SECTION("dump") {
-#if __cplusplus >= 201703L  // use of C++17 or higher
-            context.replace_bindable_with_question = false;
-            auto expr = 2_nth_col;
-            auto value = serialize(expr, context);
-            REQUIRE(value == "2");
-#endif
-        }
-        SECTION("bindable") {
-#if __cplusplus >= 201703L  // use of C++17 or higher
+    SECTION("order_by") {
+        SECTION("expression") {
             context.replace_bindable_with_question = true;
-            auto expr = 2_nth_col;
-            auto value = serialize(expr, context);
-            REQUIRE(value == "2");
-#endif
+            value = serialize(order_by(c(1) == 0), context);
+            expected = "ORDER BY (? == ?)";
         }
-    }
-#if 0  // outline; order_by statically asserts when passing bindable values
-    SECTION("order by bindable") {
-        order_by(std::wstring_view{L""});
-        SECTION("dump") {
-            context.replace_bindable_with_question = false;
-            auto expr = order_by(2);
-            auto value = serialize(expr, context);
-            REQUIRE(value == "ORDER BY 2");
-        }
-        SECTION("bindable") {
+        SECTION("literal") {
             context.replace_bindable_with_question = true;
-            auto expr = order_by(2);
-            auto value = serialize(expr, context);
-            REQUIRE(value == "ORDER BY ?");
+            value = serialize(order_by(1), context);
+            expected = "ORDER BY 1";
         }
     }
-#endif
-    SECTION("order by kth column") {
-        SECTION("dump") {
-#if __cplusplus >= 201703L  // use of C++17 or higher
-            context.replace_bindable_with_question = false;
-            auto expr = order_by(2_nth_col);
-            auto value = serialize(expr, context);
-            REQUIRE(value == "ORDER BY 2");
-#endif
-        }
-        SECTION("bindable") {
-#if __cplusplus >= 201703L  // use of C++17 or higher
-            context.replace_bindable_with_question = true;
-            auto expr = order_by(2_nth_col);
-            auto value = serialize(expr, context);
-            REQUIRE(value == "ORDER BY 2");
-#endif
-        }
-    }
-    SECTION("using") {
-        struct User {
-            int64 id;
-        };
-
-        auto t1 = make_table("user", make_column("id", &User::id));
-        auto storage = internal::storage_impl<decltype(t1)>{t1};
-        using storage_impl = decltype(storage);
-
-        internal::serializator_context<storage_impl> ctx{storage};
-
-        SECTION("using column") {
-            auto expr = using_(&User::id);
-            auto value = serialize(expr, ctx);
-            REQUIRE(value == R"(USING ("id"))");
-        }
-        SECTION("using explicit column") {
-            auto expr = using_(column<User>(&User::id));
-            auto value = serialize(expr, ctx);
-            REQUIRE(value == R"(USING ("id"))");
-        }
-    }
+    REQUIRE(value == expected);
 }

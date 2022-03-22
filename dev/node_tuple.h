@@ -25,6 +25,12 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class SFINAE = void>
+        struct node_tuple;
+
+        template<class T>
+        using node_tuple_t = typename node_tuple<T>::type;
+
+        template<class T, class SFINAE>
         struct node_tuple {
             using type = std::tuple<T>;
         };
@@ -76,6 +82,12 @@ namespace sqlite_orm {
             using node_type = where_t<C>;
             using type = typename node_tuple<C>::type;
         };
+
+        template<class E>
+        struct node_tuple<order_by_t<E>, match_if_not<is_bindable, E>> : node_tuple<E> {};
+
+        template<class E>
+        struct node_tuple<order_by_t<E>, match_if<is_bindable, E>> : node_tuple<void> {};
 
         template<class T>
         struct node_tuple<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {

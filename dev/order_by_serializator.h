@@ -17,17 +17,17 @@ namespace sqlite_orm {
             return serializer(t, context);
         }
 
-        template<class O>
-        struct order_by_serializator<order_by_t<O>, void> {
-            using statement_type = order_by_t<O>;
+        template<class E>
+        struct order_by_serializator<order_by_t<E>, void> {
+            using statement_type = order_by_t<E>;
 
             template<class C>
             std::string operator()(const statement_type& orderBy, const C& context) const {
                 std::stringstream ss;
                 auto newContext = context;
+                newContext.replace_bindable_with_question = !is_bindable_v<E>;
                 newContext.skip_table_name = false;
-                auto columnName = serialize(orderBy.expression, newContext);
-                ss << columnName << " ";
+                ss << serialize(orderBy.expression, newContext);
                 if(!orderBy._collate_argument.empty()) {
                     ss << " COLLATE " << orderBy._collate_argument;
                 }
@@ -54,16 +54,16 @@ namespace sqlite_orm {
                     std::string entryString;
                     {
                         std::stringstream ss;
-                        ss << entry.name << " ";
+                        ss << entry.name;
                         if(!entry._collate_argument.empty()) {
-                            ss << "COLLATE " << entry._collate_argument << " ";
+                            ss << " COLLATE " << entry._collate_argument << " ";
                         }
                         switch(entry.asc_desc) {
                             case 1:
-                                ss << "ASC";
+                                ss << " ASC";
                                 break;
                             case -1:
-                                ss << "DESC";
+                                ss << " DESC";
                                 break;
                         }
                         entryString = ss.str();

@@ -55,7 +55,7 @@ namespace sqlite_orm {
          *  Serializer for bindable types.
          */
         template<class T>
-        struct statement_serializator<T, std::enable_if_t<is_bindable_v<T>>> {
+        struct statement_serializator<T, match_if<is_bindable, T>> {
             using statement_type = T;
 
             template<class C>
@@ -125,23 +125,6 @@ namespace sqlite_orm {
                 return field_printer<std::nullptr_t>{}(nullptr);
             }
         };
-
-#if __cplusplus >= 201703L  // use of C++17 or higher
-        /**
-         *  Constant which gets never replaced in a bindable context.
-         *  Used together with order_by(1_nth_col).
-         */
-        template<unsigned int N>
-        struct statement_serializator<positional_ordinal<N>, void> {
-            using statement_type = positional_ordinal<N>;
-
-            template<class C>
-            std::string operator()(const statement_type& /*expression*/, const C& /*context*/) {
-                static_assert(N > 0, "Column number must be greater than 0.");
-                return std::to_string(N);
-            }
-        };
-#endif
 
         template<class F, class W>
         struct statement_serializator<filtered_aggregate_function<F, W>, void> {

@@ -156,10 +156,16 @@ TEST_CASE("ast_iterator") {
         internal::iterate_ast(node, lambda);
     }
     SECTION("order_by") {
-        auto node = order_by(c(&User::id) == 0);
-        expected.push_back(typeid(&User::id));
-        expected.push_back(typeid(int));
-        internal::iterate_ast(node, lambda);
+        SECTION("expression") {
+            auto node = order_by(c(&User::id) == 0);
+            expected.push_back(typeid(&User::id));
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("literal") {
+            auto node = order_by(1);
+            internal::iterate_ast(node, lambda);
+        }
     }
     SECTION("group_by") {
         auto node = group_by(&User::id);

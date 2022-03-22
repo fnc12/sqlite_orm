@@ -1172,51 +1172,18 @@ namespace sqlite_orm {
         return {std::move(l), std::move(r)};
     }
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
     /**
-     *  positional_ordinal<N> from numeric literal.
-     *  E.g. 1_nth_col, 2_nth_col
-     *  
-     *  @note Design desicion:
-     *  A user-defined numeric literal is the C++ way to capture a numeric literal as a compile-time value,
-     *  with the intention to form a literal positional ordinal in the SQL statement.
-     *  It isn't possible with built-in literals.
-     *  The user-defined literal might seem a bit inconvenient at first,
-     *  however has the advantage of giving the literal contextual meaning.
-     */
-    template<char... Chars>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _nth_col() {
-        constexpr auto n =
-            internal::positional_ordinal<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
-                                                                  Chars...)>{};
-        static_assert(n > 0u, "Column number must be greater than 0.");
-        return n;
-    }
-#endif
-
-    /**
-     * ORDER BY column
+     * ORDER BY column or literal value (including a column number)
+     * 
+     * Note that a bindable will be serialized as a literal value.
+     * Only integral numbers make sense and SQLite will understand them as a positional column ordinal.
+     * 
      * Examples:
      * storage.select(&User::name, order_by(&User::id))
-     * storage.select(&User::name, order_by(1_nth_col))
+     * storage.select(&User::name, order_by(1))
      */
     template<class O>
     internal::order_by_t<O> order_by(O o) {
-        static_assert(!std::is_arithmetic<O>::value && !std::is_base_of<std::string, O>::value &&
-                          !std::is_same<std::decay_t<O>, const char*>::value
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                          && !std::is_same<O, std::string_view>::value
-#endif
-#ifndef SQLITE_ORM_OMITS_CODECVT
-                          && !std::is_base_of<std::wstring, O>::value &&
-                          !std::is_same<std::decay_t<O>, const wchar_t*>::value
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                          && !std::is_same<O, std::wstring_view>::value
-#endif
-#endif
-                      ,
-                      "Binding a single value to an ORDER-BY expression is possible but not useful.\n"
-                      "If your intention is to order by kth column then please use `order_by(1_nth_col)`");
         return {std::move(o)};
     }
 
