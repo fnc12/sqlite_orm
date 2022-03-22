@@ -1,5 +1,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
+#include <chrono>
+#include <format>
+#include <regex>
 
 using namespace sqlite_orm;
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED

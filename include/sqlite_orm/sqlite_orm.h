@@ -15509,8 +15509,8 @@ namespace sqlite_orm {
                 if(statement.full) {
                     ss << "GENERATED ALWAYS ";
                 }
-                ss << "AS ";
-                ss << serialize(statement.expression, context);
+                ss << "AS (";
+                ss << serialize(statement.expression, context) << ")";
                 switch(statement.storage) {
                     case decltype(statement.storage)::not_specified:
                         //..
