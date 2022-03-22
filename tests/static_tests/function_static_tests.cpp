@@ -45,9 +45,8 @@ TEST_CASE("function static") {
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
                 STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, double>::value);
-                static_assert(
-                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<double>>::value,
-                    "");
+                STATIC_REQUIRE(
+                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<double>>::value);
             }
             SECTION("double(double)") {
                 struct Function {
@@ -68,9 +67,8 @@ TEST_CASE("function static") {
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
                 STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, double>::value);
-                static_assert(
-                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<double>>::value,
-                    "");
+                STATIC_REQUIRE(
+                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<double>>::value);
             }
             SECTION("int(std::string) const") {
                 struct Function {
@@ -91,9 +89,8 @@ TEST_CASE("function static") {
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
                 STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, int>::value);
-                static_assert(
-                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value,
-                    "");
+                STATIC_REQUIRE(
+                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
             }
             SECTION("int(std::string)") {
                 struct Function {
@@ -114,9 +111,8 @@ TEST_CASE("function static") {
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
                 STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, int>::value);
-                static_assert(
-                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value,
-                    "");
+                STATIC_REQUIRE(
+                    std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
             }
             SECTION("std::string(const std::string &, const std::string &) const") {
                 struct Function {
@@ -136,11 +132,9 @@ TEST_CASE("function static") {
                 using ExpectedArgumentsTuple = std::tuple<std::string, std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
-                static_assert(std::is_same<internal::callable_arguments<Function>::return_type, std::string>::value,
-                              "");
-                static_assert(std::is_same<internal::callable_arguments<Function>::args_tuple,
-                                           std::tuple<std::string, std::string>>::value,
-                              "");
+                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, std::string>::value);
+                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::args_tuple,
+                                            std::tuple<std::string, std::string>>::value);
             }
             SECTION("std::string(const std::string &, const std::string &)") {
                 struct Function {
@@ -160,11 +154,9 @@ TEST_CASE("function static") {
                 using ExpectedArgumentsTuple = std::tuple<std::string, std::string>;
                 STATIC_REQUIRE(std::is_same<ArgumentsTuple, ExpectedArgumentsTuple>::value);
 
-                static_assert(std::is_same<internal::callable_arguments<Function>::return_type, std::string>::value,
-                              "");
-                static_assert(std::is_same<internal::callable_arguments<Function>::args_tuple,
-                                           std::tuple<std::string, std::string>>::value,
-                              "");
+                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, std::string>::value);
+                STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::args_tuple,
+                                            std::tuple<std::string, std::string>>::value);
             }
         }
     }
@@ -223,9 +215,8 @@ TEST_CASE("function static") {
             STATIC_REQUIRE(std::is_same<FinMemberFunctionPointer, ExpectedFinType>::value);
 
             STATIC_REQUIRE(std::is_same<internal::callable_arguments<Function>::return_type, std::string>::value);
-            static_assert(
-                std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value,
-                "");
+            STATIC_REQUIRE(
+                std::is_same<internal::callable_arguments<Function>::args_tuple, std::tuple<std::string>>::value);
         }
     }
 }

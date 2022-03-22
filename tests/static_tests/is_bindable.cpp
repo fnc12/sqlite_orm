@@ -27,78 +27,78 @@ TEST_CASE("is_bindable") {
     struct User {
         int id;
     };
-    static_assert(is_bindable_v<bool>, "bool must be bindable");
-    static_assert(is_bindable_v<char>, "char must be bindable");
-    static_assert(is_bindable_v<signed char>, "char must be bindable");
-    static_assert(is_bindable_v<unsigned char>, "char must be bindable");
-    static_assert(is_bindable_v<short>, "short must be bindable");
-    static_assert(is_bindable_v<unsigned short>, "short must be bindable");
-    static_assert(is_bindable_v<int>, "int must be bindable");
-    static_assert(is_bindable_v<unsigned int>, "int must be bindable");
-    static_assert(is_bindable_v<long>, "long must be bindable");
-    static_assert(is_bindable_v<unsigned long>, "long must be bindable");
-    static_assert(is_bindable_v<float>, "float must be bindable");
-    static_assert(is_bindable_v<long long>, "long long must be bindable");
-    static_assert(is_bindable_v<unsigned long long>, "long long must be bindable");
-    static_assert(is_bindable_v<double>, "double must be bindable");
-    static_assert(is_bindable_v<const char*>, "C string must be bindable");
-    static_assert(is_bindable_v<std::string>, "string must be bindable");
-    static_assert(is_bindable_v<StringVeneer<char>>, "Derived string must be bindable");
+    STATIC_REQUIRE(is_bindable_v<bool>);
+    STATIC_REQUIRE(is_bindable_v<char>);
+    STATIC_REQUIRE(is_bindable_v<signed char>);
+    STATIC_REQUIRE(is_bindable_v<unsigned char>);
+    STATIC_REQUIRE(is_bindable_v<short>);
+    STATIC_REQUIRE(is_bindable_v<unsigned short>);
+    STATIC_REQUIRE(is_bindable_v<int>);
+    STATIC_REQUIRE(is_bindable_v<unsigned int>);
+    STATIC_REQUIRE(is_bindable_v<long>);
+    STATIC_REQUIRE(is_bindable_v<unsigned long>);
+    STATIC_REQUIRE(is_bindable_v<float>);
+    STATIC_REQUIRE(is_bindable_v<long long>);
+    STATIC_REQUIRE(is_bindable_v<unsigned long long>);
+    STATIC_REQUIRE(is_bindable_v<double>);
+    STATIC_REQUIRE(is_bindable_v<const char*>);
+    STATIC_REQUIRE(is_bindable_v<std::string>);
+    STATIC_REQUIRE(is_bindable_v<StringVeneer<char>>);
 #ifndef SQLITE_ORM_OMITS_CODECVT
-    static_assert(is_bindable_v<const wchar_t*>, "wide C string must be bindable");
-    static_assert(is_bindable_v<std::wstring>, "wstring must be bindable");
-    static_assert(is_bindable_v<StringVeneer<wchar_t>>, "Derived wstring must be bindable");
+    STATIC_REQUIRE(is_bindable_v<const wchar_t*>);
+    STATIC_REQUIRE(is_bindable_v<std::wstring>);
+    STATIC_REQUIRE(is_bindable_v<StringVeneer<wchar_t>>);
 #endif
-    static_assert(is_bindable_v<std::nullptr_t>, "null must be bindable");
-    static_assert(is_bindable_v<std::unique_ptr<int>>, "unique_ptr must be bindable");
-    static_assert(is_bindable_v<std::shared_ptr<int>>, "shared_ptr must be bindable");
+    STATIC_REQUIRE(is_bindable_v<std::nullptr_t>);
+    STATIC_REQUIRE(is_bindable_v<std::unique_ptr<int>>);
+    STATIC_REQUIRE(is_bindable_v<std::shared_ptr<int>>);
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-    static_assert(is_bindable_v<std::string_view>, "string view must be bindable");
+    STATIC_REQUIRE(is_bindable_v<std::string_view>);
 #ifndef SQLITE_ORM_OMITS_CODECVT
-    static_assert(is_bindable_v<std::wstring_view>, "wstring view must be bindable");
+    STATIC_REQUIRE(is_bindable_v<std::wstring_view>);
 #endif
 #endif
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    static_assert(is_bindable_v<std::nullopt_t>, "nullopt must be bindable");
-    static_assert(is_bindable_v<std::optional<int>>, "optional must be bindable");
-    static_assert(is_bindable_v<std::optional<Custom>>, "optional<Custom> must be bindable");
-    static_assert(!is_bindable_v<std::optional<User>>, "optional<User> cannot be bindable");
+    STATIC_REQUIRE(is_bindable_v<std::nullopt_t>);
+    STATIC_REQUIRE(is_bindable_v<std::optional<int>>);
+    STATIC_REQUIRE(is_bindable_v<std::optional<Custom>>);
+    STATIC_REQUIRE(!is_bindable_v<std::optional<User>>);
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
-    static_assert(is_bindable_v<static_pointer_binding<nullptr_t, carray_pvt>>, "pointer binding must be bindable");
+    STATIC_REQUIRE(is_bindable_v<static_pointer_binding<nullptr_t, carray_pvt>>);
 
-    static_assert(is_bindable_v<Custom>, "Custom must be bindable");
-    static_assert(is_bindable_v<std::unique_ptr<Custom>>, "unique_ptr<Custom> must be bindable");
+    STATIC_REQUIRE(is_bindable_v<Custom>);
+    STATIC_REQUIRE(is_bindable_v<std::unique_ptr<Custom>>);
 
-    static_assert(!is_bindable_v<void>, "void cannot be bindable");
-    static_assert(!is_bindable_v<User>, "User cannot be bindable");
-    static_assert(!is_bindable_v<std::unique_ptr<User>>, "unique_ptr<User> cannot be bindable");
+    STATIC_REQUIRE(!is_bindable_v<void>);
+    STATIC_REQUIRE(!is_bindable_v<User>);
+    STATIC_REQUIRE(!is_bindable_v<std::unique_ptr<User>>);
     {
         auto isEqual = is_equal(&User::id, 5);
-        static_assert(!is_bindable_v<decltype(isEqual)>, "is_equal cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(isEqual)>);
     }
     {
         auto notEqual = is_not_equal(&User::id, 10);
-        static_assert(!is_bindable_v<decltype(notEqual)>, "is_not_equal cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(notEqual)>);
     }
     {
         auto lesserThan = lesser_than(&User::id, 10);
-        static_assert(!is_bindable_v<decltype(lesserThan)>, "lesser_than cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(lesserThan)>);
     }
     {
         auto lesserOrEqual = lesser_or_equal(&User::id, 5);
-        static_assert(!is_bindable_v<decltype(lesserOrEqual)>, "lesser_or_equal cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(lesserOrEqual)>);
     }
     {
         auto greaterThan = greater_than(&User::id, 5);
-        static_assert(!is_bindable_v<decltype(greaterThan)>, "greater_than cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(greaterThan)>);
     }
     {
         auto greaterOrEqual = greater_or_equal(&User::id, 5);
-        static_assert(!is_bindable_v<decltype(greaterOrEqual)>, "greater_or_equal cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(greaterOrEqual)>);
     }
     {
         auto func = datetime("now");
-        static_assert(!is_bindable_v<decltype(func)>, "datetime cannot be bindable");
+        STATIC_REQUIRE(!is_bindable_v<decltype(func)>);
         bool trueCalled = false;
         bool falseCalled = false;
         auto dummy = 5;  //  for gcc compilation

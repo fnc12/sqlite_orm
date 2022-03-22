@@ -13,8 +13,8 @@ namespace sqlite_orm {
 
         template<class T, class C>
         std::string serialize_order_by(const T& t, const C& context) {
-            order_by_serializator<T> serializator;
-            return serializator(t, context);
+            order_by_serializator<T> serializer;
+            return serializer(t, context);
         }
 
         template<class O>
@@ -27,20 +27,16 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 auto columnName = serialize(orderBy.expression, newContext);
-                ss << columnName;
+                ss << columnName << " ";
                 if(!orderBy._collate_argument.empty()) {
-                    ss << " "
-                          "COLLATE "
-                       << orderBy._collate_argument;
+                    ss << " COLLATE " << orderBy._collate_argument;
                 }
                 switch(orderBy.asc_desc) {
                     case 1:
-                        ss << " "
-                              "ASC";
+                        ss << " ASC";
                         break;
                     case -1:
-                        ss << " "
-                              "DESC";
+                        ss << " DESC";
                         break;
                 }
                 return ss.str();

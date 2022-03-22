@@ -12,8 +12,7 @@ TEST_CASE("statement_serializator select constraints") {
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
     using storage_impl_t = internal::storage_impl<decltype(table)>;
     auto storageImpl = storage_impl_t{table};
-    using context_t = internal::serializator_context<storage_impl_t>;
-    context_t context{storageImpl};
+    internal::serializator_context<storage_impl_t> context{storageImpl};
 
     std::string value;
     decltype(value) expected;
