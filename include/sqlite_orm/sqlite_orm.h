@@ -39,11 +39,13 @@ __pragma(push_macro("min"))
 
 // #include "cxx_polyfill.h"
 
+
 #include <type_traits>
 
-    // #include "start_macros.h"
+// #include "start_macros.h"
 
-    namespace sqlite_orm {
+
+namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
 #if __cplusplus < 201703L  // before C++17
@@ -134,6 +136,7 @@ __pragma(push_macro("min"))
     }
 }
 
+
 namespace sqlite_orm {
     // C++ generic traits used throughout the library
     namespace internal {
@@ -169,26 +172,6 @@ namespace sqlite_orm {
 
         template<typename T>
         using object_type_t = typename T::object_type;
-    }
-
-    namespace internal {
-#if __cplusplus >= 201703L  // use of C++17 or higher
-        constexpr size_t _10_pow(size_t n) {
-            if(n == 0) {
-                return 1;
-            } else {
-                return 10 * _10_pow(n - 1);
-            }
-        }
-
-        template<class... Chars, size_t... Is>
-        constexpr size_t n_from_literal(std::index_sequence<Is...>, Chars... chars) {
-            return (((chars - '0') * _10_pow(sizeof...(Is) - 1u - Is /*reversed index sequence*/)) + ...);
-        }
-
-        template<unsigned int N>
-        struct positional_ordinal : std::integral_constant<unsigned int, N> {};
-#endif
     }
 }
 #pragma once
@@ -363,6 +346,7 @@ namespace sqlite_orm {
 
 // #include "../static_magic.h"
 
+
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
 
 namespace sqlite_orm {
@@ -401,6 +385,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -814,11 +799,14 @@ namespace sqlite_orm {
 
 // #include "table_type.h"
 
+
 #include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_member_function_pointer
 
 // #include "member_traits/getter_traits.h"
 
+
 // #include "getters.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -861,6 +849,7 @@ namespace sqlite_orm {
 #endif
     }
 }
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -969,7 +958,9 @@ namespace sqlite_orm {
 
 // #include "member_traits/setter_traits.h"
 
+
 // #include "setters.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -994,6 +985,7 @@ namespace sqlite_orm {
 #endif
     }
 }
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -1042,9 +1034,11 @@ namespace sqlite_orm {
 
 // #include "member_traits/is_getter.h"
 
+
 #include <type_traits>  //  std::false_type, std::true_type
 
 // #include "getters.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -1093,9 +1087,11 @@ namespace sqlite_orm {
 
 // #include "member_traits/is_setter.h"
 
+
 #include <type_traits>
 
 // #include "setters.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -1123,6 +1119,7 @@ namespace sqlite_orm {
 #endif
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -1172,6 +1169,7 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_helper.h"
 
 // #include "type_printer.h"
+
 
 namespace sqlite_orm {
 
@@ -1756,6 +1754,7 @@ namespace sqlite_orm {
 
 // #include "serializator_context.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1813,6 +1812,7 @@ namespace sqlite_orm {
 
 }
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -1846,6 +1846,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 // #include "tags.h"
 
+
 namespace sqlite_orm {
     namespace internal {
         struct negatable_t {};
@@ -1858,6 +1859,7 @@ namespace sqlite_orm {
 }
 
 // #include "serialize_result_type.h"
+
 
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string_view>  //  string_view
@@ -1874,6 +1876,7 @@ namespace sqlite_orm {
 #endif
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -2161,9 +2164,11 @@ namespace sqlite_orm {
 
 // #include "member_traits/member_traits.h"
 
+
 #include <type_traits>  //  std::enable_if
 
 // #include "is_field_member_pointer.h"
+
 
 #include <type_traits>  //  std::false_type, std::true_type, std::is_member_pointer, std::is_member_function_pointer
 
@@ -2185,9 +2190,11 @@ namespace sqlite_orm {
 
 // #include "field_member_traits.h"
 
+
 #include <type_traits>  //  std::enable_if
 
 // #include "is_field_member_pointer.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -2208,6 +2215,7 @@ namespace sqlite_orm {
 // #include "getter_traits.h"
 
 // #include "setter_traits.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -2234,6 +2242,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -2535,6 +2544,7 @@ namespace sqlite_orm {
     };
 }
 
+
 namespace sqlite_orm {
 
     /**
@@ -2690,6 +2700,7 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -2728,6 +2739,7 @@ namespace sqlite_orm {
 
 // #include "expression.h"
 // #include "operators.h"
+
 
 namespace sqlite_orm {
 
@@ -2802,6 +2814,7 @@ namespace sqlite_orm {
         return {std::move(value)};
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -3961,51 +3974,18 @@ namespace sqlite_orm {
         return {std::move(l), std::move(r)};
     }
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
     /**
-     *  positional_ordinal<N> from numeric literal.
-     *  E.g. 1_nth_col, 2_nth_col
-     *  
-     *  @note Design desicion:
-     *  A user-defined numeric literal is the C++ way to capture a numeric literal as a compile-time value,
-     *  with the intention to form a literal positional ordinal in the SQL statement.
-     *  It isn't possible with built-in literals.
-     *  The user-defined literal might seem a bit inconvenient at first,
-     *  however has the advantage of giving the literal contextual meaning.
-     */
-    template<char... Chars>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _nth_col() {
-        constexpr auto n =
-            internal::positional_ordinal<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
-                                                                  Chars...)>{};
-        static_assert(n > 0u, "Column number must be greater than 0.");
-        return n;
-    }
-#endif
-
-    /**
-     * ORDER BY column
+     * ORDER BY column or literal value (including a column number)
+     * 
+     * Note that a bindable will be serialized as a literal value.
+     * Only integral numbers make sense and SQLite will understand them as a positional column ordinal.
+     * 
      * Examples:
      * storage.select(&User::name, order_by(&User::id))
-     * storage.select(&User::name, order_by(1_nth_col))
+     * storage.select(&User::name, order_by(1))
      */
     template<class O>
     internal::order_by_t<O> order_by(O o) {
-        static_assert(!std::is_arithmetic<O>::value && !std::is_base_of<std::string, O>::value &&
-                          !std::is_same<std::decay_t<O>, const char*>::value
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                          && !std::is_same<O, std::string_view>::value
-#endif
-#ifndef SQLITE_ORM_OMITS_CODECVT
-                          && !std::is_base_of<std::wstring, O>::value &&
-                          !std::is_same<std::decay_t<O>, const wchar_t*>::value
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                          && !std::is_same<O, std::wstring_view>::value
-#endif
-#endif
-                      ,
-                      "Binding a single value to an ORDER-BY expression is possible but not useful.\n"
-                      "If your intention is to order by kth column then please use `order_by(1_nth_col)`");
         return {std::move(o)};
     }
 
@@ -4240,6 +4220,7 @@ namespace sqlite_orm {
 
 // #include "conditions.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -4351,6 +4332,7 @@ namespace sqlite_orm {
 
 // #include "is_base_of_template.h"
 
+
 #include <type_traits>  //  std::true_type, std::false_type, std::declval
 
 namespace sqlite_orm {
@@ -4393,6 +4375,7 @@ namespace sqlite_orm {
 // #include "serialize_result_type.h"
 
 // #include "tuple_helper/count_tuple.h"
+
 
 namespace sqlite_orm {
 
@@ -6469,7 +6452,9 @@ namespace sqlite_orm {
 
 // #include "ast/where.h"
 
+
 // #include "../serialize_result_type.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -6517,6 +6502,7 @@ namespace sqlite_orm {
 }
 
 // #include "ast/group_by.h"
+
 
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::true_type, std::false_type, std::forward
@@ -6597,6 +6583,7 @@ namespace sqlite_orm {
 }
 
 // #include "core_functions.h"
+
 
 namespace sqlite_orm {
 
@@ -7065,6 +7052,7 @@ namespace sqlite_orm {
 
 // #include "optional_container.h"
 
+
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?
 // (Could be implemented with a normal trigger that insert or update an internal table and then retreive
 // the event in the C++ code, to call the C++ user callback, with update hooks: https://www.sqlite.org/c3ref/update_hook.html)
@@ -7097,7 +7085,7 @@ namespace sqlite_orm {
             partial_trigger_t(T trigger_base, S... statements) :
                 statements(std::make_tuple<S...>(std::forward<S>(statements)...)), base(std::move(trigger_base)) {}
 
-            partial_trigger_t& end() {
+            partial_trigger_t &end() {
                 return *this;
             }
         };
@@ -7127,7 +7115,7 @@ namespace sqlite_orm {
              */
             elements_type elements;
 
-            trigger_t(const std::string& name, T trigger_base, elements_type statements) :
+            trigger_t(const std::string &name, T trigger_base, elements_type statements) :
                 name(name), base(std::move(trigger_base)), elements(std::move(statements)) {}
         };
 
@@ -7162,7 +7150,7 @@ namespace sqlite_orm {
 
             trigger_base_t(trigger_type_base type_base_) : type_base(std::move(type_base_)) {}
 
-            trigger_base_t& for_each_row() {
+            trigger_base_t &for_each_row() {
                 this->do_for_each_row = true;
                 return *this;
             }
@@ -7321,7 +7309,7 @@ namespace sqlite_orm {
     }
 
     template<class T, class... S>
-    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
+    internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...> &part) {
         return {move(name), std::move(part.base), std::move(part.statements)};
     }
 
@@ -7385,6 +7373,7 @@ namespace sqlite_orm {
 
 // #include "xdestroy_handling.h"
 
+
 #include <type_traits>  // std::integral_constant
 #ifdef __cpp_lib_concepts
 #include <concepts>
@@ -7393,6 +7382,7 @@ namespace sqlite_orm {
 // #include "start_macros.h"
 
 // #include "cxx_polyfill.h"
+
 
 namespace sqlite_orm {
 
@@ -7623,6 +7613,7 @@ namespace sqlite_orm {
 #endif
 }
 
+
 namespace sqlite_orm {
 
     /**
@@ -7811,6 +7802,7 @@ namespace sqlite_orm {
 // #include "xdestroy_handling.h"
 
 // #include "pointer_value.h"
+
 
 namespace sqlite_orm {
 
@@ -8145,6 +8137,7 @@ namespace sqlite_orm {
 
 // #include "journal_mode.h"
 
+
 #include <string>  //  std::string
 #include <memory>  //  std::unique_ptr
 #include <array>  //  std::array
@@ -8208,6 +8201,7 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "is_std_ptr.h"
+
 
 namespace sqlite_orm {
 
@@ -8643,6 +8637,7 @@ namespace sqlite_orm {
 
 // #include "indexed_column.h"
 
+
 #include <string>  //  std::string
 
 namespace sqlite_orm {
@@ -8725,6 +8720,7 @@ namespace sqlite_orm {
 
 }
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -8767,6 +8763,7 @@ namespace sqlite_orm {
 #pragma once
 
 // #include "alias.h"
+
 
 namespace sqlite_orm {
 
@@ -8881,6 +8878,7 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 
 // #include "tuple_helper/tuple_transformer.h"
+
 
 namespace sqlite_orm {
 
@@ -9259,6 +9257,7 @@ namespace sqlite_orm {
 
 // #include "function.h"
 
+
 #include <type_traits>
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple
@@ -9268,6 +9267,7 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 
 // #include "cxx_polyfill.h"
+
 
 namespace sqlite_orm {
 
@@ -9282,13 +9282,13 @@ namespace sqlite_orm {
 
         struct user_defined_function_base {
             using func_call = std::function<
-                void(sqlite3_context* context, void* functionPointer, int argsCount, sqlite3_value** values)>;
-            using final_call = std::function<void(sqlite3_context* context, void* functionPointer)>;
+                void(sqlite3_context *context, void *functionPointer, int argsCount, sqlite3_value **values)>;
+            using final_call = std::function<void(sqlite3_context *context, void *functionPointer)>;
 
             std::string name;
             int argumentsCount = 0;
-            std::function<int*()> create;
-            void (*destroy)(int*) = nullptr;
+            std::function<int *()> create;
+            void (*destroy)(int *) = nullptr;
 
             user_defined_function_base(decltype(name) name_,
                                        decltype(argumentsCount) argumentsCount_,
@@ -9335,7 +9335,7 @@ namespace sqlite_orm {
             struct SFINAE<U, R (U::*)() const> {};
 
             template<class U>
-            static char test(SFINAE<U, decltype(&U::operator())>*);
+            static char test(SFINAE<U, decltype(&U::operator())> *);
 
             template<class U>
             static int test(...);
@@ -9353,13 +9353,13 @@ namespace sqlite_orm {
             struct SFINAE<U, R (U::*)() const> {};
 
             template<class U>
-            static char test(SFINAE<U, decltype(&U::step)>*);
+            static char test(SFINAE<U, decltype(&U::step)> *);
 
             template<class U>
             static int test(...);
 
             template<class U>
-            static char test2(SFINAE<U, decltype(&U::fin)>*);
+            static char test2(SFINAE<U, decltype(&U::fin)> *);
 
             template<class U>
             static int test2(...);
@@ -9458,7 +9458,7 @@ namespace sqlite_orm {
             is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
 #if __cplusplus >= 201703L  // using C++17 or higher
-        template<size_t I, const char* PointerArg, const char* Binding>
+        template<size_t I, const char *PointerArg, const char *Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding == PointerArg;
             static_assert(valid, "Pointer value types of I-th argument do not match");
@@ -9531,6 +9531,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -9855,6 +9856,7 @@ namespace sqlite_orm {
 
 // #include "dbstat.h"
 
+
 #include <string>  //  std::string
 
 namespace sqlite_orm {
@@ -9873,6 +9875,7 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }
+
 
 namespace sqlite_orm {
 
@@ -10248,9 +10251,11 @@ namespace sqlite_orm {
 
 // #include "field_value_holder.h"
 
+
 #include <type_traits>  //  std::enable_if
 
 // #include "column.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -10273,6 +10278,7 @@ namespace sqlite_orm {
         };
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -10668,17 +10674,21 @@ namespace sqlite_orm {
 
 // #include "row_extractor_builder.h"
 
+
 // #include "row_extractor.h"
 
 // #include "mapped_row_extractor.h"
+
 
 #include <sqlite3.h>
 
 // #include "object_from_column_builder.h"
 
+
 #include <sqlite3.h>
 
 // #include "row_extractor.h"
+
 
 namespace sqlite_orm {
 
@@ -10716,6 +10726,7 @@ namespace sqlite_orm {
     }
 }
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -10747,6 +10758,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -10827,6 +10839,7 @@ namespace sqlite_orm {
 
 // #include "view.h"
 
+
 #include <memory>  //  std::shared_ptr
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
@@ -10840,6 +10853,7 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "iterator.h"
+
 
 #include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <sqlite3.h>
@@ -10856,6 +10870,7 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "object_from_column_builder.h"
+
 
 namespace sqlite_orm {
 
@@ -10960,6 +10975,7 @@ namespace sqlite_orm {
 
 // #include "ast_iterator.h"
 
+
 #include <vector>  //  std::vector
 #include <functional>  //  std::reference_wrapper
 
@@ -10975,6 +10991,7 @@ namespace sqlite_orm {
 
 // #include "prepared_statement.h"
 
+
 #include <sqlite3.h>
 #include <iterator>  //  std::iterator_traits
 #include <string>  //  std::string
@@ -10983,10 +11000,12 @@ namespace sqlite_orm {
 
 // #include "connection_holder.h"
 
+
 #include <sqlite3.h>
 #include <string>  //  std::string
 
 // #include "error_code.h"
+
 
 namespace sqlite_orm {
 
@@ -11062,6 +11081,7 @@ namespace sqlite_orm {
 
 // #include "values.h"
 
+
 #include <vector>  //  std::vector
 #include <initializer_list>
 #include <tuple>  //  std::tuple
@@ -11102,6 +11122,7 @@ namespace sqlite_orm {
     }
 
 }
+
 
 namespace sqlite_orm {
 
@@ -11855,6 +11876,7 @@ namespace sqlite_orm {
 
 // #include "ast/excluded.h"
 
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -11873,6 +11895,7 @@ namespace sqlite_orm {
 }
 
 // #include "ast/upsert_clause.h"
+
 
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::false_type, std::true_type, std::forward
@@ -11939,6 +11962,7 @@ namespace sqlite_orm {
 
 // #include "ast/into.h"
 
+
 #include <type_traits>  //  std::true_type, std::false_type
 
 namespace sqlite_orm {
@@ -11966,9 +11990,11 @@ namespace sqlite_orm {
 
 // #include "ast/exists.h"
 
+
 #include <utility>  //  std::move
 
 // #include "tags.h"
+
 
 namespace sqlite_orm {
     namespace internal {
@@ -11997,6 +12023,7 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 }
+
 
 namespace sqlite_orm {
 
@@ -12635,12 +12662,21 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<order_by_t<T>, void> {
+        struct ast_iterator<order_by_t<T>, match_if_not<is_bindable, T>> {
             using node_type = order_by_t<T>;
 
             template<class L>
             void operator()(const node_type& node, const L& l) const {
                 iterate_ast(node.expression, l);
+            }
+        };
+
+        template<class T>
+        struct ast_iterator<order_by_t<T>, match_if<is_bindable, T>> {
+            using node_type = order_by_t<T>;
+
+            template<class L>
+            void operator()(const node_type& /*node*/, const L& /*l*/) const {
             }
         };
 
@@ -12660,6 +12696,7 @@ namespace sqlite_orm {
 // #include "prepared_statement.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -12730,6 +12767,7 @@ namespace sqlite_orm {
 
 // #include "storage_base.h"
 
+
 #include <functional>  //  std::function, std::bind
 #include <sqlite3.h>
 #include <string>  //  std::string
@@ -12743,6 +12781,7 @@ namespace sqlite_orm {
 #include <algorithm>  //  std::iter_swap
 
 // #include "pragma.h"
+
 
 #include <string>  //  std::string
 #include <sqlite3.h>
@@ -12759,6 +12798,7 @@ namespace sqlite_orm {
 // #include "journal_mode.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -12916,12 +12956,14 @@ namespace sqlite_orm {
 
 // #include "limit_accesor.h"
 
+
 #include <sqlite3.h>
 #include <map>  //  std::map
 #include <functional>  //  std::function
 #include <memory>  //  std::shared_ptr
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -13056,9 +13098,11 @@ namespace sqlite_orm {
 
 // #include "transaction_guard.h"
 
+
 #include <functional>  //  std::function
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -13083,7 +13127,7 @@ namespace sqlite_orm {
                 connection(std::move(connection_)),
                 commit_func(std::move(commit_func_)), rollback_func(std::move(rollback_func_)) {}
 
-            transaction_guard_t(transaction_guard_t&& other) :
+            transaction_guard_t(transaction_guard_t &&other) :
                 commit_on_destroy(other.commit_on_destroy), connection(std::move(other.connection)),
                 commit_func(move(other.commit_func)), rollback_func(move(other.rollback_func)),
                 gotta_fire(other.gotta_fire) {
@@ -13100,7 +13144,7 @@ namespace sqlite_orm {
                 }
             }
 
-            transaction_guard_t& operator=(transaction_guard_t&&) = delete;
+            transaction_guard_t &operator=(transaction_guard_t &&) = delete;
 
             /**
              *  Call `COMMIT` explicitly. After this call
@@ -13145,6 +13189,7 @@ namespace sqlite_orm {
 
 // #include "backup.h"
 
+
 #include <sqlite3.h>
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
@@ -13153,6 +13198,7 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "connection_holder.h"
+
 
 namespace sqlite_orm {
 
@@ -13223,6 +13269,7 @@ namespace sqlite_orm {
 
 // #include "values_to_tuple.h"
 
+
 #include <sqlite3.h>
 #include <tuple>  //  std::get, std::tuple_element
 
@@ -13230,9 +13277,11 @@ namespace sqlite_orm {
 
 // #include "arg_values.h"
 
+
 #include <sqlite3.h>
 
 // #include "row_extractor.h"
+
 
 namespace sqlite_orm {
 
@@ -13240,7 +13289,7 @@ namespace sqlite_orm {
 
         arg_value() : arg_value(nullptr) {}
 
-        arg_value(sqlite3_value* value_) : value(value_) {}
+        arg_value(sqlite3_value *value_) : value(value_) {}
 
         template<class T>
         T get() const {
@@ -13277,18 +13326,18 @@ namespace sqlite_orm {
         }
 
       private:
-        sqlite3_value* value = nullptr;
+        sqlite3_value *value = nullptr;
     };
 
     struct arg_values {
 
         struct iterator {
 
-            iterator(const arg_values& container_, int index_) :
+            iterator(const arg_values &container_, int index_) :
                 container(container_), index(index_),
                 currentValue(index_ < int(container_.size()) ? container_[index_] : arg_value()) {}
 
-            iterator& operator++() {
+            iterator &operator++() {
                 ++this->index;
                 if(this->index < int(this->container.size())) {
                     this->currentValue = this->container[this->index];
@@ -13317,27 +13366,27 @@ namespace sqlite_orm {
                 }
             }
 
-            arg_value* operator->() const {
+            arg_value *operator->() const {
                 return &this->currentValue;
             }
 
-            bool operator==(const iterator& other) const {
+            bool operator==(const iterator &other) const {
                 return &other.container == &this->container && other.index == this->index;
             }
 
-            bool operator!=(const iterator& other) const {
+            bool operator!=(const iterator &other) const {
                 return !(*this == other);
             }
 
           private:
-            const arg_values& container;
+            const arg_values &container;
             int index = 0;
             mutable arg_value currentValue;
         };
 
         arg_values() : arg_values(0, nullptr) {}
 
-        arg_values(int argsCount_, sqlite3_value** values_) : argsCount(argsCount_), values(values_) {}
+        arg_values(int argsCount_, sqlite3_value **values_) : argsCount(argsCount_), values(values_) {}
 
         size_t size() const {
             return this->argsCount;
@@ -13370,9 +13419,10 @@ namespace sqlite_orm {
 
       private:
         int argsCount = 0;
-        sqlite3_value** values = nullptr;
+        sqlite3_value **values = nullptr;
     };
 }
+
 
 namespace sqlite_orm {
 
@@ -13385,7 +13435,7 @@ namespace sqlite_orm {
         template<class T, size_t I>
         struct values_to_tuple {
 
-            void extract(sqlite3_value** values, T& tuple, int argsCount) const {
+            void extract(sqlite3_value **values, T &tuple, int argsCount) const {
                 using element_type = typename std::tuple_element<I, T>::type;
                 std::get<I>(tuple) = row_extractor<element_type>().extract(values[I]);
 
@@ -13395,14 +13445,14 @@ namespace sqlite_orm {
 
         template<class T>
         struct values_to_tuple<T, size_t(-1)> {
-            void extract(sqlite3_value** values, T& tuple, int argsCount) const {
+            void extract(sqlite3_value **values, T &tuple, int argsCount) const {
                 //..
             }
         };
 
         template<>
         struct values_to_tuple<std::tuple<arg_values>, 0> {
-            void extract(sqlite3_value** values, std::tuple<arg_values>& tuple, int argsCount) const {
+            void extract(sqlite3_value **values, std::tuple<arg_values> &tuple, int argsCount) const {
                 std::get<0>(tuple) = arg_values(argsCount, values);
             }
         };
@@ -13410,6 +13460,7 @@ namespace sqlite_orm {
 }
 
 // #include "arg_values.h"
+
 
 namespace sqlite_orm {
 
@@ -14123,10 +14174,12 @@ namespace sqlite_orm {
 
 // #include "expression_object_type.h"
 
+
 #include <type_traits>  //  std::decay
 #include <functional>  //  std::reference_wrapper
 
 // #include "prepared_statement.h"
+
 
 namespace sqlite_orm {
 
@@ -14278,6 +14331,7 @@ namespace sqlite_orm {
 
 // #include "statement_serializator.h"
 
+
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <type_traits>  //  std::enable_if, std::remove_pointer
@@ -14327,6 +14381,7 @@ namespace sqlite_orm {
 
 // #include "table_name_collector.h"
 
+
 #include <set>  //  std::set
 #include <string>  //  std::string
 #include <functional>  //  std::function
@@ -14341,6 +14396,7 @@ namespace sqlite_orm {
 // #include "alias.h"
 
 // #include "core_functions.h"
+
 
 namespace sqlite_orm {
 
@@ -14358,7 +14414,7 @@ namespace sqlite_orm {
             table_name_collector(find_table_name_t find_table_name) : find_table_name(move(find_table_name)) {}
 
             template<class T>
-            table_name_set operator()(const T&) const {
+            table_name_set operator()(const T &) const {
                 return {};
             }
 
@@ -14370,19 +14426,19 @@ namespace sqlite_orm {
             }
 
             template<class T, class F>
-            void operator()(const column_pointer<T, F>&) const {
+            void operator()(const column_pointer<T, F> &) const {
                 if(this->find_table_name) {
                     table_names.insert({this->find_table_name(typeid(T)), ""});
                 }
             }
 
             template<class T, class C>
-            void operator()(const alias_column_t<T, C>& a) const {
+            void operator()(const alias_column_t<T, C> &a) const {
                 (*this)(a.column, alias_extractor<T>::get());
             }
 
             template<class T>
-            void operator()(const count_asterisk_t<T>&) const {
+            void operator()(const count_asterisk_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     if(!tableName.empty()) {
@@ -14392,7 +14448,7 @@ namespace sqlite_orm {
             }
 
             template<class T, satisfies_not<std::is_base_of, alias_tag, T> = true>
-            void operator()(const asterisk_t<T>&) const {
+            void operator()(const asterisk_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -14400,7 +14456,7 @@ namespace sqlite_orm {
             }
 
             template<class T, satisfies<std::is_base_of, alias_tag, T> = true>
-            void operator()(const asterisk_t<T>&) const {
+            void operator()(const asterisk_t<T> &) const {
                 if(this->find_table_name) {
                     // note: not all alias classes have a nested A::type
                     static_assert(polyfill::is_detected_v<type_t, T>,
@@ -14411,7 +14467,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const object_t<T>&) const {
+            void operator()(const object_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -14419,7 +14475,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const table_rowid_t<T>&) const {
+            void operator()(const table_rowid_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -14427,7 +14483,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const table_oid_t<T>&) const {
+            void operator()(const table_oid_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -14435,7 +14491,7 @@ namespace sqlite_orm {
             }
 
             template<class T>
-            void operator()(const table__rowid_t<T>&) const {
+            void operator()(const table__rowid_t<T> &) const {
                 if(this->find_table_name) {
                     auto tableName = this->find_table_name(typeid(T));
                     table_names.insert(std::make_pair(move(tableName), ""));
@@ -14449,6 +14505,7 @@ namespace sqlite_orm {
 
 // #include "column_names_getter.h"
 
+
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <vector>  //  std::vector
@@ -14457,6 +14514,7 @@ namespace sqlite_orm {
 // #include "error_code.h"
 
 // #include "select_constraints.h"
+
 
 namespace sqlite_orm {
 
@@ -14555,6 +14613,7 @@ namespace sqlite_orm {
 
 // #include "order_by_serializator.h"
 
+
 #include <string>  //  std::string
 #include <vector>  //  std::vector
 #include <sstream>  //  std::stringstream
@@ -14572,17 +14631,17 @@ namespace sqlite_orm {
             return serializer(t, context);
         }
 
-        template<class O>
-        struct order_by_serializator<order_by_t<O>, void> {
-            using statement_type = order_by_t<O>;
+        template<class E>
+        struct order_by_serializator<order_by_t<E>, void> {
+            using statement_type = order_by_t<E>;
 
             template<class C>
             std::string operator()(const statement_type& orderBy, const C& context) const {
                 std::stringstream ss;
                 auto newContext = context;
+                newContext.replace_bindable_with_question = !is_bindable_v<E>;
                 newContext.skip_table_name = false;
-                auto columnName = serialize(orderBy.expression, newContext);
-                ss << columnName << " ";
+                ss << serialize(orderBy.expression, newContext);
                 if(!orderBy._collate_argument.empty()) {
                     ss << " COLLATE " << orderBy._collate_argument;
                 }
@@ -14609,16 +14668,16 @@ namespace sqlite_orm {
                     std::string entryString;
                     {
                         std::stringstream ss;
-                        ss << entry.name << " ";
+                        ss << entry.name;
                         if(!entry._collate_argument.empty()) {
-                            ss << "COLLATE " << entry._collate_argument << " ";
+                            ss << " COLLATE " << entry._collate_argument << " ";
                         }
                         switch(entry.asc_desc) {
                             case 1:
-                                ss << "ASC";
+                                ss << " ASC";
                                 break;
                             case -1:
-                                ss << "DESC";
+                                ss << " DESC";
                                 break;
                         }
                         entryString = ss.str();
@@ -14651,6 +14710,7 @@ namespace sqlite_orm {
 
 // #include "index.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -14668,7 +14728,7 @@ namespace sqlite_orm {
          *  Serializer for bindable types.
          */
         template<class T>
-        struct statement_serializator<T, std::enable_if_t<is_bindable_v<T>>> {
+        struct statement_serializator<T, match_if<is_bindable, T>> {
             using statement_type = T;
 
             template<class C>
@@ -14738,23 +14798,6 @@ namespace sqlite_orm {
                 return field_printer<std::nullptr_t>{}(nullptr);
             }
         };
-
-#if __cplusplus >= 201703L  // use of C++17 or higher
-        /**
-         *  Constant which gets never replaced in a bindable context.
-         *  Used together with order_by(1_nth_col).
-         */
-        template<unsigned int N>
-        struct statement_serializator<positional_ordinal<N>, void> {
-            using statement_type = positional_ordinal<N>;
-
-            template<class C>
-            std::string operator()(const statement_type& /*expression*/, const C& /*context*/) {
-                static_assert(N > 0, "Column number must be greater than 0.");
-                return std::to_string(N);
-            }
-        };
-#endif
 
         template<class F, class W>
         struct statement_serializator<filtered_aggregate_function<F, W>, void> {
@@ -17088,6 +17131,7 @@ namespace sqlite_orm {
 
 // #include "index.h"
 
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -17928,9 +17972,9 @@ namespace sqlite_orm {
                                 }
                                 res = decltype(res)::old_columns_removed;
 #else
-                                    //  extra table columns than storage columns
-                                    this->backup_table(db, tImpl, {});
-                                    res = decltype(res)::old_columns_removed;
+                                //  extra table columns than storage columns
+                                this->backup_table(db, tImpl, {});
+                                res = decltype(res)::old_columns_removed;
 #endif
                             }
 
@@ -18803,35 +18847,42 @@ __pragma(pop_macro("min"))
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-    // #include "conditions.h"
+// #include "conditions.h"
 
-    // #include "operators.h"
+// #include "operators.h"
 
-    // #include "select_constraints.h"
+// #include "select_constraints.h"
 
-    // #include "prepared_statement.h"
+// #include "prepared_statement.h"
 
-    // #include "optional_container.h"
+// #include "optional_container.h"
 
-    // #include "core_functions.h"
+// #include "core_functions.h"
 
-    // #include "function.h"
+// #include "function.h"
 
-    // #include "ast/excluded.h"
+// #include "ast/excluded.h"
 
-    // #include "ast/upsert_clause.h"
+// #include "ast/upsert_clause.h"
 
-    // #include "ast/where.h"
+// #include "ast/where.h"
 
-    // #include "ast/into.h"
+// #include "ast/into.h"
 
-    // #include "ast/group_by.h"
+// #include "ast/group_by.h"
 
-    namespace sqlite_orm {
+
+namespace sqlite_orm {
 
     namespace internal {
 
         template<class T, class SFINAE = void>
+        struct node_tuple;
+
+        template<class T>
+        using node_tuple_t = typename node_tuple<T>::type;
+
+        template<class T, class SFINAE>
         struct node_tuple {
             using type = std::tuple<T>;
         };
@@ -18842,55 +18893,49 @@ __pragma(pop_macro("min"))
         };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
-        struct node_tuple<as_optional_t<T>, void> {
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<as_optional_t<T>, void> : node_tuple<T> {};
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
-        struct node_tuple<std::reference_wrapper<T>, void> {
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<std::reference_wrapper<T>, void> : node_tuple<T> {};
 
         template<class... Args>
-        struct node_tuple<group_by_t<Args...>, void> {
-            using type = typename node_tuple<std::tuple<Args...>>::type;
-        };
+        struct node_tuple<group_by_t<Args...>, void> : node_tuple<std::tuple<Args...>> {};
 
         template<class T, class... Args>
         struct node_tuple<group_by_with_having<T, Args...>, void> {
-            using args_tuple = typename node_tuple<std::tuple<Args...>>::type;
-            using expression_tuple = typename node_tuple<T>::type;
+            using args_tuple = node_tuple_t<std::tuple<Args...>>;
+            using expression_tuple = node_tuple_t<T>;
             using type = typename conc_tuple<args_tuple, expression_tuple>::type;
         };
 
         template<class... TargetArgs, class... ActionsArgs>
-        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
-            using type = typename node_tuple<std::tuple<ActionsArgs...>>::type;
-        };
+        struct node_tuple<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void>
+            : node_tuple<std::tuple<ActionsArgs...>> {};
 
         template<class... Args>
         struct node_tuple<set_t<Args...>, void> {
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class T>
-        struct node_tuple<excluded_t<T>, void> {
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<excluded_t<T>, void> : node_tuple<T> {};
 
         template<class C>
-        struct node_tuple<where_t<C>, void> {
-            using node_type = where_t<C>;
-            using type = typename node_tuple<C>::type;
-        };
+        struct node_tuple<where_t<C>, void> : node_tuple<C> {};
+
+        template<class E>
+        struct node_tuple<order_by_t<E>, match_if_not<is_bindable, E>> : node_tuple<E> {};
+
+        template<class E>
+        struct node_tuple<order_by_t<E>, match_if<is_bindable, E>> : node_tuple<void> {};
 
         template<class T>
         struct node_tuple<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
-            using left_node_tuple = typename node_tuple<left_type>::type;
-            using right_node_tuple = typename node_tuple<right_type>::type;
+            using left_node_tuple = node_tuple_t<left_type>;
+            using right_node_tuple = node_tuple_t<right_type>;
             using type = typename conc_tuple<left_node_tuple, right_node_tuple>::type;
         };
 
@@ -18899,30 +18944,27 @@ __pragma(pop_macro("min"))
             using node_type = binary_operator<L, R, Ds...>;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
-            using left_node_tuple = typename node_tuple<left_type>::type;
-            using right_node_tuple = typename node_tuple<right_type>::type;
+            using left_node_tuple = node_tuple_t<left_type>;
+            using right_node_tuple = node_tuple_t<right_type>;
             using type = typename conc_tuple<left_node_tuple, right_node_tuple>::type;
         };
 
         template<class... Args>
         struct node_tuple<columns_t<Args...>, void> {
-            using node_type = columns_t<Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class L, class A>
         struct node_tuple<dynamic_in_t<L, A>, void> {
-            using node_type = dynamic_in_t<L, A>;
-            using left_tuple = typename node_tuple<L>::type;
-            using right_tuple = typename node_tuple<A>::type;
+            using left_tuple = node_tuple_t<L>;
+            using right_tuple = node_tuple_t<A>;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
         template<class L, class... Args>
         struct node_tuple<in_t<L, Args...>, void> {
-            using node_type = in_t<L, Args...>;
-            using left_tuple = typename node_tuple<L>::type;
-            using right_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using left_tuple = node_tuple_t<L>;
+            using right_tuple = typename conc_tuple<node_tuple_t<Args>...>::type;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
@@ -18931,266 +18973,188 @@ __pragma(pop_macro("min"))
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
-            using left_tuple = typename node_tuple<left_type>::type;
-            using right_tuple = typename node_tuple<right_type>::type;
+            using left_tuple = node_tuple_t<left_type>;
+            using right_tuple = node_tuple_t<right_type>;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
         template<class T, class... Args>
         struct node_tuple<select_t<T, Args...>, void> {
-            using node_type = select_t<T, Args...>;
-            using columns_tuple = typename node_tuple<T>::type;
-            using args_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using columns_tuple = node_tuple_t<T>;
+            using args_tuple = typename conc_tuple<node_tuple_t<Args>...>::type;
             using type = typename conc_tuple<columns_tuple, args_tuple>::type;
         };
 
         template<class... Args>
         struct node_tuple<insert_raw_t<Args...>, void> {
-            using node_type = insert_raw_t<Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class... Args>
         struct node_tuple<replace_raw_t<Args...>, void> {
-            using node_type = replace_raw_t<Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class T>
-        struct node_tuple<into_t<T>, void> {
-            using node_type = into_t<T>;
-            using type = std::tuple<>;
-        };
+        struct node_tuple<into_t<T>, void> : node_tuple<void> {};
 
         template<class... Args>
         struct node_tuple<values_t<Args...>, void> {
-            using node_type = values_t<Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class... Args>
         struct node_tuple<std::tuple<Args...>, void> {
-            using node_type = std::tuple<Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class T, class R, class... Args>
         struct node_tuple<get_all_t<T, R, Args...>, void> {
-            using node_type = get_all_t<T, R, Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class T, class... Args>
         struct node_tuple<get_all_pointer_t<T, Args...>, void> {
-            using node_type = get_all_pointer_t<T, Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Args>
         struct node_tuple<get_all_optional_t<T, Args...>, void> {
-            using node_type = get_all_optional_t<T, Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class... Args, class... Wargs>
         struct node_tuple<update_all_t<set_t<Args...>, Wargs...>, void> {
-            using node_type = update_all_t<set_t<Args...>, Wargs...>;
-            using set_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
-            using conditions_tuple = typename conc_tuple<typename node_tuple<Wargs>::type...>::type;
+            using set_tuple = typename conc_tuple<node_tuple_t<Args>...>::type;
+            using conditions_tuple = typename conc_tuple<node_tuple_t<Wargs>...>::type;
             using type = typename conc_tuple<set_tuple, conditions_tuple>::type;
         };
 
         template<class T, class... Args>
         struct node_tuple<remove_all_t<T, Args...>, void> {
-            using node_type = remove_all_t<T, Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class T>
-        struct node_tuple<having_t<T>, void> {
-            using node_type = having_t<T>;
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<having_t<T>, void> : node_tuple<T> {};
 
         template<class T, class E>
-        struct node_tuple<cast_t<T, E>, void> {
-            using node_type = cast_t<T, E>;
-            using type = typename node_tuple<E>::type;
-        };
+        struct node_tuple<cast_t<T, E>, void> : node_tuple<E> {};
 
         template<class T>
-        struct node_tuple<exists_t<T>, void> {
-            using node_type = exists_t<T>;
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<exists_t<T>, void> : node_tuple<T> {};
 
         template<class T>
-        struct node_tuple<optional_container<T>, void> {
-            using node_type = optional_container<T>;
-            using type = typename node_tuple<T>::type;
-        };
-
-        template<>
-        struct node_tuple<optional_container<void>, void> {
-            using node_type = optional_container<void>;
-            using type = std::tuple<>;
-        };
+        struct node_tuple<optional_container<T>, void> : node_tuple<T> {};
 
         template<class A, class T, class E>
         struct node_tuple<like_t<A, T, E>, void> {
-            using node_type = like_t<A, T, E>;
-            using arg_tuple = typename node_tuple<A>::type;
-            using pattern_tuple = typename node_tuple<T>::type;
-            using escape_tuple = typename node_tuple<E>::type;
+            using arg_tuple = node_tuple_t<A>;
+            using pattern_tuple = node_tuple_t<T>;
+            using escape_tuple = node_tuple_t<E>;
             using type = typename conc_tuple<arg_tuple, pattern_tuple, escape_tuple>::type;
         };
 
         template<class A, class T>
         struct node_tuple<glob_t<A, T>, void> {
-            using node_type = glob_t<A, T>;
-            using arg_tuple = typename node_tuple<A>::type;
-            using pattern_tuple = typename node_tuple<T>::type;
+            using arg_tuple = node_tuple_t<A>;
+            using pattern_tuple = node_tuple_t<T>;
             using type = typename conc_tuple<arg_tuple, pattern_tuple>::type;
         };
 
         template<class A, class T>
         struct node_tuple<between_t<A, T>, void> {
-            using node_type = between_t<A, T>;
-            using expression_tuple = typename node_tuple<A>::type;
-            using lower_tuple = typename node_tuple<T>::type;
-            using upper_tuple = typename node_tuple<T>::type;
+            using expression_tuple = node_tuple_t<A>;
+            using lower_tuple = node_tuple_t<T>;
+            using upper_tuple = node_tuple_t<T>;
             using type = typename conc_tuple<expression_tuple, lower_tuple, upper_tuple>::type;
         };
 
         template<class T>
-        struct node_tuple<named_collate<T>, void> {
-            using node_type = named_collate<T>;
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<named_collate<T>, void> : node_tuple<T> {};
 
         template<class T>
-        struct node_tuple<is_null_t<T>, void> {
-            using node_type = is_null_t<T>;
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<is_null_t<T>, void> : node_tuple<T> {};
 
         template<class T>
-        struct node_tuple<is_not_null_t<T>, void> {
-            using node_type = is_not_null_t<T>;
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<is_not_null_t<T>, void> : node_tuple<T> {};
 
         template<class C>
-        struct node_tuple<negated_condition_t<C>, void> {
-            using node_type = negated_condition_t<C>;
-            using type = typename node_tuple<C>::type;
-        };
+        struct node_tuple<negated_condition_t<C>, void> : node_tuple<C> {};
 
         template<class R, class S, class... Args>
         struct node_tuple<built_in_function_t<R, S, Args...>, void> {
-            using node_type = built_in_function_t<R, S, Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class R, class S, class... Args>
         struct node_tuple<built_in_aggregate_function_t<R, S, Args...>, void> {
-            using node_type = built_in_aggregate_function_t<R, S, Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class F, class W>
         struct node_tuple<filtered_aggregate_function<F, W>, void> {
-            using node_type = filtered_aggregate_function<F, W>;
-            using left_tuple = typename node_tuple<F>::type;
-            using right_tuple = typename node_tuple<W>::type;
+            using left_tuple = node_tuple_t<F>;
+            using right_tuple = node_tuple_t<W>;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
         template<class F, class... Args>
         struct node_tuple<function_call<F, Args...>, void> {
-            using node_type = function_call<F, Args...>;
-            using type = typename conc_tuple<typename node_tuple<Args>::type...>::type;
+            using type = typename conc_tuple<node_tuple_t<Args>...>::type;
         };
 
         template<class T, class O>
-        struct node_tuple<left_join_t<T, O>, void> {
-            using node_type = left_join_t<T, O>;
-            using type = typename node_tuple<O>::type;
-        };
+        struct node_tuple<left_join_t<T, O>, void> : node_tuple<O> {};
 
         template<class T>
-        struct node_tuple<on_t<T>, void> {
-            using node_type = on_t<T>;
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<on_t<T>, void> : node_tuple<T> {};
 
         // note: not strictly necessary as there's no binding support for USING;
         // we provide it nevertheless, in line with on_t.
         template<class T, class M>
-        struct node_tuple<using_t<T, M>, void> {
-            using node_type = using_t<T, M>;
-            using type = typename node_tuple<column_pointer<T, M>>::type;
-        };
+        struct node_tuple<using_t<T, M>, void> : node_tuple<column_pointer<T, M>> {};
 
         template<class T, class O>
-        struct node_tuple<join_t<T, O>, void> {
-            using node_type = join_t<T, O>;
-            using type = typename node_tuple<O>::type;
-        };
+        struct node_tuple<join_t<T, O>, void> : node_tuple<O> {};
 
         template<class T, class O>
-        struct node_tuple<left_outer_join_t<T, O>, void> {
-            using node_type = left_outer_join_t<T, O>;
-            using type = typename node_tuple<O>::type;
-        };
+        struct node_tuple<left_outer_join_t<T, O>, void> : node_tuple<O> {};
 
         template<class T, class O>
-        struct node_tuple<inner_join_t<T, O>, void> {
-            using node_type = inner_join_t<T, O>;
-            using type = typename node_tuple<O>::type;
-        };
+        struct node_tuple<inner_join_t<T, O>, void> : node_tuple<O> {};
 
         template<class R, class T, class E, class... Args>
         struct node_tuple<simple_case_t<R, T, E, Args...>, void> {
-            using node_type = simple_case_t<R, T, E, Args...>;
-            using case_tuple = typename node_tuple<T>::type;
-            using args_tuple = typename conc_tuple<typename node_tuple<Args>::type...>::type;
-            using else_tuple = typename node_tuple<E>::type;
+            using case_tuple = node_tuple_t<T>;
+            using args_tuple = typename conc_tuple<node_tuple_t<Args>...>::type;
+            using else_tuple = node_tuple_t<E>;
             using type = typename conc_tuple<case_tuple, args_tuple, else_tuple>::type;
         };
 
         template<class L, class R>
         struct node_tuple<std::pair<L, R>, void> {
-            using node_type = std::pair<L, R>;
-            using left_tuple = typename node_tuple<L>::type;
-            using right_tuple = typename node_tuple<R>::type;
+            using left_tuple = node_tuple_t<L>;
+            using right_tuple = node_tuple_t<R>;
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
         template<class T, class E>
-        struct node_tuple<as_t<T, E>, void> {
-            using node_type = as_t<T, E>;
-            using type = typename node_tuple<E>::type;
-        };
+        struct node_tuple<as_t<T, E>, void> : node_tuple<E> {};
 
         template<class T>
-        struct node_tuple<limit_t<T, false, false, void>, void> {
-            using node_type = limit_t<T, false, false, void>;
-            using type = typename node_tuple<T>::type;
-        };
+        struct node_tuple<limit_t<T, false, false, void>, void> : node_tuple<T> {};
 
         template<class T, class O>
         struct node_tuple<limit_t<T, true, false, O>, void> {
-            using node_type = limit_t<T, true, false, O>;
-            using type = typename conc_tuple<typename node_tuple<T>::type, typename node_tuple<O>::type>::type;
+            using type = typename conc_tuple<node_tuple_t<T>, node_tuple_t<O>>::type;
         };
 
         template<class T, class O>
         struct node_tuple<limit_t<T, true, true, O>, void> {
-            using node_type = limit_t<T, true, true, O>;
-            using type = typename conc_tuple<typename node_tuple<O>::type, typename node_tuple<T>::type>::type;
+            using type = typename conc_tuple<node_tuple_t<O>, node_tuple_t<T>>::type;
         };
     }
 }
@@ -19205,6 +19169,7 @@ __pragma(pop_macro("min"))
 // #include "static_magic.h"
 
 // #include "expression_object_type.h"
+
 
 namespace sqlite_orm {
 
@@ -19322,7 +19287,7 @@ namespace sqlite_orm {
     const auto& get(const internal::prepared_statement_t<T>& statement) {
         using statement_type = typename std::decay<decltype(statement)>::type;
         using expression_type = typename statement_type::expression_type;
-        using node_tuple = typename internal::node_tuple<expression_type>::type;
+        using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
         using result_tupe = typename std::tuple_element<static_cast<size_t>(N), bind_tuple>::type;
         const result_tupe* result = nullptr;
@@ -19345,7 +19310,7 @@ namespace sqlite_orm {
     auto& get(internal::prepared_statement_t<T>& statement) {
         using statement_type = typename std::decay<decltype(statement)>::type;
         using expression_type = typename statement_type::expression_type;
-        using node_tuple = typename internal::node_tuple<expression_type>::type;
+        using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
         using result_tupe = typename std::tuple_element<static_cast<size_t>(N), bind_tuple>::type;
         result_tupe* result = nullptr;
@@ -19371,6 +19336,7 @@ namespace sqlite_orm {
 // #include "start_macros.h"
 
 // #include "pointer_value.h"
+
 
 namespace sqlite_orm {
 
