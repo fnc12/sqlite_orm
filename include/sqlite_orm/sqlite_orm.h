@@ -15207,9 +15207,16 @@ namespace sqlite_orm {
                     ss << "NOT IN";
                 }
                 ss << " ";
+                constexpr auto isCompoundOperator = is_base_of_template<A, compound_operator>::value;
+                if(isCompoundOperator) {
+                    ss << '(';
+                }
                 auto newContext = context;
                 newContext.use_parentheses = true;
                 ss << serialize(statement.argument, newContext);
+                if(isCompoundOperator) {
+                    ss << ')';
+                }
                 return ss.str();
             }
         };
