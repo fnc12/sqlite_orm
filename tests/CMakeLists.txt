@@ -70,7 +70,6 @@ add_executable(unit_tests
 	constraints/unique.cpp
 	constraints/foreign_key.cpp
 	constraints/check.cpp
-    conditions.cpp
 	table_tests.cpp
     statement_serializator_tests/column_constraints/generated.cpp
     statement_serializator_tests/column_constraints/default.cpp

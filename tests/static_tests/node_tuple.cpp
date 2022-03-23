@@ -353,11 +353,11 @@ TEST_CASE("Node tuple") {
             using Union = decltype(un);
             using Tuple = node_tuple_t<Union>;
             using Expected = tuple<decltype(&User::id),
-                                        decltype(&User::name),
-                                        const char*,
-                                        decltype(&User::id),
-                                        std::string,
-                                        decltype(&User::name)>;
+                                   decltype(&User::name),
+                                   const char*,
+                                   decltype(&User::id),
+                                   std::string,
+                                   decltype(&User::name)>;
             static_assert(is_same<Tuple, Expected>::value, "union_all");
         }
         SECTION("except") {
@@ -366,21 +366,20 @@ TEST_CASE("Node tuple") {
             using Union = decltype(un);
             using Tuple = node_tuple_t<Union>;
             using Expected = tuple<decltype(&User::id),
-                                        decltype(&User::name),
-                                        decltype(&User::id),
-                                        long,
-                                        decltype(&User::id),
-                                        decltype(&User::name),
-                                        decltype(&User::id),
-                                        long>;
+                                   decltype(&User::name),
+                                   decltype(&User::id),
+                                   long,
+                                   decltype(&User::id),
+                                   decltype(&User::name),
+                                   decltype(&User::id),
+                                   long>;
             static_assert(is_same<Tuple, Expected>::value, "except");
         }
         SECTION("intersect") {
             auto un = intersect(select(&User::name), select(&User::name, where(is_equal(&User::name, "Anny"))));
             using Union = decltype(un);
             using Tuple = node_tuple_t<Union>;
-            using Expected =
-                tuple<decltype(&User::name), decltype(&User::name), decltype(&User::name), const char*>;
+            using Expected = tuple<decltype(&User::name), decltype(&User::name), decltype(&User::name), const char*>;
             static_assert(is_same<Tuple, Expected>::value, "intersect");
         }
     }
@@ -489,9 +488,8 @@ TEST_CASE("Node tuple") {
             auto getAll = get_all<User>(where(is_equal(&User::id, 1) or is_equal(std::string("Alex"), &User::name)));
             using GetAll = decltype(getAll);
             using Tuple = node_tuple_t<GetAll>;
-            static_assert(
-                is_same<Tuple, tuple<decltype(&User::id), int, std::string, decltype(&User::name)>>::value,
-                "get_all<User>(where(is_equal(5.0, &User::id)))");
+            static_assert(is_same<Tuple, tuple<decltype(&User::id), int, std::string, decltype(&User::name)>>::value,
+                          "get_all<User>(where(is_equal(5.0, &User::id)))");
         }
     }
     SECTION("having_t") {
@@ -535,7 +533,7 @@ TEST_CASE("Node tuple") {
             static_assert(is_same<EscapeTuple, tuple<>>::value, "escape_tuple");
             using Tuple = NodeTuple::type;
             static_assert(std::tuple_size<Tuple>::value == 2, "like(&User::name, \"S%\") size");
-            using Tuple0 = std::tuple_element<0, Tuple>::type;
+            using Tuple0 = std::tuple_element_t<0, Tuple>;
             static_assert(is_same<Tuple0, decltype(&User::name)>::value, "like(&User::name, \"S%\") type 0");
             static_assert(is_same<Tuple, tuple<decltype(&User::name), const char*>>::value,
                           "like(&User::name, \"S%\")");
@@ -569,8 +567,7 @@ TEST_CASE("Node tuple") {
         auto gl = glob(&User::name, "H*");
         using Glob = decltype(gl);
         using Tuple = node_tuple_t<Glob>;
-        static_assert(is_same<Tuple, tuple<decltype(&User::name), const char*>>::value,
-                      "glob(&User::name, \"H*\")");
+        static_assert(is_same<Tuple, tuple<decltype(&User::name), const char*>>::value, "glob(&User::name, \"H*\")");
     }
     SECTION("between_t") {
         auto bet = between(&User::id, 10, 20);
@@ -684,7 +681,7 @@ TEST_CASE("Node tuple") {
             auto f = upper("hi");
             using Fun = decltype(f);
             using Tuple = node_tuple_t<Fun>;
-            using ArgType = std::tuple_element<0, Fun::args_type>::type;
+            using ArgType = std::tuple_element_t<0, Fun::args_type>;
             static_assert(is_same<ArgType, const char*>::value, "upper arg[0]");
             using Expected = tuple<const char*>;
             static_assert(is_same<Tuple, Expected>::value, "upper");
@@ -866,7 +863,7 @@ TEST_CASE("Node tuple") {
         STATIC_REQUIRE(is_tuple<ArgsType>::value);
         STATIC_REQUIRE(std::tuple_size<ArgsType>::value == 1);
 
-        using Arg0 = std::tuple_element<0, ArgsType>::type;
+        using Arg0 = std::tuple_element_t<0, ArgsType>;
         STATIC_REQUIRE(is_pair<Arg0>::value);
         using Arg0First = Arg0::first_type;
         STATIC_REQUIRE(is_same<Arg0First, const char*>::value);

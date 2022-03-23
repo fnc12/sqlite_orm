@@ -125,7 +125,7 @@ namespace sqlite_orm {
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
-        using result_tupe = typename std::tuple_element<static_cast<size_t>(N), bind_tuple>::type;
+        using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         const result_tupe* result = nullptr;
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
@@ -148,7 +148,7 @@ namespace sqlite_orm {
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
-        using result_tupe = typename std::tuple_element<static_cast<size_t>(N), bind_tuple>::type;
+        using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         result_tupe* result = nullptr;
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {

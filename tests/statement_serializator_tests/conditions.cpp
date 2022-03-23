@@ -14,7 +14,7 @@ TEST_CASE("statement_serializator conditions") {
         SECTION("expression") {
             context.replace_bindable_with_question = true;
             value = serialize(order_by(c(1) == 0), context);
-            expected = "ORDER BY (? == ?)";
+            expected = "ORDER BY (? = ?)";
         }
         SECTION("literal") {
             context.replace_bindable_with_question = true;

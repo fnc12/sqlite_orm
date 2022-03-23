@@ -669,8 +669,7 @@ namespace sqlite_orm {
             using node_type = order_by_t<T>;
 
             template<class L>
-            void operator()(const node_type& /*node*/, const L& /*l*/) const {
-            }
+            void operator()(const node_type& /*node*/, const L& /*l*/) const {}
         };
 
         template<class T>
