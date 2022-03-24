@@ -1,7 +1,8 @@
 #pragma once
 
 #include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::true_type, std::false_type, std::forward
+#include <type_traits>  //  std::true_type, std::false_type
+#include <utility>  //  std::forward, std::move
 
 namespace sqlite_orm {
     namespace internal {

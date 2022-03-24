@@ -42,4 +42,5 @@
 #include "../../dev/node_tuple.h"
 #include "../../dev/get_prepared_statement.h"
 #include "../../dev/carray.h"
+#include "../../dev/dbstat.h"
 #include "../../dev/interface_definitions.h"

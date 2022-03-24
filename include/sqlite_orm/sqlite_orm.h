@@ -6375,6 +6375,9 @@ namespace sqlite_orm {
 
 // #include "ast/where.h"
 
+#include <type_traits>  //  std::false_type, std::true_type
+#include <utility>  //  std::move
+
 // #include "../serialize_result_type.h"
 
 namespace sqlite_orm {
@@ -6425,7 +6428,8 @@ namespace sqlite_orm {
 // #include "ast/group_by.h"
 
 #include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::true_type, std::false_type, std::forward
+#include <type_traits>  //  std::true_type, std::false_type
+#include <utility>  //  std::forward, std::move
 
 namespace sqlite_orm {
     namespace internal {
@@ -11674,6 +11678,8 @@ namespace sqlite_orm {
 
 // #include "ast/excluded.h"
 
+#include <utility>  //  std::move
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -11694,7 +11700,8 @@ namespace sqlite_orm {
 // #include "ast/upsert_clause.h"
 
 #include <tuple>  //  std::tuple, std::make_tuple
-#include <type_traits>  //  std::false_type, std::true_type, std::forward
+#include <type_traits>  //  std::false_type, std::true_type
+#include <utility>  //  std::forward, std::move
 
 namespace sqlite_orm {
     namespace internal {
@@ -11787,7 +11794,7 @@ namespace sqlite_orm {
 
 #include <utility>  //  std::move
 
-// #include "tags.h"
+// #include "../tags.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -19181,33 +19188,7 @@ namespace sqlite_orm {
         }
     };
 }
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
- */
 #pragma once
-#include <sqlite3.h>
-#include <type_traits>  //  std::is_same
-#include <utility>  //  std::move
-#include <algorithm>  //  std::find_if
-#include <sstream>  //  std::stringstream
-#include <cstdlib>  //  std::atoi
-
-// #include "error_code.h"
-
-// #include "default_value_extractor.h"
-
-// #include "type_printer.h"
-
-// #include "column.h"
-
-// #include "table.h"
-
-// #include "storage_impl.h"
-
-// #include "storage.h"
-
-// #include "dbstat.h"
 
 #include <string>  //  std::string
 
@@ -19245,8 +19226,21 @@ namespace sqlite_orm {
     }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }
+/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
+ *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  this file is also used to provide definitions of interface methods 'hitting the database'.
+ */
+#pragma once
 
-// #include "util.h"
+// #include "implementations/column_definitions.h"
+/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
+ *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  this file is also used to provide definitions of interface methods 'hitting the database'.
+ */
+
+// #include "../default_value_extractor.h"
+
+// #include "../column.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -19261,6 +19255,28 @@ namespace sqlite_orm {
             });
             return res;
         }
+
+    }
+}
+
+// #include "implementations/table_definitions.h"
+/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
+ *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  this file is also used to provide definitions of interface methods 'hitting the database'.
+ */
+
+#include <type_traits>  //  std::decay_t
+#include <utility>  //  std::move
+#include <algorithm>  //  std::find_if
+
+// #include "../type_printer.h"
+
+// #include "../column.h"
+
+// #include "../table.h"
+
+namespace sqlite_orm {
+    namespace internal {
 
         template<class T, bool WithoutRowId, class... Cs>
         std::vector<table_info> table_t<T, WithoutRowId, Cs...>::get_table_info() const {
@@ -19291,6 +19307,29 @@ namespace sqlite_orm {
             }
             return res;
         }
+
+    }
+}
+
+// #include "implementations/storage_impl_definitions.h"
+/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
+ *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  this file is also used to provide definitions of interface methods 'hitting the database'.
+ */
+
+#include <sqlite3.h>
+#include <algorithm>  //  std::find_if
+#include <sstream>  //  std::stringstream
+#include <cstdlib>  //  std::atoi
+
+// #include "../error_code.h"
+
+// #include "../storage_impl.h"
+
+// #include "../util.h"
+
+namespace sqlite_orm {
+    namespace internal {
 
         inline bool storage_impl_base::table_exists(const std::string& tableName, sqlite3* db) const {
             bool result = false;
@@ -19507,6 +19546,26 @@ namespace sqlite_orm {
             }
             return res;
         }
+
+    }
+}
+
+// #include "implementations/storage_definitions.h"
+/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
+ *  this file is also used to separate implementation details from the main header file,
+ *  e.g. usage of the dbstat table.
+ */
+
+#include <type_traits>  //  std::is_same
+
+// #include "../storage.h"
+
+// #include "../dbstat.h"
+
+// #include "../util.h"
+
+namespace sqlite_orm {
+    namespace internal {
 
         template<class... Ts>
         template<class T, bool WithoutRowId, class... Args, class... Tss>
