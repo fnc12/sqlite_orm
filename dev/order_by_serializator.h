@@ -25,7 +25,6 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& orderBy, const C& context) const {
                 std::stringstream ss;
                 auto newContext = context;
-                newContext.replace_bindable_with_question = !is_bindable_v<E>;
                 newContext.skip_table_name = false;
                 ss << serialize(orderBy.expression, newContext);
                 if(!orderBy._collate_argument.empty()) {

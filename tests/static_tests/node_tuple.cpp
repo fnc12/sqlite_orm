@@ -559,8 +559,17 @@ TEST_CASE("Node tuple") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(&User::name == c(5)))>,
                                    tuple<decltype(&User::name), int>>::value);
         }
-        SECTION("literal") {
-            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(1))>, tuple<>>::value);
+        SECTION("bindable") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(42))>, tuple<int>>::value);
+        }
+        SECTION("numeric column alias") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_1>()))>, tuple<>>::value);
+        }
+        SECTION("sole column alias") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>()))>, tuple<>>::value);
+        }
+        SECTION("column alias in expression") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>() > c(1)))>, tuple<int>>::value);
         }
     }
     SECTION("glob_t") {

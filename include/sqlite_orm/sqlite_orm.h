@@ -4038,7 +4038,7 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     /**
-     *  This is base class for every class which is used as a custom table alias.
+     *  This is base class for every class which is used as a custom table alias, column alias or expression alias.
      *  For more information please look through self_join.cpp example
      */
     struct alias_tag {};
@@ -4047,7 +4047,7 @@ namespace sqlite_orm {
 
         /**
          *  This is a common built-in class used for custom single character table aliases.
-         *  Also you can use language aliases `alias_a`, `alias_b` etc. instead
+         *  For convenience there exist type aliases `alias_a`, `alias_b`, ...
          */
         template<class T, char A>
         struct table_alias : alias_tag {
@@ -4068,7 +4068,7 @@ namespace sqlite_orm {
 
             column_type column;
 
-            alias_column_t(){};
+            alias_column_t() {}
 
             alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
@@ -4101,6 +4101,29 @@ namespace sqlite_orm {
             using expression_type = E;
 
             expression_type expression;
+        };
+
+        /**
+         *  This is a common built-in class used for numeric column identifiers,
+         *  as described in the documentation of the ORDER BY Clause https://sqlite.org/lang_select.html#the_order_by_clause.
+         *  For convenience there exist type aliases `colalias_1`, `colalias_2`, ...
+         */
+        template<unsigned int K>
+        struct numeric_column_alias : alias_tag {
+            static std::string get() {
+                return std::to_string(K);
+            }
+        };
+
+        /**
+         *  This is a common built-in class used for custom single-character column aliases.
+         *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
+         */
+        template<char A>
+        struct column_alias : alias_tag {
+            static std::string get() {
+                return std::string(1u, A);
+            }
         };
 
         template<class T>
@@ -4182,6 +4205,25 @@ namespace sqlite_orm {
     using alias_y = internal::table_alias<T, 'y'>;
     template<class T>
     using alias_z = internal::table_alias<T, 'z'>;
+
+    using colalias_1 = internal::numeric_column_alias<1u>;
+    using colalias_2 = internal::numeric_column_alias<2u>;
+    using colalias_3 = internal::numeric_column_alias<3u>;
+    using colalias_4 = internal::numeric_column_alias<4u>;
+    using colalias_5 = internal::numeric_column_alias<5u>;
+    using colalias_6 = internal::numeric_column_alias<6u>;
+    using colalias_7 = internal::numeric_column_alias<7u>;
+    using colalias_8 = internal::numeric_column_alias<8u>;
+    using colalias_9 = internal::numeric_column_alias<9u>;
+    using colalias_a = internal::column_alias<'a'>;
+    using colalias_b = internal::column_alias<'b'>;
+    using colalias_c = internal::column_alias<'c'>;
+    using colalias_d = internal::column_alias<'d'>;
+    using colalias_e = internal::column_alias<'e'>;
+    using colalias_f = internal::column_alias<'f'>;
+    using colalias_g = internal::column_alias<'g'>;
+    using colalias_h = internal::column_alias<'h'>;
+    using colalias_i = internal::column_alias<'i'>;
 }
 #pragma once
 
@@ -12581,22 +12623,25 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T>
-        struct ast_iterator<order_by_t<T>, match_if_not<is_bindable, T>> {
-            using node_type = order_by_t<T>;
+        /**
+         *  Column alias
+         */
+        template<class A>
+        struct ast_iterator<alias_holder<A>, void> {
+            using node_type = alias_holder<A>;
+
+            template<class L>
+            void operator()(const node_type& /*node*/, const L& /*l*/) const {}
+        };
+
+        template<class E>
+        struct ast_iterator<order_by_t<E>, void> {
+            using node_type = order_by_t<E>;
 
             template<class L>
             void operator()(const node_type& node, const L& l) const {
                 iterate_ast(node.expression, l);
             }
-        };
-
-        template<class T>
-        struct ast_iterator<order_by_t<T>, match_if<is_bindable, T>> {
-            using node_type = order_by_t<T>;
-
-            template<class L>
-            void operator()(const node_type& /*node*/, const L& /*l*/) const {}
         };
 
         template<class T>
@@ -14535,7 +14580,6 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& orderBy, const C& context) const {
                 std::stringstream ss;
                 auto newContext = context;
-                newContext.replace_bindable_with_question = !is_bindable_v<E>;
                 newContext.skip_table_name = false;
                 ss << serialize(orderBy.expression, newContext);
                 if(!orderBy._collate_argument.empty()) {
@@ -18816,11 +18860,14 @@ __pragma(pop_macro("min"))
         template<class C>
         struct node_tuple<where_t<C>, void> : node_tuple<C> {};
 
-        template<class E>
-        struct node_tuple<order_by_t<E>, match_if_not<is_bindable, E>> : node_tuple<E> {};
+        /**
+         *  Column alias
+         */
+        template<class A>
+        struct node_tuple<alias_holder<A>, void> : node_tuple<void> {};
 
         template<class E>
-        struct node_tuple<order_by_t<E>, match_if<is_bindable, E>> : node_tuple<void> {};
+        struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
 
         template<class T>
         struct node_tuple<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {

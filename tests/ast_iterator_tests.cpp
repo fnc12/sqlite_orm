@@ -162,8 +162,23 @@ TEST_CASE("ast_iterator") {
             expected.push_back(typeid(int));
             internal::iterate_ast(node, lambda);
         }
-        SECTION("literal") {
-            auto node = order_by(1);
+        SECTION("bindable") {
+            int n = 42;
+            auto node = order_by(n);
+            expected.push_back(typeid(int));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("numeric column alias") {
+            auto node = order_by(get<colalias_1>());
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("sole column alias") {
+            auto node = order_by(get<colalias_a>());
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("column alias in expression") {
+            auto node = order_by(get<colalias_a>() > c(1));
+            expected.push_back(typeid(int));
             internal::iterate_ast(node, lambda);
         }
     }

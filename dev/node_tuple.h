@@ -71,11 +71,14 @@ namespace sqlite_orm {
         template<class C>
         struct node_tuple<where_t<C>, void> : node_tuple<C> {};
 
-        template<class E>
-        struct node_tuple<order_by_t<E>, match_if_not<is_bindable, E>> : node_tuple<E> {};
+        /**
+         *  Column alias
+         */
+        template<class A>
+        struct node_tuple<alias_holder<A>, void> : node_tuple<void> {};
 
         template<class E>
-        struct node_tuple<order_by_t<E>, match_if<is_bindable, E>> : node_tuple<void> {};
+        struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
 
         template<class T>
         struct node_tuple<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
