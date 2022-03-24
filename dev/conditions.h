@@ -1173,14 +1173,12 @@ namespace sqlite_orm {
     }
 
     /**
-     * ORDER BY column or literal value (including a column number)
-     * 
-     * Note that a bindable will be serialized as a literal value.
-     * Only integral numbers make sense and SQLite will understand them as a positional column ordinal.
+     * ORDER BY column or expression
      * 
      * Examples:
      * storage.select(&User::name, order_by(&User::id))
-     * storage.select(&User::name, order_by(1))
+     * storage.select(&User::name, order_by(get<colalias_1>()))
+     * storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
     template<class O>
     internal::order_by_t<O> order_by(O o) {
