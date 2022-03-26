@@ -1,5 +1,8 @@
 #pragma once
 
+#include <type_traits>  //  std::false_type, std::true_type
+#include <utility>  //  std::move
+
 #include "../serialize_result_type.h"
 
 namespace sqlite_orm {

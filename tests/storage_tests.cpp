@@ -201,12 +201,12 @@ TEST_CASE("column_name") {
                                 make_column("user_id", &Visit::userId),
                                 make_column("date", &Visit::date),
                                 foreign_key(&Visit::userId).references(&User::id)));
-    REQUIRE(*storage.column_name(&User::id) == "id");
-    REQUIRE(*storage.column_name(&User::name) == "name");
-    REQUIRE(*storage.column_name(&Visit::id) == "id");
-    REQUIRE(*storage.column_name(&Visit::userId) == "user_id");
-    REQUIRE(*storage.column_name(&Visit::date) == "date");
-    REQUIRE(storage.column_name(&Visit::notUsed) == nullptr);
+    REQUIRE(*storage.find_column_name(&User::id) == "id");
+    REQUIRE(*storage.find_column_name(&User::name) == "name");
+    REQUIRE(*storage.find_column_name(&Visit::id) == "id");
+    REQUIRE(*storage.find_column_name(&Visit::userId) == "user_id");
+    REQUIRE(*storage.find_column_name(&Visit::date) == "date");
+    REQUIRE(storage.find_column_name(&Visit::notUsed) == nullptr);
 }
 
 TEST_CASE("issue880") {

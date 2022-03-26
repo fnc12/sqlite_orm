@@ -2,7 +2,7 @@
 
 #include <utility>  //  std::move
 
-#include "tags.h"
+#include "../tags.h"
 
 namespace sqlite_orm {
     namespace internal {

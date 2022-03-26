@@ -23,7 +23,7 @@ namespace sqlite_orm {
 
         template<class L, class R>
         bool compare_any(const L& lhs, const R& rhs) {
-            return typed_comparator<L, R>()(lhs, rhs);
+            return typed_comparator<L, R>{}(lhs, rhs);
         }
     }
 }

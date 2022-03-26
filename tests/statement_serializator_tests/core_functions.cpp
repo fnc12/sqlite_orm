@@ -4,7 +4,8 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator core functions") {
-    internal::serializator_context_base context;
+    internal::storage_impl<> storage;
+    internal::serializator_context<internal::storage_impl<>> context{storage};
     std::string value;
     decltype(value) expected;
     SECTION("MAX(X,Y)") {

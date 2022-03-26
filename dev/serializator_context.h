@@ -8,16 +8,6 @@ namespace sqlite_orm {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
-
-            template<class O, class F>
-            const std::string* column_name(F O::*) const {
-                return nullptr;
-            }
-
-            template<class T, class F>
-            const std::string* column_name(const column_pointer<T, F>&) const {
-                return nullptr;
-            }
         };
 
         template<class I>
@@ -27,16 +17,6 @@ namespace sqlite_orm {
             const impl_type& impl;
 
             serializator_context(const impl_type& impl_) : impl(impl_) {}
-
-            template<class O, class F>
-            const std::string* column_name(F O::*memberPointer) const {
-                return this->impl.column_name(memberPointer);
-            }
-
-            template<class T, class F>
-            const std::string* column_name(const column_pointer<T, F>& columnPointer) const {
-                return this->impl.column_name(columnPointer);
-            }
         };
 
         template<class S>
@@ -47,7 +27,7 @@ namespace sqlite_orm {
             serializator_context_builder(const storage_type& storage_) : storage(storage_) {}
 
             serializator_context<impl_type> operator()() const {
-                return {this->storage.impl};
+                return {obtain_const_impl(this->storage)};
             }
 
             const storage_type& storage;

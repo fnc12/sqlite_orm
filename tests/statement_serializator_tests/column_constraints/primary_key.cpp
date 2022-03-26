@@ -7,7 +7,8 @@ TEST_CASE("statement_serializator primary key") {
     std::string value;
     decltype(value) expected;
     SECTION("empty") {
-        internal::serializator_context_base context;
+        internal::storage_impl<> storage;
+        internal::serializator_context<internal::storage_impl<>> context{storage};
         auto pk = primary_key();
         value = serialize(pk, context);
         expected = "PRIMARY KEY";
