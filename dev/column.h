@@ -7,7 +7,6 @@
 
 #include "type_is_nullable.h"
 #include "tuple_helper/tuple_helper.h"
-#include "default_value_extractor.h"
 #include "constraints.h"
 #include "member_traits/member_traits.h"
 
@@ -83,16 +82,7 @@ namespace sqlite_orm {
              *  Simplified interface for `DEFAULT` constraint
              *  @return string representation of default value if it exists otherwise nullptr
              */
-            std::unique_ptr<std::string> default_value() const {
-                std::unique_ptr<std::string> res;
-                iterate_tuple(this->constraints, [&res](auto& v) {
-                    auto dft = internal::default_value_extractor()(v);
-                    if(dft) {
-                        res = std::move(dft);
-                    }
-                });
-                return res;
-            }
+            std::unique_ptr<std::string> default_value() const;
 
             bool is_generated() const {
 #if SQLITE_VERSION_NUMBER >= 3031000
