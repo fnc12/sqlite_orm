@@ -1351,7 +1351,6 @@ int main(int, char**) {
             columns(alias_column<als>(&Employee::lastName),
                     alias_column<als>(&Employee::salary),
                     alias_column<als>(&Employee::departmentId)),
-            from<als>(),
             where(greater_than(
                 alias_column<als>(&Employee::salary),
                 select(avg(&Employee::salary),

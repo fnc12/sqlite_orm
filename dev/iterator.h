@@ -63,7 +63,7 @@ namespace sqlite_orm {
 
             const value_type& operator*() const {
                 if(!this->stmt || !this->current) {
-                    throw std::system_error(orm_error_code::trying_to_dereference_null_iterator);
+                    throw std::system_error{orm_error_code::trying_to_dereference_null_iterator};
                 }
                 return *this->current;
             }
@@ -87,8 +87,7 @@ namespace sqlite_orm {
                             break;
                         default: {
                             auto db = this->view->connection.get();
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
+                            throw_translated_sqlite_error(db);
                         }
                     }
                 }

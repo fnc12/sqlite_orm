@@ -67,5 +67,22 @@ TEST_CASE("issue937") {
                          select(columns(as<NamesAlias>(&Employee::m_ename), as_optional(&Employee::m_depno))))))));
     auto sql = statement.expanded_sql();
     auto rows = storage.execute(statement);
+    {  //  issue953
+        auto expression = select(
+            columns(&Employee::m_empno, &Employee::m_ename, &Employee::m_job, &Employee::m_salary, &Employee::m_depno),
+            where(c(std::make_tuple(&Employee::m_ename, &Employee::m_job, &Employee::m_salary))
+                      .in(select(columns(&Employee::m_ename, &Employee::m_job, &Employee::m_salary),
+                                 where(c(&Employee::m_job) == "Clerk")))));
+        auto statement = storage.prepare(expression);
+    }
+    {  //  issue969
+        auto expression = select(
+            columns(&Employee::m_empno, &Employee::m_ename, &Employee::m_job, &Employee::m_salary, &Employee::m_depno),
+            where(in(std::make_tuple(&Employee::m_ename, &Employee::m_job, &Employee::m_salary),
+                     intersect(select(columns(&Employee::m_ename, &Employee::m_job, &Employee::m_salary)),
+                               select(columns(&Employee::m_ename, &Employee::m_job, &Employee::m_salary),
+                                      where(c(&Employee::m_job) == "Clerk"))))));
+        auto statement = storage.prepare(expression);
+    }
 }
 #endif

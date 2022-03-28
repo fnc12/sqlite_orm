@@ -37,7 +37,7 @@ namespace sqlite_orm {
             using string_type = S;
             using args_type = std::tuple<Args...>;
 
-            static constexpr const size_t args_size = std::tuple_size<args_type>::value;
+            static constexpr size_t args_size = std::tuple_size<args_type>::value;
 
             args_type args;
 
@@ -1840,6 +1840,26 @@ namespace sqlite_orm {
     internal::built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Rest...>
     min(X x, Rest... rest) {
         return {std::tuple<X, Rest...>{std::forward<X>(x), std::forward<Rest>(rest)...}};
+    }
+
+    /**
+     *  MAX(X, Y, ...) scalar function.
+     *  The return type is the type of the first argument.
+     */
+    template<class X, class Y, class... Rest>
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::max_string, X, Y, Rest...>
+    max(X x, Y y, Rest... rest) {
+        return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
+    }
+
+    /**
+     *  MIN(X, Y, ...) scalar function.
+     *  The return type is the type of the first argument.
+     */
+    template<class X, class Y, class... Rest>
+    internal::built_in_function_t<internal::unique_ptr_result_of<X>, internal::min_string, X, Y, Rest...>
+    min(X x, Y y, Rest... rest) {
+        return {std::tuple<X, Y, Rest...>{std::forward<X>(x), std::forward<Y>(y), std::forward<Rest>(rest)...}};
     }
 
     /**

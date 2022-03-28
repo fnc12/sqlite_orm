@@ -4,7 +4,6 @@
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
 #include <sqlite3.h>
-#include <system_error>  //  std::system_error
 #include <tuple>  //  std::tuple, std::make_tuple
 
 #include "row_extractor.h"
@@ -64,14 +63,12 @@ namespace sqlite_orm {
                         using node_type = typename std::decay<decltype(node)>::type;
                         conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
                         if(SQLITE_OK != binder(node)) {
-                            throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                                    sqlite3_errmsg(db));
+                            throw_translated_sqlite_error(db);
                         }
                     });
                     return {stmt, *this};
                 } else {
-                    throw std::system_error(std::error_code(sqlite3_errcode(db), get_sqlite_error_category()),
-                                            sqlite3_errmsg(db));
+                    throw_translated_sqlite_error(db);
                 }
             }
 

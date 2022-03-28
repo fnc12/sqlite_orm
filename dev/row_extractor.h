@@ -3,6 +3,7 @@
 #include <sqlite3.h>
 #include <type_traits>  //  std::enable_if_t, std::is_arithmetic, std::is_same, std::enable_if
 #include <stdlib.h>  //  atof, atoi, atoll
+#include <system_error>  //  std::system_error
 #include <string>  //  std::string, std::wstring
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::wstring_convert, std::codecvt_utf8_utf16
@@ -214,7 +215,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class V>
-    struct row_extractor<V, std::enable_if_t<internal::polyfill::is_specialization_of_v<V, std::optional>>> {
+    struct row_extractor<V, std::enable_if_t<polyfill::is_specialization_of_v<V, std::optional>>> {
         using unqualified_type = std::remove_cv_t<typename V::value_type>;
 
         V extract(const char* row_value) const {
@@ -349,10 +350,10 @@ namespace sqlite_orm {
                 if(auto res = internal::journal_mode_from_string(row_value)) {
                     return std::move(*res);
                 } else {
-                    throw std::system_error(orm_error_code::incorrect_journal_mode_string);
+                    throw std::system_error{orm_error_code::incorrect_journal_mode_string};
                 }
             } else {
-                throw std::system_error(orm_error_code::incorrect_journal_mode_string);
+                throw std::system_error{orm_error_code::incorrect_journal_mode_string};
             }
         }
 

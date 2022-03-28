@@ -11,32 +11,32 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         struct order_by_serializator;
 
-        template<class T, class C>
-        std::string serialize_order_by(const T& t, const C& context) {
-            order_by_serializator<T> serializator;
-            return serializator(t, context);
+        template<class T, class Ctx>
+        std::string serialize_order_by(const T& t, const Ctx& context) {
+            order_by_serializator<T> serializer;
+            return serializer(t, context);
         }
 
         template<class O>
         struct order_by_serializator<order_by_t<O>, void> {
             using statement_type = order_by_t<O>;
 
-            template<class C>
-            std::string operator()(const statement_type& orderBy, const C& context) const {
+            template<class Ctx>
+            std::string operator()(const statement_type& orderBy, const Ctx& context) const {
                 std::stringstream ss;
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 auto columnName = serialize(orderBy.expression, newContext);
                 ss << columnName << " ";
-                if(orderBy._collate_argument.length()) {
-                    ss << "COLLATE " << orderBy._collate_argument << " ";
+                if(!orderBy._collate_argument.empty()) {
+                    ss << " COLLATE " << orderBy._collate_argument;
                 }
                 switch(orderBy.asc_desc) {
                     case 1:
-                        ss << "ASC";
+                        ss << " ASC";
                         break;
                     case -1:
-                        ss << "DESC";
+                        ss << " DESC";
                         break;
                 }
                 return ss.str();
@@ -47,8 +47,8 @@ namespace sqlite_orm {
         struct order_by_serializator<dynamic_order_by_t<S>, void> {
             using statement_type = dynamic_order_by_t<S>;
 
-            template<class C>
-            std::string operator()(const statement_type& orderBy, const C&) const {
+            template<class Ctx>
+            std::string operator()(const statement_type& orderBy, const Ctx&) const {
                 std::vector<std::string> expressions;
                 for(auto& entry: orderBy) {
                     std::string entryString;

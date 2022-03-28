@@ -96,6 +96,7 @@ add_executable(unit_tests
     statement_serializator_tests/logical_operators.cpp
     statement_serializator_tests/statements/select.cpp
     statement_serializator_tests/select_constraints.cpp
+    statement_serializator_tests/conditions.cpp
     statement_serializator_tests/statements/insert_replace.cpp
     statement_serializator_tests/statements/update.cpp
     statement_serializator_tests/statements/remove.cpp
@@ -126,6 +127,10 @@ add_executable(unit_tests
 if(SQLITE_ORM_OMITS_CODECVT)
 	message(STATUS "SQLITE_ORM_OMITS_CODECVT is enabled")
 	target_compile_definitions(unit_tests PRIVATE SQLITE_ORM_OMITS_CODECVT=1)
+endif()
+
+if (MSVC)
+	add_compile_options(/MP) # Enable multi parrallel build
 endif()
 
 target_precompile_headers(unit_tests PRIVATE

@@ -38,29 +38,29 @@ TEST_CASE("foreign key static") {
         std::string file_path;
     };
     auto cppInclusionIncluderPathFk = foreign_key(&CppInclusion::includer_path).references(&File::path);
-    static_assert(std::is_same<decltype(cppInclusionIncluderPathFk)::target_type, File>::value, "");
-    static_assert(std::is_same<decltype(cppInclusionIncluderPathFk)::source_type, CppInclusion>::value, "");
+    STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncluderPathFk)::target_type, File>::value);
+    STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncluderPathFk)::source_type, CppInclusion>::value);
 
     auto cppInclusionIncludeePathFk = foreign_key(&CppInclusion::includee_path).references(&File::path);
-    static_assert(std::is_same<decltype(cppInclusionIncludeePathFk)::target_type, File>::value, "");
-    static_assert(std::is_same<decltype(cppInclusionIncludeePathFk)::source_type, CppInclusion>::value, "");
+    STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncludeePathFk)::target_type, File>::value);
+    STATIC_REQUIRE(std::is_same<decltype(cppInclusionIncludeePathFk)::source_type, CppInclusion>::value);
 
     auto functionDeclFilePathFk = foreign_key(&FunctionDecl::file_path).references(&File::path);
-    static_assert(std::is_same<decltype(functionDeclFilePathFk)::target_type, File>::value, "");
-    static_assert(std::is_same<decltype(functionDeclFilePathFk)::source_type, FunctionDecl>::value, "");
+    STATIC_REQUIRE(std::is_same<decltype(functionDeclFilePathFk)::target_type, File>::value);
+    STATIC_REQUIRE(std::is_same<decltype(functionDeclFilePathFk)::source_type, FunctionDecl>::value);
 
     auto varDeclFilePathFk = foreign_key(&VarDecl::file_path).references(&File::path);
-    static_assert(std::is_same<decltype(varDeclFilePathFk)::target_type, File>::value, "");
-    static_assert(std::is_same<decltype(varDeclFilePathFk)::source_type, VarDecl>::value, "");
+    STATIC_REQUIRE(std::is_same<decltype(varDeclFilePathFk)::target_type, File>::value);
+    STATIC_REQUIRE(std::is_same<decltype(varDeclFilePathFk)::source_type, VarDecl>::value);
 
     auto functionDefFilePathFk = foreign_key(&FunctionDef::file_path).references(&File::path);
-    static_assert(std::is_same<decltype(functionDefFilePathFk)::target_type, File>::value, "");
-    static_assert(std::is_same<decltype(functionDefFilePathFk)::source_type, FunctionDef>::value, "");
+    STATIC_REQUIRE(std::is_same<decltype(functionDefFilePathFk)::target_type, File>::value);
+    STATIC_REQUIRE(std::is_same<decltype(functionDefFilePathFk)::source_type, FunctionDef>::value);
 
     auto functionCallParentFunctionName =
         foreign_key(&FunctionCall::parent_function_name).references(&FunctionDef::function_name);
-    static_assert(std::is_same<decltype(functionCallParentFunctionName)::target_type, FunctionDef>::value, "");
-    static_assert(std::is_same<decltype(functionCallParentFunctionName)::source_type, FunctionCall>::value, "");
+    STATIC_REQUIRE(std::is_same<decltype(functionCallParentFunctionName)::target_type, FunctionDef>::value);
+    STATIC_REQUIRE(std::is_same<decltype(functionCallParentFunctionName)::source_type, FunctionCall>::value);
 
     auto storage = make_storage({},
                                 make_table("files", make_column("path", &File::path, primary_key())),
@@ -105,31 +105,31 @@ TEST_CASE("foreign key static") {
     {
         using FkTuple = storage_fk_references<Storage, FunctionCall>::type;
         using Expected = std::tuple<>;
-        static_assert(std::is_same<FkTuple, Expected>::value, "");
+        STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, FunctionDef>::type;
         using Expected = std::tuple<FunctionCall>;
-        static_assert(std::is_same<FkTuple, Expected>::value, "");
+        STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, VarDecl>::type;
         using Expected = std::tuple<>;
-        static_assert(std::is_same<FkTuple, Expected>::value, "");
+        STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, FunctionDecl>::type;
         using Expected = std::tuple<>;
-        static_assert(std::is_same<FkTuple, Expected>::value, "");
+        STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, CppInclusion>::type;
         using Expected = std::tuple<>;
-        static_assert(std::is_same<FkTuple, Expected>::value, "");
+        STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
     {
         using FkTuple = storage_fk_references<Storage, File>::type;
         using Expected = std::tuple<CppInclusion, CppInclusion, FunctionDecl, VarDecl, FunctionDef>;
-        static_assert(std::is_same<FkTuple, Expected>::value, "");
+        STATIC_REQUIRE(std::is_same<FkTuple, Expected>::value);
     }
 }

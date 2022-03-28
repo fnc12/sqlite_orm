@@ -8,9 +8,6 @@ namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
 #if __cplusplus < 201703L  // before C++17
-            template<typename...>
-            using void_t = void;
-
             template<bool v>
             using bool_constant = std::integral_constant<bool, v>;
 
@@ -19,7 +16,7 @@ namespace sqlite_orm {
             template<typename B1>
             struct conjunction<B1> : B1 {};
             template<typename B1, typename... Bn>
-            struct conjunction<B1, Bn...> : std::conditional_t<B1::value, conjunction<Bn...>, B1> {};
+            struct conjunction<B1, Bn...> : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
             constexpr bool conjunction_v = conjunction<Bs...>::value;
 
@@ -31,12 +28,17 @@ namespace sqlite_orm {
             struct disjunction<B1, Bn...> : std::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
             template<typename... Bs>
             constexpr bool disjunction_v = disjunction<Bs...>::value;
+
+            template<class B>
+            struct negation : bool_constant<!bool(B::value)> {};
+
+            template<class...>
+            using void_t = void;
 #else
             using std::bool_constant;
-            using std::conjunction;
-            using std::conjunction_v;
-            using std::disjunction;
-            using std::disjunction_v;
+            using std::conjunction, std::conjunction_v;
+            using std::disjunction, std::disjunction_v;
+            using std::negation;
             using std::void_t;
 #endif
 
@@ -51,7 +53,9 @@ namespace sqlite_orm {
             using std::remove_cvref_t;
 #endif
 
-#if __cplusplus < 202312L  // before C++23
+#if 1  // proposed but not pursued                                                                                     \
+    // is_specialization_of: https://github.com/cplusplus/papers/issues/812
+
             template<typename Type, template<typename...> class Primary>
             SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
 
@@ -66,14 +70,7 @@ namespace sqlite_orm {
 #else
             using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
 #endif
-
-            template<typename...>
-            SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
-
-            template<size_t I>
-            using index_constant = std::integral_constant<size_t, I>;
-
-#if 1  // library fundamentals TS v2
+#if 1  // library fundamentals TS v2, [meta.detect]
             struct nonesuch {
                 ~nonesuch() = delete;
                 nonesuch(const nonesuch&) = delete;
@@ -110,6 +107,12 @@ namespace sqlite_orm {
             template<template<class...> class Op, class... Args>
             SQLITE_ORM_INLINE_VAR constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
+
+            template<typename...>
+            SQLITE_ORM_INLINE_VAR constexpr bool always_false_v = false;
+
+            template<size_t I>
+            using index_constant = std::integral_constant<size_t, I>;
 
             template<template<typename...> class Base, typename... Fs>
             Base<Fs...>& as_template_base(Base<Fs...>& base) {

@@ -41,7 +41,7 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class St, class T>
         struct column_result_t<St, as_optional_t<T>, void> {
-            using type = std::optional<typename column_result_t<St, T>::type>;
+            using type = std::optional<column_result_of_t<St, T>>;
         };
 
         template<class St, class T>
@@ -104,13 +104,13 @@ namespace sqlite_orm {
             using type = typename callable_arguments<F>::return_type;
         };
 
-        template<class St, class X, class S>
-        struct column_result_t<St, built_in_function_t<unique_ptr_result_of<X>, S, X>, void> {
+        template<class St, class X, class... Rest, class S>
+        struct column_result_t<St, built_in_function_t<unique_ptr_result_of<X>, S, X, Rest...>, void> {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
         template<class St, class X, class S>
-        struct column_result_t<St, built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
+        struct column_result_t<St, built_in_aggregate_function_t<unique_ptr_result_of<X>, S, X>, void> {
             using type = std::unique_ptr<typename column_result_t<St, X>::type>;
         };
 
@@ -283,7 +283,7 @@ namespace sqlite_orm {
         struct column_result_t<St, select_t<T, Args...>> : column_result_t<St, T> {};
 
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, compound_operator>::value>> {
             using left_type = typename T::left_type;
             using right_type = typename T::right_type;
             using left_result = column_result_of_t<St, left_type>;
@@ -294,7 +294,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class T>
-        struct column_result_t<St, T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, binary_condition>::value>> {
             using type = typename T::result_type;
         };
 
@@ -320,7 +320,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class T, class E>
-        struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, typename std::decay<E>::type> {};
+        struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, std::decay_t<E>> {};
 
         template<class St, class T>
         struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {

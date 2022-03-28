@@ -7,7 +7,7 @@ using namespace sqlite_orm;
 template<class St, class E, class V>
 void runTest(V value) {
     using Type = internal::column_expression_of_t<St, V>;
-    static_assert(std::is_same<Type, E>::value, "");
+    STATIC_REQUIRE(std::is_same<Type, E>::value);
 }
 
 TEST_CASE("column_expression_of_t") {

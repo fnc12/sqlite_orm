@@ -1,22 +1,18 @@
 #pragma once
 
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_reference, std::is_same, std::is_base_of
+#include <type_traits>  //  std::remove_reference, std::is_same
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
-#include <algorithm>  //  std::reverse, std::find_if
 
 #include "cxx_polyfill.h"
 #include "type_traits.h"
-#include "column_result.h"
 #include "static_magic.h"
 #include "typed_comparator.h"
-#include "constraints.h"
 #include "tuple_helper/tuple_helper.h"
+#include "constraints.h"
 #include "table_info.h"
-#include "type_printer.h"
 #include "column.h"
-#include "dbstat.h"
 
 namespace sqlite_orm {
 
@@ -317,37 +313,7 @@ namespace sqlite_orm {
                 });
             }
 
-            std::vector<table_info> get_table_info() const {
-                std::vector<table_info> res;
-                res.reserve(size_t(this->elements_count));
-                this->for_each_column([&res](auto& col) {
-                    std::string dft;
-                    using field_type = typename std::decay<decltype(col)>::type::field_type;
-                    if(auto d = col.default_value()) {
-                        dft = *d;
-                    }
-                    table_info i{
-                        -1,
-                        col.name,
-                        type_printer<field_type>().print(),
-                        col.not_null(),
-                        dft,
-                        col.template has<primary_key_t<>>(),
-                    };
-                    res.emplace_back(i);
-                });
-                auto compositeKeyColumnNames = this->composite_key_columns_names();
-                for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
-                    auto& columnName = compositeKeyColumnNames[i];
-                    auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_info& ti) {
-                        return ti.name == columnName;
-                    });
-                    if(it != res.end()) {
-                        it->pk = static_cast<int>(i + 1);
-                    }
-                }
-                return res;
-            }
+            std::vector<table_info> get_table_info() const;
         };
     }
 
@@ -364,19 +330,4 @@ namespace sqlite_orm {
     internal::table_t<O, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }
-#ifdef SQLITE_ENABLE_DBSTAT_VTAB
-    inline auto make_dbstat_table() {
-        return make_table("dbstat",
-                          make_column("name", &dbstat::name),
-                          make_column("path", &dbstat::path),
-                          make_column("pageno", &dbstat::pageno),
-                          make_column("pagetype", &dbstat::pagetype),
-                          make_column("ncell", &dbstat::ncell),
-                          make_column("payload", &dbstat::payload),
-                          make_column("unused", &dbstat::unused),
-                          make_column("mx_payload", &dbstat::mx_payload),
-                          make_column("pgoffset", &dbstat::pgoffset),
-                          make_column("pgsize", &dbstat::pgsize));
-    }
-#endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }

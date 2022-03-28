@@ -4,9 +4,22 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializator core functions") {
-    internal::serializator_context_base context;
+    internal::storage_impl<> storage;
+    internal::serializator_context<internal::storage_impl<>> context{storage};
     std::string value;
     decltype(value) expected;
+    SECTION("MAX(X,Y)") {
+        auto expression = max(3, 4);
+        context.use_parentheses = false;
+        expected = "MAX(3, 4)";
+        value = serialize(expression, context);
+    }
+    SECTION("MIN(X,Y)") {
+        auto expression = min(3, 4);
+        context.use_parentheses = false;
+        expected = "MIN(3, 4)";
+        value = serialize(expression, context);
+    }
     SECTION("LENGTH") {
         auto expression = length("hi");
         SECTION("use_parentheses") {

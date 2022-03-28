@@ -692,24 +692,24 @@ TEST_CASE("obtain_xdestroy_for") {
 
         // null_xdestroy_f(int*)
         constexpr xdestroy_fn_t xDestroy1 = obtain_xdestroy_for(null_xdestroy_f, int_nullptr);
-        static_assert(xDestroy1 == nullptr, "");
+        STATIC_REQUIRE(xDestroy1 == nullptr);
         REQUIRE(xDestroy1 == nullptr);
 
         // free(int*)
         constexpr xdestroy_fn_t xDestroy2 = obtain_xdestroy_for(free, int_nullptr);
-        static_assert(xDestroy2 == free, "");
+        STATIC_REQUIRE(xDestroy2 == free);
         REQUIRE(xDestroy2 == free);
 
         // free_f(int*)
         constexpr xdestroy_fn_t xDestroy3 = obtain_xdestroy_for(free_f, int_nullptr);
-        static_assert(xDestroy3 == free, "");
+        STATIC_REQUIRE(xDestroy3 == free);
         REQUIRE(xDestroy3 == free);
 
 #if __cplusplus >= 201703L  // use of C++17 or higher
         // [](void* p){}
         constexpr auto lambda4_1 = [](void *p) {};
         constexpr xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
-        static_assert(xDestroy4_1 == lambda4_1, "");
+        STATIC_REQUIRE(xDestroy4_1 == lambda4_1);
         REQUIRE(xDestroy4_1 == lambda4_1);
 #else
         // [](void* p){}
@@ -726,38 +726,38 @@ TEST_CASE("obtain_xdestroy_for") {
         };
         using lambda4_2_t = std::remove_const_t<decltype(lambda4_2)>;
         constexpr xdestroy_fn_t xDestroy4_2 = obtain_xdestroy_for(lambda4_2, int_nullptr);
-        static_assert(xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>);
+        STATIC_REQUIRE(xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>);
         REQUIRE((xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>));
 #endif
 
         // default_delete<int>(int*)
         constexpr xdestroy_fn_t xDestroy5 = obtain_xdestroy_for(default_delete<int>{}, int_nullptr);
-        static_assert(xDestroy5 == xdestroy_proxy<default_delete<int>, int>, "");
+        STATIC_REQUIRE(xDestroy5 == xdestroy_proxy<default_delete<int>, int>);
         REQUIRE((xDestroy5 == xdestroy_proxy<default_delete<int>, int>));
 
         // delete_default_f<int>(int*)
         constexpr xdestroy_fn_t xDestroy6 = obtain_xdestroy_for(delete_default_f<int>, int_nullptr);
-        static_assert(xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>, "");
+        STATIC_REQUIRE(xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>);
         REQUIRE((xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>));
 
         // delete_default_f<int>(const int*)
         constexpr xdestroy_fn_t xDestroy7 = obtain_xdestroy_for(delete_default_f<int>, const_int_nullptr);
-        static_assert(xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>, "");
+        STATIC_REQUIRE(xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>);
         REQUIRE((xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>));
 
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
-        static_assert(xDestroy8 == free, "");
+        STATIC_REQUIRE(xDestroy8 == free);
         REQUIRE(xDestroy8 == free);
 
         // xdestroy_holder{ free }(const int*)
         constexpr xdestroy_fn_t xDestroy9 = obtain_xdestroy_for(xdestroy_holder{free}, const_int_nullptr);
-        static_assert(xDestroy9 == free, "");
+        STATIC_REQUIRE(xDestroy9 == free);
         REQUIRE(xDestroy9 == free);
 
         // xdestroy_holder{ nullptr }(const int*)
         constexpr xdestroy_fn_t xDestroy10 = obtain_xdestroy_for(xdestroy_holder{nullptr}, const_int_nullptr);
-        static_assert(xDestroy10 == nullptr, "");
+        STATIC_REQUIRE(xDestroy10 == nullptr);
         REQUIRE(xDestroy10 == nullptr);
 
         // expressions that do not work

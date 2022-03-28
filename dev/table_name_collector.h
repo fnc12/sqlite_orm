@@ -5,7 +5,8 @@
 #include <functional>  //  std::function
 #include <typeindex>  //  std::type_index
 
-#include "static_magic.h"
+#include "cxx_polyfill.h"
+#include "type_traits.h"
 #include "select_constraints.h"
 #include "alias.h"
 #include "core_functions.h"
@@ -23,7 +24,7 @@ namespace sqlite_orm {
 
             table_name_collector() = default;
 
-            table_name_collector(find_table_name_t _find_table_name) : find_table_name(std::move(_find_table_name)) {}
+            table_name_collector(find_table_name_t find_table_name) : find_table_name(move(find_table_name)) {}
 
             template<class T>
             table_name_set operator()(const T &) const {

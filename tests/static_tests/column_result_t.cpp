@@ -5,9 +5,9 @@
 using namespace sqlite_orm;
 
 template<class St, class E, class V>
-void runTest(V value) {
+void runTest(V /*value*/) {
     using Type = internal::column_result_of_t<St, V>;
-    static_assert(std::is_same<Type, E>::value, "");
+    STATIC_REQUIRE(std::is_same<Type, E>::value);
 }
 
 TEST_CASE("column_result_of_t 1") {
@@ -63,8 +63,12 @@ TEST_CASE("column_result_of_t 1") {
     runTest<Storage, std::string>(sqlite_orm::typeof_(&User::id));
     runTest<Storage, std::string>(sqlite_orm::lower(&User::id));
     runTest<Storage, std::string>(sqlite_orm::upper(&User::id));
+    runTest<Storage, std::unique_ptr<int>>(max(&User::id, 4));
+    runTest<Storage, std::unique_ptr<int>>(min(&User::id, 4));
     runTest<Storage, std::unique_ptr<int>>(max(&User::id));
     runTest<Storage, std::unique_ptr<std::string>>(max(&User::name));
+    runTest<Storage, std::unique_ptr<int>>(min(&User::id));
+    runTest<Storage, std::unique_ptr<std::string>>(min(&User::name));
     runTest<Storage, int>(count<User>());
     runTest<Storage, int>(count());
     {
@@ -104,6 +108,9 @@ TEST_CASE("column_result_of_t 1") {
     runTest<Storage, int64>(_rowid_<User>());
     runTest<Storage, std::tuple<int, std::string>>(asterisk<User>());
     runTest<Storage, std::tuple<int, std::string>>(asterisk<alias_a<User>>());
+    runTest<Storage, std::tuple<int, std::string>>(columns(&User::id, &User::name));
+    runTest<Storage, int>(column<User>(&User::id));
+    runTest<Storage, User>(object<User>());
 }
 
 TEST_CASE("column_result_of_t 2") {
@@ -123,8 +130,6 @@ TEST_CASE("column_result_of_t 2") {
 
     runTest<storage_type, int64>(c_v<&Org::id>);
     runTest<storage_type, std::tuple<int64, int64>>(columns(c_v<&Org::id>, &Org::boss));
-    runTest<storage_type, Org>(object<Org>());
-    runTest<storage_type, int64>(column<Derived>(&Org::id));
     // these need a 'CTE' expression storage
     //runTest<storage_type, int64>(column<cte_1>(c_v<&Org::id>));
     //runTest<storage_type, int64>(column<cte_1>(0_col));

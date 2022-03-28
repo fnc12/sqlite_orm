@@ -354,14 +354,6 @@ namespace sqlite_orm {
 
         struct in_base {
             bool negative = false;  //  used in not_in
-
-            operator std::string() const {
-                if(!this->negative) {
-                    return "IN";
-                } else {
-                    return "NOT IN";
-                }
-            }
         };
 
         /**
@@ -520,7 +512,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  C - serializator context class
+         *  C - serializer context class
          */
         template<class C>
         struct dynamic_order_by_t : order_by_string {
@@ -753,9 +745,9 @@ namespace sqlite_orm {
         /**
          *  USING argument holder.
          */
-        template<class F, class O>
+        template<class T, class M>
         struct using_t {
-            column_pointer<O, F> column;
+            column_pointer<T, M> column;
 
             operator std::string() const {
                 return "USING";
@@ -986,11 +978,11 @@ namespace sqlite_orm {
     }
 
     template<class F, class O>
-    internal::using_t<F O::*, O> using_(F O::*p) {
-        return {std::move(p)};
+    internal::using_t<O, F O::*> using_(F O::*p) {
+        return {p};
     }
-    template<class F, class O>
-    internal::using_t<F, O> using_(internal::column_pointer<O, F> cp) {
+    template<class T, class M>
+    internal::using_t<T, M> using_(internal::column_pointer<T, M> cp) {
         return {std::move(cp)};
     }
 

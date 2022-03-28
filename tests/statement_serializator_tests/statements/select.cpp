@@ -101,6 +101,63 @@ TEST_CASE("statement_serializator select_t") {
                 expected = "SELECT null";
             }
         }
+        SECTION("asterisk") {
+            SECTION("asterisk") {
+                auto expression = select(asterisk<User>());
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = "SELECT * FROM 'users'";
+            }
+            SECTION("alias") {
+                using als_u = alias_u<User>;
+
+                auto expression = select(asterisk<als_u>());
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = "SELECT 'u'.* FROM 'users' 'u'";
+            }
+            SECTION("object") {
+                auto expression = select(object<User>());
+                expression.highest_level = true;
+                stringValue = serialize(expression, context);
+                expected = "SELECT * FROM 'users'";
+            }
+            SECTION("issue #945") {
+                struct Employee {
+                    int m_empno;
+                    int m_deptno;
+                };
+
+                struct Department {
+                    int m_deptno;
+                    std::string m_deptname;
+                };
+
+                auto t1 = make_table("Emp",
+                                     make_column("empno", &Employee::m_empno, primary_key(), autoincrement()),
+                                     make_column("deptno", &Employee::m_deptno),
+                                     foreign_key(&Employee::m_deptno).references(&Department::m_deptno));
+                auto t2 =
+                    make_table("Dept", make_column("deptno", &Department::m_deptno, primary_key(), autoincrement()));
+
+                using storage_impl_t = internal::storage_impl<decltype(t1), decltype(t2)>;
+                storage_impl_t storage{t1, t2};
+
+                using als_d = alias_d<Department>;
+                using als_e = alias_e<Employee>;
+
+                auto expression = select(asterisk<als_d>(),
+                                         left_join<als_e>(on(c(alias_column<als_d>(&Department::m_deptno)) ==
+                                                             alias_column<als_e>(&Employee::m_deptno))),
+                                         where(is_null(alias_column<als_e>(&Employee::m_deptno))));
+                expression.highest_level = true;
+                internal::serializator_context<storage_impl_t> context{storage};
+                context.skip_table_name = false;
+                stringValue = serialize(expression, context);
+                expected =
+                    R"(SELECT 'd'.* FROM 'Dept' 'd' LEFT JOIN 'Emp' 'e' ON ('d'."deptno" = 'e'."deptno")  WHERE ('e'."deptno" IS NULL))";
+            }
+        }
     }
     REQUIRE(stringValue == expected);
 }
