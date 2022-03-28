@@ -265,7 +265,7 @@ namespace sqlite_orm {
         static_assert((argsCount == functionArgsCount &&
                        !std::is_same<function_args_tuple, std::tuple<arg_values>>::value &&
                        internal::validate_pointer_value_types<function_args_tuple, args_tuple>(
-                           internal::polyfill::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
+                           polyfill::index_constant<std::min<>(functionArgsCount, argsCount) - 1>{})) ||
                           std::is_same<function_args_tuple, std::tuple<arg_values>>::value,
                       "Number of arguments does not match");
         return {std::make_tuple(std::forward<Args>(args)...)};
