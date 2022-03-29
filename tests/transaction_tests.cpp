@@ -55,6 +55,42 @@ TEST_CASE("transaction_rollback") {
     }
 }
 
+TEST_CASE("begin_transaction") {
+    struct Object {
+        int id = 0;
+        std::string name;
+
+        bool operator==(const Object &other) const {
+            return this->id == other.id && this->name == other.name;
+        }
+    };
+
+    auto storage = make_storage(
+        {},
+        make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
+    storage.sync_schema();
+
+    SECTION("begin_transaction") {
+        storage.begin_transaction();
+    }
+    SECTION("begin_deferred_transaction") {
+        storage.begin_deferred_transaction();
+    }
+    SECTION("begin_exclusive_transaction") {
+        storage.begin_exclusive_transaction();
+    }
+    SECTION("begin_immediate_transaction") {
+        storage.begin_immediate_transaction();
+    }
+
+    storage.replace(Object{1, "Leony"});
+
+    storage.commit();
+
+    std::vector<Object> expected{{1, "Leony"}};
+    REQUIRE(storage.get_all<Object>() == expected);
+}
+
 TEST_CASE("Transaction guard") {
     struct Object {
         int id = 0;
