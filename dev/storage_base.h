@@ -151,7 +151,7 @@ namespace sqlite_orm {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; i++) {
                             if(argv[i]) {
-                                tableNames_.push_back(argv[i]);
+                                tableNames_.emplace_back(argv[i]);
                             }
                         }
                         return 0;
@@ -694,7 +694,7 @@ namespace sqlite_orm {
 
             void drop_table_internal(const std::string& tableName, sqlite3* db) {
                 std::stringstream ss;
-                ss << "DROP TABLE '" << tableName + "'";
+                ss << "DROP TABLE " << quote_identifier(tableName);
                 perform_void_exec(db, ss.str());
             }
 

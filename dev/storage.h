@@ -47,12 +47,12 @@
 #include "prepared_statement.h"
 #include "expression_object_type.h"
 #include "statement_serializator.h"
-#include "table_name_collector.h"
 #include "triggers.h"
 #include "object_from_column_builder.h"
 #include "table.h"
 #include "column.h"
 #include "index.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
@@ -106,7 +106,7 @@ namespace sqlite_orm {
             void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
                 using table_type = typename std::decay<decltype(tableImpl.table)>::type;
                 std::stringstream ss;
-                ss << "CREATE TABLE '" << tableName << "' ( ";
+                ss << "CREATE TABLE " << quote_identifier(tableName) << " ( ";
                 auto elementsCount = tableImpl.table.elements_count;
                 auto index = 0;
                 using context_t = serializator_context<impl_type>;
@@ -127,7 +127,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE '" << tableName << "' DROP COLUMN \"" << columnName << "\"";
+                ss << "ALTER TABLE " << quote_identifier(tableName) << "' DROP COLUMN \"" << columnName << "\"";
                 perform_void_exec(db, ss.str());
             }
 #endif
@@ -873,7 +873,7 @@ namespace sqlite_orm {
             template<class C>
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << tableName << " ADD COLUMN ";
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
                 using context_t = serializator_context<impl_type>;
                 context_t context{this->impl};
                 ss << serialize(column, context);
@@ -1613,7 +1613,7 @@ namespace sqlite_orm {
                         static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)";
-                            ss << " FROM " << storageImpl.table.name;
+                            ss << " FROM " << quote_identifier(storageImpl.table.name);
                             ss << " WHERE";
                             auto columnIndex = 0;
                             iterate_tuple(foreignKey.columns, [&ss, &columnIndex, &storageImpl](auto& column) {
