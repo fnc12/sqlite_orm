@@ -19,12 +19,12 @@ TEST_CASE("statement_serializer new/old") {
     SECTION("new") {
         auto expression = new_(&User::id);
         value = serialize(expression, context);
-        expected = "NEW.\"id\"";
+        expected = R"(NEW."id")";
     }
     SECTION("old") {
         auto expression = old(&User::id);
         value = serialize(expression, context);
-        expected = "OLD.\"id\"";
+        expected = R"(OLD."id")";
     }
     REQUIRE(value == expected);
 }

@@ -18,17 +18,17 @@ TEST_CASE("statement_serializer column names") {
             SECTION("id") {
                 SECTION("skip table name") {
                     auto value = serialize(&User::id, context);
-                    REQUIRE(value == "\"id\"");
+                    REQUIRE(value == R"("id")");
                 }
                 SECTION("don't skip table name") {
                     context.skip_table_name = false;
                     auto value = serialize(&User::id, context);
-                    REQUIRE(value == "'users'.\"id\"");
+                    REQUIRE(value == R"("users"."id")");
                 }
             }
             SECTION("name") {
                 auto value = serialize(&User::name, context);
-                REQUIRE(value == "\"name\"");
+                REQUIRE(value == R"("name")");
             }
         }
     }
@@ -72,7 +72,7 @@ TEST_CASE("statement_serializer column names") {
                 SECTION("setter") {
                     value = serialize(&User::setId, context);
                 }
-                expected = "\"id\"";
+                expected = R"("id")";
             }
             SECTION("name") {
                 SECTION("getter") {
@@ -81,7 +81,7 @@ TEST_CASE("statement_serializer column names") {
                 SECTION("setter") {
                     value = serialize(&User::setName, context);
                 }
-                expected = "\"name\"";
+                expected = R"("name")";
             }
             REQUIRE(value == expected);
         }
@@ -102,7 +102,7 @@ TEST_CASE("statement_serializer column names") {
                 SECTION("setter") {
                     value = serialize(&User::setId, context);
                 }
-                expected = "\"id\"";
+                expected = R"("id")";
             }
             SECTION("name") {
                 SECTION("getter") {
@@ -111,7 +111,7 @@ TEST_CASE("statement_serializer column names") {
                 SECTION("setter") {
                     value = serialize(&User::setName, context);
                 }
-                expected = "\"name\"";
+                expected = R"("name")";
             }
             REQUIRE(value == expected);
         }

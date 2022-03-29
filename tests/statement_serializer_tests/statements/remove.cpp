@@ -19,11 +19,11 @@ TEST_CASE("statement_serializer remove") {
     auto statement = remove<User>(5);
     SECTION("with question marks") {
         context.replace_bindable_with_question = true;
-        expected = "DELETE FROM 'users' WHERE \"id\" = ?";
+        expected = R"(DELETE FROM "users" WHERE "id" = ?)";
     }
     SECTION("without question marks") {
         context.replace_bindable_with_question = false;
-        expected = "DELETE FROM 'users' WHERE \"id\" = 5";
+        expected = R"(DELETE FROM "users" WHERE "id" = 5)";
     }
     value = serialize(statement, context);
 

@@ -127,7 +127,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << "' DROP COLUMN \"" << columnName << "\"";
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN \"" << columnName << "\"";
                 perform_void_exec(db, ss.str());
             }
 #endif

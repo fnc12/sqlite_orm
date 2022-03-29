@@ -149,7 +149,7 @@ namespace sqlite_orm {
                     ss << ", ";
                 }
             }
-            ss << " FROM " << quote_identifier(this->table.name) << "'";
+            ss << " FROM " << quote_identifier(this->table.name);
             perform_void_exec(db, ss.str());
         }
 

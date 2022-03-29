@@ -14305,6 +14305,8 @@ namespace sqlite_orm {
 
 // #include "select_constraints.h"
 
+// #include "util.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -14361,7 +14363,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {"'" + alias_extractor<A>::get() + "'.*"};
+                return {quote_identifier(alias_extractor<A>::get()) + ".*"};
             }
         };
 
@@ -14504,7 +14506,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        std::string
+        inline std::string
         serialize_identifier(const std::string& qualifier, const std::string& identifier, const std::string& alias) {
             std::string quoted = quote_identifier(identifier);
             if(!qualifier.empty()) {
@@ -14515,16 +14517,19 @@ namespace sqlite_orm {
             }
             return quoted;
         }
-        std::string serialize_identifier(const std::string& identifier, const std::string& alias) {
+
+        inline std::string serialize_identifier(const std::string& identifier, const std::string& alias) {
             std::string quoted = quote_identifier(identifier);
             if(!alias.empty()) {
                 quoted += " " + quote_identifier(alias);
             }
             return quoted;
         }
-        std::string serialize_identifier(const std::string& identifier) {
+
+        inline std::string serialize_identifier(const std::string& identifier) {
             return quote_identifier(identifier);
         }
+
         template<typename T, size_t... Is>
         std::string serialize_identifier(const T& tpl, std::index_sequence<Is...>) {
             return serialize_identifier(std::get<Is>(tpl)...);
@@ -14804,7 +14809,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& c, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
-                    ss << quote_identifier(T::get()) << ".";
+                    ss << quote_identifier(alias_extractor<T>::get()) << ".";
                 }
                 auto newContext = context;
                 newContext.skip_table_name = true;
@@ -15405,7 +15410,7 @@ namespace sqlite_orm {
                         columnNames.emplace_back();
                     }
                 });
-                ss << "FOREIGN KEY(" << serialize_identifiers(columnNames) << ") ";
+                ss << "FOREIGN KEY(" << serialize_identifiers(columnNames) << ") REFERENCES ";
                 std::vector<std::string> referencesNames;
                 using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
                 constexpr size_t referencesCount = std::tuple_size<references_type_t>::value;
@@ -15423,7 +15428,7 @@ namespace sqlite_orm {
                         referencesNames.emplace_back();
                     }
                 });
-                ss << "REFERENCES (" << serialize_identifiers(referencesNames) << ")";
+                ss << "(" << serialize_identifiers(referencesNames) << ")";
                 if(fk.on_update) {
                     ss << ' ' << static_cast<std::string>(fk.on_update) << " " << fk.on_update._action;
                 }
@@ -15740,7 +15745,7 @@ namespace sqlite_orm {
                 iterate_ast(upd.set.assigns, collector);
                 if(!collector.table_names.empty()) {
                     if(collector.table_names.size() >= 1) {
-                        ss << " '" << collector.table_names.begin()->first << "' SET";
+                        ss << " " << quote_identifier(collector.table_names.begin()->first) << " SET";
                         std::vector<std::string> setPairs;
                         auto leftContext = context;
                         leftContext.skip_table_name = true;
@@ -16062,7 +16067,7 @@ namespace sqlite_orm {
 
             table_name_collector collector;
             collector.table_names.emplace(context.impl.find_table_name(typeid(primary_type)), "");
-            iterate_ast(get.conditions, collector);
+            // note: not collecting table names from get.conditions;
             std::stringstream ss;
             ss << "SELECT";
             auto& tImpl = pick_impl<primary_type>(context.impl);
@@ -16307,7 +16312,7 @@ namespace sqlite_orm {
                 using elements_type = typename std::decay<decltype(statement)>::type::elements_type;
                 using head_t = typename std::tuple_element<0, elements_type>::type::column_type;
                 using indexed_type = typename table_type<head_t>::type;
-                ss << "INDEX IF NOT EXISTS " << quote_identifer(statement.name) << " ON "
+                ss << "INDEX IF NOT EXISTS " << quote_identifier(statement.name) << " ON "
                    << quote_identifier(context.impl.find_table_name(typeid(indexed_type))) << " (";
                 std::vector<std::string> columnNames;
                 std::string whereString;
@@ -16654,7 +16659,7 @@ namespace sqlite_orm {
                 ss << " "
                    << serialize_identifier(context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)),
                                            alias_extractor<T>::get());
-                ss << serialize(l.constraint, context);
+                ss << " " << serialize(l.constraint, context);
                 return ss.str();
             }
         };
@@ -16670,7 +16675,7 @@ namespace sqlite_orm {
                 ss << " "
                    << serialize_identifier(context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)),
                                            alias_extractor<T>::get());
-                ss << serialize(l.constraint, context);
+                ss << " " << serialize(l.constraint, context);
                 return ss.str();
             }
         };
@@ -16686,7 +16691,7 @@ namespace sqlite_orm {
                 ss << " "
                    << serialize_identifier(context.impl.find_table_name(typeid(typename mapped_type_proxy<T>::type)),
                                            alias_extractor<T>::get());
-                ss << serialize(l.constraint, context);
+                ss << " " << serialize(l.constraint, context);
                 return ss.str();
             }
         };
@@ -16995,7 +17000,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << "' DROP COLUMN \"" << columnName << "\"";
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN \"" << columnName << "\"";
                 perform_void_exec(db, ss.str());
             }
 #endif
@@ -17741,13 +17746,8 @@ namespace sqlite_orm {
             template<class C>
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
                 std::stringstream ss;
-<<<<<<< HEAD
                 ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
-                using context_t = serializator_context<impl_type>;
-=======
-                ss << "ALTER TABLE " << tableName << " ADD COLUMN ";
                 using context_t = serializer_context<impl_type>;
->>>>>>> dev
                 context_t context{this->impl};
                 ss << serialize(column, context);
                 perform_void_exec(db, ss.str());
@@ -19487,7 +19487,7 @@ namespace sqlite_orm {
                     ss << ", ";
                 }
             }
-            ss << " FROM " << quote_identifier(this->table.name) << "'";
+            ss << " FROM " << quote_identifier(this->table.name);
             perform_void_exec(db, ss.str());
         }
 

@@ -7,6 +7,7 @@
 
 #include "error_code.h"
 #include "select_constraints.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
@@ -64,7 +65,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {"'" + alias_extractor<A>::get() + "'.*"};
+                return {quote_identifier(alias_extractor<A>::get()) + ".*"};
             }
         };
 
