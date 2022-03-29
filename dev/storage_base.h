@@ -501,7 +501,7 @@ namespace sqlite_orm {
                     this->on_open_internal(this->connection->get());
                 }
                 auto db = this->connection->get();
-                perform_void_exec(db, "BEGIN TRANSACTION");
+                perform_void_exec(db, query);
             }
 
             connection_ref get_connection() {
