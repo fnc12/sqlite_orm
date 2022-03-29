@@ -2630,35 +2630,35 @@ namespace sqlite_orm {
     }
 }
 
-// #include "serializator_context.h"
+// #include "serializer_context.h"
 
 namespace sqlite_orm {
 
     namespace internal {
 
-        struct serializator_context_base {
+        struct serializer_context_base {
             bool replace_bindable_with_question = false;
             bool skip_table_name = true;
             bool use_parentheses = true;
         };
 
         template<class I>
-        struct serializator_context : serializator_context_base {
+        struct serializer_context : serializer_context_base {
             using impl_type = I;
 
             const impl_type& impl;
 
-            serializator_context(const impl_type& impl_) : impl(impl_) {}
+            serializer_context(const impl_type& impl_) : impl(impl_) {}
         };
 
         template<class S>
-        struct serializator_context_builder {
+        struct serializer_context_builder {
             using storage_type = S;
             using impl_type = typename storage_type::impl_type;
 
-            serializator_context_builder(const storage_type& storage_) : storage(storage_) {}
+            serializer_context_builder(const storage_type& storage_) : storage(storage_) {}
 
-            serializator_context<impl_type> operator()() const {
+            serializer_context<impl_type> operator()() const {
                 return {obtain_const_impl(this->storage)};
             }
 
@@ -3937,9 +3937,9 @@ namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>>
+    internal::dynamic_order_by_t<internal::serializer_context<typename S::impl_type>>
     dynamic_order_by(const S& storage) {
-        internal::serializator_context_builder<S> builder(storage);
+        internal::serializer_context_builder<S> builder(storage);
         return builder();
     }
 
@@ -10448,7 +10448,7 @@ namespace sqlite_orm {
 
 // #include "constraints.h"
 
-// #include "serializator_context.h"
+// #include "serializer_context.h"
 
 // #include "storage_lookup.h"
 
@@ -10457,7 +10457,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class I>
-        std::string serialize(const T& t, const serializator_context<I>& context);
+        std::string serialize(const T& t, const serializer_context<I>& context);
 
         /**
          *  This class is used in tuple iteration to know whether tuple constains `default_value_t`
@@ -10473,7 +10473,7 @@ namespace sqlite_orm {
             template<class T>
             std::unique_ptr<std::string> operator()(const default_t<T>& t) const {
                 storage_impl<> storage;
-                serializator_context<storage_impl<>> context{storage};
+                serializer_context<storage_impl<>> context{storage};
                 return std::make_unique<std::string>(serialize(t.value, context));
             }
         };
@@ -12567,7 +12567,7 @@ namespace sqlite_orm {
             iterator_t<self> begin() {
                 sqlite3_stmt* stmt = nullptr;
                 auto db = this->connection.get();
-                using context_t = serializator_context<typename storage_type::impl_type>;
+                using context_t = serializer_context<typename storage_type::impl_type>;
                 context_t context{obtain_const_impl(this->storage)};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
@@ -14145,7 +14145,7 @@ namespace sqlite_orm {
     }
 }
 
-// #include "statement_serializator.h"
+// #include "statement_serializer.h"
 
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
@@ -14310,7 +14310,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class I>
-        std::string serialize(const T& t, const serializator_context<I>& context);
+        std::string serialize(const T& t, const serializer_context<I>& context);
 
         template<class T, class SFINAE = void>
         struct column_names_getter {
@@ -14400,7 +14400,7 @@ namespace sqlite_orm {
     }
 }
 
-// #include "order_by_serializator.h"
+// #include "order_by_serializer.h"
 
 #include <string>  //  std::string
 #include <vector>  //  std::vector
@@ -14411,16 +14411,16 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class SFINAE = void>
-        struct order_by_serializator;
+        struct order_by_serializer;
 
         template<class T, class Ctx>
         std::string serialize_order_by(const T& t, const Ctx& context) {
-            order_by_serializator<T> serializer;
+            order_by_serializer<T> serializer;
             return serializer(t, context);
         }
 
         template<class O>
-        struct order_by_serializator<order_by_t<O>, void> {
+        struct order_by_serializer<order_by_t<O>, void> {
             using statement_type = order_by_t<O>;
 
             template<class Ctx>
@@ -14446,7 +14446,7 @@ namespace sqlite_orm {
         };
 
         template<class S>
-        struct order_by_serializator<dynamic_order_by_t<S>, void> {
+        struct order_by_serializer<dynamic_order_by_t<S>, void> {
             using statement_type = dynamic_order_by_t<S>;
 
             template<class Ctx>
@@ -14548,11 +14548,11 @@ namespace sqlite_orm {
         }
 
         template<class T, class SFINAE = void>
-        struct statement_serializator;
+        struct statement_serializer;
 
         template<class T, class I>
-        std::string serialize(const T& t, const serializator_context<I>& context) {
-            statement_serializator<T> serializer;
+        std::string serialize(const T& t, const serializer_context<I>& context) {
+            statement_serializer<T> serializer;
             return serializer(t, context);
         }
 
@@ -14560,7 +14560,7 @@ namespace sqlite_orm {
          *  Serializer for bindable types.
          */
         template<class T>
-        struct statement_serializator<T, match_if<is_bindable, T>> {
+        struct statement_serializer<T, match_if<is_bindable, T>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -14632,7 +14632,7 @@ namespace sqlite_orm {
         };
 
         template<class F, class W>
-        struct statement_serializator<filtered_aggregate_function<F, W>, void> {
+        struct statement_serializer<filtered_aggregate_function<F, W>, void> {
             using statement_type = filtered_aggregate_function<F, W>;
 
             template<class Ctx>
@@ -14645,7 +14645,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<excluded_t<T>, void> {
+        struct statement_serializer<excluded_t<T>, void> {
             using statement_type = excluded_t<T>;
 
             template<class Ctx>
@@ -14662,7 +14662,7 @@ namespace sqlite_orm {
         };
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
-        struct statement_serializator<as_optional_t<T>, void> {
+        struct statement_serializer<as_optional_t<T>, void> {
             using statement_type = as_optional_t<T>;
 
             template<class Ctx>
@@ -14672,7 +14672,7 @@ namespace sqlite_orm {
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T>
-        struct statement_serializator<std::reference_wrapper<T>, void> {
+        struct statement_serializer<std::reference_wrapper<T>, void> {
             using statement_type = std::reference_wrapper<T>;
 
             template<class Ctx>
@@ -14682,7 +14682,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<alias_holder<T>, void> {
+        struct statement_serializer<alias_holder<T>, void> {
             using statement_type = alias_holder<T>;
 
             template<class Ctx>
@@ -14692,7 +14692,7 @@ namespace sqlite_orm {
         };
 
         template<class... TargetArgs, class... ActionsArgs>
-        struct statement_serializator<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
+        struct statement_serializer<upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>, void> {
             using statement_type = upsert_clause<std::tuple<TargetArgs...>, std::tuple<ActionsArgs...>>;
 
             template<class Ctx>
@@ -14727,7 +14727,7 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct statement_serializator<built_in_function_t<R, S, Args...>, void> {
+        struct statement_serializer<built_in_function_t<R, S, Args...>, void> {
             using statement_type = built_in_function_t<R, S, Args...>;
 
             template<class Ctx>
@@ -14758,11 +14758,11 @@ namespace sqlite_orm {
         };
 
         template<class R, class S, class... Args>
-        struct statement_serializator<built_in_aggregate_function_t<R, S, Args...>, void>
-            : statement_serializator<built_in_function_t<R, S, Args...>, void> {};
+        struct statement_serializer<built_in_aggregate_function_t<R, S, Args...>, void>
+            : statement_serializer<built_in_function_t<R, S, Args...>, void> {};
 
         template<class F, class... Args>
-        struct statement_serializator<function_call<F, Args...>, void> {
+        struct statement_serializer<function_call<F, Args...>, void> {
             using statement_type = function_call<F, Args...>;
 
             template<class Ctx>
@@ -14786,7 +14786,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class E>
-        struct statement_serializator<as_t<T, E>, void> {
+        struct statement_serializer<as_t<T, E>, void> {
             using statement_type = as_t<T, E>;
 
             template<class Ctx>
@@ -14797,7 +14797,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class P>
-        struct statement_serializator<alias_column_t<T, P>, void> {
+        struct statement_serializer<alias_column_t<T, P>, void> {
             using statement_type = alias_column_t<T, P>;
 
             template<class Ctx>
@@ -14814,7 +14814,7 @@ namespace sqlite_orm {
         };
 
         template<class O, class F>
-        struct statement_serializator<F O::*, void> {
+        struct statement_serializer<F O::*, void> {
             using statement_type = F O::*;
 
             template<class Ctx>
@@ -14833,7 +14833,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<rowid_t, void> {
+        struct statement_serializer<rowid_t, void> {
             using statement_type = rowid_t;
 
             template<class Ctx>
@@ -14843,7 +14843,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<oid_t, void> {
+        struct statement_serializer<oid_t, void> {
             using statement_type = oid_t;
 
             template<class Ctx>
@@ -14853,7 +14853,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<_rowid_t, void> {
+        struct statement_serializer<_rowid_t, void> {
             using statement_type = _rowid_t;
 
             template<class Ctx>
@@ -14863,7 +14863,7 @@ namespace sqlite_orm {
         };
 
         template<class O>
-        struct statement_serializator<table_rowid_t<O>, void> {
+        struct statement_serializer<table_rowid_t<O>, void> {
             using statement_type = table_rowid_t<O>;
 
             template<class Ctx>
@@ -14878,7 +14878,7 @@ namespace sqlite_orm {
         };
 
         template<class O>
-        struct statement_serializator<table_oid_t<O>, void> {
+        struct statement_serializer<table_oid_t<O>, void> {
             using statement_type = table_oid_t<O>;
 
             template<class Ctx>
@@ -14893,7 +14893,7 @@ namespace sqlite_orm {
         };
 
         template<class O>
-        struct statement_serializator<table__rowid_t<O>, void> {
+        struct statement_serializer<table__rowid_t<O>, void> {
             using statement_type = table__rowid_t<O>;
 
             template<class Ctx>
@@ -14908,7 +14908,7 @@ namespace sqlite_orm {
         };
 
         template<class L, class R, class... Ds>
-        struct statement_serializator<binary_operator<L, R, Ds...>, void> {
+        struct statement_serializer<binary_operator<L, R, Ds...>, void> {
             using statement_type = binary_operator<L, R, Ds...>;
 
             template<class Ctx>
@@ -14928,7 +14928,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<count_asterisk_t<T>, void> {
+        struct statement_serializer<count_asterisk_t<T>, void> {
             using statement_type = count_asterisk_t<T>;
 
             template<class Ctx>
@@ -14938,7 +14938,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<count_asterisk_without_type, void> {
+        struct statement_serializer<count_asterisk_without_type, void> {
             using statement_type = count_asterisk_without_type;
 
             template<class Ctx>
@@ -14951,7 +14951,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<distinct_t<T>, void> {
+        struct statement_serializer<distinct_t<T>, void> {
             using statement_type = distinct_t<T>;
 
             template<class Ctx>
@@ -14964,7 +14964,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<all_t<T>, void> {
+        struct statement_serializer<all_t<T>, void> {
             using statement_type = all_t<T>;
 
             template<class Ctx>
@@ -14977,7 +14977,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class F>
-        struct statement_serializator<column_pointer<T, F>, void> {
+        struct statement_serializer<column_pointer<T, F>, void> {
             using statement_type = column_pointer<T, F>;
 
             template<class Ctx>
@@ -14996,7 +14996,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class E>
-        struct statement_serializator<cast_t<T, E>, void> {
+        struct statement_serializer<cast_t<T, E>, void> {
             using statement_type = cast_t<T, E>;
 
             template<class Ctx>
@@ -15009,8 +15009,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<T,
-                                      typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct statement_serializer<T,
+                                    typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
             using statement_type = T;
 
             template<class Ctx>
@@ -15024,7 +15024,7 @@ namespace sqlite_orm {
         };
 
         template<class R, class T, class E, class... Args>
-        struct statement_serializator<simple_case_t<R, T, E, Args...>, void> {
+        struct statement_serializer<simple_case_t<R, T, E, Args...>, void> {
             using statement_type = simple_case_t<R, T, E, Args...>;
 
             template<class Ctx>
@@ -15047,7 +15047,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<is_null_t<T>, void> {
+        struct statement_serializer<is_null_t<T>, void> {
             using statement_type = is_null_t<T>;
 
             template<class Ctx>
@@ -15059,7 +15059,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<is_not_null_t<T>, void> {
+        struct statement_serializer<is_not_null_t<T>, void> {
             using statement_type = is_not_null_t<T>;
 
             template<class Ctx>
@@ -15071,7 +15071,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<bitwise_not_t<T>, void> {
+        struct statement_serializer<bitwise_not_t<T>, void> {
             using statement_type = bitwise_not_t<T>;
 
             template<class Ctx>
@@ -15085,7 +15085,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<negated_condition_t<T>, void> {
+        struct statement_serializer<negated_condition_t<T>, void> {
             using statement_type = negated_condition_t<T>;
 
             template<class Ctx>
@@ -15099,8 +15099,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<T,
-                                      typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct statement_serializer<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
             using statement_type = T;
 
             template<class Ctx>
@@ -15120,7 +15119,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<named_collate<T>, void> {
+        struct statement_serializer<named_collate<T>, void> {
             using statement_type = named_collate<T>;
 
             template<class Ctx>
@@ -15133,7 +15132,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<collate_t<T>, void> {
+        struct statement_serializer<collate_t<T>, void> {
             using statement_type = collate_t<T>;
 
             template<class Ctx>
@@ -15146,7 +15145,7 @@ namespace sqlite_orm {
         };
 
         template<class L, class A>
-        struct statement_serializator<dynamic_in_t<L, A>, void> {
+        struct statement_serializer<dynamic_in_t<L, A>, void> {
             using statement_type = dynamic_in_t<L, A>;
 
             template<class Ctx>
@@ -15175,7 +15174,7 @@ namespace sqlite_orm {
         };
 
         template<class L, class E>
-        struct statement_serializator<dynamic_in_t<L, std::vector<E>>, void> {
+        struct statement_serializer<dynamic_in_t<L, std::vector<E>>, void> {
             using statement_type = dynamic_in_t<L, std::vector<E>>;
 
             template<class Ctx>
@@ -15202,7 +15201,7 @@ namespace sqlite_orm {
         };
 
         template<class L, class... Args>
-        struct statement_serializator<in_t<L, Args...>, void> {
+        struct statement_serializer<in_t<L, Args...>, void> {
             using statement_type = in_t<L, Args...>;
 
             template<class Ctx>
@@ -15241,7 +15240,7 @@ namespace sqlite_orm {
         };
 
         template<class A, class T, class E>
-        struct statement_serializator<like_t<A, T, E>, void> {
+        struct statement_serializer<like_t<A, T, E>, void> {
             using statement_type = like_t<A, T, E>;
 
             template<class Ctx>
@@ -15258,7 +15257,7 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct statement_serializator<glob_t<A, T>, void> {
+        struct statement_serializer<glob_t<A, T>, void> {
             using statement_type = glob_t<A, T>;
 
             template<class Ctx>
@@ -15272,7 +15271,7 @@ namespace sqlite_orm {
         };
 
         template<class A, class T>
-        struct statement_serializator<between_t<A, T>, void> {
+        struct statement_serializer<between_t<A, T>, void> {
             using statement_type = between_t<A, T>;
 
             template<class Ctx>
@@ -15288,7 +15287,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<exists_t<T>, void> {
+        struct statement_serializer<exists_t<T>, void> {
             using statement_type = exists_t<T>;
 
             template<class Ctx>
@@ -15301,7 +15300,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<autoincrement_t, void> {
+        struct statement_serializer<autoincrement_t, void> {
             using statement_type = autoincrement_t;
 
             template<class Ctx>
@@ -15311,7 +15310,7 @@ namespace sqlite_orm {
         };
 
         template<class... Cs>
-        struct statement_serializator<primary_key_t<Cs...>, void> {
+        struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
 
             template<class Ctx>
@@ -15340,7 +15339,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<unique_t<Args...>, void> {
+        struct statement_serializer<unique_t<Args...>, void> {
             using statement_type = unique_t<Args...>;
 
             template<class Ctx>
@@ -15369,7 +15368,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<collate_constraint_t, void> {
+        struct statement_serializer<collate_constraint_t, void> {
             using statement_type = collate_constraint_t;
 
             template<class Ctx>
@@ -15379,7 +15378,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<default_t<T>, void> {
+        struct statement_serializer<default_t<T>, void> {
             using statement_type = default_t<T>;
 
             template<class Ctx>
@@ -15389,7 +15388,7 @@ namespace sqlite_orm {
         };
 
         template<class... Cs, class... Rs>
-        struct statement_serializator<foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
+        struct statement_serializer<foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>, void> {
             using statement_type = foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>>;
 
             template<class Ctx>
@@ -15436,7 +15435,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<check_t<T>, void> {
+        struct statement_serializer<check_t<T>, void> {
             using statement_type = check_t<T>;
 
             template<class Ctx>
@@ -15446,7 +15445,7 @@ namespace sqlite_orm {
         };
 #if SQLITE_VERSION_NUMBER >= 3031000
         template<class T>
-        struct statement_serializator<generated_always_t<T>, void> {
+        struct statement_serializer<generated_always_t<T>, void> {
             using statement_type = generated_always_t<T>;
 
             template<class Ctx>
@@ -15473,7 +15472,7 @@ namespace sqlite_orm {
         };
 #endif
         template<class O, class T, class G, class S, class... Op>
-        struct statement_serializator<column_t<O, T, G, S, Op...>, void> {
+        struct statement_serializer<column_t<O, T, G, S, Op...>, void> {
             using statement_type = column_t<O, T, G, S, Op...>;
 
             template<class Ctx>
@@ -15519,7 +15518,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Args>
-        struct statement_serializator<remove_all_t<T, Args...>, void> {
+        struct statement_serializer<remove_all_t<T, Args...>, void> {
             using statement_type = remove_all_t<T, Args...>;
 
             template<class Ctx>
@@ -15535,7 +15534,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<replace_t<T>, void> {
+        struct statement_serializer<replace_t<T>, void> {
             using statement_type = replace_t<T>;
 
             template<class Ctx>
@@ -15584,7 +15583,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Cols>
-        struct statement_serializator<insert_explicit<T, Cols...>, void> {
+        struct statement_serializer<insert_explicit<T, Cols...>, void> {
             using statement_type = insert_explicit<T, Cols...>;
 
             template<class Ctx>
@@ -15648,7 +15647,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<update_t<T>, void> {
+        struct statement_serializer<update_t<T>, void> {
             using statement_type = update_t<T>;
 
             template<class Ctx>
@@ -15702,7 +15701,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<set_t<Args...>, void> {
+        struct statement_serializer<set_t<Args...>, void> {
             using statement_type = set_t<Args...>;
 
             template<class Ctx>
@@ -15728,7 +15727,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args, class... Wargs>
-        struct statement_serializator<update_all_t<set_t<Args...>, Wargs...>, void> {
+        struct statement_serializer<update_all_t<set_t<Args...>, Wargs...>, void> {
             using statement_type = update_all_t<set_t<Args...>, Wargs...>;
 
             template<class Ctx>
@@ -15773,7 +15772,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<insert_t<T>, void> {
+        struct statement_serializer<insert_t<T>, void> {
             using statement_type = insert_t<T>;
 
             template<class Ctx>
@@ -15835,7 +15834,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<into_t<T>, void> {
+        struct statement_serializer<into_t<T>, void> {
             using statement_type = into_t<T>;
 
             template<class Ctx>
@@ -15848,7 +15847,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<columns_t<Args...>, void> {
+        struct statement_serializer<columns_t<Args...>, void> {
             using statement_type = columns_t<Args...>;
 
             template<class Ctx>
@@ -15873,7 +15872,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<
+        struct statement_serializer<
             T,
             typename std::enable_if<is_insert_raw<T>::value || is_replace_raw<T>::value>::type> {
             using statement_type = T;
@@ -15907,7 +15906,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Ids>
-        struct statement_serializator<remove_t<T, Ids...>, void> {
+        struct statement_serializer<remove_t<T, Ids...>, void> {
             using statement_type = remove_t<T, Ids...>;
 
             template<class Ctx>
@@ -15939,7 +15938,7 @@ namespace sqlite_orm {
         };
 
         template<class It, class L, class O>
-        struct statement_serializator<replace_range_t<It, L, O>, void> {
+        struct statement_serializer<replace_range_t<It, L, O>, void> {
             using statement_type = replace_range_t<It, L, O>;
 
             template<class Ctx>
@@ -15991,7 +15990,7 @@ namespace sqlite_orm {
         };
 
         template<class It, class L, class O>
-        struct statement_serializator<insert_range_t<It, L, O>, void> {
+        struct statement_serializer<insert_range_t<It, L, O>, void> {
             using statement_type = insert_range_t<It, L, O>;
 
             template<class Ctx>
@@ -16088,7 +16087,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class R, class... Args>
-        struct statement_serializator<get_all_optional_t<T, R, Args...>, void> {
+        struct statement_serializer<get_all_optional_t<T, R, Args...>, void> {
             using statement_type = get_all_optional_t<T, R, Args...>;
 
             template<class Ctx>
@@ -16099,7 +16098,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class T, class R, class... Args>
-        struct statement_serializator<get_all_pointer_t<T, R, Args...>, void> {
+        struct statement_serializer<get_all_pointer_t<T, R, Args...>, void> {
             using statement_type = get_all_pointer_t<T, R, Args...>;
 
             template<class Ctx>
@@ -16109,7 +16108,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class R, class... Args>
-        struct statement_serializator<get_all_t<T, R, Args...>, void> {
+        struct statement_serializer<get_all_t<T, R, Args...>, void> {
             using statement_type = get_all_t<T, R, Args...>;
 
             template<class Ctx>
@@ -16150,7 +16149,7 @@ namespace sqlite_orm {
         }
 
         template<class T, class... Ids>
-        struct statement_serializator<get_t<T, Ids...>, void> {
+        struct statement_serializer<get_t<T, Ids...>, void> {
             using statement_type = get_t<T, Ids...>;
 
             template<class Ctx>
@@ -16160,7 +16159,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Ids>
-        struct statement_serializator<get_pointer_t<T, Ids...>, void> {
+        struct statement_serializer<get_pointer_t<T, Ids...>, void> {
             using statement_type = get_pointer_t<T, Ids...>;
 
             template<class Ctx>
@@ -16170,7 +16169,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<conflict_action, void> {
+        struct statement_serializer<conflict_action, void> {
             using statement_type = conflict_action;
 
             template<class Ctx>
@@ -16191,7 +16190,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<insert_constraint, void> {
+        struct statement_serializer<insert_constraint, void> {
             using statement_type = insert_constraint;
 
             template<class Ctx>
@@ -16202,7 +16201,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Ids>
-        struct statement_serializator<get_optional_t<T, Ids...>, void> {
+        struct statement_serializer<get_optional_t<T, Ids...>, void> {
             using statement_type = get_optional_t<T, Ids...>;
 
             template<class Ctx>
@@ -16212,7 +16211,7 @@ namespace sqlite_orm {
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
         template<class T, class... Args>
-        struct statement_serializator<select_t<T, Args...>, void> {
+        struct statement_serializer<select_t<T, Args...>, void> {
             using statement_type = select_t<T, Args...>;
 
             template<class Ctx>
@@ -16268,7 +16267,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<indexed_column_t<T>, void> {
+        struct statement_serializer<indexed_column_t<T>, void> {
             using statement_type = indexed_column_t<T>;
 
             template<class Ctx>
@@ -16295,7 +16294,7 @@ namespace sqlite_orm {
         };
 
         template<class... Cols>
-        struct statement_serializator<index_t<Cols...>, void> {
+        struct statement_serializer<index_t<Cols...>, void> {
             using statement_type = index_t<Cols...>;
 
             template<class Ctx>
@@ -16339,7 +16338,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<from_t<Args...>, void> {
+        struct statement_serializer<from_t<Args...>, void> {
             using statement_type = from_t<Args...>;
 
             template<class Ctx>
@@ -16365,7 +16364,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<old_t<T>, void> {
+        struct statement_serializer<old_t<T>, void> {
             using statement_type = old_t<T>;
 
             template<class Ctx>
@@ -16380,7 +16379,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<new_t<T>, void> {
+        struct statement_serializer<new_t<T>, void> {
             using statement_type = new_t<T>;
 
             template<class Ctx>
@@ -16395,7 +16394,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<raise_t, void> {
+        struct statement_serializer<raise_t, void> {
             using statement_type = raise_t;
 
             template<class Ctx>
@@ -16418,7 +16417,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<trigger_timing, void> {
+        struct statement_serializer<trigger_timing, void> {
             using statement_type = trigger_timing;
 
             template<class Ctx>
@@ -16437,7 +16436,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<trigger_type, void> {
+        struct statement_serializer<trigger_type, void> {
             using statement_type = trigger_type;
 
             template<class Ctx>
@@ -16456,7 +16455,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<trigger_type_base_t, void> {
+        struct statement_serializer<trigger_type_base_t, void> {
             using statement_type = trigger_type_base_t;
 
             template<class Ctx>
@@ -16469,7 +16468,7 @@ namespace sqlite_orm {
         };
 
         template<class... Cs>
-        struct statement_serializator<trigger_update_type_t<Cs...>, void> {
+        struct statement_serializer<trigger_update_type_t<Cs...>, void> {
             using statement_type = trigger_update_type_t<Cs...>;
 
             template<class Ctx>
@@ -16491,7 +16490,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class W, class Trigger>
-        struct statement_serializator<trigger_base_t<T, W, Trigger>, void> {
+        struct statement_serializer<trigger_base_t<T, W, Trigger>, void> {
             using statement_type = trigger_base_t<T, W, Trigger>;
 
             template<class Ctx>
@@ -16511,7 +16510,7 @@ namespace sqlite_orm {
         };
 
         template<class... S>
-        struct statement_serializator<trigger_t<S...>, void> {
+        struct statement_serializer<trigger_t<S...>, void> {
             using statement_type = trigger_t<S...>;
 
             template<class Ctx>
@@ -16540,7 +16539,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<where_t<T>, void> {
+        struct statement_serializer<where_t<T>, void> {
             using statement_type = where_t<T>;
 
             template<class Ctx>
@@ -16554,7 +16553,7 @@ namespace sqlite_orm {
         };
 
         template<class O>
-        struct statement_serializator<order_by_t<O>, void> {
+        struct statement_serializer<order_by_t<O>, void> {
             using statement_type = order_by_t<O>;
 
             template<class Ctx>
@@ -16568,7 +16567,7 @@ namespace sqlite_orm {
         };
 
         template<class C>
-        struct statement_serializator<dynamic_order_by_t<C>, void> {
+        struct statement_serializer<dynamic_order_by_t<C>, void> {
             using statement_type = dynamic_order_by_t<C>;
 
             template<class Ctx>
@@ -16578,7 +16577,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<multi_order_by_t<Args...>, void> {
+        struct statement_serializer<multi_order_by_t<Args...>, void> {
             using statement_type = multi_order_by_t<Args...>;
 
             template<class Ctx>
@@ -16602,7 +16601,7 @@ namespace sqlite_orm {
         };
 
         template<class O>
-        struct statement_serializator<cross_join_t<O>, void> {
+        struct statement_serializer<cross_join_t<O>, void> {
             using statement_type = cross_join_t<O>;
 
             template<class Ctx>
@@ -16615,7 +16614,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct statement_serializator<inner_join_t<T, O>, void> {
+        struct statement_serializer<inner_join_t<T, O>, void> {
             using statement_type = inner_join_t<T, O>;
 
             template<class Ctx>
@@ -16631,7 +16630,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<on_t<T>, void> {
+        struct statement_serializer<on_t<T>, void> {
             using statement_type = on_t<T>;
 
             template<class Ctx>
@@ -16645,7 +16644,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct statement_serializator<join_t<T, O>, void> {
+        struct statement_serializer<join_t<T, O>, void> {
             using statement_type = join_t<T, O>;
 
             template<class Ctx>
@@ -16661,7 +16660,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct statement_serializator<left_join_t<T, O>, void> {
+        struct statement_serializer<left_join_t<T, O>, void> {
             using statement_type = left_join_t<T, O>;
 
             template<class Ctx>
@@ -16677,7 +16676,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class O>
-        struct statement_serializator<left_outer_join_t<T, O>, void> {
+        struct statement_serializer<left_outer_join_t<T, O>, void> {
             using statement_type = left_outer_join_t<T, O>;
 
             template<class Ctx>
@@ -16693,7 +16692,7 @@ namespace sqlite_orm {
         };
 
         template<class O>
-        struct statement_serializator<natural_join_t<O>, void> {
+        struct statement_serializer<natural_join_t<O>, void> {
             using statement_type = natural_join_t<O>;
 
             template<class Ctx>
@@ -16706,7 +16705,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Args>
-        struct statement_serializator<group_by_with_having<T, Args...>, void> {
+        struct statement_serializer<group_by_with_having<T, Args...>, void> {
             using statement_type = group_by_with_having<T, Args...>;
 
             template<class Ctx>
@@ -16733,7 +16732,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<group_by_t<Args...>, void> {
+        struct statement_serializer<group_by_t<Args...>, void> {
             using statement_type = group_by_t<Args...>;
 
             template<class Ctx>
@@ -16758,7 +16757,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<having_t<T>, void> {
+        struct statement_serializer<having_t<T>, void> {
             using statement_type = having_t<T>;
 
             template<class Ctx>
@@ -16777,7 +16776,7 @@ namespace sqlite_orm {
          *  OI - offset is implicit
          */
         template<class T, bool HO, bool OI, class O>
-        struct statement_serializator<limit_t<T, HO, OI, O>, void> {
+        struct statement_serializer<limit_t<T, HO, OI, O>, void> {
             using statement_type = limit_t<T, HO, OI, O>;
 
             template<class Ctx>
@@ -16807,7 +16806,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct statement_serializator<default_values_t, void> {
+        struct statement_serializer<default_values_t, void> {
             using statement_type = default_values_t;
 
             template<class Ctx>
@@ -16817,7 +16816,7 @@ namespace sqlite_orm {
         };
 
         template<class T, class M>
-        struct statement_serializator<using_t<T, M>, void> {
+        struct statement_serializer<using_t<T, M>, void> {
             using statement_type = using_t<T, M>;
 
             template<class Ctx>
@@ -16829,7 +16828,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<std::tuple<Args...>, void> {
+        struct statement_serializer<std::tuple<Args...>, void> {
             using statement_type = std::tuple<Args...>;
 
             template<class Ctx>
@@ -16851,7 +16850,7 @@ namespace sqlite_orm {
         };
 
         template<class... Args>
-        struct statement_serializator<values_t<Args...>, void> {
+        struct statement_serializer<values_t<Args...>, void> {
             using statement_type = values_t<Args...>;
 
             template<class Ctx>
@@ -16882,7 +16881,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializator<dynamic_values_t<T>, void> {
+        struct statement_serializer<dynamic_values_t<T>, void> {
             using statement_type = dynamic_values_t<T>;
 
             template<class Ctx>
@@ -16958,10 +16957,10 @@ namespace sqlite_orm {
             /**
              *  Obtain a storage_t's const storage_impl.
              *  
-             *  @note Historically, `serializator_context_builder` was declared friend, along with
+             *  @note Historically, `serializer_context_builder` was declared friend, along with
              *  a few other library stock objects, in order limit access to the storage_impl.
              *  However, one could gain access to a storage_t's storage_impl through
-             *  `serializator_context_builder`, hence leading the whole friend declaration mambo-jumbo
+             *  `serializer_context_builder`, hence leading the whole friend declaration mambo-jumbo
              *  ad absurdum.
              *  Providing a free function is way better and cleaner.
              *
@@ -16978,7 +16977,7 @@ namespace sqlite_orm {
                 ss << "CREATE TABLE " << quote_identifier(tableName) << " ( ";
                 auto elementsCount = tableImpl.table.elements_count;
                 auto index = 0;
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 iterate_tuple(tableImpl.table.elements, [elementsCount, &index, &ss, &context](auto& element) {
                     ss << serialize(element, context);
@@ -17463,7 +17462,7 @@ namespace sqlite_orm {
                     [](const auto& expression) -> decltype(auto) {
                         return (expression);
                     })(std::forward<E>(expression));
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 context.replace_bindable_with_question = parametrized;
                 // just like prepare_impl()
@@ -17713,7 +17712,7 @@ namespace sqlite_orm {
             template<class... Tss, class... Cols>
             sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 auto query = serialize(tableImpl.table, context);
                 perform_void_exec(db, query);
@@ -17724,7 +17723,7 @@ namespace sqlite_orm {
             sync_schema_result
             sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 auto query = serialize(tableImpl.table, context);
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
@@ -17742,8 +17741,13 @@ namespace sqlite_orm {
             template<class C>
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
                 std::stringstream ss;
+<<<<<<< HEAD
                 ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
                 using context_t = serializator_context<impl_type>;
+=======
+                ss << "ALTER TABLE " << tableName << " ADD COLUMN ";
+                using context_t = serializer_context<impl_type>;
+>>>>>>> dev
                 context_t context{this->impl};
                 ss << serialize(column, context);
                 perform_void_exec(db, ss.str());
@@ -17754,7 +17758,7 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt* stmt;
                 auto db = con.get();
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
@@ -19245,14 +19249,14 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
 }
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  (e.g. column_t -> default_value_extractor -> serializer_context -> storage_impl -> table_t -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 #pragma once
 
 // #include "implementations/column_definitions.h"
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  (e.g. column_t -> default_value_extractor -> serializer_context -> storage_impl -> table_t -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 
@@ -19279,7 +19283,7 @@ namespace sqlite_orm {
 
 // #include "implementations/table_definitions.h"
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  (e.g. column_t -> default_value_extractor -> serializer_context -> storage_impl -> table_t -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 
@@ -19331,7 +19335,7 @@ namespace sqlite_orm {
 
 // #include "implementations/storage_impl_definitions.h"
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  (e.g. column_t -> default_value_extractor -> serializer_context -> storage_impl -> table_t -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 

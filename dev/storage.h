@@ -46,7 +46,7 @@
 #include "storage_base.h"
 #include "prepared_statement.h"
 #include "expression_object_type.h"
-#include "statement_serializator.h"
+#include "statement_serializer.h"
 #include "triggers.h"
 #include "object_from_column_builder.h"
 #include "table.h"
@@ -89,10 +89,10 @@ namespace sqlite_orm {
             /**
              *  Obtain a storage_t's const storage_impl.
              *  
-             *  @note Historically, `serializator_context_builder` was declared friend, along with
+             *  @note Historically, `serializer_context_builder` was declared friend, along with
              *  a few other library stock objects, in order limit access to the storage_impl.
              *  However, one could gain access to a storage_t's storage_impl through
-             *  `serializator_context_builder`, hence leading the whole friend declaration mambo-jumbo
+             *  `serializer_context_builder`, hence leading the whole friend declaration mambo-jumbo
              *  ad absurdum.
              *  Providing a free function is way better and cleaner.
              *
@@ -109,7 +109,7 @@ namespace sqlite_orm {
                 ss << "CREATE TABLE " << quote_identifier(tableName) << " ( ";
                 auto elementsCount = tableImpl.table.elements_count;
                 auto index = 0;
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 iterate_tuple(tableImpl.table.elements, [elementsCount, &index, &ss, &context](auto& element) {
                     ss << serialize(element, context);
@@ -594,7 +594,7 @@ namespace sqlite_orm {
                     [](const auto& expression) -> decltype(auto) {
                         return (expression);
                     })(std::forward<E>(expression));
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 context.replace_bindable_with_question = parametrized;
                 // just like prepare_impl()
@@ -844,7 +844,7 @@ namespace sqlite_orm {
             template<class... Tss, class... Cols>
             sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 auto query = serialize(tableImpl.table, context);
                 perform_void_exec(db, query);
@@ -855,7 +855,7 @@ namespace sqlite_orm {
             sync_schema_result
             sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 auto query = serialize(tableImpl.table, context);
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
@@ -874,7 +874,7 @@ namespace sqlite_orm {
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 ss << serialize(column, context);
                 perform_void_exec(db, ss.str());
@@ -885,7 +885,7 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt* stmt;
                 auto db = con.get();
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
