@@ -365,12 +365,19 @@ namespace sqlite_orm {
             }
 
             void begin_transaction() {
-                this->connection->retain();
-                if(1 == this->connection->retain_count()) {
-                    this->on_open_internal(this->connection->get());
-                }
-                auto db = this->connection->get();
-                perform_void_exec(db, "BEGIN TRANSACTION");
+                this->begin_transaction_internal("BEGIN TRANSACTION");
+            }
+
+            void begin_deferred_transaction() {
+                this->begin_transaction_internal("BEGIN DEFERRED TRANSACTION");
+            }
+
+            void begin_immediate_transaction() {
+                this->begin_transaction_internal("BEGIN IMMEDIATE TRANSACTION");
+            }
+
+            void begin_exclusive_transaction() {
+                this->begin_transaction_internal("BEGIN EXCLUSIVE TRANSACTION");
             }
 
             void commit() {
@@ -486,6 +493,15 @@ namespace sqlite_orm {
                 if(this->inMemory) {
                     this->connection->release();
                 }
+            }
+
+            void begin_transaction_internal(const std::string& query) {
+                this->connection->retain();
+                if(1 == this->connection->retain_count()) {
+                    this->on_open_internal(this->connection->get());
+                }
+                auto db = this->connection->get();
+                perform_void_exec(db, "BEGIN TRANSACTION");
             }
 
             connection_ref get_connection() {
