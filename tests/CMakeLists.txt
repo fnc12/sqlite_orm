@@ -71,37 +71,37 @@ add_executable(unit_tests
 	constraints/foreign_key.cpp
 	constraints/check.cpp
 	table_tests.cpp
-    statement_serializator_tests/column_constraints/generated.cpp
-    statement_serializator_tests/column_constraints/default.cpp
-    statement_serializator_tests/column_constraints/primary_key.cpp
-	statement_serializator_tests/column_constraints/autoincrement.cpp
-	statement_serializator_tests/column_constraints/unique.cpp
-	statement_serializator_tests/column_constraints/check.cpp
-    statement_serializator_tests/bindables.cpp
-    statement_serializator_tests/ast/upsert_clause.cpp
-    statement_serializator_tests/ast/excluded.cpp
-    statement_serializator_tests/arithmetic_operators.cpp
-    statement_serializator_tests/base_types.cpp
-    statement_serializator_tests/collate.cpp
-    statement_serializator_tests/comparison_operators.cpp
-    statement_serializator_tests/core_functions.cpp
-    statement_serializator_tests/rowid.cpp
-    statement_serializator_tests/column_names.cpp
-    statement_serializator_tests/foreign_key.cpp
-    statement_serializator_tests/schema/index.cpp
-    statement_serializator_tests/schema/trigger.cpp
-    statement_serializator_tests/schema/new_old.cpp
-    statement_serializator_tests/schema/raise.cpp
-    statement_serializator_tests/indexed_column.cpp
-    statement_serializator_tests/logical_operators.cpp
-    statement_serializator_tests/statements/select.cpp
-    statement_serializator_tests/select_constraints.cpp
-    statement_serializator_tests/conditions.cpp
-    statement_serializator_tests/statements/insert_replace.cpp
-    statement_serializator_tests/statements/update.cpp
-    statement_serializator_tests/statements/remove.cpp
-    statement_serializator_tests/statements/update_all.cpp
-    statement_serializator_tests/aggregate_functions.cpp
+    statement_serializer_tests/column_constraints/generated.cpp
+    statement_serializer_tests/column_constraints/default.cpp
+    statement_serializer_tests/column_constraints/primary_key.cpp
+	statement_serializer_tests/column_constraints/autoincrement.cpp
+	statement_serializer_tests/column_constraints/unique.cpp
+	statement_serializer_tests/column_constraints/check.cpp
+    statement_serializer_tests/bindables.cpp
+    statement_serializer_tests/ast/upsert_clause.cpp
+    statement_serializer_tests/ast/excluded.cpp
+    statement_serializer_tests/arithmetic_operators.cpp
+    statement_serializer_tests/base_types.cpp
+    statement_serializer_tests/collate.cpp
+    statement_serializer_tests/comparison_operators.cpp
+    statement_serializer_tests/core_functions.cpp
+    statement_serializer_tests/rowid.cpp
+    statement_serializer_tests/column_names.cpp
+    statement_serializer_tests/foreign_key.cpp
+    statement_serializer_tests/schema/index.cpp
+    statement_serializer_tests/schema/trigger.cpp
+    statement_serializer_tests/schema/new_old.cpp
+    statement_serializer_tests/schema/raise.cpp
+    statement_serializer_tests/indexed_column.cpp
+    statement_serializer_tests/logical_operators.cpp
+    statement_serializer_tests/statements/select.cpp
+    statement_serializer_tests/select_constraints.cpp
+    statement_serializer_tests/conditions.cpp
+    statement_serializer_tests/statements/insert_replace.cpp
+    statement_serializer_tests/statements/update.cpp
+    statement_serializer_tests/statements/remove.cpp
+    statement_serializer_tests/statements/update_all.cpp
+    statement_serializer_tests/aggregate_functions.cpp
     storage_tests.cpp
     storage_non_crud_tests.cpp
 	unique_cases/get_all_with_two_tables.cpp
