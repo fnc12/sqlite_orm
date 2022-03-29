@@ -18552,18 +18552,6 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#if defined(_MSC_VER)
-#if defined(__RESTORE_MIN__)
-__pragma(pop_macro("min"))
-#undef __RESTORE_MIN__
-#endif
-#if defined(__RESTORE_MAX__)
-    __pragma(pop_macro("max"))
-#undef __RESTORE_MAX__
-#endif
-#endif  // defined(_MSC_VER)
-#pragma once
-
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
@@ -18571,31 +18559,31 @@ __pragma(pop_macro("min"))
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-    // #include "conditions.h"
+// #include "conditions.h"
 
-    // #include "operators.h"
+// #include "operators.h"
 
-    // #include "select_constraints.h"
+// #include "select_constraints.h"
 
-    // #include "prepared_statement.h"
+// #include "prepared_statement.h"
 
-    // #include "optional_container.h"
+// #include "optional_container.h"
 
-    // #include "core_functions.h"
+// #include "core_functions.h"
 
-    // #include "function.h"
+// #include "function.h"
 
-    // #include "ast/excluded.h"
+// #include "ast/excluded.h"
 
-    // #include "ast/upsert_clause.h"
+// #include "ast/upsert_clause.h"
 
-    // #include "ast/where.h"
+// #include "ast/where.h"
 
-    // #include "ast/into.h"
+// #include "ast/into.h"
 
-    // #include "ast/group_by.h"
+// #include "ast/group_by.h"
 
-    namespace sqlite_orm {
+namespace sqlite_orm {
 
     namespace internal {
 
@@ -19659,3 +19647,16 @@ namespace sqlite_orm {
 
     }
 }
+
+#pragma once
+
+#if defined(_MSC_VER)
+#if defined(__RESTORE_MIN__)
+__pragma(pop_macro("min"))
+#undef __RESTORE_MIN__
+#endif
+#if defined(__RESTORE_MAX__)
+    __pragma(pop_macro("max"))
+#undef __RESTORE_MAX__
+#endif
+#endif  // defined(_MSC_VER)
