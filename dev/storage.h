@@ -127,7 +127,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN \"" << columnName << "\"";
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN " << quote_identifier(columnName);
                 perform_void_exec(db, ss.str());
             }
 #endif
@@ -1614,14 +1614,14 @@ namespace sqlite_orm {
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)";
                             ss << " FROM " << quote_identifier(storageImpl.table.name);
-                            ss << " WHERE";
+                            ss << " WHERE ";
                             auto columnIndex = 0;
                             iterate_tuple(foreignKey.columns, [&ss, &columnIndex, &storageImpl](auto& column) {
                                 if(columnIndex > 0) {
-                                    ss << " AND";
+                                    ss << " AND ";
                                 }
                                 if(auto columnName = storageImpl.table.find_column_name(column)) {
-                                    ss << ' ' << *columnName << " = ?";
+                                    ss << quote_identifier(*columnName) << " = ?";
                                 } else {
                                     throw std::system_error{orm_error_code::column_not_found};
                                 }

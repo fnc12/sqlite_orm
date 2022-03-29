@@ -12,7 +12,7 @@ TEST_CASE("statement_serializer base types") {
         std::string str("calma");
         SECTION("no question") {
             stringValue = serialize(str, context);
-            expected = "\'calma\'";
+            expected = "'calma'";
         }
         SECTION("question") {
             context.replace_bindable_with_question = true;
@@ -24,7 +24,7 @@ TEST_CASE("statement_serializer base types") {
         const char* str = "baby";
         SECTION("no question") {
             stringValue = serialize(str, context);
-            expected = "\'baby\'";
+            expected = "'baby'";
         }
         SECTION("question") {
             context.replace_bindable_with_question = true;
@@ -37,7 +37,7 @@ TEST_CASE("statement_serializer base types") {
         std::string_view str = "agora";
         SECTION("no question") {
             stringValue = serialize(str, context);
-            expected = "\'agora\'";
+            expected = "'agora'";
         }
         SECTION("question") {
             context.replace_bindable_with_question = true;

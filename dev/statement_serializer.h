@@ -79,15 +79,28 @@ namespace sqlite_orm {
 
         template<class It>
         std::string serialize_identifiers(It first, It end) {
-            return std::accumulate(first, end, std::string{}, [](std::string v, const auto& tpl) {
-                constexpr const char* x[] = {", ", ""};
-                return move(v) + x[v.empty()] + serialize_identifier(tpl);
+            return std::accumulate(first, end, std::string{}, [](std::string a, const auto& tpl) {
+                constexpr const char* sep[] = {", ", ""};
+                return move(a) + sep[a.empty()] + serialize_identifier(tpl);
             });
         }
 
         template<class C>
         std::string serialize_identifiers(const C& c) {
             return serialize_identifiers(c.cbegin(), c.cend());
+        }
+
+        template<class It>
+        std::string join_serialized_strings(It first, It end) {
+            return std::accumulate(first, end, std::string{}, [](std::string a, const std::string& v) {
+                constexpr const char* sep[] = {", ", ""};
+                return move(a) + sep[a.empty()] + v;
+            });
+        }
+
+        template<class C>
+        std::string join_serialized_strings(const C& c) {
+            return join_serialized_strings(c.cbegin(), c.cend());
         }
 
         template<class T, class SFINAE = void>
@@ -97,6 +110,15 @@ namespace sqlite_orm {
         std::string serialize(const T& t, const serializer_context<I>& context) {
             statement_serializer<T> serializer;
             return serializer(t, context);
+        }
+
+        template<class E, class I>
+        std::string serialize_dynamic_args(const std::vector<E>& args, const serializer_context<I>& context) {
+            auto first = args.cbegin(), end = args.cend();
+            return std::accumulate(first, end, std::string{}, [&context](std::string a, const auto& arg) {
+                constexpr const char* sep[] = {", ", ""};
+                return move(a) + sep[a.empty()] + serialize(arg, context);
+            });
         }
 
         /**
@@ -196,7 +218,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "excluded.";
                 if(auto columnNamePointer = find_column_name(context.impl, statement.expression)) {
-                    ss << "\"" << *columnNamePointer << "\"";
+                    ss << quote_identifier(*columnNamePointer);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -279,20 +301,14 @@ namespace sqlite_orm {
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                ss << statement.serialize() << "(";
+                ss << statement.serialize();
                 std::vector<std::string> args;
                 using args_type = typename std::decay<decltype(statement)>::type::args_type;
                 args.reserve(std::tuple_size<args_type>::value);
                 iterate_tuple(statement.args, [&args, &context](auto& v) {
                     args.push_back(serialize(v, context));
                 });
-                for(size_t i = 0; i < args.size(); ++i) {
-                    ss << args[i];
-                    if(i < args.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << ")";
+                ss << "(" << join_serialized_strings(args) << ")";
                 if(context.use_parentheses) {
                     ss << ')';
                 }
@@ -316,11 +332,10 @@ namespace sqlite_orm {
                 ss << F::name() << "(";
                 auto index = 0;
                 iterate_tuple(statement.args, [&context, &ss, &index](auto& v) {
-                    auto value = serialize(v, context);
-                    ss << value;
-                    if(index < std::tuple_size<args_tuple>::value - 1) {
+                    if(index > 0) {
                         ss << ", ";
                     }
+                    ss << serialize(v, context);
                     ++index;
                 });
                 ss << ")";
@@ -367,7 +382,7 @@ namespace sqlite_orm {
                     ss << quote_identifier(context.impl.find_table_name(typeid(O))) << ".";
                 }
                 if(auto columnnamePointer = find_column_name(context.impl, m)) {
-                    ss << "\"" << *columnnamePointer << "\"";
+                    ss << quote_identifier(*columnnamePointer);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -530,7 +545,7 @@ namespace sqlite_orm {
                     ss << quote_identifier(context.impl.find_table_name(typeid(T))) << ".";
                 }
                 if(auto columnNamePointer = find_column_name(context.impl, c)) {
-                    ss << "\"" << *columnNamePointer << "\"";
+                    ss << quote_identifier(*columnNamePointer);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -730,15 +745,7 @@ namespace sqlite_orm {
                 } else {
                     ss << "NOT IN";
                 }
-                ss << " (";
-                for(size_t index = 0; index < statement.argument.size(); ++index) {
-                    auto& value = statement.argument[index];
-                    ss << serialize(value, context);
-                    if(index < statement.argument.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << ")";
+                ss << " (" << serialize_dynamic_args(statement.argument, context) << ")";
                 return ss.str();
             }
         };
@@ -769,12 +776,7 @@ namespace sqlite_orm {
                 iterate_tuple(statement.argument, [&args, &context](auto& v) {
                     args.push_back(serialize(v, context));
                 });
-                for(size_t i = 0; i < args.size(); ++i) {
-                    ss << args[i];
-                    if(i < args.size() - 1) {
-                        ss << ", ";
-                    }
-                }
+                ss << join_serialized_strings(args);
                 if(!theOnlySelect) {
                     ss << ")";
                 }
@@ -860,20 +862,20 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& c, const Ctx& context) const {
                 auto res = static_cast<std::string>(c);
                 using columns_tuple = typename statement_type::columns_tuple;
-                auto columnsCount = std::tuple_size<columns_tuple>::value;
+                const size_t columnsCount = std::tuple_size<columns_tuple>::value;
                 if(columnsCount) {
                     res += "(";
-                    decltype(columnsCount) columnIndex = 0;
-                    iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
+                    size_t columnIndex = 0;
+                    iterate_tuple(c.columns, [&context, &res, &columnIndex](auto& column) {
+                        if(columnIndex > 0) {
+                            res += ", ";
+                        }
                         if(auto columnNamePointer = find_column_name(context.impl, column)) {
                             res += *columnNamePointer;
-                            if(columnIndex < columnsCount - 1) {
-                                res += ", ";
-                            }
-                            ++columnIndex;
                         } else {
                             throw std::system_error{orm_error_code::column_not_found};
                         }
+                        ++columnIndex;
                     });
                     res += ")";
                 }
@@ -889,20 +891,20 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& c, const Ctx& context) const {
                 auto res = static_cast<std::string>(c);
                 using columns_tuple = typename statement_type::columns_tuple;
-                auto columnsCount = std::tuple_size<columns_tuple>::value;
+                const size_t columnsCount = std::tuple_size<columns_tuple>::value;
                 if(columnsCount) {
                     res += "(";
-                    decltype(columnsCount) columnIndex = 0;
-                    iterate_tuple(c.columns, [&context, &res, &columnIndex, columnsCount](auto& column) {
+                    size_t columnIndex = 0;
+                    iterate_tuple(c.columns, [&context, &res, &columnIndex](auto& column) {
+                        if(columnIndex > 0) {
+                            res += ", ";
+                        }
                         if(auto columnNamePointer = find_column_name(context.impl, column)) {
                             res += *columnNamePointer;
-                            if(columnIndex < columnsCount - 1) {
-                                res += ", ";
-                            }
-                            ++columnIndex;
                         } else {
                             throw std::system_error{orm_error_code::column_not_found};
                         }
+                        ++columnIndex;
                     });
                     res += ")";
                 }
@@ -1028,7 +1030,7 @@ namespace sqlite_orm {
                 ss << type_printer<field_type>().print() << " ";
                 {
                     std::vector<std::string> constraintsStrings;
-                    constexpr const size_t constraintsCount = std::tuple_size<constraints_type>::value;
+                    constexpr size_t constraintsCount = std::tuple_size<constraints_type>::value;
                     constraintsStrings.reserve(constraintsCount);
                     int primaryKeyIndex = -1;
                     int autoincrementIndex = -1;
@@ -1089,38 +1091,37 @@ namespace sqlite_orm {
                 ss << "REPLACE INTO " << quote_identifier(tImpl.table.name) << " (";
 
                 auto columnIndex = 0;
-                auto columnsCount = tImpl.table.non_generated_columns_count();
-                tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                tImpl.table.for_each_column([&ss, &columnIndex](auto& column) {
                     if(column.is_generated()) {
                         return;
                     }
-                    ss << "\"" << column.name << "\"";
-                    if(columnIndex < columnsCount - 1) {
+
+                    if(columnIndex > 0) {
                         ss << ", ";
-                    } else {
-                        ss << ")";
                     }
+                    ss << quote_identifier(column.name);
                     ++columnIndex;
                 });
-                ss << " VALUES (";
+                ss << ")"
+                   << " VALUES (";
                 columnIndex = 0;
                 auto& object = get_ref(statement.object);
-                tImpl.table.for_each_column([&ss, &columnIndex, columnsCount, &object, &context](auto& column) {
+                tImpl.table.for_each_column([&ss, &columnIndex, &object, &context](auto& column) {
                     if(column.is_generated()) {
                         return;
+                    }
+
+                    if(columnIndex > 0) {
+                        ss << ", ";
                     }
                     if(column.member_pointer) {
                         ss << serialize(object.*column.member_pointer, context);
                     } else {
                         ss << serialize((object.*column.getter)(), context);
                     }
-                    if(columnIndex < columnsCount - 1) {
-                        ss << ", ";
-                    } else {
-                        ss << ")";
-                    }
                     ++columnIndex;
                 });
+                ss << ")";
                 return ss.str();
             }
         };
@@ -1131,7 +1132,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& ins, const Ctx& context) const {
-                constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
+                constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 using expression_type = typename std::decay<decltype(ins)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
@@ -1144,27 +1145,23 @@ namespace sqlite_orm {
                     columnsContext.skip_table_name = true;
                     auto index = 0;
                     iterate_tuple(ins.columns.columns, [&ss, &columnsContext, &index](auto& memberPointer) {
-                        constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                         auto columnName = serialize(memberPointer, columnsContext);
                         if(!columnName.empty()) {
-                            ss << columnName;
-                            if(index < colsCount - 1) {
-                                ss << ",";
-                            } else {
-                                ss << ")";
+                            if(index > 0) {
+                                ss << ", ";
                             }
-                            ss << " ";
+                            ss << columnName;
                             ++index;
                         } else {
                             throw std::system_error{orm_error_code::column_not_found};
                         }
                     });
                 }
-                ss << "VALUES (";
+                ss << ") "
+                   << "VALUES (";
                 auto index = 0;
                 auto& object = get_ref(ins.obj);
                 iterate_tuple(ins.columns.columns, [&ss, &context, &index, &object](auto& memberPointer) {
-                    constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                     using member_pointer_type = typename std::decay<decltype(memberPointer)>::type;
                     static_assert(!is_setter<member_pointer_type>::value,
                                   "Unable to use setter within insert explicit");
@@ -1177,14 +1174,13 @@ namespace sqlite_orm {
                         [&valueString, &memberPointer, &context](auto& object) {
                             valueString = serialize(object.*memberPointer, context);
                         })(object);
-                    ss << valueString;
-                    if(index < colsCount - 1) {
+                    if(index > 0) {
                         ss << ", ";
-                    } else {
-                        ss << ")";
                     }
+                    ss << valueString;
                     ++index;
                 });
+                ss << ")";
                 return ss.str();
             }
         };
@@ -1200,44 +1196,44 @@ namespace sqlite_orm {
                 auto& tImpl = pick_impl<object_type>(context.impl);
 
                 std::stringstream ss;
-                ss << "UPDATE " << quote_identifier(tImpl.table.name) << " SET";
+                ss << "UPDATE " << quote_identifier(tImpl.table.name) << " SET ";
                 //                std::vector<std::string> setColumnNames;
                 auto columnIndex = 0;
                 auto& object = get_ref(statement.object);
                 tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object, &context](auto& column) {
-                    if(!column.template has<primary_key_t<>>() &&
-                       !tImpl.table.exists_in_composite_primary_key(column)) {
-                        if(0 == columnIndex) {
-                            ss << ' ';
-                        } else {
-                            ss << ", ";
-                        }
-                        ss << "\"" << column.name << "\" = ";
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
-                        ++columnIndex;
+                    if(column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column)) {
+                        return;
                     }
+
+                    if(columnIndex > 0) {
+                        ss << ", ";
+                    }
+                    ss << quote_identifier(column.name) << " = ";
+                    if(column.member_pointer) {
+                        ss << serialize(object.*column.member_pointer, context);
+                    } else {
+                        ss << serialize((object.*column.getter)(), context);
+                    }
+                    ++columnIndex;
                 });
-                ss << " WHERE";
+                ss << " WHERE ";
                 columnIndex = 0;
                 tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object, &context](auto& column) {
-                    if(column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column)) {
-                        if(0 == columnIndex) {
-                            ss << ' ';
-                        } else {
-                            ss << " AND ";
-                        }
-                        ss << "\"" << column.name << "\" = ";
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
-                        ++columnIndex;
+                    if(!column.template has<primary_key_t<>>() &&
+                       !tImpl.table.exists_in_composite_primary_key(column)) {
+                        return;
                     }
+
+                    if(columnIndex > 0) {
+                        ss << " AND ";
+                    }
+                    ss << quote_identifier(column.name) << " = ";
+                    if(column.member_pointer) {
+                        ss << serialize(object.*column.member_pointer, context);
+                    } else {
+                        ss << serialize((object.*column.getter)(), context);
+                    }
+                    ++columnIndex;
                 });
                 return ss.str();
             }
@@ -1250,21 +1246,20 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                ss << "SET";
-                auto assignsCount = std::tuple_size<typename statement_type::assigns_type>::value;
-                decltype(assignsCount) assignIndex = 0;
+                ss << "SET ";
+                constexpr size_t assignsCount = std::tuple_size<typename statement_type::assigns_type>::value;
+                size_t assignIndex = 0;
                 auto leftContext = context;
                 leftContext.skip_table_name = true;
-                iterate_tuple(statement.assigns,
-                              [&ss, &context, &leftContext, &assignIndex, assignsCount](auto& value) {
-                                  ss << ' ' << serialize(value.lhs, leftContext);
-                                  ss << ' ' << value.serialize() << ' ';
-                                  ss << serialize(value.rhs, context);
-                                  if(assignIndex < assignsCount - 1) {
-                                      ss << ",";
-                                  }
-                                  ++assignIndex;
-                              });
+                iterate_tuple(statement.assigns, [&ss, &context, &leftContext, &assignIndex](auto& value) {
+                    if(assignIndex > 0) {
+                        ss << ", ";
+                    }
+                    ss << serialize(value.lhs, leftContext);
+                    ss << ' ' << value.serialize() << ' ';
+                    ss << serialize(value.rhs, context);
+                    ++assignIndex;
+                });
                 return ss.str();
             }
         };
@@ -1275,41 +1270,38 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& upd, const Ctx& context) const {
-                std::stringstream ss;
-                ss << "UPDATE";
                 table_name_collector collector([&context](std::type_index ti) {
                     return context.impl.find_table_name(ti);
                 });
                 iterate_ast(upd.set.assigns, collector);
-                if(!collector.table_names.empty()) {
-                    if(collector.table_names.size() >= 1) {
-                        ss << " " << quote_identifier(collector.table_names.begin()->first) << " SET";
-                        std::vector<std::string> setPairs;
-                        auto leftContext = context;
-                        leftContext.skip_table_name = true;
-                        iterate_tuple(upd.set.assigns, [&context, &leftContext, &setPairs](auto& asgn) {
-                            std::stringstream sss;
-                            sss << serialize(asgn.lhs, leftContext);
-                            sss << ' ' << asgn.serialize() << ' ';
-                            sss << serialize(asgn.rhs, context);
-                            setPairs.push_back(sss.str());
-                        });
-                        auto setPairsCount = setPairs.size();
-                        for(size_t i = 0; i < setPairsCount; ++i) {
-                            ss << ' ' << setPairs[i];
-                            if(i < setPairsCount - 1) {
-                                ss << ",";
-                            }
-                        }
-                        iterate_tuple(upd.conditions, [&context, &ss](auto& v) {
-                            ss << ' ' << serialize(v, context);
-                        });
-                        return ss.str();
-                    } else {
-                        throw std::system_error{orm_error_code::no_tables_specified};
-                    }
-                } else {
+
+                if(collector.table_names.empty()) {
+                    throw std::system_error{orm_error_code::no_tables_specified};
+                }
+                if(collector.table_names.size() < 1) {
                     throw std::system_error{orm_error_code::incorrect_set_fields_specified};
+                }
+
+                std::stringstream ss;
+                ss << "UPDATE";
+                ss << " " << quote_identifier(collector.table_names.begin()->first) << " SET ";
+                {
+                    std::vector<std::string> setPairs;
+                    setPairs.reserve(std::tuple_size<typename set_t<Args...>::assigns_type>::value);
+                    auto leftContext = context;
+                    leftContext.skip_table_name = true;
+                    iterate_tuple(upd.set.assigns, [&context, &leftContext, &setPairs](auto& asgn) {
+                        std::stringstream sss;
+                        sss << serialize(asgn.lhs, leftContext);
+                        sss << ' ' << asgn.serialize() << ' ';
+                        sss << serialize(asgn.rhs, context);
+                        setPairs.push_back(sss.str());
+                    });
+                    ss << join_serialized_strings(setPairs);
+                    iterate_tuple(upd.conditions, [&context, &ss](auto& v) {
+                        ss << ' ' << serialize(v, context);
+                    });
+                    return ss.str();
                 }
             }
         };
@@ -1332,12 +1324,12 @@ namespace sqlite_orm {
                     if(table_type::is_without_rowid ||
                        (!column.template has<primary_key_t<>>() &&
                         !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
-                        if(0 == columnIndex) {
+                        if(columnIndex == 0) {
                             ss << '(';
                         } else {
                             ss << ", ";
                         }
-                        ss << "\"" << column.name << "\"";
+                        ss << quote_identifier(column.name);
                         ++columnIndex;
                     }
                 });
@@ -1348,7 +1340,7 @@ namespace sqlite_orm {
                     ss << "DEFAULT";
                 }
                 ss << " VALUES ";
-                if(columnsToInsertCount) {
+                if(columnsToInsertCount > 0) {
                     ss << "(";
                     columnIndex = 0;
                     auto& object = get_ref(statement.object);
@@ -1358,13 +1350,13 @@ namespace sqlite_orm {
                             if(table_type::is_without_rowid ||
                                (!column.template has<primary_key_t<>>() &&
                                 !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
+                                if(columnIndex > 0) {
+                                    ss << ", ";
+                                }
                                 if(column.member_pointer) {
                                     ss << serialize(object.*column.member_pointer, context);
                                 } else {
                                     ss << serialize((object.*column.getter)(), context);
-                                }
-                                if(columnIndex < columnsToInsertCount - 1) {
-                                    ss << ", ";
                                 }
                                 ++columnIndex;
                             }
@@ -1401,10 +1393,10 @@ namespace sqlite_orm {
                     ss << '(';
                 }
                 iterate_tuple(statement.columns, [&context, &ss, &index](auto& value) {
-                    ss << serialize(value, context);
-                    if(index < int(std::tuple_size<std::tuple<Args...>>::value) - 1) {
+                    if(index > 0) {
                         ss << ", ";
                     }
+                    ss << serialize(value, context);
                     ++index;
                 });
                 if(context.use_parentheses) {
@@ -1457,7 +1449,7 @@ namespace sqlite_orm {
                 auto& tImpl = pick_impl<T>(context.impl);
                 std::stringstream ss;
                 ss << "DELETE FROM " << quote_identifier(tImpl.table.name) << " ";
-                ss << "WHERE";
+                ss << "WHERE ";
                 std::vector<std::string> idsStrings;
                 idsStrings.reserve(std::tuple_size<typename statement_type::ids_type>::value);
                 iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
@@ -1466,11 +1458,10 @@ namespace sqlite_orm {
                 auto index = 0;
                 tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl, &idsStrings](auto& memberPointer) {
                     if(index > 0) {
-                        ss << " AND";
+                        ss << " AND ";
                     }
                     if(auto* columnNamePointer = tImpl.table.find_column_name(memberPointer)) {
-                        ss << " \"" << *columnNamePointer << "\""
-                           << " = " << idsStrings[index];
+                        ss << quote_identifier(*columnNamePointer) << " = " << idsStrings[index];
                     } else {
                         throw std::system_error{orm_error_code::column_not_found};
                     }
@@ -1486,7 +1477,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& rep, const Ctx& context) const {
-                auto valuesCount = static_cast<int>(std::distance(rep.range.first, rep.range.second));
+                const auto valuesCount = std::distance(rep.range.first, rep.range.second);
                 using expression_type = typename std::decay<decltype(rep)>::type;
                 using object_type = typename expression_object_type<expression_type>::type;
                 auto& tImpl = pick_impl<object_type>(context.impl);
@@ -1494,39 +1485,37 @@ namespace sqlite_orm {
                 ss << "REPLACE INTO " << quote_identifier(tImpl.table.name) << " (";
 
                 auto columnIndex = 0;
-                auto columnsCount = tImpl.table.non_generated_columns_count();
-                tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
+                tImpl.table.for_each_column([&ss, &columnIndex](auto& column) {
                     if(column.is_generated()) {
                         return;
                     }
-                    ss << " \"" << column.name << "\"";
-                    if(columnIndex < columnsCount - 1) {
-                        ss << ",";
-                    } else {
-                        ss << ")";
+
+                    if(columnIndex > 0) {
+                        ss << ", ";
                     }
+                    ss << quote_identifier(column.name);
                     ++columnIndex;
                 });
-                ss << " VALUES ";
+                ss << ")"
+                   << " VALUES ";
+                auto columnsCount = tImpl.table.non_generated_columns_count();
                 auto valuesString = [columnsCount] {
                     std::stringstream ss_;
                     ss_ << "(";
                     for(auto i = 0; i < columnsCount; ++i) {
-                        ss_ << "?";
-                        if(i < columnsCount - 1) {
+                        if(i > 0) {
                             ss_ << ", ";
-                        } else {
-                            ss_ << ")";
                         }
+                        ss_ << "?";
                     }
+                    ss_ << ")";
                     return ss_.str();
                 }();
                 for(auto i = 0; i < valuesCount; ++i) {
-                    ss << valuesString;
-                    if(i < valuesCount - 1) {
-                        ss << ",";
+                    if(i > 0) {
+                        ss << ", ";
                     }
-                    ss << " ";
+                    ss << valuesString;
                 }
                 return ss.str();
             }
@@ -1551,22 +1540,13 @@ namespace sqlite_orm {
                     if(table_type::is_without_rowid ||
                        (!column.template has<primary_key_t<>>() &&
                         !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
-                        columnNames.emplace_back(column.name);
+                        columnNames.push_back(column.name);
                     }
                 });
 
                 const auto columnNamesCount = columnNames.size();
                 if(columnNamesCount) {
-                    ss << "(";
-                    for(size_t i = 0; i < columnNamesCount; ++i) {
-                        ss << "\"" << columnNames[i] << "\"";
-                        if(i < columnNamesCount - 1) {
-                            ss << ",";
-                        } else {
-                            ss << ")";
-                        }
-                        ss << " ";
-                    }
+                    ss << "(" << serialize_identifiers(columnNames) << ")";
                 } else {
                     ss << "DEFAULT ";
                 }
@@ -1576,21 +1556,19 @@ namespace sqlite_orm {
                         std::stringstream ss_;
                         ss_ << "(";
                         for(size_t i = 0; i < columnNamesCount; ++i) {
-                            ss_ << "?";
-                            if(i < columnNamesCount - 1) {
+                            if(i > 0) {
                                 ss_ << ", ";
-                            } else {
-                                ss_ << ")";
                             }
+                            ss_ << "?";
                         }
+                        ss_ << ")";
                         return ss_.str();
                     }();
                     for(auto i = 0; i < valuesCount; ++i) {
-                        ss << valuesString;
-                        if(i < valuesCount - 1) {
-                            ss << ",";
+                        if(i > 0) {
+                            ss << ", ";
                         }
-                        ss << " ";
+                        ss << valuesString;
                     }
                 } else if(valuesCount != 1) {
                     throw std::system_error{orm_error_code::cannot_use_default_value};
@@ -1607,16 +1585,14 @@ namespace sqlite_orm {
             collector.table_names.emplace(context.impl.find_table_name(typeid(primary_type)), "");
             // note: not collecting table names from get.conditions;
             std::stringstream ss;
-            ss << "SELECT";
+            ss << "SELECT ";
             auto& tImpl = pick_impl<primary_type>(context.impl);
             auto columnIndex = 0;
-            auto columnsCount = tImpl.table.count_columns_amount();
-            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount, &tImpl](auto& column) {
-                ss << " " << quote_identifier(tImpl.table.name) << "."
-                   << "\"" << column.name << "\"";
-                if(columnIndex < columnsCount - 1) {
-                    ss << ",";
+            tImpl.table.for_each_column([&ss, &columnIndex, &tImpl](auto& column) {
+                if(columnIndex > 0) {
+                    ss << ", ";
                 }
+                ss << serialize_identifier(tImpl.table.name, column.name, "");
                 ++columnIndex;
             });
             if(!collector.table_names.empty()) {
@@ -1662,33 +1638,32 @@ namespace sqlite_orm {
 
         template<class T, class Ctx>
         std::string serialize_get_impl(const T&, const Ctx& context) {
-            using primary_type = typename T::type;
+            using primary_type = type_t<T>;
             auto& tImpl = pick_impl<primary_type>(context.impl);
             std::stringstream ss;
-            ss << "SELECT";
+            ss << "SELECT ";
             auto columnIndex = 0;
-            auto columnsCount = tImpl.table.count_columns_amount();
-            tImpl.table.for_each_column([&ss, &columnIndex, columnsCount](auto& column) {
-                ss << " \"" << column.name << "\"";
-                if(columnIndex < columnsCount - 1) {
+            tImpl.table.for_each_column([&ss, &columnIndex](auto& column) {
+                if(columnIndex > 0) {
                     ss << ", ";
                 }
+                ss << quote_identifier(column.name);
                 ++columnIndex;
             });
             ss << " FROM " << quote_identifier(tImpl.table.name) << " WHERE ";
+
             auto primaryKeyColumnNames = tImpl.table.primary_key_column_names();
-            if(!primaryKeyColumnNames.empty()) {
-                for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
-                    ss << " \"" << primaryKeyColumnNames[i] << "\""
-                       << " = ?";
-                    if(i < primaryKeyColumnNames.size() - 1) {
-                        ss << " AND";
-                    }
-                }
-                return ss.str();
-            } else {
+            if(primaryKeyColumnNames.empty()) {
                 throw std::system_error{orm_error_code::table_has_no_primary_key_column};
             }
+
+            for(size_t i = 0; i < primaryKeyColumnNames.size(); ++i) {
+                if(i > 0) {
+                    ss << " AND ";
+                }
+                ss << quote_identifier(primaryKeyColumnNames[i]) << " = ?";
+            }
+            return ss.str();
         }
 
         template<class T, class... Ids>
@@ -1770,13 +1745,7 @@ namespace sqlite_orm {
                 if(get_distinct(sel.col)) {
                     ss << static_cast<std::string>(distinct(0)) << " ";
                 }
-                auto columnNames = get_column_names(sel.col, context);
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }
-                }
+                ss << join_serialized_strings(get_column_names(sel.col, context));
                 table_name_collector collector([&context](std::type_index ti) {
                     return context.impl.find_table_name(ti);
                 });
@@ -1866,12 +1835,7 @@ namespace sqlite_orm {
                         whereString = move(columnName);
                     }
                 });
-                for(size_t i = 0; i < columnNames.size(); ++i) {
-                    ss << columnNames[i];
-                    if(i < columnNames.size() - 1) {
-                        ss << ", ";
-                    }
-                }
+                ss << join_serialized_strings(columnNames);
                 ss << ")";
                 if(!whereString.empty()) {
                     ss << ' ' << whereString;
@@ -1894,12 +1858,12 @@ namespace sqlite_orm {
                 iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
                     using mapped_type = typename std::remove_pointer<decltype(itemPointer)>::type;
 
+                    if(index > 0) {
+                        ss << ", ";
+                    }
                     ss << serialize_identifier(
                         context.impl.find_table_name(typeid(typename mapped_type_proxy<mapped_type>::type)),
                         alias_extractor<mapped_type>::get());
-                    if(index < std::tuple_size<tuple>::value - 1) {
-                        ss << ", ";
-                    }
                     ++index;
                 });
                 return ss.str();
@@ -2017,16 +1981,18 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                std::string sep = "";
 
                 ss << serialize(statement.timing, context) << " UPDATE OF ";
-                iterate_tuple(statement.columns, [&ss, &sep, &context](auto& v) {
+                int index = 0;
+                iterate_tuple(statement.columns, [&ss, &context, &index](auto& v) {
                     auto name = find_column_name(context.impl, v);
-
-                    if(name == nullptr)
+                    if(!name)
                         throw std::system_error{orm_error_code::column_not_found};
-                    ss << sep << "'" << *name << "'";
-                    sep = ", ";
+
+                    if(index > 0) {
+                        ss << ", ";
+                    }
+                    ss << quote_identifier(*name);
                 });
                 return ss.str();
             }
@@ -2127,18 +2093,12 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& orderBy, const Ctx& context) const {
                 std::stringstream ss;
                 std::vector<std::string> expressions;
+                expressions.reserve(std::tuple_size<typename statement_type::args_type>::value);
                 iterate_tuple(orderBy.args, [&expressions, &context](auto& v) {
                     auto expression = serialize_order_by(v, context);
                     expressions.push_back(move(expression));
                 });
-                ss << static_cast<std::string>(orderBy) << " ";
-                for(size_t i = 0; i < expressions.size(); ++i) {
-                    ss << expressions[i];
-                    if(i < expressions.size() - 1) {
-                        ss << ", ";
-                    }
-                }
-                ss << " ";
+                ss << static_cast<std::string>(orderBy) << " " << join_serialized_strings(expressions) << " ";
                 return ss.str();
             }
         };
@@ -2379,12 +2339,11 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << '(';
                 auto index = 0;
-                using TupleSize = std::tuple_size<statement_type>;
                 iterate_tuple(statement, [&context, &index, &ss](auto& value) {
-                    ss << serialize(value, context);
-                    if(index < TupleSize::value - 1) {
+                    if(index > 0) {
                         ss << ", ";
                     }
+                    ss << serialize(value, context);
                     ++index;
                 });
                 ss << ')';
@@ -2405,14 +2364,11 @@ namespace sqlite_orm {
                 ss << "VALUES ";
                 {
                     auto index = 0;
-                    auto& tuple = statement.tuple;
-                    using tuple_type = typename std::decay<decltype(tuple)>::type;
-                    using TupleSize = std::tuple_size<tuple_type>;
-                    iterate_tuple(tuple, [&context, &index, &ss](auto& value) {
-                        ss << serialize(value, context);
-                        if(index < TupleSize::value - 1) {
+                    iterate_tuple(statement.tuple, [&context, &index, &ss](auto& value) {
+                        if(index > 0) {
                             ss << ", ";
                         }
+                        ss << serialize(value, context);
                         ++index;
                     });
                 }
@@ -2433,17 +2389,7 @@ namespace sqlite_orm {
                 if(context.use_parentheses) {
                     ss << '(';
                 }
-                ss << "VALUES ";
-                {
-                    auto vectorSize = statement.vector.size();
-                    for(decltype(vectorSize) index = 0; index < vectorSize; ++index) {
-                        auto& value = statement.vector[index];
-                        ss << serialize(value, context);
-                        if(index < vectorSize - 1) {
-                            ss << ", ";
-                        }
-                    }
-                }
+                ss << "VALUES " << serialize_dynamic_args(statement.vector, context);
                 if(context.use_parentheses) {
                     ss << ')';
                 }
