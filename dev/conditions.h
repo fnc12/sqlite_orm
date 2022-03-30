@@ -10,7 +10,7 @@
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
-#include "serializator_context.h"
+#include "serializer_context.h"
 #include "tags.h"
 #include "expression.h"
 
@@ -1207,9 +1207,9 @@ namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>>
+    internal::dynamic_order_by_t<internal::serializer_context<typename S::impl_type>>
     dynamic_order_by(const S& storage) {
-        internal::serializator_context_builder<S> builder(storage);
+        internal::serializer_context_builder<S> builder(storage);
         return builder();
     }
 

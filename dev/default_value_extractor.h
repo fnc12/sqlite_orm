@@ -4,7 +4,7 @@
 #include <string>  //  std::string
 
 #include "constraints.h"
-#include "serializator_context.h"
+#include "serializer_context.h"
 #include "storage_lookup.h"
 
 namespace sqlite_orm {
@@ -12,7 +12,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class I>
-        std::string serialize(const T& t, const serializator_context<I>& context);
+        std::string serialize(const T& t, const serializer_context<I>& context);
 
         /**
          *  This class is used in tuple iteration to know whether tuple constains `default_value_t`
@@ -28,7 +28,7 @@ namespace sqlite_orm {
             template<class T>
             std::unique_ptr<std::string> operator()(const default_t<T>& t) const {
                 storage_impl<> storage;
-                serializator_context<storage_impl<>> context{storage};
+                serializer_context<storage_impl<>> context{storage};
                 return std::make_unique<std::string>(serialize(t.value, context));
             }
         };

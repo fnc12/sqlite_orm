@@ -13,7 +13,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, class I>
-        std::string serialize(const T& t, const serializator_context<I>& context);
+        std::string serialize(const T& t, const serializer_context<I>& context);
 
         template<class T, class SFINAE = void>
         struct column_names_getter {
