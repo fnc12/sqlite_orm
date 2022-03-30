@@ -28,19 +28,26 @@ TEST_CASE("Node tuple") {
         std::string name;
     };
 
-    SECTION("simple") {
+    SECTION("bindables") {
         SECTION("int") {
             using Tuple = node_tuple_t<int>;
             using Expected = tuple<int>;
-            static_assert(is_same<Tuple, Expected>::value, "int");
+            static_assert(is_same<Tuple, Expected>::value, "bindable int");
             STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<int>>::value);
         }
         SECTION("float") {
             using Tuple = node_tuple_t<float>;
             using Expected = tuple<float>;
-            static_assert(is_same<Tuple, Expected>::value, "float");
+            static_assert(is_same<Tuple, Expected>::value, "bindable float");
             STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<float>>::value);
         }
+    }
+    SECTION("non-bindable literals") {
+        using namespace internal;
+        using Tuple = node_tuple_t<literal_holder<int>>;
+        using Expected = tuple<>;
+        static_assert(is_same<Tuple, Expected>::value, "literal int");
+        STATIC_REQUIRE(is_same<bindable_filter<Tuple>::type, tuple<>>::value);
     }
     SECTION("binary_condition") {
         using namespace internal;
@@ -560,7 +567,10 @@ TEST_CASE("Node tuple") {
                                    tuple<decltype(&User::name), int>>::value);
         }
         SECTION("bindable") {
-            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(42))>, tuple<int>>::value);
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(""))>, tuple<const char*>>::value);
+        }
+        SECTION("positional ordinal") {
+            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(1))>, tuple<>>::value);
         }
         SECTION("numeric column alias") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_1>()))>, tuple<>>::value);

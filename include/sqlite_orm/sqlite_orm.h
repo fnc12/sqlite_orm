@@ -702,7 +702,7 @@ namespace sqlite_orm {
      *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
      */
     template<class T, typename Enable = void>
-    struct type_printer;
+    struct type_printer {};
 
     struct integer_printer {
         inline const std::string& print() {
@@ -2592,6 +2592,8 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <sstream>  //  std::stringstream
 
+// #include "cxx_polyfill.h"
+
 // #include "type_traits.h"
 
 // #include "collate_argument.h"
@@ -2747,6 +2749,28 @@ namespace sqlite_orm {
     template<class T>
     internal::expression_t<T> c(T value) {
         return {std::move(value)};
+    }
+}
+
+// #include "type_printer.h"
+
+// #include "literal.h"
+
+#include <utility>  //  std::move
+
+namespace sqlite_orm {
+    namespace internal {
+
+        /* 
+         *  Protect an otherwise bindable element so that it is always serialized as a literal value.
+         */
+        template<class T>
+        struct literal_holder {
+            using type = T;
+
+            T value;
+        };
+
     }
 }
 
@@ -3909,16 +3933,27 @@ namespace sqlite_orm {
     }
 
     /**
-     * ORDER BY column or expression
+     * ORDER BY column, column alias or expression
      * 
      * Examples:
      * storage.select(&User::name, order_by(&User::id))
      * storage.select(&User::name, order_by(get<colalias_1>()))
      * storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
-    template<class O>
+    template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
         return {std::move(o)};
+    }
+
+    /**
+     * ORDER BY positional ordinal
+     * 
+     * Examples:
+     * storage.select(&User::name, order_by(1))
+     */
+    template<class O, internal::satisfies<std::is_base_of, integer_printer, type_printer<O>> = true>
+    internal::order_by_t<internal::literal_holder<O>> order_by(O o) {
+        return {{std::move(o)}};
     }
 
     /**
@@ -12509,11 +12544,14 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Column alias
+         *  Column alias or literal
          */
-        template<class A>
-        struct ast_iterator<alias_holder<A>, void> {
-            using node_type = alias_holder<A>;
+        template<class T>
+        struct ast_iterator<
+            T,
+            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
+                                                     polyfill::is_specialization_of<T, literal_holder>>>> {
+            using node_type = T;
 
             template<class L>
             void operator()(const node_type& /*node*/, const L& /*l*/) const {}
@@ -14226,6 +14264,8 @@ namespace sqlite_orm {
 
 // #include "field_printer.h"
 
+// #include "literal.h"
+
 // #include "table_name_collector.h"
 
 #include <set>  //  std::set
@@ -14483,7 +14523,7 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 auto columnName = serialize(orderBy.expression, newContext);
-                ss << columnName << " ";
+                ss << columnName;
                 if(!orderBy._collate_argument.empty()) {
                     ss << " COLLATE " << orderBy._collate_argument;
                 }
@@ -14637,6 +14677,24 @@ namespace sqlite_orm {
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<std::nullptr_t>{}(nullptr);
+            }
+        };
+
+        /**
+         *  Serializer for literal values.
+         */
+        template<class T>
+        struct statement_serializer<T, internal::match_specialization_of<T, literal_holder>> {
+            using statement_type = T;
+
+            template<class Ctx>
+            std::string operator()(const T& literal, const Ctx& context) const {
+                static_assert(is_bindable_v<type_t<T>>, "A literal value must be also bindable");
+
+                Ctx literalCtx = context;
+                literalCtx.replace_bindable_with_question = false;
+                statement_serializer<type_t<T>> serializer{};
+                return serializer(literal.value, literalCtx);
             }
         };
 
@@ -18697,6 +18755,12 @@ namespace sqlite_orm {
          */
         template<class A>
         struct node_tuple<alias_holder<A>, void> : node_tuple<void> {};
+
+        /**
+         *  Literal
+         */
+        template<class T>
+        struct node_tuple<literal_holder<T>, void> : node_tuple<void> {};
 
         template<class E>
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};

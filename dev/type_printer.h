@@ -13,7 +13,7 @@ namespace sqlite_orm {
      *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
      */
     template<class T, typename Enable = void>
-    struct type_printer;
+    struct type_printer {};
 
     struct integer_printer {
         inline const std::string& print() {

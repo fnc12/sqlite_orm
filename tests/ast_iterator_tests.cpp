@@ -13,6 +13,11 @@ TEST_CASE("ast_iterator") {
     auto lambda = [&typeIndexes](auto &value) {
         typeIndexes.push_back(typeid(value));
     };
+    SECTION("bindables") {
+        auto node = select(1);
+        expected.push_back(typeid(int));
+        internal::iterate_ast(node, lambda);
+    }
     SECTION("aggregate functions") {
         SECTION("avg") {
             auto node = avg(&User::id);
@@ -163,9 +168,12 @@ TEST_CASE("ast_iterator") {
             internal::iterate_ast(node, lambda);
         }
         SECTION("bindable") {
-            int n = 42;
-            auto node = order_by(n);
-            expected.push_back(typeid(int));
+            auto node = order_by("");
+            expected.push_back(typeid(const char *));
+            internal::iterate_ast(node, lambda);
+        }
+        SECTION("positional ordinal") {
+            auto node = order_by(1);
             internal::iterate_ast(node, lambda);
         }
         SECTION("numeric column alias") {
