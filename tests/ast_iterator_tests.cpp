@@ -176,10 +176,6 @@ TEST_CASE("ast_iterator") {
             auto node = order_by(1);
             internal::iterate_ast(node, lambda);
         }
-        SECTION("numeric column alias") {
-            auto node = order_by(get<colalias_1>());
-            internal::iterate_ast(node, lambda);
-        }
         SECTION("sole column alias") {
             auto node = order_by(get<colalias_a>());
             internal::iterate_ast(node, lambda);

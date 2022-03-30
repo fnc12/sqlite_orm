@@ -56,17 +56,6 @@ void marvel_hero_ordered_by_o_pos() {
         //  SELECT name, instr(abilities, 'o')
         //  FROM marvel
         //  ORDER BY 2
-        auto rows = storage.select(columns(&MarvelHero::name, as<colalias_i>(instr(&MarvelHero::abilities, "o"))),
-                                   order_by(get<colalias_2>()));
-        for(auto& row: rows) {
-            cout << get<0>(row) << '\t' << get<1>(row) << '\n';
-        }
-    }
-    cout << endl;
-    {
-        //  SELECT name, instr(abilities, 'o')
-        //  FROM marvel
-        //  ORDER BY 2
         auto rows =
             storage.select(columns(&MarvelHero::name, as<colalias_i>(instr(&MarvelHero::abilities, "o"))), order_by(2));
         for(auto& row: rows) {

@@ -1180,7 +1180,6 @@ namespace sqlite_orm {
      * 
      * Examples:
      * storage.select(&User::name, order_by(&User::id))
-     * storage.select(&User::name, order_by(get<colalias_1>()))
      * storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
     template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>

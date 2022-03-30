@@ -3937,7 +3937,6 @@ namespace sqlite_orm {
      * 
      * Examples:
      * storage.select(&User::name, order_by(&User::id))
-     * storage.select(&User::name, order_by(get<colalias_1>()))
      * storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
     template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
@@ -4104,18 +4103,6 @@ namespace sqlite_orm {
         };
 
         /**
-         *  This is a common built-in class used for numeric column identifiers,
-         *  as described in the documentation of the ORDER BY Clause https://sqlite.org/lang_select.html#the_order_by_clause.
-         *  For convenience there exist type aliases `colalias_1`, `colalias_2`, ...
-         */
-        template<unsigned int K>
-        struct numeric_column_alias : alias_tag {
-            static std::string get() {
-                return std::to_string(K);
-            }
-        };
-
-        /**
          *  This is a common built-in class used for custom single-character column aliases.
          *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
          */
@@ -4206,15 +4193,6 @@ namespace sqlite_orm {
     template<class T>
     using alias_z = internal::table_alias<T, 'z'>;
 
-    using colalias_1 = internal::numeric_column_alias<1u>;
-    using colalias_2 = internal::numeric_column_alias<2u>;
-    using colalias_3 = internal::numeric_column_alias<3u>;
-    using colalias_4 = internal::numeric_column_alias<4u>;
-    using colalias_5 = internal::numeric_column_alias<5u>;
-    using colalias_6 = internal::numeric_column_alias<6u>;
-    using colalias_7 = internal::numeric_column_alias<7u>;
-    using colalias_8 = internal::numeric_column_alias<8u>;
-    using colalias_9 = internal::numeric_column_alias<9u>;
     using colalias_a = internal::column_alias<'a'>;
     using colalias_b = internal::column_alias<'b'>;
     using colalias_c = internal::column_alias<'c'>;
@@ -14550,16 +14528,16 @@ namespace sqlite_orm {
                     std::string entryString;
                     {
                         std::stringstream ss;
-                        ss << entry.name << " ";
+                        ss << entry.name;
                         if(!entry._collate_argument.empty()) {
-                            ss << "COLLATE " << entry._collate_argument << " ";
+                            ss << " COLLATE " << entry._collate_argument;
                         }
                         switch(entry.asc_desc) {
                             case 1:
-                                ss << "ASC";
+                                ss << " ASC";
                                 break;
                             case -1:
-                                ss << "DESC";
+                                ss << " DESC";
                                 break;
                         }
                         entryString = ss.str();

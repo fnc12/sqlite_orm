@@ -572,9 +572,6 @@ TEST_CASE("Node tuple") {
         SECTION("positional ordinal") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(1))>, tuple<>>::value);
         }
-        SECTION("numeric column alias") {
-            STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_1>()))>, tuple<>>::value);
-        }
         SECTION("sole column alias") {
             STATIC_REQUIRE(is_same<node_tuple_t<decltype(order_by(get<colalias_a>()))>, tuple<>>::value);
         }
