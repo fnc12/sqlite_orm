@@ -45,6 +45,18 @@ constexpr auto get_default<internal::literal_holder<const wchar_t*>>() -> intern
     return {L""};
 }
 
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+template<>
+constexpr auto get_default<std::nullopt_t>() -> std::nullopt_t {
+    return std::nullopt;
+}
+
+template<>
+constexpr auto get_default<internal::literal_holder<std::nullopt_t>>() -> internal::literal_holder<std::nullopt_t> {
+    return {std::nullopt};
+}
+#endif
+
 template<class Tpl, size_t... Idx>
 constexpr Tpl make_default_tuple(index_sequence<Idx...>) {
     return {get_default<tuple_element_t<Idx, Tpl>>()...};
