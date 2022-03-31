@@ -29,6 +29,7 @@
 #include "pointer_value.h"
 #include "type_printer.h"
 #include "field_printer.h"
+#include "literal.h"
 #include "table_name_collector.h"
 #include "column_names_getter.h"
 #include "order_by_serializer.h"
@@ -333,6 +334,24 @@ namespace sqlite_orm {
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
                 return field_printer<std::nullptr_t>{}(nullptr);
+            }
+        };
+
+        /**
+         *  Serializer for literal values.
+         */
+        template<class T>
+        struct statement_serializer<T, internal::match_specialization_of<T, literal_holder>> {
+            using statement_type = T;
+
+            template<class Ctx>
+            std::string operator()(const T& literal, const Ctx& context) const {
+                static_assert(is_bindable_v<type_t<T>>, "A literal value must be also bindable");
+
+                Ctx literalCtx = context;
+                literalCtx.replace_bindable_with_question = false;
+                statement_serializer<type_t<T>> serializer{};
+                return serializer(literal.value, literalCtx);
             }
         };
 
@@ -2140,8 +2159,7 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& orderBy, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(orderBy) << " ";
-                auto orderByString = serialize_order_by(orderBy, context);
-                ss << orderByString << " ";
+                ss << serialize_order_by(orderBy, context);
                 return ss.str();
             }
         };

@@ -4,6 +4,8 @@
 using namespace sqlite_orm;
 
 TEST_CASE("statement_serializer conditions") {
+    std::string value, expected;
+
     SECTION("using") {
         struct User {
             int64 id;
@@ -16,14 +18,28 @@ TEST_CASE("statement_serializer conditions") {
         internal::serializer_context<storage_impl> ctx{storage};
 
         SECTION("using column") {
-            auto ast = using_(&User::id);
-            auto value = serialize(ast, ctx);
-            REQUIRE(value == R"(USING ("id"))");
+            auto expression = using_(&User::id);
+            value = serialize(expression, ctx);
+            expected = R"(USING ("id"))";
         }
         SECTION("using explicit column") {
-            auto ast = using_(column<User>(&User::id));
-            auto value = serialize(ast, ctx);
-            REQUIRE(value == R"(USING ("id"))");
+            auto expression = using_(column<User>(&User::id));
+            value = serialize(expression, ctx);
+            expected = R"(USING ("id"))";
         }
     }
+    SECTION("order by") {
+        auto storage = internal::storage_impl<>{};
+        using storage_impl = decltype(storage);
+
+        internal::serializer_context<storage_impl> ctx{storage};
+
+        SECTION("positional ordinal") {
+            auto expression = order_by(1);
+            value = serialize(expression, ctx);
+            expected = "ORDER BY 1";
+        }
+    }
+
+    REQUIRE(value == expected);
 }

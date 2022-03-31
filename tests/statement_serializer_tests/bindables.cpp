@@ -1,26 +1,92 @@
 #include <type_traits>
 #include <array>
 #include <tuple>
+#include <algorithm>  //  std::fill_n
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
 
 using std::array;
+using std::index_sequence;
+using std::index_sequence_for;
+using std::make_index_sequence;
 using std::nullptr_t;
 using std::shared_ptr;
 using std::string;
 using std::tuple;
+using std::tuple_element_t;
+using std::tuple_size;
 using std::unique_ptr;
 using std::vector;
+using std::wstring;
 using namespace sqlite_orm;
 
-inline void require_string(const std::string& value, const std::string& expected) {
+template<typename T>
+constexpr T get_default() {
+    return T{};
+}
+
+template<>
+constexpr auto get_default<const char*>() -> const char* {
+    return "";
+}
+
+template<>
+constexpr auto get_default<const wchar_t*>() -> const wchar_t* {
+    return L"";
+}
+
+template<>
+constexpr auto get_default<internal::literal_holder<const char*>>() -> internal::literal_holder<const char*> {
+    return {""};
+}
+
+template<>
+constexpr auto get_default<internal::literal_holder<const wchar_t*>>() -> internal::literal_holder<const wchar_t*> {
+    return {L""};
+}
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+template<>
+constexpr auto get_default<std::nullopt_t>() -> std::nullopt_t {
+    return std::nullopt;
+}
+
+template<>
+constexpr auto get_default<internal::literal_holder<std::nullopt_t>>() -> internal::literal_holder<std::nullopt_t> {
+    return {std::nullopt};
+}
+#endif
+
+template<class Tpl, size_t... Idx>
+constexpr Tpl make_default_tuple(index_sequence<Idx...>) {
+    return {get_default<tuple_element_t<Idx, Tpl>>()...};
+}
+
+template<class Tpl>
+constexpr Tpl make_default_tuple() {
+    return make_default_tuple<Tpl>(make_index_sequence<tuple_size<Tpl>::value>{});
+}
+
+template<size_t N>
+array<string, N> single_value_array(const char* s) {
+    array<string, N> a;
+    std::fill_n(a.data(), a.size(), s);
+    return a;
+}
+
+template<class T>
+struct wrap_in_literal {
+    using type = internal::literal_holder<T>;
+};
+
+inline void require_string(const string& value, const string& expected) {
     REQUIRE(value == expected);
 }
 
 template<size_t... Idx>
 void require_strings(const array<string, sizeof...(Idx)>& values,
                      const array<string, sizeof...(Idx)>& expected,
-                     std::index_sequence<Idx...>) {
+                     index_sequence<Idx...>) {
     for(size_t i = 0; i < sizeof...(Idx); ++i) {
         require_string(values[i], expected[i]);
     }
@@ -28,7 +94,7 @@ void require_strings(const array<string, sizeof...(Idx)>& values,
 
 template<typename Ctx, typename... Ts>
 void test_tuple(const tuple<Ts...>& t, const Ctx& ctx, const array<string, sizeof...(Ts)>& expected) {
-    require_strings({internal::serialize(get<Ts>(t), ctx)...}, expected, std::index_sequence_for<Ts...>{});
+    require_strings({internal::serialize(get<Ts>(t), ctx)...}, expected, index_sequence_for<Ts...>{});
 }
 
 struct Custom {};
@@ -87,66 +153,54 @@ TEST_CASE("bindables") {
 #endif
                             >;
 
-        Tuple t{false,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0.f,
-                0.,
-                0.,
-                "",
-                nullptr
+        constexpr Tuple t = make_default_tuple<Tuple>();
+
+        array<string, tuple_size<Tuple>::value> e{"0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "0",
+                                                  "''",
+                                                  "null"
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                ,
-                L""
+                                                  ,
+                                                  "''"
 #endif
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                ,
-                std::nullopt
-#endif
-        };
-        array<string, std::tuple_size<Tuple>::value> e{"0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "0",
-                                                       "''",
-                                                       "null"
-#ifndef SQLITE_ORM_OMITS_CODECVT
-                                                       ,
-                                                       "''"
-#endif
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                                                       ,
-                                                       "null"
+                                                  ,
+                                                  "null"
 #endif
         };
 
-        test_tuple(t, context, e);
+        SECTION("dump") {
+            context.replace_bindable_with_question = false;
+            test_tuple(t, context, e);
+        }
+        SECTION("parametrized") {
+            context.replace_bindable_with_question = true;
+            test_tuple(t, context, single_value_array<tuple_size<Tuple>::value>("?"));
+        }
+        SECTION("non-bindable literals") {
+            context.replace_bindable_with_question = true;
+            constexpr auto t = make_default_tuple<internal::tuple_transformer<Tuple, wrap_in_literal>::type>();
+            test_tuple(t, context, e);
+        }
     }
 
     SECTION("bindable_types") {
         using Tuple = tuple<string,
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                            std::wstring,
+                            wstring,
                             StringVeneer<wchar_t>,
 #endif
                             unique_ptr<int>,
@@ -164,57 +218,50 @@ TEST_CASE("bindables") {
 #endif
                             StringVeneer<char>,
                             Custom,
-                            std::unique_ptr<Custom>>;
+                            unique_ptr<Custom>>;
 
-        Tuple t{"",
+        Tuple t = make_default_tuple<Tuple>();
+
+        array<string, tuple_size<Tuple>::value> e{"''",
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                L"",
-                L"",
+                                                  "''",
+                                                  "''",
 #endif
-                nullptr,
-                nullptr,
-                vector<char>{},
+                                                  "null",
+                                                  "null",
+                                                  "x''",
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                std::nullopt,
-                std::nullopt,
+                                                  "null",
+                                                  "null",
 #endif
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                "",
+                                                  "''",
 #ifndef SQLITE_ORM_OMITS_CODECVT
-                L"",
+                                                  "''",
 #endif
 #endif
-                "",
-                Custom{},
-                nullptr};
-        array<string, std::tuple_size<Tuple>::value> e{"''",
-#ifndef SQLITE_ORM_OMITS_CODECVT
-                                                       "''",
-                                                       "''",
-#endif
-                                                       "null",
-                                                       "null",
-                                                       "x''",
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-                                                       "null",
-                                                       "null",
-#endif
-#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                                                       "''",
-#ifndef SQLITE_ORM_OMITS_CODECVT
-                                                       "''",
-#endif
-#endif
-                                                       "''",
-                                                       "custom",
-                                                       "null"};
+                                                  "''",
+                                                  "custom",
+                                                  "null"};
 
-        test_tuple(t, context, e);
+        SECTION("dump") {
+            context.replace_bindable_with_question = false;
+            test_tuple(t, context, e);
+        }
+        SECTION("parametrized") {
+            context.replace_bindable_with_question = true;
+            test_tuple(t, context, single_value_array<tuple_size<Tuple>::value>("?"));
+        }
+        SECTION("non-bindable literals") {
+            context.replace_bindable_with_question = true;
+            auto t = make_default_tuple<internal::tuple_transformer<Tuple, wrap_in_literal>::type>();
+            test_tuple(t, context, e);
+        }
     }
 
     SECTION("bindable_pointer") {
-        string value;
-        decltype(value) expected;
+        string value, expected;
+        context.replace_bindable_with_question = false;
 
         SECTION("null by itself") {
             auto v = statically_bindable_pointer<carray_pvt, nullptr_t>(nullptr);
