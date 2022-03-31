@@ -6,12 +6,16 @@
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <sstream>  //  std::stringstream
 
+#include "cxx_polyfill.h"
+#include "type_traits.h"
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
 #include "serializer_context.h"
 #include "tags.h"
 #include "expression.h"
+#include "type_printer.h"
+#include "literal.h"
 
 namespace sqlite_orm {
 
@@ -1172,12 +1176,26 @@ namespace sqlite_orm {
     }
 
     /**
-     * ORDER BY column
-     * Example: storage.select(&User::name, order_by(&User::id))
+     * ORDER BY column, column alias or expression
+     * 
+     * Examples:
+     * storage.select(&User::name, order_by(&User::id))
+     * storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
-    template<class O>
+    template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
         return {std::move(o)};
+    }
+
+    /**
+     * ORDER BY positional ordinal
+     * 
+     * Examples:
+     * storage.select(&User::name, order_by(1))
+     */
+    template<class O, internal::satisfies<std::is_base_of, integer_printer, type_printer<O>> = true>
+    internal::order_by_t<internal::literal_holder<O>> order_by(O o) {
+        return {{std::move(o)}};
     }
 
     /**

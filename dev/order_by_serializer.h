@@ -27,7 +27,7 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 auto columnName = serialize(orderBy.expression, newContext);
-                ss << columnName << " ";
+                ss << columnName;
                 if(!orderBy._collate_argument.empty()) {
                     ss << " COLLATE " << orderBy._collate_argument;
                 }
@@ -54,16 +54,16 @@ namespace sqlite_orm {
                     std::string entryString;
                     {
                         std::stringstream ss;
-                        ss << entry.name << " ";
+                        ss << entry.name;
                         if(!entry._collate_argument.empty()) {
-                            ss << "COLLATE " << entry._collate_argument << " ";
+                            ss << " COLLATE " << entry._collate_argument;
                         }
                         switch(entry.asc_desc) {
                             case 1:
-                                ss << "ASC";
+                                ss << " ASC";
                                 break;
                             case -1:
-                                ss << "DESC";
+                                ss << " DESC";
                                 break;
                         }
                         entryString = ss.str();
