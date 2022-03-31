@@ -14,7 +14,7 @@ namespace sqlite_orm {
          *  @param char2Escape The character to escape
          */
     inline std::string sql_escape(std::string str, char char2Escape) {
-        for(size_t pos = 0; (pos = str.find(char2Escape, pos)) != std::string::npos; pos += 2) {
+        for(size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
             str.replace(pos, 1, 2, char2Escape);
         }
 
