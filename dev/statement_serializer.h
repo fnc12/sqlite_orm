@@ -1229,10 +1229,8 @@ namespace sqlite_orm {
                 auto& tImpl = pick_impl<T>(context.impl);
 
                 std::stringstream ss;
-                ss << "DELETE FROM " << streaming_identifier(tImpl.table.name) << " ";
-                iterate_tuple(rem.conditions, [&context, &ss](auto& v) {
-                    ss << serialize(v, context);
-                });
+                ss << "DELETE FROM " << streaming_identifier(tImpl.table.name)
+                   << streaming_conditions_tuple(rem.conditions, context);
                 return ss.str();
             }
         };
