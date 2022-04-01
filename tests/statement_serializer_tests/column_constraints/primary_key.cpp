@@ -26,12 +26,12 @@ TEST_CASE("statement_serializer primary key") {
         SECTION("single column pk") {
             auto pk = primary_key(&User::id);
             value = serialize(pk, context);
-            expected = "PRIMARY KEY(id)";
+            expected = R"(PRIMARY KEY("id"))";
         }
         SECTION("double column pk") {
             auto pk = primary_key(&User::id, &User::name);
             value = serialize(pk, context);
-            expected = "PRIMARY KEY(id, name)";
+            expected = R"(PRIMARY KEY("id", "name"))";
         }
         SECTION("empty pk asc") {
             auto pk = primary_key().asc();

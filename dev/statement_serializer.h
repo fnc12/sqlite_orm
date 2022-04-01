@@ -419,8 +419,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "excluded.";
-                if(auto* columnNamePointer = find_column_name(context.impl, statement.expression)) {
-                    ss << streaming_identifier(*columnNamePointer);
+                if(auto* columnName = find_column_name(context.impl, statement.expression)) {
+                    ss << streaming_identifier(*columnName);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -564,8 +564,8 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << streaming_identifier(context.impl.find_table_name(typeid(O))) << ".";
                 }
-                if(auto* columnNamePointer = find_column_name(context.impl, m)) {
-                    ss << streaming_identifier(*columnNamePointer);
+                if(auto* columnName = find_column_name(context.impl, m)) {
+                    ss << streaming_identifier(*columnName);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -727,8 +727,8 @@ namespace sqlite_orm {
                 if(!context.skip_table_name) {
                     ss << streaming_identifier(context.impl.find_table_name(typeid(T))) << ".";
                 }
-                if(auto* columnNamePointer = find_column_name(context.impl, c)) {
-                    ss << streaming_identifier(*columnNamePointer);
+                if(auto* columnName = find_column_name(context.impl, c)) {
+                    ss << streaming_identifier(*columnName);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
                 }
@@ -1046,14 +1046,15 @@ namespace sqlite_orm {
                     ss << "(";
                     size_t columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &ss, &columnIndex](auto& column) {
+                        auto* columnName = find_column_name(context.impl, column);
+                        if(!columnName) {
+                            throw std::system_error{orm_error_code::column_not_found};
+                        }
+
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
-                        if(auto* columnNamePointer = find_column_name(context.impl, column)) {
-                            ss << *columnNamePointer;
-                        } else {
-                            throw std::system_error{orm_error_code::column_not_found};
-                        }
+                        ss << streaming_identifier(*columnName);
                         ++columnIndex;
                     });
                     ss << ")";
@@ -1076,14 +1077,15 @@ namespace sqlite_orm {
                     ss << "(";
                     size_t columnIndex = 0;
                     iterate_tuple(c.columns, [&context, &ss, &columnIndex](auto& column) {
+                        auto* columnName = find_column_name(context.impl, column);
+                        if(!columnName) {
+                            throw std::system_error{orm_error_code::column_not_found};
+                        }
+
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
-                        if(auto* columnNamePointer = find_column_name(context.impl, column)) {
-                            ss << *columnNamePointer;
-                        } else {
-                            throw std::system_error{orm_error_code::column_not_found};
-                        }
+                        ss << streaming_identifier(*columnName);
                         ++columnIndex;
                     });
                     ss << ")";
@@ -1124,8 +1126,8 @@ namespace sqlite_orm {
                 constexpr size_t columnsCount = std::tuple_size<columns_type_t>::value;
                 columnNames.reserve(columnsCount);
                 iterate_tuple(fk.columns, [&columnNames, &context](auto& v) {
-                    if(auto* columnNamePointer = find_column_name(context.impl, v)) {
-                        columnNames.push_back(move(*columnNamePointer));
+                    if(auto* columnName = find_column_name(context.impl, v)) {
+                        columnNames.push_back(move(*columnName));
                     } else {
                         columnNames.emplace_back();
                     }
@@ -1142,8 +1144,8 @@ namespace sqlite_orm {
                     ss << streaming_identifier(refTableName);
                 }
                 iterate_tuple(fk.references, [&referencesNames, &context](auto& v) {
-                    if(auto* columnNamePointer = find_column_name(context.impl, v)) {
-                        referencesNames.push_back(move(*columnNamePointer));
+                    if(auto* columnName = find_column_name(context.impl, v)) {
+                        referencesNames.push_back(move(*columnName));
                     } else {
                         referencesNames.emplace_back();
                     }
@@ -1310,45 +1312,44 @@ namespace sqlite_orm {
                 ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
                 ss << "(";
                 {
-                    auto columnsContext = context;
-                    columnsContext.skip_table_name = true;
-                    auto index = 0;
-                    iterate_tuple(ins.columns.columns, [&ss, &columnsContext, &index](auto& memberPointer) {
-                        auto columnName = serialize(memberPointer, columnsContext);
-                        if(!columnName.empty()) {
-                            if(index > 0) {
-                                ss << ", ";
-                            }
-                            ss << columnName;
-                            ++index;
-                        } else {
+                    auto columnIndex = 0;
+                    iterate_tuple(ins.columns.columns, [&ss, &context, &columnIndex](auto& memberPointer) {
+                        auto* columnName = find_column_name(context.impl, memberPointer);
+                        if(!columnName) {
                             throw std::system_error{orm_error_code::column_not_found};
                         }
+
+                        if(columnIndex > 0) {
+                            ss << ", ";
+                        }
+                        ss << streaming_identifier(*columnName);
+                        ++columnIndex;
                     });
                 }
                 ss << ") "
                    << "VALUES (";
                 auto index = 0;
-                auto& object = get_ref(ins.obj);
-                iterate_tuple(ins.columns.columns, [&ss, &context, &index, &object](auto& memberPointer) {
-                    using member_pointer_type = std::decay_t<decltype(memberPointer)>;
-                    static_assert(!is_setter<member_pointer_type>::value,
-                                  "Unable to use setter within insert explicit");
+                iterate_tuple(ins.columns.columns,
+                              [&ss, &context, &index, &object = get_ref(ins.obj)](auto& memberPointer) {
+                                  using member_pointer_type = std::decay_t<decltype(memberPointer)>;
+                                  static_assert(!is_setter<member_pointer_type>::value,
+                                                "Unable to use setter within insert explicit");
 
-                    std::string valueString;
-                    static_if<is_getter<member_pointer_type>{}>(
-                        [&valueString, &memberPointer, &context](auto& object) {
-                            valueString = serialize((object.*memberPointer)(), context);
-                        },
-                        [&valueString, &memberPointer, &context](auto& object) {
-                            valueString = serialize(object.*memberPointer, context);
-                        })(object);
-                    if(index > 0) {
-                        ss << ", ";
-                    }
-                    ss << valueString;
-                    ++index;
-                });
+                                  std::string valueString;
+                                  static_if<is_getter<member_pointer_type>{}>(
+                                      [&valueString, &memberPointer, &context](auto& object) {
+                                          valueString = serialize((object.*memberPointer)(), context);
+                                      },
+                                      [&valueString, &memberPointer, &context](auto& object) {
+                                          valueString = serialize(object.*memberPointer, context);
+                                      })(object);
+
+                                  if(index > 0) {
+                                      ss << ", ";
+                                  }
+                                  ss << valueString;
+                                  ++index;
+                              });
                 ss << ")";
                 return ss.str();
             }
@@ -1626,14 +1627,15 @@ namespace sqlite_orm {
                 });
                 auto index = 0;
                 tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl, &idsStrings](auto& memberPointer) {
+                    auto* columnName = tImpl.table.find_column_name(memberPointer);
+                    if(!columnName) {
+                        throw std::system_error{orm_error_code::column_not_found};
+                    }
+
                     if(index > 0) {
                         ss << " AND ";
                     }
-                    if(auto* columnNamePointer = tImpl.table.find_column_name(memberPointer)) {
-                        ss << streaming_identifier(*columnNamePointer) << " = " << idsStrings[index];
-                    } else {
-                        throw std::system_error{orm_error_code::column_not_found};
-                    }
+                    ss << streaming_identifier(*columnName) << " = " << idsStrings[index];
                     ++index;
                 });
                 return ss.str();
@@ -2085,16 +2087,18 @@ namespace sqlite_orm {
                 std::stringstream ss;
 
                 ss << serialize(statement.timing, context) << " UPDATE OF ";
-                int index = 0;
-                iterate_tuple(statement.columns, [&ss, &context, &index](auto& v) {
-                    auto name = find_column_name(context.impl, v);
-                    if(!name)
+                int columnIndex = 0;
+                iterate_tuple(statement.columns, [&ss, &context, &columnIndex](auto& v) {
+                    auto* columnName = find_column_name(context.impl, v);
+                    if(!columnName) {
                         throw std::system_error{orm_error_code::column_not_found};
+                    }
 
-                    if(index > 0) {
+                    if(columnIndex > 0) {
                         ss << ", ";
                     }
-                    ss << streaming_identifier(*name);
+                    ss << streaming_identifier(*columnName);
+                    ++columnIndex;
                 });
                 return ss.str();
             }
