@@ -107,16 +107,15 @@ namespace sqlite_orm {
                 using table_type = typename std::decay<decltype(tableImpl.table)>::type;
                 std::stringstream ss;
                 ss << "CREATE TABLE " << quote_identifier(tableName) << " ( ";
-                auto elementsCount = tableImpl.table.elements_count;
-                auto index = 0;
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                iterate_tuple(tableImpl.table.elements, [elementsCount, &index, &ss, &context](auto& element) {
-                    ss << serialize(element, context);
-                    if(index < elementsCount - 1) {
+                auto index = 0;
+                iterate_tuple(tableImpl.table.elements, [&index, &ss, &context](auto& element) {
+                    if(index > 0) {
                         ss << ", ";
                     }
-                    index++;
+                    ss << serialize(element, context);
+                    ++index;
                 });
                 ss << ")";
                 if(table_type::is_without_rowid) {
@@ -205,7 +204,7 @@ namespace sqlite_orm {
             template<class T>
             void drop_trigger(const T& triggerName) {
                 std::stringstream ss;
-                ss << "DROP TRIGGER " << triggerName;
+                ss << "DROP TRIGGER " << quote_identifier(triggerName);
                 auto query = ss.str();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -1612,19 +1611,20 @@ namespace sqlite_orm {
 
                         static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
-                            ss << "SELECT COUNT(*)";
-                            ss << " FROM " << quote_identifier(storageImpl.table.name);
+                            ss << "SELECT COUNT(*)"
+                               << " FROM " << quote_identifier(storageImpl.table.name);
                             ss << " WHERE ";
                             auto columnIndex = 0;
                             iterate_tuple(foreignKey.columns, [&ss, &columnIndex, &storageImpl](auto& column) {
+                                auto* columnName = storageImpl.table.find_column_name(column);
+                                if(!columnName) {
+                                    throw std::system_error{orm_error_code::column_not_found};
+                                }
+
                                 if(columnIndex > 0) {
                                     ss << " AND ";
                                 }
-                                if(auto columnName = storageImpl.table.find_column_name(column)) {
-                                    ss << quote_identifier(*columnName) << " = ?";
-                                } else {
-                                    throw std::system_error{orm_error_code::column_not_found};
-                                }
+                                ss << quote_identifier(*columnName) << " = ?";
                                 ++columnIndex;
                             });
                             auto query = ss.str();
