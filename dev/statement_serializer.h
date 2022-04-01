@@ -10,6 +10,7 @@
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 #include <cstddef>  // std::nullptr_t
 #include <memory>
+#include <array>
 
 #include "start_macros.h"
 #include "member_traits/is_getter.h"
@@ -98,7 +99,7 @@ namespace sqlite_orm {
         };
 
         template<stream_as mode>
-        struct streaming_ {
+        struct streaming {
             template<class... Ts>
             auto operator()(const Ts&... ts) const {
                 return std::forward_as_tuple(*this, ts...);
@@ -109,14 +110,14 @@ namespace sqlite_orm {
                 return {};
             }
         };
-        SQLITE_ORM_INLINE_VAR constexpr streaming_<stream_as::conditions_tuple> streaming_conditions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming_<stream_as::actions_tuple> streaming_actions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming_<stream_as::expressions_tuple> streaming_expressions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming_<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming_<stream_as::serialized> streaming_serialized{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming_<stream_as::identifier> streaming_identifier{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming_<stream_as::identifiers> streaming_identifiers{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming_<stream_as::values_placeholders> streaming_values_placeholders{};
+        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::conditions_tuple> streaming_conditions_tuple{};
+        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
+        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
+        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
+        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::serialized> streaming_serialized{};
+        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::identifier> streaming_identifier{};
+        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::identifiers> streaming_identifiers{};
+        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::values_placeholders> streaming_values_placeholders{};
 
         // serialize and stream a tuple of condition expressions;
         // space + space-separated
@@ -140,7 +141,7 @@ namespace sqlite_orm {
 
             bool first = true;
             iterate_tuple(actions, [&ss, &context, &first](auto& a) {
-                constexpr const char* sep[] = {" ", ""};
+                constexpr std::array<const char*, 2> sep = {" ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(a, context);
             });
             return ss;
@@ -155,7 +156,7 @@ namespace sqlite_orm {
 
             bool first = true;
             iterate_tuple(args, [&ss, &context, &first](auto& arg) {
-                constexpr const char* sep[] = {", ", ""};
+                constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize(arg, context);
             });
             return ss;
@@ -172,7 +173,7 @@ namespace sqlite_orm {
 
             bool first = true;
             iterate_tuple(args, [&ss, &context, &first](auto& arg) {
-                constexpr const char* sep[] = {", ", ""};
+                constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)] << serialize_order_by(arg, context);
             });
             return ss;
@@ -185,7 +186,7 @@ namespace sqlite_orm {
             const auto& args = std::get<1>(tpl);
             auto& context = std::get<2>(tpl);
 
-            constexpr const char* sep[] = {", ", ""};
+            constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < args.size(); ++i) {
                 ss << sep[std::exchange(first, false)] << serialize(args[i], context);
             }
@@ -198,7 +199,7 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_serialized)), C> tpl) {
             const auto& strings = std::get<1>(tpl);
 
-            constexpr const char* sep[] = {", ", ""};
+            constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < strings.size(); ++i) {
                 ss << sep[std::exchange(first, false)] << strings[i];
             }
@@ -226,7 +227,7 @@ namespace sqlite_orm {
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_identifiers)), C> tpl) {
             const auto& identifiers = std::get<1>(tpl);
 
-            constexpr const char* sep[] = {", ", ""};
+            constexpr std::array<const char*, 2> sep = {", ", ""};
             bool first = true;
             for(auto& identifier: identifiers) {
                 ss << sep[std::exchange(first, false)];
@@ -248,7 +249,7 @@ namespace sqlite_orm {
             std::string result;
             result.reserve((1 + (columnsCount * 1) + (columnsCount * 2 - 2) + 1) * valuesCount + (valuesCount * 2 - 2));
 
-            constexpr const char* sep[] = {", ", ""};
+            constexpr std::array<const char*, 2> sep = {", ", ""};
             for(ptrdiff_t i = 0, first = true; i < valuesCount; ++i) {
                 result += sep[std::exchange(first, false)];
                 result += "(";
