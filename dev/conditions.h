@@ -446,13 +446,13 @@ namespace sqlite_orm {
 
             order_by_t(expression_type expression_) : order_by_base(), expression(std::move(expression_)) {}
 
-            self asc() {
+            self asc() const {
                 auto res = *this;
                 res.asc_desc = 1;
                 return res;
             }
 
-            self desc() {
+            self desc() const {
                 auto res = *this;
                 res.asc_desc = -1;
                 return res;
