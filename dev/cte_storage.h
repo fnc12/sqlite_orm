@@ -111,7 +111,7 @@ namespace sqlite_orm {
         create_cte_table_t<Mapper, typename Mapper::index_sequence>
         make_cte_table_using_column_indices(const S& impl, const CTE& cte, std::index_sequence<CIs...>) {
             using O = cte_object_type_t<Mapper>;
-            using context_type = serializator_context<S>;
+            using context_type = serializer_context<S>;
             context_type context{impl};
 
             std::vector<std::string> columnNames =

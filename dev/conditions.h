@@ -10,9 +10,11 @@
 #include "collate_argument.h"
 #include "constraints.h"
 #include "optional_container.h"
-#include "serializator_context.h"
+#include "serializer_context.h"
 #include "tags.h"
 #include "expression.h"
+#include "type_printer.h"
+#include "literal.h"
 
 namespace sqlite_orm {
 
@@ -443,13 +445,13 @@ namespace sqlite_orm {
 
             order_by_t(expression_type expression_) : order_by_base(), expression(std::move(expression_)) {}
 
-            self asc() {
+            self asc() const {
                 auto res = *this;
                 res.asc_desc = 1;
                 return res;
             }
 
-            self desc() {
+            self desc() const {
                 auto res = *this;
                 res.asc_desc = -1;
                 return res;
@@ -1173,26 +1175,26 @@ namespace sqlite_orm {
     }
 
     /**
-     * ORDER BY column
-     * Example: storage.select(&User::name, order_by(&User::id))
+     * ORDER BY column, column alias or expression
      * 
-     * Note: choosing a column by a numeric literal isn't supported, i.e. order_by(2),
-     * use order_by(2_nth_col) instead
+     * Examples:
+     * storage.select(&User::name, order_by(&User::id))
+     * storage.select(as<colalias_a>(&User::name), order_by(get<colalias_a>()))
      */
-    template<class O, internal::satisfies_not<std::is_arithmetic, O> = true>
+    template<class O, internal::satisfies_not<std::is_base_of, integer_printer, type_printer<O>> = true>
     internal::order_by_t<O> order_by(O o) {
         return {std::move(o)};
     }
 
     /**
-     * Note: index_constant<> is used for 0-based indexing,
-     * use order_by(2_nth_col) instead
+     * ORDER BY positional ordinal
+     * 
+     * Examples:
+     * storage.select(&User::name, order_by(1))
      */
-    template<size_t I>
-    internal::order_by_t<polyfill::index_constant<I>> order_by(polyfill::index_constant<I> n) {
-        static_assert(polyfill::always_false_v<polyfill::index_constant<I>>,
-                      "Please use 1_nth_col, 2_nth_col, ... instead");
-        return {n};
+    template<class O, internal::satisfies<std::is_base_of, integer_printer, type_printer<O>> = true>
+    internal::order_by_t<internal::literal_holder<O>> order_by(O o) {
+        return {{std::move(o)}};
     }
 
     /**
@@ -1217,9 +1219,9 @@ namespace sqlite_orm {
      *  }
      */
     template<class S>
-    internal::dynamic_order_by_t<internal::serializator_context<typename S::impl_type>>
+    internal::dynamic_order_by_t<internal::serializer_context<typename S::impl_type>>
     dynamic_order_by(const S& storage) {
-        internal::serializator_context_builder<S> builder(storage);
+        internal::serializer_context_builder<S> builder(storage);
         return builder();
     }
 

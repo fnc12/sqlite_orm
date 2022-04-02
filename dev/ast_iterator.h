@@ -675,9 +675,23 @@ namespace sqlite_orm {
             }
         };
 
+        /**
+         *  Column alias or literal
+         */
         template<class T>
-        struct ast_iterator<order_by_t<T>, void> {
-            using node_type = order_by_t<T>;
+        struct ast_iterator<
+            T,
+            std::enable_if_t<polyfill::disjunction_v<polyfill::is_specialization_of<T, alias_holder>,
+                                                     polyfill::is_specialization_of<T, literal_holder>>>> {
+            using node_type = T;
+
+            template<class L>
+            void operator()(const node_type& /*node*/, const L& /*l*/) const {}
+        };
+
+        template<class E>
+        struct ast_iterator<order_by_t<E>, void> {
+            using node_type = order_by_t<E>;
 
             template<class L>
             void operator()(const node_type& node, const L& l) const {

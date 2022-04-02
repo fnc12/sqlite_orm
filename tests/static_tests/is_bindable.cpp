@@ -70,6 +70,7 @@ TEST_CASE("is_bindable") {
     STATIC_REQUIRE(is_bindable_v<std::unique_ptr<Custom>>);
 
     STATIC_REQUIRE(!is_bindable_v<void>);
+    STATIC_REQUIRE(!is_bindable_v<internal::literal_holder<int>>);
     STATIC_REQUIRE(!is_bindable_v<User>);
     STATIC_REQUIRE(!is_bindable_v<std::unique_ptr<User>>);
     {
