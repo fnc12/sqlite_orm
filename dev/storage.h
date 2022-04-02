@@ -929,10 +929,20 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
+#if SQLITE_VERSION_NUMBER >= 3006019
+                if(this->cachedForeignKeysCount) {
+                    this->foreign_keys(db, false);
+                }
+#endif
                 this->impl.for_each([&result, db, preserve, this](auto& storageImpl) {
                     auto res = this->sync_table(storageImpl, db, preserve);
                     result.insert({storageImpl.table.name, res});
                 });
+#if SQLITE_VERSION_NUMBER >= 3006019
+                if(this->cachedForeignKeysCount) {
+                    this->foreign_keys(db, true);
+                }
+#endif
                 return result;
             }
 
