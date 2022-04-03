@@ -100,6 +100,14 @@ namespace sqlite_orm {
                 this->set_pragma("auto_vacuum", value);
             }
 
+            bool foreign_keys() {
+                return this->get_pragma<bool>("foreign_keys");
+            }
+
+            void foreign_keys(bool value) {
+                this->set_pragma("foreign_keys", value);
+            }
+
             std::vector<std::string> integrity_check() {
                 return this->get_pragma<std::vector<std::string>>("integrity_check");
             }
