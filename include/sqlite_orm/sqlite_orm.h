@@ -13364,6 +13364,18 @@ namespace sqlite_orm {
             pragma_t pragma;
             limit_accesor limit;
 
+        private:
+            inline static bool foreign_key_value = true;
+        public:
+            static void foreign_key(bool value)
+            {
+                foreign_key_value = value;
+            }
+            static bool foreign_key()
+            {
+                return foreign_key_value;
+            }
+
             transaction_guard_t transaction_guard() {
                 this->begin_transaction();
                 auto commitFunc = std::bind(static_cast<void (storage_base::*)()>(&storage_base::commit), this);
@@ -13873,7 +13885,7 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
                 if(this->cachedForeignKeysCount) {
-                    this->foreign_keys(db, true);
+                    this->foreign_keys(db, foreign_key_value);
                 }
 #endif
                 if(this->pragma._synchronous != -1) {
