@@ -80,12 +80,12 @@ TEST_CASE("statement_serializer select_t") {
             SECTION("!highest_level") {
                 statement.highest_level = false;
                 stringValue = serialize(statement, context);
-                expected = "(SELECT \"users\".\"id\" FROM 'users')";
+                expected = R"((SELECT "users"."id" FROM "users"))";
             }
             SECTION("highest_level") {
                 statement.highest_level = true;
                 stringValue = serialize(statement, context);
-                expected = "SELECT \"users\".\"id\" FROM 'users'";
+                expected = R"(SELECT "users"."id" FROM "users")";
             }
         }
         SECTION("null") {
@@ -106,7 +106,7 @@ TEST_CASE("statement_serializer select_t") {
                 auto expression = select(asterisk<User>());
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = "SELECT * FROM 'users'";
+                expected = R"(SELECT * FROM "users")";
             }
             SECTION("alias") {
                 using als_u = alias_u<User>;
@@ -114,13 +114,13 @@ TEST_CASE("statement_serializer select_t") {
                 auto expression = select(asterisk<als_u>());
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = "SELECT 'u'.* FROM 'users' 'u'";
+                expected = R"(SELECT "u".* FROM "users" "u")";
             }
             SECTION("object") {
                 auto expression = select(object<User>());
                 expression.highest_level = true;
                 stringValue = serialize(expression, context);
-                expected = "SELECT * FROM 'users'";
+                expected = R"(SELECT * FROM "users")";
             }
             SECTION("issue #945") {
                 struct Employee {
@@ -155,7 +155,7 @@ TEST_CASE("statement_serializer select_t") {
                 context.skip_table_name = false;
                 stringValue = serialize(expression, context);
                 expected =
-                    R"(SELECT 'd'.* FROM 'Dept' 'd' LEFT JOIN 'Emp' 'e' ON ('d'."deptno" = 'e'."deptno")  WHERE ('e'."deptno" IS NULL))";
+                    R"(SELECT "d".* FROM "Dept" "d" LEFT JOIN "Emp" "e" ON ("d"."deptno" = "e"."deptno")  WHERE ("e"."deptno" IS NULL))";
             }
         }
     }

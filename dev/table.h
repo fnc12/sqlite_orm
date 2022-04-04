@@ -149,7 +149,7 @@ namespace sqlite_orm {
                 this->for_each_column_with<primary_key_t<>>([&res](auto& column) {
                     res.push_back(column.name);
                 });
-                if(!res.size()) {
+                if(res.empty()) {
                     res = this->composite_key_columns_names();
                 }
                 return res;
@@ -183,7 +183,7 @@ namespace sqlite_orm {
                     if(auto* columnName = this->find_column_name(memberPointer)) {
                         res.push_back(*columnName);
                     } else {
-                        res.push_back({});
+                        res.emplace_back();
                     }
                 });
                 return res;

@@ -45,7 +45,7 @@ TEST_CASE("statement_serializer foreign key") {
 
             context_t context{storageImpl};
             auto value = serialize(fk, context);
-            REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id')");
+            REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id"))");
         }
         SECTION("on update") {
             SECTION("no_action") {
@@ -69,7 +69,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON UPDATE NO ACTION");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE NO ACTION)");
             }
             SECTION("restrict_") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.restrict_();
@@ -92,7 +92,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON UPDATE RESTRICT");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE RESTRICT)");
             }
             SECTION("set_null") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_null();
@@ -115,7 +115,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON UPDATE SET NULL");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE SET NULL)");
             }
             SECTION("set_default") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.set_default();
@@ -138,7 +138,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON UPDATE SET DEFAULT");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE SET DEFAULT)");
             }
             SECTION("cascade") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_update.cascade();
@@ -161,7 +161,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON UPDATE CASCADE");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON UPDATE CASCADE)");
             }
         }
         SECTION("on delete") {
@@ -186,7 +186,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON DELETE NO ACTION");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE NO ACTION)");
             }
             SECTION("restrict_") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.restrict_();
@@ -209,7 +209,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON DELETE RESTRICT");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE RESTRICT)");
             }
             SECTION("set_null") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_null();
@@ -232,7 +232,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON DELETE SET NULL");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE SET NULL)");
             }
             SECTION("set_default") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.set_default();
@@ -255,7 +255,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON DELETE SET DEFAULT");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE SET DEFAULT)");
             }
             SECTION("cascade") {
                 auto fk = foreign_key(&Visit::userId).references(&User::id).on_delete.cascade();
@@ -278,7 +278,7 @@ TEST_CASE("statement_serializer foreign key") {
 
                 context_t context{storageImpl};
                 auto value = serialize(fk, context);
-                REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id') ON DELETE CASCADE");
+                REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id") ON DELETE CASCADE)");
             }
         }
     }
@@ -322,7 +322,7 @@ TEST_CASE("statement_serializer foreign key") {
 
         context_t context{storageImpl};
         auto value = serialize(fk, context);
-        REQUIRE(value == "FOREIGN KEY('user_id') REFERENCES 'users'('id')");
+        REQUIRE(value == R"(FOREIGN KEY("user_id") REFERENCES "users"("id"))");
     }
     SECTION("composite key") {
         struct User {
@@ -369,7 +369,7 @@ TEST_CASE("statement_serializer foreign key") {
 
         context_t context{storageImpl};
         auto value = serialize(fk, context);
-        REQUIRE(value == "FOREIGN KEY('user_id', 'user_first_name') REFERENCES 'users'('id', 'first_name')");
+        REQUIRE(value == R"(FOREIGN KEY("user_id", "user_first_name") REFERENCES "users"("id", "first_name"))");
     }
 }
 

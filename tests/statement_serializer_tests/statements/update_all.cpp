@@ -54,7 +54,7 @@ TEST_CASE("statement_serializer update_all") {
     auto statement =
         update_all(set(c(&Contact::phone) = select(&Customer::phone, from<Customer>(), where(c(&Customer::id) == 1))));
     auto value = serialize(statement, context);
-    decltype(value) expected = "UPDATE 'contacts' SET \"phone\" = (SELECT \"customers\".\"Phone\" FROM 'customers' "
-                               "WHERE ((\"customers\".\"CustomerId\" = 1)))";
-    REQUIRE(expected == value);
+    decltype(value) expected =
+        R"(UPDATE "contacts" SET "phone" = (SELECT "customers"."Phone" FROM "customers" WHERE (("customers"."CustomerId" = 1))))";
+    REQUIRE(value == expected);
 }

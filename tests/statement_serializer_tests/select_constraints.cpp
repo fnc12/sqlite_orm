@@ -20,18 +20,18 @@ TEST_CASE("statement_serializer select constraints") {
         auto expression = columns(&User::id, &User::name);
         SECTION("use_parentheses") {
             context.use_parentheses = true;
-            expected = "(\"id\", \"name\")";
+            expected = R"(("id", "name"))";
         }
         SECTION("!use_parentheses") {
             context.use_parentheses = false;
-            expected = "\"id\", \"name\"";
+            expected = R"("id", "name")";
         }
         value = serialize(expression, context);
     }
     SECTION("into") {
         auto expression = into<User>();
         value = serialize(expression, context);
-        expected = "INTO users";
+        expected = R"(INTO "users")";
     }
     SECTION("insert constraint") {
         SECTION("abort") {
@@ -64,12 +64,12 @@ TEST_CASE("statement_serializer select constraints") {
         SECTION("without alias") {
             auto expression = from<User>();
             value = serialize(expression, context);
-            expected = "FROM 'users'";
+            expected = R"(FROM "users")";
         }
         SECTION("with alias") {
             auto expression = from<alias_u<User>>();
             value = serialize(expression, context);
-            expected = "FROM 'users' 'u'";
+            expected = R"(FROM "users" "u")";
         }
     }
     SECTION("function_call") {
@@ -84,7 +84,7 @@ TEST_CASE("statement_serializer select constraints") {
         };
         auto expression = func<Func>(&User::id);
         value = serialize(expression, context);
-        expected = "EVEN(\"id\")";
+        expected = R"(EVEN("id"))";
     }
     REQUIRE(value == expected);
 }

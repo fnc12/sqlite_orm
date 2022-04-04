@@ -40,7 +40,7 @@ TEST_CASE("statement_serializer logical operators") {
             SECTION("functions") {
                 stringValue = internal::serialize(is_equal(&User::id, 5) and is_equal(&User::name, "Ariana"), context);
             }
-            expected = "((\"id\" = 5) AND (\"name\" = 'Ariana'))";
+            expected = R"((("id" = 5) AND ("name" = 'Ariana')))";
         }
     }
     SECTION("or") {
@@ -60,29 +60,29 @@ TEST_CASE("statement_serializer logical operators") {
             SECTION("functions") {
                 stringValue = internal::serialize(is_equal(&User::id, 5) or is_equal(&User::name, "Ariana"), context);
             }
-            expected = "((\"id\" = 5) OR (\"name\" = 'Ariana'))";
+            expected = R"((("id" = 5) OR ("name" = 'Ariana')))";
         }
     }
     SECTION("in") {
         SECTION("static in") {
             auto inValue = c(&User::id).in(1, 2, 3);
             stringValue = internal::serialize(inValue, context);
-            expected = "\"id\" IN (1, 2, 3)";
+            expected = R"("id" IN (1, 2, 3))";
         }
         SECTION("static not in") {
             auto inValue = c(&User::id).not_in(1, 2, 3);
             stringValue = internal::serialize(inValue, context);
-            expected = "\"id\" NOT IN (1, 2, 3)";
+            expected = R"("id" NOT IN (1, 2, 3))";
         }
         SECTION("dynamic in") {
             auto inValue = in(&User::id, {1, 2, 3});
             stringValue = internal::serialize(inValue, context);
-            expected = "\"id\" IN (1, 2, 3)";
+            expected = R"("id" IN (1, 2, 3))";
         }
         SECTION("dynamic not in") {
             auto inValue = not_in(&User::id, {1, 2, 3});
             stringValue = internal::serialize(inValue, context);
-            expected = "\"id\" NOT IN (1, 2, 3)";
+            expected = R"("id" NOT IN (1, 2, 3))";
         }
     }
     REQUIRE(stringValue == expected);

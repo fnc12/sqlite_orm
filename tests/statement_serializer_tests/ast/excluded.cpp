@@ -22,12 +22,12 @@ TEST_CASE("excluded") {
     SECTION("word") {
         auto statement = excluded(&Vocabulary::word);
         value = serialize(statement, context);
-        expected = "excluded.\"word\"";
+        expected = R"(excluded."word")";
     }
     SECTION("count") {
         auto statement = excluded(&Vocabulary::count);
         value = serialize(statement, context);
-        expected = "excluded.\"count\"";
+        expected = R"(excluded."count")";
     }
 
     REQUIRE(value == expected);

@@ -28,11 +28,11 @@ TEST_CASE("statement_serializer insert/replace") {
             auto statement = replace(user);
             SECTION("question marks") {
                 context.replace_bindable_with_question = true;
-                expected = "REPLACE INTO 'users' (\"id\", \"name\") VALUES (?, ?)";
+                expected = R"(REPLACE INTO "users" ("id", "name") VALUES (?, ?))";
             }
             SECTION("no question marks") {
                 context.replace_bindable_with_question = false;
-                expected = "REPLACE INTO 'users' (\"id\", \"name\") VALUES (5, 'Gambit')";
+                expected = R"(REPLACE INTO "users" ("id", "name") VALUES (5, 'Gambit'))";
             }
             value = serialize(statement, context);
         }
@@ -43,7 +43,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                              columns(&User::id, &User::name),
                                              values(std::make_tuple(1, "The Weeknd")));
                     value = serialize(statement, context);
-                    expected = "REPLACE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+                    expected = R"(REPLACE INTO "users" ("id", "name") VALUES (1, 'The Weeknd'))";
                 }
                 SECTION("2 rows") {
                     auto statement =
@@ -51,19 +51,19 @@ TEST_CASE("statement_serializer insert/replace") {
                                 columns(&User::id, &User::name),
                                 values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
                     value = serialize(statement, context);
-                    expected = "REPLACE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue')";
+                    expected = R"(REPLACE INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                 }
             }
             SECTION("default values") {
                 auto statement = replace(into<User>(), default_values());
                 value = serialize(statement, context);
-                expected = "REPLACE INTO users DEFAULT VALUES";
+                expected = R"(REPLACE INTO "users" DEFAULT VALUES)";
             }
             SECTION("select") {
                 auto statement = replace(into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                 value = serialize(statement, context);
                 expected =
-                    "REPLACE INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM 'users_backup'";
+                    R"(REPLACE INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
             }
         }
     }
@@ -73,11 +73,11 @@ TEST_CASE("statement_serializer insert/replace") {
             auto statement = insert(user);
             SECTION("question marks") {
                 context.replace_bindable_with_question = true;
-                expected = "INSERT INTO 'users' (\"id\", \"name\") VALUES (?, ?)";
+                expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
             }
             SECTION("no question marks") {
                 context.replace_bindable_with_question = false;
-                expected = "INSERT INTO 'users' (\"id\", \"name\") VALUES (5, 'Gambit')";
+                expected = R"(INSERT INTO "users" ("id", "name") VALUES (5, 'Gambit'))";
             }
             value = serialize(statement, context);
         }
@@ -86,11 +86,11 @@ TEST_CASE("statement_serializer insert/replace") {
                 auto statement = insert(user, columns(&User::id));
                 SECTION("question marks") {
                     context.replace_bindable_with_question = true;
-                    expected = "INSERT INTO 'users' (\"id\") VALUES (?)";
+                    expected = R"(INSERT INTO "users" ("id") VALUES (?))";
                 }
                 SECTION("no question marks") {
                     context.replace_bindable_with_question = false;
-                    expected = "INSERT INTO 'users' (\"id\") VALUES (5)";
+                    expected = R"(INSERT INTO "users" ("id") VALUES (5))";
                 }
                 value = serialize(statement, context);
             }
@@ -98,11 +98,11 @@ TEST_CASE("statement_serializer insert/replace") {
                 auto statement = insert(user, columns(&User::id, &User::name));
                 SECTION("question marks") {
                     context.replace_bindable_with_question = true;
-                    expected = "INSERT INTO 'users' (\"id\", \"name\") VALUES (?, ?)";
+                    expected = R"(INSERT INTO "users" ("id", "name") VALUES (?, ?))";
                 }
                 SECTION("no question marks") {
                     context.replace_bindable_with_question = false;
-                    expected = "INSERT INTO 'users' (\"id\", \"name\") VALUES (5, 'Gambit')";
+                    expected = R"(INSERT INTO "users" ("id", "name") VALUES (5, 'Gambit'))";
                 }
                 value = serialize(statement, context);
             }
@@ -115,7 +115,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                                 columns(&User::id, &User::name),
                                                 values(std::make_tuple(1, "The Weeknd")));
                         value = serialize(statement, context);
-                        expected = "INSERT INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+                        expected = R"(INSERT INTO "users" ("id", "name") VALUES (1, 'The Weeknd'))";
                     }
                     SECTION("or abort") {
                         auto statement = insert(or_abort(),
@@ -123,7 +123,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                                 columns(&User::id, &User::name),
                                                 values(std::make_tuple(1, "The Weeknd")));
                         value = serialize(statement, context);
-                        expected = "INSERT OR ABORT INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+                        expected = R"(INSERT OR ABORT INTO "users" ("id", "name") VALUES (1, 'The Weeknd'))";
                     }
                     SECTION("or fail") {
                         auto statement = insert(or_fail(),
@@ -131,7 +131,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                                 columns(&User::id, &User::name),
                                                 values(std::make_tuple(1, "The Weeknd")));
                         value = serialize(statement, context);
-                        expected = "INSERT OR FAIL INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+                        expected = R"(INSERT OR FAIL INTO "users" ("id", "name") VALUES (1, 'The Weeknd'))";
                     }
                     SECTION("or ignore") {
                         auto statement = insert(or_ignore(),
@@ -139,7 +139,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                                 columns(&User::id, &User::name),
                                                 values(std::make_tuple(1, "The Weeknd")));
                         value = serialize(statement, context);
-                        expected = "INSERT OR IGNORE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+                        expected = R"(INSERT OR IGNORE INTO "users" ("id", "name") VALUES (1, 'The Weeknd'))";
                     }
                     SECTION("or replace") {
                         auto statement = insert(or_replace(),
@@ -147,7 +147,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                                 columns(&User::id, &User::name),
                                                 values(std::make_tuple(1, "The Weeknd")));
                         value = serialize(statement, context);
-                        expected = "INSERT OR REPLACE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+                        expected = R"(INSERT OR REPLACE INTO "users" ("id", "name") VALUES (1, 'The Weeknd'))";
                     }
                     SECTION("or rollback") {
                         auto statement = insert(or_rollback(),
@@ -155,7 +155,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                                 columns(&User::id, &User::name),
                                                 values(std::make_tuple(1, "The Weeknd")));
                         value = serialize(statement, context);
-                        expected = "INSERT OR ROLLBACK INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd')";
+                        expected = R"(INSERT OR ROLLBACK INTO "users" ("id", "name") VALUES (1, 'The Weeknd'))";
                     }
                 }
                 SECTION("2 rows") {
@@ -165,7 +165,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                    columns(&User::id, &User::name),
                                    values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
                         value = serialize(statement, context);
-                        expected = "INSERT INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue')";
+                        expected = R"(INSERT INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                     }
                     SECTION("or abort") {
                         auto statement =
@@ -175,7 +175,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                    values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
                         value = serialize(statement, context);
                         expected =
-                            "INSERT OR ABORT INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue')";
+                            R"(INSERT OR ABORT INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                     }
                     SECTION("or fail") {
                         auto statement =
@@ -185,7 +185,7 @@ TEST_CASE("statement_serializer insert/replace") {
                                    values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
                         value = serialize(statement, context);
                         expected =
-                            "INSERT OR FAIL INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue')";
+                            R"(INSERT OR FAIL INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                     }
                     SECTION("or ignore") {
                         auto statement =
@@ -194,8 +194,8 @@ TEST_CASE("statement_serializer insert/replace") {
                                    columns(&User::id, &User::name),
                                    values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
                         value = serialize(statement, context);
-                        expected = "INSERT OR IGNORE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, "
-                                   "'Jonas Blue')";
+                        expected =
+                            R"(INSERT OR IGNORE INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                     }
                     SECTION("or replace") {
                         auto statement =
@@ -204,8 +204,8 @@ TEST_CASE("statement_serializer insert/replace") {
                                    columns(&User::id, &User::name),
                                    values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
                         value = serialize(statement, context);
-                        expected = "INSERT OR REPLACE INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, "
-                                   "'Jonas Blue')";
+                        expected =
+                            R"(INSERT OR REPLACE INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                     }
                     SECTION("or rollback") {
                         auto statement =
@@ -214,8 +214,8 @@ TEST_CASE("statement_serializer insert/replace") {
                                    columns(&User::id, &User::name),
                                    values(std::make_tuple(1, "The Weeknd"), std::make_tuple(4, "Jonas Blue")));
                         value = serialize(statement, context);
-                        expected = "INSERT OR ROLLBACK INTO users (\"id\", \"name\") VALUES (1, 'The Weeknd'), (4, "
-                                   "'Jonas Blue')";
+                        expected =
+                            R"(INSERT OR ROLLBACK INTO "users" ("id", "name") VALUES (1, 'The Weeknd'), (4, 'Jonas Blue'))";
                     }
                 }
             }
@@ -223,77 +223,75 @@ TEST_CASE("statement_serializer insert/replace") {
                 SECTION("no constraint") {
                     auto statement = insert(into<User>(), default_values());
                     value = serialize(statement, context);
-                    expected = "INSERT INTO users DEFAULT VALUES";
+                    expected = R"(INSERT INTO "users" DEFAULT VALUES)";
                 }
                 SECTION("or abort") {
                     auto statement = insert(or_abort(), into<User>(), default_values());
                     value = serialize(statement, context);
-                    expected = "INSERT OR ABORT INTO users DEFAULT VALUES";
+                    expected = R"(INSERT OR ABORT INTO "users" DEFAULT VALUES)";
                 }
                 SECTION("or fail") {
                     auto statement = insert(or_fail(), into<User>(), default_values());
                     value = serialize(statement, context);
-                    expected = "INSERT OR FAIL INTO users DEFAULT VALUES";
+                    expected = R"(INSERT OR FAIL INTO "users" DEFAULT VALUES)";
                 }
                 SECTION("or ignore") {
                     auto statement = insert(or_ignore(), into<User>(), default_values());
                     value = serialize(statement, context);
-                    expected = "INSERT OR IGNORE INTO users DEFAULT VALUES";
+                    expected = R"(INSERT OR IGNORE INTO "users" DEFAULT VALUES)";
                 }
                 SECTION("or replace") {
                     auto statement = insert(or_replace(), into<User>(), default_values());
                     value = serialize(statement, context);
-                    expected = "INSERT OR REPLACE INTO users DEFAULT VALUES";
+                    expected = R"(INSERT OR REPLACE INTO "users" DEFAULT VALUES)";
                 }
                 SECTION("or rollback") {
                     auto statement = insert(or_rollback(), into<User>(), default_values());
                     value = serialize(statement, context);
-                    expected = "INSERT OR ROLLBACK INTO users DEFAULT VALUES";
+                    expected = R"(INSERT OR ROLLBACK INTO "users" DEFAULT VALUES)";
                 }
             }
             SECTION("select") {
                 SECTION("no constraint") {
                     auto statement = insert(into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
-                    expected = "INSERT INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
-                               "'users_backup'";
+                    expected =
+                        R"(INSERT INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
                 }
                 SECTION("or abort") {
                     auto statement =
                         insert(or_abort(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
-                    expected = "INSERT OR ABORT INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
-                               "'users_backup'";
+                    expected =
+                        R"(INSERT OR ABORT INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
                 }
                 SECTION("or fail") {
                     auto statement =
                         insert(or_fail(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
-                    expected = "INSERT OR FAIL INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
-                               "'users_backup'";
+                    expected =
+                        R"(INSERT OR FAIL INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
                 }
                 SECTION("or ignore") {
                     auto statement =
                         insert(or_ignore(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
-                    expected = "INSERT OR IGNORE INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
-                               "'users_backup'";
+                    expected =
+                        R"(INSERT OR IGNORE INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
                 }
                 SECTION("or replace") {
                     auto statement =
                         insert(or_replace(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
                     expected =
-                        "INSERT OR REPLACE INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
-                        "'users_backup'";
+                        R"(INSERT OR REPLACE INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
                 }
                 SECTION("or rollback") {
                     auto statement =
                         insert(or_rollback(), into<User>(), select(columns(&UserBackup::id, &UserBackup::name)));
                     value = serialize(statement, context);
                     expected =
-                        "INSERT OR ROLLBACK INTO users SELECT \"users_backup\".\"id\", \"users_backup\".\"name\" FROM "
-                        "'users_backup'";
+                        R"(INSERT OR ROLLBACK INTO "users" SELECT "users_backup"."id", "users_backup"."name" FROM "users_backup")";
                 }
             }
         }

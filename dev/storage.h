@@ -47,7 +47,6 @@
 #include "prepared_statement.h"
 #include "expression_object_type.h"
 #include "statement_serializer.h"
-#include "table_name_collector.h"
 #include "triggers.h"
 #include "object_from_column_builder.h"
 #include "table.h"
@@ -108,17 +107,16 @@ namespace sqlite_orm {
             void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
                 using table_type = typename std::decay<decltype(tableImpl.table)>::type;
                 std::stringstream ss;
-                ss << "CREATE TABLE '" << tableName << "' ( ";
-                auto elementsCount = tableImpl.table.elements_count;
-                auto index = 0;
+                ss << "CREATE TABLE " << quote_identifier(tableName) << " ( ";
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                iterate_tuple(tableImpl.table.elements, [elementsCount, &index, &ss, &context](auto& element) {
-                    ss << serialize(element, context);
-                    if(index < elementsCount - 1) {
+                auto index = 0;
+                iterate_tuple(tableImpl.table.elements, [&index, &ss, &context](auto& element) {
+                    if(index > 0) {
                         ss << ", ";
                     }
-                    index++;
+                    ss << serialize(element, context);
+                    ++index;
                 });
                 ss << ")";
                 if(table_type::is_without_rowid) {
@@ -129,7 +127,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE '" << tableName << "' DROP COLUMN \"" << columnName << "\"";
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN " << quote_identifier(columnName);
                 perform_void_exec(db, ss.str());
             }
 #endif
@@ -209,7 +207,7 @@ namespace sqlite_orm {
             template<class T>
             void drop_trigger(const T& triggerName) {
                 std::stringstream ss;
-                ss << "DROP TRIGGER " << triggerName;
+                ss << "DROP TRIGGER " << quote_identifier(triggerName);
                 auto query = ss.str();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -920,7 +918,7 @@ namespace sqlite_orm {
             template<class C>
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << tableName << " ADD COLUMN ";
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 ss << serialize(column, context);
@@ -1678,19 +1676,20 @@ namespace sqlite_orm {
 
                         static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
-                            ss << "SELECT COUNT(*)";
-                            ss << " FROM " << storageImpl.table.name;
-                            ss << " WHERE";
+                            ss << "SELECT COUNT(*)"
+                               << " FROM " << quote_identifier(storageImpl.table.name);
+                            ss << " WHERE ";
                             auto columnIndex = 0;
                             iterate_tuple(foreignKey.columns, [&ss, &columnIndex, &storageImpl](auto& column) {
-                                if(columnIndex > 0) {
-                                    ss << " AND";
-                                }
-                                if(auto columnName = storageImpl.table.find_column_name(column)) {
-                                    ss << ' ' << *columnName << " = ?";
-                                } else {
+                                auto* columnName = storageImpl.table.find_column_name(column);
+                                if(!columnName) {
                                     throw std::system_error{orm_error_code::column_not_found};
                                 }
+
+                                if(columnIndex > 0) {
+                                    ss << " AND ";
+                                }
+                                ss << quote_identifier(*columnName) << " = ?";
                                 ++columnIndex;
                             });
                             auto query = ss.str();

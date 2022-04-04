@@ -16,31 +16,31 @@ TEST_CASE("statement_serializer indexed_column") {
     {
         auto column = indexed_column(&User::id);
         auto value = internal::serialize(column, context);
-        REQUIRE(value == "\"id\"");
+        REQUIRE(value == R"("id")");
     }
     {
         auto column = indexed_column(&User::id).asc();
         auto value = internal::serialize(column, context);
-        REQUIRE(value == "\"id\" ASC");
+        REQUIRE(value == R"("id" ASC)");
     }
     {
         auto column = indexed_column(&User::id).desc();
         auto value = internal::serialize(column, context);
-        REQUIRE(value == "\"id\" DESC");
+        REQUIRE(value == R"("id" DESC)");
     }
     {
         auto column = indexed_column(&User::id).collate("BINARY");
         auto value = internal::serialize(column, context);
-        REQUIRE(value == "\"id\" COLLATE BINARY");
+        REQUIRE(value == R"("id" COLLATE BINARY)");
     }
     {
         auto column = indexed_column(&User::name).collate("BINARY").asc();
         auto value = internal::serialize(column, context);
-        REQUIRE(value == "\"name\" COLLATE BINARY ASC");
+        REQUIRE(value == R"("name" COLLATE BINARY ASC)");
     }
     {
         auto column = indexed_column(&User::name).collate("OTHER").desc();
         auto value = internal::serialize(column, context);
-        REQUIRE(value == "\"name\" COLLATE OTHER DESC");
+        REQUIRE(value == R"("name" COLLATE OTHER DESC)");
     }
 }
