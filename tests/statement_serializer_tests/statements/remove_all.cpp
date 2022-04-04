@@ -15,7 +15,8 @@ TEST_CASE("statement_serializer remove_all") {
     using context_t = internal::serializer_context<storage_impl_t>;
     context_t context{storageImpl};
 
-    std::string value, expected;
+    std::string value;
+    std::string expected;
 
     SECTION("all") {
         auto statement = remove_all<User>();

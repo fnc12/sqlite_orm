@@ -54,6 +54,33 @@ namespace sqlite_orm {
             return serializer(t, context);
         }
 
+#if __cplusplus >= 202002L  // C++20 or later
+        inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
+            for(std::string::const_iterator it = str.cbegin(), next; true; it = next + 1) {
+                next = std::find(it, str.cend(), char2Escape);
+                os << std::string_view{it, next};
+
+                if(next == str.cend()) [[likely]] {
+                    break;
+                }
+                os << std::string(2, char2Escape);
+            }
+        }
+#else
+        inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
+            if(str.find(char2Escape) == str.npos) {
+                os << str;
+            } else {
+                for(char c: str) {
+                    if(c == char2Escape) {
+                        os << char2Escape;
+                    }
+                    os << c;
+                }
+            }
+        }
+#endif
+
         inline void stream_identifier(std::ostream& ss,
                                       const std::string& qualifier,
                                       const std::string& identifier,
@@ -61,11 +88,19 @@ namespace sqlite_orm {
             constexpr char quoteChar = '"';
 
             if(!qualifier.empty()) {
-                ss << quoteChar << sql_escape(qualifier, quoteChar) << std::string{quoteChar, '.'};
+                ss << quoteChar;
+                stream_sql_escaped(ss, qualifier, quoteChar);
+                ss << std::string{quoteChar, '.'};
             }
-            ss << quoteChar << sql_escape(identifier, quoteChar) << quoteChar;
+            {
+                ss << quoteChar;
+                stream_sql_escaped(ss, identifier, quoteChar);
+                ss << quoteChar;
+            }
             if(!alias.empty()) {
-                ss << std::string{' ', quoteChar} << sql_escape(alias, quoteChar) << quoteChar;
+                ss << std::string{' ', quoteChar};
+                stream_sql_escaped(ss, alias, quoteChar);
+                ss << quoteChar;
             }
         }
 
@@ -131,8 +166,8 @@ namespace sqlite_orm {
         // space + space-separated
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_conditions_tuple)), T, Ctx> tpl) {
-            const auto& conditions = std::get<1>(tpl);
-            auto& context = std::get<2>(tpl);
+            const auto& conditions = get<1>(tpl);
+            auto& context = get<2>(tpl);
 
             iterate_tuple(conditions, [&ss, &context](auto& c) {
                 ss << " " << serialize(c, context);
@@ -144,8 +179,8 @@ namespace sqlite_orm {
         // space-separated
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_actions_tuple)), T, Ctx> tpl) {
-            const auto& actions = std::get<1>(tpl);
-            auto& context = std::get<2>(tpl);
+            const auto& actions = get<1>(tpl);
+            auto& context = get<2>(tpl);
 
             bool first = true;
             iterate_tuple(actions, [&ss, &context, &first](auto& a) {
@@ -159,8 +194,8 @@ namespace sqlite_orm {
         // comma-separated
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_expressions_tuple)), T, Ctx> tpl) {
-            const auto& args = std::get<1>(tpl);
-            auto& context = std::get<2>(tpl);
+            const auto& args = get<1>(tpl);
+            auto& context = get<2>(tpl);
 
             bool first = true;
             iterate_tuple(args, [&ss, &context, &first](auto& arg) {
@@ -176,8 +211,8 @@ namespace sqlite_orm {
         std::ostream&
         operator<<(std::ostream& ss,
                    std::tuple<decltype((streaming_expressions_tuple)), const std::tuple<order_by_t<Os>...>&, Ctx> tpl) {
-            const auto& args = std::get<1>(tpl);
-            auto& context = std::get<2>(tpl);
+            const auto& args = get<1>(tpl);
+            auto& context = get<2>(tpl);
 
             bool first = true;
             iterate_tuple(args, [&ss, &context, &first](auto& arg) {
@@ -191,8 +226,8 @@ namespace sqlite_orm {
         // comma-separated
         template<class C, class Ctx>
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_dynamic_expressions)), C, Ctx> tpl) {
-            const auto& args = std::get<1>(tpl);
-            auto& context = std::get<2>(tpl);
+            const auto& args = get<1>(tpl);
+            auto& context = get<2>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < args.size(); ++i) {
@@ -205,7 +240,7 @@ namespace sqlite_orm {
         // comma-separated
         template<class C>
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_serialized)), C> tpl) {
-            const auto& strings = std::get<1>(tpl);
+            const auto& strings = get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             for(size_t i = 0, first = true; i < strings.size(); ++i) {
@@ -233,7 +268,7 @@ namespace sqlite_orm {
         // comma-separated
         template<class C>
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_identifiers)), C> tpl) {
-            const auto& identifiers = std::get<1>(tpl);
+            const auto& identifiers = get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
             bool first = true;
@@ -247,8 +282,8 @@ namespace sqlite_orm {
         // stream placeholders as part of a values clause
         template<class... Ts>
         std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_values_placeholders)), Ts...> tpl) {
-            const size_t& columnsCount = std::get<1>(tpl);
-            const ptrdiff_t& valuesCount = std::get<2>(tpl);
+            const size_t& columnsCount = get<1>(tpl);
+            const ptrdiff_t& valuesCount = get<2>(tpl);
 
             if(!valuesCount || !columnsCount) {
                 return ss;
@@ -276,8 +311,8 @@ namespace sqlite_orm {
         template<class Table>
         std::ostream& operator<<(std::ostream& ss,
                                  std::tuple<decltype((streaming_table_column_names)), Table, const bool&> tpl) {
-            const auto& table = std::get<1>(tpl);
-            const bool& qualified = std::get<2>(tpl);
+            const auto& table = get<1>(tpl);
+            const bool& qualified = get<2>(tpl);
 
             bool first = true;
             table.for_each_column([&ss, &tableName = qualified ? table.name : std::string{}, &first](auto& column) {
@@ -293,7 +328,7 @@ namespace sqlite_orm {
         template<class Table>
         std::ostream& operator<<(std::ostream& ss,
                                  std::tuple<decltype((streaming_non_generated_column_names)), Table> tpl) {
-            const auto& table = std::get<1>(tpl);
+            const auto& table = get<1>(tpl);
 
             bool first = true;
             table.for_each_column([&ss, &first](auto& column) {
@@ -313,8 +348,8 @@ namespace sqlite_orm {
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
                                  std::tuple<decltype((streaming_mapped_columns_expressions)), T, Ctx> tpl) {
-            const auto& columns = std::get<1>(tpl);
-            auto& context = std::get<2>(tpl);
+            const auto& columns = get<1>(tpl);
+            auto& context = get<2>(tpl);
 
             bool first = true;
             iterate_tuple(columns, [&ss, &context, &first](auto& column) {
@@ -1406,9 +1441,6 @@ namespace sqlite_orm {
 
                 if(collector.table_names.empty()) {
                     throw std::system_error{orm_error_code::no_tables_specified};
-                }
-                if(collector.table_names.size() < 1) {
-                    throw std::system_error{orm_error_code::incorrect_set_fields_specified};
                 }
 
                 std::stringstream ss;

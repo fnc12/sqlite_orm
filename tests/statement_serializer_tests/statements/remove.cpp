@@ -15,7 +15,8 @@ TEST_CASE("statement_serializer remove") {
     using context_t = internal::serializer_context<storage_impl_t>;
     context_t context{storageImpl};
 
-    std::string value, expected;
+    std::string value;
+    decltype(value) expected;
 
     auto statement = remove<User>(5);
     SECTION("with question marks") {
