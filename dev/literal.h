@@ -1,7 +1,5 @@
 #pragma once
 
-#include <utility>  //  std::move
-
 namespace sqlite_orm {
     namespace internal {
 
@@ -12,7 +10,7 @@ namespace sqlite_orm {
         struct literal_holder {
             using type = T;
 
-            T value;
+            type value;
         };
 
     }
