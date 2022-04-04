@@ -28,12 +28,12 @@ TEST_CASE("statement_serializer check") {
         SECTION("with parentheses") {
             context.use_parentheses = true;
             value = serialize(ch, context);
-            expected = "CHECK ((\"col3\" > 0))";
+            expected = R"(CHECK (("col3" > 0)))";
         }
         SECTION("without parentheses") {
             context.use_parentheses = false;
             value = serialize(ch, context);
-            expected = "CHECK (\"col3\" > 0)";
+            expected = R"(CHECK ("col3" > 0))";
         }
         REQUIRE(value == expected);
     }
@@ -62,12 +62,12 @@ TEST_CASE("statement_serializer check") {
         SECTION("with parentheses") {
             context.use_parentheses = true;
             value = serialize(ch, context);
-            expected = "CHECK ((0 < \"PRICE\"))";
+            expected = R"(CHECK ((0 < "PRICE")))";
         }
         SECTION("without parentheses") {
             context.use_parentheses = false;
             value = serialize(ch, context);
-            expected = "CHECK (0 < \"PRICE\")";
+            expected = R"(CHECK (0 < "PRICE"))";
         }
         REQUIRE(value == expected);
     }

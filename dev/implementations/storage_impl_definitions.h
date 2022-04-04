@@ -16,11 +16,12 @@ namespace sqlite_orm {
     namespace internal {
 
         inline bool storage_impl_base::table_exists(const std::string& tableName, sqlite3* db) const {
+            using namespace std::string_literals;
+
             bool result = false;
             std::stringstream ss;
-            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '"
-               << "table"
-               << "' AND name = '" << tableName << "'";
+            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
+               << " AND name = " << quote_string_literal(tableName);
             auto query = ss.str();
             auto rc = sqlite3_exec(
                 db,
@@ -43,7 +44,7 @@ namespace sqlite_orm {
         inline void
         storage_impl_base::rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
             std::stringstream ss;
-            ss << "ALTER TABLE " << oldName << " RENAME TO " << newName;
+            ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
             perform_void_exec(db, ss.str());
         }
 
@@ -88,7 +89,7 @@ namespace sqlite_orm {
         inline std::vector<table_info> storage_impl_base::get_table_info(const std::string& tableName,
                                                                          sqlite3* db) const {
             std::vector<table_info> result;
-            auto query = "PRAGMA table_info('" + tableName + "')";
+            auto query = "PRAGMA table_info(" + quote_identifier(tableName) + ")";
             auto rc = sqlite3_exec(
                 db,
                 query.c_str(),
@@ -117,7 +118,7 @@ namespace sqlite_orm {
 
         template<class H, class... Ts>
         void storage_impl<H, Ts...>::copy_table(sqlite3* db,
-                                                const std::string& name,
+                                                const std::string& tableName,
                                                 const std::vector<table_info*>& columnsToIgnore) const {
             std::stringstream ss;
             std::vector<std::string> columnNames;
@@ -132,7 +133,7 @@ namespace sqlite_orm {
                 }
             });
             auto columnNamesCount = columnNames.size();
-            ss << "INSERT INTO " << name << " (";
+            ss << "INSERT INTO " << quote_identifier(tableName) << " (";
             for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << columnNames[i];
                 if(i < columnNamesCount - 1) {
@@ -148,7 +149,7 @@ namespace sqlite_orm {
                     ss << ", ";
                 }
             }
-            ss << " FROM '" << this->table.name << "'";
+            ss << " FROM " << quote_identifier(this->table.name);
             perform_void_exec(db, ss.str());
         }
 

@@ -13,7 +13,7 @@ skip_commits:
   - '*.sh'
 
 image:
-  - Visual Studio 2019
+  - Visual Studio 2022
 
 # configurations to add to build matrix
 # TODO: MinGW Makefiles and MSYS Makefiles
@@ -40,6 +40,7 @@ init:
   - echo %APPVEYOR_BUILD_WORKER_IMAGE% - %configuration% - %PLATFORM%
   - if "%PLATFORM%"=="x64" (set architecture=-A x64)
   - if "%PLATFORM%"=="x86" (set architecture=-A Win32)
+  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" (set generator="Visual Studio 16 2019" %architecture%)
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)

@@ -45,7 +45,7 @@ TEST_CASE("upsert_clause") {
                     on_conflict(&Vocabulary::word).do_update(set(c(&Vocabulary::count) = c(&Vocabulary::count) + 1));
                 value = serialize(expression, context);
             }
-            expected = "ON CONFLICT (\"word\") DO UPDATE SET \"count\" = \"count\" + 1";
+            expected = R"(ON CONFLICT ("word") DO UPDATE SET "count" = "count" + 1)";
         }
         SECTION("2 sets") {
             SECTION("fuctions") {
@@ -60,7 +60,7 @@ TEST_CASE("upsert_clause") {
                                                      c(&Vocabulary::word) = "abc"));
                 value = serialize(expression, context);
             }
-            expected = "ON CONFLICT (\"word\") DO UPDATE SET \"count\" = \"count\" + 1, \"word\" = 'abc'";
+            expected = R"(ON CONFLICT ("word") DO UPDATE SET "count" = "count" + 1, "word" = 'abc')";
         }
     }
     SECTION("two columns") {
@@ -75,7 +75,7 @@ TEST_CASE("upsert_clause") {
                                       .do_update(set(c(&Vocabulary::count) = c(&Vocabulary::count) + 1));
                 value = serialize(expression, context);
             }
-            expected = "ON CONFLICT (\"word\", \"count\") DO UPDATE SET \"count\" = \"count\" + 1";
+            expected = R"(ON CONFLICT ("word", "count") DO UPDATE SET "count" = "count" + 1)";
         }
         SECTION("2 sets") {
             SECTION("fuctions") {
@@ -90,15 +90,15 @@ TEST_CASE("upsert_clause") {
                                                      c(&Vocabulary::word) = "abc"));
                 value = serialize(expression, context);
             }
-            expected = "ON CONFLICT (\"word\", \"count\") DO UPDATE SET \"count\" = \"count\" + 1, \"word\" = 'abc'";
+            expected = R"(ON CONFLICT ("word", "count") DO UPDATE SET "count" = "count" + 1, "word" = 'abc')";
         }
     }
     SECTION("with excluded") {
         auto expression = on_conflict(&User::id).do_update(
             set(c(&User::firstname) = excluded(&User::firstname), c(&User::lastname) = excluded(&User::lastname)));
         value = serialize(expression, context);
-        expected = "ON CONFLICT (\"id\") DO UPDATE SET \"firstname\" = excluded.\"firstname\", \"lastname\" = "
-                   "excluded.\"lastname\"";
+        expected =
+            R"(ON CONFLICT ("id") DO UPDATE SET "firstname" = excluded."firstname", "lastname" = excluded."lastname")";
     }
     REQUIRE(value == expected);
 }

@@ -18,17 +18,17 @@ TEST_CASE("statement_serializer column names") {
             SECTION("id") {
                 SECTION("skip table name") {
                     auto value = serialize(&User::id, context);
-                    REQUIRE(value == "\"id\"");
+                    REQUIRE(value == R"("id")");
                 }
                 SECTION("don't skip table name") {
                     context.skip_table_name = false;
                     auto value = serialize(&User::id, context);
-                    REQUIRE(value == "'users'.\"id\"");
+                    REQUIRE(value == R"("users"."id")");
                 }
             }
             SECTION("name") {
                 auto value = serialize(&User::name, context);
-                REQUIRE(value == "\"name\"");
+                REQUIRE(value == R"("name")");
             }
         }
     }
@@ -72,7 +72,7 @@ TEST_CASE("statement_serializer column names") {
                 SECTION("setter") {
                     value = serialize(&User::setId, context);
                 }
-                expected = "\"id\"";
+                expected = R"("id")";
             }
             SECTION("name") {
                 SECTION("getter") {
@@ -81,7 +81,7 @@ TEST_CASE("statement_serializer column names") {
                 SECTION("setter") {
                     value = serialize(&User::setName, context);
                 }
-                expected = "\"name\"";
+                expected = R"("name")";
             }
             REQUIRE(value == expected);
         }
@@ -102,7 +102,7 @@ TEST_CASE("statement_serializer column names") {
                 SECTION("setter") {
                     value = serialize(&User::setId, context);
                 }
-                expected = "\"id\"";
+                expected = R"("id")";
             }
             SECTION("name") {
                 SECTION("getter") {
@@ -111,7 +111,7 @@ TEST_CASE("statement_serializer column names") {
                 SECTION("setter") {
                     value = serialize(&User::setName, context);
                 }
-                expected = "\"name\"";
+                expected = R"("name")";
             }
             REQUIRE(value == expected);
         }
@@ -139,6 +139,37 @@ TEST_CASE("statement_serializer column names") {
                 auto value = serialize(column<Object2>(&Object2::id), context);
                 REQUIRE(value == R"("id2")");
             }
+        }
+    }
+    SECTION("escaped identifiers") {
+        struct Object1 {
+            int id = 0;
+        };
+        struct Object2 {
+            int id = 0;
+        };
+        struct colalias : alias_tag {
+            static std::string get() {
+                return R"(a"s)";
+            }
+        };
+        auto table1 = make_table(R"(ob"ject1)", make_column(R"(i"d)", &Object1::id));
+        auto table2 = make_table(R"(ob"ject2)", make_column(R"(i"d)", &Object2::id));
+        using storage_impl_t = internal::storage_impl<decltype(table1), decltype(table2)>;
+        storage_impl_t storageImpl{table1, table2};
+        {
+            using context_t = internal::serializer_context<storage_impl_t>;
+            context_t context{storageImpl};
+
+            using als_d = alias_d<Object2>;
+            auto expression =
+                select(columns(&Object1::id, as<colalias>(&Object1::id), alias_column<als_d>(&Object2::id)),
+                       join<als_d>(using_(&Object1::id)),
+                       multi_order_by(order_by(get<colalias>()), order_by(alias_column<als_d>(&Object2::id))));
+            expression.highest_level = true;
+            auto value = serialize(expression, context);
+            REQUIRE(value == R"(SELECT "ob""ject1"."i""d", "ob""ject1"."i""d" AS "a""s", "d"."i""d" FROM "ob""ject1" )"
+                             R"(JOIN "ob""ject2" "d" USING ("i""d") ORDER BY "a""s", "d"."i""d")");
         }
     }
 }
