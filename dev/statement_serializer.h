@@ -87,6 +87,9 @@ namespace sqlite_orm {
                                       const std::string& alias) {
             constexpr char quoteChar = '"';
 
+            // note: In practice, escaping double quotes in identifiers is arguably overkill,
+            // but since the SQLite grammar allows it, it's better to be safe than sorry.
+
             if(!qualifier.empty()) {
                 ss << quoteChar;
                 stream_sql_escaped(ss, qualifier, quoteChar);
@@ -514,7 +517,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type&, const Ctx&) {
-                return T::get();
+                return quote_identifier(T::get());
             }
         };
 
@@ -592,8 +595,9 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& c, const Ctx& context) const {
-                auto tableAliasString = alias_extractor<T>::get();
-                return serialize(c.expression, context) + " AS " + quote_identifier(tableAliasString);
+                std::stringstream ss;
+                ss << serialize(c.expression, context) + " AS " << streaming_identifier(alias_extractor<T>::get());
+                return ss.str();
             }
         };
 

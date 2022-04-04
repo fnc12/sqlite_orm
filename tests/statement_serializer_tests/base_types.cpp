@@ -46,5 +46,15 @@ TEST_CASE("statement_serializer base types") {
         }
     }
 #endif
+    SECTION("blob") {
+        std::vector<char> blob{};
+        stringValue = serialize(blob, context);
+        expected = "x''";
+    }
+    SECTION("escaped string") {
+        std::string str{"'"};
+        stringValue = serialize(str, context);
+        expected = "''''";
+    }
     REQUIRE(stringValue == expected);
 }
