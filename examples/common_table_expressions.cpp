@@ -367,7 +367,7 @@ void depth_or_breadth_first() {
             with(cte<cte_1>("name", "level")(union_all(select(columns("Alice", 0)),
                                                        select(columns(&Org::name, column<cte_1>(1_col) + c(1)),
                                                               join<cte_1>(on(c(&Org::boss) == column<cte_1>(0_col))),
-                                                              order_by(2_nth_col)))),
+                                                              order_by(2)))),
                  select(substr("..........", 1, column<cte_1>(1_col) * c(3)) || c(column<cte_1>(0_col))));
 
         string sql = storage.dump(ast);
@@ -397,7 +397,7 @@ void depth_or_breadth_first() {
             with(cte<cte_1>("name", "level")(union_all(select(columns("Alice", 0)),
                                                        select(columns(&Org::name, column<cte_1>(1_col) + c(1)),
                                                               join<cte_1>(on(c(&Org::boss) == column<cte_1>(0_col))),
-                                                              order_by(2_nth_col).desc()))),
+                                                              order_by(2).desc()))),
                  select(substr("..........", 1, column<cte_1>(1_col) * c(3)) || c(column<cte_1>(0_col))));
 
         string sql = storage.dump(ast);

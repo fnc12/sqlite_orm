@@ -372,21 +372,6 @@ namespace sqlite_orm {
         }
 
         /**
-         *  Constant which gets never replaced in a bindable context.
-         *  Used together with order_by(1_nth_col).
-         */
-        template<unsigned int N>
-        struct statement_serializer<nth_constant<N>, void> {
-            using statement_type = nth_constant<N>;
-
-            template<class Ctx>
-            std::string operator()(const statement_type& /*expression*/, const Ctx&) {
-                static_assert(N > 0);
-                return std::to_string(N);
-            }
-        };
-
-        /**
          *  Serializer for bindable types.
          */
         template<class T>
@@ -846,20 +831,14 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << static_cast<std::string>(c);
-                std::vector<std::string> columnNames =
-                    collect_cte_column_names(get_cte_driving_subselect(c.subselect), c.explicitColumnNames, context);
                 {
-                    ss << '(';
-                    for(size_t i = 0, n = columnNames.size(); i < n; ++i) {
-                        ss << "\"" << columnNames[i] << "\"";
-                        if(i < n - 1) {
-                            ss << ", ";
-                        }
-                    }
-                    ss << ')';
+                    std::vector<std::string> columnNames =
+                        collect_cte_column_names(get_cte_driving_subselect(c.subselect),
+                                                 c.explicitColumnNames,
+                                                 context);
+                    ss << '(' << streaming_identifiers(columnNames) << ')';
                 }
-                ss << " AS ";
-                ss << '(' << serialize(c.subselect, cteContext) << ')';
+                ss << " AS " << '(' << serialize(c.subselect, cteContext) << ')';
                 return ss.str();
             }
         };
