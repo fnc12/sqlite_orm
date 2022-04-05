@@ -15414,6 +15414,8 @@ namespace sqlite_orm {
                                       const std::string& identifier,
                                       const std::string& alias) {
             constexpr char quoteChar = '"';
+            constexpr char qualified[] = {quoteChar, '.', '\0'};
+            constexpr char aliased[] = {' ', quoteChar, '\0'};
 
             // note: In practice, escaping double quotes in identifiers is arguably overkill,
             // but since the SQLite grammar allows it, it's better to be safe than sorry.
@@ -15421,7 +15423,7 @@ namespace sqlite_orm {
             if(!qualifier.empty()) {
                 ss << quoteChar;
                 stream_sql_escaped(ss, qualifier, quoteChar);
-                ss << std::string{quoteChar, '.'};
+                ss << qualified;
             }
             {
                 ss << quoteChar;
@@ -15429,7 +15431,7 @@ namespace sqlite_orm {
                 ss << quoteChar;
             }
             if(!alias.empty()) {
-                ss << std::string{' ', quoteChar};
+                ss << aliased;
                 stream_sql_escaped(ss, alias, quoteChar);
                 ss << quoteChar;
             }
