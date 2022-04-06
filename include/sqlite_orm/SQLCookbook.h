@@ -3,6 +3,8 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <optional>
 #include <string>
+#include <filesystem>
+#include <stdio.h>
 
 // #include "..\ORM_Extensions/SchemaManager.h"
 #include <sqlite_orm/SchemaManager.h>
@@ -50,38 +52,57 @@ struct Album
 
 using namespace sqlite_orm;
 
-auto storage = make_storage("SQLCookbook.sqlite",
-	make_table("Emp",
-		make_column("empno", &Employee::m_empno, primary_key(), autoincrement()),
-		make_column("ename", &Employee::m_ename),
-		make_column("job", &Employee::m_job),
-		make_column("mgr", &Employee::m_mgr),
-		make_column("hiredate", &Employee::m_hiredate),
-		make_column("salary", &Employee::m_salary),
-		make_column("comm", &Employee::m_commission),
-		make_column("deptno", &Employee::m_deptno),
-		foreign_key(&Employee::m_deptno).references(&Department::m_deptno),
-		check(c(&Employee::m_salary) > &Employee::m_commission)),
-	make_table("Dept",
-		make_column("deptno", &Department::m_deptno, primary_key(), autoincrement()),
-		make_column("deptname", &Department::m_deptname),
-		make_column("loc", &Department::m_loc),
-		make_column("mgr", &Department::m_manager),
-		foreign_key(&Department::m_manager).references(&Employee::m_empno)),
-	make_table("Emp_bonus",
-		make_column("id", &EmpBonus::m_id, primary_key(), autoincrement()),
-		make_column("empno", &EmpBonus::m_empno),
-		make_column("received", &EmpBonus::m_received),
-		make_column("type", &EmpBonus::m_type),
-		foreign_key(&EmpBonus::m_empno).references(&Employee::m_empno)),
-	make_table("Artists",
-		make_column("id", &Artist::m_id, primary_key(), autoincrement()),
-		make_column("name", &Artist::m_name)),
-	make_table("Albums",
-		make_column("id", &Album::m_id, primary_key(), autoincrement()),
-		make_column("artist_id", &Album::m_artist_id),
-		foreign_key(&Album::m_artist_id).references(&Artist::m_id)));
 
+auto create_storage(std::string dbFileName, bool temp = false)
+{
+	namespace fs = std::filesystem;
+	auto p = fs::current_path();
+	if(temp) {
+		constexpr size_t length = 2048;
+		std::array<char, length> name;
+		tmpnam_s(name.data(), length);
+		dbFileName = name.data();
+	}
+
+	auto storage = make_storage(dbFileName,
+		make_table("Emp",
+			make_column("empno", &Employee::m_empno, primary_key(), autoincrement()),
+			make_column("ename", &Employee::m_ename),
+			make_column("job", &Employee::m_job),
+			make_column("mgr", &Employee::m_mgr),
+			make_column("hiredate", &Employee::m_hiredate),
+			make_column("salary", &Employee::m_salary),
+			make_column("comm", &Employee::m_commission),
+			make_column("deptno", &Employee::m_deptno),
+			foreign_key(&Employee::m_deptno).references(&Department::m_deptno),
+			check(c(&Employee::m_salary) > &Employee::m_commission)),
+		make_table("Dept",
+			make_column("deptno", &Department::m_deptno, primary_key(), autoincrement()),
+			make_column("deptname", &Department::m_deptname),
+			make_column("loc", &Department::m_loc),
+			make_column("mgr", &Department::m_manager),
+			foreign_key(&Department::m_manager).references(&Employee::m_empno)),
+		make_table("Emp_bonus",
+			make_column("id", &EmpBonus::m_id, primary_key(), autoincrement()),
+			make_column("empno", &EmpBonus::m_empno),
+			make_column("received", &EmpBonus::m_received),
+			make_column("type", &EmpBonus::m_type),
+			foreign_key(&EmpBonus::m_empno).references(&Employee::m_empno)),
+		make_table("Artists",
+			make_column("id", &Artist::m_id, primary_key(), autoincrement()),
+			make_column("name", &Artist::m_name)),
+		make_table("Albums",
+			make_column("id", &Album::m_id, primary_key(), autoincrement()),
+			make_column("artist_id", &Album::m_artist_id),
+			foreign_key(&Album::m_artist_id).references(&Artist::m_id)));
+	if(temp) {
+		storage.sync_schema();	// create empty temp
+	}
+	return storage;
+}
+
+inline auto storage = create_storage("SQLCookbook.sqlite");
+inline auto temp_storage = create_storage("Temp.sqlite", true);
 
 /*
  * Employee -> Department

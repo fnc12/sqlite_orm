@@ -1,45 +1,54 @@
 #pragma once
 
 
-template<typename Storage>
+template<typename Storage, typename Temp>
 struct SchemaManager
 {
 	Storage& storage;
+	Temp& temp;
 
-	SchemaManager(Storage& storage) : storage { storage}
+	SchemaManager(Storage& storage, Temp& temp) : storage { storage}, temp{temp}
 	{
 		storage.foreign_key(false);
+		temp.foreign_key(false);
 	}
 	~SchemaManager()
 	{
 		storage.foreign_key(true);
+		temp.foreign_key(true);
 	}
 private:
 	// this section will become private
 	template<typename Element>
-	auto load_drop()
+	void load_drop()
 	{
-		std::vector<Element> vec;
 		bool exists = storage.table_exists(storage.tablename<Element>());
 		if (exists)
 		{
-			vec = storage.get_all<Element>();
+			temp.remove_all<Element>();
+			for (auto& element : storage.iterate<Element>())
+			{
+				temp.replace(element);
+			}
+
 			storage.drop_table(storage.tablename<Element>());
 		}
-		return vec;
 	}
-	template<typename Vector>
-	void replace(const Vector& vec)
+	template<typename Element>
+	void replace()
 	{
-		storage.replace_range(vec.begin(), vec.end());
+		for (auto& element : temp.iterate<Element>())
+		{
+			storage.replace(element);
+		}
 	}
 public:
 	template<typename Element>
 	void load_drop_sync_replace()
 	{
-		auto vec = load_drop<Element>();
+		load_drop<Element>();
 		storage.sync_schema(true);
-		replace( vec);
+		replace<Element>();
 	}
 	void guarded_sync_schema()
 	{
