@@ -36,8 +36,8 @@ int main()
 	{
 		SchemaManager sm(storage, temp_storage);
 
-		sm.load_drop_sync_replace<Employee>();
-		sm.load_drop_sync_replace<Employee>();
+		// sm.load_drop_sync_replace<Employee>();
+		// sm.load_drop_sync_replace<Employee>();
 
 
 

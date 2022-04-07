@@ -67,7 +67,7 @@ auto create_storage(std::string dbFileName, bool temp = false)
 	auto storage = make_storage(dbFileName,
 		make_table("Emp",
 			make_column("empno", &Employee::m_empno, primary_key(), autoincrement()),
-			make_column("ename", &Employee::m_ename),
+			make_column("ename", &Employee::m_ename, default_value("?")),
 			make_column("job", &Employee::m_job),
 			make_column("mgr", &Employee::m_mgr),
 			make_column("hiredate", &Employee::m_hiredate),
