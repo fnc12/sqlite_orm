@@ -1195,6 +1195,10 @@ namespace sqlite_orm {
          */
         struct autoincrement_t {};
 
+        // JDH
+        struct col_changed_t {};
+        // end JDH
+
         struct primary_key_base {
             enum class order_by {
                 unspecified,
@@ -1553,6 +1557,11 @@ namespace sqlite_orm {
         template<>
         struct is_constraint<autoincrement_t> : std::true_type {};
 
+        // JDH
+        template<>
+        struct is_constraint<col_changed_t> : std::true_type {};
+        // end JDH
+
         template<class... Cs>
         struct is_constraint<primary_key_t<Cs...>> : std::true_type {};
 
@@ -1621,6 +1630,12 @@ namespace sqlite_orm {
     inline internal::unique_t<> unique() {
         return {{}};
     }
+
+    // JDH
+    inline internal::col_changed_t col_changed() {
+        return {};
+    }
+    // end JDH
 
     inline internal::autoincrement_t autoincrement() {
         return {};
@@ -15660,6 +15675,19 @@ namespace sqlite_orm {
             }
         };
 
+
+        // JDH
+        template<>
+        struct statement_serializer<col_changed_t, void> {
+            using statement_type = col_changed_t;
+
+            template<class Ctx>
+            std::string operator()(const statement_type& c, const Ctx&) const {
+                return "";
+            }
+        };
+        // end JDH
+
         template<class... Cs>
         struct statement_serializer<primary_key_t<Cs...>, void> {
             using statement_type = primary_key_t<Cs...>;
@@ -19501,6 +19529,27 @@ namespace sqlite_orm {
                 //  get table info provided in `make_table` call..
                 auto storageTableInfo = this->table.get_table_info();
 
+                // JDH
+                iterate_tuple(this->table.elements, [&res](auto& v) {
+                    auto&& vv = v;
+                    using type = std::decay_t<decltype(v)>;
+
+					// NOTE: I need to access v.constraints but not all v have constraints, so I cannot do this:
+
+                    // constexpr bool equal = std::is_same_v<type, 
+                    // iterate_tuple(v.constraints, [&res](auto& x) {
+                    //     auto&& xx = x;
+                    //      using type = std::decay_t<decltype(x)>;
+                    //      if( std::is_same<type, col_changed>::value )
+                    //      {
+                    //          res = decltype(res)::dropped_and_recreated;
+                    //      }
+                    // });
+                    std::ignore = vv;
+                    }
+                );
+                // end JDH
+
                 //  now get current table info from db using `PRAGMA table_info` query..
                 auto dbTableInfo = this->get_table_info(this->table.name, db);
 
@@ -19601,7 +19650,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
 
-            auto schema_stat = tImpl.schema_status(db, preserve);
+            auto schema_stat = tImpl.schema_status(db, preserve);   //JDH to look inside
             if(schema_stat != decltype(schema_stat)::already_in_sync) {
                 if(schema_stat == decltype(schema_stat)::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);

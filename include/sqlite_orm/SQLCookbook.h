@@ -93,10 +93,10 @@ auto create_storage(std::string dbFileName, bool temp = false)
 			make_column("name", &Artist::m_name)),
 		make_table("Albums",
 			make_column("id", &Album::m_id, primary_key(), autoincrement()),
-			make_column("artist_id", &Album::m_artist_id),
+			make_column("artist_id", &Album::m_artist_id, col_changed()),
 			foreign_key(&Album::m_artist_id).references(&Artist::m_id)));
 	if(temp) {
-		storage.sync_schema();	// create empty temp
+		// storage.sync_schema();	// create empty temp
 	}
 	return storage;
 }

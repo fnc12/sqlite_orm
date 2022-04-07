@@ -36,6 +36,9 @@ int main()
 	{
 		SchemaManager sm(storage, temp_storage);
 
+        
+		// storage.backup_to("Temp.sqlite");
+
 		// sm.load_drop_sync_replace<Employee>();
 		// sm.load_drop_sync_replace<Employee>();
 
@@ -75,22 +78,23 @@ int main()
 		Album{1, 1}
 	};
 
-	std::vector<Employee> vec =
+	
+	std::vector<Employee> vec
 	{
-		Employee{7369, "Smith", "Clerk", 7902, "17-DEC-1980",800,std::nullopt, 20},
-		Employee{7499, "Allen", "SalesMan", 7698, "20-FEB-1981", 1600, 300, 30},
-		Employee{7521,"Ward", "SalesMan", 7698,"22-feb-1981",1250,500, 30},
-		Employee{7566,"Jones", "Manager", 7839, "02-abr-1981",2975, std::nullopt,20},
-		Employee{7654,"Martin","SalesMan", 7698, "28-sep-1981", 1250,1400,30},
-		Employee{7698,"Blake", "Manager", 7839, "01-may-1981", 2850, std::nullopt, 30},
-		Employee{7782, "Clark", "Manager", 7839, "09-jun-1981", 2450, std::nullopt, 10},
-		Employee{7788, "Scott", "Analyst", 7566, "09-Dec-1982", 3000, std::nullopt, 20},
-		Employee{7839, "King", "President", std::nullopt, "17-nov-1981", 5000, std::nullopt,10},
-		Employee{7844,"Turner","SalesMan", 7698, "08-Sep-1981", 1500, 0, 30},
-		Employee{7876, "Adams", "Clerk", 7788, "12-JAN-1983", 1100, std::nullopt, 20},
-		Employee{7900,"James", "Clerk", 7698,"03-DEC-1981", 950, std::nullopt, 30},
-		Employee{7902,"Ford", "Analyst", 7566, "03-DEC-1981", 3000, std::nullopt, 20},
-		Employee{7934, "Miller", "Clerk", 7782,"23-JAN-1982", 1300, std::nullopt, 10}
+		Employee{ 7369, "Smith", "Clerk", 7902, "17-DEC-1980",800,std::nullopt, 20 },
+			Employee{ 7499, "Allen", "SalesMan", 7698, "20-FEB-1981", 1600, 300, 30 },
+			Employee{ 7521,"Ward", "SalesMan", 7698,"22-feb-1981",1250,500, 30 },
+			Employee{ 7566,"Jones", "Manager", 7839, "02-abr-1981",2975, std::nullopt,20 },
+			Employee{ 7654,"Martin","SalesMan", 7698, "28-sep-1981", 1250,1400,30 },
+			Employee{ 7698,"Blake", "Manager", 7839, "01-may-1981", 2850, std::nullopt, 30 },
+			Employee{ 7782, "Clark", "Manager", 7839, "09-jun-1981", 2450, std::nullopt, 10 },
+			Employee{ 7788, "Scott", "Analyst", 7566, "09-Dec-1982", 3000, std::nullopt, 20 },
+			Employee{ 7839, "King", "President", std::nullopt, "17-nov-1981", 5000, std::nullopt,10 },
+			Employee{ 7844,"Turner","SalesMan", 7698, "08-Sep-1981", 1500, 0, 30 },
+			Employee{ 7876, "Adams", "Clerk", 7788, "12-JAN-1983", 1100, std::nullopt, 20 },
+			Employee{ 7900,"James", "Clerk", 7698,"03-DEC-1981", 950, std::nullopt, 30 },
+			Employee{ 7902,"Ford", "Analyst", 7566, "03-DEC-1981", 3000, std::nullopt, 20 },
+			Employee{ 7934, "Miller", "Clerk", 7782,"23-JAN-1982", 1300, std::nullopt, 10 }
 	};
 
 	std::vector<Department> des =
