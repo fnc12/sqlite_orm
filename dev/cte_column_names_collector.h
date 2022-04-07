@@ -137,11 +137,19 @@ namespace sqlite_orm {
             std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
             // unquote column names
-            for(std::string& name: columnNames) {
-                if(!name.empty() && name.front() == '"' && name.back() == '"') {
-                    name.erase(name.end() - 1);
-                    name.erase(name.begin());
+            constexpr auto unquote = [](std::string& identifier) {
+                if(!identifier.empty()) {
+                    constexpr char quoteChar = '"';
+                    constexpr char sqlEscaped[] = {quoteChar, quoteChar};
+                    identifier.erase(identifier.end() - 1);
+                    identifier.erase(identifier.begin());
+                    for(size_t pos = 0; (pos = identifier.find(sqlEscaped, pos, 2)) != identifier.npos; ++pos) {
+                        identifier.erase(pos, 1);
+                    }
                 }
+            };
+            for(std::string& name: columnNames) {
+                unquote(name);
             }
 
             // 2. override column names from cte expression
