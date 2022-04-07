@@ -38,7 +38,7 @@ namespace sqlite_orm {
          */
         template<class St, class As>
         struct column_expression_type<St, As, match_specialization_of<As, as_t>> {
-            using type = as_t<typename As::alias_type, column_expression_of_t<St, expression_type_t<As>>>;
+            using type = as_t<alias_type_t<As>, column_expression_of_t<St, expression_type_t<As>>>;
         };
 
         /**

@@ -8,13 +8,15 @@
 #include "cxx_polyfill.h"
 #include "type_traits.h"
 #include "error_code.h"
+#include "alias.h"
 #include "select_constraints.h"
+#include "serializer_context.h"
 
 namespace sqlite_orm {
     namespace internal {
         // collecting column names utilizes the statement serializer
-        template<class T, class C>
-        std::string serialize(const T& t, const C& context);
+        template<class T, class I>
+        std::string serialize(const T& t, const serializer_context<I>& context);
 
         template<class T, class SFINAE = void>
         struct cte_column_names_collector {
@@ -58,9 +60,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& /*expression*/, const Ctx& /*context*/) const {
-                std::stringstream s;
-                s << As::alias_type::get();
-                return {s.str()};
+                return {alias_extractor<alias_type_t<As>>::extract()};
             }
         };
 

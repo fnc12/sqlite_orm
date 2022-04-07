@@ -9,11 +9,6 @@
 
 namespace sqlite_orm {
 
-    /**
-     *  Classification of a label as a 'CTE' label.
-     */
-    struct cte_label_tag {};
-
     namespace internal {
 
         /**
@@ -23,8 +18,6 @@ namespace sqlite_orm {
         class column_results : fields_t<Fs...> {
           public:
             using fields_type = fields_t<Fs...>;
-            // this type name is used to detect the mapping from label to mapper
-            using cte_label_type = Label;
 
             template<size_t I>
             decltype(auto) cget() const noexcept {
