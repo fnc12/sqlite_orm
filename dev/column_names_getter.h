@@ -66,7 +66,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {quote_identifier(alias_extractor<A>::get()) + ".*"};
+                return {quote_identifier(alias_extractor<A>::extract()) + ".*"};
             }
         };
 

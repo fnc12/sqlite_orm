@@ -47,7 +47,7 @@ namespace sqlite_orm {
 
         template<class A>
         struct alias_extractor<A, typename std::enable_if<std::is_base_of<alias_tag, A>::value>::type> {
-            static std::string get() {
+            static std::string extract() {
                 std::stringstream ss;
                 ss << A::get();
                 return ss.str();
@@ -56,7 +56,7 @@ namespace sqlite_orm {
 
         template<class T>
         struct alias_extractor<T, typename std::enable_if<!std::is_base_of<alias_tag, T>::value>::type> {
-            static std::string get() {
+            static std::string extract() {
                 return {};
             }
         };

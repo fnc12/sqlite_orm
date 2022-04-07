@@ -43,7 +43,7 @@ namespace sqlite_orm {
 
             template<class T, class C>
             void operator()(const alias_column_t<T, C> &a) const {
-                (*this)(a.column, alias_extractor<T>::get());
+                (*this)(a.column, alias_extractor<T>::extract());
             }
 
             template<class T>
@@ -65,7 +65,7 @@ namespace sqlite_orm {
                 static_assert(polyfill::is_detected_v<type_t, T>,
                               "alias<O> must have a nested alias<O>::type typename");
                 auto tableName = this->find_table_name(typeid(type_t<T>));
-                table_names.emplace(move(tableName), alias_extractor<T>::get());
+                table_names.emplace(move(tableName), alias_extractor<T>::extract());
             }
 
             template<class T>
