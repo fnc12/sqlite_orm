@@ -69,7 +69,7 @@ namespace sqlite_orm {
             columns_type columns;
             bool distinct = false;
 
-            static constexpr const int count = std::tuple_size<columns_type>::value;
+            static constexpr int count = std::tuple_size<columns_type>::value;
         };
 
         template<class T>

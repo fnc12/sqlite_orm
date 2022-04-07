@@ -117,7 +117,7 @@ namespace sqlite_orm {
             struct column_foreign_keys_count<foreign_key_t<A, B>, O> {
                 using target_type = typename foreign_key_t<A, B>::target_type;
 
-                static constexpr const int value = std::is_same<O, target_type>::value ? 1 : 0;
+                static constexpr int value = std::is_same<O, target_type>::value ? 1 : 0;
             };
 
             /**
@@ -129,12 +129,12 @@ namespace sqlite_orm {
 
             template<class O>
             struct table_foreign_keys_count_impl<O> {
-                static constexpr const int value = 0;
+                static constexpr int value = 0;
             };
 
             template<class O, class H, class... Tail>
             struct table_foreign_keys_count_impl<O, H, Tail...> {
-                static constexpr const int value =
+                static constexpr int value =
                     column_foreign_keys_count<H, O>::value + table_foreign_keys_count_impl<O, Tail...>::value;
             };
 
@@ -149,7 +149,7 @@ namespace sqlite_orm {
             struct table_foreign_keys_count<table_t<O, false, Cs...>, P> {
                 using table_type = table_t<O, false, Cs...>;
 
-                static constexpr const int value = table_foreign_keys_count_impl<P, Cs...>::value;
+                static constexpr int value = table_foreign_keys_count_impl<P, Cs...>::value;
             };
 
             /**
@@ -164,7 +164,7 @@ namespace sqlite_orm {
 
             template<class H, class... Ts, class O>
             struct storage_foreign_keys_count_impl<storage_impl<H, Ts...>, O> {
-                static constexpr const int value = table_foreign_keys_count<H, O>::value +
+                static constexpr int value = table_foreign_keys_count<H, O>::value +
                                                    storage_foreign_keys_count_impl<storage_impl<Ts...>, O>::value;
             };
 
@@ -177,7 +177,7 @@ namespace sqlite_orm {
             struct storage_foreign_keys_count {
                 using impl_type = typename S::impl_type;
 
-                static constexpr const int value = storage_foreign_keys_count_impl<impl_type, O>::value;
+                static constexpr int value = storage_foreign_keys_count_impl<impl_type, O>::value;
             };
 
             /**
