@@ -4,98 +4,29 @@
 #include <string>
 
 #include "cxx_polyfill.h"
+#include "alias.h"
 #include "select_constraints.h"
 #include "cte_types.h"
 
 namespace sqlite_orm {
 
-    namespace internal {
-        template<typename Alias>
-        using get_fn_t = decltype(Alias::get());
-
-        template<typename A>
-        struct notanalias {
-            static_assert(polyfill::always_false_v<A>,
-                          "als_v<Alias>: Alias must have a static `Alias::get()` function.");
-        };
-    }
-
-    template<class Label, class Alias, class SFINAE = void>
-    SQLITE_ORM_INLINE_VAR constexpr internal::notanalias<Alias> als_of_v{};
-
-    /**
-     *  Refer to a CTE column by mapped integral constant.
-     *  
-     *  col_v<&Object::member> -> column_pointer<Label, ice_t<&Object::member>>
+    /** 
+     *  A special table alias that is both, a storage lookup type (mapping type) and an alias.
      */
-    template<class Label, auto c>
-    SQLITE_ORM_INLINE_VAR constexpr internal::column_pointer<Label, internal::ice_t<c>> col_of_v{};
-    /**
-     *  Refer to a CTE column by mapped object member.
-     *  
-     *  col_v<&Object::member> -> column_pointer<Label, ice_t<&Object::member>>
-     */
-    template<class Label, class O, class F, F O::*m>
-    SQLITE_ORM_INLINE_VAR constexpr internal::column_pointer<Label, internal::ice_t<m>> col_of_v<Label, m>{};
+    template<char C>
+    struct cte_alias
+        : internal::table_alias<cte_alias<C> /* refer to self, since a label is both, an alias and a lookup type */,
+                                C> {};
 
-    /**
-     *  Refer to a CTE column by mapped alias.
-     *  
-     *  The alias type must have a static `Alias::get()` function.
-     *
-     *  als_v<Alias> -> column_pointer<Label, alias_holder<Alias>>
-     */
-    template<class Label, class Alias>
-    SQLITE_ORM_INLINE_VAR constexpr internal::column_pointer<Label, internal::alias_holder<Alias>>
-        als_of_v<Label, Alias, polyfill::void_t<internal::get_fn_t<Alias>>>{};
-
-    template<class Label>
-    struct cte_label_interface {
-        /**
-         *  Refer to a CTE column by mapped object member.
-         *  
-         *  col_v<&Object::member> -> column_pointer<Label, ice_t<&Object::member>>
-         */
-        template<auto c>
-        static constexpr auto col_v = col_of_v<Label, c>;
-
-        /**
-         *  Refer to a CTE column by mapped alias.
-         *  
-         *  The alias type must have a static `Alias::get()` function.
-         *
-         *  als_v<Alias> -> column_pointer<Label, alias_holder<Alias>>
-         */
-        template<class Alias>
-        static constexpr auto als_v = als_of_v<Label, Alias>;
-    };
-
-    template<char C, char... Chars>
-    struct cte_label : cte_label_interface<cte_label<C, Chars...>> {
-        // Optional label classification tag
-        using label_tag = cte_label_tag;
-
-        static constexpr char str[] = {C, Chars..., '\0'};
-
-        static constexpr const char* label() {
-            return str;
-        }
-
-        // CTE derives from a label, hence provide a string conversion operator
-        explicit operator std::string() const {
-            return cte_label::label();
-        }
-    };
-
-    using cte_1 = cte_label<'c', 't', 'e', '_', '1'>;
-    using cte_2 = cte_label<'c', 't', 'e', '_', '2'>;
-    using cte_3 = cte_label<'c', 't', 'e', '_', '3'>;
-    using cte_4 = cte_label<'c', 't', 'e', '_', '4'>;
-    using cte_5 = cte_label<'c', 't', 'e', '_', '5'>;
-    using cte_6 = cte_label<'c', 't', 'e', '_', '6'>;
-    using cte_7 = cte_label<'c', 't', 'e', '_', '7'>;
-    using cte_8 = cte_label<'c', 't', 'e', '_', '8'>;
-    using cte_9 = cte_label<'c', 't', 'e', '_', '9'>;
+    using cte_1 = cte_alias<'1'>;
+    using cte_2 = cte_alias<'2'>;
+    using cte_3 = cte_alias<'3'>;
+    using cte_4 = cte_alias<'4'>;
+    using cte_5 = cte_alias<'5'>;
+    using cte_6 = cte_alias<'6'>;
+    using cte_7 = cte_alias<'7'>;
+    using cte_8 = cte_alias<'8'>;
+    using cte_9 = cte_alias<'9'>;
 
 #if __cplusplus >= 201703L  // use of C++17 or higher
     namespace internal {

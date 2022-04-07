@@ -4,6 +4,8 @@
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 
+#include "static_magic.h"
+
 namespace sqlite_orm {
 
     /**
@@ -46,16 +48,23 @@ namespace sqlite_orm {
         struct alias_extractor;
 
         template<class A>
-        struct alias_extractor<A, typename std::enable_if<std::is_base_of<alias_tag, A>::value>::type> {
-            static std::string extract() {
-                std::stringstream ss;
-                ss << A::get();
-                return ss.str();
+        struct alias_extractor<A, match_if<std::is_base_of, alias_tag, A>> {
+            template<bool always = !std::is_same<polyfill::detected_t<type_t, A>, A>::value>
+            static std::string extract(polyfill::bool_constant<always> = {}) {
+                return static_if<always>(
+                    []() {
+                        std::stringstream ss;
+                        ss << A::get();
+                        return ss.str();
+                    },
+                    []() {
+                        return std::string{};
+                    })();
             }
         };
 
         template<class T>
-        struct alias_extractor<T, typename std::enable_if<!std::is_base_of<alias_tag, T>::value>::type> {
+        struct alias_extractor<T, match_if_not<std::is_base_of, alias_tag, T>> {
             static std::string extract() {
                 return {};
             }

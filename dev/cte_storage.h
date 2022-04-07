@@ -9,6 +9,7 @@
 #include "column_expression.h"
 #include "select_constraints.h"
 #include "table.h"
+#include "alias.h"
 #include "cte_types.h"
 #include "cte_column_names_collector.h"
 #include "storage_lookup.h"
@@ -118,7 +119,7 @@ namespace sqlite_orm {
                 collect_cte_column_names(get_cte_driving_subselect(cte.subselect), cte.explicitColumnNames, context);
 
             return create_cte_table_t<Mapper, typename Mapper::index_sequence>{
-                cte.label(),
+                alias_extractor<cte_label_type_t<CTE>>::extract(std::true_type{}),
                 std::make_tuple(
                     make_column<>(move(columnNames.at(CIs)), cte_getter_v<O, CIs>, cte_setter_v<O, CIs>)...)};
         }

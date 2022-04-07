@@ -1,5 +1,6 @@
 #pragma once
 
+#include "type_traits.h"
 #include "alias.h"
 
 namespace sqlite_orm {
@@ -16,8 +17,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct mapped_type_proxy<T, typename std::enable_if<std::is_base_of<alias_tag, T>::value>::type> {
-            using type = typename T::type;
+        struct mapped_type_proxy<T, match_if<std::is_base_of, alias_tag, T>> {
+            using type = type_t<T>;
         };
     }
 }

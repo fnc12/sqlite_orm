@@ -521,16 +521,6 @@ void show_mapping_and_backreferencing() {
         string sql = storage.dump(ast);
         auto stmt = storage.prepare(ast);
     }
-    // map column via integral pointer-to-member into cte,
-    // back-reference via `cte_1::col_v<>`
-    {
-        auto ast = with(
-            cte<cte_1>("x")(union_all(select(c_v<&Object::id>), select(cte_1::col_v<&Object::id> + c(1), limit(10)))),
-            select(cte_1::col_v<&Object::id>));
-
-        string sql = storage.dump(ast);
-        auto stmt = storage.prepare(ast);
-    }
 }
 
 int main() {
