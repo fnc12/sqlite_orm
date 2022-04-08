@@ -19538,9 +19538,8 @@ namespace sqlite_orm {
 
                     // constexpr bool equal = std::is_same_v<type, 
                     // iterate_tuple(v.constraints, [&res](auto& x) {
-                    //     auto&& xx = x;
                     //      using type = std::decay_t<decltype(x)>;
-                    //      if( std::is_same<type, col_changed>::value )
+                    //      if( std::is_same<type, col_changed_t>::value )
                     //      {
                     //          res = decltype(res)::dropped_and_recreated;
                     //      }
