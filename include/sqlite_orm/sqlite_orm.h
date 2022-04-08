@@ -2243,6 +2243,12 @@ namespace sqlite_orm {
              */
             std::unique_ptr<std::string> default_value() const;
 
+            // JDH
+            // review if col has col_changed_t
+            bool has_changed() const;
+
+            // end JDH
+
             bool is_generated() const {
 #if SQLITE_VERSION_NUMBER >= 3031000
                 auto res = false;
@@ -10269,6 +10275,17 @@ namespace sqlite_orm {
                     static_if<is_foreign_key<element_type>{}>(lambda)(element);
                 });
             }
+            // JDH
+            bool has_changed() const {
+                bool res = false;
+                this->for_each_column([&res](auto& col) {
+                    if ( col.has_changed()) {
+                        res = true;
+                    }
+                });
+                return res;
+            }
+            // end JDH
 
             template<class F, class L>
             void for_each_column_with_field_type(const L& lambda) const {
@@ -13372,6 +13389,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
+
         struct storage_base {
             using collating_function = std::function<int(int, const void*, int, const void*)>;
 
@@ -13379,9 +13397,25 @@ namespace sqlite_orm {
             pragma_t pragma;
             limit_accesor limit;
 
-        private:
+        protected:
             inline static bool foreign_key_value = true;
+
+            // JDH
+            // struct schema_update : storage_base
+            // {
+            //
+            //     schema_update()
+            // 	{
+            //         storage_base::foreign_key_value = false;
+            //     }
+            //     ~schema_update()
+            //     {
+            //         storage_base::foreign_key_value = true;
+            //     }
+            // };
+            // end JDH
         public:
+#if 0   // not visible outside anymore!
             static void foreign_key(bool value)
             {
                 foreign_key_value = value;
@@ -13390,7 +13424,7 @@ namespace sqlite_orm {
             {
                 return foreign_key_value;
             }
-
+#endif
             transaction_guard_t transaction_guard() {
                 this->begin_transaction();
                 auto commitFunc = std::bind(static_cast<void (storage_base::*)()>(&storage_base::commit), this);
@@ -17037,6 +17071,10 @@ namespace sqlite_orm {
 
 // #include "util.h"
 
+// JDH
+#include <string>
+// end JDH
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -17908,13 +17946,29 @@ namespace sqlite_orm {
              * can be printed out on std::ostream with `operator<<`.
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
+                // JDH
                 auto con = this->get_connection();
                 std::map<std::string, sync_schema_result> result;
-                auto db = con.get();
-                this->impl.for_each([&result, db, preserve, this](auto& storageImpl) {
-                    auto res = this->sync_table(storageImpl, db, preserve);
-                    result.insert({storageImpl.table.name, res});
-                });
+
+                try
+                {
+                    foreign_key_value = false;
+                    // auto con = this->get_connection();
+                    // std::map<std::string, sync_schema_result> result;
+                    auto db = con.get();
+                    this->impl.for_each([&result, db, preserve, this](auto& storageImpl) {
+                        auto res = this->sync_table(storageImpl, db, preserve);
+                        result.insert({ storageImpl.table.name, res });
+                        });
+                }
+                catch (std::exception& ex)
+                {
+                    std::string s = ex.what();
+                    foreign_key_value = true;
+                    throw;
+                }
+                foreign_key_value = true;
+                // end JDH
                 return result;
             }
 
@@ -19290,6 +19344,10 @@ namespace sqlite_orm {
 
 // #include "../column.h"
 
+// JDH
+#include <type_traits>  //  std::decay_t
+// end JDH
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -19304,6 +19362,19 @@ namespace sqlite_orm {
             return res;
         }
 
+        // JDH
+        template<class O, class T, class G, class S, class... Op>
+        bool column_t<O, T, G, S, Op...>::has_changed() const {
+            bool changed = false;
+            iterate_tuple(this->constraints, [&changed](auto& v) {
+                using constrain_type = std::decay_t<decltype(v)>;
+                constrain_type* p = nullptr;
+                if ( std::is_same_v<col_changed_t, constrain_type>)
+					changed = true;
+                });
+            return changed;
+        }
+        // end JDH
     }
 }
 
@@ -19530,23 +19601,7 @@ namespace sqlite_orm {
                 auto storageTableInfo = this->table.get_table_info();
 
                 // JDH
-                iterate_tuple(this->table.elements, [&res](auto& v) {
-                    auto&& vv = v;
-                    using type = std::decay_t<decltype(v)>;
-
-					// NOTE: I need to access v.constraints but not all v have constraints, so I cannot do this:
-
-                    // constexpr bool equal = std::is_same_v<type, 
-                    // iterate_tuple(v.constraints, [&res](auto& x) {
-                    //      using type = std::decay_t<decltype(x)>;
-                    //      if( std::is_same<type, col_changed_t>::value )
-                    //      {
-                    //          res = decltype(res)::dropped_and_recreated;
-                    //      }
-                    // });
-                    std::ignore = vv;
-                    }
-                );
+                bool table_has_changed_flag = this->table.has_changed();
                 // end JDH
 
                 //  now get current table info from db using `PRAGMA table_info` query..
@@ -19558,6 +19613,13 @@ namespace sqlite_orm {
                 if(this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                     gottaCreateTable = true;
                 }
+                // JDH
+                if (columnsToAdd.empty() && table_has_changed_flag)
+                {
+                    gottaCreateTable = true;
+                    // we want this as a result:  res = decltype(res)::dropped_and_recreated;
+                }
+                // end JDH
 
                 if(!gottaCreateTable) {  //  if all storage columns are equal to actual db columns but there are
                     //  excess columns at the db..
@@ -19702,8 +19764,12 @@ namespace sqlite_orm {
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
                     } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
-                        this->drop_table_internal(tImpl.table.name, db);
-                        this->create_table(db, tImpl.table.name, tImpl);
+                        // JDH
+                        const std::vector<table_info*> columns_to_ignore{};
+                        this->backup_table(db, tImpl, columns_to_ignore);
+                        // this->drop_table_internal(tImpl.table.name, db);
+                        // this->create_table(db, tImpl.table.name, tImpl);
+                        // end JDH
                         res = decltype(res)::dropped_and_recreated;
                     }
                 }

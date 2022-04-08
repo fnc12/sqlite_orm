@@ -34,7 +34,7 @@ int main()
 
 	try
 	{
-		SchemaManager sm(storage, temp_storage);
+		// SchemaManager sm(storage, temp_storage);
 
         
 		// storage.backup_to("Temp.sqlite");
@@ -44,15 +44,16 @@ int main()
 
 
 
-		sm.guarded_sync_schema();
+		// sm.guarded_sync_schema();
+		storage.sync_schema(true);
 
-		auto pair = sm.find_duplicate_in_column<Employee, &Employee::m_ename>();
-		if (pair.first)
-		{
-			// duplicates found
-			auto x = *pair.second;
-			std::ignore = x;
-		}
+		// auto pair = sm.find_duplicate_in_column<Employee, &Employee::m_ename>();
+		// if (pair.first)
+		// {
+		// 	// duplicates found
+		// 	auto x = *pair.second;
+		// 	std::ignore = x;
+		// }
 
 
 		storage.remove_all<Album>();

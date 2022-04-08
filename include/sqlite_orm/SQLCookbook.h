@@ -48,22 +48,15 @@ struct Album
 {
 	int m_id;
 	int m_artist_id;
+	int m_year;
+	int m_age;
 };
 
 using namespace sqlite_orm;
 
 
-auto create_storage(std::string dbFileName, bool temp = false)
+auto create_storage(std::string dbFileName)
 {
-	namespace fs = std::filesystem;
-	auto p = fs::current_path();
-	if(temp) {
-		constexpr size_t length = 2048;
-		std::array<char, length> name;
-		tmpnam_s(name.data(), length);
-		dbFileName = name.data();
-	}
-
 	auto storage = make_storage(dbFileName,
 		make_table("Emp",
 			make_column("empno", &Employee::m_empno, primary_key(), autoincrement()),
@@ -94,15 +87,20 @@ auto create_storage(std::string dbFileName, bool temp = false)
 		make_table("Albums",
 			make_column("id", &Album::m_id, primary_key(), autoincrement()),
 			make_column("artist_id", &Album::m_artist_id, col_changed()),
+			make_column("year", &Album::m_year),
+			make_column("age", &Album::m_age),                 //, generated_always_as(c(&Album::m_year) + 20)),
+			check(c(&Album::m_year) > 0),
 			foreign_key(&Album::m_artist_id).references(&Artist::m_id)));
-	if(temp) {
-		// storage.sync_schema();	// create empty temp
+
+	static bool flag = false;
+	if (! flag ) {
+		flag = true;
+		// storage.sync_schema();	// enable it in a normal day to day application; call it specifically when col_changed() applies to at least one table
 	}
 	return storage;
 }
 
 inline auto storage = create_storage("SQLCookbook.sqlite");
-inline auto temp_storage = create_storage("Temp.sqlite", true);
 
 /*
  * Employee -> Department

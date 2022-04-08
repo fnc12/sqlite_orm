@@ -9,13 +9,13 @@ struct SchemaManager
 
 	SchemaManager(Storage& storage, Temp& temp) : storage { storage}, temp{temp}
 	{
-		storage.foreign_key(false);
-		temp.foreign_key(false);
+		// storage.foreign_key(false);
+		// temp.foreign_key(false);
 	}
 	~SchemaManager()
 	{
-		storage.foreign_key(true);
-		temp.foreign_key(true);
+		// storage.foreign_key(true);
+		// temp.foreign_key(true);
 	}
 private:
 	// this section will become private
