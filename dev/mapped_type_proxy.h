@@ -17,7 +17,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct mapped_type_proxy<T, match_if<std::is_base_of, alias_tag, T>> {
+        struct mapped_type_proxy<T, match_if<is_table_alias, T>> {
             using type = type_t<T>;
         };
     }

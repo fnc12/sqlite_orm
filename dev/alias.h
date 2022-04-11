@@ -4,6 +4,7 @@
 #include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 
+#include "cxx_polyfill.h"
 #include "static_magic.h"
 
 namespace sqlite_orm {
@@ -16,16 +17,63 @@ namespace sqlite_orm {
 
     namespace internal {
 
+        template<class A>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_alias_v = std::is_base_of<alias_tag, A>::value;
+
+        template<class A>
+        using is_column_alias = polyfill::bool_constant<is_column_alias_v<A>>;
+
+        template<class A>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_table_alias_v =
+            polyfill::conjunction_v<std::is_base_of<alias_tag, A>, polyfill::is_detected<type_t, A>>;
+
+        template<class A>
+        using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
+
+        /** 
+         *  A CTE alias is a specialization of a table alias, which is both, a storage lookup type (mapping type) and an alias.
+         */
+        template<class A>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_cte_alias_v =
+            polyfill::conjunction_v<std::is_base_of<alias_tag, A>, std::is_same<polyfill::detected_t<type_t, A>, A>>;
+
+        template<class A>
+        using is_cte_alias = polyfill::bool_constant<is_cte_alias_v<A>>;
+
+#if __cplusplus >= 202002L  // C++20 and later
+        /*  
+         *  Helper class to facilitate user-defined string literal operator template
+         */
+        template<size_t N>
+        struct string_identifier_template {
+            static constexpr size_t size() {
+                return N - 1;
+            }
+
+            constexpr string_identifier_template(const char (&id)[N]) : id{id} {}
+
+            const char (&id)[N];
+        };
+
+        template<template<char...> class Alias, string_identifier_template t, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL auto to_alias(std::index_sequence<Idx...>) {
+            return Alias<t.id[Idx]...>{};
+        }
+#endif
+    }
+
+    namespace internal {
+
         /**
          *  This is a common built-in class used for custom single character table aliases.
-         *  For convenience there exist type aliases `alias_a`, `alias_b`, ...
+         *  For convenience there exist public type aliases `alias_a`, `alias_b`, ...
          */
-        template<class T, char A>
+        template<class T, char A, char... X>
         struct table_alias : alias_tag {
             using type = T;
 
-            constexpr static char get() {
-                return A;
+            constexpr static std::string get() {
+                return {A, X...};
             }
         };
 
@@ -45,13 +93,17 @@ namespace sqlite_orm {
         };
 
         template<class T, class SFINAE = void>
-        struct alias_extractor;
+        struct alias_extractor {
+            static std::string extract() {
+                return {};
+            }
+        };
 
         template<class A>
         struct alias_extractor<A, match_if<std::is_base_of, alias_tag, A>> {
-            template<bool always = !std::is_same<polyfill::detected_t<type_t, A>, A>::value>
-            static std::string extract(polyfill::bool_constant<always> = {}) {
-                return static_if<always>(
+            template<bool yes = !is_cte_alias_v<A>>
+            static std::string extract(polyfill::bool_constant<yes> = {}) {
+                return static_if<yes>(
                     []() {
                         std::stringstream ss;
                         ss << A::get();
@@ -60,13 +112,6 @@ namespace sqlite_orm {
                     []() {
                         return std::string{};
                     })();
-            }
-        };
-
-        template<class T>
-        struct alias_extractor<T, match_if_not<std::is_base_of, alias_tag, T>> {
-            static std::string extract() {
-                return {};
             }
         };
 
@@ -85,17 +130,28 @@ namespace sqlite_orm {
          *  This is a common built-in class used for custom single-character column aliases.
          *  For convenience there exist type aliases `colalias_a`, `colalias_b`, ...
          */
-        template<char A>
+        template<char A, char... X>
         struct column_alias : alias_tag {
             static std::string get() {
-                return std::string(1u, A);
+                return {A, X...};
             }
         };
 
         template<class T>
         struct alias_holder {
             using type = T;
+            using alias_type = type;
         };
+
+        template<size_t n, char... C>
+        SQLITE_ORM_CONSTEVAL auto n_to_colalias() {
+            constexpr column_alias<'1' + n % 10, C...> colalias{};
+            if constexpr(n > 10) {
+                return n_to_colalias<n / 10, '1' + n % 10, C...>();
+            } else {
+                return colalias;
+            }
+        }
     }
 
     /**
@@ -109,8 +165,34 @@ namespace sqlite_orm {
         return {c};
     }
 
-    template<class T, class E>
-    internal::as_t<T, E> as(E expression) {
+    /** 
+     *  Alias a column expression.
+     */
+    template<class A, class E>
+    internal::as_t<A, E> as(E expression) {
+        return {std::move(expression)};
+    }
+
+#if __cplusplus >= 202002L  // C++20 and later
+    template<auto als, class E>
+    internal::as_t<decltype(als), E> as(E expression) {
+        return {std::move(expression)};
+    }
+#endif
+
+    /** 
+     *  Alias a column expression.
+     */
+    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
+    internal::as_t<A, E> operator>>=(E expression, const A&) {
+        return {std::move(expression)};
+    }
+
+    /** 
+     *  Alias a column expression.
+     */
+    template<class A, class E, internal::satisfies<internal::is_column_alias, A> = true>
+    internal::as_t<A, E> operator|=(E expression, const A&) {
         return {std::move(expression)};
     }
 
@@ -181,4 +263,29 @@ namespace sqlite_orm {
     using colalias_g = internal::column_alias<'g'>;
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
+
+#if __cplusplus >= 201703L  // use of C++17 or higher
+    /**
+     *  column_alias<'1'[, ...]> from a numeric literal.
+     *  E.g. 1_colalias, 2_colalias
+     */
+    template<char... Chars>
+    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _colalias() {
+        // numeric identifiers are used for automatically assigning implicit aliases to unaliased column expressions,
+        // which start at "1".
+        static_assert(std::array{Chars...}[0] > '0');
+        return internal::column_alias<Chars...>{};
+    }
+
+#if __cplusplus >= 202002L  // C++20 and later
+    /**
+     *  column_alias<'a'[, ...]> from a string literal.
+     *  E.g. "a"_col, "b"_col
+     */
+    template<internal::string_identifier_template t>
+    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _col() {
+        return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
+    }
+#endif
+#endif
 }

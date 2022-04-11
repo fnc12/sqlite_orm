@@ -149,7 +149,13 @@ namespace sqlite_orm {
                 }
             };
             for(std::string& name: columnNames) {
-                unquote(name);
+                constexpr char quoteChar = '"';
+                if(name.front() == quoteChar) {
+                    unquote(name);
+                } else {
+                    // unaliased expression - see 3. below
+                    name.clear();
+                }
             }
 
             // 2. override column names from cte expression
@@ -164,11 +170,11 @@ namespace sqlite_orm {
                     }
                 }
             }
-            // 3. fill in blanks with numerical column names
+            // 3. fill in blanks with numerical column identifiers
             {
                 for(size_t i = 0, n = columnNames.size(); i < n; ++i) {
                     if(columnNames[i].empty()) {
-                        columnNames[i] = std::to_string(i);
+                        columnNames[i] = std::to_string(i + 1);
                     }
                 }
             }

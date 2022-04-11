@@ -15,6 +15,7 @@
 #include "ast/where.h"
 #include "ast/group_by.h"
 #include "core_functions.h"
+#include "alias.h"
 
 namespace sqlite_orm {
 
@@ -148,7 +149,7 @@ namespace sqlite_orm {
 
         template<class A>
         struct column_pointer_builder<A, match_if<std::is_base_of, alias_tag, A>> {
-            static_assert(std::is_same<polyfill::detected_t<type_t, A>, A>::value, "`A' must be a mapped table alias");
+            static_assert(is_cte_alias_v<A>, "`A' must be a mapped table alias");
 
             using mapped_type = A;
 
@@ -164,12 +165,12 @@ namespace sqlite_orm {
              *  
              *  Example:
              *  struct Object { ... };
-             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(c_v<&Object::id>)));
+             *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(1_colalias)));
              *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
              *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
              */
             template<class F, satisfies_not<std::is_base_of, alias_tag, F> = true>
-            column_pointer<mapped_type, F> operator()(F field) const {
+            constexpr column_pointer<mapped_type, F> operator()(F field) const {
                 return {std::move(field)};
             }
 
@@ -181,7 +182,7 @@ namespace sqlite_orm {
              *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
              */
             template<class ColAlias, satisfies<std::is_base_of, alias_tag, ColAlias> = true>
-            column_pointer<mapped_type, alias_holder<ColAlias>> operator()(const ColAlias&) const {
+            constexpr column_pointer<mapped_type, alias_holder<ColAlias>> operator()(const ColAlias&) const {
                 return {{}};
             }
 
@@ -547,7 +548,7 @@ namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(cte_1{}->*&Object::id));
      */
     template<class A, class F, internal::satisfies<std::is_base_of, alias_tag, A> = true>
-    auto operator->*(const A& /*tableAlias*/, F field) {
+    constexpr auto operator->*(const A& /*tableAlias*/, F field) {
         return column<A>(std::move(field));
     }
 
@@ -559,7 +560,7 @@ namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*0_col));
      */
     template<class A, class F, internal::satisfies<std::is_base_of, alias_tag, A> = true>
-    auto operator->*(const internal::column_pointer_builder<A>&, F field) {
+    constexpr auto operator->*(const internal::column_pointer_builder<A>&, F field) {
         return column<A>(std::move(field));
     }
 
@@ -614,6 +615,16 @@ namespace sqlite_orm {
     cte(ColumnNames... explicitColumnNames) {
         return {{std::move(explicitColumnNames)...}};
     }
+
+#if __cplusplus >= 202002L  // C++20 and later
+    template<auto label,
+             class... ColumnNames,
+             std::enable_if_t<polyfill::conjunction_v<std::is_convertible<ColumnNames, std::string>...>, bool> = true>
+    internal::cte_builder<decltype(label), polyfill::index_constant<sizeof...(ColumnNames)>>
+    cte(ColumnNames... explicitColumnNames) {
+        return {{std::move(explicitColumnNames)...}};
+    }
+#endif
 
     // tuple of CTEs
     template<class E, class... Labels, class... Selects, class... nExplicitCols>

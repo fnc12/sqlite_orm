@@ -59,9 +59,9 @@ namespace sqlite_orm {
             template<class O, bool WithoutRowId, class... Args, template<class...> class TransformOp>
             struct table_types<table_t<O, WithoutRowId, Args...>, TransformOp> {
                 using args_tuple = std::tuple<Args...>;
-                using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
+                using columns_tuple = filter_tuple_t<args_tuple, is_column>;
 
-                using type = typename tuple_transformer<columns_tuple, TransformOp>::type;
+                using type = transform_tuple_t<columns_tuple, TransformOp>;
             };
 
             /**
@@ -165,7 +165,7 @@ namespace sqlite_orm {
             template<class H, class... Ts, class O>
             struct storage_foreign_keys_count_impl<storage_impl<H, Ts...>, O> {
                 static constexpr int value = table_foreign_keys_count<H, O>::value +
-                                                   storage_foreign_keys_count_impl<storage_impl<Ts...>, O>::value;
+                                             storage_foreign_keys_count_impl<storage_impl<Ts...>, O>::value;
             };
 
             /**

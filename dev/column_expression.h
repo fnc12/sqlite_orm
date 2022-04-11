@@ -60,7 +60,7 @@ namespace sqlite_orm {
          *  asterisk_t<O> -> tuple<ColExpr...>
          */
         template<class St, class E>
-        struct column_expression_type<St, asterisk_t<E>, match_if_not<std::is_base_of, alias_tag, E>>
+        struct column_expression_type<St, asterisk_t<E>, match_if_not<is_column_alias, E>>
             : storage_traits::storage_mapped_column_expressions<St, E> {};
 
         template<class A>
@@ -75,16 +75,9 @@ namespace sqlite_orm {
          *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
          */
         template<class St, class A>
-        struct column_expression_type<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>>
+        struct column_expression_type<St, asterisk_t<A>, match_if<is_column_alias, A>>
             : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<St, type_t<A>>::type,
                                 add_column_alias<A>::template apply> {};
-
-        /**
-         *  Resolve member pointer constant (actually covered by identity matcher above).
-         *  F O::*member -> F O::*member
-         */
-        template<class St, class O, class F, F O::*m>
-        struct column_expression_type<St, ice_t<m>, void> : ice_t<m> {};
 
         /**
          *  Resolve multiple columns.

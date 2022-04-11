@@ -13,6 +13,7 @@
 
 #include "start_macros.h"
 #include "cxx_polyfill.h"
+#include "tuple_helper/tuple_helper.h"
 #include "is_std_ptr.h"
 #include "arithmetic_tag.h"
 #include "xdestroy_handling.h"
@@ -295,36 +296,10 @@ namespace sqlite_orm {
             }
         };
 
-        template<class T, template<class C> class F, class SFINAE = void>
-        struct tuple_filter_single;
-
-        template<class T, template<class C> class F>
-        struct tuple_filter_single<T, F, typename std::enable_if<F<T>::value>::type> {
-            using type = std::tuple<T>;
-        };
-
-        template<class T, template<class C> class F>
-        struct tuple_filter_single<T, F, typename std::enable_if<!F<T>::value>::type> {
-            using type = std::tuple<>;
-        };
-
-        template<class T, template<class C> class F>
-        struct tuple_filter;
-
-        template<class... Args, template<class C> class F>
-        struct tuple_filter<std::tuple<Args...>, F> {
-            using type = typename conc_tuple<typename tuple_filter_single<Args, F>::type...>::type;
-        };
-
-        template<class T>
-        struct bindable_filter_single : tuple_filter_single<T, is_bindable> {};
-
         template<class T>
         struct bindable_filter;
 
         template<class... Args>
-        struct bindable_filter<std::tuple<Args...>> {
-            using type = typename conc_tuple<typename bindable_filter_single<Args>::type...>::type;
-        };
+        struct bindable_filter<std::tuple<Args...>> : tuple_filter<std::tuple<Args...>, is_bindable> {};
     }
 }

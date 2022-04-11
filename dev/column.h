@@ -10,18 +10,12 @@
 #include "type_is_nullable.h"
 #include "tuple_helper/tuple_helper.h"
 #include "constraints.h"
+#include "member_traits/is_field_member_pointer.h"
 #include "member_traits/member_traits.h"
-#include "member_traits/field_member_traits.h"
 
 namespace sqlite_orm {
 
     namespace internal {
-
-        /**
-         *  typename T::value_type if is_integral_constant_v<T>
-         */
-        template<typename T>
-        using ice_value_type_t = std::enable_if_t<is_integral_constant_v<T>, value_type_t<T>>;
 
         struct basic_column {
 
@@ -40,14 +34,7 @@ namespace sqlite_orm {
         template<class O, class T, class G /* = const T& (O::*)() const*/, class S /* = void (O::*)(T)*/, class... Op>
         struct column_t : basic_column {
             using object_type = O;
-            // the passed in type is either `integral_constant<F O::*member>` or the return type
-            using _ice_or_field_type = T;
-            // `F O::*` from `integral_constant<F O::*member>` or `T`
-            using _member_pointer_or_field_type = polyfill::detected_or_t<T, ice_value_type_t, T>;
-            // `F` from `F O::*` or `T`
-            using field_type = polyfill::detected_or_t<_member_pointer_or_field_type,
-                                                       field_type_t,
-                                                       field_member_traits<_member_pointer_or_field_type>>;
+            using field_type = T;
             using constraints_type = std::tuple<Op...>;
             using member_pointer_t = field_type object_type::*;
             using getter_type = G;
@@ -59,7 +46,7 @@ namespace sqlite_orm {
             member_pointer_t member_pointer /* = nullptr*/;
 
             /**
-             *  Getter member function pointer to get a value. If member_pointer is null than
+             *  Getter member function pointer to get a value. If member_pointer is null then
              *  `getter` and `setter` must be not null
              */
             getter_type getter /* = nullptr*/;
@@ -198,13 +185,9 @@ namespace sqlite_orm {
         };
 
         template<class O, class T, class... Op>
-        struct column_field_expression<column_t<O, T, Op...>, match_if_not<is_integral_constant, T>> {
+        struct column_field_expression<column_t<O, T, Op...>, void> {
             using type = typename column_t<O, T, Op...>::member_pointer_t;
         };
-
-        // match `F O::*member`
-        template<class O, class F, F O::*m, class... Op>
-        struct column_field_expression<column_t<O, ice_t<m>, Op...>, void> : ice_t<m> {};
 
         template<class T>
         struct column_constraints_type {
@@ -221,10 +204,7 @@ namespace sqlite_orm {
     /**
      *  Column builder function. You should use it to create columns instead of constructor
      */
-    template<class O,
-             class T,
-             typename = typename std::enable_if<!std::is_member_function_pointer<T O::*>::value>::type,
-             class... Op>
+    template<class O, class T, internal::satisfies<internal::is_field_member_pointer, T O::*> = true, class... Op>
     internal::column_t<O, T, const T& (O::*)() const, void (O::*)(T), Op...>
     make_column(const std::string& name, T O::*m, Op... constraints) {
         static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
@@ -235,29 +215,12 @@ namespace sqlite_orm {
     }
 
     /**
-     *  Column builder function. You should use it to create columns instead of constructor
-     */
-    template<class T,
-             T m,
-             class O = typename internal::field_member_traits<T>::object_type,
-             class F = typename internal::field_member_traits<T>::field_type,
-             class... Op>
-    internal::column_t<O, std::integral_constant<T, m>, const F& (O::*)() const, void (O::*)(F), Op...>
-    make_column(const std::string& name, std::integral_constant<T, m>, Op... constraints) {
-        static_assert(internal::template constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
-                      "Incorrect constraints pack");
-        static_assert(internal::is_field_member_pointer<T>::value,
-                      "second argument expected as a member field pointer, not member function pointer");
-        return {name, m, nullptr, nullptr, std::make_tuple(constraints...)};
-    }
-
-    /**
      *  Column builder function with setter and getter. You should use it to create columns instead of constructor
      */
     template<class G,
              class S,
-             typename = typename std::enable_if<internal::is_getter<G>::value>::type,
-             typename = typename std::enable_if<internal::is_setter<S>::value>::type,
+             internal::satisfies<internal::is_getter, G> = true,
+             internal::satisfies<internal::is_setter, S> = true,
              class... Op>
     internal::column_t<typename internal::setter_traits<S>::object_type,
                        typename internal::setter_traits<S>::field_type,
@@ -279,8 +242,8 @@ namespace sqlite_orm {
      */
     template<class G,
              class S,
-             typename = typename std::enable_if<internal::is_getter<G>::value>::type,
-             typename = typename std::enable_if<internal::is_setter<S>::value>::type,
+             internal::satisfies<internal::is_getter, G> = true,
+             internal::satisfies<internal::is_setter, S> = true,
              class... Op>
     internal::column_t<typename internal::setter_traits<S>::object_type,
                        typename internal::setter_traits<S>::field_type,

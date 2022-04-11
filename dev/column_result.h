@@ -6,6 +6,7 @@
 
 #include "cxx_polyfill.h"
 #include "type_traits.h"
+#include "member_traits/is_field_member_pointer.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
@@ -51,15 +52,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class St, class O, class F>
-        struct column_result_t<St,
-                               F O::*,
-                               std::enable_if_t<std::is_member_pointer<F O::*>::value &&
-                                                !std::is_member_function_pointer<F O::*>::value>> {
-            using type = F;
-        };
-
-        template<class St, class O, class F, F O::*m>
-        struct column_result_t<St, ice_t<m>, void> {
+        struct column_result_t<St, F O::*, match_if<is_field_member_pointer, F O::*>> {
             using type = F;
         };
 
@@ -230,48 +223,20 @@ namespace sqlite_orm {
         template<class St, class T, class F>
         struct column_result_t<St, column_pointer<T, F>, void> : column_result_t<St, F> {};
 
-        template<class St, class Label, size_t I>
-        struct column_result_t<St, column_pointer<Label, polyfill::index_constant<I>>, void>
-            : column_result_t<St, cte_getter_t<storage_object_type_t<storage_pick_impl_t<St, Label>>, I>> {};
-
-        /**
-         *  Obtain result type from member pointer constant mapped into a CTE.
-         * 
-         *  Note: Even though we actually know the member's type we don't assume anything
-         *  and perform a lookup, such that we ensure that the member pointer has been mapped.
-         */
-        template<class St, class Label, class O, class F, F O::*m>
-        struct column_result_t<St, column_pointer<Label, ice_t<m>>, void> {
+        template<class St, class Label, class ColAlias>
+        struct column_result_t<St, column_pointer<Label, alias_holder<ColAlias>>, void> {
             using timpl_type = storage_pick_impl_t<St, Label>;
             using cte_mapper_type = storage_cte_mapper_type_t<timpl_type>;
 
-            // lookup index in expressions_tuple by member pointer constant
-            static constexpr auto I = tuple_index_of_v<ice_t<m>, typename cte_mapper_type::expressions_tuple>;
-            static_assert(I != -1, "No such column mapped into the CTE.");
-
-            using type = column_result_of_t<St, cte_getter_t<storage_object_type_t<timpl_type>, I>>;
-        };
-
-        // as_t::alias_type or nonesuch
-        template<class T>
-        using alias_type_or_none = polyfill::detected<alias_type_t, T>;
-
-        /**
-         *  Obtain result type from aliased column mapped into a CTE.
-         */
-        template<class St, class Label, class Alias>
-        struct column_result_t<St, column_pointer<Label, alias_holder<Alias>>, void> {
-            using timpl_type = storage_pick_impl_t<St, Label>;
-            using cte_mapper_type = storage_cte_mapper_type_t<timpl_type>;
-            // filter all column alias expressions [`as_t<A>`]
+            // filter all column references [`alias_holder<>`]
             using alias_types_tuple =
-                typename tuple_transformer<typename cte_mapper_type::expressions_tuple, alias_type_or_none>::type;
+                transform_tuple_t<typename cte_mapper_type::colref_expressions_tuple, alias_type_or_none>;
 
-            // lookup index in alias_types_tuple by Alias
-            static constexpr auto I = tuple_index_of_v<Alias, alias_types_tuple>;
-            static_assert(I != -1, "No such column mapped into the CTE.");
+            // lookup index of ColAlias in alias_types_tuple
+            static constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;
+            static_assert(ColIdx != -1, "No such column mapped into the CTE.");
 
-            using type = column_result_of_t<St, cte_getter_t<storage_object_type_t<timpl_type>, I>>;
+            using type = std::tuple_element_t<ColIdx, typename cte_mapper_type::fields_type>;
         };
 
         template<class St, class... Args>
@@ -323,12 +288,12 @@ namespace sqlite_orm {
         struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, std::decay_t<E>> {};
 
         template<class St, class T>
-        struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
+        struct column_result_t<St, asterisk_t<T>, match_if_not<is_column_alias, T>> {
             using type = typename storage_traits::storage_mapped_columns<St, T>::type;
         };
 
         template<class St, class A>
-        struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
+        struct column_result_t<St, asterisk_t<A>, match_if<is_column_alias, A>> {
             using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
         };
 

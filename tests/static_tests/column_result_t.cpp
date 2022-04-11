@@ -10,7 +10,7 @@ void runTest(V /*value*/) {
     STATIC_REQUIRE(std::is_same<Type, E>::value);
 }
 
-TEST_CASE("column_result_of_t 1") {
+TEST_CASE("column_result_of_t") {
     struct User {
         int id = 0;
         std::string name;
@@ -111,26 +111,11 @@ TEST_CASE("column_result_of_t 1") {
     runTest<Storage, std::tuple<int, std::string>>(columns(&User::id, &User::name));
     runTest<Storage, int>(column<User>(&User::id));
     runTest<Storage, User>(object<User>());
-}
-
-TEST_CASE("column_result_of_t 2") {
-    struct Org {
-        // compile-time mapped (via c_v<>)
-        int64 id = 0;
-        // not compile-time mapped
-        int64 boss = 0;
-    };
-    struct Derived : Org {};
-
-    auto storage = make_storage(
-        "",
-        make_table("org", make_column("id", c_v<&Org::id>), make_column("boss", &Org::boss)),
-        make_table<Derived>("derived", make_column("id", c_v<&Derived::id>), make_column("boss", &Derived::boss)));
-    using storage_type = decltype(storage);
-
-    runTest<storage_type, int64>(c_v<&Org::id>);
-    runTest<storage_type, std::tuple<int64, int64>>(columns(c_v<&Org::id>, &Org::boss));
-    // these need a 'CTE' expression storage
-    //runTest<storage_type, int64>(column<cte_1>(c_v<&Org::id>));
-    //runTest<storage_type, int64>(column<cte_1>(0_col));
+    runTest<Storage, int>(column<cte_1>(&User::id));
+    runTest<Storage, int>(column<cte_1>()->*&User::id);
+    runTest<Storage, int>(column<cte_1>->*&User::id);
+    runTest<Storage, int>(1_ctealias->*&User::id);
+#if __cplusplus >= 202002L  // C++20 or later
+    runTest<Storage, int>("1"_cte->*&User::id);
+#endif
 }

@@ -3,6 +3,8 @@
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
+using internal::alias_holder;
+using internal::column_pointer;
 
 template<class St, class E, class V>
 void runTest(V value) {
@@ -21,8 +23,8 @@ TEST_CASE("column_expression_of_t") {
 
     auto storage = make_storage(
         "",
-        make_table("org", make_column("id", c_v<&Org::id>), make_column("boss", &Org::boss)),
-        make_table<Derived>("derived", make_column("id", c_v<&Derived::id>), make_column("boss", &Derived::boss)));
+        make_table("org", make_column("id", &Org::id), make_column("boss", &Org::boss)),
+        make_table<Derived>("derived", make_column("id", &Derived::id), make_column("boss", &Derived::boss)));
     using storage_type = decltype(storage);
 
     runTest<storage_type, int>(1);
@@ -33,20 +35,25 @@ TEST_CASE("column_expression_of_t") {
         const int64 x = 42;
         runTest<storage_type, const int64&>(std::ref(x));
     }
-    runTest<storage_type, std::integral_constant<int64 Org::*, &Org::id>>(internal::ice_t<&Org::id>{});
-    runTest<storage_type, internal::ice_t<&Org::id>>(c_v<&Org::id>);
-    runTest<storage_type, std::tuple<internal::ice_t<&Org::id>, int64 Org::*>>(columns(c_v<&Org::id>, &Org::boss));
-    runTest<storage_type, std::tuple<int64 Org::*, internal::ice_t<&Org::boss>>>(columns(&Org::id, c_v<&Org::boss>));
-    runTest<storage_type, std::tuple<internal::ice_t<&Org::id>, int64 Org::*>>(asterisk<Org>());
+    runTest<storage_type, std::tuple<int64 Org::*>>(columns(&Org::boss));
+    runTest<storage_type, std::tuple<int64 Org::*, int64 Org::*>>(asterisk<Org>());
     runTest<storage_type,
-            std::tuple<internal::alias_column_t<alias_a<Org>, internal::ice_t<&Org::id>>,
+            std::tuple<internal::alias_column_t<alias_a<Org>, int64 Org::*>,
                        internal::alias_column_t<alias_a<Org>, int64 Org::*>>>(asterisk<alias_a<Org>>());
     // object_t not allowed
     //runTest<storage_type, Org>(object<Org>());
+    runTest<storage_type, internal::as_t<colalias_a, int>>(as<colalias_a>(1));
 
-    // just like other types, column pointer isn't explicitly handled by column_expression_of_t;
-    // assert expectation nevertheless
-    runTest<storage_type, internal::column_pointer<Derived, int64 Org::*>>(column<Derived>(&Org::id));
-    runTest<storage_type, internal::column_pointer<cte_1, internal::ice_t<&Org::id>>>(column<cte_1>(c_v<&Org::id>));
-    runTest<storage_type, internal::column_pointer<cte_1, polyfill::index_constant<0u>>>(column<cte_1>(0_col));
+    runTest<storage_type, column_pointer<Derived, int64 Org::*>>(column<Derived>(&Org::id));
+    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>(&Org::id));
+    runTest<storage_type, column_pointer<cte_1, polyfill::index_constant<0u>>>(column<cte_1>(0_colidx));
+    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>()->*&Org::id);
+    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
+    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
+    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
+    runTest<storage_type, column_pointer<cte_1, alias_holder<internal::column_alias<'1'>>>>(column<cte_1>(1_colalias));
+    runTest<storage_type, column_pointer<cte_1, alias_holder<colalias_c>>>(1_ctealias->*colalias_c{});
+#if __cplusplus >= 202002L  // C++20 or later
+    runTest<storage_type, column_pointer<cte_1, alias_holder<colalias_c>>>("1"_cte->*"c"_col);
+#endif
 }

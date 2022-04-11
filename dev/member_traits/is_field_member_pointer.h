@@ -9,9 +9,9 @@ namespace sqlite_orm {
         struct is_field_member_pointer : std::false_type {};
 
         template<class T>
-        struct is_field_member_pointer<T,
-                                       typename std::enable_if<std::is_member_pointer<T>::value &&
-                                                               !std::is_member_function_pointer<T>::value>::type>
+        struct is_field_member_pointer<
+            T,
+            std::enable_if_t<std::is_member_pointer<T>::value && !std::is_member_function_pointer<T>::value>>
             : std::true_type {};
     }
 }

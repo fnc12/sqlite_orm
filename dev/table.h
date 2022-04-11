@@ -7,6 +7,7 @@
 
 #include "cxx_polyfill.h"
 #include "type_traits.h"
+#include "member_traits/is_field_member_pointer.h"
 #include "static_magic.h"
 #include "typed_comparator.h"
 #include "tuple_helper/tuple_helper.h"
@@ -193,14 +194,12 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class F,
-                     class C,
-                     typename = typename std::enable_if<std::is_member_pointer<F C::*>::value &&
-                                                        !std::is_member_function_pointer<F C::*>::value>::type>
+            template<class F, class C, satisfies<is_field_member_pointer, F C::*> = true>
             const std::string* find_column_name(F C::*m) const {
                 const std::string* res = nullptr;
                 this->template for_each_column_with_field_type<F>([&res, m](auto& c) {
-                    if(c.member_pointer == m) {
+                    // note: need to use compare_any because CTEs map all kind of column references into a column_t
+                    if(compare_any(c.member_pointer, m)) {
                         res = &c.name;
                     }
                 });
@@ -211,9 +210,8 @@ namespace sqlite_orm {
              *  Searches column name by class getter function member pointer passed as first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class G>
-            const std::string* find_column_name(G getter,
-                                                typename std::enable_if<is_getter<G>::value>::type* = nullptr) const {
+            template<class G, satisfies<is_getter, G> = true>
+            const std::string* find_column_name(G getter) const {
                 const std::string* res = nullptr;
                 using field_type = typename getter_traits<G>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, getter](auto& c) {
@@ -228,9 +226,8 @@ namespace sqlite_orm {
              *  Searches column name by class setter function member pointer passed as first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class S>
-            const std::string* find_column_name(S setter,
-                                                typename std::enable_if<is_setter<S>::value>::type* = nullptr) const {
+            template<class S, satisfies<is_setter, S> = true>
+            const std::string* find_column_name(S setter) const {
                 const std::string* res = nullptr;
                 using field_type = typename setter_traits<S>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, setter](auto& c) {
@@ -258,11 +255,7 @@ namespace sqlite_orm {
              *  Counts and returns amount of columns. Skips constraints.
              */
             int count_columns_amount() const {
-                auto res = 0;
-                this->for_each_column([&res](auto&) {
-                    ++res;
-                });
-                return res;
+                return filter_tuple_sequence_t<elements_type, is_column>::size();
             }
 
             /**

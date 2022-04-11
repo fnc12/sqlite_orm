@@ -5,28 +5,19 @@
 
 #include "cxx_polyfill.h"
 #include "alias.h"
-#include "select_constraints.h"
-#include "cte_types.h"
 
 namespace sqlite_orm {
 
-    /** 
-     *  A special table alias that is both, a storage lookup type (mapping type) and an alias.
-     */
-    template<char C>
-    struct cte_alias
-        : internal::table_alias<cte_alias<C> /* refer to self, since a label is both, an alias and a lookup type */,
-                                C> {};
-
-    using cte_1 = cte_alias<'1'>;
-    using cte_2 = cte_alias<'2'>;
-    using cte_3 = cte_alias<'3'>;
-    using cte_4 = cte_alias<'4'>;
-    using cte_5 = cte_alias<'5'>;
-    using cte_6 = cte_alias<'6'>;
-    using cte_7 = cte_alias<'7'>;
-    using cte_8 = cte_alias<'8'>;
-    using cte_9 = cte_alias<'9'>;
+    namespace internal {
+        /** 
+         *  A special table alias that is both, a storage lookup type (mapping type) and an alias.
+         */
+        template<char C, char... X>
+        struct cte_alias
+            : table_alias<cte_alias<C, X...> /* refer to self, since a label is both, an alias and a lookup type */,
+                          C,
+                          X...> {};
+    }
 
 #if __cplusplus >= 201703L  // use of C++17 or higher
     namespace internal {
@@ -46,10 +37,10 @@ namespace sqlite_orm {
 
     /**
      *  index_constant<> from numeric literal.
-     *  E.g. 0_col, 1_col
+     *  E.g. 0_colidx, 1_colidx
      */
     template<char... Chars>
-    [[nodiscard]] constexpr decltype(auto) operator"" _col() {
+    [[nodiscard]] SQLITE_ORM_CONSTEVAL decltype(auto) operator"" _colidx() {
         return polyfill::index_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
                                                                  Chars...)>{};
     }
@@ -59,32 +50,55 @@ namespace sqlite_orm {
      *  E.g. 1_nth_col, 2_nth_col
      */
     template<char... Chars>
-    [[nodiscard]] constexpr decltype(auto) operator"" _nth_col() {
-        static_assert(((Chars != '0') && ...));
-        return internal::nth_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{},
-                                                               Chars...)>{};
+    [[nodiscard]] SQLITE_ORM_CONSTEVAL decltype(auto) operator"" _nth_col() {
+        constexpr auto n =
+            internal::nth_constant<internal::n_from_literal(std::make_index_sequence<sizeof...(Chars)>{}, Chars...)>{};
+        static_assert(n > 0);
+        return n;
     }
-#else
-    constexpr polyfill::index_constant<0> _0_col{};
-    constexpr polyfill::index_constant<1> _1_col{};
-    constexpr polyfill::index_constant<2> _2_col{};
-    constexpr polyfill::index_constant<3> _3_col{};
-    constexpr polyfill::index_constant<4> _4_col{};
-    constexpr polyfill::index_constant<5> _5_col{};
-    constexpr polyfill::index_constant<6> _6_col{};
-    constexpr polyfill::index_constant<7> _7_col{};
-    constexpr polyfill::index_constant<8> _8_col{};
-    constexpr polyfill::index_constant<9> _9_col{};
 
-    constexpr internal::nth_constant<1> _1_nth_col{};
-    constexpr internal::nth_constant<2> _2_nth_col{};
-    constexpr internal::nth_constant<3> _3_nth_col{};
-    constexpr internal::nth_constant<4> _4_nth_col{};
-    constexpr internal::nth_constant<5> _5_nth_col{};
-    constexpr internal::nth_constant<6> _6_nth_col{};
-    constexpr internal::nth_constant<7> _7_nth_col{};
-    constexpr internal::nth_constant<8> _8_nth_col{};
-    constexpr internal::nth_constant<9> _9_nth_col{};
-    constexpr internal::nth_constant<10> _10_nth_col{};
+    /**
+     *  cte_alias<'n'> from a numeric literal.
+     *  E.g. 1_ctealias, 2_ctealias
+     */
+    template<char... Chars>
+    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
+        return internal::cte_alias<Chars...>{};
+    }
+#if __cplusplus >= 202002L  // C++20 or later
+    /**
+     *  cte_alias<'1'[, ...]> from a string literal.
+     *  E.g. "1"_cte, "2"_cte
+     */
+    template<internal::string_identifier_template t>
+    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _cte() {
+        static_assert(t.size() != 1 || ((t.id[0] < 'A' || 'Z' < t.id[0]) && (t.id[0] < 'a' || 'z' < t.id[0])),
+                      "CTE alias identifiers consisting of a single alphabetic character should be avoided, in order "
+                      "to evade clashes with the built-in table aliases.");
+        return internal::to_alias<internal::cte_alias, t>(std::make_index_sequence<t.size()>{});
+    }
+#endif
+
+#if __cplusplus >= 202002L  // C++20 or later
+    using cte_1 = decltype("1"_cte);
+    using cte_2 = decltype("2"_cte);
+    using cte_3 = decltype("3"_cte);
+    using cte_4 = decltype("4"_cte);
+    using cte_5 = decltype("5"_cte);
+    using cte_6 = decltype("6"_cte);
+    using cte_7 = decltype("7"_cte);
+    using cte_8 = decltype("8"_cte);
+    using cte_9 = decltype("9"_cte);
+#else
+    using cte_1 = decltype(1_ctealias);
+    using cte_2 = decltype(2_ctealias);
+    using cte_3 = decltype(3_ctealias);
+    using cte_4 = decltype(4_ctealias);
+    using cte_5 = decltype(5_ctealias);
+    using cte_6 = decltype(6_ctealias);
+    using cte_7 = decltype(7_ctealias);
+    using cte_8 = decltype(8_ctealias);
+    using cte_9 = decltype(9_ctealias);
+#endif
 #endif
 }

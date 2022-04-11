@@ -12,46 +12,40 @@ namespace sqlite_orm {
     namespace internal {
 
         /**
-         *  Tuple data structure for CTEs
+         *  Aliased column expression mapped into a CTE, stored as a field in a table column.
          */
-        template<typename Label, typename... Fs>
-        class column_results : fields_t<Fs...> {
-          public:
-            using fields_type = fields_t<Fs...>;
+        template<class A, class F>
+        struct aliased_field {
+            ~aliased_field() = delete;
+            aliased_field(const aliased_field&) = delete;
+            void operator=(const aliased_field&) = delete;
 
-            template<size_t I>
-            decltype(auto) cget() const noexcept {
-                return std::get<I>(polyfill::as_template_base<std::tuple>(*this));
-            }
-            template<size_t I>
-            void set(std::tuple_element_t<I, fields_type> v) noexcept {
-                std::get<I>(polyfill::as_template_base<std::tuple>(*this)) = std::move(v);
-            }
+            F field;
         };
 
         /**
-         *  This class maps an expression of a subselect (basically select_t<>::return_type) to
-         *  a tuple of fields (a column_results<Label, Fields>)
+         *  This class captures an expression of a subselect (basically select_t<>::return_type),
+         *  and is used as a proxy 
          */
-        template<typename Label, typename Expression, typename... Fs>
+        template<typename Label, typename Expression, typename RefExpressions, typename... Fs>
         class subselect_mapper {
           public:
+            subselect_mapper() = delete;
+
             using index_sequence = std::index_sequence_for<Fs...>;
             // this type name is used to detect the mapping from label to object
             using cte_label_type = Label;
-            // this type name is used to detect the mapping from label to object
-            using cte_object_type = column_results<Label, Fs...>;
+            using fields_type = fields_t<Fs...>;
+            // this type name is used to detect the mapping from label to object;
+            // it only exists to satisfy a table_t<>'s requirement to have a object_type typename
+            using cte_object_type = fields_t<Fs...>;
+            // this type captures the expressions forming the columns in a subselect;
+            // it is currently unused, however proves to be useful in compilation errors,
+            // as it simplifies recognizing errors in column expressions
             using expressions_tuple = tuplify_t<Expression>;
+            // this type captures column reference expressions;
+            // those are: member pointers, alias holders
+            using colref_expressions_tuple = tuplify_t<RefExpressions>;
         };
-
-        template<class O, size_t I>
-        SQLITE_ORM_INLINE_VAR auto cte_getter_v = &O::template cget<I>;
-        template<class O, size_t I>
-        SQLITE_ORM_INLINE_VAR auto cte_setter_v = &O::template set<I>;
-
-        template<class O, size_t I>
-        using cte_getter_t = decltype(cte_getter_v<O, I>);
-        template<class O, size_t I>
-        using cte_setter_t = decltype(cte_setter_v<O, I>);
     }
 }

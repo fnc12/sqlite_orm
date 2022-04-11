@@ -51,7 +51,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct column_names_getter<asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
+        struct column_names_getter<asterisk_t<T>, match_if_not<is_column_alias, T>> {
             using expression_type = asterisk_t<T>;
 
             template<class Ctx>
@@ -61,7 +61,7 @@ namespace sqlite_orm {
         };
 
         template<class A>
-        struct column_names_getter<asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
+        struct column_names_getter<asterisk_t<A>, match_if<is_column_alias, A>> {
             using expression_type = asterisk_t<A>;
 
             template<class Ctx>

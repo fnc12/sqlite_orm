@@ -33,18 +33,6 @@ namespace sqlite_orm {
         using satisfies_is_specialization_of = std::enable_if_t<polyfill::is_specialization_of_v<T, Primary>, bool>;
     }
 
-    // type traits not quite polyfill, however used throughout the program
-    namespace internal {
-        template<typename T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_integral_constant_v = false;
-
-        template<typename T, T N>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_integral_constant_v<std::integral_constant<T, N>> = true;
-
-        template<typename T>
-        struct is_integral_constant : polyfill::bool_constant<is_integral_constant_v<T>> {};
-    }
-
     // type name template aliases for syntactic sugar
     namespace internal {
         template<typename T>
@@ -82,6 +70,10 @@ namespace sqlite_orm {
 
         template<class As>
         using alias_type_t = typename As::alias_type;
+
+        // T::alias_type or nonesuch
+        template<class T>
+        using alias_type_or_none = polyfill::detected<alias_type_t, T>;
     }
 
     namespace internal {
@@ -92,9 +84,6 @@ namespace sqlite_orm {
         using fields_t = std::tuple<Fs...>;
 
 #if __cplusplus >= 201703L  // use of C++17 or higher
-        template<auto c>
-        using ice_t = std::integral_constant<decltype(c), c>;
-
         // cudos to OznOg https://stackoverflow.com/a/64606884/279251
         template<class X, class Tuple>
         struct tuple_index_of;
@@ -124,12 +113,4 @@ namespace sqlite_orm {
         template<typename T>
         using tuplify_t = typename tuplify<T>::type;
     }
-
-#if __cplusplus >= 201703L  // use of C++17 or higher
-    /**
-     *  Capture a compile-time value as an integral constant.
-     */
-    template<auto c>
-    inline constexpr internal::ice_t<c> c_v{};
-#endif
 }
