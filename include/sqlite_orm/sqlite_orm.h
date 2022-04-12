@@ -13415,7 +13415,7 @@ namespace sqlite_orm {
             // };
             // end JDH
         public:
-#if 0   // not visible outside anymore!
+#if 1
             static void foreign_key(bool value)
             {
                 foreign_key_value = value;
@@ -17947,14 +17947,12 @@ namespace sqlite_orm {
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 // JDH
-                auto con = this->get_connection();
+                foreign_key_value = false;
                 std::map<std::string, sync_schema_result> result;
-
                 try
                 {
-                    foreign_key_value = false;
-                    // auto con = this->get_connection();
-                    // std::map<std::string, sync_schema_result> result;
+                    
+                    auto con = this->get_connection();
                     auto db = con.get();
                     this->impl.for_each([&result, db, preserve, this](auto& storageImpl) {
                         auto res = this->sync_table(storageImpl, db, preserve);
