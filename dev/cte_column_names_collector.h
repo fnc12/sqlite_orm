@@ -7,6 +7,7 @@
 
 #include "cxx_polyfill.h"
 #include "type_traits.h"
+#include "member_traits/field_member_traits.h"
 #include "error_code.h"
 #include "alias.h"
 #include "select_constraints.h"
@@ -18,6 +19,28 @@ namespace sqlite_orm {
         template<class T, class I>
         std::string serialize(const T& t, const serializer_context<I>& context);
 
+        inline void unquote_identifier(std::string& identifier) {
+            if(!identifier.empty()) {
+                constexpr char quoteChar = '"';
+                constexpr char sqlEscaped[] = {quoteChar, quoteChar};
+                identifier.erase(identifier.end() - 1);
+                identifier.erase(identifier.begin());
+                for(size_t pos = 0; (pos = identifier.find(sqlEscaped, pos, 2)) != identifier.npos; ++pos) {
+                    identifier.erase(pos, 1);
+                }
+            }
+        }
+
+        inline void unquote_or_erase(std::string& name) {
+            constexpr char quoteChar = '"';
+            if(name.front() == quoteChar) {
+                unquote_identifier(name);
+            } else {
+                // unaliased expression - see 3. below
+                name.clear();
+            }
+        }
+
         template<class T, class SFINAE = void>
         struct cte_column_names_collector {
             using expression_type = T;
@@ -28,8 +51,9 @@ namespace sqlite_orm {
                 newContext.skip_table_name = true;
                 std::string columnName = serialize(t, newContext);
                 if(columnName.empty()) {
-                    throw std::system_error(orm_error_code::column_not_found);
+                    throw std::system_error{orm_error_code::column_not_found};
                 }
+                unquote_or_erase(columnName);
                 return {move(columnName)};
             }
         };
@@ -121,55 +145,57 @@ namespace sqlite_orm {
                     if(!columnName.empty()) {
                         columnNames.push_back(move(columnName));
                     } else {
-                        throw std::system_error(orm_error_code::column_not_found);
+                        throw std::system_error{orm_error_code::column_not_found};
                     }
+                    unquote_or_erase(columnNames.back());
                 });
                 return columnNames;
             }
         };
 
-        template<typename Ctx, typename E, satisfies_is_specialization_of<E, select_t> = true>
-        std::vector<std::string> collect_cte_column_names(const E& sel,
-                                                          const std::vector<std::string>& explicitColumnNames,
-                                                          const Ctx& context) {
+        template<typename Ctx, typename E, typename ExplicitColRefs, satisfies_is_specialization_of<E, select_t> = true>
+        std::vector<std::string>
+        collect_cte_column_names(const E& sel, const ExplicitColRefs& explicitColRefs, const Ctx& context) {
             // 1. determine column names from subselect
-
             std::vector<std::string> columnNames = get_cte_column_names(sel.col, context);
 
-            // unquote column names
-            constexpr auto unquote = [](std::string& identifier) {
-                if(!identifier.empty()) {
-                    constexpr char quoteChar = '"';
-                    constexpr char sqlEscaped[] = {quoteChar, quoteChar};
-                    identifier.erase(identifier.end() - 1);
-                    identifier.erase(identifier.begin());
-                    for(size_t pos = 0; (pos = identifier.find(sqlEscaped, pos, 2)) != identifier.npos; ++pos) {
-                        identifier.erase(pos, 1);
-                    }
-                }
-            };
-            for(std::string& name: columnNames) {
-                constexpr char quoteChar = '"';
-                if(name.front() == quoteChar) {
-                    unquote(name);
-                } else {
-                    // unaliased expression - see 3. below
-                    name.clear();
-                }
-            }
-
             // 2. override column names from cte expression
-            if(!explicitColumnNames.empty()) {
-                if(explicitColumnNames.size() != columnNames.size()) {
-                    throw std::system_error(orm_error_code::column_not_found);
+            if(size_t n = std::tuple_size_v<ExplicitColRefs>) {
+                if(n != columnNames.size()) {
+                    throw std::system_error{orm_error_code::column_not_found};
                 }
 
-                for(size_t i = 0, n = explicitColumnNames.size(); i < n; ++i) {
-                    if(!explicitColumnNames[i].empty()) {
-                        columnNames[i] = explicitColumnNames[i];
+                size_t idx = 0;
+                iterate_tuple(explicitColRefs, [&idx, &columnNames, &context](auto& colRef) {
+                    using ColRef = polyfill::remove_cvref_t<decltype(colRef)>;
+
+                    if constexpr(polyfill::is_specialization_of_v<ColRef, alias_holder>) {
+                        columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
+                    } else if constexpr(is_field_member_pointer<ColRef>::value) {
+                        using O = typename field_member_traits<ColRef>::object_type;
+                        if(auto* columnName = find_column_name<O>(context.impl, colRef)) {
+                            columnNames[idx] = *columnName;
+                        } else {
+                            // relaxed: allow any member pointer as column reference
+                            columnNames[idx] = typeid(ColRef).name();
+                        }
+                    } else if constexpr(polyfill::is_specialization_of_v<ColRef, column_t>) {
+                        columnNames[idx] = colRef.name;
+                    } else if constexpr(std::is_same_v<ColRef, std::string>) {
+                        if(std::string name = colRef; !name.empty()) {
+                            columnNames[idx] = move(name);
+                        }
+                    } else if constexpr(std::is_same_v<ColRef, polyfill::remove_cvref_t<decltype(std::ignore)>>) {
+                        if(columnNames[idx].empty()) {
+                            columnNames[idx] = std::to_string(idx + 1);
+                        }
+                    } else {
+                        static_assert(polyfill::always_false_v<ColRef>, "Invalid explicit column reference specified");
                     }
-                }
+                    ++idx;
+                });
             }
+
             // 3. fill in blanks with numerical column identifiers
             {
                 for(size_t i = 0, n = columnNames.size(); i < n; ++i) {

@@ -40,7 +40,7 @@ namespace sqlite_orm {
         template<class A>
         using is_cte_alias = polyfill::bool_constant<is_cte_alias_v<A>>;
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cpp_nontype_template_args >= 201911
         /*  
          *  Helper class to facilitate user-defined string literal operator template
          */
@@ -50,13 +50,21 @@ namespace sqlite_orm {
                 return N - 1;
             }
 
+#ifdef _MSC_VER
             constexpr string_identifier_template(const char (&id)[N]) : id{id} {}
 
             const char (&id)[N];
+#else
+            constexpr string_identifier_template(const char (&id)[N]) {
+                std::copy_n(id, N, this->id);
+            }
+
+            char id[N];
+#endif
         };
 
         template<template<char...> class Alias, string_identifier_template t, size_t... Idx>
-        SQLITE_ORM_CONSTEVAL auto to_alias(std::index_sequence<Idx...>) {
+        consteval auto to_alias(std::index_sequence<Idx...>) {
             return Alias<t.id[Idx]...>{};
         }
 #endif
@@ -72,7 +80,7 @@ namespace sqlite_orm {
         struct table_alias : alias_tag {
             using type = T;
 
-            constexpr static std::string get() {
+            static std::string get() {
                 return {A, X...};
             }
         };
@@ -140,7 +148,10 @@ namespace sqlite_orm {
         template<class T>
         struct alias_holder {
             using type = T;
-            using alias_type = type;
+
+            alias_holder() = default;
+            // CTE feature needs it to implicitly convert a column alias to an alias_holder; see `cte()` factory function
+            alias_holder(const T&) noexcept {}
         };
 
         template<size_t n, char... C>
@@ -277,13 +288,13 @@ namespace sqlite_orm {
         return internal::column_alias<Chars...>{};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cpp_nontype_template_args >= 201911
     /**
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col
      */
     template<internal::string_identifier_template t>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _col() {
+    [[nodiscard]] consteval auto operator"" _col() {
         return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
     }
 #endif

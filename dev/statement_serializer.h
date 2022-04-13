@@ -791,12 +791,12 @@ namespace sqlite_orm {
             using statement_type = column_pointer<T, F>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            std::string operator()(const statement_type& cp, const Ctx& context) const {
                 std::stringstream ss;
                 if(!context.skip_table_name) {
                     ss << streaming_identifier(lookup_table_name<T>(context.impl)) << ".";
                 }
-                if(auto* columnName = find_column_name(context.impl, c)) {
+                if(auto* columnName = find_column_name(context.impl, cp)) {
                     ss << streaming_identifier(*columnName);
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
@@ -823,7 +823,7 @@ namespace sqlite_orm {
             using statement_type = CTE;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx& context) const {
+            std::string operator()(const statement_type& cte, const Ctx& context) const {
                 // A CTE always starts a new 'highest level' context
                 Ctx cteContext = context;
                 cteContext.use_parentheses = false;
@@ -832,12 +832,12 @@ namespace sqlite_orm {
                 ss << streaming_identifier(alias_extractor<cte_label_type_t<CTE>>::extract(std::true_type{}));
                 {
                     std::vector<std::string> columnNames =
-                        collect_cte_column_names(get_cte_driving_subselect(c.subselect),
-                                                 c.explicitColumnNames,
+                        collect_cte_column_names(get_cte_driving_subselect(cte.subselect),
+                                                 cte.explicitColumns,
                                                  context);
                     ss << '(' << streaming_identifiers(columnNames) << ')';
                 }
-                ss << " AS " << '(' << serialize(c.subselect, cteContext) << ')';
+                ss << " AS " << '(' << serialize(cte.subselect, cteContext) << ')';
                 return ss.str();
             }
         };

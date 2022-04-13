@@ -65,13 +65,13 @@ namespace sqlite_orm {
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
         return internal::cte_alias<Chars...>{};
     }
-#if __cplusplus >= 202002L  // C++20 or later
+#if __cpp_nontype_template_args >= 201911
     /**
      *  cte_alias<'1'[, ...]> from a string literal.
      *  E.g. "1"_cte, "2"_cte
      */
     template<internal::string_identifier_template t>
-    [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _cte() {
+    [[nodiscard]] consteval auto operator"" _cte() {
         static_assert(t.size() != 1 || ((t.id[0] < 'A' || 'Z' < t.id[0]) && (t.id[0] < 'a' || 'z' < t.id[0])),
                       "CTE alias identifiers consisting of a single alphabetic character should be avoided, in order "
                       "to evade clashes with the built-in table aliases.");

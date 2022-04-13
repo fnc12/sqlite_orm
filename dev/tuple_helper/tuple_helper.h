@@ -202,6 +202,7 @@ namespace sqlite_orm {
         template<size_t... Idx>
         SQLITE_ORM_CONSTEVAL size_t index_sequence_value(size_t pos, std::index_sequence<Idx...>) {
             constexpr std::array<size_t, sizeof...(Idx)> values{Idx...};
+            static_assert(values.size() > 0, "");
             return values[pos];
         }
 

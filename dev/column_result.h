@@ -228,9 +228,9 @@ namespace sqlite_orm {
             using timpl_type = storage_pick_impl_t<St, Label>;
             using cte_mapper_type = storage_cte_mapper_type_t<timpl_type>;
 
-            // filter all column references [`alias_holder<>`]
+            // filter all column references being `alias_holder<>`
             using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::colref_expressions_tuple, alias_type_or_none>;
+                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none>;
 
             // lookup index of ColAlias in alias_types_tuple
             static constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;

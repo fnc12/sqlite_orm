@@ -198,7 +198,7 @@ namespace sqlite_orm {
 
             // filter all column references [`alias_holder<>`]
             using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::colref_expressions_tuple, alias_type_or_none>;
+                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none>;
 
             // lookup index in alias_types_tuple by Alias
             constexpr auto ColIdx = tuple_index_of_v<ColAlias, alias_types_tuple>;
@@ -229,10 +229,10 @@ namespace sqlite_orm {
             using elements_t = typename timpl_type::table_type::elements_type;
             using column_idxs = filter_tuple_sequence_t<elements_t, is_column>;
 
-            // note: even though the columns contain the `[aliased_field<>::*` we perform the lookup using the column references.
+            // note: even though the columns contain the [`aliased_field<>::*`] we perform the lookup using the column references.
             // filter all column references [`alias_holder<>`]
             using alias_types_tuple =
-                transform_tuple_t<typename cte_mapper_type::colref_expressions_tuple, alias_type_or_none>;
+                transform_tuple_t<typename cte_mapper_type::final_colrefs_tuple, alias_holder_type_or_none>;
 
             // lookup index of ColAlias in alias_types_tuple
             static constexpr auto I = tuple_index_of_v<ColAlias, alias_types_tuple>;

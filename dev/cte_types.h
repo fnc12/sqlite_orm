@@ -24,10 +24,15 @@ namespace sqlite_orm {
         };
 
         /**
-         *  This class captures an expression of a subselect (basically select_t<>::return_type),
-         *  and is used as a proxy 
+         *  This class captures various properties and aspects of a subselect's column expression,
+         *  and is used as a proxy in table_t<>.
          */
-        template<typename Label, typename Expression, typename RefExpressions, typename... Fs>
+        template<typename Label,
+                 typename ExplicitColRefs,
+                 typename Expression,
+                 typename SubselectColRefs,
+                 typename FinalColRefs,
+                 typename... Fs>
         class subselect_mapper {
           public:
             subselect_mapper() = delete;
@@ -43,9 +48,14 @@ namespace sqlite_orm {
             // it is currently unused, however proves to be useful in compilation errors,
             // as it simplifies recognizing errors in column expressions
             using expressions_tuple = tuplify_t<Expression>;
-            // this type captures column reference expressions;
+            // this type captures column reference expressions specified at CTE construction;
             // those are: member pointers, alias holders
-            using colref_expressions_tuple = tuplify_t<RefExpressions>;
+            using explicit_colrefs_tuple = ExplicitColRefs;
+            // this type captures column reference expressions from the subselect;
+            // those are: member pointers, alias holders
+            using subselect_colrefs_tuple = SubselectColRefs;
+            // this type captures column reference expressions merged from SubselectColRefs and ExplicitColRefs
+            using final_colrefs_tuple = FinalColRefs;
         };
     }
 }
