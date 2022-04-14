@@ -526,26 +526,20 @@ void apfelmaennchen() {
     constexpr auto t_col = "t"_col;
     auto ast = with(
         make_tuple(
-            cte<xaxis>("x")(
-                union_all(select(-2.0 >>= x_col), select(xaxis->*x_col + c(0.05), where(xaxis->*x_col < 1.2)))),
-            cte<yaxis>("y")(
-                union_all(select(-1.0 >>= y_col), select(yaxis->*y_col + c(0.1), where(yaxis->*y_col < 1.0)))),
-            cte<m>("iter", "cx", "cy", "x", "y")(union_all(
-                select(columns(0 >>= iter_col,
-                               xaxis->*x_col >>= cx_col,
-                               yaxis->*y_col >>= cy_col,
-                               0.0 >>= x_col,
-                               0.0 >>= y_col)),
+            cte<xaxis>(x_col)(union_all(select(-2.0), select(xaxis->*x_col + c(0.05), where(xaxis->*x_col < 1.2)))),
+            cte<yaxis>(y_col)(union_all(select(-1.0), select(yaxis->*y_col + c(0.10), where(yaxis->*y_col < 1.0)))),
+            cte<m>(iter_col, cx_col, cy_col, x_col, y_col)(union_all(
+                select(columns(0, xaxis->*x_col, yaxis->*y_col, 0.0, 0.0)),
                 select(columns(m->*iter_col + c(1),
                                m->*cx_col,
                                m->*cy_col,
                                m->*x_col * c(m->*x_col) - m->*y_col * c(m->*y_col) + m->*cx_col,
                                c(2.0) * m->*x_col * m->*y_col + m->*cy_col),
                        where((m->*x_col * c(m->*x_col) + m->*y_col * c(m->*y_col)) < c(4.0) && m->*iter_col < 28)))),
-            cte<m2>("iter", "cx", "cy")(select(columns(max<>(m->*iter_col) >>= iter_col, m->*cx_col, m->*cy_col),
-                                               group_by(m->*cx_col, m->*cy_col))),
-            cte<a>("t")(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter_col / c(7.0), 4.0), 1), "") >>= t_col,
-                               group_by(m2->*cy_col)))),
+            cte<m2>(iter_col, cx_col, cy_col)(
+                select(columns(max<>(m->*iter_col), m->*cx_col, m->*cy_col), group_by(m->*cx_col, m->*cy_col))),
+            cte<a>(t_col)(select(group_concat(substr(" .+*#", 1 + min<>(m2->*iter_col / c(7.0), 4.0), 1), ""),
+                                 group_by(m2->*cy_col)))),
         select(group_concat(rtrim(a->*t_col), "\n")));
 #elif __cplusplus >= 201703L  // C++17 or later
     using cte_xaxis = decltype(1_ctealias);
@@ -569,7 +563,7 @@ void apfelmaennchen() {
             cte<cte_xaxis>("x")(
                 union_all(select(-2.0 >>= x_col), select(xaxis->*x_col + c(0.05), where(xaxis->*x_col < 1.2)))),
             cte<cte_yaxis>("y")(
-                union_all(select(-1.0 >>= y_col), select(yaxis->*y_col + c(0.1), where(yaxis->*y_col < 1.0)))),
+                union_all(select(-1.0 >>= y_col), select(yaxis->*y_col + c(0.10), where(yaxis->*y_col < 1.0)))),
             cte<cte_m>("iter", "cx", "cy", "x", "y")(union_all(
                 select(columns(0 >>= iter_col,
                                xaxis->*x_col >>= cx_col,
