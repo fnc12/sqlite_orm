@@ -7377,7 +7377,7 @@ namespace sqlite_orm {
          *  Constraints a deleter to be state-less.
          */
         template<typename D>
-        concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
+        concept stateless_deleter = std::is_empty_v<D>&& std::is_default_constructible_v<D>;
 
         /**
          *  Constraints a deleter to be an integral function constant.
@@ -7456,7 +7456,7 @@ namespace sqlite_orm {
                                             (can_yield_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
 
         template<typename D>
-        concept can_yield_xdestroy = can_yield_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
+        concept can_yield_xdestroy = can_yield_fp<D>&& std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
         concept needs_xdestroy_proxy = (stateless_deleter<D> &&
@@ -12819,7 +12819,7 @@ namespace sqlite_orm {
                     query.c_str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
-                        if (argc) {
+                        if(argc) {
                             auto index = 0;
                             auto cid = std::atoi(argv[index++]);
                             std::string name = argv[index++];
@@ -12833,13 +12833,14 @@ namespace sqlite_orm {
                         return 0;
                     },
                     &result,
-                        nullptr);
-                if (rc != SQLITE_OK) {
+                    nullptr);
+                if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
                 return result;
             }
             // end JDH
+
           private:
             friend struct storage_base;
 

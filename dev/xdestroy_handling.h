@@ -22,7 +22,7 @@ namespace sqlite_orm {
          *  Constraints a deleter to be state-less.
          */
         template<typename D>
-        concept stateless_deleter = std::is_empty_v<D> && std::is_default_constructible_v<D>;
+        concept stateless_deleter = std::is_empty_v<D>&& std::is_default_constructible_v<D>;
 
         /**
          *  Constraints a deleter to be an integral function constant.
@@ -101,7 +101,7 @@ namespace sqlite_orm {
                                             (can_yield_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
 
         template<typename D>
-        concept can_yield_xdestroy = can_yield_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
+        concept can_yield_xdestroy = can_yield_fp<D>&& std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
         concept needs_xdestroy_proxy = (stateless_deleter<D> &&
