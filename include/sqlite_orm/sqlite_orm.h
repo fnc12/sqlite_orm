@@ -262,6 +262,9 @@ namespace sqlite_orm {
         // T::alias_type or nonesuch
         template<class T>
         using alias_holder_type_or_none = polyfill::detected<type_t, T>;
+
+        template<class T>
+        using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
     }
 
     namespace internal {
@@ -271,7 +274,7 @@ namespace sqlite_orm {
         template<typename... Fs>
         using fields_t = std::tuple<Fs...>;
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
         // cudos to OznOg https://stackoverflow.com/a/64606884/279251
         template<class X, class Tuple>
         struct tuple_index_of;
@@ -3930,7 +3933,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class O>
     internal::left_join_t<decltype(als), O> left_join(O o) {
         return {std::move(o)};
@@ -3942,7 +3945,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class O>
     internal::join_t<decltype(als), O> join(O o) {
         return {std::move(o)};
@@ -3954,7 +3957,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class O>
     internal::left_outer_join_t<decltype(als), O> left_outer_join(O o) {
         return {std::move(o)};
@@ -3966,7 +3969,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class O>
     internal::inner_join_t<decltype(als), O> inner_join(O o) {
         return {std::move(o)};
@@ -4407,7 +4410,7 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class E>
     internal::as_t<decltype(als), E> as(E expression) {
         return {std::move(expression)};
@@ -4498,7 +4501,14 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
+    namespace internal {
+        template<class T>
+        inline constexpr bool is_builtin_numeric_column_alias_v = false;
+        template<char... C>
+        inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+    }
+
     /**
      *  column_alias<'1'[, ...]> from a numeric literal.
      *  E.g. 1_colalias, 2_colalias
@@ -7199,7 +7209,7 @@ namespace sqlite_orm {
         /**
          *  Labeled (aliased) CTE expression.
          */
-        template<class Label, class Select, class ExplicitCols, class nExplicitCols>
+        template<class Label, class Select, class ExplicitCols>
         struct common_table_expression {
             using cte_label_type = Label;
             using expression_type = Select;
@@ -7217,37 +7227,34 @@ namespace sqlite_orm {
         template<class... CTEs>
         using common_table_expressions = std::tuple<CTEs...>;
 
-        template<typename Label, class ExplicitCols, class nExplicitCols>
+        template<typename Label, class ExplicitCols>
         struct cte_builder {
             ExplicitCols explicitColumns;
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols, nExplicitCols>
-            operator()(select_t<T, Args...> sel) && {
+            common_table_expression<Label, select_t<T, Args...>, ExplicitCols> operator()(select_t<T, Args...> sel) && {
                 return {move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols, nExplicitCols>
-            operator()(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, ExplicitCols> operator()(Compound sel) && {
                 return {move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols, nExplicitCols>
-            as(select_t<T, Args...> sel) && {
+            common_table_expression<Label, select_t<T, Args...>, ExplicitCols> as(select_t<T, Args...> sel) && {
                 return {move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols, nExplicitCols> as(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, ExplicitCols> as(Compound sel) && {
                 return {move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols, nExplicitCols>
+            common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
             materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS MATERIALIZED` is unimplemented");
                 return {move(this->explicitColumns), std::move(sel)};
@@ -7255,14 +7262,13 @@ namespace sqlite_orm {
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols, nExplicitCols>
-            materialized(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, ExplicitCols> materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS MATERIALIZED` is unimplemented");
                 return {move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols, nExplicitCols>
+            common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
             not_materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
                 return {move(this->explicitColumns), std::move(sel)};
@@ -7270,8 +7276,7 @@ namespace sqlite_orm {
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols, nExplicitCols>
-            not_materialized(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, ExplicitCols> not_materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
                 return {move(this->explicitColumns), {std::move(sel)}};
             }
@@ -7522,14 +7527,18 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         static_assert(internal::is_cte_alias_v<Label>, "Label must be a CTE alias");
+#if __cplusplus >= 201703L  // C++17 or later
+        static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+#endif
+
         using builder_type = internal::cte_builder<
             Label,
-            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>,
-            polyfill::index_constant<sizeof...(ExplicitCols)>>;
+            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto label,
              class... ExplicitCols,
              std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -7541,28 +7550,29 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         static_assert(internal::is_cte_alias_v<decltype(label)>, "Label must be a CTE alias");
+        static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+
         using builder_type = internal::cte_builder<
             decltype(label),
-            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>,
-            polyfill::index_constant<sizeof...(ExplicitCols)>>;
+            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
 
     // tuple of CTEs
-    template<class E, class... Labels, class... Selects, class... ExplicitCols, class... nExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Labels, Selects, ExplicitCols, nExplicitCols>...>
-    with(std::tuple<internal::common_table_expression<Labels, Selects, ExplicitCols, nExplicitCols>...> cte,
-         E expression) {
+    template<class E, class... Labels, class... Selects, class... ExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Labels, Selects, ExplicitCols>...>
+    with(std::tuple<internal::common_table_expression<Labels, Selects, ExplicitCols>...> cte, E expression) {
         return {move(cte), std::move(expression)};
     }
 
     /** A single CTE.
      *  Example : with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
      */
-    template<class E, class Label, class Select, class ExplicitCols, class nExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Label, Select, ExplicitCols, nExplicitCols>>
-    with(internal::common_table_expression<Label, Select, ExplicitCols, nExplicitCols> cte, E expression) {
+    template<class E, class Label, class Select, class ExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Label, Select, ExplicitCols>>
+    with(internal::common_table_expression<Label, Select, ExplicitCols> cte, E expression) {
         return {std::make_tuple(move(cte)), std::move(expression)};
     }
 
@@ -10295,7 +10305,7 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool
             is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
-#if __cplusplus >= 201703L  // using C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
         template<size_t I, const char* PointerArg, const char* Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding == PointerArg;
@@ -18413,6 +18423,11 @@ namespace sqlite_orm {
             if constexpr(std::tuple_size_v < ExplicitColRefs >> 0) {
                 return std::tuple{determine_cte_colref(impl, get<Idx>(subselectColRefs), get<Idx>(explicitColRefs))...};
             } else {
+                static_assert(
+                    (!internal::is_builtin_numeric_column_alias_v<
+                         alias_holder_type_or_none_t<std::tuple_element_t<Idx, SubselectColRefs>>> &&
+                     ...),
+                    "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
                 return subselectColRefs;
             }
         }
@@ -18449,6 +18464,7 @@ namespace sqlite_orm {
             auto subselectColRefs = extract_colref_expressions(impl, subSelect.col);
             const auto& finalColRefs =
                 determine_cte_colrefs(impl, subselectColRefs, cte.explicitColumns, index_sequence{});
+
             context_type context{impl};
             std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
 
@@ -20223,7 +20239,7 @@ namespace sqlite_orm {
                           X...> {};
     }
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
     namespace internal {
         constexpr size_t _10_pow(size_t n) {
             if(n == 0) {
