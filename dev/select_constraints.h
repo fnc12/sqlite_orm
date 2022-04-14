@@ -635,6 +635,11 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         static_assert(internal::is_cte_alias_v<Label>, "Label must be a CTE alias");
+#if __cplusplus >= 201703L  // C++17 or later
+        static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+#endif
+
         using builder_type = internal::cte_builder<
             Label,
             internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>>;
@@ -653,6 +658,9 @@ namespace sqlite_orm {
                               bool> = true>
     auto cte(ExplicitCols... explicitColumns) {
         static_assert(internal::is_cte_alias_v<decltype(label)>, "Label must be a CTE alias");
+        static_assert((!internal::is_builtin_numeric_column_alias_v<ExplicitCols> && ...),
+                      "Numeric column aliases are reserved for referencing columns locally within a single CTE.");
+
         using builder_type = internal::cte_builder<
             decltype(label),
             internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>>;

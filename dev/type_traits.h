@@ -74,6 +74,9 @@ namespace sqlite_orm {
         // T::alias_type or nonesuch
         template<class T>
         using alias_holder_type_or_none = polyfill::detected<type_t, T>;
+
+        template<class T>
+        using alias_holder_type_or_none_t = typename alias_holder_type_or_none<T>::type;
     }
 
     namespace internal {

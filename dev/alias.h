@@ -276,6 +276,13 @@ namespace sqlite_orm {
     using colalias_i = internal::column_alias<'i'>;
 
 #if __cplusplus >= 201703L  // use of C++17 or higher
+    namespace internal {
+        template<class T>
+        inline constexpr bool is_builtin_numeric_column_alias_v = false;
+        template<char... C>
+        inline constexpr bool is_builtin_numeric_column_alias_v<column_alias<C...>> = ((C >= '0' && C <= '9') && ...);
+    }
+
     /**
      *  column_alias<'1'[, ...]> from a numeric literal.
      *  E.g. 1_colalias, 2_colalias
