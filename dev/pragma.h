@@ -118,7 +118,7 @@ namespace sqlite_orm {
             }
 
             // JDH
-            inline std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
+            std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
                 auto db = connection.get();
 
