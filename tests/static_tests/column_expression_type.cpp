@@ -14,9 +14,7 @@ void runTest(V value) {
 
 TEST_CASE("column_expression_of_t") {
     struct Org {
-        // compile-time mapped (via c_v<>)
         int64 id = 0;
-        // not compile-time mapped
         int64 boss = 0;
     };
     struct Derived : Org {};
@@ -49,11 +47,10 @@ TEST_CASE("column_expression_of_t") {
     runTest<storage_type, column_pointer<cte_1, polyfill::index_constant<0u>>>(column<cte_1>(0_colidx));
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>()->*&Org::id);
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
-    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
-    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(column<cte_1>->*&Org::id);
+    runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(cte_1{}->*&Org::id);
     runTest<storage_type, column_pointer<cte_1, alias_holder<internal::column_alias<'1'>>>>(column<cte_1>(1_colalias));
     runTest<storage_type, column_pointer<cte_1, alias_holder<colalias_c>>>(1_ctealias->*colalias_c{});
-#if __cplusplus >= 202002L  // C++20 or later
+#if __cpp_nontype_template_args >= 201911
     runTest<storage_type, column_pointer<cte_1, alias_holder<colalias_c>>>("1"_cte->*"c"_col);
 #endif
 }

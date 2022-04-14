@@ -248,6 +248,7 @@ namespace sqlite_orm {
             auto subselectColRefs = extract_colref_expressions(impl, subSelect.col);
             const auto& finalColRefs =
                 determine_cte_colrefs(impl, subselectColRefs, cte.explicitColumns, index_sequence{});
+
             context_type context{impl};
             std::vector<std::string> columnNames = collect_cte_column_names(subSelect, cte.explicitColumns, context);
 

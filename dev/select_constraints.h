@@ -317,7 +317,7 @@ namespace sqlite_orm {
         /**
          *  Labeled (aliased) CTE expression.
          */
-        template<class Label, class Select, class ExplicitCols, class nExplicitCols>
+        template<class Label, class Select, class ExplicitCols>
         struct common_table_expression {
             using cte_label_type = Label;
             using expression_type = Select;
@@ -335,37 +335,34 @@ namespace sqlite_orm {
         template<class... CTEs>
         using common_table_expressions = std::tuple<CTEs...>;
 
-        template<typename Label, class ExplicitCols, class nExplicitCols>
+        template<typename Label, class ExplicitCols>
         struct cte_builder {
             ExplicitCols explicitColumns;
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols, nExplicitCols>
-            operator()(select_t<T, Args...> sel) && {
+            common_table_expression<Label, select_t<T, Args...>, ExplicitCols> operator()(select_t<T, Args...> sel) && {
                 return {move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols, nExplicitCols>
-            operator()(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, ExplicitCols> operator()(Compound sel) && {
                 return {move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols, nExplicitCols>
-            as(select_t<T, Args...> sel) && {
+            common_table_expression<Label, select_t<T, Args...>, ExplicitCols> as(select_t<T, Args...> sel) && {
                 return {move(this->explicitColumns), std::move(sel)};
             }
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols, nExplicitCols> as(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, ExplicitCols> as(Compound sel) && {
                 return {move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols, nExplicitCols>
+            common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
             materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS MATERIALIZED` is unimplemented");
                 return {move(this->explicitColumns), std::move(sel)};
@@ -373,14 +370,13 @@ namespace sqlite_orm {
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols, nExplicitCols>
-            materialized(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, ExplicitCols> materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS MATERIALIZED` is unimplemented");
                 return {move(this->explicitColumns), {std::move(sel)}};
             }
 
             template<class T, class... Args>
-            common_table_expression<Label, select_t<T, Args...>, ExplicitCols, nExplicitCols>
+            common_table_expression<Label, select_t<T, Args...>, ExplicitCols>
             not_materialized(select_t<T, Args...> sel) && {
                 static_assert(polyfill::always_false_v<T>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
                 return {move(this->explicitColumns), std::move(sel)};
@@ -388,8 +384,7 @@ namespace sqlite_orm {
 
             template<class Compound,
                      std::enable_if_t<is_base_of_template<Compound, compound_operator>::value, bool> = true>
-            common_table_expression<Label, select_t<Compound>, ExplicitCols, nExplicitCols>
-            not_materialized(Compound sel) && {
+            common_table_expression<Label, select_t<Compound>, ExplicitCols> not_materialized(Compound sel) && {
                 static_assert(polyfill::always_false_v<Compound>, "`WITH ... AS NOT MATERIALIZED` is unimplemented");
                 return {move(this->explicitColumns), {std::move(sel)}};
             }
@@ -642,8 +637,7 @@ namespace sqlite_orm {
         static_assert(internal::is_cte_alias_v<Label>, "Label must be a CTE alias");
         using builder_type = internal::cte_builder<
             Label,
-            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>,
-            polyfill::index_constant<sizeof...(ExplicitCols)>>;
+            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 
@@ -661,26 +655,24 @@ namespace sqlite_orm {
         static_assert(internal::is_cte_alias_v<decltype(label)>, "Label must be a CTE alias");
         using builder_type = internal::cte_builder<
             decltype(label),
-            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>,
-            polyfill::index_constant<sizeof...(ExplicitCols)>>;
+            internal::transform_tuple_t<std::tuple<ExplicitCols...>, internal::decay_explicit_column>>;
         return builder_type{{std::move(explicitColumns)...}};
     }
 #endif
 
     // tuple of CTEs
-    template<class E, class... Labels, class... Selects, class... ExplicitCols, class... nExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Labels, Selects, ExplicitCols, nExplicitCols>...>
-    with(std::tuple<internal::common_table_expression<Labels, Selects, ExplicitCols, nExplicitCols>...> cte,
-         E expression) {
+    template<class E, class... Labels, class... Selects, class... ExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Labels, Selects, ExplicitCols>...>
+    with(std::tuple<internal::common_table_expression<Labels, Selects, ExplicitCols>...> cte, E expression) {
         return {move(cte), std::move(expression)};
     }
 
     /** A single CTE.
      *  Example : with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
      */
-    template<class E, class Label, class Select, class ExplicitCols, class nExplicitCols>
-    internal::with_t<E, internal::common_table_expression<Label, Select, ExplicitCols, nExplicitCols>>
-    with(internal::common_table_expression<Label, Select, ExplicitCols, nExplicitCols> cte, E expression) {
+    template<class E, class Label, class Select, class ExplicitCols>
+    internal::with_t<E, internal::common_table_expression<Label, Select, ExplicitCols>>
+    with(internal::common_table_expression<Label, Select, ExplicitCols> cte, E expression) {
         return {std::make_tuple(move(cte)), std::move(expression)};
     }
 
