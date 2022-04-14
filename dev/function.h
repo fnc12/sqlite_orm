@@ -198,7 +198,7 @@ namespace sqlite_orm {
         SQLITE_ORM_INLINE_VAR constexpr bool
             is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
-#if __cplusplus >= 201703L  // using C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
         template<size_t I, const char *PointerArg, const char *Binding>
         SQLITE_ORM_CONSTEVAL bool assert_same_pointer_type() {
             constexpr bool valid = Binding == PointerArg;

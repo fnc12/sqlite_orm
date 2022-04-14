@@ -184,7 +184,7 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class E>
     internal::as_t<decltype(als), E> as(E expression) {
         return {std::move(expression)};
@@ -275,7 +275,7 @@ namespace sqlite_orm {
     using colalias_h = internal::column_alias<'h'>;
     using colalias_i = internal::column_alias<'i'>;
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
     namespace internal {
         template<class T>
         inline constexpr bool is_builtin_numeric_column_alias_v = false;

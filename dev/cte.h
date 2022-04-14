@@ -19,7 +19,7 @@ namespace sqlite_orm {
                           X...> {};
     }
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
     namespace internal {
         constexpr size_t _10_pow(size_t n) {
             if(n == 0) {

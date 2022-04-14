@@ -1008,7 +1008,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class O>
     internal::left_join_t<decltype(als), O> left_join(O o) {
         return {std::move(o)};
@@ -1020,7 +1020,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class O>
     internal::join_t<decltype(als), O> join(O o) {
         return {std::move(o)};
@@ -1032,7 +1032,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class O>
     internal::left_outer_join_t<decltype(als), O> left_outer_join(O o) {
         return {std::move(o)};
@@ -1044,7 +1044,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 and later
+#if __cplusplus >= 202002L  // C++20 or later
     template<auto als, class O>
     internal::inner_join_t<decltype(als), O> inner_join(O o) {
         return {std::move(o)};

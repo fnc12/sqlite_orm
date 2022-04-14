@@ -86,7 +86,7 @@ namespace sqlite_orm {
         template<typename... Fs>
         using fields_t = std::tuple<Fs...>;
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cplusplus >= 201703L  // C++17 or later
         // cudos to OznOg https://stackoverflow.com/a/64606884/279251
         template<class X, class Tuple>
         struct tuple_index_of;
