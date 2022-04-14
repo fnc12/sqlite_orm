@@ -117,7 +117,6 @@ namespace sqlite_orm {
                 return this->get_pragma<std::vector<std::string>>(oss.str());
             }
 
-            // JDH
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
                 auto db = connection.get();
@@ -149,8 +148,7 @@ namespace sqlite_orm {
                 }
                 return result;
             }
-            // end JDH
-
+         
           private:
             friend struct storage_base;
 
