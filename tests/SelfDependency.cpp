@@ -17,6 +17,10 @@ TEST_CASE("self dependency") {
             std::string name;
             std::optional<int> manager;
         };
+        struct Registration {
+            int id;
+            std::optional<int> userid;
+        };
 
         auto create = [](std::string dbFileName) {
             auto storage = make_storage(dbFileName,
@@ -24,7 +28,12 @@ TEST_CASE("self dependency") {
                     make_column("id", &User::id, primary_key(), autoincrement()),
                     make_column("name", &User::name),
                     make_column("manager", &User::manager),
-                    foreign_key(&User::manager).references(&User::id)));
+                    foreign_key(&User::manager).references(&User::id)),
+                make_table("reg",
+                    make_column("id", &Registration::id, primary_key(), autoincrement()),
+                    make_column("userid", &Registration::userid),
+                    foreign_key(&Registration::userid).references(&User::id)));
+
             return storage;
         };
 
@@ -41,6 +50,7 @@ TEST_CASE("self dependency") {
         REQUIRE(ok == true);
 
         // empty db
+        storage.remove_all<Registration>();
         storage.remove_all<User>();
 
         // define data
@@ -54,6 +64,11 @@ TEST_CASE("self dependency") {
         auto user = storage.get<User>(1);
         user.manager = 2;
         storage.update(user);
+        storage.remove_all<Registration>();
+        Registration reg{ 1,1 };
+        Registration reg2{ 2,2 };
+        storage.replace(reg);
+        storage.replace(reg2);
         ///////// DATA INSERTED ////////
 
         auto backup = create("self_dependency_backup.sqlite");
@@ -87,6 +102,7 @@ TEST_CASE("self dependency") {
         }
         SECTION("Turn off FKs") {
             backup.foreign_key(false);
+            storage.foreign_key(false);
             try {
                 // make backup  // ASSUME User's table is HUGE cannot load it into memory!
                 for (auto r : storage.iterate<User>()) {
@@ -98,8 +114,7 @@ TEST_CASE("self dependency") {
 
                 // recreate table
                 ret = storage.sync_schema(true);
-                // restore FK flag (sync_schema turns it off at the end)
-                storage.foreign_key(false);
+
                 // load data from backup
                 for (auto r : backup.iterate<User>()) {
                     storage.replace(r);
@@ -113,6 +128,24 @@ TEST_CASE("self dependency") {
             backup.foreign_key(true);
             storage.foreign_key(true);
 
+        }
+        SECTION("backup api") {
+            auto back = create("tmp.sqlite");
+            auto orig = storage.get_all<User>();
+            storage.backup_to(back);
+            auto vec = back.get_all<User>();
+
+            try {
+                storage.rename_table<User>("user_temp");
+                storage.sync_schema(true);
+                storage.backup_from("tmp.sqlite");
+                auto orig = storage.get_all<User>();
+                int i = 0;
+            }
+            catch(std::exception& ex) {
+                std::string s = ex.what();
+                std::ignore = s;
+            }
         }
     }
 }

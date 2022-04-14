@@ -17947,6 +17947,7 @@ namespace sqlite_orm {
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 // JDH
+                const bool initial_value = foreign_key_value;  // if false then restore false at end of scope
                 foreign_key_value = false;
                 std::map<std::string, sync_schema_result> result;
                 try
@@ -17962,10 +17963,10 @@ namespace sqlite_orm {
                 catch (std::exception& ex)
                 {
                     std::string s = ex.what();
-                    foreign_key_value = true;
+                    foreign_key_value = initial_value;
                     throw;
                 }
-                foreign_key_value = true;
+                foreign_key_value = initial_value;
                 // end JDH
                 return result;
             }

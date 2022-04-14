@@ -6,6 +6,7 @@
 
 // #include "SQLCookbook.h"
 #include <sqlite_orm/SQLCookbook.h>
+#include <sqlite_orm/ForeignKeyHolder.h>
 
 void SQL1_8();
 void SQL1_12();
@@ -24,13 +25,26 @@ void Except();
 void usingUpdate();
 void usingDelete();
 void usingObjectAPI();
+void testMigrationAgent();
+void loadv0();
 
-
-int main()
+int main(int argc, char* argv[])
 {
 	using namespace sqlite_orm;
 
-
+	if (argc > 1)
+	{
+		std::string cmd = argv[1];
+		if (cmd == "-migrate")
+		{
+			testMigrationAgent();
+			return 0;
+		}
+		if(cmd == "-load") {
+			loadv0();
+			return 0;
+		}
+	}
 
 	try
 	{
@@ -45,6 +59,10 @@ int main()
 
 
 		// sm.guarded_sync_schema();
+		if(storage.pragma.user_version() == 1) {
+			// auto st = create_storage_ver_1();
+
+		}
 		storage.sync_schema(true);
 
 		// auto pair = sm.find_duplicate_in_column<Employee, &Employee::m_ename>();
@@ -56,18 +74,18 @@ int main()
 		// }
 
 
-		storage.remove_all<Album>();
-		storage.remove_all<Artist>();
-		storage.remove_all<EmpBonus>();
-		storage.remove_all<Employee>();
-		storage.remove_all<Department>();
+		// storage.remove_all<Album>();
+		// storage.remove_all<Artist>();
+		// storage.remove_all<EmpBonus>();
+		// storage.remove_all<Employee>();
+		// storage.remove_all<Department>();
 	}
 	catch(std::exception& ex)
 	{
 		auto s = ex.what();
 		std::ignore = s;
 	}
-
+#if 0
 	std::vector<Artist> art =
 	{
 		Artist{1, "Elton John"},
@@ -130,7 +148,7 @@ int main()
 		auto s = ex.what();
 		std::ignore = s;
 	}
-
+#endif
 	usingObjectAPI();
 	usingDelete();
 	usingUpdate();
@@ -148,6 +166,68 @@ int main()
 	SQL3_6();
 	SQL3_9();
 	Except();
+}
+
+
+void loadv0() {
+	foreign_key_holder fk(v0::storage);
+
+	try {
+            storage.remove_all<Album>();
+            storage.remove_all<Artist>();
+            storage.remove_all<EmpBonus>();
+            storage.remove_all<Employee>();
+            storage.remove_all<Department>();
+        } catch(std::exception& ex) {
+            auto s = ex.what();
+            std::ignore = s;
+        }
+		storage.sync_schema(true);
+
+        std::vector<Artist> art = {Artist{1, "Elton John"}, Artist{2, "Prince"}};
+
+        std::vector<Album> albums = {Album{1, 1}};
+
+        std::vector<Employee> vec{
+            Employee{7369, "Smith", "Clerk", 7902, "17-DEC-1980", 800, std::nullopt, 20},
+            Employee{7499, "Allen", "SalesMan", 7698, "20-FEB-1981", 1600, 300, 30},
+            Employee{7521, "Ward", "SalesMan", 7698, "22-feb-1981", 1250, 500, 30},
+            Employee{7566, "Jones", "Manager", 7839, "02-abr-1981", 2975, std::nullopt, 20},
+            Employee{7654, "Martin", "SalesMan", 7698, "28-sep-1981", 1250, 400, 30},
+            Employee{7698, "Blake", "Manager", 7839, "01-may-1981", 2850, std::nullopt, 30},
+            Employee{7782, "Clark", "Manager", 7839, "09-jun-1981", 2450, std::nullopt, 10},
+            Employee{7788, "Scott", "Analyst", 7566, "09-Dec-1982", 3000, std::nullopt, 20},
+            Employee{7839, "King", "President", std::nullopt, "17-nov-1981", 5000, std::nullopt, 10},
+            Employee{7844, "Turner", "SalesMan", 7698, "08-Sep-1981", 1500, 0, 30},
+            Employee{7876, "Adams", "Clerk", 7788, "12-JAN-1983", 1100, std::nullopt, 20},
+            Employee{7900, "James", "Clerk", 7698, "03-DEC-1981", 950, std::nullopt, 30},
+            Employee{7902, "Ford", "Analyst", 7566, "03-DEC-1981", 3000, std::nullopt, 20},
+            Employee{7934, "Miller", "Clerk", 7782, "23-JAN-1982", 1300, std::nullopt, 10}};
+
+        std::vector<Department> des = {Department{10, "Accounting", "New York"},
+                                       Department{20, "Research", "Dallas"},
+                                       Department{30, "Sales", "Chicago"},
+                                       Department{40, "Operations", "Boston"}};
+
+        std::vector<EmpBonus> bonuses = {// EmpBonus{-1, 7369, "14-Mar-2005", 1},
+                                         // EmpBonus{-1, 7900, "14-Mar-2005", 2},
+                                         // EmpBonus{-1, 7788, "14-Mar-2005", 3},
+                                         EmpBonus{-1, 7934, "17-Mar-2005", 1},
+                                         EmpBonus{-1, 7934, "15-Feb-2005", 2},
+                                         EmpBonus{-1, 7839, "15-Feb-2005", 3},
+                                         EmpBonus{-1, 7782, "15-Feb-2005", 1}};
+
+        try {
+            storage.replace_range(art.begin(), art.end());
+            storage.replace_range(albums.begin(), albums.end());
+            storage.replace_range(des.begin(), des.end());
+            storage.replace_range(vec.begin(), vec.end());
+            storage.insert_range(bonuses.begin(), bonuses.end());
+        } catch(std::exception& ex) {
+            auto s = ex.what();
+            std::ignore = s;
+        }
+
 }
 
 void CreateView()
