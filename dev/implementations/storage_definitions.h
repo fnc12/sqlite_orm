@@ -25,7 +25,8 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
 
-            auto schema_stat = tImpl.schema_status(db, preserve);
+            auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+            auto schema_stat = tImpl.schema_status(db, preserve, dbTableInfo);
             if(schema_stat != decltype(schema_stat)::already_in_sync) {
                 if(schema_stat == decltype(schema_stat)::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -39,7 +40,7 @@ namespace sqlite_orm {
                         auto storageTableInfo = tImpl.table.get_table_info();
 
                         //  now get current table info from db using `PRAGMA table_info` query..
-                        auto dbTableInfo = tImpl.get_table_info(tImpl.table.name, db);
+                        auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
 
                         //  this vector will contain pointers to columns that gotta be added..
                         std::vector<table_info*> columnsToAdd;
