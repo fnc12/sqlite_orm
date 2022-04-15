@@ -148,7 +148,7 @@ namespace sqlite_orm {
                 }
                 return result;
             }
-         
+
           private:
             friend struct storage_base;
 
