@@ -17815,7 +17815,8 @@ namespace sqlite_orm {
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
                                              bool preserve) {
-                return tImpl.schema_status(db, preserve);
+                auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+                return tImpl.schema_status(db, preserve, dbTableInfo);
             }
 
             template<class... Tss, class... Cols>
