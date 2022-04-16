@@ -1109,8 +1109,10 @@ int main(int, char** argv) {
         //  SELECT name, instr(abilities, 'o') o_pos
         //  FROM marvel
         //  WHERE o_pos > 0
+        //  ORDER BY o_pos
         auto rows = storage.select(columns(&MarvelHero::name, as<o_pos>(instr(&MarvelHero::abilities, "o"))),
-                                   where(greater_than(get<o_pos>(), 0)));
+                                   where(greater_than(get<o_pos>(), 0)),
+                                   order_by(get<o_pos>()));
         for(auto& row: rows) {
             cout << get<0>(row) << '\t' << get<1>(row) << endl;
         }

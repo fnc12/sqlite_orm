@@ -46,13 +46,13 @@
 #include "storage_base.h"
 #include "prepared_statement.h"
 #include "expression_object_type.h"
-#include "statement_serializator.h"
-#include "table_name_collector.h"
+#include "statement_serializer.h"
 #include "triggers.h"
 #include "object_from_column_builder.h"
 #include "table.h"
 #include "column.h"
 #include "index.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
@@ -89,10 +89,10 @@ namespace sqlite_orm {
             /**
              *  Obtain a storage_t's const storage_impl.
              *  
-             *  @note Historically, `serializator_context_builder` was declared friend, along with
+             *  @note Historically, `serializer_context_builder` was declared friend, along with
              *  a few other library stock objects, in order limit access to the storage_impl.
              *  However, one could gain access to a storage_t's storage_impl through
-             *  `serializator_context_builder`, hence leading the whole friend declaration mambo-jumbo
+             *  `serializer_context_builder`, hence leading the whole friend declaration mambo-jumbo
              *  ad absurdum.
              *  Providing a free function is way better and cleaner.
              *
@@ -106,17 +106,16 @@ namespace sqlite_orm {
             void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
                 using table_type = typename std::decay<decltype(tableImpl.table)>::type;
                 std::stringstream ss;
-                ss << "CREATE TABLE '" << tableName << "' ( ";
-                auto elementsCount = tableImpl.table.elements_count;
-                auto index = 0;
-                using context_t = serializator_context<impl_type>;
+                ss << "CREATE TABLE " << quote_identifier(tableName) << " ( ";
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                iterate_tuple(tableImpl.table.elements, [elementsCount, &index, &ss, &context](auto& element) {
-                    ss << serialize(element, context);
-                    if(index < elementsCount - 1) {
+                auto index = 0;
+                iterate_tuple(tableImpl.table.elements, [&index, &ss, &context](auto& element) {
+                    if(index > 0) {
                         ss << ", ";
                     }
-                    index++;
+                    ss << serialize(element, context);
+                    ++index;
                 });
                 ss << ")";
                 if(table_type::is_without_rowid) {
@@ -127,7 +126,7 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE '" << tableName << "' DROP COLUMN \"" << columnName << "\"";
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN " << quote_identifier(columnName);
                 perform_void_exec(db, ss.str());
             }
 #endif
@@ -205,7 +204,7 @@ namespace sqlite_orm {
             template<class T>
             void drop_trigger(const T& triggerName) {
                 std::stringstream ss;
-                ss << "DROP TRIGGER " << triggerName;
+                ss << "DROP TRIGGER " << quote_identifier(triggerName);
                 auto query = ss.str();
                 auto con = this->get_connection();
                 auto db = con.get();
@@ -594,7 +593,7 @@ namespace sqlite_orm {
                     [](const auto& expression) -> decltype(auto) {
                         return (expression);
                     })(std::forward<E>(expression));
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 context.replace_bindable_with_question = parametrized;
                 // just like prepare_impl()
@@ -844,7 +843,7 @@ namespace sqlite_orm {
             template<class... Tss, class... Cols>
             sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 auto query = serialize(tableImpl.table, context);
                 perform_void_exec(db, query);
@@ -855,7 +854,7 @@ namespace sqlite_orm {
             sync_schema_result
             sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 auto query = serialize(tableImpl.table, context);
                 auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
@@ -873,8 +872,8 @@ namespace sqlite_orm {
             template<class C>
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << tableName << " ADD COLUMN ";
-                using context_t = serializator_context<impl_type>;
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 ss << serialize(column, context);
                 perform_void_exec(db, ss.str());
@@ -885,7 +884,7 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3_stmt* stmt;
                 auto db = con.get();
-                using context_t = serializator_context<impl_type>;
+                using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
@@ -1612,19 +1611,20 @@ namespace sqlite_orm {
 
                         static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
-                            ss << "SELECT COUNT(*)";
-                            ss << " FROM " << storageImpl.table.name;
-                            ss << " WHERE";
+                            ss << "SELECT COUNT(*)"
+                               << " FROM " << quote_identifier(storageImpl.table.name);
+                            ss << " WHERE ";
                             auto columnIndex = 0;
                             iterate_tuple(foreignKey.columns, [&ss, &columnIndex, &storageImpl](auto& column) {
-                                if(columnIndex > 0) {
-                                    ss << " AND";
-                                }
-                                if(auto columnName = storageImpl.table.find_column_name(column)) {
-                                    ss << ' ' << *columnName << " = ?";
-                                } else {
+                                auto* columnName = storageImpl.table.find_column_name(column);
+                                if(!columnName) {
                                     throw std::system_error{orm_error_code::column_not_found};
                                 }
+
+                                if(columnIndex > 0) {
+                                    ss << " AND ";
+                                }
+                                ss << quote_identifier(*columnName) << " = ?";
                                 ++columnIndex;
                             });
                             auto query = ss.str();

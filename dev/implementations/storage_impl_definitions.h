@@ -1,5 +1,5 @@
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializator_context -> storage_impl -> table_t -> column_t)
+ *  (e.g. column_t -> default_value_extractor -> serializer_context -> storage_impl -> table_t -> column_t)
  *  this file is also used to provide definitions of interface methods 'hitting the database'.
  */
 #pragma once
@@ -16,11 +16,12 @@ namespace sqlite_orm {
     namespace internal {
 
         inline bool storage_impl_base::table_exists(const std::string& tableName, sqlite3* db) const {
+            using namespace std::string_literals;
+
             bool result = false;
             std::stringstream ss;
-            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = '"
-               << "table"
-               << "' AND name = '" << tableName << "'";
+            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
+               << " AND name = " << quote_string_literal(tableName);
             auto query = ss.str();
             auto rc = sqlite3_exec(
                 db,
@@ -43,7 +44,7 @@ namespace sqlite_orm {
         inline void
         storage_impl_base::rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
             std::stringstream ss;
-            ss << "ALTER TABLE " << oldName << " RENAME TO " << newName;
+            ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
             perform_void_exec(db, ss.str());
         }
 
@@ -85,39 +86,9 @@ namespace sqlite_orm {
             return notEqual;
         }
 
-        inline std::vector<table_info> storage_impl_base::get_table_info(const std::string& tableName,
-                                                                         sqlite3* db) const {
-            std::vector<table_info> result;
-            auto query = "PRAGMA table_info('" + tableName + "')";
-            auto rc = sqlite3_exec(
-                db,
-                query.c_str(),
-                [](void* data, int argc, char** argv, char**) -> int {
-                    auto& res = *(std::vector<table_info>*)data;
-                    if(argc) {
-                        auto index = 0;
-                        auto cid = std::atoi(argv[index++]);
-                        std::string name = argv[index++];
-                        std::string type = argv[index++];
-                        bool notnull = !!std::atoi(argv[index++]);
-                        std::string dflt_value = argv[index] ? argv[index] : "";
-                        index++;
-                        auto pk = std::atoi(argv[index++]);
-                        res.emplace_back(cid, name, type, notnull, dflt_value, pk);
-                    }
-                    return 0;
-                },
-                &result,
-                nullptr);
-            if(rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-            return result;
-        }
-
         template<class H, class... Ts>
         void storage_impl<H, Ts...>::copy_table(sqlite3* db,
-                                                const std::string& name,
+                                                const std::string& tableName,
                                                 const std::vector<table_info*>& columnsToIgnore) const {
             std::stringstream ss;
             std::vector<std::string> columnNames;
@@ -132,7 +103,7 @@ namespace sqlite_orm {
                 }
             });
             auto columnNamesCount = columnNames.size();
-            ss << "INSERT INTO " << name << " (";
+            ss << "INSERT INTO " << quote_identifier(tableName) << " (";
             for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << columnNames[i];
                 if(i < columnNamesCount - 1) {
@@ -148,12 +119,13 @@ namespace sqlite_orm {
                     ss << ", ";
                 }
             }
-            ss << " FROM '" << this->table.name << "'";
+            ss << " FROM " << quote_identifier(this->table.name);
             perform_void_exec(db, ss.str());
         }
 
         template<class H, class... Ts>
-        sync_schema_result storage_impl<H, Ts...>::schema_status(sqlite3* db, bool preserve) const {
+        sync_schema_result
+        storage_impl<H, Ts...>::schema_status(sqlite3* db, bool preserve, std::vector<table_info>& dbTableInfo) const {
 
             auto res = sync_schema_result::already_in_sync;
 
@@ -163,9 +135,6 @@ namespace sqlite_orm {
 
                 //  get table info provided in `make_table` call..
                 auto storageTableInfo = this->table.get_table_info();
-
-                //  now get current table info from db using `PRAGMA table_info` query..
-                auto dbTableInfo = this->get_table_info(this->table.name, db);
 
                 //  this vector will contain pointers to columns that gotta be added..
                 std::vector<table_info*> columnsToAdd;

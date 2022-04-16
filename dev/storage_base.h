@@ -46,7 +46,7 @@ namespace sqlite_orm {
 
             void drop_index(const std::string& indexName) {
                 std::stringstream ss;
-                ss << "DROP INDEX '" << indexName + "'";
+                ss << "DROP INDEX " << quote_identifier(indexName);
                 perform_void_exec(get_connection().get(), ss.str());
             }
 
@@ -67,7 +67,7 @@ namespace sqlite_orm {
              */
             void rename_table(const std::string& from, const std::string& to) {
                 std::stringstream ss;
-                ss << "ALTER TABLE '" << from << "' RENAME TO '" << to << "'";
+                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to);
                 perform_void_exec(get_connection().get(), ss.str());
             }
 
@@ -149,9 +149,9 @@ namespace sqlite_orm {
                     sql.c_str(),
                     [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
-                        for(int i = 0; i < argc; i++) {
+                        for(int i = 0; i < argc; ++i) {
                             if(argv[i]) {
-                                tableNames_.push_back(argv[i]);
+                                tableNames_.emplace_back(argv[i]);
                             }
                         }
                         return 0;
@@ -365,12 +365,19 @@ namespace sqlite_orm {
             }
 
             void begin_transaction() {
-                this->connection->retain();
-                if(1 == this->connection->retain_count()) {
-                    this->on_open_internal(this->connection->get());
-                }
-                auto db = this->connection->get();
-                perform_void_exec(db, "BEGIN TRANSACTION");
+                this->begin_transaction_internal("BEGIN TRANSACTION");
+            }
+
+            void begin_deferred_transaction() {
+                this->begin_transaction_internal("BEGIN DEFERRED TRANSACTION");
+            }
+
+            void begin_immediate_transaction() {
+                this->begin_transaction_internal("BEGIN IMMEDIATE TRANSACTION");
+            }
+
+            void begin_exclusive_transaction() {
+                this->begin_transaction_internal("BEGIN EXCLUSIVE TRANSACTION");
             }
 
             void commit() {
@@ -486,6 +493,15 @@ namespace sqlite_orm {
                 if(this->inMemory) {
                     this->connection->release();
                 }
+            }
+
+            void begin_transaction_internal(const std::string& query) {
+                this->connection->retain();
+                if(1 == this->connection->retain_count()) {
+                    this->on_open_internal(this->connection->get());
+                }
+                auto db = this->connection->get();
+                perform_void_exec(db, query);
             }
 
             connection_ref get_connection() {
@@ -694,7 +710,7 @@ namespace sqlite_orm {
 
             void drop_table_internal(const std::string& tableName, sqlite3* db) {
                 std::stringstream ss;
-                ss << "DROP TABLE '" << tableName + "'";
+                ss << "DROP TABLE " << quote_identifier(tableName);
                 perform_void_exec(db, ss.str());
             }
 

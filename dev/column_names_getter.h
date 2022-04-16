@@ -7,13 +7,14 @@
 
 #include "error_code.h"
 #include "select_constraints.h"
+#include "util.h"
 
 namespace sqlite_orm {
 
     namespace internal {
 
         template<class T, class I>
-        std::string serialize(const T& t, const serializator_context<I>& context);
+        std::string serialize(const T& t, const serializer_context<I>& context);
 
         template<class T, class SFINAE = void>
         struct column_names_getter {
@@ -24,7 +25,7 @@ namespace sqlite_orm {
                 auto newContext = context;
                 newContext.skip_table_name = false;
                 auto columnName = serialize(t, newContext);
-                if(columnName.length()) {
+                if(!columnName.empty()) {
                     return {move(columnName)};
                 } else {
                     throw std::system_error{orm_error_code::column_not_found};
@@ -64,7 +65,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {"'" + alias_extractor<A>::get() + "'.*"};
+                return {quote_identifier(alias_extractor<A>::get()) + ".*"};
             }
         };
 
@@ -90,7 +91,7 @@ namespace sqlite_orm {
                 newContext.skip_table_name = false;
                 iterate_tuple(cols.columns, [&columnNames, &newContext](auto& m) {
                     auto columnName = serialize(m, newContext);
-                    if(columnName.length()) {
+                    if(!columnName.empty()) {
                         columnNames.push_back(columnName);
                     } else {
                         throw std::system_error{orm_error_code::column_not_found};
