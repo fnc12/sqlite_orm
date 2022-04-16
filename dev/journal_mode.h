@@ -6,14 +6,19 @@
 #include <algorithm>  //  std::transform
 #include <cctype>  // std::toupper
 
-namespace sqlite_orm {
-
-/**
- *  Caps case cause of 1) delete keyword; 2) https://www.sqlite.org/pragma.html#pragma_journal_mode original spelling
- */
-#ifdef DELETE
+#if defined(_WINNT_)
+// DELETE is a macro defined in the Windows SDK (winnt.h)
+#pragma push_macro("DELETE")
 #undef DELETE
 #endif
+
+namespace sqlite_orm {
+
+    /**
+     *  Caps case because of:
+     *  1) delete keyword;
+     *  2) https://www.sqlite.org/pragma.html#pragma_journal_mode original spelling
+     */
     enum class journal_mode : signed char {
         DELETE = 0,
         TRUNCATE = 1,
@@ -59,3 +64,7 @@ namespace sqlite_orm {
         }
     }
 }
+
+#if defined(_WINNT_)
+#pragma pop_macro("DELETE")
+#endif

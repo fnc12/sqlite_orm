@@ -1,16 +1,10 @@
 #pragma once
 
 #if defined(_MSC_VER)
-#if defined(min)
 __pragma(push_macro("min"))
 #undef min
-#define __RESTORE_MIN__
-#endif
-#if defined(max)
-    __pragma(push_macro("max"))
+__pragma(push_macro("max"))
 #undef max
-#define __RESTORE_MAX__
-#endif
 #endif  // defined(_MSC_VER)
 
 #include <ciso646>  //  due to #166
@@ -41,9 +35,9 @@ __pragma(push_macro("min"))
 
 #include <type_traits>
 
-    // #include "start_macros.h"
+// #include "start_macros.h"
 
-    namespace sqlite_orm {
+namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
 #if __cplusplus < 201703L  // before C++17
@@ -8120,14 +8114,19 @@ namespace sqlite_orm {
 #include <algorithm>  //  std::transform
 #include <cctype>  // std::toupper
 
-namespace sqlite_orm {
-
-/**
- *  Caps case cause of 1) delete keyword; 2) https://www.sqlite.org/pragma.html#pragma_journal_mode original spelling
- */
-#ifdef DELETE
+#if defined(_WINNT_)
+// DELETE is a macro defined in the Windows SDK (winnt.h)
+#pragma push_macro("DELETE")
 #undef DELETE
 #endif
+
+namespace sqlite_orm {
+
+    /**
+     *  Caps case because of:
+     *  1) delete keyword;
+     *  2) https://www.sqlite.org/pragma.html#pragma_journal_mode original spelling
+     */
     enum class journal_mode : signed char {
         DELETE = 0,
         TRUNCATE = 1,
@@ -8173,6 +8172,10 @@ namespace sqlite_orm {
         }
     }
 }
+
+#if defined(_WINNT_)
+#pragma pop_macro("DELETE")
+#endif
 
 // #include "error_code.h"
 
@@ -19658,12 +19661,6 @@ namespace sqlite_orm {
 #pragma once
 
 #if defined(_MSC_VER)
-#if defined(__RESTORE_MIN__)
+__pragma(pop_macro("max"))
 __pragma(pop_macro("min"))
-#undef __RESTORE_MIN__
-#endif
-#if defined(__RESTORE_MAX__)
-    __pragma(pop_macro("max"))
-#undef __RESTORE_MAX__
-#endif
 #endif  // defined(_MSC_VER)
