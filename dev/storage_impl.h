@@ -24,8 +24,6 @@ namespace sqlite_orm {
 
             void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const;
 
-            std::vector<table_info> get_table_info(const std::string& tableName, sqlite3* db) const;
-
             static bool calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
                                                      std::vector<table_info>& storageTableInfo,
                                                      std::vector<table_info>& dbTableInfo);
@@ -87,7 +85,7 @@ namespace sqlite_orm {
             void
             copy_table(sqlite3* db, const std::string& name, const std::vector<table_info*>& columnsToIgnore) const;
 
-            sync_schema_result schema_status(sqlite3* db, bool preserve) const;
+            sync_schema_result schema_status(sqlite3* db, bool preserve, std::vector<table_info>& columns) const;
 
           private:
             const basic_generated_always::storage_type*
