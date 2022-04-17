@@ -17806,8 +17806,6 @@ namespace sqlite_orm {
                                              sqlite3* db,
                                              bool preserve) {
                 auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
-                //                auto& tImpl = this->get_impl<T>();
-                //                return tImpl.schema_status(db, preserve, dbTableInfo);
                 auto res = sync_schema_result::already_in_sync;
 
                 //  first let's see if table with such name exists..
