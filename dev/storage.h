@@ -838,7 +838,79 @@ namespace sqlite_orm {
                                              sqlite3* db,
                                              bool preserve) {
                 auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
-                return tImpl.schema_status(db, preserve, dbTableInfo);
+                //                auto& tImpl = this->get_impl<T>();
+                //                return tImpl.schema_status(db, preserve, dbTableInfo);
+                auto res = sync_schema_result::already_in_sync;
+
+                //  first let's see if table with such name exists..
+                auto gottaCreateTable = !tImpl.table_exists(tImpl.table.name, db);
+                if(!gottaCreateTable) {
+
+                    //  get table info provided in `make_table` call..
+                    auto storageTableInfo = tImpl.table.get_table_info();
+
+                    //  this vector will contain pointers to columns that gotta be added..
+                    std::vector<table_info*> columnsToAdd;
+
+                    if(tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
+                        gottaCreateTable = true;
+                    }
+
+                    if(!gottaCreateTable) {  //  if all storage columns are equal to actual db columns but there are
+                        //  excess columns at the db..
+                        if(!dbTableInfo.empty()) {
+                            // extra table columns than storage columns
+                            if(!preserve) {
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+                                res = decltype(res)::old_columns_removed;
+#else
+                                gottaCreateTable = true;
+#endif
+                            } else {
+                                res = decltype(res)::old_columns_removed;
+                            }
+                        }
+                    }
+                    if(gottaCreateTable) {
+                        res = decltype(res)::dropped_and_recreated;
+                    } else {
+                        if(!columnsToAdd.empty()) {
+                            // extra storage columns than table columns
+                            for(auto columnPointer: columnsToAdd) {
+                                auto generatedStorageTypePointer =
+                                    tImpl.table.find_column_generated_storage_type(columnPointer->name);
+                                if(generatedStorageTypePointer) {
+                                    if(*generatedStorageTypePointer == basic_generated_always::storage_type::stored) {
+                                        gottaCreateTable = true;
+                                        break;
+                                    }
+                                    //  fallback cause VIRTUAL can be added
+                                } else {
+                                    if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
+                                        gottaCreateTable = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(!gottaCreateTable) {
+                                if(res == decltype(res)::old_columns_removed) {
+                                    res = decltype(res)::new_columns_added_and_old_columns_removed;
+                                } else {
+                                    res = decltype(res)::new_columns_added;
+                                }
+                            } else {
+                                res = decltype(res)::dropped_and_recreated;
+                            }
+                        } else {
+                            if(res != decltype(res)::old_columns_removed) {
+                                res = decltype(res)::already_in_sync;
+                            }
+                        }
+                    }
+                } else {
+                    res = decltype(res)::new_table_created;
+                }
+                return res;
             }
 
             template<class... Tss, class... Cols>
