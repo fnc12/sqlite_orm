@@ -1,16 +1,10 @@
 #pragma once
 
 #if defined(_MSC_VER)
-#if defined(min)
 __pragma(push_macro("min"))
 #undef min
-#define __RESTORE_MIN__
-#endif
-#if defined(max)
-    __pragma(push_macro("max"))
+__pragma(push_macro("max"))
 #undef max
-#define __RESTORE_MAX__
-#endif
 #endif  // defined(_MSC_VER)
 
 #include <ciso646>  //  due to #166
@@ -42,9 +36,9 @@ __pragma(push_macro("min"))
 
 #include <type_traits>
 
-    // #include "start_macros.h"
+// #include "start_macros.h"
 
-    namespace sqlite_orm {
+namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
 #if __cplusplus < 201703L  // before C++17
@@ -8708,16 +8702,23 @@ namespace sqlite_orm {
 #include <algorithm>  //  std::transform
 #include <cctype>  // std::toupper
 
-namespace sqlite_orm {
-
-/**
- *  Caps case cause of 1) delete keyword; 2) https://www.sqlite.org/pragma.html#pragma_journal_mode original spelling
- */
-#ifdef DELETE
+#if defined(_WINNT_)
+// DELETE is a macro defined in the Windows SDK (winnt.h)
+#pragma push_macro("DELETE")
 #undef DELETE
 #endif
+
+namespace sqlite_orm {
+
+    /**
+     *  Caps case because of:
+     *  1) delete keyword;
+     *  2) https://www.sqlite.org/pragma.html#pragma_journal_mode original spelling
+     */
     enum class journal_mode : signed char {
         DELETE = 0,
+        // An alternate enumeration value when using the Windows SDK that defines DELETE as a macro.
+        DELETE_ = DELETE,
         TRUNCATE = 1,
         PERSIST = 2,
         MEMORY = 3,
@@ -8761,6 +8762,10 @@ namespace sqlite_orm {
         }
     }
 }
+
+#if defined(_WINNT_)
+#pragma pop_macro("DELETE")
+#endif
 
 // #include "error_code.h"
 
@@ -11060,8 +11065,6 @@ namespace sqlite_orm {
 
             void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const;
 
-            std::vector<table_info> get_table_info(const std::string& tableName, sqlite3* db) const;
-
             static bool calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
                                                      std::vector<table_info>& storageTableInfo,
                                                      std::vector<table_info>& dbTableInfo);
@@ -11125,7 +11128,7 @@ namespace sqlite_orm {
             void
             copy_table(sqlite3* db, const std::string& name, const std::vector<table_info*>& columnsToIgnore) const;
 
-            sync_schema_result schema_status(sqlite3* db, bool preserve) const;
+            sync_schema_result schema_status(sqlite3* db, bool preserve, std::vector<table_info>& columns) const;
 
           private:
             const basic_generated_always::storage_type*
@@ -13631,6 +13634,38 @@ namespace sqlite_orm {
                 std::ostringstream oss;
                 oss << "integrity_check(" << n << ")";
                 return this->get_pragma<std::vector<std::string>>(oss.str());
+            }
+
+            std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
+                auto connection = this->get_connection();
+                auto db = connection.get();
+
+                std::vector<sqlite_orm::table_info> result;
+                auto query = "PRAGMA table_info(" + quote_identifier(tableName) + ")";
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void* data, int argc, char** argv, char**) -> int {
+                        auto& res = *(std::vector<sqlite_orm::table_info>*)data;
+                        if(argc) {
+                            auto index = 0;
+                            auto cid = std::atoi(argv[index++]);
+                            std::string name = argv[index++];
+                            std::string type = argv[index++];
+                            bool notnull = !!std::atoi(argv[index++]);
+                            std::string dflt_value = argv[index] ? argv[index] : "";
+                            index++;
+                            auto pk = std::atoi(argv[index++]);
+                            res.emplace_back(cid, name, type, notnull, dflt_value, pk);
+                        }
+                        return 0;
+                    },
+                    &result,
+                    nullptr);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(db);
+                }
+                return result;
             }
 
           private:
@@ -19351,7 +19386,8 @@ namespace sqlite_orm {
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
                                              bool preserve) {
-                return tImpl.schema_status(db, preserve);
+                auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+                return tImpl.schema_status(db, preserve, dbTableInfo);
             }
 
             template<class... Tss, class... Cols>
@@ -21115,36 +21151,6 @@ namespace sqlite_orm {
             return notEqual;
         }
 
-        inline std::vector<table_info> storage_impl_base::get_table_info(const std::string& tableName,
-                                                                         sqlite3* db) const {
-            std::vector<table_info> result;
-            auto query = "PRAGMA table_info(" + quote_identifier(tableName) + ")";
-            auto rc = sqlite3_exec(
-                db,
-                query.c_str(),
-                [](void* data, int argc, char** argv, char**) -> int {
-                    auto& res = *(std::vector<table_info>*)data;
-                    if(argc) {
-                        auto index = 0;
-                        auto cid = std::atoi(argv[index++]);
-                        std::string name = argv[index++];
-                        std::string type = argv[index++];
-                        bool notnull = !!std::atoi(argv[index++]);
-                        std::string dflt_value = argv[index] ? argv[index] : "";
-                        index++;
-                        auto pk = std::atoi(argv[index++]);
-                        res.emplace_back(cid, name, type, notnull, dflt_value, pk);
-                    }
-                    return 0;
-                },
-                &result,
-                nullptr);
-            if(rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-            return result;
-        }
-
         template<class H, class... Ts>
         void storage_impl<H, Ts...>::copy_table(sqlite3* db,
                                                 const std::string& tableName,
@@ -21183,7 +21189,8 @@ namespace sqlite_orm {
         }
 
         template<class H, class... Ts>
-        sync_schema_result storage_impl<H, Ts...>::schema_status(sqlite3* db, bool preserve) const {
+        sync_schema_result
+        storage_impl<H, Ts...>::schema_status(sqlite3* db, bool preserve, std::vector<table_info>& dbTableInfo) const {
 
             auto res = sync_schema_result::already_in_sync;
 
@@ -21193,9 +21200,6 @@ namespace sqlite_orm {
 
                 //  get table info provided in `make_table` call..
                 auto storageTableInfo = this->table.get_table_info();
-
-                //  now get current table info from db using `PRAGMA table_info` query..
-                auto dbTableInfo = this->get_table_info(this->table.name, db);
 
                 //  this vector will contain pointers to columns that gotta be added..
                 std::vector<table_info*> columnsToAdd;
@@ -21294,7 +21298,8 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
 
-            auto schema_stat = tImpl.schema_status(db, preserve);
+            auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+            auto schema_stat = tImpl.schema_status(db, preserve, dbTableInfo);
             if(schema_stat != decltype(schema_stat)::already_in_sync) {
                 if(schema_stat == decltype(schema_stat)::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -21308,7 +21313,7 @@ namespace sqlite_orm {
                         auto storageTableInfo = tImpl.table.get_table_info();
 
                         //  now get current table info from db using `PRAGMA table_info` query..
-                        auto dbTableInfo = tImpl.get_table_info(tImpl.table.name, db);
+                        auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
 
                         //  this vector will contain pointers to columns that gotta be added..
                         std::vector<table_info*> columnsToAdd;
@@ -21362,12 +21367,6 @@ namespace sqlite_orm {
 #pragma once
 
 #if defined(_MSC_VER)
-#if defined(__RESTORE_MIN__)
+__pragma(pop_macro("max"))
 __pragma(pop_macro("min"))
-#undef __RESTORE_MIN__
-#endif
-#if defined(__RESTORE_MAX__)
-    __pragma(pop_macro("max"))
-#undef __RESTORE_MAX__
-#endif
 #endif  // defined(_MSC_VER)
