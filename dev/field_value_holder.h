@@ -1,27 +1,20 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if
-
-#include "column.h"
+#include "type_traits.h"
+#include "member_traits/is_field_member_pointer.h"
+#include "member_traits/getter_traits.h"
 
 namespace sqlite_orm {
     namespace internal {
 
-        template<class T, class SFINAE = void>
-        struct field_value_holder;
+        template<class G, class O, satisfies<is_field_member_pointer, G> = true>
+        decltype(auto) access_field_value(G m, O&& o) noexcept {
+            return static_cast<O&&>(o).*m;
+        }
 
-        template<class T>
-        struct field_value_holder<T, typename std::enable_if<getter_traits<T>::returns_lvalue>::type> {
-            using type = typename getter_traits<T>::field_type;
-
-            const type& value;
-        };
-
-        template<class T>
-        struct field_value_holder<T, typename std::enable_if<!getter_traits<T>::returns_lvalue>::type> {
-            using type = typename getter_traits<T>::field_type;
-
-            type value;
-        };
+        template<class G, class O, satisfies<is_getter, G> = true>
+        decltype(auto) access_field_value(G m, O&& o) {
+            return (static_cast<O&&>(o).*m)();
+        }
     }
 }

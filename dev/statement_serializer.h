@@ -31,6 +31,9 @@
 #include "type_printer.h"
 #include "field_printer.h"
 #include "literal.h"
+#if __cplusplus < 201703L  // C++14 or earlier
+#include "field_value_holder.h"
+#endif
 #include "table_name_collector.h"
 #include "column_names_getter.h"
 #include "order_by_serializer.h"
@@ -1298,11 +1301,11 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
+#if __cplusplus >= 201703L  // C++17 or later
+                        ss << serialize(std::invoke(column.member_pointer, object), context);
+#else
+                        ss << serialize(access_field_value(column.member_pointer, object), context);
+#endif
                         ++columnIndex;
                     });
                 ss << ")";
@@ -1332,19 +1335,14 @@ namespace sqlite_orm {
                                   static_assert(!is_setter<member_pointer_type>::value,
                                                 "Unable to use setter within insert explicit");
 
-                                  std::string valueString;
-                                  static_if<is_getter<member_pointer_type>{}>(
-                                      [&valueString, &memberPointer, &context](auto& object) {
-                                          valueString = serialize((object.*memberPointer)(), context);
-                                      },
-                                      [&valueString, &memberPointer, &context](auto& object) {
-                                          valueString = serialize(object.*memberPointer, context);
-                                      })(object);
-
                                   if(index > 0) {
                                       ss << ", ";
                                   }
-                                  ss << valueString;
+#if __cplusplus >= 201703L  // C++17 or later
+                                  ss << serialize(std::invoke(memberPointer, object), context);
+#else
+                                  ss << serialize(access_field_value(memberPointer, object), context);
+#endif
                                   ++index;
                               });
                 ss << ")";
@@ -1375,11 +1373,11 @@ namespace sqlite_orm {
                         ss << ", ";
                     }
                     ss << streaming_identifier(column.name) << " = ";
-                    if(column.member_pointer) {
-                        ss << serialize(object.*column.member_pointer, context);
-                    } else {
-                        ss << serialize((object.*column.getter)(), context);
-                    }
+#if __cplusplus >= 201703L  // C++17 or later
+                    ss << serialize(std::invoke(column.member_pointer, object), context);
+#else
+                    ss << serialize(access_field_value(column.member_pointer, object), context);
+#endif
                     ++columnIndex;
                 });
                 ss << " WHERE ";
@@ -1395,11 +1393,11 @@ namespace sqlite_orm {
                             ss << " AND ";
                         }
                         ss << streaming_identifier(column.name) << " = ";
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
+#if __cplusplus >= 201703L  // C++17 or later
+                        ss << serialize(std::invoke(column.member_pointer, object), context);
+#else
+                        ss << serialize(access_field_value(column.member_pointer, object), context);
+#endif
                         ++columnIndex;
                     });
                 return ss.str();
@@ -1517,11 +1515,11 @@ namespace sqlite_orm {
                             if(columnIndex > 0) {
                                 ss << ", ";
                             }
-                            if(column.member_pointer) {
-                                ss << serialize(object.*column.member_pointer, context);
-                            } else {
-                                ss << serialize((object.*column.getter)(), context);
-                            }
+#if __cplusplus >= 201703L  // C++17 or later
+                            ss << serialize(std::invoke(column.member_pointer, object), context);
+#else
+                            ss << serialize(access_field_value(column.member_pointer, object), context);
+#endif
                             ++columnIndex;
                         });
                     ss << ")";
