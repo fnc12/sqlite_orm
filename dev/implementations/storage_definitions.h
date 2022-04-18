@@ -25,8 +25,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
 
-            auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
-            auto schema_stat = tImpl.schema_status(db, preserve, dbTableInfo);
+            auto schema_stat = this->schema_status(tImpl, db, preserve);
             if(schema_stat != decltype(schema_stat)::already_in_sync) {
                 if(schema_stat == decltype(schema_stat)::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
