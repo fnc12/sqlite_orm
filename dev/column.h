@@ -193,13 +193,11 @@ namespace sqlite_orm {
     /**
      *  Column builder function. You should use it to create columns instead of constructor
      */
-    template<class O, class T, internal::satisfies<internal::is_field_member_pointer, T O::*> = true, class... Op>
+    template<class O, class T, internal::satisfies<std::is_member_object_pointer, T O::*> = true, class... Op>
     internal::column_t<O, T, T O::*, internal::empty_setter, Op...>
     make_column(std::string name, T O::*m, Op... constraints) {
         static_assert(internal::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        static_assert(internal::is_field_member_pointer<T O::*>::value,
-                      "second argument expected as a member field pointer, not member function pointer");
         return {move(name), m, {}, std::make_tuple(constraints...)};
     }
 

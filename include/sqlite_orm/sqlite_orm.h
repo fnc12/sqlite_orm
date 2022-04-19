@@ -1573,12 +1573,12 @@ namespace sqlite_orm {
 
         template<>
         struct constraints_size<> {
-            static constexpr const int value = 0;
+            static constexpr int value = 0;
         };
 
         template<class H, class... Args>
         struct constraints_size<H, Args...> {
-            static constexpr const int value = is_constraint<H>::value + constraints_size<Args...>::value;
+            static constexpr int value = is_constraint<H>::value + constraints_size<Args...>::value;
         };
     }
 #if SQLITE_VERSION_NUMBER >= 3031000
@@ -2078,27 +2078,11 @@ namespace sqlite_orm {
 
 // #include "member_traits/member_traits.h"
 
-#include <type_traits>  //  std::enable_if
-
-// #include "is_field_member_pointer.h"
-
-#include <type_traits>  //  std::is_member_object_pointer
-
-namespace sqlite_orm {
-    namespace internal {
-
-        template<class T>
-        using is_field_member_pointer = std::is_member_object_pointer<T>;
-    }
-}
+#include <type_traits>  //  std::enable_if, std::is_member_object_pointer
 
 // #include "is_getter.h"
 
 // #include "field_member_traits.h"
-
-#include <type_traits>  //  std::enable_if
-
-// #include "is_field_member_pointer.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -2107,7 +2091,7 @@ namespace sqlite_orm {
         struct field_member_traits;
 
         template<class O, class F>
-        struct field_member_traits<F O::*, typename std::enable_if<is_field_member_pointer<F O::*>::value>::type> {
+        struct field_member_traits<F O::*, void> {
             using object_type = O;
             using field_type = F;
         };
@@ -2127,19 +2111,19 @@ namespace sqlite_orm {
         struct member_traits;
 
         template<class T>
-        struct member_traits<T, typename std::enable_if<is_field_member_pointer<T>::value>::type> {
+        struct member_traits<T, std::enable_if_t<std::is_member_object_pointer<T>::value>> {
             using object_type = typename field_member_traits<T>::object_type;
             using field_type = typename field_member_traits<T>::field_type;
         };
 
         template<class T>
-        struct member_traits<T, typename std::enable_if<is_getter<T>::value>::type> {
+        struct member_traits<T, std::enable_if_t<is_getter<T>::value>> {
             using object_type = typename getter_traits<T>::object_type;
             using field_type = typename getter_traits<T>::field_type;
         };
 
         template<class T>
-        struct member_traits<T, typename std::enable_if<is_setter<T>::value>::type> {
+        struct member_traits<T, std::enable_if_t<is_setter<T>::value>> {
             using object_type = typename setter_traits<T>::object_type;
             using field_type = typename setter_traits<T>::field_type;
         };
@@ -2327,13 +2311,11 @@ namespace sqlite_orm {
     /**
      *  Column builder function. You should use it to create columns instead of constructor
      */
-    template<class O, class T, internal::satisfies<internal::is_field_member_pointer, T O::*> = true, class... Op>
+    template<class O, class T, internal::satisfies<std::is_member_object_pointer, T O::*> = true, class... Op>
     internal::column_t<O, T, T O::*, internal::empty_setter, Op...>
     make_column(std::string name, T O::*m, Op... constraints) {
         static_assert(internal::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        static_assert(internal::is_field_member_pointer<T O::*>::value,
-                      "second argument expected as a member field pointer, not member function pointer");
         return {move(name), m, {}, std::make_tuple(constraints...)};
     }
 
@@ -10193,7 +10175,7 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class F, class O, satisfies<is_field_member_pointer, F O::*> = true>
+            template<class F, class O, satisfies<std::is_member_object_pointer, F O::*> = true>
             const std::string* find_column_name(F O::*m) const {
                 const std::string* res = nullptr;
                 this->template for_each_column_with_field_type<F>([&res, m](auto& c) {
@@ -10609,7 +10591,7 @@ namespace sqlite_orm {
             void operator()(const C& c) const {
                 using field_type = typename C::field_type;
                 auto value = row_extractor<field_type>().extract(this->stmt, this->index++);
-                static_if<is_field_member_pointer<typename C::member_pointer_t>{}>(
+                static_if<std::is_member_object_pointer<typename C::member_pointer_t>{}>(
                     [&value, &object = this->object](const auto& c) {
                         object.*c.member_pointer = std::move(value);
                     },
