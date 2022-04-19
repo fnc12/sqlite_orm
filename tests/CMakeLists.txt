@@ -63,6 +63,7 @@ add_executable(unit_tests
     static_tests/tuple_helper.cpp
     static_tests/function_static_tests.cpp
     static_tests/aggregate_function_return_types.cpp
+    static_tests/core_function_return_types.cpp
     static_tests/column_result_t.cpp
     static_tests/has_some_type.cpp
     static_tests/is_primary_key_insertable.cpp
