@@ -13,6 +13,7 @@
 #include <array>
 
 #include "start_macros.h"
+#include "cxx_functional_polyfill.h"
 #include "member_traits/is_getter.h"
 #include "member_traits/is_setter.h"
 #include "ast/upsert_clause.h"
@@ -31,9 +32,6 @@
 #include "type_printer.h"
 #include "field_printer.h"
 #include "literal.h"
-#if __cplusplus < 201703L  // C++14 or earlier
-#include "field_value_holder.h"
-#endif
 #include "table_name_collector.h"
 #include "column_names_getter.h"
 #include "order_by_serializer.h"
@@ -1301,11 +1299,7 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
-#if __cplusplus >= 201703L  // C++17 or later
                         ss << serialize(std::invoke(column.member_pointer, object), context);
-#else
-                        ss << serialize(access_field_value(column.member_pointer, object), context);
-#endif
                         ++columnIndex;
                     });
                 ss << ")";
@@ -1338,11 +1332,7 @@ namespace sqlite_orm {
                                   if(index > 0) {
                                       ss << ", ";
                                   }
-#if __cplusplus >= 201703L  // C++17 or later
-                                  ss << serialize(std::invoke(memberPointer, object), context);
-#else
-                                  ss << serialize(access_field_value(memberPointer, object), context);
-#endif
+                                  ss << serialize(polyfill::invoke(memberPointer, object), context);
                                   ++index;
                               });
                 ss << ")";
@@ -1372,12 +1362,8 @@ namespace sqlite_orm {
                     if(columnIndex > 0) {
                         ss << ", ";
                     }
-                    ss << streaming_identifier(column.name) << " = ";
-#if __cplusplus >= 201703L  // C++17 or later
-                    ss << serialize(std::invoke(column.member_pointer, object), context);
-#else
-                    ss << serialize(access_field_value(column.member_pointer, object), context);
-#endif
+                    ss << streaming_identifier(column.name) << " = "
+                       << serialize(polyfill::invoke(column.member_pointer, object), context);
                     ++columnIndex;
                 });
                 ss << " WHERE ";
@@ -1392,12 +1378,8 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << " AND ";
                         }
-                        ss << streaming_identifier(column.name) << " = ";
-#if __cplusplus >= 201703L  // C++17 or later
-                        ss << serialize(std::invoke(column.member_pointer, object), context);
-#else
-                        ss << serialize(access_field_value(column.member_pointer, object), context);
-#endif
+                        ss << streaming_identifier(column.name) << " = "
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
                         ++columnIndex;
                     });
                 return ss.str();
@@ -1515,11 +1497,7 @@ namespace sqlite_orm {
                             if(columnIndex > 0) {
                                 ss << ", ";
                             }
-#if __cplusplus >= 201703L  // C++17 or later
-                            ss << serialize(std::invoke(column.member_pointer, object), context);
-#else
-                            ss << serialize(access_field_value(column.member_pointer, object), context);
-#endif
+                            ss << serialize(polyfill::invoke(column.member_pointer, object), context);
                             ++columnIndex;
                         });
                     ss << ")";

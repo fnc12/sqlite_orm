@@ -5,12 +5,10 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
+#include "cxx_functional_polyfill.h"
 #include "static_magic.h"
 #include "typed_comparator.h"
 #include "tuple_helper/tuple_helper.h"
-#if __cplusplus < 201703L  // C++14 or earlier
-#include "field_value_holder.h"
-#endif
 #include "constraints.h"
 #include "table_info.h"
 #include "column.h"
@@ -59,11 +57,7 @@ namespace sqlite_orm {
                     }
 
                     if(compare_any(column.member_pointer, memberPointer) || compare_any(column.setter, memberPointer)) {
-#if __cplusplus >= 201703L  // C++17 or later
-                        res = &std::invoke(column.member_pointer, object);
-#else
-                        res = &access_field_value(column.member_pointer, object);
-#endif
+                        res = &polyfill::invoke(column.member_pointer, object);
                     }
                 });
                 return res;

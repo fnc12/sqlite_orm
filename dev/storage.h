@@ -19,6 +19,7 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "cxx_functional_polyfill.h"
 #include "type_traits.h"
 #include "alias.h"
 #include "row_extractor_builder.h"
@@ -40,7 +41,6 @@
 #include "table_info.h"
 #include "storage_impl.h"
 #include "journal_mode.h"
-#include "field_value_holder.h"
 #include "view.h"
 #include "ast_iterator.h"
 #include "storage_base.h"
@@ -616,13 +616,8 @@ namespace sqlite_orm {
                     using field_type = typename column_type::field_type;
                     constexpr std::array<const char*, 2> sep = {", ", ""};
 
-#if __cplusplus >= 201703L  // C++17 or later
                     ss << sep[std::exchange(first, false)] << column.name << " : '"
-                       << field_printer<field_type>{}(std::invoke(column.member_pointer, object)) << "'";
-#else
-                    ss << sep[std::exchange(first, false)] << column.name << " : '"
-                       << field_printer<field_type>{}(access_field_value(column.member_pointer, object)) << "'";
-#endif
+                       << field_printer<field_type>{}(polyfill::invoke(column.member_pointer, object)) << "'";
                 });
                 ss << " }";
                 return ss.str();
@@ -1219,16 +1214,9 @@ namespace sqlite_orm {
                         using field_type = typename column_type::field_type;
 
                         if(SQLITE_OK !=
-#if __cplusplus >= 201703L  // C++17 or later
                            statement_binder<field_type>{}.bind(stmt,
                                                                index++,
-                                                               std::invoke(column.member_pointer, object)))
-#else
-                           statement_binder<field_type>{}.bind(stmt,
-                                                               index++,
-                                                               access_field_value(column.member_pointer, object)))
-#endif
-                        {
+                                                               polyfill::invoke(column.member_pointer, object))) {
                             throw_translated_sqlite_error(db);
                         }
                     });
@@ -1274,16 +1262,9 @@ namespace sqlite_orm {
                             using field_type = typename column_type::field_type;
 
                             if(SQLITE_OK !=
-#if __cplusplus >= 201703L  // C++17 or later
                                statement_binder<field_type>{}.bind(stmt,
                                                                    index++,
-                                                                   std::invoke(column.member_pointer, object)))
-#else
-                               statement_binder<field_type>{}.bind(stmt,
-                                                                   index++,
-                                                                   access_field_value(column.member_pointer, object)))
-#endif
-                            {
+                                                                   polyfill::invoke(column.member_pointer, object))) {
                                 throw_translated_sqlite_error(db);
                             }
                         }
@@ -1345,14 +1326,9 @@ namespace sqlite_orm {
                         using field_type = typename column_type::field_type;
 
                         if(SQLITE_OK !=
-#if __cplusplus >= 201703L  // C++17 or later
-                           statement_binder<field_type>{}.bind(stmt, index++, std::invoke(column.member_pointer, o)))
-#else
                            statement_binder<field_type>{}.bind(stmt,
                                                                index++,
-                                                               access_field_value(column.member_pointer, o)))
-#endif
-                        {
+                                                               polyfill::invoke(column.member_pointer, o))) {
                             throw_translated_sqlite_error(db);
                         }
                     }
@@ -1363,14 +1339,9 @@ namespace sqlite_orm {
                         using field_type = typename column_type::field_type;
 
                         if(SQLITE_OK !=
-#if __cplusplus >= 201703L  // C++17 or later
-                           statement_binder<field_type>{}.bind(stmt, index++, std::invoke(column.member_pointer, o)))
-#else
                            statement_binder<field_type>{}.bind(stmt,
                                                                index++,
-                                                               access_field_value(column.member_pointer, o)))
-#endif
-                        {
+                                                               polyfill::invoke(column.member_pointer, o))) {
                             throw_translated_sqlite_error(db);
                         }
                     }

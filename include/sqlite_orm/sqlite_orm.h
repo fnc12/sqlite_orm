@@ -9991,37 +9991,51 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
+// #include "cxx_functional_polyfill.h"
+
+#if __cplusplus < 201703L  // C++14 or earlier
+#include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
+#endif
+#include <functional>
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace polyfill {
+#if __cplusplus < 201703L  // C++14 or earlier
+            // pointer-to-data-member
+            template<class Callable,
+                     class Arg1,
+                     class... Args,
+                     class Unqualified = remove_cvref_t<Callable>,
+                     std::enable_if_t<std::is_member_object_pointer<Unqualified>::value, bool> = true>
+            decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
+                return static_cast<Arg1&&>(arg1).*obj;
+            }
+
+            // pointer-to-member-function
+            template<class Callable,
+                     class Arg1,
+                     class... Args,
+                     class Unqualified = remove_cvref_t<Callable>,
+                     std::enable_if_t<std::is_member_function_pointer<Unqualified>::value, bool> = true>
+            decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
+                return (static_cast<Arg1&&>(arg1).*obj)(static_cast<Args&&>(args)...);
+            }
+#else
+            using std::invoke;
+#endif
+        }
+    }
+
+    namespace polyfill = internal::polyfill;
+}
+
 // #include "static_magic.h"
 
 // #include "typed_comparator.h"
 
 // #include "tuple_helper/tuple_helper.h"
 
-#if __cplusplus < 201703L  // C++14 or earlier
-// #include "field_value_holder.h"
-
-// #include "type_traits.h"
-
-// #include "member_traits/is_field_member_pointer.h"
-
-// #include "member_traits/getter_traits.h"
-
-namespace sqlite_orm {
-    namespace internal {
-
-        template<class G, class O, satisfies<is_field_member_pointer, G> = true>
-        decltype(auto) access_field_value(G m, O&& o) noexcept {
-            return static_cast<O&&>(o).*m;
-        }
-
-        template<class G, class O, satisfies<is_getter, G> = true>
-        decltype(auto) access_field_value(G m, O&& o) {
-            return (static_cast<O&&>(o).*m)();
-        }
-    }
-}
-
-#endif
 // #include "constraints.h"
 
 // #include "table_info.h"
@@ -10072,11 +10086,7 @@ namespace sqlite_orm {
                     }
 
                     if(compare_any(column.member_pointer, memberPointer) || compare_any(column.setter, memberPointer)) {
-#if __cplusplus >= 201703L  // C++17 or later
-                        res = &std::invoke(column.member_pointer, object);
-#else
-                        res = &access_field_value(column.member_pointer, object);
-#endif
+                        res = &polyfill::invoke(column.member_pointer, object);
                     }
                 });
                 return res;
@@ -10552,6 +10562,8 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+// #include "cxx_functional_polyfill.h"
+
 // #include "type_traits.h"
 
 // #include "alias.h"
@@ -10715,8 +10727,6 @@ namespace sqlite_orm {
 // #include "storage_impl.h"
 
 // #include "journal_mode.h"
-
-// #include "field_value_holder.h"
 
 // #include "view.h"
 
@@ -14250,6 +14260,8 @@ namespace sqlite_orm {
 
 // #include "start_macros.h"
 
+// #include "cxx_functional_polyfill.h"
+
 // #include "member_traits/is_getter.h"
 
 // #include "member_traits/is_setter.h"
@@ -14286,10 +14298,6 @@ namespace sqlite_orm {
 
 // #include "literal.h"
 
-#if __cplusplus < 201703L  // C++14 or earlier
-// #include "field_value_holder.h"
-
-#endif
 // #include "table_name_collector.h"
 
 #include <set>  //  std::set
@@ -15854,11 +15862,7 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
-#if __cplusplus >= 201703L  // C++17 or later
                         ss << serialize(std::invoke(column.member_pointer, object), context);
-#else
-                            ss << serialize(access_field_value(column.member_pointer, object), context);
-#endif
                         ++columnIndex;
                     });
                 ss << ")";
@@ -15891,11 +15895,7 @@ namespace sqlite_orm {
                                   if(index > 0) {
                                       ss << ", ";
                                   }
-#if __cplusplus >= 201703L  // C++17 or later
-                                  ss << serialize(std::invoke(memberPointer, object), context);
-#else
-                                  ss << serialize(access_field_value(memberPointer, object), context);
-#endif
+                                  ss << serialize(polyfill::invoke(memberPointer, object), context);
                                   ++index;
                               });
                 ss << ")";
@@ -15925,12 +15925,8 @@ namespace sqlite_orm {
                     if(columnIndex > 0) {
                         ss << ", ";
                     }
-                    ss << streaming_identifier(column.name) << " = ";
-#if __cplusplus >= 201703L  // C++17 or later
-                    ss << serialize(std::invoke(column.member_pointer, object), context);
-#else
-                        ss << serialize(access_field_value(column.member_pointer, object), context);
-#endif
+                    ss << streaming_identifier(column.name) << " = "
+                       << serialize(polyfill::invoke(column.member_pointer, object), context);
                     ++columnIndex;
                 });
                 ss << " WHERE ";
@@ -15945,12 +15941,8 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << " AND ";
                         }
-                        ss << streaming_identifier(column.name) << " = ";
-#if __cplusplus >= 201703L  // C++17 or later
-                        ss << serialize(std::invoke(column.member_pointer, object), context);
-#else
-                            ss << serialize(access_field_value(column.member_pointer, object), context);
-#endif
+                        ss << streaming_identifier(column.name) << " = "
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
                         ++columnIndex;
                     });
                 return ss.str();
@@ -16068,11 +16060,7 @@ namespace sqlite_orm {
                             if(columnIndex > 0) {
                                 ss << ", ";
                             }
-#if __cplusplus >= 201703L  // C++17 or later
-                            ss << serialize(std::invoke(column.member_pointer, object), context);
-#else
-                                ss << serialize(access_field_value(column.member_pointer, object), context);
-#endif
+                            ss << serialize(polyfill::invoke(column.member_pointer, object), context);
                             ++columnIndex;
                         });
                     ss << ")";
@@ -17551,13 +17539,8 @@ namespace sqlite_orm {
                     using field_type = typename column_type::field_type;
                     constexpr std::array<const char*, 2> sep = {", ", ""};
 
-#if __cplusplus >= 201703L  // C++17 or later
                     ss << sep[std::exchange(first, false)] << column.name << " : '"
-                       << field_printer<field_type>{}(std::invoke(column.member_pointer, object)) << "'";
-#else
-                        ss << sep[std::exchange(first, false)] << column.name << " : '"
-                           << field_printer<field_type>{}(access_field_value(column.member_pointer, object)) << "'";
-#endif
+                       << field_printer<field_type>{}(polyfill::invoke(column.member_pointer, object)) << "'";
                 });
                 ss << " }";
                 return ss.str();
@@ -18154,16 +18137,9 @@ namespace sqlite_orm {
                         using field_type = typename column_type::field_type;
 
                         if(SQLITE_OK !=
-#if __cplusplus >= 201703L  // C++17 or later
                            statement_binder<field_type>{}.bind(stmt,
                                                                index++,
-                                                               std::invoke(column.member_pointer, object)))
-#else
-                               statement_binder<field_type>{}.bind(stmt,
-                                                                   index++,
-                                                                   access_field_value(column.member_pointer, object)))
-#endif
-                        {
+                                                               polyfill::invoke(column.member_pointer, object))) {
                             throw_translated_sqlite_error(db);
                         }
                     });
@@ -18209,15 +18185,9 @@ namespace sqlite_orm {
                             using field_type = typename column_type::field_type;
 
                             if(SQLITE_OK !=
-#if __cplusplus >= 201703L  // C++17 or later
                                statement_binder<field_type>{}.bind(stmt,
                                                                    index++,
-                                                                   std::invoke(column.member_pointer, object)))
-#else
-                                   statement_binder<field_type>{}
-                                       .bind(stmt, index++, access_field_value(column.member_pointer, object)))
-#endif
-                            {
+                                                                   polyfill::invoke(column.member_pointer, object))) {
                                 throw_translated_sqlite_error(db);
                             }
                         }
@@ -18279,14 +18249,9 @@ namespace sqlite_orm {
                         using field_type = typename column_type::field_type;
 
                         if(SQLITE_OK !=
-#if __cplusplus >= 201703L  // C++17 or later
-                           statement_binder<field_type>{}.bind(stmt, index++, std::invoke(column.member_pointer, o)))
-#else
-                               statement_binder<field_type>{}.bind(stmt,
-                                                                   index++,
-                                                                   access_field_value(column.member_pointer, o)))
-#endif
-                        {
+                           statement_binder<field_type>{}.bind(stmt,
+                                                               index++,
+                                                               polyfill::invoke(column.member_pointer, o))) {
                             throw_translated_sqlite_error(db);
                         }
                     }
@@ -18297,14 +18262,9 @@ namespace sqlite_orm {
                         using field_type = typename column_type::field_type;
 
                         if(SQLITE_OK !=
-#if __cplusplus >= 201703L  // C++17 or later
-                           statement_binder<field_type>{}.bind(stmt, index++, std::invoke(column.member_pointer, o)))
-#else
-                               statement_binder<field_type>{}.bind(stmt,
-                                                                   index++,
-                                                                   access_field_value(column.member_pointer, o)))
-#endif
-                        {
+                           statement_binder<field_type>{}.bind(stmt,
+                                                               index++,
+                                                               polyfill::invoke(column.member_pointer, o))) {
                             throw_translated_sqlite_error(db);
                         }
                     }
