@@ -20,11 +20,12 @@
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "type_traits.h"
+#include "tuple_helper/tuple_filter.h"
+#include "tuple_helper/tuple_helper.h"
 #include "alias.h"
 #include "row_extractor_builder.h"
 #include "error_code.h"
 #include "type_printer.h"
-#include "tuple_helper/tuple_helper.h"
 #include "constraints.h"
 #include "type_is_nullable.h"
 #include "field_printer.h"
@@ -123,6 +124,17 @@ namespace sqlite_orm {
                 }
                 perform_void_exec(db, ss.str());
             }
+
+            /**
+             *  Copies current table to another table with a given **name**.
+             *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
+             */
+            template<class I>
+            void copy_table(sqlite3* db,
+                            const std::string& name,
+                            const I& tImpl,
+                            const std::vector<table_info*>& columnsToIgnore) const;
+
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
@@ -152,7 +164,7 @@ namespace sqlite_orm {
 
                 this->create_table(db, backupTableName, tableImpl);
 
-                tableImpl.copy_table(db, backupTableName, columnsToIgnore);
+                this->copy_table(db, backupTableName, tableImpl, columnsToIgnore);
 
                 this->drop_table_internal(tableImpl.table.name, db);
 

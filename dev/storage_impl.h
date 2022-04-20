@@ -1,13 +1,12 @@
 #pragma once
 
-#include <string>  //  std::string
 #include <sqlite3.h>
-#include <sstream>  //  std::stringstream
-#include <type_traits>  //  std::forward, std::is_same
+#include <string>  //  std::string
+#include <type_traits>  //  std::is_same, std::decay
 #include <vector>  //  std::vector
 #include <typeindex>  //  std::type_index
+#include <utility>  //  std::forward, std::move
 
-#include "static_magic.h"
 #include "type_traits.h"
 #include "constraints.h"
 #include "table_info.h"
@@ -36,12 +35,11 @@ namespace sqlite_orm {
         struct storage_impl;
 
         template<class H, class... Ts>
-        struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
+        struct storage_impl<H, Ts...> : storage_impl<Ts...> {
             using super = storage_impl<Ts...>;
-            using self = storage_impl<H, Ts...>;
             using table_type = H;
 
-            storage_impl(H h, Ts... ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
+            storage_impl(H h, Ts... ts) : super{std::forward<Ts>(ts)...}, table{std::move(h)} {}
 
             table_type table;
 
@@ -50,55 +48,13 @@ namespace sqlite_orm {
                 this->super::for_each(l);
                 l(*this);
             }
-
-#if SQLITE_VERSION_NUMBER >= 3006019
-
-            /**
-             *  Returns foreign keys count in table definition
-             */
-            int foreign_keys_count() const {
-                auto res = 0;
-                iterate_tuple(this->table.elements, [&res](auto& c) {
-                    if(is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
-                        ++res;
-                    }
-                });
-                return res;
-            }
-
-#endif
-
-            std::string find_table_name(const std::type_index& ti) const {
-                std::type_index thisTypeIndex{typeid(object_type_t<H>)};
-
-                if(thisTypeIndex == ti) {
-                    return this->table.name;
-                } else {
-                    return this->super::find_table_name(ti);
-                }
-            }
-
-            /**
-             *  Copies current table to another table with a given **name**.
-             *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
-             */
-            void
-            copy_table(sqlite3* db, const std::string& name, const std::vector<table_info*>& columnsToIgnore) const;
         };
 
         template<>
         struct storage_impl<> : storage_impl_base {
 
-            std::string find_table_name(const std::type_index&) const {
-                return {};
-            }
-
             template<class L>
             void for_each(const L&) const {}
-
-            int foreign_keys_count() const {
-                return 0;
-            }
         };
     }
 }
@@ -110,28 +66,36 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
+        template<class S>
+        using table_type_or_none_t = polyfill::detected_t<table_type_t, S>;
+
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto lookup_table(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(
-                [](const storage_impl<>&) {
-                    return nullptr;
-                },
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(
+                empty_callable<std::nullptr_t>(),
                 [](const auto& tImpl) {
                     return &tImpl.table;
                 })(tImpl);
         }
 
+        template<class S, satisfies<is_storage_impl, S> = true>
+        std::string find_table_name(const S& strg, const std::type_index& ti) {
+            return static_if<std::is_same<S, storage_impl<>>::value>(
+                empty_callable<std::string>(),
+                [&ti](const auto& tImpl) {
+                    return ti == typeid(storage_object_type_t<S>) ? tImpl.table.name
+                                                                  : find_table_name<typename S::super>(tImpl, ti);
+                })(strg);
+        }
+
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(
-                [](const storage_impl<>&) {
-                    return std::string{};
-                },
-                [](const auto& tImpl) {
-                    return tImpl.table.name;
-                })(tImpl);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(empty_callable<std::string>(),
+                                                                                     [](const auto& tImpl) {
+                                                                                         return tImpl.table.name;
+                                                                                     })(tImpl);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>

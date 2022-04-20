@@ -729,11 +729,16 @@ namespace sqlite_orm {
             }
 
             //  returns foreign keys count in storage definition
-            template<class T>
-            static int foreign_keys_count(T& storageImpl) {
+            template<class S>
+            static int foreign_keys_count(const S& storageImpl) {
                 auto res = 0;
-                storageImpl.for_each([&res](auto& impl) {
-                    res += impl.foreign_keys_count();
+
+                storageImpl.for_each([&res](const auto& tImpl) {
+                    using unqualified_type = polyfill::remove_cvref_t<decltype(tImpl)>;
+                    static_if<std::is_base_of<basic_table, table_type_or_none_t<unqualified_type>>::value>(
+                        [&res](const auto& tImpl) {
+                            res += tImpl.table.foreign_keys_count();
+                        })(tImpl);
                 });
                 return res;
             }
