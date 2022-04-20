@@ -15911,7 +15911,7 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
-                        ss << serialize(std::invoke(column.member_pointer, object), context);
+                        ss << serialize(polyfill::invoke(column.member_pointer, object), context);
                         ++columnIndex;
                     });
                 ss << ")";
