@@ -78,8 +78,9 @@ namespace sqlite_orm {
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
                     } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
-                        this->drop_table_internal(tImpl.table.name, db);
-                        this->create_table(db, tImpl.table.name, tImpl);
+                        this->backup_table(db, tImpl, {});
+                        // this->drop_table_internal(tImpl.table.name, db);
+                        // this->create_table(db, tImpl.table.name, tImpl);
                         res = decltype(res)::dropped_and_recreated;
                     }
                 }

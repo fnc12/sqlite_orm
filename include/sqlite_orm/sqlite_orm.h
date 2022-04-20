@@ -12842,6 +12842,13 @@ namespace sqlite_orm {
           private:
             friend struct storage_base;
 
+            bool foreign_keys() {
+                return this->get_pragma<bool>("foreign_keys");
+            }
+            void foreign_keys(bool value) {
+                this->set_pragma("foreign_keys", value);
+            }
+
             int _synchronous = -1;
             signed char _journal_mode = -1;  //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
             get_connection_t get_connection;
@@ -14085,6 +14092,20 @@ namespace sqlite_orm {
                 } else {
                     return 0;
                 }
+            }
+
+            // migration internal API
+            void start_migration() {
+                this->pragma.foreign_keys(false);
+                this->begin_exclusive_transaction();
+            }
+            void commit_migration() {
+                this->commit();
+                this->pragma.foreign_keys(true);
+            }
+            void abort_migration() {
+                this->rollback();
+                this->pragma.foreign_keys(true);
             }
 
             //  returns foreign keys count in storage definition
@@ -17117,14 +17138,32 @@ namespace sqlite_orm {
                         ++suffix;
                     } while(true);
                 }
+                try {
+                    this->start_migration();
 
-                this->create_table(db, backupTableName, tableImpl);
+                    this->create_table(db, backupTableName, tableImpl);
 
-                tableImpl.copy_table(db, backupTableName, columnsToIgnore);
+                    tableImpl.copy_table(db, backupTableName, columnsToIgnore);
 
-                this->drop_table_internal(tableImpl.table.name, db);
+                    this->drop_table_internal(tableImpl.table.name, db);
 
-                tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
+                    tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
+
+                    this->commit_migration();
+
+                } catch(std::exception& ex) {
+                    std::string s = ex.what();  // 's' for debugging
+                    this->abort_migration();
+                    throw;
+                }
+
+                // this->create_table(db, backupTableName, tableImpl);
+                //
+                // tableImpl.copy_table(db, backupTableName, columnsToIgnore);
+                //
+                // this->drop_table_internal(tableImpl.table.name, db);
+                //
+                // tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
             }
 
             template<class O>
@@ -19629,8 +19668,9 @@ namespace sqlite_orm {
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
                     } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
-                        this->drop_table_internal(tImpl.table.name, db);
-                        this->create_table(db, tImpl.table.name, tImpl);
+                        this->backup_table(db, tImpl, {});
+                        // this->drop_table_internal(tImpl.table.name, db);
+                        // this->create_table(db, tImpl.table.name, tImpl);
                         res = decltype(res)::dropped_and_recreated;
                     }
                 }

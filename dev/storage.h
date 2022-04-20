@@ -149,14 +149,32 @@ namespace sqlite_orm {
                         ++suffix;
                     } while(true);
                 }
+                try {
+                    this->start_migration();
 
-                this->create_table(db, backupTableName, tableImpl);
+                    this->create_table(db, backupTableName, tableImpl);
 
-                tableImpl.copy_table(db, backupTableName, columnsToIgnore);
+                    tableImpl.copy_table(db, backupTableName, columnsToIgnore);
 
-                this->drop_table_internal(tableImpl.table.name, db);
+                    this->drop_table_internal(tableImpl.table.name, db);
 
-                tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
+                    tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
+
+                    this->commit_migration();
+
+                } catch(std::exception& ex) {
+                    std::string s = ex.what();  // 's' for debugging
+                    this->abort_migration();
+                    throw;
+                }
+
+                // this->create_table(db, backupTableName, tableImpl);
+                //
+                // tableImpl.copy_table(db, backupTableName, columnsToIgnore);
+                //
+                // this->drop_table_internal(tableImpl.table.name, db);
+                //
+                // tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
             }
 
             template<class O>
