@@ -204,6 +204,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct nullif_string {
+            serialize_result_type serialize() const {
+                return "NULLIF";
+            }
+        };
+
         struct date_string {
             serialize_result_type serialize() const {
                 return "DATE";
@@ -597,6 +603,9 @@ namespace sqlite_orm {
             }
         };
 #endif  //  SQLITE_ENABLE_JSON1
+
+        template<class T>
+        using field_type_or_type_t = polyfill::detected_or_t<T, field_type_t, member_traits<T>>;
     }
 
     /**
@@ -1693,12 +1702,57 @@ namespace sqlite_orm {
     }
 
     /**
+     *  COALESCE(X,Y,...) using common return type of X, Y, ...
+     */
+    template<class... Args>
+    auto coalesce(Args... args)
+        -> internal::built_in_function_t<std::common_type_t<internal::field_type_or_type_t<Args>...>,
+                                         internal::coalesce_string,
+                                         Args...> {
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
+
+    /**
+     *  IFNULL(X,Y) using common return type of X and Y
+     */
+    template<class X, class Y>
+    auto ifnull(X x, Y y) -> internal::built_in_function_t<
+        std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+        internal::ifnull_string,
+        X,
+        Y> {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+
+    /**
+     *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
+     */
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    /**
+     *  NULLIF(X,Y) using common return type of X and Y
+     */
+    template<class X, class Y>
+    auto nullif(X x, Y y) -> internal::built_in_function_t<
+        std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
+        internal::nullif_string,
+        X,
+        Y> {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+#endif
 
     /**
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html

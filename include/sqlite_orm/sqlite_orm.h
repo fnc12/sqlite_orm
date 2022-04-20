@@ -7,25 +7,38 @@ __pragma(push_macro("max"))
 #undef max
 #endif  // defined(_MSC_VER)
 
-#include <ciso646>  //  due to #166
+#include <iso646.h>  //  alternative operator representations
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
-// Enables use of std::optional in SQLITE_ORM.
-#define SQLITE_ORM_OPTIONAL_SUPPORTED
-#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#if __cpp_noexcept_function_type >= 201510L
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-#define SQLITE_ORM_INLINE_VAR inline
-#if __cplusplus >= 202002L  // use of C++20 or higher
-#define SQLITE_ORM_CONSTEVAL consteval
-#define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
-#else
-#define SQLITE_ORM_CONSTEVAL constexpr
-#define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
+
+#if __cpp_inline_variables >= 201606L
+#define SQLITE_ORM_INLINE_VAR inline
 #else
 #define SQLITE_ORM_INLINE_VAR
-#define SQLITE_ORM_CONSTEVAL constexpr
+#endif
+
+#if __has_cpp_attribute(no_unique_address) >= 201803L
+#define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
+#else
 #define SQLITE_ORM_NOUNIQUEADDRESS
+#endif
+
+#if __cpp_consteval >= 201811L
+#define SQLITE_ORM_CONSTEVAL consteval
+#else
+#define SQLITE_ORM_CONSTEVAL constexpr
+#endif
+
+#if __cplusplus >= 201703L  // C++17 or later
+#if __has_include(<optional>)
+#define SQLITE_ORM_OPTIONAL_SUPPORTED
+#endif
+
+#if __has_include(<string_view>)
+#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#endif
 #endif
 #pragma once
 
@@ -4521,6 +4534,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct nullif_string {
+            serialize_result_type serialize() const {
+                return "NULLIF";
+            }
+        };
+
         struct date_string {
             serialize_result_type serialize() const {
                 return "DATE";
@@ -4914,6 +4933,9 @@ namespace sqlite_orm {
             }
         };
 #endif  //  SQLITE_ENABLE_JSON1
+
+        template<class T>
+        using field_type_or_type_t = polyfill::detected_or_t<T, field_type_t, member_traits<T>>;
     }
 
     /**
@@ -6010,12 +6032,57 @@ namespace sqlite_orm {
     }
 
     /**
+     *  COALESCE(X,Y,...) using common return type of X, Y, ...
+     */
+    template<class... Args>
+    auto coalesce(Args... args)
+        -> internal::built_in_function_t<std::common_type_t<internal::field_type_or_type_t<Args>...>,
+                                         internal::coalesce_string,
+                                         Args...> {
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
+
+    /**
+     *  IFNULL(X,Y) using common return type of X and Y
+     */
+    template<class X, class Y>
+    auto ifnull(X x, Y y) -> internal::built_in_function_t<
+        std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+        internal::ifnull_string,
+        X,
+        Y> {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+
+    /**
+     *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
+     */
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    /**
+     *  NULLIF(X,Y) using common return type of X and Y
+     */
+    template<class X, class Y>
+    auto nullif(X x, Y y) -> internal::built_in_function_t<
+        std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
+        internal::nullif_string,
+        X,
+        Y> {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+#endif
 
     /**
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
