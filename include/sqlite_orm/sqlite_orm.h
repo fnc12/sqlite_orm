@@ -7,25 +7,38 @@ __pragma(push_macro("max"))
 #undef max
 #endif  // defined(_MSC_VER)
 
-#include <ciso646>  //  due to #166
+#include <iso646.h>  //  alternative operator representations
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
-// Enables use of std::optional in SQLITE_ORM.
-#define SQLITE_ORM_OPTIONAL_SUPPORTED
-#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#if __cpp_noexcept_function_type >= 201510L
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-#define SQLITE_ORM_INLINE_VAR inline
-#if __cplusplus >= 202002L  // use of C++20 or higher
-#define SQLITE_ORM_CONSTEVAL consteval
-#define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
-#else
-#define SQLITE_ORM_CONSTEVAL constexpr
-#define SQLITE_ORM_NOUNIQUEADDRESS
 #endif
+
+#if __cpp_inline_variables >= 201606L
+#define SQLITE_ORM_INLINE_VAR inline
 #else
 #define SQLITE_ORM_INLINE_VAR
-#define SQLITE_ORM_CONSTEVAL constexpr
+#endif
+
+#if __has_cpp_attribute(no_unique_address) >= 201803L
+#define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
+#else
 #define SQLITE_ORM_NOUNIQUEADDRESS
+#endif
+
+#if __cpp_consteval >= 201811L
+#define SQLITE_ORM_CONSTEVAL consteval
+#else
+#define SQLITE_ORM_CONSTEVAL constexpr
+#endif
+
+#if __cplusplus >= 201703L  // C++17 or later
+#if __has_include(<optional>)
+#define SQLITE_ORM_OPTIONAL_SUPPORTED
+#endif
+
+#if __has_include(<string_view>)
+#define SQLITE_ORM_STRING_VIEW_SUPPORTED
+#endif
 #endif
 #pragma once
 
@@ -4877,6 +4890,12 @@ namespace sqlite_orm {
             }
         };
 
+        struct nullif_string {
+            serialize_result_type serialize() const {
+                return "NULLIF";
+            }
+        };
+
         struct date_string {
             serialize_result_type serialize() const {
                 return "DATE";
@@ -5270,6 +5289,9 @@ namespace sqlite_orm {
             }
         };
 #endif  //  SQLITE_ENABLE_JSON1
+
+        template<class T>
+        using field_type_or_type_t = polyfill::detected_or_t<T, field_type_t, member_traits<T>>;
     }
 
     /**
@@ -6366,12 +6388,57 @@ namespace sqlite_orm {
     }
 
     /**
+     *  COALESCE(X,Y,...) using common return type of X, Y, ...
+     */
+    template<class... Args>
+    auto coalesce(Args... args)
+        -> internal::built_in_function_t<std::common_type_t<internal::field_type_or_type_t<Args>...>,
+                                         internal::coalesce_string,
+                                         Args...> {
+        return {std::make_tuple(std::forward<Args>(args)...)};
+    }
+
+    /**
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
     template<class R, class X, class Y>
     internal::built_in_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
+
+    /**
+     *  IFNULL(X,Y) using common return type of X and Y
+     */
+    template<class X, class Y>
+    auto ifnull(X x, Y y) -> internal::built_in_function_t<
+        std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+        internal::ifnull_string,
+        X,
+        Y> {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+
+    /**
+     *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
+     */
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+    /**
+     *  NULLIF(X,Y) using common return type of X and Y
+     */
+    template<class X, class Y>
+    auto nullif(X x, Y y) -> internal::built_in_function_t<
+        std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
+        internal::nullif_string,
+        X,
+        Y> {
+        return {std::make_tuple(std::move(x), std::move(y))};
+    }
+#endif
 
     /**
      *  DATE(timestring, modifier, modifier, ...) function https://www.sqlite.org/lang_datefunc.html
@@ -10819,6 +10886,28 @@ namespace sqlite_orm {
                 return res;
             }
 
+            const basic_generated_always::storage_type*
+            find_column_generated_storage_type(const std::string& name) const {
+                const basic_generated_always::storage_type* result = nullptr;
+#if SQLITE_VERSION_NUMBER >= 3031000
+                this->for_each_column([&result, &name](auto& column) {
+                    if(column.name != name) {
+                        return;
+                    }
+                    iterate_tuple(column.constraints, [&result](auto& constraint) {
+                        if(result) {
+                            return;
+                        }
+                        using constraint_type = typename std::decay<decltype(constraint)>::type;
+                        static_if<is_generated_always<constraint_type>{}>([&result](auto& generatedAlwaysConstraint) {
+                            result = &generatedAlwaysConstraint.storage;
+                        })(constraint);
+                    });
+                });
+#endif
+                return result;
+            }
+
             template<class C>
             bool exists_in_composite_primary_key(const C& column) const {
                 auto res = false;
@@ -11127,31 +11216,6 @@ namespace sqlite_orm {
              */
             void
             copy_table(sqlite3* db, const std::string& name, const std::vector<table_info*>& columnsToIgnore) const;
-
-            sync_schema_result schema_status(sqlite3* db, bool preserve, std::vector<table_info>& columns) const;
-
-          private:
-            const basic_generated_always::storage_type*
-            find_column_generated_storage_type(const std::string& name) const {
-                const basic_generated_always::storage_type* result = nullptr;
-#if SQLITE_VERSION_NUMBER >= 3031000
-                this->table.for_each_column([&result, &name](auto& column) {
-                    if(column.name != name) {
-                        return;
-                    }
-                    iterate_tuple(column.constraints, [&result](auto& constraint) {
-                        if(result) {
-                            return;
-                        }
-                        using constraint_type = typename std::decay<decltype(constraint)>::type;
-                        static_if<is_generated_always<constraint_type>{}>([&result](auto& generatedAlwaysConstraint) {
-                            result = &generatedAlwaysConstraint.storage;
-                        })(constraint);
-                    });
-                });
-#endif
-                return result;
-            }
         };
 
         template<>
@@ -16219,8 +16283,6 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using args_tuple = std::tuple<Args...>;
-
                 std::stringstream ss;
                 ss << F::name() << "(" << streaming_expressions_tuple(statement.args, context) << ")";
                 return ss.str();
@@ -17043,7 +17105,6 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << "UPDATE " << streaming_identifier(tImpl.table.name) << " SET ";
-                //                std::vector<std::string> setColumnNames;
                 auto columnIndex = 0;
                 tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](
                                                 auto& column) {
@@ -17094,7 +17155,6 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "SET ";
-                constexpr size_t assignsCount = std::tuple_size<typename statement_type::assigns_type>::value;
                 size_t assignIndex = 0;
                 auto leftContext = context;
                 leftContext.skip_table_name = true;
@@ -17186,29 +17246,25 @@ namespace sqlite_orm {
                 if(columnsToInsertCount > 0) {
                     ss << "(";
                     columnIndex = 0;
-                    tImpl.table.for_each_column([&tImpl,
-                                                 &columnIndex,
-                                                 &ss,
-                                                 columnsToInsertCount,
-                                                 &context,
-                                                 &object = get_ref(statement.object)](auto& column) {
-                        using table_type = std::decay_t<decltype(tImpl.table)>;
-                        if(!table_type::is_without_rowid &&
-                           (column.template has<primary_key_t<>>() ||
-                            tImpl.table.exists_in_composite_primary_key(column) || column.is_generated())) {
-                            return;
-                        }
+                    tImpl.table.for_each_column(
+                        [&tImpl, &columnIndex, &ss, &context, &object = get_ref(statement.object)](auto& column) {
+                            using table_type = std::decay_t<decltype(tImpl.table)>;
+                            if(!table_type::is_without_rowid &&
+                               (column.template has<primary_key_t<>>() ||
+                                tImpl.table.exists_in_composite_primary_key(column) || column.is_generated())) {
+                                return;
+                            }
 
-                        if(columnIndex > 0) {
-                            ss << ", ";
-                        }
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
-                        ++columnIndex;
-                    });
+                            if(columnIndex > 0) {
+                                ss << ", ";
+                            }
+                            if(column.member_pointer) {
+                                ss << serialize(object.*column.member_pointer, context);
+                            } else {
+                                ss << serialize((object.*column.getter)(), context);
+                            }
+                            ++columnIndex;
+                        });
                     ss << ")";
                 }
 
@@ -17237,7 +17293,6 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                auto index = 0;
                 if(context.use_parentheses) {
                     ss << '(';
                 }
@@ -19387,7 +19442,77 @@ namespace sqlite_orm {
                                              sqlite3* db,
                                              bool preserve) {
                 auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
-                return tImpl.schema_status(db, preserve, dbTableInfo);
+                auto res = sync_schema_result::already_in_sync;
+
+                //  first let's see if table with such name exists..
+                auto gottaCreateTable = !tImpl.table_exists(tImpl.table.name, db);
+                if(!gottaCreateTable) {
+
+                    //  get table info provided in `make_table` call..
+                    auto storageTableInfo = tImpl.table.get_table_info();
+
+                    //  this vector will contain pointers to columns that gotta be added..
+                    std::vector<table_info*> columnsToAdd;
+
+                    if(tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
+                        gottaCreateTable = true;
+                    }
+
+                    if(!gottaCreateTable) {  //  if all storage columns are equal to actual db columns but there are
+                        //  excess columns at the db..
+                        if(!dbTableInfo.empty()) {
+                            // extra table columns than storage columns
+                            if(!preserve) {
+#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
+                                res = decltype(res)::old_columns_removed;
+#else
+                                    gottaCreateTable = true;
+#endif
+                            } else {
+                                res = decltype(res)::old_columns_removed;
+                            }
+                        }
+                    }
+                    if(gottaCreateTable) {
+                        res = decltype(res)::dropped_and_recreated;
+                    } else {
+                        if(!columnsToAdd.empty()) {
+                            // extra storage columns than table columns
+                            for(auto columnPointer: columnsToAdd) {
+                                auto generatedStorageTypePointer =
+                                    tImpl.table.find_column_generated_storage_type(columnPointer->name);
+                                if(generatedStorageTypePointer) {
+                                    if(*generatedStorageTypePointer == basic_generated_always::storage_type::stored) {
+                                        gottaCreateTable = true;
+                                        break;
+                                    }
+                                    //  fallback cause VIRTUAL can be added
+                                } else {
+                                    if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
+                                        gottaCreateTable = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            if(!gottaCreateTable) {
+                                if(res == decltype(res)::old_columns_removed) {
+                                    res = decltype(res)::new_columns_added_and_old_columns_removed;
+                                } else {
+                                    res = decltype(res)::new_columns_added;
+                                }
+                            } else {
+                                res = decltype(res)::dropped_and_recreated;
+                            }
+                        } else {
+                            if(res != decltype(res)::old_columns_removed) {
+                                res = decltype(res)::already_in_sync;
+                            }
+                        }
+                    }
+                } else {
+                    res = decltype(res)::new_table_created;
+                }
+                return res;
             }
 
             template<class... Tss, class... Cols>
@@ -21188,83 +21313,6 @@ namespace sqlite_orm {
             perform_void_exec(db, ss.str());
         }
 
-        template<class H, class... Ts>
-        sync_schema_result
-        storage_impl<H, Ts...>::schema_status(sqlite3* db, bool preserve, std::vector<table_info>& dbTableInfo) const {
-
-            auto res = sync_schema_result::already_in_sync;
-
-            //  first let's see if table with such name exists..
-            auto gottaCreateTable = !this->table_exists(this->table.name, db);
-            if(!gottaCreateTable) {
-
-                //  get table info provided in `make_table` call..
-                auto storageTableInfo = this->table.get_table_info();
-
-                //  this vector will contain pointers to columns that gotta be added..
-                std::vector<table_info*> columnsToAdd;
-
-                if(this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
-                    gottaCreateTable = true;
-                }
-
-                if(!gottaCreateTable) {  //  if all storage columns are equal to actual db columns but there are
-                    //  excess columns at the db..
-                    if(!dbTableInfo.empty()) {
-                        // extra table columns than storage columns
-                        if(!preserve) {
-#if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
-                            res = decltype(res)::old_columns_removed;
-#else
-                                gottaCreateTable = true;
-#endif
-                        } else {
-                            res = decltype(res)::old_columns_removed;
-                        }
-                    }
-                }
-                if(gottaCreateTable) {
-                    res = decltype(res)::dropped_and_recreated;
-                } else {
-                    if(!columnsToAdd.empty()) {
-                        // extra storage columns than table columns
-                        for(auto columnPointer: columnsToAdd) {
-                            auto generatedStorageTypePointer =
-                                this->find_column_generated_storage_type(columnPointer->name);
-                            if(generatedStorageTypePointer) {
-                                if(*generatedStorageTypePointer == basic_generated_always::storage_type::stored) {
-                                    gottaCreateTable = true;
-                                    break;
-                                }
-                                //  fallback cause VIRTUAL can be added
-                            } else {
-                                if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
-                                    gottaCreateTable = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if(!gottaCreateTable) {
-                            if(res == decltype(res)::old_columns_removed) {
-                                res = decltype(res)::new_columns_added_and_old_columns_removed;
-                            } else {
-                                res = decltype(res)::new_columns_added;
-                            }
-                        } else {
-                            res = decltype(res)::dropped_and_recreated;
-                        }
-                    } else {
-                        if(res != decltype(res)::old_columns_removed) {
-                            res = decltype(res)::already_in_sync;
-                        }
-                    }
-                }
-            } else {
-                res = decltype(res)::new_table_created;
-            }
-            return res;
-        }
-
     }
 }
 
@@ -21298,8 +21346,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
 
-            auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
-            auto schema_stat = tImpl.schema_status(db, preserve, dbTableInfo);
+            auto schema_stat = this->schema_status(tImpl, db, preserve);
             if(schema_stat != decltype(schema_stat)::already_in_sync) {
                 if(schema_stat == decltype(schema_stat)::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
