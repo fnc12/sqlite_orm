@@ -394,14 +394,24 @@ TEST_CASE("round") {
     test2(-4.535, 2, -4.54);
     test2(34.4158, -1, 34.0);
 }
+
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 TEST_CASE("coalesce") {
+    using Catch::Matchers::Equals;
+    using std::nullopt, std::optional, std::vector;
+
     struct Foo {
-        double field;
+        std::optional<double> field;
     };
 
     auto storage = make_storage({}, make_table("foo", make_column("field", &Foo::field)));
     storage.sync_schema();
+    storage.transaction([&storage]() {
+        storage.insert<Foo>({});
+        storage.insert<Foo>({1.});
+        return true;
+    });
+
     SECTION("statement") {
         SECTION("nullptr") {
             auto statement = storage.prepare(select(coalesce<std::optional<double>>(&Foo::field, nullptr)));
@@ -419,6 +429,48 @@ TEST_CASE("coalesce") {
         SECTION("nullopt") {
             storage.select(coalesce<std::optional<double>>(&Foo::field, std::nullopt));
         }
+    }
+    SECTION("common return type") {
+        auto rows = storage.select(coalesce(&Foo::field, 0), order_by(1));
+        REQUIRE_THAT(rows, Equals(vector<optional<double>>{0., 1.}));
+    }
+}
+#endif
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+TEST_CASE("nullif") {
+    using Catch::Matchers::Equals;
+    using std::nullopt, std::optional, std::vector;
+
+    struct Foo {
+        bool field;
+    };
+
+    auto storage = make_storage({}, make_table("foo", make_column("field", &Foo::field)));
+    storage.sync_schema();
+    storage.transaction([&storage]() {
+        storage.insert<Foo>({false});
+        storage.insert<Foo>({true});
+        return true;
+    });
+
+    SECTION("explicit return type") {
+        auto rows = storage.select(&Foo::field, where(nullif<std::optional<bool>>(&Foo::field, false)));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows[0] == true);
+    }
+    SECTION("common return type") {
+        auto rows = storage.select(&Foo::field, where(nullif(&Foo::field, false)));
+        REQUIRE(rows.size() == 1);
+        REQUIRE(rows[0] == true);
+    }
+    SECTION("null if 0") {
+        auto rows = storage.select(nullif(&Foo::field, 0), order_by(1));
+        REQUIRE_THAT(rows, Equals(vector<optional<int>>{nullopt, 1}));
+    }
+    SECTION("null if 1") {
+        auto rows = storage.select(nullif(&Foo::field, 1), order_by(1));
+        REQUIRE_THAT(rows, Equals(vector<optional<int>>{nullopt, 0}));
     }
 }
 #endif
