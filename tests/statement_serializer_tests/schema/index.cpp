@@ -58,17 +58,16 @@ TEST_CASE("trying schema_status index") {
         int id = 0;
         std::string name;
     };
-    auto storage = make_storage("", make_index("user_name", &User::name),
-        make_table("users",
-            make_column("id", &User::id, primary_key(), autoincrement()),
-            make_column("name", &User::name)));
+    auto storage = make_storage("",
+                                make_index("user_name", &User::name),
+                                make_table("users",
+                                           make_column("id", &User::id, primary_key(), autoincrement()),
+                                           make_column("name", &User::name)));
     storage.sync_schema(true);
-    storage.sync_schema_simulate(true); // this will call in storage_t:
+    storage.sync_schema_simulate(true);  // this will call in storage_t:
 
     // template<class... Tss, class... Cols>
     // sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
     //     return sync_schema_result::already_in_sync;
     // }
-
-
 }
