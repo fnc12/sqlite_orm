@@ -3921,7 +3921,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     template<auto als, class O>
     internal::left_join_t<decltype(als), O> left_join(O o) {
         return {std::move(o)};
@@ -3933,7 +3933,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     template<auto als, class O>
     internal::join_t<decltype(als), O> join(O o) {
         return {std::move(o)};
@@ -3945,7 +3945,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     template<auto als, class O>
     internal::left_outer_join_t<decltype(als), O> left_outer_join(O o) {
         return {std::move(o)};
@@ -3957,7 +3957,7 @@ namespace sqlite_orm {
         return {std::move(o)};
     }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     template<auto als, class O>
     internal::inner_join_t<decltype(als), O> inner_join(O o) {
         return {std::move(o)};
@@ -4398,7 +4398,7 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     template<auto als, class E>
     internal::as_t<decltype(als), E> as(E expression) {
         return {std::move(expression)};
@@ -4508,6 +4508,7 @@ namespace sqlite_orm {
         static_assert(std::array{Chars...}[0] > '0');
         return internal::column_alias<Chars...>{};
     }
+#endif
 
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     /**
@@ -4518,7 +4519,6 @@ namespace sqlite_orm {
     [[nodiscard]] consteval auto operator"" _col() {
         return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
     }
-#endif
 #endif
 }
 #pragma once
@@ -7580,7 +7580,7 @@ namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     template<auto label,
              class... ExplicitCols,
              std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
@@ -20368,7 +20368,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     using cte_1 = decltype("1"_cte);
     using cte_2 = decltype("2"_cte);
     using cte_3 = decltype("3"_cte);

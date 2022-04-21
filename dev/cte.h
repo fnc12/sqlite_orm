@@ -79,7 +79,7 @@ namespace sqlite_orm {
     }
 #endif
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     using cte_1 = decltype("1"_cte);
     using cte_2 = decltype("2"_cte);
     using cte_3 = decltype("3"_cte);

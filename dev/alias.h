@@ -184,7 +184,7 @@ namespace sqlite_orm {
         return {std::move(expression)};
     }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     template<auto als, class E>
     internal::as_t<decltype(als), E> as(E expression) {
         return {std::move(expression)};
@@ -294,6 +294,7 @@ namespace sqlite_orm {
         static_assert(std::array{Chars...}[0] > '0');
         return internal::column_alias<Chars...>{};
     }
+#endif
 
 #ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     /**
@@ -304,6 +305,5 @@ namespace sqlite_orm {
     [[nodiscard]] consteval auto operator"" _col() {
         return internal::to_alias<internal::column_alias, t>(std::make_index_sequence<t.size()>{});
     }
-#endif
 #endif
 }

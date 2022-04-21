@@ -646,7 +646,7 @@ namespace sqlite_orm {
         return builder_type{{std::move(explicitColumns)...}};
     }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     template<auto label,
              class... ExplicitCols,
              std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
