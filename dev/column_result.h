@@ -6,7 +6,6 @@
 
 #include "cxx_polyfill.h"
 #include "type_traits.h"
-#include "member_traits/is_field_member_pointer.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
@@ -52,7 +51,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
         template<class St, class O, class F>
-        struct column_result_t<St, F O::*, match_if<is_field_member_pointer, F O::*>> {
+        struct column_result_t<St, F O::*, match_if<std::is_member_object_pointer, F O::*>> {
             using type = F;
         };
 

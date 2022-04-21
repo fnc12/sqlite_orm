@@ -64,7 +64,7 @@ namespace sqlite_orm {
         // F O::*
         template<typename F,
                  typename ColRef,
-                 std::enable_if_t<polyfill::disjunction_v<is_field_member_pointer<ColRef>>, bool> = true>
+                 std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<ColRef>>, bool> = true>
         static auto make_cte_column(std::string name, const ColRef& finalColRef) {
             return sqlite_orm::make_column<>(move(name), finalColRef);
         }
@@ -191,7 +191,7 @@ namespace sqlite_orm {
                                   const ExplicitColRef& explicitColRef) {
             if constexpr(polyfill::is_specialization_of_v<ExplicitColRef, alias_holder>) {
                 return explicitColRef;
-            } else if constexpr(is_field_member_pointer<ExplicitColRef>::value) {
+            } else if constexpr(std::is_member_pointer<ExplicitColRef>::value) {
                 return explicitColRef;
             } else if constexpr(std::is_base_of_v<basic_column, ExplicitColRef>) {
                 return explicitColRef.member_pointer;

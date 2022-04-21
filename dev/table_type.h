@@ -5,7 +5,6 @@
 #include "member_traits/setter_traits.h"
 #include "member_traits/is_getter.h"
 #include "member_traits/is_setter.h"
-#include "member_traits/is_field_member_pointer.h"
 
 namespace sqlite_orm {
 
@@ -27,7 +26,7 @@ namespace sqlite_orm {
         struct table_type;
 
         template<class O, class F>
-        struct table_type<F O::*, match_if<is_field_member_pointer, F O::*>> {
+        struct table_type<F O::*, void> {
             using type = O;
         };
 

@@ -1,8 +1,7 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if
+#include <type_traits>  //  std::enable_if, std::is_member_object_pointer
 
-#include "is_field_member_pointer.h"
 #include "is_getter.h"
 #include "field_member_traits.h"
 #include "is_setter.h"
@@ -16,7 +15,7 @@ namespace sqlite_orm {
         struct member_traits;
 
         template<class T>
-        struct member_traits<T, std::enable_if_t<is_field_member_pointer<T>::value>> {
+        struct member_traits<T, std::enable_if_t<std::is_member_object_pointer<T>::value>> {
             using object_type = typename field_member_traits<T>::object_type;
             using field_type = typename field_member_traits<T>::field_type;
         };

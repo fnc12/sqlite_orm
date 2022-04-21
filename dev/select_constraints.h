@@ -628,7 +628,7 @@ namespace sqlite_orm {
              class... ExplicitCols,
              std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
                                   internal::is_column_alias<ExplicitCols>,
-                                  internal::is_field_member_pointer<ExplicitCols>,
+                                  std::is_member_pointer<ExplicitCols>,
                                   internal::is_column<ExplicitCols>,
                                   std::is_same<ExplicitCols, polyfill::remove_cvref_t<decltype(std::ignore)>>,
                                   std::is_convertible<ExplicitCols, std::string>>...>,
@@ -651,7 +651,7 @@ namespace sqlite_orm {
              class... ExplicitCols,
              std::enable_if_t<polyfill::conjunction_v<polyfill::disjunction<
                                   internal::is_column_alias<ExplicitCols>,
-                                  internal::is_field_member_pointer<ExplicitCols>,
+                                  std::is_member_pointer<ExplicitCols>,
                                   internal::is_column<ExplicitCols>,
                                   std::is_same<ExplicitCols, std::remove_cvref_t<decltype(std::ignore)>>,
                                   std::is_convertible<ExplicitCols, std::string>>...>,
