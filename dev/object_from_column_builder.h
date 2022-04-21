@@ -2,6 +2,7 @@
 
 #include <sqlite3.h>
 
+#include "static_magic.h"
 #include "row_extractor.h"
 
 namespace sqlite_orm {
@@ -29,13 +30,14 @@ namespace sqlite_orm {
             void operator()(const C& c) const {
                 using field_type = typename C::field_type;
                 auto value = row_extractor<field_type>().extract(this->stmt, this->index++);
-                if(c.member_pointer) {
-                    this->object.*c.member_pointer = std::move(value);
-                } else {
-                    ((this->object).*(c.setter))(std::move(value));
-                }
+                static_if<std::is_member_object_pointer<typename C::member_pointer_t>{}>(
+                    [&value, &object = this->object](const auto& c) {
+                        object.*c.member_pointer = std::move(value);
+                    },
+                    [&value, &object = this->object](const auto& c) {
+                        (object.*c.setter)(std::move(value));
+                    })(c);
             }
         };
-
     }
 }

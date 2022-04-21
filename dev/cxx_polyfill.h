@@ -7,7 +7,7 @@
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
-#if __cplusplus < 201703L  // before C++17
+#if __cplusplus < 201703L  // C++14 or earlier
             template<bool v>
             using bool_constant = std::integral_constant<bool, v>;
 
@@ -38,11 +38,11 @@ namespace sqlite_orm {
             using std::bool_constant;
             using std::conjunction, std::conjunction_v;
             using std::disjunction, std::disjunction_v;
-            using std::negation;
+            using std::negation, std::negation_v;
             using std::void_t;
 #endif
 
-#if __cplusplus < 202002L  // before C++20
+#if __cplusplus < 202002L  // C++20 or earlier
             template<class T>
             struct remove_cvref : std::remove_cv<std::remove_reference_t<T>> {};
 

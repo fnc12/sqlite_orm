@@ -13,6 +13,7 @@
 #include <array>
 
 #include "start_macros.h"
+#include "cxx_functional_polyfill.h"
 #include "member_traits/is_getter.h"
 #include "member_traits/is_setter.h"
 #include "ast/upsert_clause.h"
@@ -1298,11 +1299,7 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
+                        ss << serialize(polyfill::invoke(column.member_pointer, object), context);
                         ++columnIndex;
                     });
                 ss << ")";
@@ -1332,19 +1329,10 @@ namespace sqlite_orm {
                                   static_assert(!is_setter<member_pointer_type>::value,
                                                 "Unable to use setter within insert explicit");
 
-                                  std::string valueString;
-                                  static_if<is_getter<member_pointer_type>{}>(
-                                      [&valueString, &memberPointer, &context](auto& object) {
-                                          valueString = serialize((object.*memberPointer)(), context);
-                                      },
-                                      [&valueString, &memberPointer, &context](auto& object) {
-                                          valueString = serialize(object.*memberPointer, context);
-                                      })(object);
-
                                   if(index > 0) {
                                       ss << ", ";
                                   }
-                                  ss << valueString;
+                                  ss << serialize(polyfill::invoke(memberPointer, object), context);
                                   ++index;
                               });
                 ss << ")";
@@ -1374,12 +1362,8 @@ namespace sqlite_orm {
                     if(columnIndex > 0) {
                         ss << ", ";
                     }
-                    ss << streaming_identifier(column.name) << " = ";
-                    if(column.member_pointer) {
-                        ss << serialize(object.*column.member_pointer, context);
-                    } else {
-                        ss << serialize((object.*column.getter)(), context);
-                    }
+                    ss << streaming_identifier(column.name) << " = "
+                       << serialize(polyfill::invoke(column.member_pointer, object), context);
                     ++columnIndex;
                 });
                 ss << " WHERE ";
@@ -1394,12 +1378,8 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << " AND ";
                         }
-                        ss << streaming_identifier(column.name) << " = ";
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
+                        ss << streaming_identifier(column.name) << " = "
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
                         ++columnIndex;
                     });
                 return ss.str();
@@ -1517,11 +1497,7 @@ namespace sqlite_orm {
                             if(columnIndex > 0) {
                                 ss << ", ";
                             }
-                            if(column.member_pointer) {
-                                ss << serialize(object.*column.member_pointer, context);
-                            } else {
-                                ss << serialize((object.*column.getter)(), context);
-                            }
+                            ss << serialize(polyfill::invoke(column.member_pointer, object), context);
                             ++columnIndex;
                         });
                     ss << ")";
