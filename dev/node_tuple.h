@@ -1,5 +1,6 @@
 #pragma once
 
+#include <type_traits>  //  std::enable_if
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::pair
 #include <functional>  //  std::reference_wrapper
@@ -7,6 +8,7 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "cxx_polyfill.h"
 #include "conditions.h"
 #include "operators.h"
 #include "select_constraints.h"
@@ -87,7 +89,7 @@ namespace sqlite_orm {
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
 
         template<class T>
-        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct node_tuple<T, std::enable_if_t<is_base_of_template<T, binary_condition>::value>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
@@ -126,7 +128,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct node_tuple<T, std::enable_if_t<is_base_of_template<T, compound_operator>::value>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
@@ -135,13 +137,17 @@ namespace sqlite_orm {
             using type = typename conc_tuple<left_tuple, right_tuple>::type;
         };
 
-        template<class T>
-        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, common_table_expression>::value>::type> {
-            using node_type = T;
-            using cte_type = typename node_type::cte_type;
-            using expression_type = typename node_type::expression_type;
-            using cte_tuple = node_tuple_t<cte_type>;
-            using expression_tuple = node_tuple_t<expression_type>;
+        template<class CTE>
+        struct node_tuple<CTE, std::enable_if_t<polyfill::is_specialization_of_v<CTE, common_table_expression>>> {
+            using node_type = CTE;
+            using type = node_tuple_t<typename node_type::expression_type>;
+        };
+
+        template<class With>
+        struct node_tuple<With, std::enable_if_t<polyfill::is_specialization_of_v<With, with_t>>> {
+            using node_type = With;
+            using cte_tuple = node_tuple_t<typename node_type::cte_type>;
+            using expression_tuple = node_tuple_t<typename node_type::expression_type>;
             using type = typename conc_tuple<cte_tuple, expression_tuple>::type;
         };
 
