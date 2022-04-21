@@ -26,7 +26,7 @@ void all_integers_between(int from, int end) {
         //WITH RECURSIVE
         //    cnt(x) AS(VALUES(1) UNION ALL SELECT x + 1 FROM cnt WHERE x < 1000000)
         //    SELECT x FROM cnt;
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         constexpr auto cnt_cte = "cnt"_cte;
         auto ast =
             with(cte<cnt_cte>()(
@@ -68,7 +68,7 @@ void all_integers_between(int from, int end) {
         //        LIMIT 1000000
         //    )
         //    SELECT x FROM cnt;
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         auto ast = with(cte<"cnt"_cte>("y"_col)(
                             union_all(select(from >>= "x"_col), select("cnt"_cte->*"y"_col + c(1), limit(end)))),
                         select("cnt"_cte->*"y"_col));
@@ -149,7 +149,7 @@ void supervisor_chain() {
         //        WHERE parent.name = chain.boss
         //    )
         //    SELECT name FROM chain;
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         auto ast = with(cte<"chain"_cte>()(union_all(
                             select(asterisk<Org>(), where(&Org::name == c("Fred"))),
                             select(asterisk<alias_a<Org>>(),
@@ -215,7 +215,7 @@ void works_for_alice() {
         //    )
         //    SELECT avg(height) FROM org
         //    WHERE org.name IN works_for_alice;
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         constexpr auto works_for_alice = "works_for_alice"_cte;
         auto ast =
             with(cte<works_for_alice>("n"_col)(
@@ -300,7 +300,7 @@ void family_tree() {
     //    WHERE ancestor_of_alice.name = family.name
     //    AND died IS NULL
     //    ORDER BY born;
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     constexpr auto parent_of = "parent_of"_cte;
     constexpr auto ancestor_of_alice = "ancestor_of_alice"_cte;
     constexpr auto parent_col = "parent"_col;
@@ -418,7 +418,7 @@ void depth_or_breadth_first() {
         //        ORDER BY 2
         //    )
         //    SELECT substr('..........', 1, level * 3) || name FROM under_alice;
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         constexpr auto under_alice = "under_alice"_cte;
         constexpr auto level_col = "level"_col;
         auto ast = with(cte<under_alice>(&Org::name, level_col)(
@@ -459,7 +459,7 @@ void depth_or_breadth_first() {
         //        ORDER BY 2
         //    )
         //    SELECT substr('..........', 1, level * 3) || name FROM under_alice;
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         constexpr auto under_alice = "under_alice"_cte;
         constexpr auto level_col = "level"_col;
         auto ast = with(cte<under_alice>(&Org::name, level_col)(
@@ -512,7 +512,7 @@ void apfelmaennchen() {
     //        FROM m2 GROUP BY cy
     //    )
     //    SELECT group_concat(rtrim(t), x'0a') FROM a;
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     constexpr auto xaxis = "xaxis"_cte;
     constexpr auto yaxis = "yaxis"_cte;
     constexpr auto m = "mi"_cte;

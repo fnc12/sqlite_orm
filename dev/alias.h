@@ -40,7 +40,7 @@ namespace sqlite_orm {
         template<class A>
         using is_cte_alias = polyfill::bool_constant<is_cte_alias_v<A>>;
 
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         /*  
          *  Helper class to facilitate user-defined string literal operator template
          */
@@ -295,7 +295,7 @@ namespace sqlite_orm {
         return internal::column_alias<Chars...>{};
     }
 
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     /**
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col

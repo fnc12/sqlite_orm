@@ -50,7 +50,7 @@ TEST_CASE("column_expression_of_t") {
     runTest<storage_type, column_pointer<cte_1, int64 Org::*>>(cte_1{}->*&Org::id);
     runTest<storage_type, column_pointer<cte_1, alias_holder<internal::column_alias<'1'>>>>(column<cte_1>(1_colalias));
     runTest<storage_type, column_pointer<cte_1, alias_holder<colalias_c>>>(1_ctealias->*colalias_c{});
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     runTest<storage_type, column_pointer<cte_1, alias_holder<colalias_c>>>("1"_cte->*"c"_col);
 #endif
 }

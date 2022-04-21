@@ -65,7 +65,7 @@ namespace sqlite_orm {
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
         return internal::cte_alias<Chars...>{};
     }
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     /**
      *  cte_alias<'1'[, ...]> from a string literal.
      *  E.g. "1"_cte, "2"_cte

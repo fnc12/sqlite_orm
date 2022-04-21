@@ -31,6 +31,10 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
 
+#if __cpp_nontype_template_args >= 201911
+#define SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+#endif
+
 #if __cplusplus >= 201703L  // C++17 or later
 #if __has_include(<optional>)
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -4250,7 +4254,7 @@ namespace sqlite_orm {
         template<class A>
         using is_cte_alias = polyfill::bool_constant<is_cte_alias_v<A>>;
 
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
         /*  
          *  Helper class to facilitate user-defined string literal operator template
          */
@@ -4505,7 +4509,7 @@ namespace sqlite_orm {
         return internal::column_alias<Chars...>{};
     }
 
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     /**
      *  column_alias<'a'[, ...]> from a string literal.
      *  E.g. "a"_col, "b"_col
@@ -20350,7 +20354,7 @@ namespace sqlite_orm {
     [[nodiscard]] SQLITE_ORM_CONSTEVAL auto operator"" _ctealias() {
         return internal::cte_alias<Chars...>{};
     }
-#if __cpp_nontype_template_args >= 201911
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
     /**
      *  cte_alias<'1'[, ...]> from a string literal.
      *  E.g. "1"_cte, "2"_cte
