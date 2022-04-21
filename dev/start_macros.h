@@ -13,6 +13,10 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #endif
 
+#if __cpp_aggregate_bases >= 201603L
+#define SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+#endif
+
 #if __cpp_inline_variables >= 201606L
 #define SQLITE_ORM_INLINE_VAR inline
 #else

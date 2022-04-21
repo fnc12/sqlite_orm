@@ -13,6 +13,10 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #endif
 
+#if __cpp_aggregate_bases >= 201603L
+#define SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+#endif
+
 #if __cpp_inline_variables >= 201606L
 #define SQLITE_ORM_INLINE_VAR inline
 #else
@@ -2077,6 +2081,8 @@ namespace sqlite_orm {
 #include <memory>  //  std::unique_ptr
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if, std::decay
 
+// #include "start_macros.h"
+
 // #include "cxx_polyfill.h"
 
 // #include "type_traits.h"
@@ -2192,7 +2198,7 @@ namespace sqlite_orm {
              */
             constraints_type constraints;
 
-#if __cplusplus < 201703L  // C++14 or earlier
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             column_t(std::string name, G memberPointer, S setter, std::tuple<Op...> op) :
                 basic_column{move(name)}, field_access_closure<G, S>{memberPointer, setter}, constraints{move(op)} {}
 #endif
