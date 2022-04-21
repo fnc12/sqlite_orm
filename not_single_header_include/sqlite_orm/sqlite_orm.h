@@ -3,7 +3,6 @@
 #include "../../dev/start_macros.h"
 #include "../../dev/type_traits.h"
 #include "../../dev/error_code.h"
-#include "../../dev/tuple_helper/find_in_tuple.h"
 #include "../../dev/type_printer.h"
 #include "../../dev/collate_argument.h"
 #include "../../dev/constraints.h"

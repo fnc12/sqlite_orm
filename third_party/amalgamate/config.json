@@ -5,7 +5,6 @@
     "dev/start_macros.h",
     "dev/type_traits.h",
     "dev/error_code.h",
-    "dev/tuple_helper/find_in_tuple.h",
     "dev/type_printer.h",
     "dev/collate_argument.h",
     "dev/constraints.h",
