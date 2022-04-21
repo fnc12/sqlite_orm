@@ -834,7 +834,7 @@ namespace sqlite_orm {
 
 // #include "table_type.h"
 
-#include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_member_function_pointer
+#include <type_traits>  //  std::enable_if, std::is_member_object_pointer
 
 // #include "member_traits/getter_traits.h"
 
@@ -1164,19 +1164,17 @@ namespace sqlite_orm {
         struct table_type;
 
         template<class O, class F>
-        struct table_type<F O::*,
-                          typename std::enable_if<std::is_member_pointer<F O::*>::value &&
-                                                  !std::is_member_function_pointer<F O::*>::value>::type> {
+        struct table_type<F O::*, std::enable_if_t<std::is_member_object_pointer<F O::*>::value>> {
             using type = O;
         };
 
         template<class T>
-        struct table_type<T, typename std::enable_if<is_getter<T>::value>::type> {
+        struct table_type<T, std::enable_if_t<is_getter<T>::value>> {
             using type = typename getter_traits<T>::object_type;
         };
 
         template<class T>
-        struct table_type<T, typename std::enable_if<is_setter<T>::value>::type> {
+        struct table_type<T, std::enable_if_t<is_setter<T>::value>> {
             using type = typename setter_traits<T>::object_type;
         };
 
@@ -8918,7 +8916,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic
+#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_member_object_pointer, std::is_base_of
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
@@ -9766,14 +9764,6 @@ namespace sqlite_orm {
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
-        template<class St, class O, class F>
-        struct column_result_t<St,
-                               F O::*,
-                               typename std::enable_if<std::is_member_pointer<F O::*>::value &&
-                                                       !std::is_member_function_pointer<F O::*>::value>::type> {
-            using type = F;
-        };
-
         template<class St, class L, class A>
         struct column_result_t<St, dynamic_in_t<L, A>, void> {
             using type = bool;
@@ -9782,6 +9772,11 @@ namespace sqlite_orm {
         template<class St, class L, class... Args>
         struct column_result_t<St, in_t<L, Args...>, void> {
             using type = bool;
+        };
+
+        template<class St, class O, class F>
+        struct column_result_t<St, F O::*, std::enable_if_t<std::is_member_object_pointer<F O::*>::value>> {
+            using type = F;
         };
 
         /**
