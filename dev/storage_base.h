@@ -734,8 +734,8 @@ namespace sqlite_orm {
                 auto res = 0;
 
                 storageImpl.for_each([&res](const auto& tImpl) {
-                    using unqualified_type = polyfill::remove_cvref_t<decltype(tImpl)>;
-                    static_if<std::is_base_of<basic_table, table_type_or_none_t<unqualified_type>>::value>(
+                    using qualified_type = std::decay_t<decltype(tImpl)>;
+                    static_if<std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value>(
                         [&res](const auto& tImpl) {
                             res += tImpl.table.foreign_keys_count();
                         })(tImpl);

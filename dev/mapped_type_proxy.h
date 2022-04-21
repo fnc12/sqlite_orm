@@ -20,7 +20,7 @@ namespace sqlite_orm {
 
         template<class T>
         struct mapped_type_proxy<T, std::enable_if_t<std::is_base_of<alias_tag, T>::value>> {
-            using type = std::remove_const_t<typename T::type>;
+            using type = typename T::type;
         };
     }
 }

@@ -378,33 +378,6 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <tuple>  //  std::tuple
-#include <type_traits>  //  std::enable_if
-
-namespace sqlite_orm {
-    namespace internal {
-
-        template<class T, template<class> class C, class SFINAE = void>
-        struct find_in_tuple;
-
-        template<template<class> class C>
-        struct find_in_tuple<std::tuple<>, C, void> {
-            using type = void;
-        };
-
-        template<class H, class... Args, template<class> class C>
-        struct find_in_tuple<std::tuple<H, Args...>, C, typename std::enable_if<C<H>::value>::type> {
-            using type = H;
-        };
-
-        template<class H, class... Args, template<class> class C>
-        struct find_in_tuple<std::tuple<H, Args...>, C, typename std::enable_if<!C<H>::value>::type> {
-            using type = typename find_in_tuple<std::tuple<Args...>, C>::type;
-        };
-    }
-}
-#pragma once
-
 #include <string>  //  std::string
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #include <vector>  //  std::vector
@@ -8866,7 +8839,7 @@ namespace sqlite_orm {
 
         template<class T>
         struct mapped_type_proxy<T, std::enable_if_t<std::is_base_of<alias_tag, T>::value>> {
-            using type = std::remove_const_t<typename T::type>;
+            using type = typename T::type;
         };
     }
 }
@@ -10512,8 +10485,10 @@ namespace sqlite_orm {
             return static_if<std::is_same<S, storage_impl<>>::value>(
                 empty_callable<std::string>(),
                 [&ti](const auto& tImpl) {
-                    return ti == typeid(storage_object_type_t<S>) ? tImpl.table.name
-                                                                  : find_table_name<typename S::super>(tImpl, ti);
+                    using qualified_type = std::decay_t<decltype(tImpl)>;
+                    return ti == typeid(storage_object_type_t<qualified_type>)
+                               ? tImpl.table.name
+                               : find_table_name<typename qualified_type::super>(tImpl, ti);
                 })(strg);
         }
 
@@ -14156,8 +14131,8 @@ namespace sqlite_orm {
                 auto res = 0;
 
                 storageImpl.for_each([&res](const auto& tImpl) {
-                    using unqualified_type = polyfill::remove_cvref_t<decltype(tImpl)>;
-                    static_if<std::is_base_of<basic_table, table_type_or_none_t<unqualified_type>>::value>(
+                    using qualified_type = std::decay_t<decltype(tImpl)>;
+                    static_if<std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value>(
                         [&res](const auto& tImpl) {
                             res += tImpl.table.foreign_keys_count();
                         })(tImpl);

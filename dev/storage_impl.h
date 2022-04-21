@@ -84,8 +84,10 @@ namespace sqlite_orm {
             return static_if<std::is_same<S, storage_impl<>>::value>(
                 empty_callable<std::string>(),
                 [&ti](const auto& tImpl) {
-                    return ti == typeid(storage_object_type_t<S>) ? tImpl.table.name
-                                                                  : find_table_name<typename S::super>(tImpl, ti);
+                    using qualified_type = std::decay_t<decltype(tImpl)>;
+                    return ti == typeid(storage_object_type_t<qualified_type>)
+                               ? tImpl.table.name
+                               : find_table_name<typename qualified_type::super>(tImpl, ti);
                 })(strg);
         }
 
