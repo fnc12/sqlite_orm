@@ -21,6 +21,8 @@ namespace sqlite_orm {
      */
     enum class journal_mode : signed char {
         DELETE = 0,
+        // An alternate enumeration value when using the Windows SDK that defines DELETE as a macro.
+        DELETE_ = DELETE,
         TRUNCATE = 1,
         PERSIST = 2,
         MEMORY = 3,

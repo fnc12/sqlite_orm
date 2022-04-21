@@ -13,6 +13,7 @@
 #include <array>
 
 #include "start_macros.h"
+#include "cxx_functional_polyfill.h"
 #include "member_traits/is_getter.h"
 #include "member_traits/is_setter.h"
 #include "ast/upsert_clause.h"
@@ -583,8 +584,6 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
-                using args_tuple = std::tuple<Args...>;
-
                 std::stringstream ss;
                 ss << F::name() << "(" << streaming_expressions_tuple(statement.args, context) << ")";
                 return ss.str();
@@ -1300,11 +1299,7 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
+                        ss << serialize(polyfill::invoke(column.member_pointer, object), context);
                         ++columnIndex;
                     });
                 ss << ")";
@@ -1334,19 +1329,10 @@ namespace sqlite_orm {
                                   static_assert(!is_setter<member_pointer_type>::value,
                                                 "Unable to use setter within insert explicit");
 
-                                  std::string valueString;
-                                  static_if<is_getter<member_pointer_type>{}>(
-                                      [&valueString, &memberPointer, &context](auto& object) {
-                                          valueString = serialize((object.*memberPointer)(), context);
-                                      },
-                                      [&valueString, &memberPointer, &context](auto& object) {
-                                          valueString = serialize(object.*memberPointer, context);
-                                      })(object);
-
                                   if(index > 0) {
                                       ss << ", ";
                                   }
-                                  ss << valueString;
+                                  ss << serialize(polyfill::invoke(memberPointer, object), context);
                                   ++index;
                               });
                 ss << ")";
@@ -1366,7 +1352,6 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << "UPDATE " << streaming_identifier(tImpl.table.name) << " SET ";
-                //                std::vector<std::string> setColumnNames;
                 auto columnIndex = 0;
                 tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](
                                                 auto& column) {
@@ -1377,12 +1362,8 @@ namespace sqlite_orm {
                     if(columnIndex > 0) {
                         ss << ", ";
                     }
-                    ss << streaming_identifier(column.name) << " = ";
-                    if(column.member_pointer) {
-                        ss << serialize(object.*column.member_pointer, context);
-                    } else {
-                        ss << serialize((object.*column.getter)(), context);
-                    }
+                    ss << streaming_identifier(column.name) << " = "
+                       << serialize(polyfill::invoke(column.member_pointer, object), context);
                     ++columnIndex;
                 });
                 ss << " WHERE ";
@@ -1397,12 +1378,8 @@ namespace sqlite_orm {
                         if(columnIndex > 0) {
                             ss << " AND ";
                         }
-                        ss << streaming_identifier(column.name) << " = ";
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
+                        ss << streaming_identifier(column.name) << " = "
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
                         ++columnIndex;
                     });
                 return ss.str();
@@ -1417,7 +1394,6 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
                 ss << "SET ";
-                constexpr size_t assignsCount = std::tuple_size<typename statement_type::assigns_type>::value;
                 size_t assignIndex = 0;
                 auto leftContext = context;
                 leftContext.skip_table_name = true;
@@ -1509,29 +1485,21 @@ namespace sqlite_orm {
                 if(columnsToInsertCount > 0) {
                     ss << "(";
                     columnIndex = 0;
-                    tImpl.table.for_each_column([&tImpl,
-                                                 &columnIndex,
-                                                 &ss,
-                                                 columnsToInsertCount,
-                                                 &context,
-                                                 &object = get_ref(statement.object)](auto& column) {
-                        using table_type = std::decay_t<decltype(tImpl.table)>;
-                        if(!table_type::is_without_rowid &&
-                           (column.template has<primary_key_t<>>() ||
-                            tImpl.table.exists_in_composite_primary_key(column) || column.is_generated())) {
-                            return;
-                        }
+                    tImpl.table.for_each_column(
+                        [&tImpl, &columnIndex, &ss, &context, &object = get_ref(statement.object)](auto& column) {
+                            using table_type = std::decay_t<decltype(tImpl.table)>;
+                            if(!table_type::is_without_rowid &&
+                               (column.template has<primary_key_t<>>() ||
+                                tImpl.table.exists_in_composite_primary_key(column) || column.is_generated())) {
+                                return;
+                            }
 
-                        if(columnIndex > 0) {
-                            ss << ", ";
-                        }
-                        if(column.member_pointer) {
-                            ss << serialize(object.*column.member_pointer, context);
-                        } else {
-                            ss << serialize((object.*column.getter)(), context);
-                        }
-                        ++columnIndex;
-                    });
+                            if(columnIndex > 0) {
+                                ss << ", ";
+                            }
+                            ss << serialize(polyfill::invoke(column.member_pointer, object), context);
+                            ++columnIndex;
+                        });
                     ss << ")";
                 }
 
@@ -1560,7 +1528,6 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                auto index = 0;
                 if(context.use_parentheses) {
                     ss << '(';
                 }
