@@ -106,5 +106,44 @@ namespace sqlite_orm {
             return res;
         }
 
+        template<class... Ts>
+        template<class I>
+        void storage_t<Ts...>::copy_table(sqlite3* db,
+                                          const std::string& tableName,
+                                          const I& tImpl,
+                                          const std::vector<table_info*>& columnsToIgnore) const {
+            std::stringstream ss;
+            std::vector<std::string> columnNames;
+            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
+                auto& columnName = c.name;
+                auto columnToIgnoreIt =
+                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfoPointer) {
+                        return columnName == tableInfoPointer->name;
+                    });
+                if(columnToIgnoreIt == columnsToIgnore.end()) {
+                    columnNames.emplace_back(columnName);
+                }
+            });
+            auto columnNamesCount = columnNames.size();
+            ss << "INSERT INTO " << quote_identifier(tableName) << " (";
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << columnNames[i];
+                if(i < columnNamesCount - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            ss << ") ";
+            ss << "SELECT ";
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << columnNames[i];
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << " FROM " << quote_identifier(tImpl.table.name);
+            perform_void_exec(db, ss.str());
+        }
+
     }
 }

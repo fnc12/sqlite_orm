@@ -5,9 +5,11 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
+#include "cxx_functional_polyfill.h"
 #include "static_magic.h"
 #include "typed_comparator.h"
 #include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_filter.h"
 #include "constraints.h"
 #include "table_info.h"
 #include "column.h"
@@ -45,39 +47,29 @@ namespace sqlite_orm {
             }
 
             /**
+             *  Returns foreign keys count in table definition
+             */
+            constexpr int foreign_keys_count() const {
+#if SQLITE_VERSION_NUMBER >= 3006019
+                return int(filter_tuple_sequence_t<elements_type, is_foreign_key>::size());
+#else
+                return 0;
+#endif
+            }
+
+            /**
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
             template<class F, class C>
             const F* get_object_field_pointer(const object_type& object, C memberPointer) const {
                 const F* res = nullptr;
                 this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
-                    using column_type = typename std::remove_reference<decltype(column)>::type;
-                    using member_pointer_t = typename column_type::member_pointer_t;
-                    using getter_type = typename column_type::getter_type;
-                    using setter_type = typename column_type::setter_type;
-                    // Make static_if have at least one input as a workaround for GCC bug:
-                    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64095
-                    if(!res) {
-                        static_if<std::is_same<C, member_pointer_t>{}>(
-                            [&res, &object, &column](const C& memberPointer) {
-                                if(compare_any(column.member_pointer, memberPointer)) {
-                                    res = &(object.*column.member_pointer);
-                                }
-                            })(memberPointer);
+                    if(res) {
+                        return;
                     }
-                    if(!res) {
-                        static_if<std::is_same<C, getter_type>{}>([&res, &object, &column](const C& memberPointer) {
-                            if(compare_any(column.getter, memberPointer)) {
-                                res = &(object.*(column.getter))();
-                            }
-                        })(memberPointer);
-                    }
-                    if(!res) {
-                        static_if<std::is_same<C, setter_type>{}>([&res, &object, &column](const C& memberPointer) {
-                            if(compare_any(column.setter, memberPointer)) {
-                                res = &(object.*(column.getter))();
-                            }
-                        })(memberPointer);
+
+                    if(compare_any(column.member_pointer, memberPointer) || compare_any(column.setter, memberPointer)) {
+                        res = &polyfill::invoke(column.member_pointer, object);
                     }
                 });
                 return res;
@@ -110,13 +102,11 @@ namespace sqlite_orm {
                 auto res = false;
                 this->for_each_primary_key([&column, &res](auto& primaryKey) {
                     iterate_tuple(primaryKey.columns, [&res, &column](auto& value) {
-                        if(!res) {
-                            if(column.member_pointer) {
-                                res = compare_any(value, column.member_pointer);
-                            } else {
-                                res = compare_any(value, column.getter) || compare_any(value, column.setter);
-                            }
+                        if(res) {
+                            return;
                         }
+
+                        res = compare_any(value, column.member_pointer) || compare_any(value, column.setter);
                     });
                 });
                 return res;
@@ -155,11 +145,7 @@ namespace sqlite_orm {
             template<class L>
             void for_each_primary_key_column(const L& lambda) const {
                 this->for_each_column_with<primary_key_t<>>([&lambda](auto& column) {
-                    if(column.member_pointer) {
-                        lambda(column.member_pointer);
-                    } else {
-                        lambda(column.getter);
-                    }
+                    lambda(column.member_pointer);
                 });
                 this->for_each_primary_key([this, &lambda](auto& primaryKey) {
                     this->for_each_column_in_primary_key(primaryKey, lambda);
@@ -190,14 +176,11 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class F,
-                     class O,
-                     typename = typename std::enable_if<std::is_member_pointer<F O::*>::value &&
-                                                        !std::is_member_function_pointer<F O::*>::value>::type>
+            template<class F, class O, satisfies<std::is_member_object_pointer, F O::*> = true>
             const std::string* find_column_name(F O::*m) const {
                 const std::string* res = nullptr;
                 this->template for_each_column_with_field_type<F>([&res, m](auto& c) {
-                    if(c.member_pointer == m) {
+                    if(compare_any(c.member_pointer, m)) {
                         res = &c.name;
                     }
                 });
@@ -208,13 +191,12 @@ namespace sqlite_orm {
              *  Searches column name by class getter function member pointer passed as first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class G>
-            const std::string* find_column_name(G getter,
-                                                typename std::enable_if<is_getter<G>::value>::type* = nullptr) const {
+            template<class G, satisfies<is_getter, G> = true>
+            const std::string* find_column_name(G getter) const {
                 const std::string* res = nullptr;
                 using field_type = typename getter_traits<G>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, getter](auto& c) {
-                    if(compare_any(c.getter, getter)) {
+                    if(compare_any(c.member_pointer, getter)) {
                         res = &c.name;
                     }
                 });
@@ -225,9 +207,8 @@ namespace sqlite_orm {
              *  Searches column name by class setter function member pointer passed as first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class S>
-            const std::string* find_column_name(S setter,
-                                                typename std::enable_if<is_setter<S>::value>::type* = nullptr) const {
+            template<class S, satisfies<is_setter, S> = true>
+            const std::string* find_column_name(S setter) const {
                 const std::string* res = nullptr;
                 using field_type = typename setter_traits<S>::field_type;
                 this->template for_each_column_with_field_type<field_type>([&res, setter](auto& c) {
@@ -254,12 +235,8 @@ namespace sqlite_orm {
             /**
              *  Counts and returns amount of columns. Skips constraints.
              */
-            int count_columns_amount() const {
-                auto res = 0;
-                this->for_each_column([&res](auto&) {
-                    ++res;
-                });
-                return res;
+            constexpr int count_columns_amount() const {
+                return filter_tuple_sequence_t<elements_type, is_column>::size();
             }
 
             /**

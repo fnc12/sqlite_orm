@@ -1,13 +1,12 @@
 #pragma once
 
-#include <string>  //  std::string
 #include <sqlite3.h>
-#include <sstream>  //  std::stringstream
-#include <type_traits>  //  std::forward, std::is_same
+#include <string>  //  std::string
+#include <type_traits>  //  std::is_same, std::decay
 #include <vector>  //  std::vector
 #include <typeindex>  //  std::type_index
+#include <utility>  //  std::forward, std::move
 
-#include "static_magic.h"
 #include "type_traits.h"
 #include "constraints.h"
 #include "table_info.h"
@@ -40,12 +39,11 @@ namespace sqlite_orm {
         struct storage_impl;
 
         template<class H, class... Ts>
-        struct storage_impl<H, Ts...> : public storage_impl<Ts...> {
+        struct storage_impl<H, Ts...> : storage_impl<Ts...> {
             using super = storage_impl<Ts...>;
-            using self = storage_impl<H, Ts...>;
             using table_type = H;
 
-            storage_impl(H h, Ts... ts) : super(std::forward<Ts>(ts)...), table(std::move(h)) {}
+            storage_impl(H h, Ts... ts) : super{std::forward<Ts>(ts)...}, table{std::move(h)} {}
 
             table_type table;
 
@@ -93,16 +91,8 @@ namespace sqlite_orm {
         template<>
         struct storage_impl<> : storage_impl_base {
 
-            std::string find_table_name(const std::type_index&) const {
-                return {};
-            }
-
             template<class L>
             void for_each(const L&) const {}
-
-            int foreign_keys_count() const {
-                return 0;
-            }
         };
     }
 }
@@ -114,28 +104,38 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
+        template<class S>
+        using table_type_or_none_t = polyfill::detected_t<table_type_t, S>;
+
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto lookup_table(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(
-                [](const storage_impl<>&) {
-                    return nullptr;
-                },
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(
+                empty_callable<std::nullptr_t>(),
                 [](const auto& tImpl) {
                     return &tImpl.table;
                 })(tImpl);
         }
 
+        template<class S, satisfies<is_storage_impl, S> = true>
+        std::string find_table_name(const S& strg, const std::type_index& ti) {
+            return static_if<std::is_same<S, storage_impl<>>::value>(
+                empty_callable<std::string>(),
+                [&ti](const auto& tImpl) {
+                    using qualified_type = std::decay_t<decltype(tImpl)>;
+                    return ti == typeid(storage_object_type_t<qualified_type>)
+                               ? tImpl.table.name
+                               : find_table_name<typename qualified_type::super>(tImpl, ti);
+                })(strg);
+        }
+
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(
-                [](const storage_impl<>&) {
-                    return std::string{};
-                },
-                [](const auto& tImpl) {
-                    return tImpl.table.name;
-                })(tImpl);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(empty_callable<std::string>(),
+                                                                                     [](const auto& tImpl) {
+                                                                                         return tImpl.table.name;
+                                                                                     })(tImpl);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>

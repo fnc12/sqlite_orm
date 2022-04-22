@@ -6,7 +6,6 @@ using namespace sqlite_orm;
 TEST_CASE("member_traits_tests") {
     using internal::field_member_traits;
     using internal::getter_traits;
-    using internal::is_field_member_pointer;
     using internal::is_getter;
     using internal::is_setter;
     using internal::member_traits;
@@ -104,25 +103,6 @@ TEST_CASE("member_traits_tests") {
             this->id = id;
         }
     };
-
-    STATIC_REQUIRE(is_field_member_pointer<decltype(&User::id)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByValConst)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByRefConst)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByRef)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByConstRefConst)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByConstRef)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByValConstNoexcept)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByValNoexcept)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByRefConstNoexcept)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByRefNoexcept)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByConstRefConstNoexcept)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::getIdByConstRefNoExcept)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByVal)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByRef)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByConstRef)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByValueNoexcept)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByRefNoExcept)>::value);
-    STATIC_REQUIRE(!is_field_member_pointer<decltype(&User::setIdByConstRefNoexcept)>::value);
 
     STATIC_REQUIRE(!is_getter<decltype(&User::id)>::value);
     STATIC_REQUIRE(is_getter<decltype(&User::getIdByValConst)>::value);

@@ -12,16 +12,14 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
         STATIC_REQUIRE(std::is_same<column_type::field_type, int>::value);
         STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int User::*>::value);
-        STATIC_REQUIRE(std::is_same<column_type::getter_type, const int& (User::*)() const>::value);
-        STATIC_REQUIRE(std::is_same<column_type::setter_type, void (User::*)(int)>::value);
+        STATIC_REQUIRE(std::is_same<column_type::setter_type, internal::empty_setter>::value);
     }
     {
         using column_type = decltype(make_column("id", &User::getIdByRefConst, &User::setIdByVal));
         STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
         STATIC_REQUIRE(std::is_same<column_type::field_type, int>::value);
-        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int User::*>::value);
-        STATIC_REQUIRE(std::is_same<column_type::getter_type, const int& (User::*)() const>::value);
+        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, const int& (User::*)() const>::value);
         STATIC_REQUIRE(std::is_same<column_type::setter_type, void (User::*)(int)>::value);
     }
     {
@@ -29,8 +27,7 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
         STATIC_REQUIRE(std::is_same<column_type::field_type, int>::value);
-        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int User::*>::value);
-        STATIC_REQUIRE(std::is_same<column_type::getter_type, const int& (User::*)() const>::value);
+        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, const int& (User::*)() const>::value);
         STATIC_REQUIRE(std::is_same<column_type::setter_type, void (User::*)(int)>::value);
     }
     {
@@ -38,8 +35,7 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
         STATIC_REQUIRE(std::is_same<column_type::field_type, int>::value);
-        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int User::*>::value);
-        STATIC_REQUIRE(std::is_same<column_type::getter_type, const int& (User::*)()>::value);
+        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, const int& (User::*)()>::value);
         STATIC_REQUIRE(std::is_same<column_type::setter_type, void (User::*)(const int&)>::value);
     }
     {
@@ -47,8 +43,7 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
         STATIC_REQUIRE(std::is_same<column_type::field_type, int>::value);
-        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int User::*>::value);
-        STATIC_REQUIRE(std::is_same<column_type::getter_type, const int& (User::*)()>::value);
+        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, const int& (User::*)()>::value);
         STATIC_REQUIRE(std::is_same<column_type::setter_type, void (User::*)(const int&)>::value);
     }
     {
@@ -56,8 +51,7 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
         STATIC_REQUIRE(std::is_same<column_type::field_type, int>::value);
-        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int User::*>::value);
-        STATIC_REQUIRE(std::is_same<column_type::getter_type, int (User::*)() const>::value);
+        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int (User::*)() const>::value);
         STATIC_REQUIRE(std::is_same<column_type::setter_type, void (User::*)(int&)>::value);
     }
     {
@@ -65,8 +59,7 @@ TEST_CASE("Column") {
         STATIC_REQUIRE(std::tuple_size<column_type::constraints_type>::value == 0);
         STATIC_REQUIRE(std::is_same<column_type::object_type, User>::value);
         STATIC_REQUIRE(std::is_same<column_type::field_type, int>::value);
-        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int User::*>::value);
-        STATIC_REQUIRE(std::is_same<column_type::getter_type, int (User::*)() const>::value);
+        STATIC_REQUIRE(std::is_same<column_type::member_pointer_t, int (User::*)() const>::value);
         STATIC_REQUIRE(std::is_same<column_type::setter_type, void (User::*)(int&)>::value);
     }
     {

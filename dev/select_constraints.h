@@ -8,7 +8,7 @@
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "is_base_of_template.h"
-#include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_filter.h"
 #include "optional_container.h"
 #include "ast/where.h"
 #include "ast/group_by.h"
