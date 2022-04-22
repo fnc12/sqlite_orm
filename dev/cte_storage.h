@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+#include "is_base_of_template.h"
+#include "table_type.h"
 #include "column_result.h"
 #include "column_expression.h"
 #include "select_constraints.h"
@@ -58,15 +60,17 @@ namespace sqlite_orm {
         template<typename F, typename ColRef, satisfies_is_specialization_of<ColRef, alias_holder> = true>
         static auto make_cte_column(std::string name, const ColRef& /*finalColRef*/) {
             using object_type = aliased_field<type_t<ColRef>, F>;
+
             return sqlite_orm::make_column<>(move(name), &object_type::field);
         }
 
         // F O::*
-        template<typename F,
-                 typename ColRef,
-                 std::enable_if_t<polyfill::disjunction_v<std::is_member_pointer<ColRef>>, bool> = true>
+        template<typename F, typename ColRef, satisfies<std::is_member_pointer, ColRef> = true>
         static auto make_cte_column(std::string name, const ColRef& finalColRef) {
-            return sqlite_orm::make_column<>(move(name), finalColRef);
+            using object_type = typename table_type<ColRef>::type;
+            using column_type = column_t<object_type, F, ColRef, empty_setter>;
+
+            return column_type{move(name), finalColRef, empty_setter{}};
         }
 
         /**
@@ -108,6 +112,9 @@ namespace sqlite_orm {
             return subSelect.col.left;
         }
 
+        /**
+         *  Return a tuple of member pointers of all columns
+         */
         template<class C, size_t... Idx>
         auto get_fields_of_columns(const C& coldef, std::index_sequence<Idx...>) {
             return std::make_tuple(get<Idx>(coldef).member_pointer...);
@@ -126,7 +133,7 @@ namespace sqlite_orm {
             return extract_colref_expressions(impl, col.value, s);
         }
 
-        // F O::* (field) -> field
+        // F O::* (field/getter) -> field/getter
         template<class S, class F, class O, size_t Idx = 0>
         auto extract_colref_expressions(const S& /*impl*/, F O::*col, std::index_sequence<Idx> = {}) {
             return std::make_tuple(col);
@@ -178,8 +185,11 @@ namespace sqlite_orm {
         }
 
         template<class S, class E, class... Args>
-        decltype(auto) extract_colref_expressions(const S& /*impl*/,
-                                                  const select_t<E, Args...>& /*subSelect*/) = delete;
+        void extract_colref_expressions(const S& /*impl*/, const select_t<E, Args...>& /*subSelect*/) = delete;
+        template<class S,
+                 class Compound,
+                 std::enable_if_t<is_base_of_template_v<Compound, compound_operator>, bool> = true>
+        void extract_colref_expressions(const S& /*impl*/, const Compound& /*subSelect*/) = delete;
 
         /*
          *  Depending on ExplicitColRef's type returns either the explicit column reference

@@ -6,6 +6,7 @@
 #include <system_error>
 
 #include "cxx_polyfill.h"
+#include "is_base_of_template.h"
 #include "type_traits.h"
 #include "member_traits/field_member_traits.h"
 #include "error_code.h"
@@ -45,6 +46,9 @@ namespace sqlite_orm {
         struct cte_column_names_collector {
             using expression_type = T;
 
+            // Compound statements are never passed in by storage_for_expression()
+            static_assert(!is_base_of_template_v<T, compound_operator>);
+
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
                 auto newContext = context;
@@ -63,20 +67,6 @@ namespace sqlite_orm {
             cte_column_names_collector<T> collector;
             return collector(t, context);
         }
-
-        // For compound statements we just need to collect the column alias names of the left expression
-        template<class Compound>
-        struct cte_column_names_collector<Compound,
-                                          std::enable_if_t<is_base_of_template<Compound, compound_operator>::value>> {
-            using expression_type = Compound;
-
-            template<class Ctx>
-            std::vector<std::string> operator()(const expression_type& t, const Ctx& context) const {
-                auto newContext = context;
-                newContext.skip_table_name = true;
-                return get_cte_column_names(t.left.col, context);
-            }
-        };
 
         template<class As>
         struct cte_column_names_collector<As, match_specialization_of<As, as_t>> {
@@ -172,7 +162,7 @@ namespace sqlite_orm {
                     if constexpr(polyfill::is_specialization_of_v<ColRef, alias_holder>) {
                         columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
                     } else if constexpr(std::is_member_pointer<ColRef>::value) {
-                        using O = typename field_member_traits<ColRef>::object_type;
+                        using O = typename table_type<ColRef>::object_type;
                         if(auto* columnName = find_column_name<O>(context.impl, colRef)) {
                             columnNames[idx] = *columnName;
                         } else {

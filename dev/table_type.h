@@ -1,11 +1,5 @@
 #pragma once
 
-#include "type_traits.h"
-#include "member_traits/getter_traits.h"
-#include "member_traits/setter_traits.h"
-#include "member_traits/is_getter.h"
-#include "member_traits/is_setter.h"
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -28,16 +22,6 @@ namespace sqlite_orm {
         template<class O, class F>
         struct table_type<F O::*, void> {
             using type = O;
-        };
-
-        template<class T>
-        struct table_type<T, match_if<is_getter, T>> {
-            using type = typename getter_traits<T>::object_type;
-        };
-
-        template<class T>
-        struct table_type<T, match_if<is_setter, T>> {
-            using type = typename setter_traits<T>::object_type;
         };
 
         template<class T, class F>
