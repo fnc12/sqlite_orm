@@ -10462,40 +10462,6 @@ namespace sqlite_orm {
                 this->super::for_each(l);
                 l(*this);
             }
-
-#if SQLITE_VERSION_NUMBER >= 3006019
-
-            /**
-             *  Returns foreign keys count in table definition
-             */
-            int foreign_keys_count() const {
-                auto res = 0;
-                iterate_tuple(this->table.elements, [&res](auto& c) {
-                    if(is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
-                        ++res;
-                    }
-                });
-                return res;
-            }
-
-#endif
-
-            std::string find_table_name(const std::type_index& ti) const {
-                std::type_index thisTypeIndex{typeid(object_type_t<H>)};
-
-                if(thisTypeIndex == ti) {
-                    return this->table.name;
-                } else {
-                    return this->super::find_table_name(ti);
-                }
-            }
-
-            /**
-             *  Copies current table to another table with a given **name**.
-             *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
-             */
-            void
-            copy_table(sqlite3* db, const std::string& name, const std::vector<table_xinfo*>& columnsToIgnore) const;
         };
 
         template<>
@@ -17200,7 +17166,7 @@ namespace sqlite_orm {
             void copy_table(sqlite3* db,
                             const std::string& name,
                             const I& tImpl,
-                            const std::vector<table_info*>& columnsToIgnore) const;
+                            const std::vector<table_xinfo*>& columnsToIgnore) const;
 
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
@@ -17233,7 +17199,7 @@ namespace sqlite_orm {
 
                     this->create_table(db, backupTableName, tableImpl);
 
-                    tableImpl.copy_table(db, backupTableName, columnsToIgnore);
+                    this->copy_table(db, backupTableName, tableImpl, columnsToIgnore);
 
                     this->drop_table_internal(tableImpl.table.name, db);
 
@@ -19621,43 +19587,6 @@ namespace sqlite_orm {
                 }
             }
         }
-        template<class H, class... Ts>
-        void storage_impl<H, Ts...>::copy_table(
-            sqlite3* db,
-            const std::string& tableName,
-            const std::vector<table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
-            std::stringstream ss;
-            std::vector<std::string> columnNames;
-            this->table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
-                auto& columnName = c.name;
-                auto columnToIgnoreIt =
-                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfoPointer) {
-                        return columnName == tableInfoPointer->name;
-                    });
-                if(columnToIgnoreIt == columnsToIgnore.end()) {
-                    columnNames.emplace_back(columnName);
-                }
-            });
-            auto columnNamesCount = columnNames.size();
-            ss << "INSERT INTO " << quote_identifier(tableName) << " (";
-            for(size_t i = 0; i < columnNamesCount; ++i) {
-                ss << columnNames[i];
-                if(i < columnNamesCount - 1) {
-                    ss << ",";
-                }
-                ss << " ";
-            }
-            ss << ") ";
-            ss << "SELECT ";
-            for(size_t i = 0; i < columnNamesCount; ++i) {
-                ss << columnNames[i];
-                if(i < columnNamesCount - 1) {
-                    ss << ", ";
-                }
-            }
-            ss << " FROM " << quote_identifier(this->table.name);
-            perform_void_exec(db, ss.str());
-        }
     }
 }
 
@@ -19774,10 +19703,11 @@ namespace sqlite_orm {
 
         template<class... Ts>
         template<class I>
-        void storage_t<Ts...>::copy_table(sqlite3* db,
-                                          const std::string& tableName,
-                                          const I& tImpl,
-                                          const std::vector<table_info*>& columnsToIgnore) const {
+        void storage_t<Ts...>::copy_table(
+            sqlite3* db,
+            const std::string& tableName,
+            const I& tImpl,
+            const std::vector<table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::stringstream ss;
             std::vector<std::string> columnNames;
             tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {

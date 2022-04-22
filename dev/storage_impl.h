@@ -52,40 +52,6 @@ namespace sqlite_orm {
                 this->super::for_each(l);
                 l(*this);
             }
-
-#if SQLITE_VERSION_NUMBER >= 3006019
-
-            /**
-             *  Returns foreign keys count in table definition
-             */
-            int foreign_keys_count() const {
-                auto res = 0;
-                iterate_tuple(this->table.elements, [&res](auto& c) {
-                    if(is_foreign_key<typename std::decay<decltype(c)>::type>::value) {
-                        ++res;
-                    }
-                });
-                return res;
-            }
-
-#endif
-
-            std::string find_table_name(const std::type_index& ti) const {
-                std::type_index thisTypeIndex{typeid(object_type_t<H>)};
-
-                if(thisTypeIndex == ti) {
-                    return this->table.name;
-                } else {
-                    return this->super::find_table_name(ti);
-                }
-            }
-
-            /**
-             *  Copies current table to another table with a given **name**.
-             *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
-             */
-            void
-            copy_table(sqlite3* db, const std::string& name, const std::vector<table_xinfo*>& columnsToIgnore) const;
         };
 
         template<>

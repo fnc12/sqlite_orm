@@ -108,10 +108,11 @@ namespace sqlite_orm {
 
         template<class... Ts>
         template<class I>
-        void storage_t<Ts...>::copy_table(sqlite3* db,
-                                          const std::string& tableName,
-                                          const I& tImpl,
-                                          const std::vector<table_info*>& columnsToIgnore) const {
+        void storage_t<Ts...>::copy_table(
+            sqlite3* db,
+            const std::string& tableName,
+            const I& tImpl,
+            const std::vector<table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::stringstream ss;
             std::vector<std::string> columnNames;
             tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {

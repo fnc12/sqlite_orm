@@ -133,7 +133,7 @@ namespace sqlite_orm {
             void copy_table(sqlite3* db,
                             const std::string& name,
                             const I& tImpl,
-                            const std::vector<table_info*>& columnsToIgnore) const;
+                            const std::vector<table_xinfo*>& columnsToIgnore) const;
 
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
@@ -166,7 +166,7 @@ namespace sqlite_orm {
 
                     this->create_table(db, backupTableName, tableImpl);
 
-                    tableImpl.copy_table(db, backupTableName, columnsToIgnore);
+                    this->copy_table(db, backupTableName, tableImpl, columnsToIgnore);
 
                     this->drop_table_internal(tableImpl.table.name, db);
 
