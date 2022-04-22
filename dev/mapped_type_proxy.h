@@ -13,7 +13,7 @@ namespace sqlite_orm {
          */
         template<class T, class SFINAE = void>
         struct mapped_type_proxy {
-            using type = T;
+            using type = std::remove_const_t<T>;
         };
 
         template<class T>

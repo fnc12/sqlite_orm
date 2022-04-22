@@ -16,6 +16,7 @@
 #include "cxx_polyfill.h"
 #include "cxx_functional_polyfill.h"
 #include "type_traits.h"
+#include "tuple_helper/tuple_filter.h"
 #include "member_traits/is_getter.h"
 #include "member_traits/is_setter.h"
 #include "ast/upsert_clause.h"
@@ -1460,8 +1461,8 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::string operator()(const statement_type& upd, const Ctx& context) const {
-                table_name_collector collector([&context](std::type_index ti) {
-                    return context.impl.find_table_name(ti);
+                table_name_collector collector([&context](const std::type_index& ti) {
+                    return find_table_name(context.impl, ti);
                 });
                 iterate_ast(upd.set.assigns, collector);
 
@@ -1860,8 +1861,8 @@ namespace sqlite_orm {
                     ss << static_cast<std::string>(distinct(0)) << " ";
                 }
                 ss << streaming_serialized(get_column_names(sel.col, context));
-                table_name_collector collector([&context](std::type_index ti) {
-                    return context.impl.find_table_name(ti);
+                table_name_collector collector([&context](const std::type_index& ti) {
+                    return find_table_name(context.impl, ti);
                 });
                 const auto explicitFromItemsCount = count_tuple<std::tuple<Args...>, is_from>::value;
                 if(!explicitFromItemsCount) {
@@ -1967,7 +1968,7 @@ namespace sqlite_orm {
                 ss << "FROM ";
                 size_t index = 0;
                 iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
-                    using from_type = std::remove_cv_t<std::remove_pointer_t<decltype(itemPointer)>>;
+                    using from_type = std::remove_pointer_t<decltype(itemPointer)>;
 
                     if(index > 0) {
                         ss << ", ";

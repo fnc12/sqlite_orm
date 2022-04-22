@@ -58,7 +58,7 @@ add_executable(unit_tests
     static_tests/column.cpp
     static_tests/same_or_void.cpp
     static_tests/foreign_key.cpp
-    static_tests/tuple_filter_single.cpp
+    static_tests/tuple_filter.cpp
     static_tests/storage_traits.cpp
     static_tests/tuple_helper.cpp
     static_tests/function_static_tests.cpp

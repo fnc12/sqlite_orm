@@ -8,8 +8,11 @@ namespace sqlite_orm {
     //  https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
     namespace internal {
 
+        template<class R = void>
         static inline decltype(auto) empty_callable() {
-            static auto res = [](auto&&...) {};
+            static auto res = [](auto&&...) -> R {
+                return R();
+            };
             return (res);
         }
 
