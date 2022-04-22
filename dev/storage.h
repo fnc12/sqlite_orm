@@ -904,6 +904,7 @@ namespace sqlite_orm {
                                 } else {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
+                                        res = decltype(res)::table_data_loss;
                                         break;
                                     }
                                 }
@@ -915,7 +916,9 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-                                res = decltype(res)::dropped_and_recreated;
+                                if (res != decltype(res)::table_data_loss) {
+                                    res = decltype(res)::dropped_and_recreated;
+                                }
                             }
                         } else {
                             if(res != decltype(res)::old_columns_removed) {
