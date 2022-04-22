@@ -9,6 +9,7 @@
 #include "static_magic.h"
 #include "typed_comparator.h"
 #include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_filter.h"
 #include "constraints.h"
 #include "table_info.h"
 #include "column.h"
@@ -43,6 +44,17 @@ namespace sqlite_orm {
 
             table_t<T, true, Cs...> without_rowid() const {
                 return {this->name, this->elements};
+            }
+
+            /**
+             *  Returns foreign keys count in table definition
+             */
+            constexpr int foreign_keys_count() const {
+#if SQLITE_VERSION_NUMBER >= 3006019
+                return int(filter_tuple_sequence_t<elements_type, is_foreign_key>::size());
+#else
+                return 0;
+#endif
             }
 
             /**
@@ -223,12 +235,8 @@ namespace sqlite_orm {
             /**
              *  Counts and returns amount of columns. Skips constraints.
              */
-            int count_columns_amount() const {
-                auto res = 0;
-                this->for_each_column([&res](auto&) {
-                    ++res;
-                });
-                return res;
+            constexpr int count_columns_amount() const {
+                return filter_tuple_sequence_t<elements_type, is_column>::size();
             }
 
             /**

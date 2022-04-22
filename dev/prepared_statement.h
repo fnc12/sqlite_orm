@@ -6,6 +6,7 @@
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::pair
 
+#include "tuple_helper/tuple_filter.h"
 #include "connection_holder.h"
 #include "select_constraints.h"
 #include "values.h"
