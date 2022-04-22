@@ -8652,6 +8652,11 @@ namespace sqlite_orm {
          *      4. data_type mismatch between table and storage.
          */
         dropped_and_recreated,
+
+        /*
+         * old table is dropped and new recreated but no effort at keeping data is made
+         */
+        table_data_loss,
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
@@ -8668,6 +8673,8 @@ namespace sqlite_orm {
                 return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
+            case sync_schema_result::table_data_loss:
+                return os << "dropped and recreated with data loss";
         }
         return os;
     }
@@ -17951,6 +17958,7 @@ namespace sqlite_orm {
                                 } else {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
+                                        res = decltype(res)::table_data_loss;
                                         break;
                                     }
                                 }
@@ -17962,7 +17970,9 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-                                res = decltype(res)::dropped_and_recreated;
+                                if(res != decltype(res)::table_data_loss) {
+                                    res = decltype(res)::dropped_and_recreated;
+                                }
                             }
                         } else {
                             if(res != decltype(res)::old_columns_removed) {
@@ -19746,14 +19756,24 @@ namespace sqlite_orm {
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
                     } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
-                        std::vector<table_xinfo*> columnsToAdd;
+                        //  now get current table info from db using `PRAGMA table_xinfo` query..
+                        auto dbTableInfo =
+                            this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
                         auto storageTableInfo = tImpl.table.get_table_info();
+
+                        //  this vector will contain pointers to columns that gotta be added..
+                        std::vector<table_xinfo*> columnsToAdd;
+
+                        tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+
                         storage_impl_base::add_generated_cols(columnsToAdd, storageTableInfo);
 
                         this->backup_table(db, tImpl, columnsToAdd);
-                        // this->drop_table_internal(tImpl.table.name, db);
-                        // this->create_table(db, tImpl.table.name, tImpl);
                         res = decltype(res)::dropped_and_recreated;
+                    } else if(schema_stat == sync_schema_result::table_data_loss) {
+                        this->drop_table_internal(tImpl.table.name, db);
+                        this->create_table(db, tImpl.table.name, tImpl);
+                        res = decltype(res)::table_data_loss;
                     }
                 }
             }

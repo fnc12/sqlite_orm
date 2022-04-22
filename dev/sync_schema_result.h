@@ -60,7 +60,7 @@ namespace sqlite_orm {
                 return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
-        	case sync_schema_result::table_data_loss:
+            case sync_schema_result::table_data_loss:
                 return os << "dropped and recreated with data loss";
         }
         return os;

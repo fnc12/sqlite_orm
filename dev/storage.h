@@ -916,7 +916,7 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-                                if (res != decltype(res)::table_data_loss) {
+                                if(res != decltype(res)::table_data_loss) {
                                     res = decltype(res)::dropped_and_recreated;
                                 }
                             }
