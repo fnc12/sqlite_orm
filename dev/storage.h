@@ -131,7 +131,7 @@ namespace sqlite_orm {
             }
 #endif
             template<class I>
-            void backup_table(sqlite3* db, const I& tableImpl, const std::vector<table_info*>& columnsToIgnore) {
+            void backup_table(sqlite3* db, const I& tableImpl, const std::vector<table_xinfo*>& columnsToIgnore) {
 
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
@@ -855,7 +855,7 @@ namespace sqlite_orm {
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
                                              bool preserve) {
-                auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+                auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name); // should include generated
                 auto res = sync_schema_result::already_in_sync;
 
                 //  first let's see if table with such name exists..
@@ -866,7 +866,7 @@ namespace sqlite_orm {
                     auto storageTableInfo = tImpl.table.get_table_info();
 
                     //  this vector will contain pointers to columns that gotta be added..
-                    std::vector<table_info*> columnsToAdd;
+                    std::vector<table_xinfo*> columnsToAdd;
 
                     if(tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;

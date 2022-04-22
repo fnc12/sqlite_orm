@@ -48,9 +48,9 @@ namespace sqlite_orm {
             perform_void_exec(db, ss.str());
         }
 
-        inline bool storage_impl_base::calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                                                    std::vector<table_info>& storageTableInfo,
-                                                                    std::vector<table_info>& dbTableInfo) {
+        inline bool storage_impl_base::calculate_remove_add_columns(std::vector<table_xinfo*>& columnsToAdd,
+                                                                    std::vector<table_xinfo>& storageTableInfo,
+                                                                    std::vector<table_xinfo>& dbTableInfo) {
             bool notEqual = false;
 
             //  iterate through storage columns
@@ -71,7 +71,8 @@ namespace sqlite_orm {
                         dbColumnInfo.name == storageColumnInfo.name &&
                         dbColumnInfo.notnull == storageColumnInfo.notnull &&
                         (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
-                        dbColumnInfo.pk == storageColumnInfo.pk;
+                        dbColumnInfo.pk == storageColumnInfo.pk &&
+                        (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);    // added
                     if(!columnsAreEqual) {
                         notEqual = true;
                         break;
@@ -85,11 +86,24 @@ namespace sqlite_orm {
             }
             return notEqual;
         }
+        inline void
+            storage_impl_base::add_generated_cols(std::vector<table_xinfo*>& columnsToAdd, std::vector<table_xinfo>& storageTableInfo) {
+            //  iterate through storage columns
+            for (size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+                ++storageColumnInfoIndex) {
 
+                //  get storage's column info
+                auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                auto& columnName = storageColumnInfo.name;
+                if(storageColumnInfo.hidden) {
+                    columnsToAdd.push_back(&storageColumnInfo);
+                }
+            }
+        }
         template<class H, class... Ts>
         void storage_impl<H, Ts...>::copy_table(sqlite3* db,
                                                 const std::string& tableName,
-                                                const std::vector<table_info*>& columnsToIgnore) const {
+                                                const std::vector<table_xinfo*>& columnsToIgnore) const { // must ignore generated columns
             std::stringstream ss;
             std::vector<std::string> columnNames;
             this->table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {

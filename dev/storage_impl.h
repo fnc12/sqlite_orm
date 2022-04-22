@@ -24,9 +24,11 @@ namespace sqlite_orm {
 
             void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const;
 
-            static bool calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                                     std::vector<table_info>& storageTableInfo,
-                                                     std::vector<table_info>& dbTableInfo);
+            static bool calculate_remove_add_columns(std::vector<table_xinfo*>& columnsToAdd,
+                                                     std::vector<table_xinfo>& storageTableInfo,
+                                                     std::vector<table_xinfo>& dbTableInfo);
+
+            static void add_generated_cols(std::vector<table_xinfo*>& columnsToAdd, std::vector<table_xinfo>& storageTableInfo); // add generated columns to colummnsToAdd
         };
 
         /**
@@ -83,7 +85,7 @@ namespace sqlite_orm {
              *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
              */
             void
-            copy_table(sqlite3* db, const std::string& name, const std::vector<table_info*>& columnsToIgnore) const;
+            copy_table(sqlite3* db, const std::string& name, const std::vector<table_xinfo*>& columnsToIgnore) const;
         };
 
         template<>

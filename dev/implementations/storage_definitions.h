@@ -38,11 +38,11 @@ namespace sqlite_orm {
                         //  get table info provided in `make_table` call..
                         auto storageTableInfo = tImpl.table.get_table_info();
 
-                        //  now get current table info from db using `PRAGMA table_info` query..
-                        auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+                        //  now get current table info from db using `PRAGMA table_xinfo` query..
+                        auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
 
                         //  this vector will contain pointers to columns that gotta be added..
-                        std::vector<table_info*> columnsToAdd;
+                        std::vector<table_xinfo*> columnsToAdd;
 
                         tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
@@ -73,12 +73,19 @@ namespace sqlite_orm {
 
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
-                            // remove extra columns
+                            auto storageTableInfo = tImpl.table.get_table_info();
+                            storage_impl_base::add_generated_cols(columnsToAdd, storageTableInfo);   // 
+
+                            // remove extra columns and generated columns
                             this->backup_table(db, tImpl, columnsToAdd);
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
                     } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
-                        this->backup_table(db, tImpl, {});
+                        std::vector<table_xinfo*> columnsToAdd;
+                        auto storageTableInfo = tImpl.table.get_table_info();
+                        storage_impl_base::add_generated_cols(columnsToAdd, storageTableInfo);
+
+                        this->backup_table(db, tImpl, columnsToAdd);
                         // this->drop_table_internal(tImpl.table.name, db);
                         // this->create_table(db, tImpl.table.name, tImpl);
                         res = decltype(res)::dropped_and_recreated;
