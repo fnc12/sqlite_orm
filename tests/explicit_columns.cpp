@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("Explicit colums") {
+TEST_CASE("Explicit columns") {
     struct Object {
         int id;
     };

@@ -4,6 +4,7 @@
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
+#include "tuple_helper/tuple_filter.h"
 #include "indexed_column.h"
 
 namespace sqlite_orm {
