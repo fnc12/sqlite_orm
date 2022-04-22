@@ -72,7 +72,7 @@ namespace sqlite_orm {
                         dbColumnInfo.notnull == storageColumnInfo.notnull &&
                         (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
                         dbColumnInfo.pk == storageColumnInfo.pk &&
-                        (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);    // added
+                        (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);  // added
                     if(!columnsAreEqual) {
                         notEqual = true;
                         break;
@@ -86,10 +86,10 @@ namespace sqlite_orm {
             }
             return notEqual;
         }
-        inline void
-            storage_impl_base::add_generated_cols(std::vector<table_xinfo*>& columnsToAdd, std::vector<table_xinfo>& storageTableInfo) {
+        inline void storage_impl_base::add_generated_cols(std::vector<table_xinfo*>& columnsToAdd,
+                                                          std::vector<table_xinfo>& storageTableInfo) {
             //  iterate through storage columns
-            for (size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+            for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
                 ++storageColumnInfoIndex) {
 
                 //  get storage's column info
@@ -101,9 +101,10 @@ namespace sqlite_orm {
             }
         }
         template<class H, class... Ts>
-        void storage_impl<H, Ts...>::copy_table(sqlite3* db,
-                                                const std::string& tableName,
-                                                const std::vector<table_xinfo*>& columnsToIgnore) const { // must ignore generated columns
+        void storage_impl<H, Ts...>::copy_table(
+            sqlite3* db,
+            const std::string& tableName,
+            const std::vector<table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::stringstream ss;
             std::vector<std::string> columnNames;
             this->table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {

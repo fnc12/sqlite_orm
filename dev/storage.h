@@ -855,7 +855,7 @@ namespace sqlite_orm {
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
                                              bool preserve) {
-                auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name); // should include generated
+                auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);  // should include generated
                 auto res = sync_schema_result::already_in_sync;
 
                 //  first let's see if table with such name exists..

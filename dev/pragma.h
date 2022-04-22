@@ -116,7 +116,7 @@ namespace sqlite_orm {
                 oss << "integrity_check(" << n << ")";
                 return this->get_pragma<std::vector<std::string>>(oss.str());
             }
-#if 0   // JDH
+#if 0  // JDH
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
                 auto db = connection.get();
@@ -161,7 +161,7 @@ namespace sqlite_orm {
                     query.c_str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
-                        if (argc) {
+                        if(argc) {
                             auto index = 0;
                             auto cid = std::atoi(argv[index++]);
                             std::string name = argv[index++];
@@ -176,8 +176,8 @@ namespace sqlite_orm {
                         return 0;
                     },
                     &result,
-                        nullptr);
-                if (rc != SQLITE_OK) {
+                    nullptr);
+                if(rc != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
                 return result;

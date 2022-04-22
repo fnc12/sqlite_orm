@@ -30,7 +30,7 @@ namespace sqlite_orm {
                                  col.not_null(),
                                  dft,
                                  col.template has<primary_key_t<>>(),
-								col.is_generated());
+                                 col.is_generated());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
             for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {

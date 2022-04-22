@@ -28,7 +28,9 @@ namespace sqlite_orm {
                                                      std::vector<table_xinfo>& storageTableInfo,
                                                      std::vector<table_xinfo>& dbTableInfo);
 
-            static void add_generated_cols(std::vector<table_xinfo*>& columnsToAdd, std::vector<table_xinfo>& storageTableInfo); // add generated columns to colummnsToAdd
+            static void
+            add_generated_cols(std::vector<table_xinfo*>& columnsToAdd,
+                               std::vector<table_xinfo>& storageTableInfo);  // add generated columns to colummnsToAdd
         };
 
         /**

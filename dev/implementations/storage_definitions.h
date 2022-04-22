@@ -39,7 +39,8 @@ namespace sqlite_orm {
                         auto storageTableInfo = tImpl.table.get_table_info();
 
                         //  now get current table info from db using `PRAGMA table_xinfo` query..
-                        auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
+                        auto dbTableInfo =
+                            this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
 
                         //  this vector will contain pointers to columns that gotta be added..
                         std::vector<table_xinfo*> columnsToAdd;
@@ -74,7 +75,7 @@ namespace sqlite_orm {
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                             auto storageTableInfo = tImpl.table.get_table_info();
-                            storage_impl_base::add_generated_cols(columnsToAdd, storageTableInfo);   // 
+                            storage_impl_base::add_generated_cols(columnsToAdd, storageTableInfo);  //
 
                             // remove extra columns and generated columns
                             this->backup_table(db, tImpl, columnsToAdd);
