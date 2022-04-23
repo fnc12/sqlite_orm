@@ -507,7 +507,8 @@ TEST_CASE("sync_schema with generated columns") {
         }
         SECTION("stored") {
             generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
-            expectedUsers.push_back({5, 9});
+            // with preserve == false nothing is preserved since this kind of generated column requires dropping the table
+            // thus we don't expect any users to be preserved!
         }
         auto storage2 = make_storage(storagePath,
                                      make_table("users",

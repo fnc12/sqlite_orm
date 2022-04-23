@@ -43,7 +43,7 @@ namespace sqlite_orm {
                             this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
 
                         //  this vector will contain pointers to columns that gotta be added..
-                        std::vector<table_xinfo*> columnsToAdd;
+                        std::vector<const table_xinfo*> columnsToAdd;
 
                         calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
@@ -88,7 +88,7 @@ namespace sqlite_orm {
                         auto storageTableInfo = tImpl.table.get_table_info();
 
                         //  this vector will contain pointers to columns that gotta be added..
-                        std::vector<table_xinfo*> columnsToAdd;
+                        std::vector<const table_xinfo*> columnsToAdd;
 
                         calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
@@ -111,7 +111,7 @@ namespace sqlite_orm {
             sqlite3* db,
             const std::string& tableName,
             const I& tImpl,
-            const std::vector<table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
+            const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::stringstream ss;
             std::vector<std::string> columnNames;
             tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
@@ -145,8 +145,49 @@ namespace sqlite_orm {
             perform_void_exec(db, ss.str());
         }
 
+        // jdh
         template<class... Ts>
-        inline bool storage_t<Ts...>::calculate_remove_add_columns(std::vector<table_xinfo*>& columnsToAdd,
+        template<class I>
+        void storage_t<Ts...>::copy_table_from(
+            sqlite3* db,
+            const std::string& tableName,
+            const I& tImpl,
+            const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
+            std::stringstream ss;
+            std::vector<std::string> columnNames;
+            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
+                auto& columnName = c.name;
+                auto columnToIgnoreIt =
+                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfoPointer) {
+                        return columnName == tableInfoPointer->name;
+                    });
+                if(columnToIgnoreIt == columnsToIgnore.end()) {
+                    columnNames.emplace_back(columnName);
+                }
+            });
+            auto columnNamesCount = columnNames.size();
+            ss << "INSERT INTO " << quote_identifier(tImpl.table.name) << " (";
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << columnNames[i];
+                if(i < columnNamesCount - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            ss << ") ";
+            ss << "SELECT ";
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << columnNames[i];
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << " FROM " << quote_identifier(tableName);
+            perform_void_exec(db, ss.str());
+        }
+
+        template<class... Ts>
+        inline bool storage_t<Ts...>::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
                                                                    std::vector<table_xinfo>& storageTableInfo,
                                                                    std::vector<table_xinfo>& dbTableInfo) {
             bool notEqual = false;
@@ -170,7 +211,7 @@ namespace sqlite_orm {
                         dbColumnInfo.notnull == storageColumnInfo.notnull &&
                         (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
                         dbColumnInfo.pk == storageColumnInfo.pk &&
-                        (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);  // added
+                        (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);
                     if(!columnsAreEqual) {
                         notEqual = true;
                         break;

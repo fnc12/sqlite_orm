@@ -52,17 +52,3 @@ TEST_CASE("statement_serializer index") {
     }
     REQUIRE(value == expected);
 }
-
-TEST_CASE("trying schema_status index") {
-    struct User {
-        int id = 0;
-        std::string name;
-    };
-    auto storage = make_storage("",
-                                make_index("user_name", &User::name),
-                                make_table("users",
-                                           make_column("id", &User::id, primary_key(), autoincrement()),
-                                           make_column("name", &User::name)));
-    storage.sync_schema(true);
-    storage.sync_schema_simulate(true);
-}

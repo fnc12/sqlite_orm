@@ -730,16 +730,16 @@ namespace sqlite_orm {
 
             // migration internal API
             void start_migration() {
-                this->pragma.foreign_keys(false);
                 this->begin_exclusive_transaction();
+                this->pragma.foreign_keys(false);
             }
             void commit_migration() {
-                this->commit();
                 this->pragma.foreign_keys(true);
+                this->commit();
             }
             void abort_migration() {
-                this->rollback();
                 this->pragma.foreign_keys(true);
+                this->rollback();
             }
 
             //  returns foreign keys count in storage definition

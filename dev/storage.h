@@ -126,14 +126,24 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Copies current table to another table with a given **name**.
-             *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
+             *  Copies tImpl.table to another table with a given **name**.
+             *  Performs INSERT INTO %name% () SELECT %tImpl.table.column_names% FROM %tImpl.table.name%
              */
             template<class I>
             void copy_table(sqlite3* db,
                             const std::string& name,
                             const I& tImpl,
-                            const std::vector<table_xinfo*>& columnsToIgnore) const;
+                            const std::vector<const table_xinfo*>& columnsToIgnore) const;
+
+            /**
+             *  Copies into tImpl.table from another table with a given **name**.
+             *  Performs INSERT INTO %tImpl.table.name% () SELECT %tImpl.table.column_names% FROM %name%
+             */
+            template<class I>
+            void copy_table_from(sqlite3* db,
+                                 const std::string& name,
+                                 const I& tImpl,
+                                 const std::vector<const table_xinfo*>& columnsToIgnore) const;
 
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
@@ -142,8 +152,8 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 #endif
-            void add_generated_cols(std::vector<table_xinfo*>& columnsToAdd,
-                                    std::vector<table_xinfo>& storageTableInfo) {
+            void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
+                                    const std::vector<table_xinfo>& storageTableInfo) {
                 //  iterate through storage columns
                 for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
                     ++storageColumnInfoIndex) {
@@ -173,7 +183,7 @@ namespace sqlite_orm {
             }
 
             template<class I>
-            void backup_table(sqlite3* db, const I& tableImpl, const std::vector<table_xinfo*>& columnsToIgnore) {
+            void backup_table(sqlite3* db, const I& tableImpl, const std::vector<const table_xinfo*>& columnsToIgnore) {
 
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
@@ -865,16 +875,16 @@ namespace sqlite_orm {
             }
 
           protected:
-            bool calculate_remove_add_columns(std::vector<table_xinfo*>& columnsToAdd,
+            bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
                                               std::vector<table_xinfo>& storageTableInfo,
                                               std::vector<table_xinfo>& dbTableInfo);
-            inline void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
+            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
                 perform_void_exec(db, ss.str());
             }
 
-            inline bool table_exists(const std::string& tableName, sqlite3* db) const {
+            bool table_exists(const std::string& tableName, sqlite3* db) const {
                 using namespace std::string_literals;
 
                 bool result = false;
@@ -909,7 +919,7 @@ namespace sqlite_orm {
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
                                              bool preserve) {
-                auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);  // should include generated
+                auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);
                 auto res = sync_schema_result::already_in_sync;
 
                 //  first let's see if table with such name exists..
@@ -920,7 +930,7 @@ namespace sqlite_orm {
                     auto storageTableInfo = tImpl.table.get_table_info();
 
                     //  this vector will contain pointers to columns that gotta be added..
-                    std::vector<table_xinfo*> columnsToAdd;
+                    std::vector<const table_xinfo*> columnsToAdd;
 
                     if(calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;
@@ -942,7 +952,11 @@ namespace sqlite_orm {
                         }
                     }
                     if(gottaCreateTable) {
-                        res = decltype(res)::dropped_and_recreated;
+                        if(preserve) {
+                            res = decltype(res)::dropped_and_recreated;
+                        } else {
+                            res = decltype(res)::table_data_loss;
+                        }
                     } else {
                         if(!columnsToAdd.empty()) {
                             // extra storage columns than table columns
@@ -971,7 +985,11 @@ namespace sqlite_orm {
                                 }
                             } else {
                                 if(res != decltype(res)::table_data_loss) {
-                                    res = decltype(res)::dropped_and_recreated;
+                                    if(preserve) {
+                                        res = decltype(res)::dropped_and_recreated;
+                                    } else {
+                                        res = decltype(res)::table_data_loss;
+                                    }
                                 }
                             }
                         } else {
