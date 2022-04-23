@@ -11,6 +11,7 @@
 #include "../error_code.h"
 #include "../storage_impl.h"
 #include "../util.h"
+#include "../serializing_util.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -44,7 +45,7 @@ namespace sqlite_orm {
         inline void
         storage_impl_base::rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
             std::stringstream ss;
-            ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
+            ss << "ALTER TABLE " << streaming_identifier(oldName) << " RENAME TO " << streaming_identifier(newName);
             perform_void_exec(db, ss.str());
         }
 

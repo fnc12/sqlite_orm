@@ -54,6 +54,7 @@
 #include "column.h"
 #include "index.h"
 #include "util.h"
+#include "serializing_util.h"
 
 namespace sqlite_orm {
 
@@ -106,19 +107,12 @@ namespace sqlite_orm {
             template<class I>
             void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
                 using table_type = std::decay_t<decltype(tableImpl.table)>;
-                std::stringstream ss;
-                ss << "CREATE TABLE " << quote_identifier(tableName) << " ( ";
                 using context_t = serializer_context<impl_type>;
+
+                std::stringstream ss;
                 context_t context{this->impl};
-                auto index = 0;
-                iterate_tuple(tableImpl.table.elements, [&index, &ss, &context](auto& element) {
-                    if(index > 0) {
-                        ss << ", ";
-                    }
-                    ss << serialize(element, context);
-                    ++index;
-                });
-                ss << ")";
+                ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
+                   << streaming_expressions_tuple(tableImpl.table.elements, context) << ")";
                 if(table_type::is_without_rowid) {
                     ss << " WITHOUT ROWID";
                 }
@@ -138,7 +132,8 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN " << quote_identifier(columnName);
+                ss << "ALTER TABLE " << streaming_identifier(tableName) << " DROP COLUMN "
+                   << streaming_identifier(columnName);
                 perform_void_exec(db, ss.str());
             }
 #endif
@@ -930,11 +925,11 @@ namespace sqlite_orm {
 
             template<class C>
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
-                std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
                 using context_t = serializer_context<impl_type>;
+
                 context_t context{this->impl};
-                ss << serialize(column, context);
+                std::stringstream ss;
+                ss << "ALTER TABLE " << streaming_identifier(tableName) << " ADD COLUMN " << serialize(column, context);
                 perform_void_exec(db, ss.str());
             }
 
@@ -1650,7 +1645,7 @@ namespace sqlite_orm {
                         static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
-                               << " FROM " << quote_identifier(storageImpl.table.name);
+                               << " FROM " << streaming_identifier(storageImpl.table.name);
                             ss << " WHERE ";
                             auto columnIndex = 0;
                             iterate_tuple(foreignKey.columns, [&ss, &columnIndex, &storageImpl](auto& column) {
@@ -1662,7 +1657,7 @@ namespace sqlite_orm {
                                 if(columnIndex > 0) {
                                     ss << " AND ";
                                 }
-                                ss << quote_identifier(*columnName) << " = ?";
+                                ss << streaming_identifier(*columnName) << " = ?";
                                 ++columnIndex;
                             });
                             auto query = ss.str();

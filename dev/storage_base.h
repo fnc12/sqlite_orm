@@ -17,12 +17,13 @@
 #include "statement_finalizer.h"
 #include "tuple_helper/tuple_helper.h"
 #include "row_extractor.h"
-#include "util.h"
 #include "connection_holder.h"
 #include "backup.h"
 #include "function.h"
 #include "values_to_tuple.h"
 #include "arg_values.h"
+#include "util.h"
+#include "serializing_util.h"
 
 namespace sqlite_orm {
 
@@ -44,13 +45,13 @@ namespace sqlite_orm {
 
             void drop_index(const std::string& indexName) {
                 std::stringstream ss;
-                ss << "DROP INDEX " << quote_identifier(indexName);
+                ss << "DROP INDEX " << streaming_identifier(indexName);
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
             void drop_trigger(const std::string& triggerName) {
                 std::stringstream ss;
-                ss << "DROP TRIGGER " << quote_identifier(triggerName);
+                ss << "DROP TRIGGER " << streaming_identifier(triggerName);
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
@@ -70,7 +71,7 @@ namespace sqlite_orm {
              */
             void rename_table(const std::string& from, const std::string& to) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to);
+                ss << "ALTER TABLE " << streaming_identifier(from) << " RENAME TO " << streaming_identifier(to);
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
@@ -191,6 +192,8 @@ namespace sqlite_orm {
              *      }
              *  };
              * ```
+             * 
+             * Note: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F>
             void create_scalar_function() {
@@ -252,6 +255,8 @@ namespace sqlite_orm {
              *       }
              *   };
              * ```
+             * 
+             * Note: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F>
             void create_aggregate_function() {
@@ -522,11 +527,11 @@ namespace sqlite_orm {
             }
 
             bool foreign_keys(sqlite3* db) {
-                std::string query = "PRAGMA foreign_keys";
+                const char* query = "PRAGMA foreign_keys";
                 auto result = false;
                 auto rc = sqlite3_exec(
                     db,
-                    query.c_str(),
+                    query,
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
@@ -686,12 +691,10 @@ namespace sqlite_orm {
 
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
-                std::stringstream ss;
-                ss << "SELECT CURRENT_TIMESTAMP";
-                auto query = ss.str();
+                const char* query = "SELECT CURRENT_TIMESTAMP";
                 auto rc = sqlite3_exec(
                     db,
-                    query.c_str(),
+                    query,
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::string*)data;
                         if(argc) {
@@ -711,7 +714,7 @@ namespace sqlite_orm {
 
             void drop_table_internal(const std::string& tableName, sqlite3* db) {
                 std::stringstream ss;
-                ss << "DROP TABLE " << quote_identifier(tableName);
+                ss << "DROP TABLE " << streaming_identifier(tableName);
                 perform_void_exec(db, ss.str());
             }
 

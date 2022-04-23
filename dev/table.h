@@ -236,7 +236,7 @@ namespace sqlite_orm {
              *  Counts and returns amount of columns. Skips constraints.
              */
             constexpr int count_columns_amount() const {
-                return filter_tuple_sequence_t<elements_type, is_column>::size();
+                return int(filter_tuple_sequence_t<elements_type, is_column>::size());
             }
 
             /**

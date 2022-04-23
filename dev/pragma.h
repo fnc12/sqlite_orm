@@ -8,10 +8,11 @@
 #include <sstream>
 
 #include "error_code.h"
-#include "util.h"
 #include "row_extractor.h"
 #include "journal_mode.h"
 #include "connection_holder.h"
+#include "util.h"
+#include "serializing_util.h"
 
 namespace sqlite_orm {
 
@@ -107,15 +108,15 @@ namespace sqlite_orm {
 
             template<class T>
             std::vector<std::string> integrity_check(T table_name) {
-                std::ostringstream oss;
-                oss << "integrity_check(" << table_name << ")";
-                return this->get_pragma<std::vector<std::string>>(oss.str());
+                std::ostringstream ss;
+                ss << "integrity_check(" << table_name << ")";
+                return this->get_pragma<std::vector<std::string>>(ss.str());
             }
 
             std::vector<std::string> integrity_check(int n) {
-                std::ostringstream oss;
-                oss << "integrity_check(" << n << ")";
-                return this->get_pragma<std::vector<std::string>>(oss.str());
+                std::ostringstream ss;
+                ss << "integrity_check(" << n << ")";
+                return this->get_pragma<std::vector<std::string>>(ss.str());
             }
 
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
@@ -123,10 +124,11 @@ namespace sqlite_orm {
                 sqlite3* db = connection.get();
 
                 std::vector<sqlite_orm::table_info> result;
-                auto query = "PRAGMA table_info(" + quote_identifier(tableName) + ")";
+                std::ostringstream ss;
+                ss << "PRAGMA " "table_info(" << streaming_identifier(tableName) << ")";
                 auto rc = sqlite3_exec(
                     db,
-                    query.c_str(),
+                    ss.str().c_str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
                         if(argc) {
