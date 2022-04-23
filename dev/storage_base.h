@@ -1,7 +1,7 @@
 #pragma once
 
-#include <functional>  //  std::function, std::bind
 #include <sqlite3.h>
+#include <functional>  //  std::function, std::bind
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <utility>  //  std::move
@@ -10,13 +10,11 @@
 #include <memory>  //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
-#include <algorithm>  //  std::iter_swap
 
 #include "pragma.h"
 #include "limit_accesor.h"
 #include "transaction_guard.h"
 #include "statement_finalizer.h"
-#include "type_printer.h"
 #include "tuple_helper/tuple_helper.h"
 #include "row_extractor.h"
 #include "util.h"
@@ -47,19 +45,24 @@ namespace sqlite_orm {
             void drop_index(const std::string& indexName) {
                 std::stringstream ss;
                 ss << "DROP INDEX " << quote_identifier(indexName);
-                perform_void_exec(get_connection().get(), ss.str());
+                perform_void_exec(this->get_connection().get(), ss.str());
+            }
+
+            void drop_trigger(const std::string& triggerName) {
+                std::stringstream ss;
+                ss << "DROP TRIGGER " << quote_identifier(triggerName);
+                perform_void_exec(this->get_connection().get(), ss.str());
             }
 
             void vacuum() {
-                perform_void_exec(get_connection().get(), "VACUUM");
+                perform_void_exec(this->get_connection().get(), "VACUUM");
             }
 
             /**
              *  Drops table with given name.
              */
             void drop_table(const std::string& tableName) {
-                auto con = this->get_connection();
-                this->drop_table_internal(tableName, con.get());
+                this->drop_table_internal(tableName, this->get_connection().get());
             }
 
             /**
@@ -68,7 +71,7 @@ namespace sqlite_orm {
             void rename_table(const std::string& from, const std::string& to) {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to);
-                perform_void_exec(get_connection().get(), ss.str());
+                perform_void_exec(this->get_connection().get(), ss.str());
             }
 
             /**
@@ -140,10 +143,10 @@ namespace sqlite_orm {
              */
             std::vector<std::string> table_names() {
                 auto con = this->get_connection();
+                sqlite3* db = con.get();
                 std::vector<std::string> tableNames;
                 std::string sql = "SELECT name FROM sqlite_master WHERE type='table'";
                 using data_t = std::vector<std::string>;
-                auto db = con.get();
                 int res = sqlite3_exec(
                     db,
                     sql.c_str(),
@@ -191,7 +194,7 @@ namespace sqlite_orm {
              */
             template<class F>
             void create_scalar_function() {
-                static_assert(is_scalar_function<F>::value, "F cannot be a scalar function");
+                static_assert(is_scalar_function<F>::value, "F can't be an aggregate function");
 
                 std::stringstream ss;
                 ss << F::name();
@@ -221,7 +224,7 @@ namespace sqlite_orm {
                 });
 
                 if(this->connection->retain_count() > 0) {
-                    auto db = this->connection->get();
+                    sqlite3* db = this->connection->get();
                     try_to_create_function(db,
                                            static_cast<user_defined_scalar_function_t&>(*this->scalarFunctions.back()));
                 }
@@ -252,7 +255,7 @@ namespace sqlite_orm {
              */
             template<class F>
             void create_aggregate_function() {
-                static_assert(is_aggregate_function<F>::value, "F cannot be an aggregate function");
+                static_assert(is_aggregate_function<F>::value, "F can't be a scalar function");
 
                 std::stringstream ss;
                 ss << F::name();
@@ -288,7 +291,7 @@ namespace sqlite_orm {
                 });
 
                 if(this->connection->retain_count() > 0) {
-                    auto db = this->connection->get();
+                    sqlite3* db = this->connection->get();
                     try_to_create_function(
                         db,
                         static_cast<user_defined_aggregate_function_t&>(*this->aggregateFunctions.back()));
@@ -328,7 +331,6 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << C::name();
                 auto name = ss.str();
-                ss.flush();
                 this->create_collation(name, move(func));
             }
 
@@ -343,7 +345,7 @@ namespace sqlite_orm {
 
                 //  create collations if db is open
                 if(this->connection->retain_count() > 0) {
-                    auto db = this->connection->get();
+                    sqlite3* db = this->connection->get();
                     auto resultCode = sqlite3_create_collation(db,
                                                                name.c_str(),
                                                                SQLITE_UTF8,
@@ -360,7 +362,6 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << C::name();
                 auto name = ss.str();
-                ss.flush();
                 this->create_collation(name, {});
             }
 
@@ -381,7 +382,7 @@ namespace sqlite_orm {
             }
 
             void commit() {
-                auto db = this->connection->get();
+                sqlite3* db = this->connection->get();
                 perform_void_exec(db, "COMMIT");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
@@ -390,7 +391,7 @@ namespace sqlite_orm {
             }
 
             void rollback() {
-                auto db = this->connection->get();
+                sqlite3* db = this->connection->get();
                 perform_void_exec(db, "ROLLBACK");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
@@ -500,7 +501,7 @@ namespace sqlite_orm {
                 if(1 == this->connection->retain_count()) {
                     this->on_open_internal(this->connection->get());
                 }
-                auto db = this->connection->get();
+                sqlite3* db = this->connection->get();
                 perform_void_exec(db, query);
             }
 
@@ -596,7 +597,7 @@ namespace sqlite_orm {
                     it = functionsVector.end();
 
                     if(this->connection->retain_count() > 0) {
-                        auto db = this->connection->get();
+                        sqlite3* db = this->connection->get();
                         auto resultCode = sqlite3_create_function_v2(db,
                                                                      name.c_str(),
                                                                      0,

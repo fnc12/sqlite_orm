@@ -35,6 +35,10 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_CONSTEVAL constexpr
 #endif
 
+#if __cpp_aggregate_paren_init >= 201902L
+#define SQLITE_ORM_AGGREGATE_PAREN_INIT
+#endif
+
 #if __cplusplus >= 201703L  // C++17 or later
 #if __has_include(<optional>)
 #define SQLITE_ORM_OPTIONAL_SUPPORTED

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <memory>  // std::unique_ptr
 #include <sqlite3.h>
+#include <memory>  // std::unique_ptr
 #include <type_traits>  // std::integral_constant
 
 namespace sqlite_orm {

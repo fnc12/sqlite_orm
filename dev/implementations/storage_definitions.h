@@ -4,6 +4,9 @@
  */
 #pragma once
 #include <type_traits>  //  std::is_same
+#include <sstream>
+#include <functional>  //  std::reference_wrapper, std::cref
+#include <algorithm>  //  std::find_if
 
 #include "../storage.h"
 #include "../dbstat.h"
@@ -26,10 +29,10 @@ namespace sqlite_orm {
             auto res = sync_schema_result::already_in_sync;
 
             auto schema_stat = this->schema_status(tImpl, db, preserve);
-            if(schema_stat != decltype(schema_stat)::already_in_sync) {
-                if(schema_stat == decltype(schema_stat)::new_table_created) {
+            if(schema_stat != sync_schema_result::already_in_sync) {
+                if(schema_stat == sync_schema_result::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
-                    res = decltype(res)::new_table_created;
+                    res = sync_schema_result::new_table_created;
                 } else {
                     if(schema_stat == sync_schema_result::old_columns_removed ||
                        schema_stat == sync_schema_result::new_columns_added ||
@@ -51,11 +54,11 @@ namespace sqlite_orm {
                             for(auto& tableInfo: dbTableInfo) {
                                 this->drop_column(db, tImpl.table.name, tableInfo.name);
                             }
-                            res = decltype(res)::old_columns_removed;
+                            res = sync_schema_result::old_columns_removed;
 #else
                             //  extra table columns than storage columns
                             this->backup_table(db, tImpl, {});
-                            res = decltype(res)::old_columns_removed;
+                            res = sync_schema_result::old_columns_removed;
 #endif
                         }
 
@@ -68,19 +71,19 @@ namespace sqlite_orm {
                                     this->add_column(tImpl.table.name, column, db);
                                 });
                             }
-                            res = decltype(res)::new_columns_added;
+                            res = sync_schema_result::new_columns_added;
                         }
 
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                             // remove extra columns
                             this->backup_table(db, tImpl, columnsToAdd);
-                            res = decltype(res)::new_columns_added_and_old_columns_removed;
+                            res = sync_schema_result::new_columns_added_and_old_columns_removed;
                         }
                     } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
                         this->drop_table_internal(tImpl.table.name, db);
                         this->create_table(db, tImpl.table.name, tImpl);
-                        res = decltype(res)::dropped_and_recreated;
+                        res = sync_schema_result::dropped_and_recreated;
                     }
                 }
             }

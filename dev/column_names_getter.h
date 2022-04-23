@@ -6,6 +6,7 @@
 #include <functional>  //  std::reference_wrapper
 
 #include "error_code.h"
+#include "serializer_context.h"
 #include "select_constraints.h"
 #include "util.h"
 

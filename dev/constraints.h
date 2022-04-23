@@ -131,22 +131,22 @@ namespace sqlite_orm {
 
         inline std::ostream& operator<<(std::ostream& os, foreign_key_action action) {
             switch(action) {
-                case decltype(action)::no_action:
+                case foreign_key_action::no_action:
                     os << "NO ACTION";
                     break;
-                case decltype(action)::restrict_:
+                case foreign_key_action::restrict_:
                     os << "RESTRICT";
                     break;
-                case decltype(action)::set_null:
+                case foreign_key_action::set_null:
                     os << "SET NULL";
                     break;
-                case decltype(action)::set_default:
+                case foreign_key_action::set_default:
                     os << "SET DEFAULT";
                     break;
-                case decltype(action)::cascade:
+                case foreign_key_action::cascade:
                     os << "CASCADE";
                     break;
-                case decltype(action)::none:
+                case foreign_key_action::none:
                     break;
             }
             return os;
@@ -229,7 +229,7 @@ namespace sqlite_orm {
             }
 
             operator bool() const {
-                return this->_action != decltype(this->_action)::none;
+                return this->_action != foreign_key_action::none;
             }
         };
 
@@ -301,8 +301,6 @@ namespace sqlite_orm {
 
             tuple_type columns;
 
-            foreign_key_intermediate_t(tuple_type columns_) : columns(std::move(columns_)) {}
-
             template<class... Rs>
             foreign_key_t<std::tuple<Cs...>, std::tuple<Rs...>> references(Rs... refs) {
                 return {std::move(this->columns), std::make_tuple(std::forward<Rs>(refs)...)};
@@ -311,22 +309,19 @@ namespace sqlite_orm {
 #endif
 
         struct collate_constraint_t {
-            internal::collate_argument argument = internal::collate_argument::binary;
-
-            collate_constraint_t(internal::collate_argument argument_) : argument(argument_) {}
+            collate_argument argument = collate_argument::binary;
 
             operator std::string() const {
-                std::string res = "COLLATE " + this->string_from_collate_argument(this->argument);
-                return res;
+                return "COLLATE " + this->string_from_collate_argument(this->argument);
             }
 
-            static std::string string_from_collate_argument(internal::collate_argument argument) {
+            static std::string string_from_collate_argument(collate_argument argument) {
                 switch(argument) {
-                    case decltype(argument)::binary:
+                    case collate_argument::binary:
                         return "BINARY";
-                    case decltype(argument)::nocase:
+                    case collate_argument::nocase:
                         return "NOCASE";
-                    case decltype(argument)::rtrim:
+                    case collate_argument::rtrim:
                         return "RTRIM";
                 }
                 throw std::system_error{orm_error_code::invalid_collate_argument_enum};

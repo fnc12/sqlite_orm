@@ -421,11 +421,6 @@ namespace sqlite_orm {
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
-
-            order_by_base() = default;
-
-            order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
-                asc_desc(asc_desc_), _collate_argument(move(_collate_argument_)) {}
         };
 
         struct order_by_string {
