@@ -1,12 +1,5 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_member_pointer, std::is_member_function_pointer
-
-#include "member_traits/getter_traits.h"
-#include "member_traits/setter_traits.h"
-#include "member_traits/is_getter.h"
-#include "member_traits/is_setter.h"
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -27,20 +20,8 @@ namespace sqlite_orm {
         struct table_type;
 
         template<class O, class F>
-        struct table_type<F O::*,
-                          typename std::enable_if<std::is_member_pointer<F O::*>::value &&
-                                                  !std::is_member_function_pointer<F O::*>::value>::type> {
+        struct table_type<F O::*, void> {
             using type = O;
-        };
-
-        template<class T>
-        struct table_type<T, typename std::enable_if<is_getter<T>::value>::type> {
-            using type = typename getter_traits<T>::object_type;
-        };
-
-        template<class T>
-        struct table_type<T, typename std::enable_if<is_setter<T>::value>::type> {
-            using type = typename setter_traits<T>::object_type;
         };
 
         template<class T, class F>

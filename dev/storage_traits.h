@@ -3,6 +3,7 @@
 
 #include "type_traits.h"
 #include "storage_lookup.h"
+#include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_transformer.h"
 
 namespace sqlite_orm {
@@ -60,7 +61,7 @@ namespace sqlite_orm {
                 using args_tuple = std::tuple<Args...>;
                 using columns_tuple = typename tuple_filter<args_tuple, is_column>::type;
 
-                using type = typename tuple_transformer<columns_tuple, column_field_type>::type;
+                using type = transform_tuple_t<columns_tuple, column_field_type>;
             };
 
             /**
@@ -247,14 +248,14 @@ namespace sqlite_orm {
             struct table_fk_references_impl<O, H, Tail...> {
                 using head_tuple = typename column_fk_references<H, O>::type;
                 using tail_tuple = typename table_fk_references_impl<O, Tail...>::type;
-                using type = typename conc_tuple<head_tuple, tail_tuple>::type;
+                using type = conc_tuple_t<head_tuple, tail_tuple>;
             };
 
             template<class O, class H, class... Tail>
             struct table_foreign_keys_impl<O, H, Tail...> {
                 using head_tuple = typename column_foreign_keys<H, O>::type;
                 using tail_tuple = typename table_foreign_keys_impl<O, Tail...>::type;
-                using type = typename conc_tuple<head_tuple, tail_tuple>::type;
+                using type = conc_tuple_t<head_tuple, tail_tuple>;
             };
 
             /**
@@ -305,14 +306,14 @@ namespace sqlite_orm {
             struct storage_fk_references_impl<storage_impl<H, Ts...>, O> {
                 using head_tuple = typename table_fk_references<H, O>::type;
                 using tail_tuple = typename storage_fk_references_impl<storage_impl<Ts...>, O>::type;
-                using type = typename conc_tuple<head_tuple, tail_tuple>::type;
+                using type = conc_tuple_t<head_tuple, tail_tuple>;
             };
 
             template<class H, class... Ts, class O>
             struct storage_foreign_keys_impl<storage_impl<H, Ts...>, O> {
                 using head_tuple = typename table_foreign_keys<H, O>::type;
                 using tail_tuple = typename storage_foreign_keys_impl<storage_impl<Ts...>, O>::type;
-                using type = typename conc_tuple<head_tuple, tail_tuple>::type;
+                using type = conc_tuple_t<head_tuple, tail_tuple>;
             };
 
             /**
