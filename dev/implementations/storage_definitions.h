@@ -45,7 +45,7 @@ namespace sqlite_orm {
                         //  this vector will contain pointers to columns that gotta be added..
                         std::vector<table_xinfo*> columnsToAdd;
 
-                        tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                        calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                         if(schema_stat == sync_schema_result::old_columns_removed) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
@@ -75,7 +75,7 @@ namespace sqlite_orm {
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                             auto storageTableInfo = tImpl.table.get_table_info();
-                            storage_impl_base::add_generated_cols(columnsToAdd, storageTableInfo);  //
+                            add_generated_cols(columnsToAdd, storageTableInfo);  //
 
                             // remove extra columns and generated columns
                             this->backup_table(db, tImpl, columnsToAdd);
@@ -90,9 +90,9 @@ namespace sqlite_orm {
                         //  this vector will contain pointers to columns that gotta be added..
                         std::vector<table_xinfo*> columnsToAdd;
 
-                        tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                        calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
-                        storage_impl_base::add_generated_cols(columnsToAdd, storageTableInfo);
+                        add_generated_cols(columnsToAdd, storageTableInfo);
 
                         this->backup_table(db, tImpl, columnsToAdd);
                         res = decltype(res)::dropped_and_recreated;
@@ -146,5 +146,44 @@ namespace sqlite_orm {
             perform_void_exec(db, ss.str());
         }
 
+        template<class... Ts>
+        inline bool storage_t<Ts...>::calculate_remove_add_columns(std::vector<table_xinfo*>& columnsToAdd,
+                                                                   std::vector<table_xinfo>& storageTableInfo,
+                                                                   std::vector<table_xinfo>& dbTableInfo) {
+            bool notEqual = false;
+
+            //  iterate through storage columns
+            for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+                ++storageColumnInfoIndex) {
+
+                //  get storage's column info
+                auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                auto& columnName = storageColumnInfo.name;
+
+                //  search for a column in db eith the same name
+                auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
+                    return ti.name == columnName;
+                });
+                if(dbColumnInfoIt != dbTableInfo.end()) {
+                    auto& dbColumnInfo = *dbColumnInfoIt;
+                    auto columnsAreEqual =
+                        dbColumnInfo.name == storageColumnInfo.name &&
+                        dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                        (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
+                        dbColumnInfo.pk == storageColumnInfo.pk &&
+                        (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);  // added
+                    if(!columnsAreEqual) {
+                        notEqual = true;
+                        break;
+                    }
+                    dbTableInfo.erase(dbColumnInfoIt);
+                    storageTableInfo.erase(storageTableInfo.begin() + static_cast<ptrdiff_t>(storageColumnInfoIndex));
+                    --storageColumnInfoIndex;
+                } else {
+                    columnsToAdd.push_back(&storageColumnInfo);
+                }
+            }
+            return notEqual;
+        }
     }
 }

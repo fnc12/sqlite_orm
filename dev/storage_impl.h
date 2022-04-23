@@ -17,20 +17,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct storage_impl_base {
-
-            bool table_exists(const std::string& tableName, sqlite3* db) const;
-
-            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const;
-
-            static bool calculate_remove_add_columns(std::vector<table_xinfo*>& columnsToAdd,
-                                                     std::vector<table_xinfo>& storageTableInfo,
-                                                     std::vector<table_xinfo>& dbTableInfo);
-
-            static void
-            add_generated_cols(std::vector<table_xinfo*>& columnsToAdd,
-                               std::vector<table_xinfo>& storageTableInfo);  // add generated columns to colummnsToAdd
-        };
+        struct storage_impl_base {};
 
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
