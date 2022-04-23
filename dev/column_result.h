@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic
+#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_member_object_pointer, std::is_base_of
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
@@ -45,14 +45,6 @@ namespace sqlite_orm {
         };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
-        template<class St, class O, class F>
-        struct column_result_t<St,
-                               F O::*,
-                               typename std::enable_if<std::is_member_pointer<F O::*>::value &&
-                                                       !std::is_member_function_pointer<F O::*>::value>::type> {
-            using type = F;
-        };
-
         template<class St, class L, class A>
         struct column_result_t<St, dynamic_in_t<L, A>, void> {
             using type = bool;
@@ -61,6 +53,11 @@ namespace sqlite_orm {
         template<class St, class L, class... Args>
         struct column_result_t<St, in_t<L, Args...>, void> {
             using type = bool;
+        };
+
+        template<class St, class O, class F>
+        struct column_result_t<St, F O::*, std::enable_if_t<std::is_member_object_pointer<F O::*>::value>> {
+            using type = F;
         };
 
         /**
@@ -120,14 +117,10 @@ namespace sqlite_orm {
         };
 
         template<class St, class T>
-        struct column_result_t<St, distinct_t<T>, void> {
-            using type = typename column_result_t<St, T>::type;
-        };
+        struct column_result_t<St, distinct_t<T>, void> : column_result_t<St, T> {};
 
         template<class St, class T>
-        struct column_result_t<St, all_t<T>, void> {
-            using type = typename column_result_t<St, T>::type;
-        };
+        struct column_result_t<St, all_t<T>, void> : column_result_t<St, T> {};
 
         template<class St, class L, class R>
         struct column_result_t<St, conc_t<L, R>, void> {
@@ -230,10 +223,8 @@ namespace sqlite_orm {
 
         template<class St, class T>
         struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, compound_operator>::value>> {
-            using left_type = typename T::left_type;
-            using right_type = typename T::right_type;
-            using left_result = column_result_of_t<St, left_type>;
-            using right_result = column_result_of_t<St, right_type>;
+            using left_result = column_result_of_t<St, typename T::left_type>;
+            using right_result = column_result_of_t<St, typename T::right_type>;
             static_assert(std::is_same<left_result, right_result>::value,
                           "Compound subselect queries must return same types");
             using type = left_result;
