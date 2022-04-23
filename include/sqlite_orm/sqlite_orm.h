@@ -17130,8 +17130,8 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 #endif
-            inline void add_generated_cols(std::vector<table_xinfo*>& columnsToAdd,
-                                           std::vector<table_xinfo>& storageTableInfo) {
+            void add_generated_cols(std::vector<table_xinfo*>& columnsToAdd,
+                                    std::vector<table_xinfo>& storageTableInfo) {
                 //  iterate through storage columns
                 for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
                     ++storageColumnInfoIndex) {
@@ -17154,8 +17154,7 @@ namespace sqlite_orm {
                     this->create_table(db, tImpl.table.name, tImpl);
 
                     this->commit_migration();
-                } catch(std::exception& ex) {
-                    std::string s = ex.what();  // 's' for debugging
+                } catch(const std::exception&) {
                     this->abort_migration();
                     throw;
                 }
@@ -17193,19 +17192,10 @@ namespace sqlite_orm {
 
                     this->commit_migration();
 
-                } catch(std::exception& ex) {
-                    std::string s = ex.what();  // 's' for debugging
+                } catch(const std::exception&) {
                     this->abort_migration();
                     throw;
                 }
-
-                // this->create_table(db, backupTableName, tableImpl);
-                //
-                // tableImpl.copy_table(db, backupTableName, columnsToIgnore);
-                //
-                // this->drop_table_internal(tableImpl.table.name, db);
-                //
-                // tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
             }
 
             template<class O>
@@ -19604,7 +19594,7 @@ namespace sqlite_orm {
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                             auto storageTableInfo = tImpl.table.get_table_info();
-                            add_generated_cols(columnsToAdd, storageTableInfo);  //
+                            add_generated_cols(columnsToAdd, storageTableInfo);
 
                             // remove extra columns and generated columns
                             this->backup_table(db, tImpl, columnsToAdd);

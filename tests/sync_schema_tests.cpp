@@ -507,7 +507,7 @@ TEST_CASE("sync_schema with generated columns") {
         }
         SECTION("stored") {
             generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
-            expectedUsers.push_back({5, 9});  // jdh added
+            expectedUsers.push_back({5, 9});
         }
         auto storage2 = make_storage(storagePath,
                                      make_table("users",
@@ -530,7 +530,7 @@ TEST_CASE("sync_schema with generated columns") {
         }
         SECTION("stored") {
             generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
-            expectedUsers.push_back({5, 9});  // JDH added
+            expectedUsers.push_back({5, 9});
         }
         auto storage2 = make_storage(storagePath,
                                      make_table("users",

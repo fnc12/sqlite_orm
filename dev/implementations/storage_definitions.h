@@ -75,7 +75,7 @@ namespace sqlite_orm {
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                             auto storageTableInfo = tImpl.table.get_table_info();
-                            add_generated_cols(columnsToAdd, storageTableInfo);  //
+                            add_generated_cols(columnsToAdd, storageTableInfo);
 
                             // remove extra columns and generated columns
                             this->backup_table(db, tImpl, columnsToAdd);
