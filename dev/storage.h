@@ -156,6 +156,22 @@ namespace sqlite_orm {
                     }
                 }
             }
+            template<class I>
+            void drop_create_with_loss(const I& tImpl, sqlite3* db) {
+
+                try {
+                    this->start_migration();
+
+                    this->drop_table_internal(tImpl.table.name, db);
+                    this->create_table(db, tImpl.table.name, tImpl);
+
+                    this->commit_migration();
+                } catch(std::exception& ex) {
+                    std::string s = ex.what();  // 's' for debugging
+                    this->abort_migration();
+                    throw;
+                }
+            }
 
             template<class I>
             void backup_table(sqlite3* db, const I& tableImpl, const std::vector<table_xinfo*>& columnsToIgnore) {
@@ -185,7 +201,6 @@ namespace sqlite_orm {
 
                     this->drop_table_internal(tableImpl.table.name, db);
 
-                    // tableImpl.
                     this->rename_table(db, backupTableName, tableImpl.table.name);
 
                     this->commit_migration();
