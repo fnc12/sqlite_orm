@@ -18,14 +18,23 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_alias_v = std::is_base_of<alias_tag, A>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_alias_v = std::is_base_of<alias_tag, A>::value;
 
         template<class A>
-        using is_column_alias = polyfill::bool_constant<is_column_alias_v<A>>;
+        using is_alias = polyfill::bool_constant<is_alias_v<A>>;
+
+        /*
+         *  Note: Currently, there is no distinguishing property of a column alias other than that it is derived from "alias_tag".
+         */
+        template<class A>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_alias_v = is_alias_v<A>;
+
+        template<class A>
+        using is_column_alias = is_alias<A>;
 
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_table_alias_v =
-            polyfill::conjunction_v<std::is_base_of<alias_tag, A>, polyfill::is_detected<type_t, A>>;
+            polyfill::conjunction_v<is_alias<A>, polyfill::is_detected<type_t, A>>;
 
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
@@ -108,7 +117,7 @@ namespace sqlite_orm {
         };
 
         template<class A>
-        struct alias_extractor<A, match_if<std::is_base_of, alias_tag, A>> {
+        struct alias_extractor<A, match_if<is_alias, A>> {
             template<bool yes = !is_cte_alias_v<A>>
             static std::string extract(polyfill::bool_constant<yes> = {}) {
                 return static_if<yes>(

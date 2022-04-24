@@ -60,7 +60,7 @@ namespace sqlite_orm {
          *  asterisk_t<O> -> tuple<ColExpr...>
          */
         template<class St, class E>
-        struct column_expression_type<St, asterisk_t<E>, match_if_not<is_column_alias, E>>
+        struct column_expression_type<St, asterisk_t<E>, match_if_not<is_table_alias, E>>
             : storage_traits::storage_mapped_column_expressions<St, E> {};
 
         template<class A>
@@ -75,7 +75,7 @@ namespace sqlite_orm {
          *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
          */
         template<class St, class A>
-        struct column_expression_type<St, asterisk_t<A>, match_if<is_column_alias, A>>
+        struct column_expression_type<St, asterisk_t<A>, match_if<is_table_alias, A>>
             : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<St, type_t<A>>::type,
                                 add_column_alias<A>::template apply> {};
 

@@ -149,7 +149,7 @@ namespace sqlite_orm {
         };
 
         template<class A>
-        struct column_pointer_builder<A, match_if<std::is_base_of, alias_tag, A>> {
+        struct column_pointer_builder<A, match_if<is_alias, A>> {
             static_assert(is_cte_alias_v<A>, "`A' must be a mapped table alias");
 
             using mapped_type = A;
@@ -170,7 +170,7 @@ namespace sqlite_orm {
              *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
              *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
              */
-            template<class F, satisfies_not<std::is_base_of, alias_tag, F> = true>
+            template<class F, satisfies_not<is_column_alias, F> = true>
             constexpr column_pointer<mapped_type, F> operator()(F field) const {
                 return {std::move(field)};
             }
@@ -182,7 +182,7 @@ namespace sqlite_orm {
              *  struct Object { ... };
              *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
              */
-            template<class ColAlias, satisfies<std::is_base_of, alias_tag, ColAlias> = true>
+            template<class ColAlias, satisfies<is_column_alias, ColAlias> = true>
             constexpr column_pointer<mapped_type, alias_holder<ColAlias>> operator()(const ColAlias&) const {
                 return {{}};
             }
@@ -564,7 +564,7 @@ namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>()->*&Object::id));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(cte_1{}->*&Object::id));
      */
-    template<class A, class F, internal::satisfies<std::is_base_of, alias_tag, A> = true>
+    template<class A, class F, internal::satisfies<internal::is_table_alias, A> = true>
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
         return column<A>(std::move(field));
     }
@@ -576,7 +576,7 @@ namespace sqlite_orm {
      *  struct Object { ... };
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*0_col));
      */
-    template<class A, class F, internal::satisfies<std::is_base_of, alias_tag, A> = true>
+    template<class A, class F, internal::satisfies<internal::is_table_alias, A> = true>
     constexpr auto operator->*(const internal::column_pointer_builder<A>&, F field) {
         return column<A>(std::move(field));
     }
@@ -706,6 +706,13 @@ namespace sqlite_orm {
     internal::asterisk_t<T> asterisk() {
         return {};
     }
+
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    template<auto T, internal::satisfies<internal::is_table_alias, decltype(T)> = true>
+    internal::asterisk_t<decltype(T)> asterisk() {
+        return {};
+    }
+#endif
 
     /**
      * SELECT * FROM T function.

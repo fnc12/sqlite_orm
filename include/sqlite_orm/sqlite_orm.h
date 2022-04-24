@@ -4094,14 +4094,23 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class A>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_alias_v = std::is_base_of<alias_tag, A>::value;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_alias_v = std::is_base_of<alias_tag, A>::value;
 
         template<class A>
-        using is_column_alias = polyfill::bool_constant<is_column_alias_v<A>>;
+        using is_alias = polyfill::bool_constant<is_alias_v<A>>;
+
+        /*
+         *  Note: Currently, there is no distinguishing property of a column alias other than that it is derived from "alias_tag".
+         */
+        template<class A>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_alias_v = is_alias_v<A>;
+
+        template<class A>
+        using is_column_alias = is_alias<A>;
 
         template<class A>
         SQLITE_ORM_INLINE_VAR constexpr bool is_table_alias_v =
-            polyfill::conjunction_v<std::is_base_of<alias_tag, A>, polyfill::is_detected<type_t, A>>;
+            polyfill::conjunction_v<is_alias<A>, polyfill::is_detected<type_t, A>>;
 
         template<class A>
         using is_table_alias = polyfill::bool_constant<is_table_alias_v<A>>;
@@ -4184,7 +4193,7 @@ namespace sqlite_orm {
         };
 
         template<class A>
-        struct alias_extractor<A, match_if<std::is_base_of, alias_tag, A>> {
+        struct alias_extractor<A, match_if<is_alias, A>> {
             template<bool yes = !is_cte_alias_v<A>>
             static std::string extract(polyfill::bool_constant<yes> = {}) {
                 return static_if<yes>(
@@ -7045,7 +7054,7 @@ namespace sqlite_orm {
         };
 
         template<class A>
-        struct column_pointer_builder<A, match_if<std::is_base_of, alias_tag, A>> {
+        struct column_pointer_builder<A, match_if<is_alias, A>> {
             static_assert(is_cte_alias_v<A>, "`A' must be a mapped table alias");
 
             using mapped_type = A;
@@ -7066,7 +7075,7 @@ namespace sqlite_orm {
              *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>(0_col)));
              *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(get<colalias_a>())));
              */
-            template<class F, satisfies_not<std::is_base_of, alias_tag, F> = true>
+            template<class F, satisfies_not<is_column_alias, F> = true>
             constexpr column_pointer<mapped_type, F> operator()(F field) const {
                 return {std::move(field)};
             }
@@ -7078,7 +7087,7 @@ namespace sqlite_orm {
              *  struct Object { ... };
              *  storage.with(cte<cte_1>()(select(as<colalias_a>(&Object::id))), select(column<cte_1>(colalias_a{})));
              */
-            template<class ColAlias, satisfies<std::is_base_of, alias_tag, ColAlias> = true>
+            template<class ColAlias, satisfies<is_column_alias, ColAlias> = true>
             constexpr column_pointer<mapped_type, alias_holder<ColAlias>> operator()(const ColAlias&) const {
                 return {{}};
             }
@@ -7460,7 +7469,7 @@ namespace sqlite_orm {
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>()->*&Object::id));
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(cte_1{}->*&Object::id));
      */
-    template<class A, class F, internal::satisfies<std::is_base_of, alias_tag, A> = true>
+    template<class A, class F, internal::satisfies<internal::is_table_alias, A> = true>
     constexpr auto operator->*(const A& /*tableAlias*/, F field) {
         return column<A>(std::move(field));
     }
@@ -7472,7 +7481,7 @@ namespace sqlite_orm {
      *  struct Object { ... };
      *  storage.with(cte<cte_1>()(select(&Object::id)), select(column<cte_1>->*0_col));
      */
-    template<class A, class F, internal::satisfies<std::is_base_of, alias_tag, A> = true>
+    template<class A, class F, internal::satisfies<internal::is_table_alias, A> = true>
     constexpr auto operator->*(const internal::column_pointer_builder<A>&, F field) {
         return column<A>(std::move(field));
     }
@@ -7602,6 +7611,13 @@ namespace sqlite_orm {
     internal::asterisk_t<T> asterisk() {
         return {};
     }
+
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    template<auto T, internal::satisfies<internal::is_table_alias, decltype(T)> = true>
+    internal::asterisk_t<decltype(T)> asterisk() {
+        return {};
+    }
+#endif
 
     /**
      * SELECT * FROM T function.
@@ -10666,12 +10682,12 @@ namespace sqlite_orm {
         struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, std::decay_t<E>> {};
 
         template<class St, class T>
-        struct column_result_t<St, asterisk_t<T>, match_if_not<is_column_alias, T>> {
+        struct column_result_t<St, asterisk_t<T>, match_if_not<is_table_alias, T>> {
             using type = typename storage_traits::storage_mapped_columns<St, T>::type;
         };
 
         template<class St, class A>
-        struct column_result_t<St, asterisk_t<A>, match_if<is_column_alias, A>> {
+        struct column_result_t<St, asterisk_t<A>, match_if<is_table_alias, A>> {
             using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
         };
 
@@ -15197,12 +15213,12 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, satisfies_not<std::is_base_of, alias_tag, T> = true>
+            template<class T, satisfies_not<is_table_alias, T> = true>
             void operator()(const asterisk_t<T>&) const {
                 table_names.emplace(this->find_table_name(typeid(T)), "");
             }
 
-            template<class T, satisfies<std::is_base_of, alias_tag, T> = true>
+            template<class T, satisfies<is_table_alias, T> = true>
             void operator()(const asterisk_t<T>&) const {
                 // note: not all alias classes have a nested A::type
                 static_assert(polyfill::is_detected_v<type_t, T>,
@@ -15306,7 +15322,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {quote_identifier(alias_extractor<A>::extract()) + ".*"};
+                return {quote_identifier(alias_extractor<A>::extract(std::true_type{})) + ".*"};
             }
         };
 
@@ -15482,7 +15498,7 @@ namespace sqlite_orm {
 
                     std::string columnName;
                     if constexpr(polyfill::is_specialization_of_v<value_type, as_t>) {
-                        columnName = alias_extractor<typename value_type::alias_type>::extract();
+                        columnName = alias_extractor<alias_type_t<value_type>>::extract();
                     } else {
                         columnName = serialize(m, newContext);
                     }
@@ -15516,7 +15532,7 @@ namespace sqlite_orm {
                     if constexpr(polyfill::is_specialization_of_v<ColRef, alias_holder>) {
                         columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
                     } else if constexpr(std::is_member_pointer<ColRef>::value) {
-                        using O = typename table_type<ColRef>::object_type;
+                        using O = typename table_type<ColRef>::type;
                         if(auto* columnName = find_column_name<O>(context.impl, colRef)) {
                             columnNames[idx] = *columnName;
                         } else {
@@ -18158,7 +18174,7 @@ namespace sqlite_orm {
          *  asterisk_t<O> -> tuple<ColExpr...>
          */
         template<class St, class E>
-        struct column_expression_type<St, asterisk_t<E>, match_if_not<is_column_alias, E>>
+        struct column_expression_type<St, asterisk_t<E>, match_if_not<is_table_alias, E>>
             : storage_traits::storage_mapped_column_expressions<St, E> {};
 
         template<class A>
@@ -18173,7 +18189,7 @@ namespace sqlite_orm {
          *  asterisk_t<Alias> -> tuple<alias_column_t<Alias, ColExpr>...>
          */
         template<class St, class A>
-        struct column_expression_type<St, asterisk_t<A>, match_if<is_column_alias, A>>
+        struct column_expression_type<St, asterisk_t<A>, match_if<is_table_alias, A>>
             : tuple_transformer<typename storage_traits::storage_mapped_column_expressions<St, type_t<A>>::type,
                                 add_column_alias<A>::template apply> {};
 

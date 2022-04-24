@@ -128,7 +128,7 @@ namespace sqlite_orm {
 
                     std::string columnName;
                     if constexpr(polyfill::is_specialization_of_v<value_type, as_t>) {
-                        columnName = alias_extractor<typename value_type::alias_type>::extract();
+                        columnName = alias_extractor<alias_type_t<value_type>>::extract();
                     } else {
                         columnName = serialize(m, newContext);
                     }

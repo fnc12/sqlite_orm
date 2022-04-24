@@ -361,7 +361,7 @@ void family_tree() {
 
     cout << "Living ancestor's of Alice:\n";
     for(const string& name: results) {
-        cout << name << endl;
+        cout << name << '\n';
     }
     cout << endl;
 #endif
@@ -443,7 +443,7 @@ void depth_or_breadth_first() {
 
         cout << "List of organization members, breadth-first:\n";
         for(const string& name: results) {
-            cout << name << endl;
+            cout << name << '\n';
         }
     }
     cout << endl;
@@ -484,11 +484,54 @@ void depth_or_breadth_first() {
 
         cout << "List of organization members, depth-first:\n";
         for(const string& name: results) {
-            cout << name << endl;
+            cout << name << '\n';
         }
     }
     cout << endl;
 #endif
+}
+
+void select_from_subselect() {
+    struct Employee {
+        int m_empno;
+        std::string m_ename;
+        double m_salary;
+        std::optional<double> m_commission;
+    };
+
+    auto storage = make_storage("",
+                                make_table("Emp",
+                                           make_column("empno", &Employee::m_empno, primary_key(), autoincrement()),
+                                           make_column("ename", &Employee::m_ename),
+                                           make_column("salary", &Employee::m_salary),
+                                           make_column("comm", &Employee::m_commission)));
+    storage.sync_schema();
+    storage.transaction([&storage]() {
+        storage.insert<Employee>({1, "Patel", 4000, nullopt});
+        storage.insert<Employee>({2, "Jariwala", 19300, nullopt});
+        return true;
+    });
+
+    // SELECT * FROM (SELECT salary, comm AS commmission FROM emp) WHERE salary < 5000
+#ifdef SQLITE_ORM_CLASSTYPE_TEMPLATE_ARG_SUPPORTED
+    constexpr auto sub = "sub"_cte;
+    auto expression = with(cte<sub>()(select(columns(&Employee::m_salary, &Employee::m_commission))),
+                           select(asterisk<sub>(), where(c(sub->*&Employee::m_salary) < 5000)));
+#else
+    auto expression = with(cte<cte_1>()(select(columns(&Employee::m_salary, &Employee::m_commission))),
+                           select(asterisk<cte_1>(), where(c(1_ctealias->*&Employee::m_salary) < 5000)));
+#endif
+
+    string sql = storage.dump(expression);
+
+    auto stmt = storage.prepare(expression);
+    auto results = storage.execute(stmt);
+
+    cout << "List of employees with a salary less than 5000:\n";
+    for(auto& result: results) {
+        cout << get<0>(result) << '\n';
+    }
+    cout << endl;
 }
 
 void apfelmaennchen() {
@@ -591,7 +634,7 @@ void apfelmaennchen() {
 
     cout << "Apfelmaennchen (Mandelbrot set):\n";
     for(const string& rowString: results) {
-        cout << rowString << endl;
+        cout << rowString << '\n';
     }
     cout << endl;
 #endif
@@ -692,6 +735,7 @@ int main() {
         works_for_alice();
         family_tree();
         depth_or_breadth_first();
+        select_from_subselect();
         apfelmaennchen();
         show_mapping_and_backreferencing();
     } catch(const system_error& e) {

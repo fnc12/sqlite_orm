@@ -54,12 +54,12 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, satisfies_not<std::is_base_of, alias_tag, T> = true>
+            template<class T, satisfies_not<is_table_alias, T> = true>
             void operator()(const asterisk_t<T> &) const {
                 table_names.emplace(this->find_table_name(typeid(T)), "");
             }
 
-            template<class T, satisfies<std::is_base_of, alias_tag, T> = true>
+            template<class T, satisfies<is_table_alias, T> = true>
             void operator()(const asterisk_t<T> &) const {
                 // note: not all alias classes have a nested A::type
                 static_assert(polyfill::is_detected_v<type_t, T>,
