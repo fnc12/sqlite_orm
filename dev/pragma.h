@@ -189,11 +189,11 @@ namespace sqlite_orm {
             bool foreign_keys() {
                 return this->get_pragma<bool>("foreign_keys");
             }
-            void foreign_keys(bool value) noexcept {    // crucial!
+            void foreign_keys(bool value) noexcept {  // crucial!
                 this->set_pragma("foreign_keys", value);
                 // verify the value was set
                 bool current = foreign_keys();
-                if( current != value) { // not aceptable
+                if(current != value) {  // not aceptable
                     throw;
                 }
             }
