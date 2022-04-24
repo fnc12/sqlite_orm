@@ -162,7 +162,7 @@ namespace sqlite_orm {
                     if constexpr(polyfill::is_specialization_of_v<ColRef, alias_holder>) {
                         columnNames[idx] = alias_extractor<type_t<ColRef>>::extract();
                     } else if constexpr(std::is_member_pointer<ColRef>::value) {
-                        using O = typename table_type<ColRef>::object_type;
+                        using O = typename table_type<ColRef>::type;
                         if(auto* columnName = find_column_name<O>(context.impl, colRef)) {
                             columnNames[idx] = *columnName;
                         } else {
