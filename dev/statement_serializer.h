@@ -19,6 +19,7 @@
 #include "tuple_helper/tuple_filter.h"
 #include "member_traits/is_getter.h"
 #include "member_traits/is_setter.h"
+#include "mapped_type_proxy.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
 #include "ast/group_by.h"
@@ -454,7 +455,7 @@ namespace sqlite_orm {
          *  Serializer for literal values.
          */
         template<class T>
-        struct statement_serializer<T, internal::match_specialization_of<T, literal_holder>> {
+        struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -829,7 +830,7 @@ namespace sqlite_orm {
                 cteContext.use_parentheses = false;
 
                 std::stringstream ss;
-                ss << streaming_identifier(alias_extractor<cte_label_type_t<CTE>>::extract(std::true_type{}));
+                ss << streaming_identifier(alias_extractor<cte_label_type_t<CTE>>::extract());
                 {
                     std::vector<std::string> columnNames =
                         collect_cte_column_names(get_cte_driving_subselect(cte.subselect),
@@ -1207,7 +1208,7 @@ namespace sqlite_orm {
                 {
                     using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
                     using first_reference_t = std::tuple_element_t<0, references_type_t>;
-                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    using first_reference_mapped_type = typename table_type<first_reference_t>::type;
                     auto refTableName = lookup_table_name<first_reference_mapped_type>(context.impl);
                     ss << streaming_identifier(refTableName);
                 }
@@ -1870,9 +1871,9 @@ namespace sqlite_orm {
                     iterate_ast(sel.conditions, collector);
                     join_iterator<Args...>()([&collector, &context](const auto& c) {
                         using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
-                        using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
+                        using cross_join_type = mapped_type_proxy_t<original_join_type>;
                         auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.impl);
-                        auto tableAliasString = alias_extractor<original_join_type>::extract();
+                        auto tableAliasString = alias_extractor<original_join_type>::as_alias();
                         std::pair<std::string, std::string> tableNameWithAlias{std::move(crossJoinedTableName),
                                                                                std::move(tableAliasString)};
                         collector.table_names.erase(tableNameWithAlias);
@@ -1973,9 +1974,8 @@ namespace sqlite_orm {
                     if(index > 0) {
                         ss << ", ";
                     }
-                    ss << streaming_identifier(
-                        lookup_table_name<typename mapped_type_proxy<from_type>::type>(context.impl),
-                        alias_extractor<from_type>::extract());
+                    ss << streaming_identifier(lookup_table_name<mapped_type_proxy_t<from_type>>(context.impl),
+                                               alias_extractor<from_type>::as_alias());
                     ++index;
                 });
                 return ss.str();
@@ -2222,8 +2222,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl),
-                                           alias_extractor<T>::extract())
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                                           alias_extractor<T>::as_alias())
                    << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -2251,8 +2251,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl),
-                                           alias_extractor<T>::extract())
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                                           alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -2266,8 +2266,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl),
-                                           alias_extractor<T>::extract())
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                                           alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -2281,8 +2281,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl),
-                                           alias_extractor<T>::extract())
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                                           alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
             }

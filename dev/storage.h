@@ -418,7 +418,7 @@ namespace sqlite_orm {
              *  SELECT COUNT(*) https://www.sqlite.org/lang_aggfunc.html#count
              *  @return Number of O object in table.
              */
-            template<class O, class... Args, class R = typename mapped_type_proxy<O>::type>
+            template<class O, class... Args, class R = mapped_type_proxy_t<O>>
             int count(Args&&... args) {
                 this->assert_mapped_type<R>();
                 auto rows = this->select(sqlite_orm::count<R>(), std::forward<Args>(args)...);

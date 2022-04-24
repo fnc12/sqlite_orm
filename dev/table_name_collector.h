@@ -7,6 +7,7 @@
 
 #include "cxx_polyfill.h"
 #include "type_traits.h"
+#include "mapped_type_proxy.h"
 #include "select_constraints.h"
 #include "alias.h"
 #include "core_functions.h"
@@ -38,12 +39,13 @@ namespace sqlite_orm {
 
             template<class T, class F>
             void operator()(const column_pointer<T, F> &) const {
-                table_names.emplace(this->find_table_name(typeid(T)), "");
+                auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<T>));
+                table_names.emplace(move(tableName), alias_extractor<T>::as_alias());
             }
 
             template<class T, class C>
             void operator()(const alias_column_t<T, C> &a) const {
-                (*this)(a.column, alias_extractor<T>::extract());
+                (*this)(a.column, alias_extractor<T>::as_alias());
             }
 
             template<class T>
@@ -54,18 +56,10 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, satisfies_not<is_table_alias, T> = true>
+            template<class T>
             void operator()(const asterisk_t<T> &) const {
-                table_names.emplace(this->find_table_name(typeid(T)), "");
-            }
-
-            template<class T, satisfies<is_table_alias, T> = true>
-            void operator()(const asterisk_t<T> &) const {
-                // note: not all alias classes have a nested A::type
-                static_assert(polyfill::is_detected_v<type_t, T>,
-                              "alias<O> must have a nested alias<O>::type typename");
-                auto tableName = this->find_table_name(typeid(type_t<T>));
-                table_names.emplace(move(tableName), alias_extractor<T>::extract());
+                auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<T>));
+                table_names.emplace(move(tableName), alias_extractor<T>::as_alias());
             }
 
             template<class T>

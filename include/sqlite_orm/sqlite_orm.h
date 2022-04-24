@@ -62,10 +62,25 @@ __pragma(push_macro("max"))
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
-#if __cplusplus < 201703L  // C++14 or earlier
+#if __cpp_lib_void_t >= 201411L
+            using std::void_t;
+#else
+            template<class...>
+            using void_t = void;
+#endif
+
+#if __cpp_lib_bool_constant >= 201505L
+            using std::bool_constant;
+#else
             template<bool v>
             using bool_constant = std::integral_constant<bool, v>;
+#endif
 
+#if __cpp_lib_logical_traits >= 201510L && __cpp_lib_type_trait_variable_templates >= 201510L
+            using std::conjunction, std::conjunction_v;
+            using std::disjunction, std::disjunction_v;
+            using std::negation, std::negation_v;
+#else
             template<typename...>
             struct conjunction : std::true_type {};
             template<typename B1>
@@ -73,7 +88,7 @@ namespace sqlite_orm {
             template<typename B1, typename... Bn>
             struct conjunction<B1, Bn...> : std::conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
             template<typename... Bs>
-            constexpr bool conjunction_v = conjunction<Bs...>::value;
+            SQLITE_ORM_INLINE_VAR constexpr bool conjunction_v = conjunction<Bs...>::value;
 
             template<typename...>
             struct disjunction : std::false_type {};
@@ -82,30 +97,22 @@ namespace sqlite_orm {
             template<typename B1, typename... Bn>
             struct disjunction<B1, Bn...> : std::conditional_t<bool(B1::value), B1, disjunction<Bn...>> {};
             template<typename... Bs>
-            constexpr bool disjunction_v = disjunction<Bs...>::value;
+            SQLITE_ORM_INLINE_VAR constexpr bool disjunction_v = disjunction<Bs...>::value;
 
-            template<class B>
+            template<typename B>
             struct negation : bool_constant<!bool(B::value)> {};
-
-            template<class...>
-            using void_t = void;
-#else
-            using std::bool_constant;
-            using std::conjunction, std::conjunction_v;
-            using std::disjunction, std::disjunction_v;
-            using std::negation, std::negation_v;
-            using std::void_t;
+            template<typename B>
+            SQLITE_ORM_INLINE_VAR constexpr bool negation_v = negation<B>::value;
 #endif
 
-#if __cplusplus < 202002L  // C++20 or earlier
+#if __cpp_lib_remove_cvref >= 201711L
+            using std::remove_cvref, std::remove_cvref_t;
+#else
             template<class T>
             struct remove_cvref : std::remove_cv<std::remove_reference_t<T>> {};
 
             template<class T>
             using remove_cvref_t = typename remove_cvref<T>::type;
-#else
-            using std::remove_cvref;
-            using std::remove_cvref_t;
 #endif
 
 #if 1  // proposed but not pursued                                                                                     \
@@ -125,7 +132,14 @@ namespace sqlite_orm {
 #else
             using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
 #endif
-#if 1  // library fundamentals TS v2, [meta.detect]
+
+#if 0  // __cpp_lib_detect >= 0L  //  library fundamentals TS v2, [meta.detect]
+            using std::nonesuch;
+            using std::detector;
+            using std::is_detected, std::is_detected_v;
+            using std::detected, std::detected_t;
+            using std::detected_or, std::detected_or_t;
+#else
             struct nonesuch {
                 ~nonesuch() = delete;
                 nonesuch(const nonesuch&) = delete;
@@ -217,7 +231,7 @@ namespace sqlite_orm {
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>
-        using match_if_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value>;
+        using match_if_not = std::enable_if_t<polyfill::negation_v<Op<Args...>>>;
 
         // enable_if for types
         template<class T, template<typename...> class Primary>
@@ -729,9 +743,6 @@ namespace sqlite_orm {
         decltype(auto) static_if(const T& t) {
             return static_if(std::integral_constant<bool, B>{}, t, empty_callable());
         }
-
-        template<typename T>
-        using static_not = std::integral_constant<bool, !T::value>;
     }
 
 }
@@ -4081,8 +4092,6 @@ namespace sqlite_orm {
 
 // #include "cxx_polyfill.h"
 
-// #include "static_magic.h"
-
 namespace sqlite_orm {
 
     /**
@@ -4185,26 +4194,44 @@ namespace sqlite_orm {
             alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
 
+        /*
+         * Encapsulates extracting the alias identifier of a non-alias.
+         */
         template<class T, class SFINAE = void>
         struct alias_extractor {
             static std::string extract() {
                 return {};
             }
+
+            static std::string as_alias() {
+                return {};
+            }
         };
 
+        /*
+         * Encapsulates extracting the alias identifier of an alias.
+         * 
+         * `extract()` always returns the aliase identifier.
+         * `as_alias()` is used in contexts where a table is aliased.
+         *   In case of a CTE the alias is empty since the CTE identifier is already the alias itself.
+         */
         template<class A>
         struct alias_extractor<A, match_if<is_alias, A>> {
-            template<bool yes = !is_cte_alias_v<A>>
-            static std::string extract(polyfill::bool_constant<yes> = {}) {
-                return static_if<yes>(
-                    []() {
-                        std::stringstream ss;
-                        ss << A::get();
-                        return ss.str();
-                    },
-                    []() {
-                        return std::string{};
-                    })();
+            static std::string extract() {
+                std::stringstream ss;
+                ss << A::get();
+                return ss.str();
+            }
+
+            // for column and regular table aliases -> alias identifier
+            template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
+            static std::string as_alias() {
+                return alias_extractor::extract();
+            }
+            // for cte aliases -> empty
+            template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
+            static std::string as_alias() {
+                return {};
             }
         };
 
@@ -9423,6 +9450,9 @@ namespace sqlite_orm {
         struct mapped_type_proxy<T, match_if<is_table_alias, T>> {
             using type = type_t<T>;
         };
+
+        template<class T>
+        using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
     }
 }
 #pragma once
@@ -15121,6 +15151,8 @@ namespace sqlite_orm {
 
 // #include "member_traits/is_setter.h"
 
+// #include "mapped_type_proxy.h"
+
 // #include "ast/upsert_clause.h"
 
 // #include "ast/excluded.h"
@@ -15164,6 +15196,8 @@ namespace sqlite_orm {
 
 // #include "type_traits.h"
 
+// #include "mapped_type_proxy.h"
+
 // #include "select_constraints.h"
 
 // #include "alias.h"
@@ -15197,12 +15231,13 @@ namespace sqlite_orm {
 
             template<class T, class F>
             void operator()(const column_pointer<T, F>&) const {
-                table_names.emplace(this->find_table_name(typeid(T)), "");
+                auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<T>));
+                table_names.emplace(move(tableName), alias_extractor<T>::as_alias());
             }
 
             template<class T, class C>
             void operator()(const alias_column_t<T, C>& a) const {
-                (*this)(a.column, alias_extractor<T>::extract());
+                (*this)(a.column, alias_extractor<T>::as_alias());
             }
 
             template<class T>
@@ -15213,18 +15248,10 @@ namespace sqlite_orm {
                 }
             }
 
-            template<class T, satisfies_not<is_table_alias, T> = true>
+            template<class T>
             void operator()(const asterisk_t<T>&) const {
-                table_names.emplace(this->find_table_name(typeid(T)), "");
-            }
-
-            template<class T, satisfies<is_table_alias, T> = true>
-            void operator()(const asterisk_t<T>&) const {
-                // note: not all alias classes have a nested A::type
-                static_assert(polyfill::is_detected_v<type_t, T>,
-                              "alias<O> must have a nested alias<O>::type typename");
-                auto tableName = this->find_table_name(typeid(type_t<T>));
-                table_names.emplace(move(tableName), alias_extractor<T>::extract());
+                auto tableName = this->find_table_name(typeid(mapped_type_proxy_t<T>));
+                table_names.emplace(move(tableName), alias_extractor<T>::as_alias());
             }
 
             template<class T>
@@ -15322,7 +15349,7 @@ namespace sqlite_orm {
 
             template<class Ctx>
             std::vector<std::string> operator()(const expression_type&, const Ctx&) const {
-                return {quote_identifier(alias_extractor<A>::extract(std::true_type{})) + ".*"};
+                return {quote_identifier(alias_extractor<A>::extract()) + ".*"};
             }
         };
 
@@ -16078,7 +16105,7 @@ namespace sqlite_orm {
          *  Serializer for literal values.
          */
         template<class T>
-        struct statement_serializer<T, internal::match_specialization_of<T, literal_holder>> {
+        struct statement_serializer<T, match_specialization_of<T, literal_holder>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -16453,7 +16480,7 @@ namespace sqlite_orm {
                 cteContext.use_parentheses = false;
 
                 std::stringstream ss;
-                ss << streaming_identifier(alias_extractor<cte_label_type_t<CTE>>::extract(std::true_type{}));
+                ss << streaming_identifier(alias_extractor<cte_label_type_t<CTE>>::extract());
                 {
                     std::vector<std::string> columnNames =
                         collect_cte_column_names(get_cte_driving_subselect(cte.subselect),
@@ -16831,7 +16858,7 @@ namespace sqlite_orm {
                 {
                     using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
                     using first_reference_t = std::tuple_element_t<0, references_type_t>;
-                    using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
+                    using first_reference_mapped_type = typename table_type<first_reference_t>::type;
                     auto refTableName = lookup_table_name<first_reference_mapped_type>(context.impl);
                     ss << streaming_identifier(refTableName);
                 }
@@ -17494,9 +17521,9 @@ namespace sqlite_orm {
                     iterate_ast(sel.conditions, collector);
                     join_iterator<Args...>()([&collector, &context](const auto& c) {
                         using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
-                        using cross_join_type = typename internal::mapped_type_proxy<original_join_type>::type;
+                        using cross_join_type = mapped_type_proxy_t<original_join_type>;
                         auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.impl);
-                        auto tableAliasString = alias_extractor<original_join_type>::extract();
+                        auto tableAliasString = alias_extractor<original_join_type>::as_alias();
                         std::pair<std::string, std::string> tableNameWithAlias{std::move(crossJoinedTableName),
                                                                                std::move(tableAliasString)};
                         collector.table_names.erase(tableNameWithAlias);
@@ -17597,9 +17624,8 @@ namespace sqlite_orm {
                     if(index > 0) {
                         ss << ", ";
                     }
-                    ss << streaming_identifier(
-                        lookup_table_name<typename mapped_type_proxy<from_type>::type>(context.impl),
-                        alias_extractor<from_type>::extract());
+                    ss << streaming_identifier(lookup_table_name<mapped_type_proxy_t<from_type>>(context.impl),
+                                               alias_extractor<from_type>::as_alias());
                     ++index;
                 });
                 return ss.str();
@@ -17846,8 +17872,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl),
-                                           alias_extractor<T>::extract())
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                                           alias_extractor<T>::as_alias())
                    << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -17875,8 +17901,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl),
-                                           alias_extractor<T>::extract())
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                                           alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -17890,8 +17916,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl),
-                                           alias_extractor<T>::extract())
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                                           alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -17905,8 +17931,8 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& l, const Ctx& context) const {
                 std::stringstream ss;
                 ss << static_cast<std::string>(l) << " "
-                   << streaming_identifier(lookup_table_name<typename mapped_type_proxy<T>::type>(context.impl),
-                                           alias_extractor<T>::extract())
+                   << streaming_identifier(lookup_table_name<mapped_type_proxy_t<T>>(context.impl),
+                                           alias_extractor<T>::as_alias())
                    << " " << serialize(l.constraint, context);
                 return ss.str();
             }
@@ -18466,7 +18492,7 @@ namespace sqlite_orm {
 
             using context_type = serializer_context<S>;
 
-            std::string tableName = alias_extractor<cte_label_type_t<cte_type>>::extract(std::true_type{});
+            std::string tableName = alias_extractor<cte_label_type_t<cte_type>>::extract();
             auto subselectColRefs = extract_colref_expressions(impl, subSelect.col);
             const auto& finalColRefs =
                 determine_cte_colrefs(impl, subselectColRefs, cte.explicitColumns, index_sequence{});
@@ -18893,7 +18919,7 @@ namespace sqlite_orm {
              *  SELECT COUNT(*) https://www.sqlite.org/lang_aggfunc.html#count
              *  @return Number of O object in table.
              */
-            template<class O, class... Args, class R = typename mapped_type_proxy<O>::type>
+            template<class O, class... Args, class R = mapped_type_proxy_t<O>>
             int count(Args&&... args) {
                 this->assert_mapped_type<R>();
                 auto rows = this->select(sqlite_orm::count<R>(), std::forward<Args>(args)...);

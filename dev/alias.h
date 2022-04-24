@@ -5,7 +5,6 @@
 #include <string>  //  std::string
 
 #include "cxx_polyfill.h"
-#include "static_magic.h"
 
 namespace sqlite_orm {
 
@@ -109,26 +108,44 @@ namespace sqlite_orm {
             alias_column_t(column_type column_) : column(std::move(column_)) {}
         };
 
+        /*
+         * Encapsulates extracting the alias identifier of a non-alias.
+         */
         template<class T, class SFINAE = void>
         struct alias_extractor {
             static std::string extract() {
                 return {};
             }
+
+            static std::string as_alias() {
+                return {};
+            }
         };
 
+        /*
+         * Encapsulates extracting the alias identifier of an alias.
+         * 
+         * `extract()` always returns the aliase identifier.
+         * `as_alias()` is used in contexts where a table is aliased.
+         *   In case of a CTE the alias is empty since the CTE identifier is already the alias itself.
+         */
         template<class A>
         struct alias_extractor<A, match_if<is_alias, A>> {
-            template<bool yes = !is_cte_alias_v<A>>
-            static std::string extract(polyfill::bool_constant<yes> = {}) {
-                return static_if<yes>(
-                    []() {
-                        std::stringstream ss;
-                        ss << A::get();
-                        return ss.str();
-                    },
-                    []() {
-                        return std::string{};
-                    })();
+            static std::string extract() {
+                std::stringstream ss;
+                ss << A::get();
+                return ss.str();
+            }
+
+            // for column and regular table aliases -> alias identifier
+            template<class T = A, satisfies_not<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
+            static std::string as_alias() {
+                return alias_extractor::extract();
+            }
+            // for cte aliases -> empty
+            template<class T = A, satisfies<std::is_same, polyfill::detected_t<type_t, T>, A> = true>
+            static std::string as_alias() {
+                return {};
             }
         };
 

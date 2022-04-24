@@ -39,7 +39,7 @@ TEST_CASE("static_if") {
     }
     {  //  tuple is not empty
         auto value = 0;
-        internal::static_if<internal::static_not<std::is_empty<std::tuple<>>>{}>(
+        internal::static_if<polyfill::negation_v<std::is_empty<std::tuple<>>>>(
             [&value] {
                 value = 1;
             },

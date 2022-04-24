@@ -259,7 +259,7 @@ namespace sqlite_orm {
 
             using context_type = serializer_context<S>;
 
-            std::string tableName = alias_extractor<cte_label_type_t<cte_type>>::extract(std::true_type{});
+            std::string tableName = alias_extractor<cte_label_type_t<cte_type>>::extract();
             auto subselectColRefs = extract_colref_expressions(impl, subSelect.col);
             const auto& finalColRefs =
                 determine_cte_colrefs(impl, subselectColRefs, cte.explicitColumns, index_sequence{});

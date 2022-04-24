@@ -20,5 +20,8 @@ namespace sqlite_orm {
         struct mapped_type_proxy<T, match_if<is_table_alias, T>> {
             using type = type_t<T>;
         };
+
+        template<class T>
+        using mapped_type_proxy_t = typename mapped_type_proxy<T>::type;
     }
 }

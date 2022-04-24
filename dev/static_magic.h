@@ -35,9 +35,6 @@ namespace sqlite_orm {
         decltype(auto) static_if(const T& t) {
             return static_if(std::integral_constant<bool, B>{}, t, empty_callable());
         }
-
-        template<typename T>
-        using static_not = std::integral_constant<bool, !T::value>;
     }
 
 }
