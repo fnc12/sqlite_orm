@@ -12896,13 +12896,10 @@ namespace sqlite_orm {
                 return this->get_pragma<bool>("foreign_keys");
             }
             void foreign_keys(bool value) noexcept {  // crucial!
+                fk_checking = value;
                 this->set_pragma("foreign_keys", value);
-                // verify the value was set
-                bool current = foreign_keys();
-                if(current != value) {  // not aceptable
-                    throw;
-                }
             }
+            bool fk_checking = true;
 
             int _synchronous = -1;
             signed char _journal_mode = -1;  //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
@@ -13967,7 +13964,7 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
                 if(this->cachedForeignKeysCount) {
-                    this->foreign_keys(db, true);
+                    this->foreign_keys(db, this->pragma.fk_checking);
                 }
 #endif
                 if(this->pragma._synchronous != -1) {
@@ -14150,17 +14147,27 @@ namespace sqlite_orm {
             }
 
             // migration internal API
-            void start_migration() {
+            void start_migration(bool turn_off_fk) {
+                this->pragma.foreign_keys(turn_off_fk ? false : true);
                 this->begin_exclusive_transaction();
-                this->pragma.foreign_keys(false);
             }
             void commit_migration() {
+                try {
+                    this->commit();
+                } catch(const std::exception&) {
+                    this->pragma.foreign_keys(true);
+                    throw;
+                }
                 this->pragma.foreign_keys(true);
-                this->commit();
             }
             void abort_migration() {
+                try {
+                    this->rollback();
+                } catch(const std::exception&) {
+                    this->pragma.foreign_keys(true);
+                    throw;
+                }
                 this->pragma.foreign_keys(true);
-                this->rollback();
             }
 
             //  returns foreign keys count in storage definition
@@ -17195,7 +17202,8 @@ namespace sqlite_orm {
             void drop_create_with_loss(const I& tImpl, sqlite3* db) {
 
                 try {
-                    this->start_migration();
+                    this->start_migration(
+                        false);  // do not turn FK off because we are not returning state to what it was before
 
                     this->drop_table_internal(tImpl.table.name, db);
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -17227,7 +17235,7 @@ namespace sqlite_orm {
                     } while(true);
                 }
                 try {
-                    this->start_migration();
+                    this->start_migration(true);  // turn FK off because we are restoring all FKs present
 
                     this->create_table(db, backupTableName, tableImpl);
 
@@ -19719,7 +19727,6 @@ namespace sqlite_orm {
             perform_void_exec(db, ss.str());
         }
 
-        // jdh
         template<class... Ts>
         template<class I>
         void storage_t<Ts...>::copy_table_from(

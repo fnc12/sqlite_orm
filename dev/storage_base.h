@@ -546,7 +546,7 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
                 if(this->cachedForeignKeysCount) {
-                    this->foreign_keys(db, true);
+                    this->foreign_keys(db, this->pragma.fk_checking);
                 }
 #endif
                 if(this->pragma._synchronous != -1) {
@@ -729,17 +729,27 @@ namespace sqlite_orm {
             }
 
             // migration internal API
-            void start_migration() {
+            void start_migration(bool turn_off_fk) {
+                this->pragma.foreign_keys(turn_off_fk ? false : true);
                 this->begin_exclusive_transaction();
-                this->pragma.foreign_keys(false);
             }
             void commit_migration() {
+                try {
+                    this->commit();
+                } catch(const std::exception&) {
+                    this->pragma.foreign_keys(true);
+                    throw;
+                }
                 this->pragma.foreign_keys(true);
-                this->commit();
             }
             void abort_migration() {
+                try {
+                    this->rollback();
+                } catch(const std::exception&) {
+                    this->pragma.foreign_keys(true);
+                    throw;
+                }
                 this->pragma.foreign_keys(true);
-                this->rollback();
             }
 
             //  returns foreign keys count in storage definition

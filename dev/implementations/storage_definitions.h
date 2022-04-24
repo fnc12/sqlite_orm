@@ -145,7 +145,6 @@ namespace sqlite_orm {
             perform_void_exec(db, ss.str());
         }
 
-        // jdh
         template<class... Ts>
         template<class I>
         void storage_t<Ts...>::copy_table_from(
