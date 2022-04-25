@@ -12,7 +12,7 @@
 #include <type_traits>  //  std::decay, std::is_same
 
 #include "pragma.h"
-#include "limit_accesor.h"
+#include "limit_accessor.h"
 #include "transaction_guard.h"
 #include "statement_finalizer.h"
 #include "tuple_helper/tuple_helper.h"
@@ -33,7 +33,7 @@ namespace sqlite_orm {
 
             std::function<void(sqlite3*)> on_open;
             pragma_t pragma;
-            limit_accesor limit;
+            limit_accessor limit;
 
             transaction_guard_t transaction_guard() {
                 this->begin_transaction();
