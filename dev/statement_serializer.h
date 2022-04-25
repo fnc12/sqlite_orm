@@ -1354,19 +1354,20 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE " << streaming_identifier(tImpl.table.name) << " SET ";
                 auto columnIndex = 0;
-                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](
-                                                auto& column) {
-                    if(column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column)) {
-                        return;
-                    }
+                tImpl.table.for_each_column(
+                    [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
+                        if(column.template has<primary_key_t<>>() ||
+                           tImpl.table.exists_in_composite_primary_key(column) || column.is_generated()) {
+                            return;
+                        }
 
-                    if(columnIndex > 0) {
-                        ss << ", ";
-                    }
-                    ss << streaming_identifier(column.name) << " = "
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
-                    ++columnIndex;
-                });
+                        if(columnIndex > 0) {
+                            ss << ", ";
+                        }
+                        ss << streaming_identifier(column.name) << " = "
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
+                        ++columnIndex;
+                    });
                 ss << " WHERE ";
                 columnIndex = 0;
                 tImpl.table.for_each_column(

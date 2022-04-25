@@ -450,6 +450,18 @@ namespace sqlite_orm {
                 return this->connection->retain_count() > 0;
             }
 
+            /*
+             * checks whether there is a transaction in place
+             */
+            bool in_transaction() const {
+                auto&& conn = this->connection;
+                if(conn) {
+                    auto* db = conn->get();
+                    return !sqlite3_get_autocommit(db);
+                }
+                return false;
+            }
+
             int busy_handler(std::function<int(int)> handler) {
                 _busy_handler = move(handler);
                 if(this->is_opened()) {
