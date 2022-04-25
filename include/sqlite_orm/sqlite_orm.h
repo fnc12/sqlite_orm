@@ -12895,9 +12895,14 @@ namespace sqlite_orm {
             bool foreign_keys() {
                 return this->get_pragma<bool>("foreign_keys");
             }
-            void foreign_keys(bool value) noexcept {  // crucial!
+            void foreign_keys(bool value) {
+                /*
+                 * this define makes it impossible to change the value of FK checking if undefined!!
+                 */
+#ifdef FK_TOGGLE_ENABLE
                 fk_checking = value;
                 this->set_pragma("foreign_keys", value);
+#endif
             }
             bool fk_checking = true;
 
@@ -13443,6 +13448,38 @@ namespace sqlite_orm {
 }
 
 // #include "arg_values.h"
+
+// #include "final_action.h"
+
+// #include "cxx_polyfill.h"
+
+template<class F>
+class final_action {
+  public:
+    explicit final_action(F f) noexcept : f_{std::move(f)} {}
+
+    final_action(final_action&& other) noexcept :
+        f_{std::move(other.f_)}, invoke_{std::exchange(other.invoke_, false)} {}
+
+    final_action(const final_action&) = delete;
+    final_action& operator=(const final_action&) = delete;
+    final_action& operator=(final_action&&) = delete;
+
+    ~final_action() {
+        if(invoke_) {
+            f_();
+        }
+    }
+
+  private:
+    F f_;
+    bool invoke_ = true;
+};
+
+template<class F>
+auto finally(F&& f) noexcept {
+    return final_action<sqlite_orm::polyfill::remove_cvref_t<F>>(std::forward<F>(f));
+}
 
 namespace sqlite_orm {
 
@@ -14160,26 +14197,26 @@ namespace sqlite_orm {
 
             // migration internal API
             void start_migration(bool turn_off_fk) {
+                /*
+                 * this #define enables or disable FK checking OFF as part of the migration
+                 * undefined => no FK checking OFF EVER!!
+                 */
+#ifdef FK_TOGGLE_ENABLE
                 this->pragma.foreign_keys(turn_off_fk ? false : true);
+#endif
                 this->begin_exclusive_transaction();
             }
             void commit_migration() {
-                try {
-                    this->commit();
-                } catch(const std::exception&) {
-                    this->pragma.foreign_keys(true);
-                    throw;
-                }
-                this->pragma.foreign_keys(true);
+                auto foreign_keys_guard = finally([&pragma = this->pragma]() {
+                    pragma.foreign_keys(true);
+                });
+                this->commit();
             }
             void abort_migration() {
-                try {
-                    this->rollback();
-                } catch(const std::exception&) {
-                    this->pragma.foreign_keys(true);
-                    throw;
-                }
-                this->pragma.foreign_keys(true);
+                auto foreign_keys_guard = finally([&pragma = this->pragma]() {
+                    pragma.foreign_keys(true);
+                });
+                this->rollback();
             }
 
             //  returns foreign keys count in storage definition

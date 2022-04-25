@@ -189,9 +189,14 @@ namespace sqlite_orm {
             bool foreign_keys() {
                 return this->get_pragma<bool>("foreign_keys");
             }
-            void foreign_keys(bool value) noexcept {  // crucial!
+            void foreign_keys(bool value) {
+                /*
+                 * this define makes it impossible to change the value of FK checking if undefined!!
+                 */
+#ifdef FK_TOGGLE_ENABLE
                 fk_checking = value;
                 this->set_pragma("foreign_keys", value);
+#endif
             }
             bool fk_checking = true;
 

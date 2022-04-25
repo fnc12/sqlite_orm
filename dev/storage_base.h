@@ -25,6 +25,7 @@
 #include "function.h"
 #include "values_to_tuple.h"
 #include "arg_values.h"
+#include "final_action.h"
 
 namespace sqlite_orm {
 
@@ -742,26 +743,26 @@ namespace sqlite_orm {
 
             // migration internal API
             void start_migration(bool turn_off_fk) {
+                /*
+                 * this #define enables or disable FK checking OFF as part of the migration
+                 * undefined => no FK checking OFF EVER!!
+                 */
+#ifdef FK_TOGGLE_ENABLE
                 this->pragma.foreign_keys(turn_off_fk ? false : true);
+#endif
                 this->begin_exclusive_transaction();
             }
             void commit_migration() {
-                try {
-                    this->commit();
-                } catch(const std::exception&) {
-                    this->pragma.foreign_keys(true);
-                    throw;
-                }
-                this->pragma.foreign_keys(true);
+                auto foreign_keys_guard = finally([&pragma = this->pragma]() {
+                    pragma.foreign_keys(true);
+                });
+                this->commit();
             }
             void abort_migration() {
-                try {
-                    this->rollback();
-                } catch(const std::exception&) {
-                    this->pragma.foreign_keys(true);
-                    throw;
-                }
-                this->pragma.foreign_keys(true);
+                auto foreign_keys_guard = finally([&pragma = this->pragma]() {
+                    pragma.foreign_keys(true);
+                });
+                this->rollback();
             }
 
             //  returns foreign keys count in storage definition
