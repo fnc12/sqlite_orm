@@ -1,13 +1,12 @@
 #pragma once
 
+#include <sqlite3.h>
 #include <memory>  //  std::shared_ptr
 #include <string>  //  std::string
 #include <utility>  //  std::forward, std::move
-#include <sqlite3.h>
 #include <tuple>  //  std::tuple, std::make_tuple
 
 #include "row_extractor.h"
-#include "statement_finalizer.h"
 #include "error_code.h"
 #include "iterator.h"
 #include "ast_iterator.h"

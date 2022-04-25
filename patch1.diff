@@ -1,0 +1,25 @@
+From cfa09c384d31a3e2bfd7fe5533c2faeb82dc417e Mon Sep 17 00:00:00 2001
+From: klaus triendl <klaus@triendl.eu>
+Date: Sat, 23 Apr 2022 14:29:57 +0300
+Subject: [PATCH] Address warning when streaming `conflict_action`
+
+---
+ dev/statement_serializer.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/dev/statement_serializer.h b/dev/statement_serializer.h
+index 10c2a67..f2da5e5 100644
+--- a/dev/statement_serializer.h
++++ b/dev/statement_serializer.h
+@@ -1774,6 +1774,8 @@ namespace sqlite_orm {
+                         return "IGNORE";
+                     case conflict_action::rollback:
+                         return "ROLLBACK";
++                    default:
++                        return {};
+                 }
+             }
+         };
+-- 
+2.34.1.windows.1
+

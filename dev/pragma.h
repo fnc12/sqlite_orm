@@ -1,10 +1,11 @@
 #pragma once
 
-#include <string>  //  std::string
 #include <sqlite3.h>
+#include <string>  //  std::string
 #include <functional>  //  std::function
 #include <memory>  // std::shared_ptr
 #include <vector>  //  std::vector
+#include <sstream>
 
 #include "error_code.h"
 #include "util.h"
@@ -119,7 +120,7 @@ namespace sqlite_orm {
 
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
-                auto db = connection.get();
+                sqlite3* db = connection.get();
 
                 std::vector<sqlite_orm::table_info> result;
                 auto query = "PRAGMA table_info(" + quote_identifier(tableName) + ")";
@@ -135,9 +136,9 @@ namespace sqlite_orm {
                             std::string type = argv[index++];
                             bool notnull = !!std::atoi(argv[index++]);
                             std::string dflt_value = argv[index] ? argv[index] : "";
-                            index++;
+                            ++index;
                             auto pk = std::atoi(argv[index++]);
-                            res.emplace_back(cid, name, type, notnull, dflt_value, pk);
+                            res.emplace_back(cid, move(name), move(type), notnull, move(dflt_value), pk);
                         }
                         return 0;
                     },
@@ -159,9 +160,9 @@ namespace sqlite_orm {
             template<class T>
             T get_pragma(const std::string& name) {
                 auto connection = this->get_connection();
+                sqlite3* db = connection.get();
                 auto query = "PRAGMA " + name;
                 T result;
-                auto db = connection.get();
                 auto rc = sqlite3_exec(db, query.c_str(), getPragmaCallback<T>, &result, nullptr);
                 if(rc == SQLITE_OK) {
                     return result;
@@ -182,7 +183,7 @@ namespace sqlite_orm {
                 }
                 std::stringstream ss;
                 ss << "PRAGMA " << name << " = " << value;
-                internal::perform_void_exec(db, ss.str());
+                perform_void_exec(db, ss.str());
             }
 
             void set_pragma(const std::string& name, const sqlite_orm::journal_mode& value, sqlite3* db = nullptr) {
@@ -192,7 +193,7 @@ namespace sqlite_orm {
                 }
                 std::stringstream ss;
                 ss << "PRAGMA " << name << " = " << internal::to_string(value);
-                internal::perform_void_exec(db, ss.str());
+                perform_void_exec(db, ss.str());
             }
         };
     }
