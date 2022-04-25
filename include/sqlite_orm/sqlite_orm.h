@@ -17256,8 +17256,7 @@ namespace sqlite_orm {
             void drop_create_with_loss(const I& tImpl, sqlite3* db) {
 
                 try {
-                    this->start_migration(
-                        false);  // do not turn FK off because we are not returning state to what it was before
+                    this->start_migration(false);
 
                     this->drop_table_internal(tImpl.table.name, db);
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -17289,7 +17288,7 @@ namespace sqlite_orm {
                     } while(true);
                 }
                 try {
-                    this->start_migration(true);  // turn FK off because we are restoring all FKs present
+                    this->start_migration(true);
 
                     this->create_table(db, backupTableName, tableImpl);
 
