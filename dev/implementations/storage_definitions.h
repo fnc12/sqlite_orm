@@ -96,9 +96,6 @@ namespace sqlite_orm {
 
                         this->backup_table(db, tImpl, columnsToAdd);
                         res = decltype(res)::dropped_and_recreated;
-                    } else if(schema_stat == sync_schema_result::table_data_loss) {
-                        this->drop_create_with_loss(tImpl, db);
-                        res = decltype(res)::table_data_loss;
                     }
                 }
             }
