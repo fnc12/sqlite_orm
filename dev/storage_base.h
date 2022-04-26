@@ -331,6 +331,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << C::name();
                 auto name = ss.str();
+                ss.flush();
                 this->create_collation(name, move(func));
             }
 
@@ -362,6 +363,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << C::name();
                 auto name = ss.str();
+                ss.flush();
                 this->create_collation(name, {});
             }
 
