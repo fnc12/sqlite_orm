@@ -9,6 +9,10 @@ __pragma(push_macro("max"))
 
 #include <iso646.h>  //  alternative operator representations
 
+#if __cpp_aggregate_nsdmi >= 201304L
+#define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+#endif
+
 #if __cpp_noexcept_function_type >= 201510L
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #endif
@@ -530,7 +534,6 @@ namespace sqlite_orm {
 
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
-#include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
@@ -2377,9 +2380,9 @@ namespace sqlite_orm {
     template<class T>
     struct field_printer<T, std::enable_if_t<std::is_arithmetic<T>::value>> {
         std::string operator()(const T& t) const {
-            std::stringstream stream;
-            stream << t;
-            return stream.str();
+            std::stringstream ss;
+            ss << t;
+            return ss.str();
         }
     };
 
@@ -2389,9 +2392,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<unsigned char, void> {
         std::string operator()(const unsigned char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 
@@ -2401,9 +2404,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<signed char, void> {
         std::string operator()(const signed char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 
@@ -2413,9 +2416,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<char, void> {
         std::string operator()(const char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 
@@ -2874,10 +2877,8 @@ namespace sqlite_orm {
             template<class C>
             named_collate<self> collate() const {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                return {*this, std::move(name)};
+                ss << C::name() << std::flush;
+                return {*this, ss.str()};
             }
         };
 
@@ -3087,6 +3088,13 @@ namespace sqlite_orm {
         struct order_by_base {
             int asc_desc = 0;  //  1: asc, -1: desc
             std::string _collate_argument;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            order_by_base() = default;
+
+            order_by_base(decltype(asc_desc) asc_desc_, decltype(_collate_argument) _collate_argument_) :
+                asc_desc(asc_desc_), _collate_argument(move(_collate_argument_)) {}
+#endif
         };
 
         struct order_by_string {
@@ -3149,10 +3157,8 @@ namespace sqlite_orm {
             template<class C>
             self collate() const {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                return this->collate(move(name));
+                ss << C::name() << std::flush;
+                return this->collate(ss.str());
             }
         };
 
@@ -4228,7 +4234,7 @@ namespace sqlite_orm {
          * This is because of bug in MSVC, for more information, please visit
          * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
          */
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && (_MSC_VER < 1920)
         template<template<typename...> class Base, typename Derived>
         struct is_base_of_template_impl {
             template<typename... Ts>
@@ -7034,7 +7040,7 @@ namespace sqlite_orm {
         std::string dflt_value;
         int pk = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT
+#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT)
         table_info(decltype(cid) cid_,
                    decltype(name) name_,
                    decltype(type) type_,
@@ -9463,6 +9469,8 @@ namespace sqlite_orm {
 #include <algorithm>  //  std::min
 #include <cstddef>
 
+// #include "start_macros.h"
+
 // #include "cxx_polyfill.h"
 
 namespace sqlite_orm {
@@ -9486,12 +9494,14 @@ namespace sqlite_orm {
             std::function<int*()> create;
             void (*destroy)(int*) = nullptr;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             user_defined_function_base(decltype(name) name_,
                                        decltype(argumentsCount) argumentsCount_,
                                        decltype(create) create_,
                                        decltype(destroy) destroy_) :
                 name(move(name_)),
                 argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
+#endif
         };
 
         struct user_defined_scalar_function_t : user_defined_function_base {
@@ -12858,7 +12868,7 @@ namespace sqlite_orm {
                     db = con.get();
                 }
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << value;
+                ss << "PRAGMA " << name << " = " << value << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
@@ -12868,7 +12878,7 @@ namespace sqlite_orm {
                     db = con.get();
                 }
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << internal::to_string(value);
+                ss << "PRAGMA " << name << " = " << to_string(value) << std::flush;
                 perform_void_exec(db, ss.str());
             }
         };
@@ -13390,13 +13400,13 @@ namespace sqlite_orm {
 
             void drop_index(const std::string& indexName) {
                 std::stringstream ss;
-                ss << "DROP INDEX " << quote_identifier(indexName);
+                ss << "DROP INDEX " << quote_identifier(indexName) << std::flush;
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
             void drop_trigger(const std::string& triggerName) {
                 std::stringstream ss;
-                ss << "DROP TRIGGER " << quote_identifier(triggerName);
+                ss << "DROP TRIGGER " << quote_identifier(triggerName) << std::flush;
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
@@ -13416,7 +13426,7 @@ namespace sqlite_orm {
              */
             void rename_table(const std::string& from, const std::string& to) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to);
+                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to) << std::flush;
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
@@ -13543,7 +13553,7 @@ namespace sqlite_orm {
                 static_assert(is_scalar_function<F>::value, "F can't be an aggregate function");
 
                 std::stringstream ss;
-                ss << F::name();
+                ss << F::name() << std::flush;
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
@@ -13604,7 +13614,7 @@ namespace sqlite_orm {
                 static_assert(is_aggregate_function<F>::value, "F can't be a scalar function");
 
                 std::stringstream ss;
-                ss << F::name();
+                ss << F::name() << std::flush;
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
@@ -13651,9 +13661,8 @@ namespace sqlite_orm {
             void delete_scalar_function() {
                 static_assert(is_scalar_function<F>::value, "F cannot be a scalar function");
                 std::stringstream ss;
-                ss << F::name();
-                auto name = ss.str();
-                this->delete_function_impl(name, this->scalarFunctions);
+                ss << F::name() << std::flush;
+                this->delete_function_impl(ss.str(), this->scalarFunctions);
             }
 
             /**
@@ -13663,9 +13672,8 @@ namespace sqlite_orm {
             void delete_aggregate_function() {
                 static_assert(is_aggregate_function<F>::value, "F cannot be an aggregate function");
                 std::stringstream ss;
-                ss << F::name();
-                auto name = ss.str();
-                this->delete_function_impl(name, this->aggregateFunctions);
+                ss << F::name() << std::flush;
+                this->delete_function_impl(ss.str(), this->aggregateFunctions);
             }
 
             template<class C>
@@ -13675,9 +13683,8 @@ namespace sqlite_orm {
                     return collatingObject(leftLength, lhs, rightLength, rhs);
                 };
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                this->create_collation(name, move(func));
+                ss << C::name() << std::flush;
+                this->create_collation(ss.str(), move(func));
             }
 
             void create_collation(const std::string& name, collating_function f) {
@@ -13706,9 +13713,8 @@ namespace sqlite_orm {
             template<class C>
             void delete_collation() {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                this->create_collation(name, {});
+                ss << C::name() << std::flush;
+                this->create_collation(ss.str(), {});
             }
 
             void begin_transaction() {
@@ -13863,7 +13869,7 @@ namespace sqlite_orm {
 
             void foreign_keys(sqlite3* db, bool value) {
                 std::stringstream ss;
-                ss << "PRAGMA foreign_keys = " << value;
+                ss << "PRAGMA foreign_keys = " << value << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
@@ -14033,11 +14039,10 @@ namespace sqlite_orm {
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
                 std::stringstream ss;
-                ss << "SELECT CURRENT_TIMESTAMP";
-                auto query = ss.str();
+                ss << "SELECT CURRENT_TIMESTAMP" << std::flush;
                 auto rc = sqlite3_exec(
                     db,
-                    query.c_str(),
+                    ss.str().c_str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::string*)data;
                         if(argc) {
@@ -14272,6 +14277,9 @@ namespace sqlite_orm {
 #include <cstddef>  // std::nullptr_t
 #include <memory>
 #include <array>
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>
+#endif
 
 // #include "start_macros.h"
 
@@ -14637,7 +14645,8 @@ namespace sqlite_orm {
             return serializer(t, context);
         }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#if __cplusplus >= 202002L &&                                                                                          \
+    __cpp_lib_concepts  //  contiguous iterator ranges depend on contiguous_iterator, sized_sentinel_for in all major implementations
         inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
             for(std::string::const_iterator it = str.cbegin(), next; true; it = next + 1) {
                 next = std::find(it, str.cend(), char2Escape);
@@ -17062,6 +17071,7 @@ namespace sqlite_orm {
                 if(table_type::is_without_rowid) {
                     ss << " WITHOUT ROWID";
                 }
+                ss.flush();
                 perform_void_exec(db, ss.str());
             }
 
@@ -17078,7 +17088,8 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN " << quote_identifier(columnName);
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN " << quote_identifier(columnName)
+                   << std::flush;
                 perform_void_exec(db, ss.str());
             }
 #endif
@@ -17091,11 +17102,11 @@ namespace sqlite_orm {
                 if(tableImpl.table_exists(backupTableName, db)) {
                     int suffix = 1;
                     do {
-                        std::stringstream stream;
-                        stream << suffix;
-                        auto anotherBackupTableName = backupTableName + stream.str();
+                        std::stringstream ss;
+                        ss << suffix << std::flush;
+                        auto anotherBackupTableName = backupTableName + ss.str();
                         if(!tableImpl.table_exists(anotherBackupTableName, db)) {
-                            backupTableName = anotherBackupTableName;
+                            backupTableName = move(anotherBackupTableName);
                             break;
                         }
                         ++suffix;
@@ -17874,7 +17885,7 @@ namespace sqlite_orm {
                 ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                ss << serialize(column, context);
+                ss << serialize(column, context) << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
@@ -18605,8 +18616,8 @@ namespace sqlite_orm {
                                 ss << quote_identifier(*columnName) << " = ?";
                                 ++columnIndex;
                             });
-                            auto query = ss.str();
                             ss.flush();
+                            auto query = ss.str();
                             auto con = this->get_connection();
                             sqlite3* db = con.get();
                             sqlite3_stmt* stmt;
@@ -19382,11 +19393,10 @@ namespace sqlite_orm {
             bool result = false;
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
-               << " AND name = " << quote_string_literal(tableName);
-            auto query = ss.str();
+               << " AND name = " << quote_string_literal(tableName) << std::flush;
             auto rc = sqlite3_exec(
                 db,
-                query.c_str(),
+                ss.str().c_str(),
                 [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                     auto& res = *(bool*)data;
                     if(argc) {
@@ -19580,7 +19590,7 @@ namespace sqlite_orm {
                     ss << ", ";
                 }
             }
-            ss << " FROM " << quote_identifier(tImpl.table.name);
+            ss << " FROM " << quote_identifier(tImpl.table.name) << std::flush;
             perform_void_exec(db, ss.str());
         }
 
