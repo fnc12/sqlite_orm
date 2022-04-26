@@ -186,6 +186,7 @@ namespace sqlite_orm {
           private:
             friend struct storage_base;
 
+#if 0 // jdh
             bool foreign_keys() {
                 return this->get_pragma<bool>("foreign_keys");
             }
@@ -202,6 +203,7 @@ namespace sqlite_orm {
             bool fk_checking = true;
 #else
             const bool fk_checking = true;
+#endif
 #endif
 
             int _synchronous = -1;

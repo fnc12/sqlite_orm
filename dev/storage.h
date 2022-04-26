@@ -170,7 +170,7 @@ namespace sqlite_orm {
             void drop_create_with_loss(const I& tImpl, sqlite3* db) {
 
                 try {
-                    this->start_migration(false);
+                    this->start_migration();
 
                     this->drop_table_internal(tImpl.table.name, db);
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -202,7 +202,7 @@ namespace sqlite_orm {
                     } while(true);
                 }
                 try {
-                    this->start_migration(true);
+                    this->start_migration();
 
                     this->create_table(db, backupTableName, tableImpl);
 

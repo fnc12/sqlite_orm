@@ -559,7 +559,7 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
                 if(this->cachedForeignKeysCount) {
-                    this->foreign_keys(db, this->pragma.fk_checking);
+                    this->foreign_keys(db, true);
                 }
 #endif
                 if(this->pragma._synchronous != -1) {
@@ -742,26 +742,13 @@ namespace sqlite_orm {
             }
 
             // migration internal API
-            void start_migration(bool turn_off_fk) {
-                /*
-                 * this #define enables or disable FK checking OFF as part of the migration
-                 * undefined => no FK checking OFF EVER!!
-                 */
-#ifdef FK_TOGGLE_ENABLE
-                this->pragma.foreign_keys(turn_off_fk ? false : true);
-#endif
+            void start_migration() {
                 this->begin_exclusive_transaction();
             }
             void commit_migration() {
-                auto foreign_keys_guard = finally([&pragma = this->pragma]() {
-                    pragma.foreign_keys(true);
-                });
                 this->commit();
             }
             void abort_migration() {
-                auto foreign_keys_guard = finally([&pragma = this->pragma]() {
-                    pragma.foreign_keys(true);
-                });
                 this->rollback();
             }
 
