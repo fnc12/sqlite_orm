@@ -11,6 +11,9 @@
 #include <cstddef>  // std::nullptr_t
 #include <memory>
 #include <array>
+#ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
+#include <string_view>
+#endif
 
 #include "start_macros.h"
 #include "cxx_functional_polyfill.h"
@@ -56,7 +59,8 @@ namespace sqlite_orm {
             return serializer(t, context);
         }
 
-#if __cplusplus >= 202002L  // C++20 or later
+#if __cplusplus >= 202002L &&                                                                                          \
+    __cpp_lib_concepts  //  contiguous iterator ranges depend on contiguous_iterator, sized_sentinel_for in all major implementations
         inline void stream_sql_escaped(std::ostream& os, const std::string& str, char char2Escape) {
             for(std::string::const_iterator it = str.cbegin(), next; true; it = next + 1) {
                 next = std::find(it, str.cend(), char2Escape);
