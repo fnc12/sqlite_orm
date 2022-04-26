@@ -8,6 +8,7 @@
 #include <algorithm>  //  std::min
 #include <cstddef>
 
+#include "start_macros.h"
 #include "cxx_polyfill.h"
 
 namespace sqlite_orm {
@@ -31,12 +32,14 @@ namespace sqlite_orm {
             std::function<int *()> create;
             void (*destroy)(int *) = nullptr;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
             user_defined_function_base(decltype(name) name_,
                                        decltype(argumentsCount) argumentsCount_,
                                        decltype(create) create_,
                                        decltype(destroy) destroy_) :
                 name(move(name_)),
                 argumentsCount(argumentsCount_), create(move(create_)), destroy(destroy_) {}
+#endif
         };
 
         struct user_defined_scalar_function_t : user_defined_function_base {

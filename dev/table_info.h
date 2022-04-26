@@ -14,7 +14,7 @@ namespace sqlite_orm {
         std::string dflt_value;
         int pk = 0;
 
-#ifndef SQLITE_ORM_AGGREGATE_PAREN_INIT
+#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT)
         table_info(decltype(cid) cid_,
                    decltype(name) name_,
                    decltype(type) type_,

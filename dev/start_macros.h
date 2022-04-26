@@ -9,6 +9,10 @@ __pragma(push_macro("max"))
 
 #include <iso646.h>  //  alternative operator representations
 
+#if __cpp_aggregate_nsdmi >= 201304L
+#define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+#endif
+
 #if __cpp_noexcept_function_type >= 201510L
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #endif
