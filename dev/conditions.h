@@ -208,10 +208,8 @@ namespace sqlite_orm {
             template<class C>
             named_collate<self> collate() const {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                return {*this, std::move(name)};
+                ss << C::name() << std::flush;
+                return {*this, ss.str()};
             }
         };
 
@@ -490,10 +488,8 @@ namespace sqlite_orm {
             template<class C>
             self collate() const {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                return this->collate(move(name));
+                ss << C::name() << std::flush;
+                return this->collate(ss.str());
             }
         };
 

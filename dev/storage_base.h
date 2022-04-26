@@ -44,13 +44,13 @@ namespace sqlite_orm {
 
             void drop_index(const std::string& indexName) {
                 std::stringstream ss;
-                ss << "DROP INDEX " << quote_identifier(indexName);
+                ss << "DROP INDEX " << quote_identifier(indexName) << std::flush;
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
             void drop_trigger(const std::string& triggerName) {
                 std::stringstream ss;
-                ss << "DROP TRIGGER " << quote_identifier(triggerName);
+                ss << "DROP TRIGGER " << quote_identifier(triggerName) << std::flush;
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
@@ -70,7 +70,7 @@ namespace sqlite_orm {
              */
             void rename_table(const std::string& from, const std::string& to) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to);
+                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to) << std::flush;
                 perform_void_exec(this->get_connection().get(), ss.str());
             }
 
@@ -197,7 +197,7 @@ namespace sqlite_orm {
                 static_assert(is_scalar_function<F>::value, "F can't be an aggregate function");
 
                 std::stringstream ss;
-                ss << F::name();
+                ss << F::name() << std::flush;
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
@@ -258,7 +258,7 @@ namespace sqlite_orm {
                 static_assert(is_aggregate_function<F>::value, "F can't be a scalar function");
 
                 std::stringstream ss;
-                ss << F::name();
+                ss << F::name() << std::flush;
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
@@ -305,9 +305,8 @@ namespace sqlite_orm {
             void delete_scalar_function() {
                 static_assert(is_scalar_function<F>::value, "F cannot be a scalar function");
                 std::stringstream ss;
-                ss << F::name();
-                auto name = ss.str();
-                this->delete_function_impl(name, this->scalarFunctions);
+                ss << F::name() << std::flush;
+                this->delete_function_impl(ss.str(), this->scalarFunctions);
             }
 
             /**
@@ -317,9 +316,8 @@ namespace sqlite_orm {
             void delete_aggregate_function() {
                 static_assert(is_aggregate_function<F>::value, "F cannot be an aggregate function");
                 std::stringstream ss;
-                ss << F::name();
-                auto name = ss.str();
-                this->delete_function_impl(name, this->aggregateFunctions);
+                ss << F::name() << std::flush;
+                this->delete_function_impl(ss.str(), this->aggregateFunctions);
             }
 
             template<class C>
@@ -329,10 +327,8 @@ namespace sqlite_orm {
                     return collatingObject(leftLength, lhs, rightLength, rhs);
                 };
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                this->create_collation(name, move(func));
+                ss << C::name() << std::flush;
+                this->create_collation(ss.str(), move(func));
             }
 
             void create_collation(const std::string& name, collating_function f) {
@@ -361,10 +357,8 @@ namespace sqlite_orm {
             template<class C>
             void delete_collation() {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                this->create_collation(name, {});
+                ss << C::name() << std::flush;
+                this->create_collation(ss.str(), {});
             }
 
             void begin_transaction() {
@@ -519,7 +513,7 @@ namespace sqlite_orm {
 
             void foreign_keys(sqlite3* db, bool value) {
                 std::stringstream ss;
-                ss << "PRAGMA foreign_keys = " << value;
+                ss << "PRAGMA foreign_keys = " << value << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
@@ -689,11 +683,10 @@ namespace sqlite_orm {
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
                 std::stringstream ss;
-                ss << "SELECT CURRENT_TIMESTAMP";
-                auto query = ss.str();
+                ss << "SELECT CURRENT_TIMESTAMP" << std::flush;
                 auto rc = sqlite3_exec(
                     db,
-                    query.c_str(),
+                    ss.str().c_str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::string*)data;
                         if(argc) {

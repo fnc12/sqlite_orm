@@ -122,6 +122,7 @@ namespace sqlite_orm {
                 if(table_type::is_without_rowid) {
                     ss << " WITHOUT ROWID";
                 }
+                ss.flush();
                 perform_void_exec(db, ss.str());
             }
 
@@ -138,7 +139,8 @@ namespace sqlite_orm {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN " << quote_identifier(columnName);
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " DROP COLUMN " << quote_identifier(columnName)
+                   << std::flush;
                 perform_void_exec(db, ss.str());
             }
 #endif
@@ -151,11 +153,11 @@ namespace sqlite_orm {
                 if(tableImpl.table_exists(backupTableName, db)) {
                     int suffix = 1;
                     do {
-                        std::stringstream stream;
-                        stream << suffix;
-                        auto anotherBackupTableName = backupTableName + stream.str();
+                        std::stringstream ss;
+                        ss << suffix << std::flush;
+                        auto anotherBackupTableName = backupTableName + ss.str();
                         if(!tableImpl.table_exists(anotherBackupTableName, db)) {
-                            backupTableName = anotherBackupTableName;
+                            backupTableName = move(anotherBackupTableName);
                             break;
                         }
                         ++suffix;
@@ -934,7 +936,7 @@ namespace sqlite_orm {
                 ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                ss << serialize(column, context);
+                ss << serialize(column, context) << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
@@ -1665,8 +1667,8 @@ namespace sqlite_orm {
                                 ss << quote_identifier(*columnName) << " = ?";
                                 ++columnIndex;
                             });
-                            auto query = ss.str();
                             ss.flush();
+                            auto query = ss.str();
                             auto con = this->get_connection();
                             sqlite3* db = con.get();
                             sqlite3_stmt* stmt;

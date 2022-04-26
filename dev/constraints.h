@@ -2,7 +2,6 @@
 
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
-#include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type

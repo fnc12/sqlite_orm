@@ -125,7 +125,7 @@ namespace sqlite_orm {
                     ss << ", ";
                 }
             }
-            ss << " FROM " << quote_identifier(tImpl.table.name);
+            ss << " FROM " << quote_identifier(tImpl.table.name) << std::flush;
             perform_void_exec(db, ss.str());
         }
 

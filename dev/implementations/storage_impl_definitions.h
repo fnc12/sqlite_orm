@@ -21,11 +21,10 @@ namespace sqlite_orm {
             bool result = false;
             std::stringstream ss;
             ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
-               << " AND name = " << quote_string_literal(tableName);
-            auto query = ss.str();
+               << " AND name = " << quote_string_literal(tableName) << std::flush;
             auto rc = sqlite3_exec(
                 db,
-                query.c_str(),
+                ss.str().c_str(),
                 [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                     auto& res = *(bool*)data;
                     if(argc) {

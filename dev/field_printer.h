@@ -38,9 +38,9 @@ namespace sqlite_orm {
     template<class T>
     struct field_printer<T, std::enable_if_t<std::is_arithmetic<T>::value>> {
         std::string operator()(const T& t) const {
-            std::stringstream stream;
-            stream << t;
-            return stream.str();
+            std::stringstream ss;
+            ss << t;
+            return ss.str();
         }
     };
 
@@ -50,9 +50,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<unsigned char, void> {
         std::string operator()(const unsigned char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 
@@ -62,9 +62,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<signed char, void> {
         std::string operator()(const signed char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 
@@ -74,9 +74,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<char, void> {
         std::string operator()(const char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 

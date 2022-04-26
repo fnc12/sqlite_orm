@@ -182,7 +182,7 @@ namespace sqlite_orm {
                     db = con.get();
                 }
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << value;
+                ss << "PRAGMA " << name << " = " << value << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
@@ -192,7 +192,7 @@ namespace sqlite_orm {
                     db = con.get();
                 }
                 std::stringstream ss;
-                ss << "PRAGMA " << name << " = " << internal::to_string(value);
+                ss << "PRAGMA " << name << " = " << to_string(value) << std::flush;
                 perform_void_exec(db, ss.str());
             }
         };
