@@ -376,7 +376,7 @@ TEST_CASE("sync_schema") {
         }
         REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
         decltype(syncSchemaRes) expected{
-            {tableName, sync_schema_result::dropped_and_recreated_with_loss},
+            {tableName, sync_schema_result::dropped_and_recreated},
         };
         REQUIRE(syncSchemaRes == expected);
         auto users = storage.get_all<User>();

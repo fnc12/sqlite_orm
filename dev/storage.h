@@ -918,7 +918,9 @@ namespace sqlite_orm {
             template<class T, bool WithoutRowId, class... Cs, class... Tss>
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
-                                             bool preserve) {
+                                             bool preserve,
+                                             bool& attempt_to_preserve) {
+                attempt_to_preserve = true;
                 auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);
                 auto res = sync_schema_result::already_in_sync;
 
@@ -969,7 +971,8 @@ namespace sqlite_orm {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
                                         // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
-                                        res = decltype(res)::dropped_and_recreated_with_loss;
+                                        attempt_to_preserve = false;
+                                        // res = decltype(res)::dropped_and_recreated_with_loss;
                                         break;
                                     }
                                 }
@@ -981,8 +984,7 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-                                if(res != decltype(res)::dropped_and_recreated_with_loss)
-                                    res = decltype(res)::dropped_and_recreated;
+                                res = decltype(res)::dropped_and_recreated;
                             }
                         } else {
                             if(res != decltype(res)::old_columns_removed) {
@@ -1101,7 +1103,8 @@ namespace sqlite_orm {
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
                 this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
-                    auto schemaStatus = this->schema_status(tableImpl, db, preserve);
+                    bool attempt_to_preserve = true;
+                    auto schemaStatus = this->schema_status(tableImpl, db, preserve, attempt_to_preserve);
                     result.insert({tableImpl.table.name, schemaStatus});
                 });
                 return result;

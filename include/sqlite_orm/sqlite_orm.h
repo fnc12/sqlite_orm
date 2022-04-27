@@ -8661,12 +8661,6 @@ namespace sqlite_orm {
          *      4. data_type mismatch between table and storage.
          */
         dropped_and_recreated,
-
-        /*
-         * for cases in which even if reserve were true, it is impossible to avoid losing data
-         * so schema is changed but no backup_table is considered
-         */
-        dropped_and_recreated_with_loss,
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
@@ -8683,8 +8677,6 @@ namespace sqlite_orm {
                 return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
-            case sync_schema_result::dropped_and_recreated_with_loss:
-                return os << "old table dropped and recreated with no attempt at preserving data";
         }
         return os;
     }
@@ -17964,7 +17956,9 @@ namespace sqlite_orm {
             template<class T, bool WithoutRowId, class... Cs, class... Tss>
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
-                                             bool preserve) {
+                                             bool preserve,
+                                             bool& attempt_to_preserve) {
+                attempt_to_preserve = true;
                 auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);
                 auto res = sync_schema_result::already_in_sync;
 
@@ -18015,7 +18009,8 @@ namespace sqlite_orm {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
                                         // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
-                                        res = decltype(res)::dropped_and_recreated_with_loss;
+                                        attempt_to_preserve = false;
+                                        // res = decltype(res)::dropped_and_recreated_with_loss;
                                         break;
                                     }
                                 }
@@ -18027,8 +18022,7 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-                                if(res != decltype(res)::dropped_and_recreated_with_loss)
-                                    res = decltype(res)::dropped_and_recreated;
+                                res = decltype(res)::dropped_and_recreated;
                             }
                         } else {
                             if(res != decltype(res)::old_columns_removed) {
@@ -18147,7 +18141,8 @@ namespace sqlite_orm {
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
                 this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
-                    auto schemaStatus = this->schema_status(tableImpl, db, preserve);
+                    bool attempt_to_preserve = true;
+                    auto schemaStatus = this->schema_status(tableImpl, db, preserve, attempt_to_preserve);
                     result.insert({tableImpl.table.name, schemaStatus});
                 });
                 return result;
@@ -19611,8 +19606,9 @@ namespace sqlite_orm {
             }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
+            bool attempt_to_preserve = true;
 
-            auto schema_stat = this->schema_status(tImpl, db, preserve);
+            auto schema_stat = this->schema_status(tImpl, db, preserve, attempt_to_preserve);
             if(schema_stat != decltype(schema_stat)::already_in_sync) {
                 if(schema_stat == decltype(schema_stat)::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -19668,8 +19664,7 @@ namespace sqlite_orm {
                             this->backup_table(db, tImpl, columnsToAdd);
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
-                    } else if(schema_stat == sync_schema_result::dropped_and_recreated ||
-                              schema_stat == sync_schema_result::dropped_and_recreated_with_loss) {
+                    } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
                         //  now get current table info from db using `PRAGMA table_xinfo` query..
                         auto dbTableInfo =
                             this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
@@ -19682,7 +19677,7 @@ namespace sqlite_orm {
 
                         add_generated_cols(columnsToAdd, storageTableInfo);
 
-                        if(preserve && schema_stat != sync_schema_result::dropped_and_recreated_with_loss) {
+                        if(preserve && attempt_to_preserve) {
                             this->backup_table(db, tImpl, columnsToAdd);
                         } else {
                             this->drop_create_with_loss(tImpl, db);

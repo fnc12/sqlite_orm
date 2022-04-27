@@ -24,8 +24,9 @@ namespace sqlite_orm {
             }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
+            bool attempt_to_preserve = true;
 
-            auto schema_stat = this->schema_status(tImpl, db, preserve);
+            auto schema_stat = this->schema_status(tImpl, db, preserve, attempt_to_preserve);
             if(schema_stat != decltype(schema_stat)::already_in_sync) {
                 if(schema_stat == decltype(schema_stat)::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -81,8 +82,7 @@ namespace sqlite_orm {
                             this->backup_table(db, tImpl, columnsToAdd);
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
-                    } else if(schema_stat == sync_schema_result::dropped_and_recreated ||
-                              schema_stat == sync_schema_result::dropped_and_recreated_with_loss) {
+                    } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
                         //  now get current table info from db using `PRAGMA table_xinfo` query..
                         auto dbTableInfo =
                             this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
@@ -95,7 +95,7 @@ namespace sqlite_orm {
 
                         add_generated_cols(columnsToAdd, storageTableInfo);
 
-                        if(preserve && schema_stat != sync_schema_result::dropped_and_recreated_with_loss) {
+                        if(preserve && attempt_to_preserve) {
                             this->backup_table(db, tImpl, columnsToAdd);
                         } else {
                             this->drop_create_with_loss(tImpl, db);

@@ -39,12 +39,6 @@ namespace sqlite_orm {
          *      4. data_type mismatch between table and storage.
          */
         dropped_and_recreated,
-
-        /*
-         * for cases in which even if reserve were true, it is impossible to avoid losing data
-         * so schema is changed but no backup_table is considered
-         */
-        dropped_and_recreated_with_loss,
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
@@ -61,8 +55,6 @@ namespace sqlite_orm {
                 return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
-            case sync_schema_result::dropped_and_recreated_with_loss:
-                return os << "old table dropped and recreated with no attempt at preserving data";
         }
         return os;
     }
