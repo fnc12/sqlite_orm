@@ -9,6 +9,14 @@ __pragma(push_macro("max"))
 
 #include <iso646.h>  //  alternative operator representations
 
+// #include "cxx_core_features.h"
+
+#ifdef __has_cpp_attribute
+#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) __has_cpp_attribute(attr)
+#else
+#define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
+#endif
+
 #if __cpp_aggregate_nsdmi >= 201304L
 #define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
 #endif
@@ -27,7 +35,7 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_INLINE_VAR
 #endif
 
-#if __has_cpp_attribute(no_unique_address) >= 201803L
+#if SQLITE_ORM_HAS_CPP_ATTRIBUTE(no_unique_address) >= 201803L
 #define SQLITE_ORM_NOUNIQUEADDRESS [[no_unique_address]]
 #else
 #define SQLITE_ORM_NOUNIQUEADDRESS
@@ -52,6 +60,7 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #endif
 #endif
+
 #pragma once
 
 #include <type_traits>
