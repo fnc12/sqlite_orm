@@ -12885,26 +12885,6 @@ namespace sqlite_orm {
           private:
             friend struct storage_base;
 
-#if 0  // jdh
-            bool foreign_keys() {
-                return this->get_pragma<bool>("foreign_keys");
-            }
-            void foreign_keys(bool value) {
-                /*
-                 * this define makes it impossible to change the value of FK checking if undefined!!
-                 */
-#ifdef FK_TOGGLE_ENABLE
-                fk_checking = value;
-                this->set_pragma("foreign_keys", value);
-#endif
-            }
-#ifdef FK_TOGGLE_ENABLE
-            bool fk_checking = true;
-#else
-            const bool fk_checking = true;
-#endif
-#endif
-
             int _synchronous = -1;
             signed char _journal_mode = -1;  //  if != -1 stores static_cast<sqlite_orm::journal_mode>(journal_mode)
             get_connection_t get_connection;
