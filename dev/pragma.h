@@ -186,7 +186,7 @@ namespace sqlite_orm {
           private:
             friend struct storage_base;
 
-#if 0 // jdh
+#if 0  // jdh
             bool foreign_keys() {
                 return this->get_pragma<bool>("foreign_keys");
             }

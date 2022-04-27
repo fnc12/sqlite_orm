@@ -41,9 +41,10 @@ namespace sqlite_orm {
         dropped_and_recreated,
 
         /*
-         * old table is dropped and new recreated but no effort at keeping data is made
+         * for cases in which even if reserve were true, it is impossible to avoid losing data
+         * so schema is changed but no backup_table is considered
          */
-        table_data_loss,
+        dropped_and_recreated_with_loss,
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
@@ -60,8 +61,8 @@ namespace sqlite_orm {
                 return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
-            case sync_schema_result::table_data_loss:
-                return os << "dropped and recreated with data loss";
+            case sync_schema_result::dropped_and_recreated_with_loss:
+                return os << "old table dropped and recreated with no attempt at preserving data";
         }
         return os;
     }

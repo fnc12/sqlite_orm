@@ -952,11 +952,7 @@ namespace sqlite_orm {
                         }
                     }
                     if(gottaCreateTable) {
-                        if(preserve) {
-                            res = decltype(res)::dropped_and_recreated;
-                        } else {
-                            res = decltype(res)::table_data_loss;
-                        }
+                        res = decltype(res)::dropped_and_recreated;
                     } else {
                         if(!columnsToAdd.empty()) {
                             // extra storage columns than table columns
@@ -972,6 +968,8 @@ namespace sqlite_orm {
                                 } else {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
+                                        // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
+                                        res = decltype(res)::dropped_and_recreated_with_loss;
                                         break;
                                     }
                                 }
@@ -983,7 +981,8 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-                                res = decltype(res)::dropped_and_recreated;
+                                if(res != decltype(res)::dropped_and_recreated_with_loss)
+                                    res = decltype(res)::dropped_and_recreated;
                             }
                         } else {
                             if(res != decltype(res)::old_columns_removed) {

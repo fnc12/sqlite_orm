@@ -81,7 +81,8 @@ namespace sqlite_orm {
                             this->backup_table(db, tImpl, columnsToAdd);
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
-                    } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
+                    } else if(schema_stat == sync_schema_result::dropped_and_recreated ||
+                              schema_stat == sync_schema_result::dropped_and_recreated_with_loss) {
                         //  now get current table info from db using `PRAGMA table_xinfo` query..
                         auto dbTableInfo =
                             this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
@@ -94,8 +95,12 @@ namespace sqlite_orm {
 
                         add_generated_cols(columnsToAdd, storageTableInfo);
 
-                        this->backup_table(db, tImpl, columnsToAdd);
-                        res = decltype(res)::dropped_and_recreated;
+                        if(preserve && schema_stat != sync_schema_result::dropped_and_recreated_with_loss) {
+                            this->backup_table(db, tImpl, columnsToAdd);
+                        } else {
+                            this->drop_create_with_loss(tImpl, db);
+                        }
+                        res = schema_stat;  // decltype(res)::dropped_and_recreated;
                     }
                 }
             }

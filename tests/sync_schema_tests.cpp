@@ -365,7 +365,8 @@ TEST_CASE("sync_schema") {
                                                make_column(columnNames.age, &User::age)));
         std::map<std::string, sync_schema_result> syncSchemaSimulateRes;
         std::map<std::string, sync_schema_result> syncSchemaRes;
-        SECTION("preserve = true") {
+        SECTION(
+            "preserve = true") {  // there is NO way we can preserve data by adding a column with no default value and not nullable!
             syncSchemaSimulateRes = storage.sync_schema_simulate(true);
             syncSchemaRes = storage.sync_schema(true);
         }
@@ -375,7 +376,7 @@ TEST_CASE("sync_schema") {
         }
         REQUIRE(syncSchemaSimulateRes == syncSchemaRes);
         decltype(syncSchemaRes) expected{
-            {tableName, sync_schema_result::table_data_loss},
+            {tableName, sync_schema_result::dropped_and_recreated_with_loss},
         };
         REQUIRE(syncSchemaRes == expected);
         auto users = storage.get_all<User>();

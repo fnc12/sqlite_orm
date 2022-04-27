@@ -8663,9 +8663,10 @@ namespace sqlite_orm {
         dropped_and_recreated,
 
         /*
-         * old table is dropped and new recreated but no effort at keeping data is made
+         * for cases in which even if reserve were true, it is impossible to avoid losing data
+         * so schema is changed but no backup_table is considered
          */
-        table_data_loss,
+        dropped_and_recreated_with_loss,
     };
 
     inline std::ostream& operator<<(std::ostream& os, sync_schema_result value) {
@@ -8682,8 +8683,8 @@ namespace sqlite_orm {
                 return os << "old excess columns removed and new columns added";
             case sync_schema_result::dropped_and_recreated:
                 return os << "old table dropped and recreated";
-            case sync_schema_result::table_data_loss:
-                return os << "dropped and recreated with data loss";
+            case sync_schema_result::dropped_and_recreated_with_loss:
+                return os << "old table dropped and recreated with no attempt at preserving data";
         }
         return os;
     }
@@ -12892,6 +12893,7 @@ namespace sqlite_orm {
           private:
             friend struct storage_base;
 
+#if 0  // jdh
             bool foreign_keys() {
                 return this->get_pragma<bool>("foreign_keys");
             }
@@ -12907,7 +12909,8 @@ namespace sqlite_orm {
 #ifdef FK_TOGGLE_ENABLE
             bool fk_checking = true;
 #else
-                const bool fk_checking = true;
+            const bool fk_checking = true;
+#endif
 #endif
 
             int _synchronous = -1;
@@ -13455,36 +13458,6 @@ namespace sqlite_orm {
 
 // #include "final_action.h"
 
-// #include "cxx_polyfill.h"
-
-template<class F>
-class final_action {
-  public:
-    explicit final_action(F f) noexcept : f_{std::move(f)} {}
-
-    final_action(final_action&& other) noexcept :
-        f_{std::move(other.f_)}, invoke_{std::exchange(other.invoke_, false)} {}
-
-    final_action(const final_action&) = delete;
-    final_action& operator=(const final_action&) = delete;
-    final_action& operator=(final_action&&) = delete;
-
-    ~final_action() {
-        if(invoke_) {
-            f_();
-        }
-    }
-
-  private:
-    F f_;
-    bool invoke_ = true;
-};
-
-template<class F>
-auto finally(F&& f) noexcept {
-    return final_action<sqlite_orm::polyfill::remove_cvref_t<F>>(std::forward<F>(f));
-}
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -14017,7 +13990,7 @@ namespace sqlite_orm {
 
 #if SQLITE_VERSION_NUMBER >= 3006019
                 if(this->cachedForeignKeysCount) {
-                    this->foreign_keys(db, this->pragma.fk_checking);
+                    this->foreign_keys(db, true);
                 }
 #endif
                 if(this->pragma._synchronous != -1) {
@@ -14200,26 +14173,13 @@ namespace sqlite_orm {
             }
 
             // migration internal API
-            void start_migration(bool turn_off_fk) {
-                /*
-                 * this #define enables or disable FK checking OFF as part of the migration
-                 * undefined => no FK checking OFF EVER!!
-                 */
-#ifdef FK_TOGGLE_ENABLE
-                this->pragma.foreign_keys(turn_off_fk ? false : true);
-#endif
+            void start_migration() {
                 this->begin_exclusive_transaction();
             }
             void commit_migration() {
-                auto foreign_keys_guard = finally([&pragma = this->pragma]() {
-                    pragma.foreign_keys(true);
-                });
                 this->commit();
             }
             void abort_migration() {
-                auto foreign_keys_guard = finally([&pragma = this->pragma]() {
-                    pragma.foreign_keys(true);
-                });
                 this->rollback();
             }
 
@@ -17256,7 +17216,7 @@ namespace sqlite_orm {
             void drop_create_with_loss(const I& tImpl, sqlite3* db) {
 
                 try {
-                    this->start_migration(false);
+                    this->start_migration();
 
                     this->drop_table_internal(tImpl.table.name, db);
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -17288,7 +17248,7 @@ namespace sqlite_orm {
                     } while(true);
                 }
                 try {
-                    this->start_migration(true);
+                    this->start_migration();
 
                     this->create_table(db, backupTableName, tableImpl);
 
@@ -18038,11 +17998,7 @@ namespace sqlite_orm {
                         }
                     }
                     if(gottaCreateTable) {
-                        if(preserve) {
-                            res = decltype(res)::dropped_and_recreated;
-                        } else {
-                            res = decltype(res)::table_data_loss;
-                        }
+                        res = decltype(res)::dropped_and_recreated;
                     } else {
                         if(!columnsToAdd.empty()) {
                             // extra storage columns than table columns
@@ -18058,7 +18014,8 @@ namespace sqlite_orm {
                                 } else {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
-                                        res = decltype(res)::table_data_loss;
+                                        // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
+                                        res = decltype(res)::dropped_and_recreated_with_loss;
                                         break;
                                     }
                                 }
@@ -18070,13 +18027,8 @@ namespace sqlite_orm {
                                     res = decltype(res)::new_columns_added;
                                 }
                             } else {
-                                if(res != decltype(res)::table_data_loss) {
-                                    if(preserve) {
-                                        res = decltype(res)::dropped_and_recreated;
-                                    } else {
-                                        res = decltype(res)::table_data_loss;
-                                    }
-                                }
+                                if(res != decltype(res)::dropped_and_recreated_with_loss)
+                                    res = decltype(res)::dropped_and_recreated;
                             }
                         } else {
                             if(res != decltype(res)::old_columns_removed) {
@@ -19716,7 +19668,8 @@ namespace sqlite_orm {
                             this->backup_table(db, tImpl, columnsToAdd);
                             res = decltype(res)::new_columns_added_and_old_columns_removed;
                         }
-                    } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
+                    } else if(schema_stat == sync_schema_result::dropped_and_recreated ||
+                              schema_stat == sync_schema_result::dropped_and_recreated_with_loss) {
                         //  now get current table info from db using `PRAGMA table_xinfo` query..
                         auto dbTableInfo =
                             this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
@@ -19729,11 +19682,12 @@ namespace sqlite_orm {
 
                         add_generated_cols(columnsToAdd, storageTableInfo);
 
-                        this->backup_table(db, tImpl, columnsToAdd);
-                        res = decltype(res)::dropped_and_recreated;
-                    } else if(schema_stat == sync_schema_result::table_data_loss) {
-                        this->drop_create_with_loss(tImpl, db);
-                        res = decltype(res)::table_data_loss;
+                        if(preserve && schema_stat != sync_schema_result::dropped_and_recreated_with_loss) {
+                            this->backup_table(db, tImpl, columnsToAdd);
+                        } else {
+                            this->drop_create_with_loss(tImpl, db);
+                        }
+                        res = schema_stat;  // decltype(res)::dropped_and_recreated;
                     }
                 }
             }
