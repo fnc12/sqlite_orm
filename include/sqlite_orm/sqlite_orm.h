@@ -13428,8 +13428,6 @@ namespace sqlite_orm {
 
 // #include "arg_values.h"
 
-// #include "final_action.h"
-
 namespace sqlite_orm {
 
     namespace internal {
@@ -13475,6 +13473,40 @@ namespace sqlite_orm {
                 perform_void_exec(get_connection().get(), ss.str());
             }
 
+          protected:  // do we want 2 functions with basic same behavior? //jdh
+            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
+                std::stringstream ss;
+                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
+                perform_void_exec(db, ss.str());
+            }
+
+            bool table_exists(const std::string& tableName, sqlite3* db) const {
+                using namespace std::string_literals;
+
+                bool result = false;
+                std::stringstream ss;
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
+                   << " AND name = " << quote_string_literal(tableName);
+                auto query = ss.str();
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
+                        auto& res = *(bool*)data;
+                        if(argc) {
+                            res = !!std::atoi(argv[0]);
+                        }
+                        return 0;
+                    },
+                    &result,
+                    nullptr);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(db);
+                }
+                return result;
+            }
+
+          public:  // end jdh
             /**
              *  sqlite3_changes function.
              */
@@ -13855,15 +13887,12 @@ namespace sqlite_orm {
             }
 
             /*
-             * checks whether there is a transaction in place
+             * returning false when there is a transaction in place
+             * otherwise true; function is not const because it has to call get_connection()
              */
-            bool in_transaction() const {
-                auto&& conn = this->connection;
-                if(conn) {
-                    auto* db = conn->get();
-                    return !sqlite3_get_autocommit(db);
-                }
-                return false;
+            bool get_autocommit() {  //jdh
+                auto* db = this->get_connection().get();
+                return sqlite3_get_autocommit(db);
             }
 
             int busy_handler(std::function<int(int)> handler) {
@@ -14145,14 +14174,24 @@ namespace sqlite_orm {
             }
 
             // migration internal API
-            void start_migration() {
-                this->begin_exclusive_transaction();
+            // returns whether we started a transaction in this function
+            bool start_migration() {
+                if(this->get_autocommit())  // true if not inside transaction: start one
+                {
+                    this->begin_exclusive_transaction();
+                    return true;
+                }
+                return false;
             }
-            void commit_migration() {
-                this->commit();
+            void commit_migration(bool started_local_trans) {
+                if(started_local_trans) {
+                    this->commit();
+                }
             }
-            void abort_migration() {
-                this->rollback();
+            void abort_migration(bool started_local_trans) {
+                if(started_local_trans) {
+                    this->rollback();
+                }
             }
 
             //  returns foreign keys count in storage definition
@@ -14169,6 +14208,10 @@ namespace sqlite_orm {
                 });
                 return res;
             }
+            // jdh moved from storage.h
+            bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                              std::vector<table_xinfo>& storageTableInfo,
+                                              std::vector<table_xinfo>& dbTableInfo) const;
 
             const bool inMemory;
             bool isOpenedForever = false;
@@ -17142,7 +17185,7 @@ namespace sqlite_orm {
                 }
                 perform_void_exec(db, ss.str());
             }
-
+#if 0  // jdh
             /**
              *  Copies tImpl.table to another table with a given **name**.
              *  Performs INSERT INTO %name% () SELECT %tImpl.table.column_names% FROM %tImpl.table.name%
@@ -17162,6 +17205,19 @@ namespace sqlite_orm {
                                  const std::string& name,
                                  const I& tImpl,
                                  const std::vector<const table_xinfo*>& columnsToIgnore) const;
+#else
+                /**
+			*  Copies sourceTableName to another table with name: destinationTableName
+			*  Performs INSERT INTO %destinationTableName% () SELECT %tImpl.table.column_names% FROM %sourceTableName%
+			*/
+
+                template<class I>
+                void copy_table(sqlite3* db,
+                                const std::string& sourceTableName,
+                                const std::string& destinationTableName,
+                                const I& tImpl,
+                                const std::vector<const table_xinfo*>& columnsToIgnore) const;
+#endif
 
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
@@ -17186,16 +17242,16 @@ namespace sqlite_orm {
             }
             template<class I>
             void drop_create_with_loss(const I& tImpl, sqlite3* db) {
-
+                bool started_local_transaction = false;
                 try {
-                    this->start_migration();
+                    started_local_transaction = this->start_migration();
 
                     this->drop_table_internal(tImpl.table.name, db);
                     this->create_table(db, tImpl.table.name, tImpl);
 
-                    this->commit_migration();
+                    this->commit_migration(started_local_transaction);
                 } catch(const std::exception&) {
-                    this->abort_migration();
+                    this->abort_migration(started_local_transaction);
                     throw;
                 }
             }
@@ -17219,21 +17275,28 @@ namespace sqlite_orm {
                         ++suffix;
                     } while(true);
                 }
+                bool started_local_transaction = false;
                 try {
-                    this->start_migration();
+                    started_local_transaction = this->start_migration();
 
                     this->create_table(db, backupTableName, tableImpl);
 
-                    this->copy_table(db, backupTableName, tableImpl, columnsToIgnore);
+                    this->copy_table(db, tableImpl.table.name, backupTableName, tableImpl, columnsToIgnore);
 
                     this->drop_table_internal(tableImpl.table.name, db);
 
                     this->rename_table(db, backupTableName, tableImpl.table.name);
 
-                    this->commit_migration();
+                    this->commit_migration(started_local_transaction);
 
                 } catch(const std::exception&) {
-                    this->abort_migration();
+                    this->abort_migration(started_local_transaction);
+                    if(!started_local_transaction) {
+                        // restore DB state
+                        if(this->table_exists(backupTableName)) {
+                            this->drop_table_internal(backupTableName, db);
+                        }
+                    }
                     throw;
                 }
             }
@@ -17893,9 +17956,11 @@ namespace sqlite_orm {
             }
 
           protected:
+#if 0  // jdh  moved to storage_base.h
             bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
                                               std::vector<table_xinfo>& storageTableInfo,
-                                              std::vector<table_xinfo>& dbTableInfo);
+                                              std::vector<table_xinfo>& dbTableInfo) const;
+
             void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
@@ -17927,7 +17992,7 @@ namespace sqlite_orm {
                 }
                 return result;
             }
-
+#endif
             template<class... Tss, class... Cols>
             sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
                 return sync_schema_result::already_in_sync;
@@ -18137,6 +18202,9 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 return this->table_exists(tableName, con.get());
             }
+
+            // jdh
+            using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
             template<class T, class... Args>
             prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> sel) {
@@ -19673,6 +19741,47 @@ namespace sqlite_orm {
         template<class I>
         void storage_t<Ts...>::copy_table(
             sqlite3* db,
+            const std::string& sourceTableName,
+            const std::string& destinationTableName,
+            const I& tImpl,
+            const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
+            std::stringstream ss;
+            std::vector<std::string> columnNames;
+            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
+                auto& columnName = c.name;
+                auto columnToIgnoreIt =
+                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfoPointer) {
+                        return columnName == tableInfoPointer->name;
+                    });
+                if(columnToIgnoreIt == columnsToIgnore.end()) {
+                    columnNames.emplace_back(columnName);
+                }
+            });
+            auto columnNamesCount = columnNames.size();
+            ss << "INSERT INTO " << quote_identifier(destinationTableName) << " (";
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << columnNames[i];
+                if(i < columnNamesCount - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            ss << ") ";
+            ss << "SELECT ";
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << columnNames[i];
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << " FROM " << quote_identifier(sourceTableName);  // tImpl.table.name); // jdh
+            perform_void_exec(db, ss.str());
+        }
+#if 0
+        template<class... Ts>
+        template<class I>
+        void storage_t<Ts...>::copy_table(
+            sqlite3* db,
             const std::string& tableName,
             const I& tImpl,
             const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
@@ -19748,11 +19857,11 @@ namespace sqlite_orm {
             ss << " FROM " << quote_identifier(tableName);
             perform_void_exec(db, ss.str());
         }
-
-        template<class... Ts>
-        inline bool storage_t<Ts...>::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
-                                                                   std::vector<table_xinfo>& storageTableInfo,
-                                                                   std::vector<table_xinfo>& dbTableInfo) {
+#endif
+        // jdh
+        inline bool storage_base::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                                               std::vector<table_xinfo>& storageTableInfo,
+                                                               std::vector<table_xinfo>& dbTableInfo) const {
             bool notEqual = false;
 
             //  iterate through storage columns

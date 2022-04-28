@@ -111,6 +111,47 @@ namespace sqlite_orm {
         template<class I>
         void storage_t<Ts...>::copy_table(
             sqlite3* db,
+            const std::string& sourceTableName,
+            const std::string& destinationTableName,
+            const I& tImpl,
+            const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
+            std::stringstream ss;
+            std::vector<std::string> columnNames;
+            tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
+                auto& columnName = c.name;
+                auto columnToIgnoreIt =
+                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfoPointer) {
+                        return columnName == tableInfoPointer->name;
+                    });
+                if(columnToIgnoreIt == columnsToIgnore.end()) {
+                    columnNames.emplace_back(columnName);
+                }
+            });
+            auto columnNamesCount = columnNames.size();
+            ss << "INSERT INTO " << quote_identifier(destinationTableName) << " (";
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << columnNames[i];
+                if(i < columnNamesCount - 1) {
+                    ss << ",";
+                }
+                ss << " ";
+            }
+            ss << ") ";
+            ss << "SELECT ";
+            for(size_t i = 0; i < columnNamesCount; ++i) {
+                ss << columnNames[i];
+                if(i < columnNamesCount - 1) {
+                    ss << ", ";
+                }
+            }
+            ss << " FROM " << quote_identifier(sourceTableName);  // tImpl.table.name); // jdh
+            perform_void_exec(db, ss.str());
+        }
+#if 0
+        template<class... Ts>
+        template<class I>
+        void storage_t<Ts...>::copy_table(
+            sqlite3* db,
             const std::string& tableName,
             const I& tImpl,
             const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
@@ -186,11 +227,11 @@ namespace sqlite_orm {
             ss << " FROM " << quote_identifier(tableName);
             perform_void_exec(db, ss.str());
         }
-
-        template<class... Ts>
-        inline bool storage_t<Ts...>::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
-                                                                   std::vector<table_xinfo>& storageTableInfo,
-                                                                   std::vector<table_xinfo>& dbTableInfo) {
+#endif
+        // jdh
+        inline bool storage_base::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                                               std::vector<table_xinfo>& storageTableInfo,
+                                                               std::vector<table_xinfo>& dbTableInfo) const {
             bool notEqual = false;
 
             //  iterate through storage columns

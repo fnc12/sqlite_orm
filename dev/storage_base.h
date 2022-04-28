@@ -25,7 +25,6 @@
 #include "function.h"
 #include "values_to_tuple.h"
 #include "arg_values.h"
-// #include "final_action.h"
 
 namespace sqlite_orm {
 
@@ -72,6 +71,40 @@ namespace sqlite_orm {
                 perform_void_exec(get_connection().get(), ss.str());
             }
 
+          protected:  // do we want 2 functions with basic same behavior? //jdh
+            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
+                std::stringstream ss;
+                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
+                perform_void_exec(db, ss.str());
+            }
+
+            bool table_exists(const std::string& tableName, sqlite3* db) const {
+                using namespace std::string_literals;
+
+                bool result = false;
+                std::stringstream ss;
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
+                   << " AND name = " << quote_string_literal(tableName);
+                auto query = ss.str();
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
+                        auto& res = *(bool*)data;
+                        if(argc) {
+                            res = !!std::atoi(argv[0]);
+                        }
+                        return 0;
+                    },
+                    &result,
+                    nullptr);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(db);
+                }
+                return result;
+            }
+
+          public:  // end jdh
             /**
              *  sqlite3_changes function.
              */
@@ -452,15 +485,12 @@ namespace sqlite_orm {
             }
 
             /*
-             * checks whether there is a transaction in place
+             * returning false when there is a transaction in place
+             * otherwise true; function is not const because it has to call get_connection()
              */
-            bool in_transaction() const {
-                auto&& conn = this->connection;
-                if(conn) {
-                    auto* db = conn->get();
-                    return !sqlite3_get_autocommit(db);
-                }
-                return false;
+            bool get_autocommit() {  //jdh
+                auto* db = this->get_connection().get();
+                return sqlite3_get_autocommit(db);
             }
 
             int busy_handler(std::function<int(int)> handler) {
@@ -742,14 +772,24 @@ namespace sqlite_orm {
             }
 
             // migration internal API
-            void start_migration() {
-                this->begin_exclusive_transaction();
+            // returns whether we started a transaction in this function
+            bool start_migration() {
+                if(this->get_autocommit())  // true if not inside transaction: start one
+                {
+                    this->begin_exclusive_transaction();
+                    return true;
+                }
+                return false;
             }
-            void commit_migration() {
-                this->commit();
+            void commit_migration(bool started_local_trans) {
+                if(started_local_trans) {
+                    this->commit();
+                }
             }
-            void abort_migration() {
-                this->rollback();
+            void abort_migration(bool started_local_trans) {
+                if(started_local_trans) {
+                    this->rollback();
+                }
             }
 
             //  returns foreign keys count in storage definition
@@ -766,6 +806,10 @@ namespace sqlite_orm {
                 });
                 return res;
             }
+            // jdh moved from storage.h
+            bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                              std::vector<table_xinfo>& storageTableInfo,
+                                              std::vector<table_xinfo>& dbTableInfo) const;
 
             const bool inMemory;
             bool isOpenedForever = false;
