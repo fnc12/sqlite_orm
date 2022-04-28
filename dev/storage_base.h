@@ -66,9 +66,8 @@ namespace sqlite_orm {
              * Rename table named `from` to `to`.
              */
             void rename_table(const std::string& from, const std::string& to) {
-                std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to);
-                perform_void_exec(get_connection().get(), ss.str());
+                auto* db = get_connection().get();
+                rename_table(db, from, to);
             }
 
           protected:  // do we want 2 functions with basic same behavior? //jdh
