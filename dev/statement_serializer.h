@@ -1207,13 +1207,13 @@ namespace sqlite_orm {
                 ss << "AS (";
                 ss << serialize(statement.expression, context) << ")";
                 switch(statement.storage) {
-                    case decltype(statement.storage)::not_specified:
+                    case basic_generated_always::storage_type::not_specified:
                         //..
                         break;
-                    case decltype(statement.storage)::virtual_:
+                    case basic_generated_always::storage_type::virtual_:
                         ss << " VIRTUAL";
                         break;
-                    case decltype(statement.storage)::stored:
+                    case basic_generated_always::storage_type::stored:
                         ss << " STORED";
                         break;
                 }
@@ -1778,9 +1778,8 @@ namespace sqlite_orm {
                         return "IGNORE";
                     case conflict_action::rollback:
                         return "ROLLBACK";
-                    default:
-                        return {};
                 }
+                return {};
             }
         };
 
@@ -1980,16 +1979,16 @@ namespace sqlite_orm {
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 switch(statement.type) {
-                    case decltype(statement.type)::ignore:
+                    case raise_t::type_t::ignore:
                         return "RAISE(IGNORE)";
 
-                    case decltype(statement.type)::rollback:
+                    case raise_t::type_t::rollback:
                         return "RAISE(ROLLBACK, " + serialize(statement.message, context) + ")";
 
-                    case decltype(statement.type)::abort:
+                    case raise_t::type_t::abort:
                         return "RAISE(ABORT, " + serialize(statement.message, context) + ")";
 
-                    case decltype(statement.type)::fail:
+                    case raise_t::type_t::fail:
                         return "RAISE(FAIL, " + serialize(statement.message, context) + ")";
                 }
                 return {};
@@ -2009,9 +2008,8 @@ namespace sqlite_orm {
                         return "AFTER";
                     case trigger_timing::trigger_instead_of:
                         return "INSTEAD OF";
-                    default:
-                        return "";
                 }
+                return {};
             }
         };
 
@@ -2028,9 +2026,8 @@ namespace sqlite_orm {
                         return "INSERT";
                     case trigger_type::trigger_update:
                         return "UPDATE";
-                    default:
-                        return "";
                 }
+                return {};
             }
         };
 
