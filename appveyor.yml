@@ -12,10 +12,6 @@ skip_commits:
   - '*.png'
   - '*.sh'
 
-image:
-  - Visual Studio 2015
-  - Visual Studio 2022
-
 # configurations to add to build matrix
 # TODO: MinGW Makefiles and MSYS Makefiles
 configuration:
