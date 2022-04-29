@@ -147,44 +147,5 @@ namespace sqlite_orm {
             ss << " FROM " << quote_identifier(sourceTableName);
             perform_void_exec(db, ss.str());
         }
-
-        bool storage_base::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
-                                                        std::vector<table_xinfo>& storageTableInfo,
-                                                        std::vector<table_xinfo>& dbTableInfo) const {
-            bool notEqual = false;
-
-            //  iterate through storage columns
-            for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
-                ++storageColumnInfoIndex) {
-
-                //  get storage's column info
-                auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                auto& columnName = storageColumnInfo.name;
-
-                //  search for a column in db eith the same name
-                auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
-                    return ti.name == columnName;
-                });
-                if(dbColumnInfoIt != dbTableInfo.end()) {
-                    auto& dbColumnInfo = *dbColumnInfoIt;
-                    auto columnsAreEqual =
-                        dbColumnInfo.name == storageColumnInfo.name &&
-                        dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                        (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
-                        dbColumnInfo.pk == storageColumnInfo.pk &&
-                        (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);
-                    if(!columnsAreEqual) {
-                        notEqual = true;
-                        break;
-                    }
-                    dbTableInfo.erase(dbColumnInfoIt);
-                    storageTableInfo.erase(storageTableInfo.begin() + static_cast<ptrdiff_t>(storageColumnInfoIndex));
-                    --storageColumnInfoIndex;
-                } else {
-                    columnsToAdd.push_back(&storageColumnInfo);
-                }
-            }
-            return notEqual;
-        }
     }
 }
