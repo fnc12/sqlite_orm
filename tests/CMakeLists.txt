@@ -133,6 +133,11 @@ endif()
 
 if (MSVC)
 	add_compile_options(/MP) # Enable multi parrallel build
+	if (MSVC_VERSION LESS_EQUAL 1900)
+		# C4503: decorated name length exceeded
+		# C4800: forcing value to bool (performance warning)
+		add_compile_options(/wd"4503" /wd"4800")
+	endif()
 endif()
 
 target_precompile_headers(unit_tests PRIVATE
