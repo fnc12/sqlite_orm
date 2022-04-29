@@ -13,6 +13,7 @@ skip_commits:
   - '*.sh'
 
 image:
+  - Visual Studio 2015
   - Visual Studio 2022
 
 # configurations to add to build matrix
@@ -27,13 +28,19 @@ platform:
   
 environment:
   matrix:
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
+     SQLITE_ORM_CXX_STANDARD: ""
+
    # using c++14
-   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+     SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
    
    # using C++17 (for std::optional support)
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
    - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
    
    # using C++20 (for concepts support)
+   - APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
    - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
 init:
@@ -44,7 +51,6 @@ init:
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" (set generator="Visual Studio 16 2019" %architecture%)
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2013" (set generator="Visual Studio 12 2013" %architecture%)
 
 install:
   - C:\Tools\vcpkg\vcpkg integrate install
