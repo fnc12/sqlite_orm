@@ -124,27 +124,6 @@ namespace sqlite_orm {
                 }
                 perform_void_exec(db, ss.str());
             }
-#if 0  // jdh
-            /**
-             *  Copies tImpl.table to another table with a given **name**.
-             *  Performs INSERT INTO %name% () SELECT %tImpl.table.column_names% FROM %tImpl.table.name%
-             */
-            template<class I>
-            void copy_table(sqlite3* db,
-                            const std::string& name,
-                            const I& tImpl,
-                            const std::vector<const table_xinfo*>& columnsToIgnore) const;
-
-            /**
-             *  Copies into tImpl.table from another table with a given **name**.
-             *  Performs INSERT INTO %tImpl.table.name% () SELECT %tImpl.table.column_names% FROM %name%
-             */
-            template<class I>
-            void copy_table_from(sqlite3* db,
-                                 const std::string& name,
-                                 const I& tImpl,
-                                 const std::vector<const table_xinfo*>& columnsToIgnore) const;
-#else
             /**
 			*  Copies sourceTableName to another table with name: destinationTableName
 			*  Performs INSERT INTO %destinationTableName% () SELECT %tImpl.table.column_names% FROM %sourceTableName%
@@ -156,7 +135,6 @@ namespace sqlite_orm {
                             const std::string& destinationTableName,
                             const I& tImpl,
                             const std::vector<const table_xinfo*>& columnsToIgnore) const;
-#endif
 
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
@@ -895,43 +873,6 @@ namespace sqlite_orm {
             }
 
           protected:
-#if 0  // jdh  moved to storage_base.h
-            bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
-                                              std::vector<table_xinfo>& storageTableInfo,
-                                              std::vector<table_xinfo>& dbTableInfo) const;
-
-            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
-                std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
-                perform_void_exec(db, ss.str());
-            }
-
-            bool table_exists(const std::string& tableName, sqlite3* db) const {
-                using namespace std::string_literals;
-
-                bool result = false;
-                std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
-                   << " AND name = " << quote_string_literal(tableName);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(
-                    db,
-                    query.c_str(),
-                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
-                        auto& res = *(bool*)data;
-                        if(argc) {
-                            res = !!std::atoi(argv[0]);
-                        }
-                        return 0;
-                    },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
-                return result;
-            }
-#endif
             template<class... Tss, class... Cols>
             sync_schema_result schema_status(const storage_impl<index_t<Cols...>, Tss...>&, sqlite3*, bool) {
                 return sync_schema_result::already_in_sync;
@@ -941,8 +882,9 @@ namespace sqlite_orm {
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
                                              bool preserve,
-                                             bool& attempt_to_preserve) {
-                attempt_to_preserve = true;
+                                             bool* attempt_to_preserve) {
+                if (attempt_to_preserve ) { *attempt_to_preserve = true; }
+                
                 auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);
                 auto res = sync_schema_result::already_in_sync;
 
@@ -993,7 +935,7 @@ namespace sqlite_orm {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
                                         // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
-                                        attempt_to_preserve = false;
+                                        if (attempt_to_preserve) { *attempt_to_preserve = false; };
                                         // res = decltype(res)::dropped_and_recreated_with_loss;
                                         break;
                                     }
@@ -1125,8 +1067,7 @@ namespace sqlite_orm {
                 std::map<std::string, sync_schema_result> result;
                 auto db = con.get();
                 this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
-                    bool attempt_to_preserve = true;
-                    auto schemaStatus = this->schema_status(tableImpl, db, preserve, attempt_to_preserve);
+                    auto schemaStatus = this->schema_status(tableImpl, db, preserve, nullptr);
                     result.insert({tableImpl.table.name, schemaStatus});
                 });
                 return result;
@@ -1142,7 +1083,6 @@ namespace sqlite_orm {
                 return this->table_exists(tableName, con.get());
             }
 
-            // jdh
             using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
             template<class T, class... Args>

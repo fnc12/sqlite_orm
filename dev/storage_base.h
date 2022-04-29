@@ -70,7 +70,7 @@ namespace sqlite_orm {
                 rename_table(db, from, to);
             }
 
-          protected:  // do we want 2 functions with basic same behavior? //jdh
+          protected:
             void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
                 std::stringstream ss;
                 ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
@@ -103,7 +103,7 @@ namespace sqlite_orm {
                 return result;
             }
 
-          public:  // end jdh
+          public:
             /**
              *  sqlite3_changes function.
              */
@@ -487,7 +487,7 @@ namespace sqlite_orm {
              * returning false when there is a transaction in place
              * otherwise true; function is not const because it has to call get_connection()
              */
-            bool get_autocommit() {  //jdh
+            bool get_autocommit() {  
                 auto* db = this->get_connection().get();
                 return sqlite3_get_autocommit(db);
             }
@@ -805,7 +805,7 @@ namespace sqlite_orm {
                 });
                 return res;
             }
-            // jdh moved from storage.h
+
             bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
                                               std::vector<table_xinfo>& storageTableInfo,
                                               std::vector<table_xinfo>& dbTableInfo) const;

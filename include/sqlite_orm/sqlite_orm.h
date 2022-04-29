@@ -18001,8 +18001,9 @@ namespace sqlite_orm {
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
                                              bool preserve,
-                                             bool& attempt_to_preserve) {
-                attempt_to_preserve = true;
+                                             bool* attempt_to_preserve) {
+                if(attempt_to_preserve) *attempt_to_preserve = true;
+
                 auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);
                 auto res = sync_schema_result::already_in_sync;
 
@@ -18053,7 +18054,7 @@ namespace sqlite_orm {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
                                         // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
-                                        attempt_to_preserve = false;
+                                        if (attempt_to_preserve) *attempt_to_preserve = false;
                                         // res = decltype(res)::dropped_and_recreated_with_loss;
                                         break;
                                     }
