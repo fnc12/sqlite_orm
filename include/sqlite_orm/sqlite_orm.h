@@ -17219,18 +17219,9 @@ namespace sqlite_orm {
             }
             template<class I>
             void drop_create_with_loss(const I& tImpl, sqlite3* db) {
-                bool started_local_transaction = false;
-                try {
-                    started_local_transaction = this->start_migration();
-
-                    this->drop_table_internal(tImpl.table.name, db);
-                    this->create_table(db, tImpl.table.name, tImpl);
-
-                    this->commit_migration(started_local_transaction);
-                } catch(const std::exception&) {
-                    this->abort_migration(started_local_transaction);
-                    throw;
-                }
+                // eliminated all transaction handling
+                this->drop_table_internal(tImpl.table.name, db);
+                this->create_table(db, tImpl.table.name, tImpl);
             }
 
             template<class I>
@@ -17252,30 +17243,14 @@ namespace sqlite_orm {
                         ++suffix;
                     } while(true);
                 }
-                bool started_local_transaction = false;
-                try {
-                    started_local_transaction = this->start_migration();
+                // eliminated all transaction handling
+                this->create_table(db, backupTableName, tableImpl);
 
-                    this->create_table(db, backupTableName, tableImpl);
+                this->copy_table(db, tableImpl.table.name, backupTableName, tableImpl, columnsToIgnore);
 
-                    this->copy_table(db, tableImpl.table.name, backupTableName, tableImpl, columnsToIgnore);
+                this->drop_table_internal(tableImpl.table.name, db);
 
-                    this->drop_table_internal(tableImpl.table.name, db);
-
-                    this->rename_table(db, backupTableName, tableImpl.table.name);
-
-                    this->commit_migration(started_local_transaction);
-
-                } catch(const std::exception&) {
-                    this->abort_migration(started_local_transaction);
-                    if(!started_local_transaction) {
-                        // restore DB state
-                        if(this->table_exists(backupTableName)) {
-                            this->drop_table_internal(backupTableName, db);
-                        }
-                    }
-                    throw;
-                }
+                this->rename_table(db, backupTableName, tableImpl.table.name);
             }
 
             template<class O>
