@@ -60,10 +60,6 @@
 #if __has_include(<string_view>)
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #endif
-
-// SFINAE friendly common_type, LWG 2408.
-// Visual C++: since msvc 1911
-#define SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
 #endif
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)

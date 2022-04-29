@@ -1696,98 +1696,65 @@ namespace sqlite_orm {
     /**
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
-    template<
-        class R,
-        class... Args
-#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
-        ,
-        std::enable_if_t<
-            polyfill::negation_v<
-                std::is_same<R, polyfill::detected_t<std::common_type_t, internal::field_type_or_type_t<Args>...>>>,
-            bool> = true
-#endif
-        >
-    internal::built_in_function_t<R, internal::coalesce_string, Args...> coalesce(Args... args) {
-        return {std::make_tuple(std::forward<Args>(args)...)};
-    }
-
-#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
-    /**
-     *  COALESCE(X,Y,...) using common return type of X, Y, ...
-     */
-    template<class... Args>
+    template<class R = void, class... Args>
     auto coalesce(Args... args)
-        -> internal::built_in_function_t<std::common_type_t<internal::field_type_or_type_t<Args>...>,
+        -> internal::built_in_function_t<typename std::conditional_t<  //  choose R or common type
+                                             std::is_void<R>::value,
+                                             std::common_type<internal::field_type_or_type_t<Args>...>,
+                                             polyfill::type_identity<R>>::type,
                                          internal::coalesce_string,
                                          Args...> {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
-#endif
 
     /**
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
-    template<
-        class R,
-        class X,
-        class Y
-#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
-        ,
-        std::enable_if_t<polyfill::negation_v<std::is_same<R,
-                                                           polyfill::detected_t<std::common_type_t,
-                                                                                internal::field_type_or_type_t<X>,
-                                                                                internal::field_type_or_type_t<Y>>>>,
-                         bool> = true
-#endif
-        >
-    internal::built_in_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
-        return {std::make_tuple(std::move(x), std::move(y))};
-    }
-
-#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
-    /**
-     *  IFNULL(X,Y) using common return type of X and Y
-     */
-    template<class X, class Y>
+    template<class R = void, class X, class Y>
     auto ifnull(X x, Y y) -> internal::built_in_function_t<
-        std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+        typename std::conditional_t<  //  choose R or common type
+            std::is_void<R>::value,
+            std::common_type<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>,
+            polyfill::type_identity<R>>::type,
         internal::ifnull_string,
         X,
         Y> {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
-#endif
 
     /**
      *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
      */
-    template<
-        class R,
-        class X,
-        class Y
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-        ,
-        std::enable_if_t<polyfill::negation_v<std::is_same<R,
-                                                           polyfill::detected_t<std::common_type_t,
-                                                                                internal::field_type_or_type_t<X>,
-                                                                                internal::field_type_or_type_t<Y>>>>,
-                         bool> = true
-#endif
-        >
-    internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
-        return {std::make_tuple(std::move(x), std::move(y))};
-    }
-
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */
-    template<class X, class Y>
-    auto nullif(X x, Y y) -> internal::built_in_function_t<
-        std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
-        internal::nullif_string,
-        X,
-        Y> {
+    template<class R = void,
+             class X,
+             class Y,
+             std::enable_if_t<polyfill::disjunction_v<polyfill::negation<std::is_void<R>>,
+                                                      polyfill::is_detected<std::common_type_t,
+                                                                            internal::field_type_or_type_t<X>,
+                                                                            internal::field_type_or_type_t<Y>>>,
+                              bool> = true>
+    auto nullif(X x, Y y) {
+        if constexpr(std::is_void_v<R>) {
+            using F = internal::built_in_function_t<
+                std::optional<std::common_type_t<internal::field_type_or_type_t<X>, internal::field_type_or_type_t<Y>>>,
+                internal::nullif_string,
+                X,
+                Y>;
+
+            return F{std::make_tuple(std::move(x), std::move(y))};
+        } else {
+            using F = internal::built_in_function_t<R, internal::nullif_string, X, Y>;
+
+            return F{std::make_tuple(std::move(x), std::move(y))};
+        }
+    }
+#else
+    template<class R, class X, class Y>
+    internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
 #endif

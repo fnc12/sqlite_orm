@@ -63,6 +63,18 @@ namespace sqlite_orm {
             using remove_cvref_t = typename remove_cvref<T>::type;
 #endif
 
+#if __cpp_lib_type_identity >= 201806L
+            using std::type_identity, std::type_identity_t;
+#else
+            template<class T>
+            struct type_identity {
+                using type = T;
+            };
+
+            template<class T>
+            using type_identity_t = typename type_identity<T>::type;
+#endif
+
 #if 0  // __cpp_lib_detect >= 0L  //  library fundamentals TS v2, [meta.detect]
             using std::nonesuch;
             using std::detector;
