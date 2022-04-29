@@ -56,7 +56,11 @@ __pragma(push_macro("max"))
 #endif
 
 #if __cpp_aggregate_paren_init >= 201902L
-#define SQLITE_ORM_AGGREGATE_PAREN_INIT
+#define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#endif
+
+#if __cpp_concepts >= 201907L
+#define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
 #if __cplusplus >= 201703L  // C++17 or later
@@ -7128,7 +7132,7 @@ namespace sqlite_orm {
         std::string dflt_value;
         int pk = 0;
 
-#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT)
+#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
         table_info(decltype(cid) cid_,
                    decltype(name) name_,
                    decltype(type) type_,
@@ -7477,7 +7481,7 @@ namespace sqlite_orm {
 // #include "xdestroy_handling.h"
 
 #include <type_traits>  // std::integral_constant
-#ifdef __cpp_lib_concepts
+#if __cpp_lib_concepts >= 201907L
 #include <concepts>
 #endif
 
@@ -7494,7 +7498,7 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
     namespace internal {
-#ifdef __cpp_concepts
+#ifdef SQLITE_ORM_CONCEPTS_SUPPORTED
         /**
          *  Constraints a deleter to be state-less.
          */
@@ -7522,7 +7526,7 @@ namespace sqlite_orm {
         };
 #endif
 
-#ifdef __cpp_lib_concepts
+#if __cpp_lib_concepts >= 201907L
         /**
          *  Yield a deleter's function pointer.
          */
@@ -7572,7 +7576,7 @@ namespace sqlite_orm {
         template<typename D>
         using yielded_fn_t = typename yield_fp_of<D>::type;
 
-#ifdef __cpp_lib_concepts
+#if __cpp_lib_concepts >= 201907L
         template<typename D>
         concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
                                             (can_yield_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
@@ -7646,7 +7650,7 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
-#ifdef __cpp_lib_concepts
+#if __cpp_lib_concepts >= 201907L
     /**
      *  Prohibits using a yielded function pointer, which is not of type xdestroy_fn_t.
      *  

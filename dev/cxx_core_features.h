@@ -45,7 +45,11 @@
 #endif
 
 #if __cpp_aggregate_paren_init >= 201902L
-#define SQLITE_ORM_AGGREGATE_PAREN_INIT
+#define SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED
+#endif
+
+#if __cpp_concepts >= 201907L
+#define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
 #if __cplusplus >= 201703L  // C++17 or later
