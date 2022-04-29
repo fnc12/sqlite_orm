@@ -487,7 +487,7 @@ namespace sqlite_orm {
              * returning false when there is a transaction in place
              * otherwise true; function is not const because it has to call get_connection()
              */
-            bool get_autocommit() {  
+            bool get_autocommit() {
                 auto* db = this->get_connection().get();
                 return sqlite3_get_autocommit(db);
             }
