@@ -1926,32 +1926,24 @@ namespace sqlite_orm {
         struct getter_traits<getter_by_ref_const<O, T>> {
             using object_type = O;
             using field_type = T;
-
-            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
         struct getter_traits<getter_by_ref<O, T>> {
             using object_type = O;
             using field_type = T;
-
-            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
         struct getter_traits<getter_by_const_ref_const<O, T>> {
             using object_type = O;
             using field_type = T;
-
-            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
         struct getter_traits<getter_by_const_ref<O, T>> {
             using object_type = O;
             using field_type = T;
-
-            static constexpr bool returns_lvalue = true;
         };
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
@@ -1974,32 +1966,24 @@ namespace sqlite_orm {
         struct getter_traits<getter_by_ref_const_noexcept<O, T>> {
             using object_type = O;
             using field_type = T;
-
-            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
         struct getter_traits<getter_by_ref_noexcept<O, T>> {
             using object_type = O;
             using field_type = T;
-
-            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
         struct getter_traits<getter_by_const_ref_const_noexcept<O, T>> {
             using object_type = O;
             using field_type = T;
-
-            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
         struct getter_traits<getter_by_const_ref_noexcept<O, T>> {
             using object_type = O;
             using field_type = T;
-
-            static constexpr bool returns_lvalue = true;
         };
 #endif
     }
