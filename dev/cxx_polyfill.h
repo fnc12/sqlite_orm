@@ -107,8 +107,10 @@ namespace sqlite_orm {
             SQLITE_ORM_INLINE_VAR constexpr bool is_detected_v = is_detected<Op, Args...>::value;
 #endif
 
-#if 1  // proposed but not pursued                                                                                     \
-    // is_specialization_of: https://github.com/cplusplus/papers/issues/812
+#if 0  // proposed but not pursued
+            using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
+#else
+            // is_specialization_of: https://github.com/cplusplus/papers/issues/812
 
             template<typename Type, template<typename...> class Primary>
             SQLITE_ORM_INLINE_VAR constexpr bool is_specialization_of_v = false;
@@ -121,8 +123,6 @@ namespace sqlite_orm {
 
             template<typename... T>
             using is_specialization_of_t = typename is_specialization_of<T...>::type;
-#else
-            using std::is_specialization_of, std::is_specialization_of_t, std::is_specialization_of_v;
 #endif
 
             template<typename...>

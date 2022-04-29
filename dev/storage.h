@@ -176,7 +176,8 @@ namespace sqlite_orm {
             template<class O>
             void assert_mapped_type() const {
                 using mapped_types_tuples = std::tuple<typename Ts::object_type...>;
-                static_assert(tuple_helper::has_type<O, mapped_types_tuples>::value, "type is not mapped to a storage");
+                static_assert(tuple_helper::tuple_contains_type<O, mapped_types_tuples>::value,
+                              "type is not mapped to a storage");
             }
 
             template<class O>
@@ -185,9 +186,7 @@ namespace sqlite_orm {
                 using table_type = std::decay_t<decltype(tImpl.table)>;
                 using elements_type = std::decay_t<decltype(tImpl.table.elements)>;
 
-                using is_without_rowid = std::integral_constant<bool, table_type::is_without_rowid>;
-
-                static_if<is_without_rowid{}>(
+                static_if<table_type::is_without_rowid>(
                     [](auto&) {},  // all right. it's a "without_rowid" table
                     [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
                         std::ignore = tImpl;
@@ -464,7 +463,7 @@ namespace sqlite_orm {
                      class O,
                      class... Args,
                      class Tuple = std::tuple<Args...>,
-                     typename sfinae = typename std::enable_if<std::tuple_size<Tuple>::value >= 1>::type>
+                     std::enable_if_t<std::tuple_size<Tuple>::value >= 1, bool> = true>
             std::string group_concat(F O::*m, Args&&... args) {
                 return this->group_concat_internal(m, {}, std::forward<Args>(args)...);
             }
@@ -584,12 +583,11 @@ namespace sqlite_orm {
             template<
                 class E,
                 class Ex = polyfill::remove_cvref_t<E>,
-                std::enable_if_t<!is_prepared_statement<Ex>::value && !storage_traits::type_is_mapped<self, Ex>::value,
-                                 bool> = true>
+                std::enable_if_t<!is_prepared_statement_v<Ex> && !storage_traits::is_mapped_v<self, Ex>, bool> = true>
             std::string dump(E&& expression, bool parametrized = false) const {
                 static_assert(is_preparable_v<self, Ex>, "Expression must be a high-level statement");
 
-                decltype(auto) e2 = static_if<is_select<Ex>{}>(
+                decltype(auto) e2 = static_if<is_select_v<Ex>>(
                     [](auto expression) {
                         expression.highest_level = true;
                         return expression;
@@ -609,7 +607,7 @@ namespace sqlite_orm {
              *  Returns a string representation of object of a class mapped to the storage.
              *  Type of string has json-like style.
              */
-            template<class O, satisfies<storage_traits::type_is_mapped, self, O> = true>
+            template<class O, satisfies<storage_traits::is_mapped, self, O> = true>
             std::string dump(const O& object) const {
                 auto& tImpl = this->get_impl<O>();
                 std::stringstream ss;
@@ -1195,7 +1193,7 @@ namespace sqlite_orm {
             }
 
             template<class T,
-                     typename std::enable_if<(is_replace_range<T>::value || is_replace<T>::value)>::type* = nullptr>
+                     std::enable_if_t<polyfill::disjunction_v<is_replace<T>, is_replace_range<T>>, bool> = true>
             void execute(const prepared_statement_t<T>& statement) {
                 using statement_type = std::decay_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
@@ -1225,7 +1223,7 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<is_replace_range<T>{}>(
+                static_if<is_replace_range_v<T>>(
                     [&processObject](auto& statement) {
                         auto& transformer = statement.expression.transformer;
                         std::for_each(  ///
@@ -1243,8 +1241,7 @@ namespace sqlite_orm {
                 perform_step(db, stmt);
             }
 
-            template<class T,
-                     typename std::enable_if<(is_insert_range<T>::value || is_insert<T>::value)>::type* = nullptr>
+            template<class T, std::enable_if_t<polyfill::disjunction_v<is_insert<T>, is_insert_range<T>>, bool> = true>
             int64 execute(const prepared_statement_t<T>& statement) {
                 using statement_type = std::decay_t<decltype(statement)>;
                 using expression_type = typename statement_type::expression_type;
@@ -1274,7 +1271,7 @@ namespace sqlite_orm {
                     });
                 };
 
-                static_if<is_insert_range<T>{}>(
+                static_if<is_insert_range_v<T>>(
                     [&processObject](auto& statement) {
                         auto& transformer = statement.expression.transformer;
                         std::for_each(  ///
@@ -1513,8 +1510,7 @@ namespace sqlite_orm {
                         case SQLITE_ROW: {
                             using table_info_pointer_t = typename std::remove_pointer<decltype(tableInfoPointer)>::type;
                             using table_info_t = std::decay_t<table_info_pointer_t>;
-                            row_extractor_builder<R, storage_traits::type_is_mapped<self, R>::value, table_info_t>
-                                builder;
+                            row_extractor_builder<R, storage_traits::is_mapped_v<self, R>, table_info_t> builder;
                             auto rowExtractor = builder(tableInfoPointer);
                             res.push_back(rowExtractor.extract(stmt, 0));
                         } break;
@@ -1649,7 +1645,7 @@ namespace sqlite_orm {
                         using ForeignKey = std::decay_t<decltype(foreignKey)>;
                         using TargetType = typename ForeignKey::target_type;
 
-                        static_if<std::is_same<TargetType, O>{}>([&storageImpl, this, &foreignKey, &res, &object] {
+                        static_if<std::is_same<TargetType, O>::value>([&storageImpl, this, &foreignKey, &res, &object] {
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
                                << " FROM " << quote_identifier(storageImpl.table.name);

@@ -93,7 +93,7 @@ namespace sqlite_orm {
                 iterate_tuple(this->constraints, [&res](auto& constraint) {
                     using constraint_type = std::decay_t<decltype(constraint)>;
                     if(!res) {
-                        res = is_generated_always<constraint_type>::value;
+                        res = is_generated_always_v<constraint_type>;
                     }
                 });
                 return res;
@@ -145,17 +145,13 @@ namespace sqlite_orm {
 
         }
 
-        /**
-         *  Column traits. Common case.
-         */
         template<class T>
-        struct is_column : public std::false_type {};
-
-        /**
-         *  Column traits. Specialized case case.
-         */
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_v = false;
         template<class O, class T, class... Op>
-        struct is_column<column_t<O, T, Op...>> : public std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_v<column_t<O, T, Op...>> = true;
+
+        template<class T>
+        using is_column = polyfill::bool_constant<is_column_v<T>>;
 
         /**
          *  Column with insertable primary key traits.

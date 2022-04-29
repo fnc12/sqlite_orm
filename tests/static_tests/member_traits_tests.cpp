@@ -11,7 +11,7 @@ TEST_CASE("member_traits_tests") {
     using internal::member_traits;
     using internal::setter_traits;
     using std::is_same;
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cpp_lib_type_trait_variable_templates >= 201510L
     using std::is_same_v;
 #endif
 

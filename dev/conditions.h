@@ -355,6 +355,10 @@ namespace sqlite_orm {
 
         struct in_base {
             bool negative = false;  //  used in not_in
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            in_base(bool negative) : negative{negative} {}
+#endif
         };
 
         /**

@@ -5,6 +5,9 @@
 #include <tuple>  //  std::tuple
 #include <type_traits>  //  std::false_type, std::true_type
 
+#include "start_macros.h"
+#include "cxx_polyfill.h"
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -17,10 +20,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_values : std::false_type {};
-
+        SQLITE_ORM_INLINE_VAR constexpr bool is_values_v = false;
         template<class... Args>
-        struct is_values<values_t<Args...>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_values_v<values_t<Args...>> = true;
+
+        template<class T>
+        using is_values = polyfill::bool_constant<is_values_v<T>>;
 
         template<class T>
         struct dynamic_values_t {

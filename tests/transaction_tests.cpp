@@ -3,11 +3,21 @@
 
 using namespace sqlite_orm;
 
+struct Object {
+    int id = 0;
+    std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+    Object() = default;
+    Object(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
+
+    bool operator==(const Object &other) const {
+        return this->id == other.id && this->name == other.name;
+    }
+};
+
 TEST_CASE("transaction") {
-    struct Object {
-        int id = 0;
-        std::string name;
-    };
     auto filename = "transaction_test.sqlite";
     ::remove(filename);
     auto storage = make_storage(
@@ -24,11 +34,6 @@ TEST_CASE("transaction") {
 }
 
 TEST_CASE("transaction_rollback") {
-    struct Object {
-        int id = 0;
-        std::string name;
-    };
-
     auto storage = make_storage(
         "test_transaction_guard.sqlite",
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
@@ -56,15 +61,6 @@ TEST_CASE("transaction_rollback") {
 }
 
 TEST_CASE("begin_transaction") {
-    struct Object {
-        int id = 0;
-        std::string name;
-
-        bool operator==(const Object &other) const {
-            return this->id == other.id && this->name == other.name;
-        }
-    };
-
     auto storage = make_storage(
         {},
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));
@@ -92,11 +88,6 @@ TEST_CASE("begin_transaction") {
 }
 
 TEST_CASE("Transaction guard") {
-    struct Object {
-        int id = 0;
-        std::string name;
-    };
-
     auto storage = make_storage(
         {},
         make_table("objects", make_column("id", &Object::id, primary_key()), make_column("name", &Object::name)));

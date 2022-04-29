@@ -94,10 +94,10 @@ namespace sqlite_orm {
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(empty_callable<std::string>(),
-                                                                                     [](const auto& tImpl) {
-                                                                                         return tImpl.table.name;
-                                                                                     })(tImpl);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(empty_callable<std::string>(),
+                                                                                          [](const auto& tImpl) {
+                                                                                              return tImpl.table.name;
+                                                                                          })(tImpl);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>

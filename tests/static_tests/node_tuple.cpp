@@ -768,7 +768,11 @@ TEST_CASE("Node tuple") {
         }
 #endif
         SECTION("coalesce") {
-            auto f = char_(10, 20);
+#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
+            auto f = coalesce(10, 20);
+#else
+            auto f = coalesce<int>(10, 20);
+#endif
             using Fun = decltype(f);
             using Tuple = node_tuple_t<Fun>;
             using Expected = tuple<int, int>;

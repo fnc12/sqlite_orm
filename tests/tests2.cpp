@@ -76,6 +76,12 @@ TEST_CASE("insert with generated column") {
         double tax = 0;
         double netPrice = 0;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Product() = default;
+        Product(std::string name, double price, double discount, double tax, double netPrice) :
+            name{move(name)}, price{price}, discount{discount}, tax{tax}, netPrice{netPrice} {}
+#endif
+
         bool operator==(const Product &other) const {
             return this->name == other.name && this->price == other.price && this->discount == other.discount &&
                    this->tax == other.tax && this->netPrice == other.netPrice;
@@ -372,6 +378,11 @@ TEST_CASE("custom functions") {
     }
     struct User {
         int id = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id) : id{id} {}
+#endif
     };
     auto storage = make_storage(path, make_table("users", make_column("id", &User::id)));
     storage.sync_schema();
@@ -494,6 +505,7 @@ TEST_CASE("custom functions") {
     storage.delete_aggregate_function<MultiSum>();
 }
 
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 struct delete_int64 {
     static int64 lastSelectedId;
     static bool deleted;
@@ -644,8 +656,10 @@ TEST_CASE("pointer-passing") {
         }
     }
 }
+#endif
 
 // Wrap std::default_delete in a function
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 template<typename T>
 void delete_default(std::conditional_t<std::is_array<T>::value, std::decay_t<T>, T *> o) noexcept(
     noexcept(std::default_delete<T>{}(o))) {
@@ -658,6 +672,7 @@ using delete_default_t = std::integral_constant<decltype(&delete_default<T>), de
 // Integral function constant variable for default deletion
 template<typename T>
 SQLITE_ORM_INLINE_VAR constexpr delete_default_t<T> delete_default_f{};
+#endif
 
 using free_t = std::integral_constant<decltype(&free), free>;
 SQLITE_ORM_INLINE_VAR constexpr free_t free_f{};
@@ -705,22 +720,23 @@ TEST_CASE("obtain_xdestroy_for") {
         STATIC_REQUIRE(xDestroy3 == free);
         REQUIRE(xDestroy3 == free);
 
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cpp_constexpr >= 201603L  //  constexpr lambda
         // [](void* p){}
         constexpr auto lambda4_1 = [](void *p) {};
         constexpr xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
         STATIC_REQUIRE(xDestroy4_1 == lambda4_1);
         REQUIRE(xDestroy4_1 == lambda4_1);
 #else
+#if !defined(_MSC_VER) || (_MSC_VER >= 1914)  //  conversion of lambda closure to function pointer using `+`
         // [](void* p){}
         auto lambda4_1 = [](void *p) {};
         xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
         REQUIRE(xDestroy4_1 == lambda4_1);
 #endif
+#endif
 
         // [](int* p) { delete p; }
-        // default-constructible non-capturing lambdas everwhere in code are only available since C++20
-#if __cplusplus >= 202002L  // use of C++20 or higher
+#if __cplusplus >= 202002L  //  default-constructible non-capturing lambdas
         constexpr auto lambda4_2 = [](int *p) {
             delete p;
         };
@@ -735,6 +751,7 @@ TEST_CASE("obtain_xdestroy_for") {
         STATIC_REQUIRE(xDestroy5 == xdestroy_proxy<default_delete<int>, int>);
         REQUIRE((xDestroy5 == xdestroy_proxy<default_delete<int>, int>));
 
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         // delete_default_f<int>(int*)
         constexpr xdestroy_fn_t xDestroy6 = obtain_xdestroy_for(delete_default_f<int>, int_nullptr);
         STATIC_REQUIRE(xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>);
@@ -744,7 +761,9 @@ TEST_CASE("obtain_xdestroy_for") {
         constexpr xdestroy_fn_t xDestroy7 = obtain_xdestroy_for(delete_default_f<int>, const_int_nullptr);
         STATIC_REQUIRE(xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>);
         REQUIRE((xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>));
+#endif
 
+#if __cpp_constexpr >= 201907L  //  Trivial default initialization in constexpr functions
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
         STATIC_REQUIRE(xDestroy8 == free);
@@ -759,6 +778,7 @@ TEST_CASE("obtain_xdestroy_for") {
         constexpr xdestroy_fn_t xDestroy10 = obtain_xdestroy_for(xdestroy_holder{nullptr}, const_int_nullptr);
         STATIC_REQUIRE(xDestroy10 == nullptr);
         REQUIRE(xDestroy10 == nullptr);
+#endif
 
         // expressions that do not work
 #if 0

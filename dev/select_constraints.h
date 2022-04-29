@@ -7,6 +7,8 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+#include "start_macros.h"
+#include "cxx_polyfill.h"
 #include "is_base_of_template.h"
 #include "tuple_helper/tuple_filter.h"
 #include "optional_container.h"
@@ -67,14 +69,20 @@ namespace sqlite_orm {
             columns_type columns;
             bool distinct = false;
 
-            static constexpr const int count = std::tuple_size<columns_type>::value;
+            static constexpr int count = std::tuple_size<columns_type>::value;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            columns_t(columns_type columns) : columns{move(columns)} {}
+#endif
         };
 
         template<class T>
-        struct is_columns : std::false_type {};
-
+        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v = false;
         template<class... Args>
-        struct is_columns<columns_t<Args...>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v<columns_t<Args...>> = true;
+
+        template<class T>
+        using is_columns = polyfill::bool_constant<is_columns_v<T>>;
 
         template<class... Args>
         struct set_t {
@@ -137,13 +145,19 @@ namespace sqlite_orm {
             return_type col;
             conditions_type conditions;
             bool highest_level = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            select_t(return_type col, conditions_type conditions) : col{std::move(col)}, conditions{move(conditions)} {}
+#endif
         };
 
         template<class T>
-        struct is_select : std::false_type {};
-
+        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v = false;
         template<class T, class... Args>
-        struct is_select<select_t<T, Args...>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v<select_t<T, Args...>> = true;
+
+        template<class T>
+        using is_select = polyfill::bool_constant<is_select_v<T>>;
 
         /**
          *  Base for UNION, UNION ALL, EXCEPT and INTERSECT
@@ -165,6 +179,10 @@ namespace sqlite_orm {
         struct union_base {
             bool all = false;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            union_base(bool all) : all{all} {}
+#endif
+
             operator std::string() const {
                 if(!this->all) {
                     return "UNION";
@@ -182,10 +200,10 @@ namespace sqlite_orm {
             using left_type = typename compound_operator<L, R>::left_type;
             using right_type = typename compound_operator<L, R>::right_type;
 
-            union_t(left_type l, right_type r, decltype(all) all_) :
-                compound_operator<L, R>(std::move(l), std::move(r)), union_base{all_} {}
+            union_t(left_type l, right_type r, bool all_) :
+                compound_operator<L, R>{std::move(l), std::move(r)}, union_base{all_} {}
 
-            union_t(left_type l, right_type r) : union_t(std::move(l), std::move(r), false) {}
+            union_t(left_type l, right_type r) : union_t{std::move(l), std::move(r), false} {}
         };
 
         struct except_string {

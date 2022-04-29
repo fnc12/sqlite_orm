@@ -32,7 +32,11 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>{})>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_bindable_v<T, polyfill::void_t<decltype(statement_binder<T>())>> = true
+            // note : msvc 14.0 needs the parentheses constructor, otherwise `is_bindable<const char*>` isn't recognised.
+            // The strangest thing is that this is mutually exclusive with `is_printable_v`.
+            ;
+
         template<class T>
         using is_bindable = polyfill::bool_constant<is_bindable_v<T>>;
 
@@ -105,13 +109,14 @@ namespace sqlite_orm {
      *  Specialization for std::string and C-string.
      */
     template<class V>
-    struct statement_binder<
-        V,
-        std::enable_if_t<std::is_base_of<std::string, V>::value || std::is_same<V, const char*>::value
+    struct statement_binder<V,
+                            std::enable_if_t<polyfill::disjunction_v<std::is_base_of<std::string, V>,
+                                                                     std::is_same<V, const char*>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                         || std::is_same_v<V, std::string_view>
+                                                                     ,
+                                                                     std::is_same<V, std::string_view>
 #endif
-                         >> {
+                                                                     >>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);
@@ -144,13 +149,14 @@ namespace sqlite_orm {
 
 #ifndef SQLITE_ORM_OMITS_CODECVT
     template<class V>
-    struct statement_binder<
-        V,
-        std::enable_if_t<std::is_base_of<std::wstring, V>::value || std::is_same<V, const wchar_t*>::value
+    struct statement_binder<V,
+                            std::enable_if_t<polyfill::disjunction_v<std::is_base_of<std::wstring, V>,
+                                                                     std::is_same<V, const wchar_t*>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
-                         || std::is_same_v<V, std::wstring_view>
+                                                                     ,
+                                                                     std::is_same<V, std::wstring_view>
 #endif
-                         >> {
+                                                                     >>> {
 
         int bind(sqlite3_stmt* stmt, int index, const V& value) const {
             auto stringData = this->string_data(value);

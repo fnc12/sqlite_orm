@@ -10,7 +10,7 @@ namespace sqlite_orm {
          * This is because of bug in MSVC, for more information, please visit
          * https://stackoverflow.com/questions/34672441/stdis-base-of-for-template-classes/34672753#34672753
          */
-#if defined(_MSC_VER) && (_MSC_VER < 1920)
+#ifdef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         template<template<typename...> class Base, typename Derived>
         struct is_base_of_template_impl {
             template<typename... Ts>

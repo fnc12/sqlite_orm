@@ -15,6 +15,12 @@ TEST_CASE("Glob") {
         std::string lastName;
         float salary = 0;
         int deptId = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Employee() = default;
+        Employee(int id, std::string firstName, std::string lastName, float salary, int deptId) :
+            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, salary{salary}, deptId{deptId} {}
+#endif
     };
 
     auto storage = make_storage({},

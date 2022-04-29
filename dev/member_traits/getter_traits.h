@@ -13,7 +13,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = false;
+            static constexpr bool returns_lvalue = false;
         };
 
         template<class O, class T>
@@ -21,7 +21,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = false;
+            static constexpr bool returns_lvalue = false;
         };
 
         template<class O, class T>
@@ -29,7 +29,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = true;
+            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
@@ -37,7 +37,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = true;
+            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
@@ -45,7 +45,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = true;
+            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
@@ -53,7 +53,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = true;
+            static constexpr bool returns_lvalue = true;
         };
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
         template<class O, class T>
@@ -61,7 +61,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = false;
+            static constexpr bool returns_lvalue = false;
         };
 
         template<class O, class T>
@@ -69,7 +69,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = false;
+            static constexpr bool returns_lvalue = false;
         };
 
         template<class O, class T>
@@ -77,7 +77,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = true;
+            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
@@ -85,7 +85,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = true;
+            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
@@ -93,7 +93,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = true;
+            static constexpr bool returns_lvalue = true;
         };
 
         template<class O, class T>
@@ -101,7 +101,7 @@ namespace sqlite_orm {
             using object_type = O;
             using field_type = T;
 
-            static constexpr const bool returns_lvalue = true;
+            static constexpr bool returns_lvalue = true;
         };
 #endif
     }

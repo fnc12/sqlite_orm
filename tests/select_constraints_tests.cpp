@@ -215,12 +215,22 @@ TEST_CASE("Exists") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     struct Visit {
         int id = 0;
         int userId = 0;
         time_t time = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Visit() = default;
+        Visit(int id, int userId, time_t time) : id{id}, userId{userId}, time{time} {}
+#endif
     };
 
     auto storage =
@@ -256,12 +266,23 @@ TEST_CASE("Case") {
         std::string firstName;
         std::string lastName;
         std::string country;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string firstName, std::string lastName, std::string country) :
+            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, country{country} {}
+#endif
     };
 
     struct Track {
         int id = 0;
         std::string name;
         long milliseconds = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Track() = default;
+        Track(int id, std::string name, long milliseconds) : id{id}, name{move(name)}, milliseconds{milliseconds} {}
+#endif
     };
 
     auto storage = make_storage({},
@@ -351,6 +372,11 @@ TEST_CASE("Where") {
         int id = 0;
         int age = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, int age, std::string name) : id{id}, age{age}, name{move(name)} {}
+#endif
     };
 
     auto storage = make_storage("",
@@ -388,6 +414,11 @@ TEST_CASE("collate") {
         int id = 0;
         std::string firstName;
 
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string firstName) : id{id}, firstName{move(firstName)} {}
+#endif
+
         bool operator==(const User& user) const {
             return this->id == user.id && this->firstName == user.firstName;
         }
@@ -415,6 +446,12 @@ TEST_CASE("Dynamic order by") {
         std::string firstName;
         std::string lastName;
         long registerTime = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string firstName, std::string lastName, long registerTime) :
+            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, registerTime{registerTime} {}
+#endif
     };
 
     auto storage = make_storage({},

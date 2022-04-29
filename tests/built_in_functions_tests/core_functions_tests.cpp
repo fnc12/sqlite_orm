@@ -8,6 +8,11 @@ TEST_CASE("substr") {
         std::string text;
         int x = 0;
         int y = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Test() = default;
+        Test(std::string text, int x, int y) : text{move(text)}, x{x}, y{x} {}
+#endif
     };
     auto storage = make_storage(
         {},
@@ -20,7 +25,7 @@ TEST_CASE("substr") {
         REQUIRE(rows.front() == "substr");
     }
     {
-        storage.insert(Test{"SQLite substr", 8});
+        storage.insert(Test{"SQLite substr", 8, 1});
         REQUIRE(storage.count<Test>() == 1);
         auto rows = storage.select(substr(&Test::text, &Test::x));
         REQUIRE(rows.size() == 1);
@@ -46,6 +51,11 @@ TEST_CASE("substr") {
 TEST_CASE("zeroblob") {
     struct Test {
         int value = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Test() = default;
+        Test(int value) : value{value} {}
+#endif
     };
 
     auto storage = make_storage({}, make_table("test", make_column("value", &Test::value)));
@@ -170,6 +180,12 @@ TEST_CASE("quote") {
         std::string name;
         int managerId = 0;
         int locationId = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Department() = default;
+        Department(int id, std::string name, int managerId, int locationId) :
+            id{id}, name{move(name)}, managerId{managerId}, locationId{locationId} {}
+#endif
     };
     auto storage = make_storage({},
                                 make_table("departments",
@@ -248,6 +264,12 @@ TEST_CASE("instr") {
         std::string firstName;
         std::string lastName;
         std::string address;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Employee() = default;
+        Employee(int id, std::string firstName, std::string lastName, std::string address) :
+            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, address{move(address)} {}
+#endif
     };
 
     struct sw : alias_tag {
@@ -314,6 +336,12 @@ namespace replace_func_local {
         std::string firstName;
         std::string lastName;
         std::string phone;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Contact() = default;
+        Contact(int id, std::string firstName, std::string lastName, std::string phone) :
+            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, phone{move(phone)} {}
+#endif
     };
 
     bool operator==(const Contact& lhs, const Contact& rhs) {
@@ -494,6 +522,27 @@ TEST_CASE("ifnull") {
         std::unique_ptr<std::string> fax;
         std::string email;
         int supportRepId = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Customer() = default;
+        Customer(int id,
+                 std::string firstName,
+                 std::string lastName,
+                 std::string company,
+                 std::string address,
+                 std::string city,
+                 std::string state,
+                 std::string country,
+                 std::string postalCode,
+                 std::string phone,
+                 decltype(fax) fax,
+                 std::string email,
+                 int supportRepId) :
+            id{id},
+            firstName{move(firstName)}, lastName{move(lastName)}, company{move(company)}, address{move(address)},
+            city{move(city)}, state{move(state)}, country{move(country)}, postalCode{move(postalCode)},
+            phone{move(phone)}, fax{move(fax)}, email{move(email)}, supportRepId{supportRepId} {}
+#endif
     };
     auto storage = make_storage({},
                                 make_table("customers",

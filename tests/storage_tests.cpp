@@ -155,11 +155,21 @@ TEST_CASE("has_dependent_rows") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
     struct Visit {
         int id = 0;
         int userId = 0;
         int date = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Visit() = default;
+        Visit(int id, int userId, time_t time) : id{id}, userId{userId}, date{date} {}
+#endif
     };
     auto storage =
         make_storage({},
@@ -259,7 +269,7 @@ TEST_CASE("issue880") {
                                 foreign_key(&X::fkey_Rendimiento).references(&Rendimiento::id)));
     storage.sync_schema();
 
-    Fondo fondo{5};
+    Fondo fondo;
     storage.has_dependent_rows(fondo);
 
     Inversion inversion;

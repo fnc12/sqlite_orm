@@ -14,6 +14,10 @@ namespace sqlite_orm {
         struct index_base {
             std::string name;
             bool unique = false;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            index_base(std::string name, bool unique) : name{move(name)}, unique{unique} {}
+#endif
         };
 
         template<class... Els>

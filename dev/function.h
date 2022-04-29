@@ -246,6 +246,7 @@ namespace sqlite_orm {
             using func_arg_t = std::tuple_element_t<I, FnArgs>;
             using passed_arg_t = unpacked_arg_t<std::tuple_element_t<I, CallArgs>>;
 
+#ifdef SQLITE_ORM_RELAXED_CONSTEXPR
             constexpr bool valid = validate_pointer_value_type<I,
                                                                std::tuple_element_t<I, FnArgs>,
                                                                unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
@@ -253,6 +254,14 @@ namespace sqlite_orm {
                 (polyfill::is_specialization_of_v<passed_arg_t, pointer_binding>) > {});
 
             return validate_pointer_value_types<FnArgs, CallArgs>(polyfill::index_constant<I - 1>{}) && valid;
+#else
+            return validate_pointer_value_types<FnArgs, CallArgs>(polyfill::index_constant<I - 1>{}) &&
+                   validate_pointer_value_type<I,
+                                               std::tuple_element_t<I, FnArgs>,
+                                               unpacked_arg_t<std::tuple_element_t<I, CallArgs>>>(
+                       polyfill::bool_constant < (polyfill::is_specialization_of_v<func_arg_t, pointer_arg>) ||
+                       (polyfill::is_specialization_of_v<passed_arg_t, pointer_binding>) > {});
+#endif
         }
     }
 

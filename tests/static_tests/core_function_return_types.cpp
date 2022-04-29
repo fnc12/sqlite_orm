@@ -14,6 +14,7 @@ TEST_CASE("Builtin function return types") {
         }
     };
 
+#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
     STATIC_REQUIRE(std::is_same<decltype(coalesce(&User::id, 0))::return_type, int64>::value);
     STATIC_REQUIRE(std::is_same<decltype(coalesce(&User::flag, false))::return_type, bool>::value);
     STATIC_REQUIRE(std::is_same<decltype(coalesce(&User::getFlag, false))::return_type, bool>::value);
@@ -23,6 +24,7 @@ TEST_CASE("Builtin function return types") {
     STATIC_REQUIRE(std::is_same<decltype(ifnull(&User::flag, false))::return_type, bool>::value);
     STATIC_REQUIRE(std::is_same<decltype(ifnull(&User::getFlag, false))::return_type, bool>::value);
     STATIC_REQUIRE(std::is_same<decltype(ifnull(&User::flag, 0))::return_type, int>::value);
+#endif
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     STATIC_REQUIRE(std::is_same_v<decltype(nullif(&User::id, 0))::return_type, std::optional<int64>>);

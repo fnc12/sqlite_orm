@@ -21,18 +21,13 @@ namespace sqlite_orm {
 
         namespace storage_traits {
 
-            template<class S>
-            struct type_is_mapped_impl : std::true_type {};
-
-            template<>
-            struct type_is_mapped_impl<storage_impl<>> : std::false_type {};
-
-            /**
-             *  S - storage
-             *  O - mapped or not mapped data type
-             */
+            template<class S, class O, class SFINAE = void>
+            SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v = false;
             template<class S, class O>
-            struct type_is_mapped : type_is_mapped_impl<storage_find_impl_t<S, O>> {};
+            SQLITE_ORM_INLINE_VAR constexpr bool is_mapped_v<S, O, polyfill::void_t<storage_pick_impl_t<S, O>>> = true;
+
+            template<class S, class O>
+            using is_mapped = polyfill::bool_constant<is_mapped_v<S, O>>;
 
             template<class S>
             struct storage_columns_count_impl : std::integral_constant<int, S::table_type::elements_count> {};

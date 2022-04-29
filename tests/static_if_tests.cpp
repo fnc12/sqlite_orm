@@ -6,7 +6,7 @@ using namespace sqlite_orm;
 TEST_CASE("static_if") {
     {  //  simple true
         auto value = 0;
-        internal::static_if<std::true_type{}>(
+        internal::static_if<std::true_type::value>(
             [&value] {
                 value = 1;
             },
@@ -17,7 +17,7 @@ TEST_CASE("static_if") {
     }
     {  //  simple false
         auto value = 0;
-        internal::static_if<std::false_type{}>(
+        internal::static_if<std::false_type::value>(
             [&value] {
                 value = 1;
             },
@@ -28,7 +28,7 @@ TEST_CASE("static_if") {
     }
     {  //  tuple is empty
         auto value = 0;
-        internal::static_if<std::is_empty<std::tuple<>>{}>(
+        internal::static_if<std::is_empty<std::tuple<>>::value>(
             [&value] {
                 value = 1;
             },
@@ -53,9 +53,9 @@ TEST_CASE("static_if") {
             std::string name;
         };
         auto ch = check(length(&User::name) > 5);
-        STATIC_REQUIRE(!internal::is_column<decltype(ch)>::value);
+        STATIC_REQUIRE(!internal::is_column_v<decltype(ch)>);
         int called = 0;
-        internal::static_if<internal::is_column<decltype(ch)>{}>(
+        internal::static_if<internal::is_column_v<decltype(ch)>>(
             [&called] {
                 called = 1;
             },

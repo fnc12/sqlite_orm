@@ -6,6 +6,8 @@
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::pair
 
+#include "start_macros.h"
+#include "cxx_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
 #include "connection_holder.h"
 #include "select_constraints.h"
@@ -18,6 +20,10 @@ namespace sqlite_orm {
         struct prepared_statement_base {
             sqlite3_stmt* stmt = nullptr;
             connection_ref con;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            prepared_statement_base(sqlite3_stmt* stmt, connection_ref con) : stmt{stmt}, con{std::move(con)} {}
+#endif
 
             ~prepared_statement_base() {
                 if(this->stmt) {
@@ -85,10 +91,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_prepared_statement : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_prepared_statement_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_prepared_statement_v<prepared_statement_t<T>> = true;
 
         template<class T>
-        struct is_prepared_statement<prepared_statement_t<T>> : std::true_type {};
+        using is_prepared_statement = polyfill::bool_constant<is_prepared_statement_v<T>>;
 
         /**
          *  T - type of object to obtain from a database
@@ -194,10 +202,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_insert : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v<insert_t<T>> = true;
 
         template<class T>
-        struct is_insert<insert_t<T>> : std::true_type {};
+        using is_insert = polyfill::bool_constant<is_insert_v<T>>;
 
         template<class T, class... Cols>
         struct insert_explicit {
@@ -216,10 +226,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_replace : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v<replace_t<T>> = true;
 
         template<class T>
-        struct is_replace<replace_t<T>> : std::true_type {};
+        using is_replace = polyfill::bool_constant<is_replace_v<T>>;
 
         template<class It, class L, class O>
         struct insert_range_t {
@@ -233,10 +245,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_insert_range : std::false_type {};
-
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v = false;
         template<class It, class L, class O>
-        struct is_insert_range<insert_range_t<It, L, O>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v<insert_range_t<It, L, O>> = true;
+
+        template<class T>
+        using is_insert_range = polyfill::bool_constant<is_insert_range_v<T>>;
 
         template<class It, class L, class O>
         struct replace_range_t {
@@ -250,10 +264,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_replace_range : std::false_type {};
-
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v = false;
         template<class It, class L, class O>
-        struct is_replace_range<replace_range_t<It, L, O>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v<replace_range_t<It, L, O>> = true;
+
+        template<class T>
+        using is_replace_range = polyfill::bool_constant<is_replace_range_v<T>>;
 
         template<class... Args>
         struct insert_raw_t {
@@ -263,10 +279,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_insert_raw : std::false_type {};
-
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v = false;
         template<class... Args>
-        struct is_insert_raw<insert_raw_t<Args...>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v<insert_raw_t<Args...>> = true;
+
+        template<class T>
+        using is_insert_raw = polyfill::bool_constant<is_insert_raw_v<T>>;
 
         template<class... Args>
         struct replace_raw_t {
@@ -276,10 +294,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_replace_raw : std::false_type {};
-
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v = false;
         template<class... Args>
-        struct is_replace_raw<replace_raw_t<Args...>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v<replace_raw_t<Args...>> = true;
+
+        template<class T>
+        using is_replace_raw = polyfill::bool_constant<is_replace_raw_v<T>>;
 
         struct default_transformer {
 
@@ -304,6 +324,10 @@ namespace sqlite_orm {
 
         struct insert_constraint {
             conflict_action action = conflict_action::abort;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            insert_constraint(conflict_action action) : action{action} {}
+#endif
         };
 
         template<class T>
@@ -314,23 +338,23 @@ namespace sqlite_orm {
     }
 
     inline internal::insert_constraint or_rollback() {
-        return internal::insert_constraint{internal::conflict_action::rollback};
+        return {internal::conflict_action::rollback};
     }
 
     inline internal::insert_constraint or_replace() {
-        return internal::insert_constraint{internal::conflict_action::replace};
+        return {internal::conflict_action::replace};
     }
 
     inline internal::insert_constraint or_ignore() {
-        return internal::insert_constraint{internal::conflict_action::ignore};
+        return {internal::conflict_action::ignore};
     }
 
     inline internal::insert_constraint or_fail() {
-        return internal::insert_constraint{internal::conflict_action::fail};
+        return {internal::conflict_action::fail};
     }
 
     inline internal::insert_constraint or_abort() {
-        return internal::insert_constraint{internal::conflict_action::abort};
+        return {internal::conflict_action::abort};
     }
 
     /**

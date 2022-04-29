@@ -9,18 +9,34 @@ namespace PreparedStatementTests {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     struct Visit {
         int id = 0;
         decltype(User::id) userId;
         long time = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Visit() = default;
+        Visit(int id, int userId, long time) : id{id}, userId{userId}, time{time} {}
+#endif
     };
 
     struct UserAndVisit {
         decltype(User::id) userId;
         decltype(Visit::id) visitId;
         std::string description;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        UserAndVisit() = default;
+        UserAndVisit(decltype(UserAndVisit::userId) userId, decltype(UserAndVisit::visitId), std::string description) :
+            userId{userId}, visitId{visitId}, description{move(description)} {}
+#endif
     };
 
     inline bool operator==(const User& lhs, const User& rhs) {

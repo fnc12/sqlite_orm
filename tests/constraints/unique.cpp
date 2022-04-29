@@ -10,15 +10,32 @@ TEST_CASE("Unique") {
         std::string firstName;
         std::string lastName;
         std::string email;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Contact() = default;
+        Contact(int id, std::string firstName, std::string lastName, std::string email) :
+            id{id}, firstName{move(firstName)}, lastName{move(lastName)}, email{move(email)} {}
+#endif
     };
     struct Shape {
         int id = 0;
         std::string backgroundColor;
         std::string foregroundColor;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Shape() = default;
+        Shape(int id, std::string backgroundColor, std::string foregroundColor) :
+            id{id}, backgroundColor{move(backgroundColor)}, foregroundColor{move(foregroundColor)} {}
+#endif
     };
     struct List {
         int id = 0;
         std::unique_ptr<std::string> email;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        List() = default;
+        List(int id, decltype(email) email) : id{id}, email{move(email)} {}
+#endif
     };
 
     auto storage = make_storage(

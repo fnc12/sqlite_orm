@@ -10,12 +10,20 @@
 #define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
 #endif
 
+#if __cpp_constexpr >= 201304L
+#define SQLITE_ORM_RELAXED_CONSTEXPR
+#endif
+
 #if __cpp_noexcept_function_type >= 201510L
 #define SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
 #endif
 
 #if __cpp_aggregate_bases >= 201603L
 #define SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+#endif
+
+#if __cpp_inline_variables >= 201606L
+#define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #endif
 
 #if __cpp_inline_variables >= 201606L
@@ -48,4 +56,12 @@
 #if __has_include(<string_view>)
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #endif
+
+// SFINAE friendly common_type, LWG 2408.
+// Visual C++: since msvc 1911
+#define SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
+#endif
+
+#if defined(_MSC_VER) && (_MSC_VER < 1920)
+#define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif

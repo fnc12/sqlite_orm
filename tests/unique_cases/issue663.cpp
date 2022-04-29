@@ -78,7 +78,7 @@ TEST_CASE("Issue 663 - pk inside") {
         std::string email;
     };
 
-    auto storage = make_storage("",  ///
+    auto storage = make_storage("",
                                 make_table("users",
                                            make_column("id", &User::id, primary_key()),
                                            make_column("name", &User::name),
@@ -110,7 +110,7 @@ TEST_CASE("Issue 663 - pk outside") {
         std::string email;
     };
 
-    auto storage = make_storage("",  ///
+    auto storage = make_storage("",
                                 make_table("users",
                                            make_column("id", &User::id),
                                            make_column("name", &User::name),
@@ -136,7 +136,7 @@ TEST_CASE("Issue 663 - pk outside, with default") {
     };
 
     auto storage =
-        make_storage("",  ///
+        make_storage("",
                      make_table("users",
                                 make_column("id", &User::id, default_value(default_value_case::defaultID)),
                                 make_column("name", &User::name, default_value(default_value_case::defaultName)),
@@ -157,8 +157,8 @@ TEST_CASE("Issue 663 - pk inside, with default") {
         std::string id;
     };
 
-    auto storage = make_storage("",  ///
-                                make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
+    auto storage =
+        make_storage("", make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
     storage.sync_schema();
 
     SECTION("insert") {
@@ -182,8 +182,8 @@ TEST_CASE("Issue 663 - fail test") {
         std::string id;
     };
 
-    auto storage = make_storage("",  ///
-                                make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
+    auto storage =
+        make_storage("", make_table("users", make_column("id", &User::id, primary_key(), default_value("200"))));
     storage.sync_schema();
 
     std::vector<User> inputUsers = {{"_"}, {"_"}};

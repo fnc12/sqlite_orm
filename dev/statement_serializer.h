@@ -159,24 +159,23 @@ namespace sqlite_orm {
                 return {};
             }
         };
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::conditions_tuple> streaming_conditions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::serialized> streaming_serialized{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::identifier> streaming_identifier{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::identifiers> streaming_identifiers{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::values_placeholders> streaming_values_placeholders{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::table_columns> streaming_table_column_names{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::non_generated_columns>
-            streaming_non_generated_column_names{};
-        SQLITE_ORM_INLINE_VAR constexpr streaming<stream_as::mapped_columns_expressions>
-            streaming_mapped_columns_expressions{};
+        constexpr streaming<stream_as::conditions_tuple> streaming_conditions_tuple{};
+        constexpr streaming<stream_as::actions_tuple> streaming_actions_tuple{};
+        constexpr streaming<stream_as::expressions_tuple> streaming_expressions_tuple{};
+        constexpr streaming<stream_as::dynamic_expressions> streaming_dynamic_expressions{};
+        constexpr streaming<stream_as::serialized> streaming_serialized{};
+        constexpr streaming<stream_as::identifier> streaming_identifier{};
+        constexpr streaming<stream_as::identifiers> streaming_identifiers{};
+        constexpr streaming<stream_as::values_placeholders> streaming_values_placeholders{};
+        constexpr streaming<stream_as::table_columns> streaming_table_column_names{};
+        constexpr streaming<stream_as::non_generated_columns> streaming_non_generated_column_names{};
+        constexpr streaming<stream_as::mapped_columns_expressions> streaming_mapped_columns_expressions{};
 
         // serialize and stream a tuple of condition expressions;
         // space + space-separated
         template<class T, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_conditions_tuple)), T, Ctx> tpl) {
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::conditions_tuple>&, T, Ctx> tpl) {
             const auto& conditions = get<1>(tpl);
             auto& context = get<2>(tpl);
 
@@ -189,7 +188,7 @@ namespace sqlite_orm {
         // serialize and stream a tuple of action expressions;
         // space-separated
         template<class T, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_actions_tuple)), T, Ctx> tpl) {
+        std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::actions_tuple>&, T, Ctx> tpl) {
             const auto& actions = get<1>(tpl);
             auto& context = get<2>(tpl);
 
@@ -204,7 +203,8 @@ namespace sqlite_orm {
         // serialize and stream a tuple of expressions;
         // comma-separated
         template<class T, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_expressions_tuple)), T, Ctx> tpl) {
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::expressions_tuple>&, T, Ctx> tpl) {
             const auto& args = get<1>(tpl);
             auto& context = get<2>(tpl);
 
@@ -219,9 +219,9 @@ namespace sqlite_orm {
         // serialize and stream multi_order_by arguments;
         // comma-separated
         template<class... Os, class Ctx>
-        std::ostream&
-        operator<<(std::ostream& ss,
-                   std::tuple<decltype((streaming_expressions_tuple)), const std::tuple<order_by_t<Os>...>&, Ctx> tpl) {
+        std::ostream& operator<<(
+            std::ostream& ss,
+            std::tuple<const streaming<stream_as::expressions_tuple>&, const std::tuple<order_by_t<Os>...>&, Ctx> tpl) {
             const auto& args = get<1>(tpl);
             auto& context = get<2>(tpl);
 
@@ -236,7 +236,8 @@ namespace sqlite_orm {
         // serialize and stream a vector of expressions;
         // comma-separated
         template<class C, class Ctx>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_dynamic_expressions)), C, Ctx> tpl) {
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::dynamic_expressions>&, C, Ctx> tpl) {
             const auto& args = get<1>(tpl);
             auto& context = get<2>(tpl);
 
@@ -250,7 +251,7 @@ namespace sqlite_orm {
         // stream a vector of already serialized strings;
         // comma-separated
         template<class C>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_serialized)), C> tpl) {
+        std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::serialized>&, C> tpl) {
             const auto& strings = get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
@@ -265,7 +266,8 @@ namespace sqlite_orm {
         // 2. identifier, alias
         // 3. qualifier, identifier, alias
         template<class... Strings>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_identifier)), Strings...> tpl) {
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::identifier>&, Strings...> tpl) {
             stream_identifier(ss, tpl, streaming_identifier.offset_index(std::index_sequence_for<Strings...>{}));
             return ss;
         }
@@ -278,7 +280,7 @@ namespace sqlite_orm {
         //
         // comma-separated
         template<class C>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_identifiers)), C> tpl) {
+        std::ostream& operator<<(std::ostream& ss, std::tuple<const streaming<stream_as::identifiers>&, C> tpl) {
             const auto& identifiers = get<1>(tpl);
 
             constexpr std::array<const char*, 2> sep = {", ", ""};
@@ -292,7 +294,8 @@ namespace sqlite_orm {
 
         // stream placeholders as part of a values clause
         template<class... Ts>
-        std::ostream& operator<<(std::ostream& ss, std::tuple<decltype((streaming_values_placeholders)), Ts...> tpl) {
+        std::ostream& operator<<(std::ostream& ss,
+                                 std::tuple<const streaming<stream_as::values_placeholders>&, Ts...> tpl) {
             const size_t& columnsCount = get<1>(tpl);
             const ptrdiff_t& valuesCount = get<2>(tpl);
 
@@ -321,7 +324,7 @@ namespace sqlite_orm {
         // comma-separated
         template<class Table>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<decltype((streaming_table_column_names)), Table, const bool&> tpl) {
+                                 std::tuple<const streaming<stream_as::table_columns>&, Table, const bool&> tpl) {
             const auto& table = get<1>(tpl);
             const bool& qualified = get<2>(tpl);
 
@@ -338,7 +341,7 @@ namespace sqlite_orm {
         // comma-separated
         template<class Table>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<decltype((streaming_non_generated_column_names)), Table> tpl) {
+                                 std::tuple<const streaming<stream_as::non_generated_columns>&, Table> tpl) {
             const auto& table = get<1>(tpl);
 
             bool first = true;
@@ -358,7 +361,7 @@ namespace sqlite_orm {
         // comma-separated
         template<class T, class Ctx>
         std::ostream& operator<<(std::ostream& ss,
-                                 std::tuple<decltype((streaming_mapped_columns_expressions)), T, Ctx> tpl) {
+                                 std::tuple<const streaming<stream_as::mapped_columns_expressions>&, T, Ctx> tpl) {
             const auto& columns = get<1>(tpl);
             auto& context = get<2>(tpl);
 
@@ -820,8 +823,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T,
-                                    typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct statement_serializer<T, std::enable_if_t<is_base_of_template<T, compound_operator>::value>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -910,7 +912,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct statement_serializer<T, std::enable_if_t<is_base_of_template<T, binary_condition>::value>> {
             using statement_type = T;
 
             template<class Ctx>
@@ -1020,7 +1022,7 @@ namespace sqlite_orm {
                 ss << " ";
                 using args_type = std::tuple<Args...>;
                 const bool theOnlySelect =
-                    std::tuple_size<args_type>::value == 1 && is_select<std::tuple_element_t<0, args_type>>::value;
+                    std::tuple_size<args_type>::value == 1 && is_select_v<std::tuple_element_t<0, args_type>>;
                 if(!theOnlySelect) {
                     ss << "(";
                 }
@@ -1243,7 +1245,7 @@ namespace sqlite_orm {
                         [&constraintsStrings, &primaryKeyIndex, &autoincrementIndex, &tupleIndex, &context](auto& v) {
                             using constraint_type = std::decay_t<decltype(v)>;
                             constraintsStrings.push_back(serialize(v, context));
-                            if(is_primary_key<constraint_type>::value) {
+                            if(is_primary_key_v<constraint_type>) {
                                 primaryKeyIndex = tupleIndex;
                             } else if(std::is_same<autoincrement_t, constraint_type>::value) {
                                 autoincrementIndex = tupleIndex;
@@ -1545,15 +1547,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct statement_serializer<
-            T,
-            typename std::enable_if<is_insert_raw<T>::value || is_replace_raw<T>::value>::type> {
+        struct statement_serializer<T, std::enable_if_t<polyfill::disjunction_v<is_insert_raw<T>, is_replace_raw<T>>>> {
             using statement_type = T;
 
             template<class Ctx>
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 std::stringstream ss;
-                if(is_insert_raw<T>::value) {
+                if(is_insert_raw_v<T>) {
                     ss << "INSERT";
                 } else {
                     ss << "REPLACE";
@@ -1561,12 +1561,12 @@ namespace sqlite_orm {
                 iterate_tuple(statement.args, [&context, &ss](auto& value) {
                     using value_type = std::decay_t<decltype(value)>;
                     ss << ' ';
-                    if(is_columns<value_type>::value) {
+                    if(is_columns_v<value_type>) {
                         auto newContext = context;
                         newContext.skip_table_name = true;
                         newContext.use_parentheses = true;
                         ss << serialize(value, newContext);
-                    } else if(is_values<value_type>::value || is_select<value_type>::value) {
+                    } else if(is_values_v<value_type> || is_select_v<value_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(value, newContext);
@@ -2095,7 +2095,7 @@ namespace sqlite_orm {
                 ss << " BEGIN ";
                 iterate_tuple(statement.elements, [&ss, &context](auto& element) {
                     using element_type = std::decay_t<decltype(element)>;
-                    if(is_select<element_type>::value) {
+                    if(is_select_v<element_type>) {
                         auto newContext = context;
                         newContext.use_parentheses = false;
                         ss << serialize(element, newContext);

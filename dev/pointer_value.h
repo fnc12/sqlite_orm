@@ -16,7 +16,7 @@ namespace sqlite_orm {
      * 
      *  Template parameters:
      *    - P: The value type, possibly const-qualified.
-     *    - T: An integral constant string denoting the pointer type, e.g. carray_pvt_name.
+     *    - T: An integral constant string denoting the pointer type, e.g. `carray_pvt_name`.
      *
      */
     template<typename P, typename T>

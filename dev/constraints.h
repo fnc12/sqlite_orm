@@ -6,6 +6,8 @@
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
+#include "start_macros.h"
+#include "cxx_polyfill.h"
 #include "collate_argument.h"
 #include "error_code.h"
 #include "table_type.h"
@@ -309,6 +311,9 @@ namespace sqlite_orm {
 
         struct collate_constraint_t {
             collate_argument argument = collate_argument::binary;
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            collate_constraint_t(collate_argument argument) : argument{argument} {}
+#endif
 
             operator std::string() const {
                 return "COLLATE " + this->string_from_collate_argument(this->argument);
@@ -343,6 +348,10 @@ namespace sqlite_orm {
 
             bool full = true;
             storage_type storage = storage_type::not_specified;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            basic_generated_always(bool full, storage_type storage) : full{full}, storage{storage} {}
+#endif
         };
 
         template<class T>
@@ -364,10 +373,12 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_generated_always : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = false;
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v<generated_always_t<T>> = true;
 
         template<class T>
-        struct is_generated_always<generated_always_t<T>> : std::true_type {};
+        using is_generated_always = polyfill::bool_constant<is_generated_always_v<T>>;
 
         template<class T>
         struct is_constraint : std::false_type {};
@@ -481,29 +492,21 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /**
-         *  FOREIGN KEY traits. Common case
-         */
         template<class T>
-        struct is_foreign_key : std::false_type {};
-
-        /**
-         *  FOREIGN KEY traits. Specialized case
-         */
+        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = false;
         template<class C, class R>
-        struct is_foreign_key<internal::foreign_key_t<C, R>> : std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v<foreign_key_t<C, R>> = true;
 
-        /**
-         *  PRIMARY KEY traits. Common case
-         */
         template<class T>
-        struct is_primary_key : public std::false_type {};
+        using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
 
-        /**
-         *  PRIMARY KEY traits. Specialized case
-         */
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = false;
         template<class... Cs>
-        struct is_primary_key<internal::primary_key_t<Cs...>> : public std::true_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v<primary_key_t<Cs...>> = true;
+
+        template<class T>
+        using is_primary_key = polyfill::bool_constant<is_primary_key_v<T>>;
 
         /**
          * PRIMARY KEY INSERTABLE traits.

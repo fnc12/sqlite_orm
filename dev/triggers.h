@@ -202,6 +202,10 @@ namespace sqlite_orm {
 
             type_t type = type_t::ignore;
             std::string message;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            raise_t(type_t type, std::string message) : type{type}, message{move(message)} {}
+#endif
         };
 
         template<class T>

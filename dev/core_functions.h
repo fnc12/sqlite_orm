@@ -1696,11 +1696,22 @@ namespace sqlite_orm {
     /**
      *  COALESCE(X,Y,...) function https://www.sqlite.org/lang_corefunc.html#coalesce
      */
-    template<class R, class... Args>
+    template<
+        class R,
+        class... Args
+#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
+        ,
+        std::enable_if_t<
+            polyfill::negation_v<
+                std::is_same<R, polyfill::detected_t<std::common_type_t, internal::field_type_or_type_t<Args>...>>>,
+            bool> = true
+#endif
+        >
     internal::built_in_function_t<R, internal::coalesce_string, Args...> coalesce(Args... args) {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
 
+#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
     /**
      *  COALESCE(X,Y,...) using common return type of X, Y, ...
      */
@@ -1711,15 +1722,29 @@ namespace sqlite_orm {
                                          Args...> {
         return {std::make_tuple(std::forward<Args>(args)...)};
     }
+#endif
 
     /**
      *  IFNULL(X,Y) function https://www.sqlite.org/lang_corefunc.html#ifnull
      */
-    template<class R, class X, class Y>
+    template<
+        class R,
+        class X,
+        class Y
+#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
+        ,
+        std::enable_if_t<polyfill::negation_v<std::is_same<R,
+                                                           polyfill::detected_t<std::common_type_t,
+                                                                                internal::field_type_or_type_t<X>,
+                                                                                internal::field_type_or_type_t<Y>>>>,
+                         bool> = true
+#endif
+        >
     internal::built_in_function_t<R, internal::ifnull_string, X, Y> ifnull(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
 
+#ifdef SQLITE_ORM_SFINAE_FRIENDLY_COMMON_TYPE
     /**
      *  IFNULL(X,Y) using common return type of X and Y
      */
@@ -1731,11 +1756,24 @@ namespace sqlite_orm {
         Y> {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
+#endif
 
     /**
      *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
      */
-    template<class R, class X, class Y>
+    template<
+        class R,
+        class X,
+        class Y
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+        ,
+        std::enable_if_t<polyfill::negation_v<std::is_same<R,
+                                                           polyfill::detected_t<std::common_type_t,
+                                                                                internal::field_type_or_type_t<X>,
+                                                                                internal::field_type_or_type_t<Y>>>>,
+                         bool> = true
+#endif
+        >
     internal::built_in_function_t<R, internal::nullif_string, X, Y> nullif(X x, Y y) {
         return {std::make_tuple(std::move(x), std::move(y))};
     }
