@@ -183,7 +183,6 @@ namespace sqlite_orm {
                         ++suffix;
                     } while(true);
                 }
-                // eliminated all transaction handling
                 this->create_table(db, backupTableName, tableImpl);
 
                 this->copy_table(db, tableImpl.table.name, backupTableName, tableImpl, columnsToIgnore);
@@ -915,7 +914,6 @@ namespace sqlite_orm {
                                         if(attempt_to_preserve) {
                                             *attempt_to_preserve = false;
                                         };
-                                        // res = decltype(res)::dropped_and_recreated_with_loss;
                                         break;
                                     }
                                 }

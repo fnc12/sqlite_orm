@@ -100,7 +100,7 @@ namespace sqlite_orm {
                         } else {
                             this->drop_create_with_loss(tImpl, db);
                         }
-                        res = schema_stat;  // decltype(res)::dropped_and_recreated;
+                        res = schema_stat;
                     }
                 }
             }
@@ -148,9 +148,9 @@ namespace sqlite_orm {
             perform_void_exec(db, ss.str());
         }
 
-        inline bool storage_base::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
-                                                               std::vector<table_xinfo>& storageTableInfo,
-                                                               std::vector<table_xinfo>& dbTableInfo) const {
+        bool storage_base::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                                        std::vector<table_xinfo>& storageTableInfo,
+                                                        std::vector<table_xinfo>& dbTableInfo) const {
             bool notEqual = false;
 
             //  iterate through storage columns

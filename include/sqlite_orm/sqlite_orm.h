@@ -13468,7 +13468,8 @@ namespace sqlite_orm {
              * Rename table named `from` to `to`.
              */
             void rename_table(const std::string& from, const std::string& to) {
-                auto* db = get_connection().get();
+                auto con = get_connection();
+                auto db = con.get();
                 rename_table(db, from, to);
             }
 
@@ -13890,7 +13891,8 @@ namespace sqlite_orm {
              * otherwise true; function is not const because it has to call get_connection()
              */
             bool get_autocommit() {
-                auto* db = this->get_connection().get();
+                auto con = this->get_connection();
+                auto db = con.get();
                 return sqlite3_get_autocommit(db);
             }
 
@@ -14169,27 +14171,6 @@ namespace sqlite_orm {
                     return storage._busy_handler(triesCount);
                 } else {
                     return 0;
-                }
-            }
-
-            // migration internal API
-            // returns whether we started a transaction in this function
-            bool start_migration() {
-                if(this->get_autocommit())  // true if not inside transaction: start one
-                {
-                    this->begin_exclusive_transaction();
-                    return true;
-                }
-                return false;
-            }
-            void commit_migration(bool started_local_trans) {
-                if(started_local_trans) {
-                    this->commit();
-                }
-            }
-            void abort_migration(bool started_local_trans) {
-                if(started_local_trans) {
-                    this->rollback();
                 }
             }
 
@@ -17243,7 +17224,6 @@ namespace sqlite_orm {
                         ++suffix;
                     } while(true);
                 }
-                // eliminated all transaction handling
                 this->create_table(db, backupTableName, tableImpl);
 
                 this->copy_table(db, tableImpl.table.name, backupTableName, tableImpl, columnsToIgnore);
@@ -17975,7 +17955,6 @@ namespace sqlite_orm {
                                         if(attempt_to_preserve) {
                                             *attempt_to_preserve = false;
                                         };
-                                        // res = decltype(res)::dropped_and_recreated_with_loss;
                                         break;
                                     }
                                 }
@@ -19648,7 +19627,7 @@ namespace sqlite_orm {
                         } else {
                             this->drop_create_with_loss(tImpl, db);
                         }
-                        res = schema_stat;  // decltype(res)::dropped_and_recreated;
+                        res = schema_stat;
                     }
                 }
             }
@@ -19696,9 +19675,9 @@ namespace sqlite_orm {
             perform_void_exec(db, ss.str());
         }
 
-        inline bool storage_base::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
-                                                               std::vector<table_xinfo>& storageTableInfo,
-                                                               std::vector<table_xinfo>& dbTableInfo) const {
+        bool storage_base::calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                                        std::vector<table_xinfo>& storageTableInfo,
+                                                        std::vector<table_xinfo>& dbTableInfo) const {
             bool notEqual = false;
 
             //  iterate through storage columns
