@@ -10,6 +10,7 @@
 #include "type_traits.h"
 #include "type_is_nullable.h"
 #include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_filter.h"
 #include "constraints.h"
 #include "member_traits/member_traits.h"
 
@@ -167,7 +168,8 @@ namespace sqlite_orm {
     template<class O, class T, internal::satisfies<std::is_member_object_pointer, T O::*> = true, class... Op>
     internal::column_t<O, T, T O::*, internal::empty_setter, Op...>
     make_column(std::string name, T O::*m, Op... constraints) {
-        static_assert(internal::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
+                          std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {move(name), m, {}, std::make_tuple(constraints...)};
     }
@@ -189,7 +191,8 @@ namespace sqlite_orm {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(internal::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
+                          std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {move(name), getter, setter, std::make_tuple(constraints...)};
     }
@@ -212,7 +215,8 @@ namespace sqlite_orm {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(internal::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
+                          std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {move(name), getter, setter, std::make_tuple(constraints...)};
     }

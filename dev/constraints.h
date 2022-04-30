@@ -392,18 +392,6 @@ namespace sqlite_orm {
 #endif
                                                     >;
 
-        template<class... Args>
-        struct constraints_size;
-
-        template<>
-        struct constraints_size<> {
-            static constexpr int value = 0;
-        };
-
-        template<class H, class... Args>
-        struct constraints_size<H, Args...> {
-            static constexpr int value = is_constraint<H>::value + constraints_size<Args...>::value;
-        };
     }
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
