@@ -17,8 +17,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct storage_impl_base {};
-
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
@@ -42,7 +40,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct storage_impl<> : storage_impl_base {
+        struct storage_impl<> {
 
             template<class L>
             void for_each(const L&) const {}

@@ -123,11 +123,11 @@ namespace sqlite_orm {
             tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
                 auto& columnName = c.name;
                 auto columnToIgnoreIt =
-                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfoPointer) {
-                        return columnName == tableInfoPointer->name;
+                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfo) {
+                        return columnName == tableInfo->name;
                     });
                 if(columnToIgnoreIt == columnsToIgnore.end()) {
-                    columnNames.emplace_back(columnName);
+                    columnNames.push_back(columnName);
                 }
             });
             auto columnNamesCount = columnNames.size();

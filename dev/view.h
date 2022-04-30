@@ -49,7 +49,7 @@ namespace sqlite_orm {
 
             iterator_t<self> begin() {
                 sqlite3_stmt* stmt = nullptr;
-                auto db = this->connection.get();
+                sqlite3* db = this->connection.get();
                 using context_t = serializer_context<typename storage_type::impl_type>;
                 context_t context{obtain_const_impl(this->storage)};
                 context.skip_table_name = false;

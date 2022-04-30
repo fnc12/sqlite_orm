@@ -7074,6 +7074,7 @@ namespace sqlite_orm {
         int pk = 0;
         int hidden = 0;  // different than 0 => generated_always_as() - TODO verify
 
+#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
         table_xinfo(decltype(cid) cid_,
                     decltype(name) name_,
                     decltype(type) type_,
@@ -7084,6 +7085,7 @@ namespace sqlite_orm {
             cid(cid_),
             name(move(name_)), type(move(type_)), notnull(notnull_), dflt_value(move(dflt_value_)),
             pk(pk_), hidden{hidden_} {}
+#endif
     };
 }
 #pragma once
@@ -10404,8 +10406,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct storage_impl_base {};
-
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
@@ -10429,7 +10429,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct storage_impl<> : storage_impl_base {
+        struct storage_impl<> {
 
             template<class L>
             void for_each(const L&) const {}
@@ -10849,7 +10849,7 @@ namespace sqlite_orm {
                             this->stmt.reset();
                             break;
                         default: {
-                            auto db = this->view->connection.get();
+                            sqlite3* db = this->view->connection.get();
                             throw_translated_sqlite_error(db);
                         }
                     }
@@ -12626,7 +12626,7 @@ namespace sqlite_orm {
 
             iterator_t<self> begin() {
                 sqlite3_stmt* stmt = nullptr;
-                auto db = this->connection.get();
+                sqlite3* db = this->connection.get();
                 using context_t = serializer_context<typename storage_type::impl_type>;
                 context_t context{obtain_const_impl(this->storage)};
                 context.skip_table_name = false;
@@ -12797,7 +12797,7 @@ namespace sqlite_orm {
             // will include generated columns in response as opposed to table_info
             std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
                 auto connection = this->get_connection();
-                auto db = connection.get();
+                sqlite3* db = connection.get();
 
                 std::vector<sqlite_orm::table_xinfo> result;
                 auto query = "PRAGMA table_xinfo(" + quote_identifier(tableName) + ")";
@@ -12813,7 +12813,7 @@ namespace sqlite_orm {
                             std::string type = argv[index++];
                             bool notnull = !!std::atoi(argv[index++]);
                             std::string dflt_value = argv[index] ? argv[index] : "";
-                            index++;
+                            ++index;
                             auto pk = std::atoi(argv[index++]);
                             auto hidden = std::atoi(argv[index++]);
                             res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
@@ -13450,8 +13450,7 @@ namespace sqlite_orm {
              */
             void rename_table(const std::string& from, const std::string& to) {
                 auto con = get_connection();
-                auto db = con.get();
-                rename_table(db, from, to);
+                rename_table(con.get(), from, to);
             }
 
           protected:
@@ -13468,7 +13467,7 @@ namespace sqlite_orm {
                 bool result = false;
                 std::stringstream ss;
                 ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
-                   << " AND name = " << quote_string_literal(tableName);
+                   << " AND name = " << quote_string_literal(tableName) << std::flush;
                 auto query = ss.str();
                 auto rc = sqlite3_exec(
                     db,
@@ -13868,8 +13867,7 @@ namespace sqlite_orm {
              */
             bool get_autocommit() {
                 auto con = this->get_connection();
-                auto db = con.get();
-                return sqlite3_get_autocommit(db);
+                return sqlite3_get_autocommit(con.get());
             }
 
             int busy_handler(std::function<int(int)> handler) {
@@ -17228,13 +17226,13 @@ namespace sqlite_orm {
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
                 auto backupTableName = tableImpl.table.name + "_backup";
-                if(table_exists(backupTableName, db)) {
+                if(this->table_exists(backupTableName, db)) {
                     int suffix = 1;
                     do {
                         std::stringstream ss;
                         ss << suffix << std::flush;
                         auto anotherBackupTableName = backupTableName + ss.str();
-                        if(!table_exists(anotherBackupTableName, db)) {
+                        if(!this->table_exists(anotherBackupTableName, db)) {
                             backupTableName = move(anotherBackupTableName);
                             break;
                         }
@@ -17911,7 +17909,7 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;
 
                 //  first let's see if table with such name exists..
-                auto gottaCreateTable = !table_exists(tImpl.table.name, db);
+                auto gottaCreateTable = !this->table_exists(tImpl.table.name, db);
                 if(!gottaCreateTable) {
 
                     //  get table info provided in `make_table` call..
@@ -18017,10 +18015,10 @@ namespace sqlite_orm {
             template<class C>
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                ss << serialize(column, context) << std::flush;
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN " << serialize(column, context)
+                   << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
@@ -19512,27 +19510,6 @@ namespace sqlite_orm {
     }
 }
 
-// #include "implementations/storage_impl_definitions.h"
-/** @file Mainly existing to disentangle implementation details from circular and cross dependencies
- *  (e.g. column_t -> default_value_extractor -> serializer_context -> storage_impl -> table_t -> column_t)
- *  this file is also used to provide definitions of interface methods 'hitting the database'.
- */
-
-#include <sqlite3.h>
-#include <algorithm>  //  std::find_if
-#include <sstream>  //  std::stringstream
-#include <cstdlib>  //  std::atoi
-
-// #include "../error_code.h"
-
-// #include "../storage_impl.h"
-
-// #include "../util.h"
-
-namespace sqlite_orm {
-    namespace internal {}
-}
-
 // #include "implementations/storage_definitions.h"
 /** @file Mainly existing to disentangle implementation details from circular and cross dependencies
  *  this file is also used to separate implementation details from the main header file,
@@ -19661,11 +19638,11 @@ namespace sqlite_orm {
             tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
                 auto& columnName = c.name;
                 auto columnToIgnoreIt =
-                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfoPointer) {
-                        return columnName == tableInfoPointer->name;
+                    std::find_if(columnsToIgnore.begin(), columnsToIgnore.end(), [&columnName](auto tableInfo) {
+                        return columnName == tableInfo->name;
                     });
                 if(columnToIgnoreIt == columnsToIgnore.end()) {
-                    columnNames.emplace_back(columnName);
+                    columnNames.push_back(columnName);
                 }
             });
             auto columnNamesCount = columnNames.size();

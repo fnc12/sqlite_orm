@@ -35,6 +35,7 @@ namespace sqlite_orm {
         int pk = 0;
         int hidden = 0;  // different than 0 => generated_always_as() - TODO verify
 
+#if !defined(SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED) || !defined(SQLITE_ORM_AGGREGATE_PAREN_INIT_SUPPORTED)
         table_xinfo(decltype(cid) cid_,
                     decltype(name) name_,
                     decltype(type) type_,
@@ -45,5 +46,6 @@ namespace sqlite_orm {
             cid(cid_),
             name(move(name_)), type(move(type_)), notnull(notnull_), dflt_value(move(dflt_value_)),
             pk(pk_), hidden{hidden_} {}
+#endif
     };
 }

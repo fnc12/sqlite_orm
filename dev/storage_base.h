@@ -70,8 +70,7 @@ namespace sqlite_orm {
              */
             void rename_table(const std::string& from, const std::string& to) {
                 auto con = get_connection();
-                auto db = con.get();
-                rename_table(db, from, to);
+                rename_table(con.get(), from, to);
             }
 
           protected:
@@ -87,7 +86,7 @@ namespace sqlite_orm {
                 bool result = false;
                 std::stringstream ss;
                 ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
-                   << " AND name = " << quote_string_literal(tableName);
+                   << " AND name = " << quote_string_literal(tableName) << std::flush;
                 auto query = ss.str();
                 auto rc = sqlite3_exec(
                     db,
@@ -487,8 +486,7 @@ namespace sqlite_orm {
              */
             bool get_autocommit() {
                 auto con = this->get_connection();
-                auto db = con.get();
-                return sqlite3_get_autocommit(db);
+                return sqlite3_get_autocommit(con.get());
             }
 
             int busy_handler(std::function<int(int)> handler) {

@@ -172,13 +172,13 @@ namespace sqlite_orm {
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
                 auto backupTableName = tableImpl.table.name + "_backup";
-                if(table_exists(backupTableName, db)) {
+                if(this->table_exists(backupTableName, db)) {
                     int suffix = 1;
                     do {
                         std::stringstream ss;
                         ss << suffix << std::flush;
                         auto anotherBackupTableName = backupTableName + ss.str();
-                        if(!table_exists(anotherBackupTableName, db)) {
+                        if(!this->table_exists(anotherBackupTableName, db)) {
                             backupTableName = move(anotherBackupTableName);
                             break;
                         }
@@ -855,7 +855,7 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;
 
                 //  first let's see if table with such name exists..
-                auto gottaCreateTable = !table_exists(tImpl.table.name, db);
+                auto gottaCreateTable = !this->table_exists(tImpl.table.name, db);
                 if(!gottaCreateTable) {
 
                     //  get table info provided in `make_table` call..
@@ -961,10 +961,10 @@ namespace sqlite_orm {
             template<class C>
             void add_column(const std::string& tableName, const C& column, sqlite3* db) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN ";
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                ss << serialize(column, context) << std::flush;
+                ss << "ALTER TABLE " << quote_identifier(tableName) << " ADD COLUMN " << serialize(column, context)
+                   << std::flush;
                 perform_void_exec(db, ss.str());
             }
 

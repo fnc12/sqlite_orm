@@ -121,7 +121,7 @@ namespace sqlite_orm {
             // will include generated columns in response as opposed to table_info
             std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
                 auto connection = this->get_connection();
-                auto db = connection.get();
+                sqlite3* db = connection.get();
 
                 std::vector<sqlite_orm::table_xinfo> result;
                 auto query = "PRAGMA table_xinfo(" + quote_identifier(tableName) + ")";
@@ -137,7 +137,7 @@ namespace sqlite_orm {
                             std::string type = argv[index++];
                             bool notnull = !!std::atoi(argv[index++]);
                             std::string dflt_value = argv[index] ? argv[index] : "";
-                            index++;
+                            ++index;
                             auto pk = std::atoi(argv[index++]);
                             auto hidden = std::atoi(argv[index++]);
                             res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
