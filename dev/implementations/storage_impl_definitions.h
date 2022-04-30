@@ -43,7 +43,8 @@ namespace sqlite_orm {
         inline void
         storage_impl_base::rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
             std::stringstream ss;
-            ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
+            ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName)
+               << std::flush;
             perform_void_exec(db, ss.str());
         }
 
