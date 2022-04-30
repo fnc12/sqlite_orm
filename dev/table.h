@@ -35,8 +35,8 @@ namespace sqlite_orm {
             using object_type = T;
             using elements_type = std::tuple<Cs...>;
 
-            static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
-            static constexpr const bool is_without_rowid = WithoutRowId;
+            static constexpr int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
+            static constexpr bool is_without_rowid = WithoutRowId;
 
             elements_type elements;
 

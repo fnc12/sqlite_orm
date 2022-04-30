@@ -9310,7 +9310,7 @@ namespace sqlite_orm {
             struct column_foreign_keys_count<foreign_key_t<A, B>, O> {
                 using target_type = typename foreign_key_t<A, B>::target_type;
 
-                static constexpr const int value = std::is_same<O, target_type>::value ? 1 : 0;
+                static constexpr int value = std::is_same<O, target_type>::value ? 1 : 0;
             };
 
             /**
@@ -9322,12 +9322,12 @@ namespace sqlite_orm {
 
             template<class O>
             struct table_foreign_keys_count_impl<O> {
-                static constexpr const int value = 0;
+                static constexpr int value = 0;
             };
 
             template<class O, class H, class... Tail>
             struct table_foreign_keys_count_impl<O, H, Tail...> {
-                static constexpr const int value =
+                static constexpr int value =
                     column_foreign_keys_count<H, O>::value + table_foreign_keys_count_impl<O, Tail...>::value;
             };
 
@@ -9342,7 +9342,7 @@ namespace sqlite_orm {
             struct table_foreign_keys_count<table_t<T, false, Cs...>, O> {
                 using table_type = table_t<T, false, Cs...>;
 
-                static constexpr const int value = table_foreign_keys_count_impl<O, Cs...>::value;
+                static constexpr int value = table_foreign_keys_count_impl<O, Cs...>::value;
             };
 
             /**
@@ -9357,8 +9357,8 @@ namespace sqlite_orm {
 
             template<class H, class... Ts, class O>
             struct storage_foreign_keys_count_impl<storage_impl<H, Ts...>, O> {
-                static constexpr const int value = table_foreign_keys_count<H, O>::value +
-                                                   storage_foreign_keys_count_impl<storage_impl<Ts...>, O>::value;
+                static constexpr int value = table_foreign_keys_count<H, O>::value +
+                                             storage_foreign_keys_count_impl<storage_impl<Ts...>, O>::value;
             };
 
             /**
@@ -9370,7 +9370,7 @@ namespace sqlite_orm {
             struct storage_foreign_keys_count {
                 using impl_type = typename S::impl_type;
 
-                static constexpr const int value = storage_foreign_keys_count_impl<impl_type, O>::value;
+                static constexpr int value = storage_foreign_keys_count_impl<impl_type, O>::value;
             };
 
             /**
@@ -10194,8 +10194,8 @@ namespace sqlite_orm {
             using object_type = T;
             using elements_type = std::tuple<Cs...>;
 
-            static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
-            static constexpr const bool is_without_rowid = WithoutRowId;
+            static constexpr int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
+            static constexpr bool is_without_rowid = WithoutRowId;
 
             elements_type elements;
 
@@ -17733,7 +17733,7 @@ namespace sqlite_orm {
 
             template<class O, class... Cols>
             int insert(const O& o, columns_t<Cols...> cols) {
-                constexpr const size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
+                constexpr size_t colsCount = std::tuple_size<std::tuple<Cols...>>::value;
                 static_assert(colsCount > 0, "Use insert or replace with 1 argument instead");
                 this->assert_mapped_type<O>();
                 auto statement = this->prepare(sqlite_orm::insert(std::ref(o), std::move(cols)));
