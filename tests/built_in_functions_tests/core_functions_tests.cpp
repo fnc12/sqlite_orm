@@ -11,7 +11,7 @@ TEST_CASE("substr") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Test() = default;
-        Test(std::string text, int x, int y) : text{move(text)}, x{x}, y{x} {}
+        Test(std::string text, int x, int y) : text{move(text)}, x{x}, y{y} {}
 #endif
     };
     auto storage = make_storage(

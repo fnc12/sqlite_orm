@@ -23,7 +23,7 @@ namespace PreparedStatementTests {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Visit() = default;
-        Visit(int id, int userId, long time) : id{id}, userId{userId}, time{time} {}
+        Visit(int id, decltype(Visit::userId) userId, long time) : id{id}, userId{userId}, time{time} {}
 #endif
     };
 
@@ -34,8 +34,11 @@ namespace PreparedStatementTests {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         UserAndVisit() = default;
-        UserAndVisit(decltype(UserAndVisit::userId) userId, decltype(UserAndVisit::visitId), std::string description) :
-            userId{userId}, visitId{visitId}, description{move(description)} {}
+        UserAndVisit(decltype(UserAndVisit::userId) userId,
+                     decltype(UserAndVisit::visitId) visitId,
+                     std::string description) :
+            userId{userId},
+            visitId{visitId}, description{move(description)} {}
 #endif
     };
 
