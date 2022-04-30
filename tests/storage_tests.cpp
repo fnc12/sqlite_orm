@@ -221,10 +221,15 @@ TEST_CASE("column_name") {
 
 TEST_CASE("issue880") {
     struct Fondo {
-        int id = 0;
+        int id = 5;
         std::string abreviacion;
         std::string nombre;
         int tipo_cupon = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Fondo() = default;
+        Fondo(int id) : id{id} {}
+#endif
 
         enum TipoCupon { mensual = 1, trimestral = 3 };
     };
@@ -269,7 +274,7 @@ TEST_CASE("issue880") {
                                 foreign_key(&X::fkey_Rendimiento).references(&Rendimiento::id)));
     storage.sync_schema();
 
-    Fondo fondo;
+    Fondo fondo{5};
     storage.has_dependent_rows(fondo);
 
     Inversion inversion;
