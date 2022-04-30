@@ -388,10 +388,10 @@ namespace sqlite_orm {
                                                     std::is_same<T, collate_constraint_t>,
                                                     polyfill::is_specialization_of<T, check_t>,
 #if SQLITE_VERSION_NUMBER >= 3031000
-                                                    polyfill::is_specialization_of<T, generated_always_t>
+                                                    polyfill::is_specialization_of<T, generated_always_t>,
 #endif
-                                                    >;
-
+                                                    // dummy tail because of SQLITE_VERSION_NUMBER checks above
+                                                    std::false_type>;
     }
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>

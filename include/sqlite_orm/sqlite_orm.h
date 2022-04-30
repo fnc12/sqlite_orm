@@ -1212,22 +1212,10 @@ namespace sqlite_orm {
                                                     std::is_same<T, collate_constraint_t>,
                                                     polyfill::is_specialization_of<T, check_t>,
 #if SQLITE_VERSION_NUMBER >= 3031000
-                                                    polyfill::is_specialization_of<T, generated_always_t>
+                                                    polyfill::is_specialization_of<T, generated_always_t>,
 #endif
-                                                    >;
-
-        template<class... Args>
-        struct constraints_size;
-
-        template<>
-        struct constraints_size<> {
-            static constexpr int value = 0;
-        };
-
-        template<class H, class... Args>
-        struct constraints_size<H, Args...> {
-            static constexpr int value = is_constraint<H>::value + constraints_size<Args...>::value;
-        };
+                                                    // dummy tail because of SQLITE_VERSION_NUMBER checks above
+                                                    std::false_type>;
     }
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
@@ -1712,6 +1700,104 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_helper.h"
 
+// #include "tuple_helper/tuple_filter.h"
+
+#include <type_traits>  //  std::index_sequence, std::conditional, std::declval
+#include <tuple>  //  std::tuple
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<typename... input_t>
+        using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
+
+        template<class... Args>
+        struct conc_tuple {
+            using type = tuple_cat_t<Args...>;
+        };
+
+        template<class... Args>
+        using conc_tuple_t = typename conc_tuple<Args...>::type;
+
+        template<class T, template<class... C> class F>
+        struct tuple_filter;
+
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+        template<class... Args, template<class... C> class F>
+        struct tuple_filter<std::tuple<Args...>, F>
+            : conc_tuple<std::conditional_t<F<Args>::value, std::tuple<Args>, std::tuple<>>...> {};
+#else
+        template<class T, template<class... C> class F, class SFINAE = void>
+        struct tuple_filter_single;
+
+        template<class T, template<class... C> class F>
+        struct tuple_filter_single<T, F, std::enable_if_t<!F<T>::value>> {
+            using type = std::tuple<>;
+        };
+
+        template<class T, template<class... C> class F>
+        struct tuple_filter_single<T, F, std::enable_if_t<F<T>::value>> {
+            using type = std::tuple<T>;
+        };
+
+        template<class... Args, template<class... C> class F>
+        struct tuple_filter<std::tuple<Args...>, F> : conc_tuple<typename tuple_filter_single<Args, F>::type...> {};
+#endif
+        template<class Tpl, template<class... C> class F>
+        using filter_tuple_t = typename tuple_filter<Tpl, F>::type;
+
+        template<class... Seq>
+        struct concat_idx_seq {
+            using type = std::index_sequence<>;
+        };
+
+        template<size_t... Idx>
+        struct concat_idx_seq<std::index_sequence<Idx...>> {
+            using type = std::index_sequence<Idx...>;
+        };
+
+        template<size_t... As, size_t... Bs, class... Seq>
+        struct concat_idx_seq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
+            : concat_idx_seq<std::index_sequence<As..., Bs...>, Seq...> {};
+
+        template<class Tpl, template<class...> class F, class Seq>
+        struct filter_tuple_sequence;
+
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+        template<class Tpl, template<class...> class F, size_t... Idx>
+        struct filter_tuple_sequence<Tpl, F, std::index_sequence<Idx...>>
+            : concat_idx_seq<std::conditional_t<F<std::tuple_element_t<Idx, Tpl>>::value,
+                                                std::index_sequence<Idx>,
+                                                std::index_sequence<>>...> {};
+#else
+        template<size_t Idx, class T, template<class... C> class F, class SFINAE = void>
+        struct tuple_seq_single;
+
+        template<size_t Idx, class T, template<class... C> class F>
+        struct tuple_seq_single<Idx, T, F, std::enable_if_t<!F<T>::value>> {
+            using type = std::index_sequence<>;
+        };
+
+        template<size_t Idx, class T, template<class... C> class F>
+        struct tuple_seq_single<Idx, T, F, std::enable_if_t<F<T>::value>> {
+            using type = std::index_sequence<Idx>;
+        };
+
+        template<class... Args, template<class...> class F, size_t... Idx>
+        struct filter_tuple_sequence<std::tuple<Args...>, F, std::index_sequence<Idx...>>
+            : concat_idx_seq<typename tuple_seq_single<Idx, Args, F>::type...> {};
+#endif
+
+        template<class Tpl, template<class...> class F>
+        using filter_tuple_sequence_t =
+            typename filter_tuple_sequence<Tpl, F, std::make_index_sequence<std::tuple_size<Tpl>::value>>::type;
+
+        template<class T, template<class...> class F>
+        struct count_tuple {
+            static constexpr int value = int(filter_tuple_sequence_t<T, F>::size());
+        };
+    }
+}
 // #include "constraints.h"
 
 // #include "member_traits/member_traits.h"
@@ -2200,7 +2286,8 @@ namespace sqlite_orm {
     template<class O, class T, internal::satisfies<std::is_member_object_pointer, T O::*> = true, class... Op>
     internal::column_t<O, T, T O::*, internal::empty_setter, Op...>
     make_column(std::string name, T O::*m, Op... constraints) {
-        static_assert(internal::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
+                          std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {move(name), m, {}, std::make_tuple(constraints...)};
     }
@@ -2222,7 +2309,8 @@ namespace sqlite_orm {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(internal::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
+                          std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {move(name), getter, setter, std::make_tuple(constraints...)};
     }
@@ -2245,7 +2333,8 @@ namespace sqlite_orm {
         static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
                                    typename internal::getter_traits<G>::field_type>::value,
                       "Getter and setter must get and set same data type");
-        static_assert(internal::constraints_size<Op...>::value == std::tuple_size<std::tuple<Op...>>::value,
+        static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
+                          std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
         return {move(name), getter, setter, std::make_tuple(constraints...)};
     }
@@ -4209,102 +4298,6 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_filter.h"
 
-#include <type_traits>  //  std::index_sequence, std::conditional, std::declval
-#include <tuple>  //  std::tuple
-
-namespace sqlite_orm {
-    namespace internal {
-
-        template<typename... input_t>
-        using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
-
-        template<class... Args>
-        struct conc_tuple {
-            using type = tuple_cat_t<Args...>;
-        };
-
-        template<class... Args>
-        using conc_tuple_t = typename conc_tuple<Args...>::type;
-
-        template<class T, template<class... C> class F>
-        struct tuple_filter;
-
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class... Args, template<class... C> class F>
-        struct tuple_filter<std::tuple<Args...>, F>
-            : conc_tuple<std::conditional_t<F<Args>::value, std::tuple<Args>, std::tuple<>>...> {};
-#else
-        template<class T, template<class... C> class F, class SFINAE = void>
-        struct tuple_filter_single;
-
-        template<class T, template<class... C> class F>
-        struct tuple_filter_single<T, F, std::enable_if_t<!F<T>::value>> {
-            using type = std::tuple<>;
-        };
-
-        template<class T, template<class... C> class F>
-        struct tuple_filter_single<T, F, std::enable_if_t<F<T>::value>> {
-            using type = std::tuple<T>;
-        };
-
-        template<class... Args, template<class... C> class F>
-        struct tuple_filter<std::tuple<Args...>, F> : conc_tuple<typename tuple_filter_single<Args, F>::type...> {};
-#endif
-        template<class Tpl, template<class... C> class F>
-        using filter_tuple_t = typename tuple_filter<Tpl, F>::type;
-
-        template<class... Seq>
-        struct concat_idx_seq {
-            using type = std::index_sequence<>;
-        };
-
-        template<size_t... Idx>
-        struct concat_idx_seq<std::index_sequence<Idx...>> {
-            using type = std::index_sequence<Idx...>;
-        };
-
-        template<size_t... As, size_t... Bs, class... Seq>
-        struct concat_idx_seq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
-            : concat_idx_seq<std::index_sequence<As..., Bs...>, Seq...> {};
-
-        template<class Tpl, template<class...> class F, class Seq>
-        struct filter_tuple_sequence;
-
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class Tpl, template<class...> class F, size_t... Idx>
-        struct filter_tuple_sequence<Tpl, F, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<F<std::tuple_element_t<Idx, Tpl>>::value,
-                                                std::index_sequence<Idx>,
-                                                std::index_sequence<>>...> {};
-#else
-        template<size_t Idx, class T, template<class... C> class F, class SFINAE = void>
-        struct tuple_seq_single;
-
-        template<size_t Idx, class T, template<class... C> class F>
-        struct tuple_seq_single<Idx, T, F, std::enable_if_t<!F<T>::value>> {
-            using type = std::index_sequence<>;
-        };
-
-        template<size_t Idx, class T, template<class... C> class F>
-        struct tuple_seq_single<Idx, T, F, std::enable_if_t<F<T>::value>> {
-            using type = std::index_sequence<Idx>;
-        };
-
-        template<class... Args, template<class...> class F, size_t... Idx>
-        struct filter_tuple_sequence<std::tuple<Args...>, F, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, Args, F>::type...> {};
-#endif
-
-        template<class Tpl, template<class...> class F>
-        using filter_tuple_sequence_t =
-            typename filter_tuple_sequence<Tpl, F, std::make_index_sequence<std::tuple_size<Tpl>::value>>::type;
-
-        template<class T, template<class...> class F>
-        struct count_tuple {
-            static constexpr int value = int(filter_tuple_sequence_t<T, F>::size());
-        };
-    }
-}
 // #include "serialize_result_type.h"
 
 // #include "operators.h"
