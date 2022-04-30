@@ -57,7 +57,7 @@ if (MSVC)
 	string(REGEX REPLACE "/RTC(su|[1su])" "" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")	
 	add_compile_options(/EHsc)
 	add_compile_options(/Zc:__cplusplus)
-	add_compile_options(/MP) # Allow multi parrallel build
+	add_compile_options(/MP) # multi-processor compilation
 	if (CMAKE_CXX_STANDARD GREATER 14)
 		add_compile_definitions(_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
 	endif()
