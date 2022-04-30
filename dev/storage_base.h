@@ -69,11 +69,45 @@ namespace sqlite_orm {
              * Rename table named `from` to `to`.
              */
             void rename_table(const std::string& from, const std::string& to) {
-                std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to) << std::flush;
-                perform_void_exec(this->get_connection().get(), ss.str());
+                auto con = get_connection();
+                auto db = con.get();
+                rename_table(db, from, to);
             }
 
+          protected:
+            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
+                std::stringstream ss;
+                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName) << std::flush;
+                perform_void_exec(db, ss.str());
+            }
+
+            bool table_exists(const std::string& tableName, sqlite3* db) const {
+                using namespace std::string_literals;
+
+                bool result = false;
+                std::stringstream ss;
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
+                   << " AND name = " << quote_string_literal(tableName);
+                auto query = ss.str();
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
+                        auto& res = *(bool*)data;
+                        if(argc) {
+                            res = !!std::atoi(argv[0]);
+                        }
+                        return 0;
+                    },
+                    &result,
+                    nullptr);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(db);
+                }
+                return result;
+            }
+
+          public:
             /**
              *  sqlite3_changes function.
              */
@@ -447,6 +481,16 @@ namespace sqlite_orm {
                 return this->connection->retain_count() > 0;
             }
 
+            /*
+             * returning false when there is a transaction in place
+             * otherwise true; function is not const because it has to call get_connection()
+             */
+            bool get_autocommit() {
+                auto con = this->get_connection();
+                auto db = con.get();
+                return sqlite3_get_autocommit(db);
+            }
+
             int busy_handler(std::function<int(int)> handler) {
                 _busy_handler = move(handler);
                 if(this->is_opened()) {
@@ -737,6 +781,46 @@ namespace sqlite_orm {
                         })(tImpl);
                 });
                 return res;
+            }
+
+            bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                              std::vector<table_xinfo>& storageTableInfo,
+                                              std::vector<table_xinfo>& dbTableInfo) const {
+                bool notEqual = false;
+
+                //  iterate through storage columns
+                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+                    ++storageColumnInfoIndex) {
+
+                    //  get storage's column info
+                    auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                    auto& columnName = storageColumnInfo.name;
+
+                    //  search for a column in db eith the same name
+                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
+                        return ti.name == columnName;
+                    });
+                    if(dbColumnInfoIt != dbTableInfo.end()) {
+                        auto& dbColumnInfo = *dbColumnInfoIt;
+                        auto columnsAreEqual =
+                            dbColumnInfo.name == storageColumnInfo.name &&
+                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                            (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
+                            dbColumnInfo.pk == storageColumnInfo.pk &&
+                            (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);
+                        if(!columnsAreEqual) {
+                            notEqual = true;
+                            break;
+                        }
+                        dbTableInfo.erase(dbColumnInfoIt);
+                        storageTableInfo.erase(storageTableInfo.begin() +
+                                               static_cast<ptrdiff_t>(storageColumnInfoIndex));
+                        --storageColumnInfoIndex;
+                    } else {
+                        columnsToAdd.push_back(&storageColumnInfo);
+                    }
+                }
+                return notEqual;
             }
 
             const bool inMemory;

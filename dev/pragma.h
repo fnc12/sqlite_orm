@@ -118,6 +118,40 @@ namespace sqlite_orm {
                 return this->get_pragma<std::vector<std::string>>(oss.str());
             }
 
+            // will include generated columns in response as opposed to table_info
+            std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
+                auto connection = this->get_connection();
+                auto db = connection.get();
+
+                std::vector<sqlite_orm::table_xinfo> result;
+                auto query = "PRAGMA table_xinfo(" + quote_identifier(tableName) + ")";
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void* data, int argc, char** argv, char**) -> int {
+                        auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
+                        if(argc) {
+                            auto index = 0;
+                            auto cid = std::atoi(argv[index++]);
+                            std::string name = argv[index++];
+                            std::string type = argv[index++];
+                            bool notnull = !!std::atoi(argv[index++]);
+                            std::string dflt_value = argv[index] ? argv[index] : "";
+                            index++;
+                            auto pk = std::atoi(argv[index++]);
+                            auto hidden = std::atoi(argv[index++]);
+                            res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
+                        }
+                        return 0;
+                    },
+                    &result,
+                    nullptr);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(db);
+                }
+                return result;
+            }
+
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
                 sqlite3* db = connection.get();

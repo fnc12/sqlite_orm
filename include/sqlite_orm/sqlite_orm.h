@@ -7065,6 +7065,26 @@ namespace sqlite_orm {
 #endif
     };
 
+    struct table_xinfo {
+        int cid = 0;
+        std::string name;
+        std::string type;
+        bool notnull = false;
+        std::string dflt_value;
+        int pk = 0;
+        int hidden = 0;  // different than 0 => generated_always_as() - TODO verify
+
+        table_xinfo(decltype(cid) cid_,
+                    decltype(name) name_,
+                    decltype(type) type_,
+                    decltype(notnull) notnull_,
+                    decltype(dflt_value) dflt_value_,
+                    decltype(pk) pk_,
+                    decltype(hidden) hidden_) :
+            cid(cid_),
+            name(move(name_)), type(move(type_)), notnull(notnull_), dflt_value(move(dflt_value_)),
+            pk(pk_), hidden{hidden_} {}
+    };
 }
 #pragma once
 
@@ -10343,7 +10363,7 @@ namespace sqlite_orm {
                 });
             }
 
-            std::vector<table_info> get_table_info() const;
+            std::vector<table_xinfo> get_table_info() const;
         };
     }
 
@@ -10384,16 +10404,7 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct storage_impl_base {
-
-            bool table_exists(const std::string& tableName, sqlite3* db) const;
-
-            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const;
-
-            static bool calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                                     std::vector<table_info>& storageTableInfo,
-                                                     std::vector<table_info>& dbTableInfo);
-        };
+        struct storage_impl_base {};
 
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
@@ -12783,6 +12794,40 @@ namespace sqlite_orm {
                 return this->get_pragma<std::vector<std::string>>(oss.str());
             }
 
+            // will include generated columns in response as opposed to table_info
+            std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
+                auto connection = this->get_connection();
+                auto db = connection.get();
+
+                std::vector<sqlite_orm::table_xinfo> result;
+                auto query = "PRAGMA table_xinfo(" + quote_identifier(tableName) + ")";
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void* data, int argc, char** argv, char**) -> int {
+                        auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
+                        if(argc) {
+                            auto index = 0;
+                            auto cid = std::atoi(argv[index++]);
+                            std::string name = argv[index++];
+                            std::string type = argv[index++];
+                            bool notnull = !!std::atoi(argv[index++]);
+                            std::string dflt_value = argv[index] ? argv[index] : "";
+                            index++;
+                            auto pk = std::atoi(argv[index++]);
+                            auto hidden = std::atoi(argv[index++]);
+                            res.emplace_back(cid, name, type, notnull, dflt_value, pk, hidden);
+                        }
+                        return 0;
+                    },
+                    &result,
+                    nullptr);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(db);
+                }
+                return result;
+            }
+
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
                 sqlite3* db = connection.get();
@@ -13404,11 +13449,46 @@ namespace sqlite_orm {
              * Rename table named `from` to `to`.
              */
             void rename_table(const std::string& from, const std::string& to) {
-                std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(from) << " RENAME TO " << quote_identifier(to) << std::flush;
-                perform_void_exec(this->get_connection().get(), ss.str());
+                auto con = get_connection();
+                auto db = con.get();
+                rename_table(db, from, to);
             }
 
+          protected:
+            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
+                std::stringstream ss;
+                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName)
+                   << std::flush;
+                perform_void_exec(db, ss.str());
+            }
+
+            bool table_exists(const std::string& tableName, sqlite3* db) const {
+                using namespace std::string_literals;
+
+                bool result = false;
+                std::stringstream ss;
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
+                   << " AND name = " << quote_string_literal(tableName);
+                auto query = ss.str();
+                auto rc = sqlite3_exec(
+                    db,
+                    query.c_str(),
+                    [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
+                        auto& res = *(bool*)data;
+                        if(argc) {
+                            res = !!std::atoi(argv[0]);
+                        }
+                        return 0;
+                    },
+                    &result,
+                    nullptr);
+                if(rc != SQLITE_OK) {
+                    throw_translated_sqlite_error(db);
+                }
+                return result;
+            }
+
+          public:
             /**
              *  sqlite3_changes function.
              */
@@ -13782,6 +13862,16 @@ namespace sqlite_orm {
                 return this->connection->retain_count() > 0;
             }
 
+            /*
+             * returning false when there is a transaction in place
+             * otherwise true; function is not const because it has to call get_connection()
+             */
+            bool get_autocommit() {
+                auto con = this->get_connection();
+                auto db = con.get();
+                return sqlite3_get_autocommit(db);
+            }
+
             int busy_handler(std::function<int(int)> handler) {
                 _busy_handler = move(handler);
                 if(this->is_opened()) {
@@ -14072,6 +14162,46 @@ namespace sqlite_orm {
                         })(tImpl);
                 });
                 return res;
+            }
+
+            bool calculate_remove_add_columns(std::vector<const table_xinfo*>& columnsToAdd,
+                                              std::vector<table_xinfo>& storageTableInfo,
+                                              std::vector<table_xinfo>& dbTableInfo) const {
+                bool notEqual = false;
+
+                //  iterate through storage columns
+                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+                    ++storageColumnInfoIndex) {
+
+                    //  get storage's column info
+                    auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                    auto& columnName = storageColumnInfo.name;
+
+                    //  search for a column in db eith the same name
+                    auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
+                        return ti.name == columnName;
+                    });
+                    if(dbColumnInfoIt != dbTableInfo.end()) {
+                        auto& dbColumnInfo = *dbColumnInfoIt;
+                        auto columnsAreEqual =
+                            dbColumnInfo.name == storageColumnInfo.name &&
+                            dbColumnInfo.notnull == storageColumnInfo.notnull &&
+                            (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
+                            dbColumnInfo.pk == storageColumnInfo.pk &&
+                            (dbColumnInfo.hidden == 0) == (storageColumnInfo.hidden == 0);
+                        if(!columnsAreEqual) {
+                            notEqual = true;
+                            break;
+                        }
+                        dbTableInfo.erase(dbColumnInfoIt);
+                        storageTableInfo.erase(storageTableInfo.begin() +
+                                               static_cast<ptrdiff_t>(storageColumnInfoIndex));
+                        --storageColumnInfoIndex;
+                    } else {
+                        columnsToAdd.push_back(&storageColumnInfo);
+                    }
+                }
+                return notEqual;
             }
 
             const bool inMemory;
@@ -15925,19 +16055,20 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE " << streaming_identifier(tImpl.table.name) << " SET ";
                 auto columnIndex = 0;
-                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](
-                                                auto& column) {
-                    if(column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column)) {
-                        return;
-                    }
+                tImpl.table.for_each_column(
+                    [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
+                        if(column.template has<primary_key_t<>>() ||
+                           tImpl.table.exists_in_composite_primary_key(column) || column.is_generated()) {
+                            return;
+                        }
 
-                    if(columnIndex > 0) {
-                        ss << ", ";
-                    }
-                    ss << streaming_identifier(column.name) << " = "
-                       << serialize(polyfill::invoke(column.member_pointer, object), context);
-                    ++columnIndex;
-                });
+                        if(columnIndex > 0) {
+                            ss << ", ";
+                        }
+                        ss << streaming_identifier(column.name) << " = "
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
+                        ++columnIndex;
+                    });
                 ss << " WHERE ";
                 columnIndex = 0;
                 tImpl.table.for_each_column(
@@ -17050,16 +17181,17 @@ namespace sqlite_orm {
                 ss.flush();
                 perform_void_exec(db, ss.str());
             }
-
             /**
-             *  Copies current table to another table with a given **name**.
-             *  Performs CREATE TABLE %name% AS SELECT %this->table.columns_names()% FROM &this->table.name%;
-             */
+			*  Copies sourceTableName to another table with name: destinationTableName
+			*  Performs INSERT INTO %destinationTableName% () SELECT %tImpl.table.column_names% FROM %sourceTableName%
+			*/
+
             template<class I>
             void copy_table(sqlite3* db,
-                            const std::string& name,
+                            const std::string& sourceTableName,
+                            const std::string& destinationTableName,
                             const I& tImpl,
-                            const std::vector<table_info*>& columnsToIgnore) const;
+                            const std::vector<const table_xinfo*>& columnsToIgnore) const;
 
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
             void drop_column(sqlite3* db, const std::string& tableName, const std::string& columnName) {
@@ -17069,33 +17201,53 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 #endif
+            void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
+                                    const std::vector<table_xinfo>& storageTableInfo) {
+                //  iterate through storage columns
+                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
+                    ++storageColumnInfoIndex) {
+
+                    //  get storage's column info
+                    auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
+                    auto& columnName = storageColumnInfo.name;
+                    if(storageColumnInfo.hidden) {
+                        columnsToAdd.push_back(&storageColumnInfo);
+                    }
+                }
+            }
             template<class I>
-            void backup_table(sqlite3* db, const I& tableImpl, const std::vector<table_info*>& columnsToIgnore) {
+            void drop_create_with_loss(const I& tImpl, sqlite3* db) {
+                // eliminated all transaction handling
+                this->drop_table_internal(tImpl.table.name, db);
+                this->create_table(db, tImpl.table.name, tImpl);
+            }
+
+            template<class I>
+            void backup_table(sqlite3* db, const I& tableImpl, const std::vector<const table_xinfo*>& columnsToIgnore) {
 
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
                 auto backupTableName = tableImpl.table.name + "_backup";
-                if(tableImpl.table_exists(backupTableName, db)) {
+                if(table_exists(backupTableName, db)) {
                     int suffix = 1;
                     do {
                         std::stringstream ss;
                         ss << suffix << std::flush;
                         auto anotherBackupTableName = backupTableName + ss.str();
-                        if(!tableImpl.table_exists(anotherBackupTableName, db)) {
+                        if(!table_exists(anotherBackupTableName, db)) {
                             backupTableName = move(anotherBackupTableName);
                             break;
                         }
                         ++suffix;
                     } while(true);
                 }
-
                 this->create_table(db, backupTableName, tableImpl);
 
-                this->copy_table(db, backupTableName, tableImpl, columnsToIgnore);
+                this->copy_table(db, tableImpl.table.name, backupTableName, tableImpl, columnsToIgnore);
 
                 this->drop_table_internal(tableImpl.table.name, db);
 
-                tableImpl.rename_table(db, backupTableName, tableImpl.table.name);
+                this->rename_table(db, backupTableName, tableImpl.table.name);
             }
 
             template<class O>
@@ -17749,21 +17901,26 @@ namespace sqlite_orm {
             template<class T, bool WithoutRowId, class... Cs, class... Tss>
             sync_schema_result schema_status(const storage_impl<table_t<T, WithoutRowId, Cs...>, Tss...>& tImpl,
                                              sqlite3* db,
-                                             bool preserve) {
-                auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+                                             bool preserve,
+                                             bool* attempt_to_preserve) {
+                if(attempt_to_preserve) {
+                    *attempt_to_preserve = true;
+                }
+
+                auto dbTableInfo = this->pragma.table_xinfo(tImpl.table.name);
                 auto res = sync_schema_result::already_in_sync;
 
                 //  first let's see if table with such name exists..
-                auto gottaCreateTable = !tImpl.table_exists(tImpl.table.name, db);
+                auto gottaCreateTable = !table_exists(tImpl.table.name, db);
                 if(!gottaCreateTable) {
 
                     //  get table info provided in `make_table` call..
                     auto storageTableInfo = tImpl.table.get_table_info();
 
                     //  this vector will contain pointers to columns that gotta be added..
-                    std::vector<table_info*> columnsToAdd;
+                    std::vector<const table_xinfo*> columnsToAdd;
 
-                    if(tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
+                    if(calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo)) {
                         gottaCreateTable = true;
                     }
 
@@ -17799,6 +17956,10 @@ namespace sqlite_orm {
                                 } else {
                                     if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
                                         gottaCreateTable = true;
+                                        // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
+                                        if(attempt_to_preserve) {
+                                            *attempt_to_preserve = false;
+                                        };
                                         break;
                                     }
                                 }
@@ -17929,7 +18090,7 @@ namespace sqlite_orm {
                 sqlite3* db = con.get();
                 std::map<std::string, sync_schema_result> result;
                 this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
-                    auto schemaStatus = this->schema_status(tableImpl, db, preserve);
+                    auto schemaStatus = this->schema_status(tableImpl, db, preserve, nullptr);
                     result.insert({tableImpl.table.name, schemaStatus});
                 });
                 return result;
@@ -17942,8 +18103,10 @@ namespace sqlite_orm {
              */
             bool table_exists(const std::string& tableName) {
                 auto con = this->get_connection();
-                return this->impl.table_exists(tableName, con.get());
+                return this->table_exists(tableName, con.get());
             }
+
+            using storage_base::table_exists;  // now that it is in storage_base make it into overload set
 
             template<class T, class... Args>
             prepared_statement_t<select_t<T, Args...>> prepare(select_t<T, Args...> sel) {
@@ -18246,7 +18409,7 @@ namespace sqlite_orm {
                 sqlite3_reset(stmt);
                 tImpl.table.for_each_column([&o, stmt, &index, db, &tImpl](auto& column) {
                     if(!column.template has<primary_key_t<>>() &&
-                       !tImpl.table.exists_in_composite_primary_key(column)) {
+                       !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated()) {
                         using column_type = std::decay_t<decltype(column)>;
                         using field_type = typename column_type::field_type;
 
@@ -19316,8 +19479,8 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T, bool WithoutRowId, class... Cs>
-        std::vector<table_info> table_t<T, WithoutRowId, Cs...>::get_table_info() const {
-            std::vector<table_info> res;
+        std::vector<table_xinfo> table_t<T, WithoutRowId, Cs...>::get_table_info() const {
+            std::vector<table_xinfo> res;
             res.reserve(size_t(this->elements_count));
             this->for_each_column([&res](auto& col) {
                 using field_type = field_type_t<std::decay_t<decltype(col)>>;
@@ -19330,12 +19493,13 @@ namespace sqlite_orm {
                                  type_printer<field_type>().print(),
                                  col.not_null(),
                                  dft,
-                                 col.template has<primary_key_t<>>());
+                                 col.template has<primary_key_t<>>(),
+                                 col.is_generated());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
             for(size_t i = 0; i < compositeKeyColumnNames.size(); ++i) {
                 auto& columnName = compositeKeyColumnNames[i];
-                auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_info& ti) {
+                auto it = std::find_if(res.begin(), res.end(), [&columnName](const table_xinfo& ti) {
                     return ti.name == columnName;
                 });
                 if(it != res.end()) {
@@ -19366,80 +19530,7 @@ namespace sqlite_orm {
 // #include "../util.h"
 
 namespace sqlite_orm {
-    namespace internal {
-
-        inline bool storage_impl_base::table_exists(const std::string& tableName, sqlite3* db) const {
-            using namespace std::string_literals;
-
-            bool result = false;
-            std::stringstream ss;
-            ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
-               << " AND name = " << quote_string_literal(tableName) << std::flush;
-            auto rc = sqlite3_exec(
-                db,
-                ss.str().c_str(),
-                [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
-                    auto& res = *(bool*)data;
-                    if(argc) {
-                        res = !!std::atoi(argv[0]);
-                    }
-                    return 0;
-                },
-                &result,
-                nullptr);
-            if(rc != SQLITE_OK) {
-                throw_translated_sqlite_error(db);
-            }
-            return result;
-        }
-
-        inline void
-        storage_impl_base::rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
-            std::stringstream ss;
-            ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName)
-               << std::flush;
-            perform_void_exec(db, ss.str());
-        }
-
-        inline bool storage_impl_base::calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                                                    std::vector<table_info>& storageTableInfo,
-                                                                    std::vector<table_info>& dbTableInfo) {
-            bool notEqual = false;
-
-            //  iterate through storage columns
-            for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
-                ++storageColumnInfoIndex) {
-
-                //  get storage's column info
-                auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                auto& columnName = storageColumnInfo.name;
-
-                //  search for a column in db eith the same name
-                auto dbColumnInfoIt = std::find_if(dbTableInfo.begin(), dbTableInfo.end(), [&columnName](auto& ti) {
-                    return ti.name == columnName;
-                });
-                if(dbColumnInfoIt != dbTableInfo.end()) {
-                    auto& dbColumnInfo = *dbColumnInfoIt;
-                    auto columnsAreEqual =
-                        dbColumnInfo.name == storageColumnInfo.name &&
-                        dbColumnInfo.notnull == storageColumnInfo.notnull &&
-                        (!dbColumnInfo.dflt_value.empty()) == (!storageColumnInfo.dflt_value.empty()) &&
-                        dbColumnInfo.pk == storageColumnInfo.pk;
-                    if(!columnsAreEqual) {
-                        notEqual = true;
-                        break;
-                    }
-                    dbTableInfo.erase(dbColumnInfoIt);
-                    storageTableInfo.erase(storageTableInfo.begin() + static_cast<ptrdiff_t>(storageColumnInfoIndex));
-                    --storageColumnInfoIndex;
-                } else {
-                    columnsToAdd.push_back(&storageColumnInfo);
-                }
-            }
-            return notEqual;
-        }
-
-    }
+    namespace internal {}
 }
 
 // #include "implementations/storage_definitions.h"
@@ -19474,8 +19565,9 @@ namespace sqlite_orm {
             }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
+            bool attempt_to_preserve = true;
 
-            auto schema_stat = this->schema_status(tImpl, db, preserve);
+            auto schema_stat = this->schema_status(tImpl, db, preserve, &attempt_to_preserve);
             if(schema_stat != sync_schema_result::already_in_sync) {
                 if(schema_stat == sync_schema_result::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -19488,13 +19580,14 @@ namespace sqlite_orm {
                         //  get table info provided in `make_table` call..
                         auto storageTableInfo = tImpl.table.get_table_info();
 
-                        //  now get current table info from db using `PRAGMA table_info` query..
-                        auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+                        //  now get current table info from db using `PRAGMA table_xinfo` query..
+                        auto dbTableInfo =
+                            this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
 
                         //  this vector will contain pointers to columns that gotta be added..
-                        std::vector<table_info*> columnsToAdd;
+                        std::vector<const table_xinfo*> columnsToAdd;
 
-                        tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                        calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                         if(schema_stat == sync_schema_result::old_columns_removed) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
@@ -19523,14 +19616,32 @@ namespace sqlite_orm {
 
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
-                            // remove extra columns
+                            auto storageTableInfo = tImpl.table.get_table_info();
+                            add_generated_cols(columnsToAdd, storageTableInfo);
+
+                            // remove extra columns and generated columns
                             this->backup_table(db, tImpl, columnsToAdd);
                             res = sync_schema_result::new_columns_added_and_old_columns_removed;
                         }
                     } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
-                        this->drop_table_internal(tImpl.table.name, db);
-                        this->create_table(db, tImpl.table.name, tImpl);
-                        res = sync_schema_result::dropped_and_recreated;
+                        //  now get current table info from db using `PRAGMA table_xinfo` query..
+                        auto dbTableInfo =
+                            this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
+                        auto storageTableInfo = tImpl.table.get_table_info();
+
+                        //  this vector will contain pointers to columns that gotta be added..
+                        std::vector<const table_xinfo*> columnsToAdd;
+
+                        calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+
+                        add_generated_cols(columnsToAdd, storageTableInfo);
+
+                        if(preserve && attempt_to_preserve) {
+                            this->backup_table(db, tImpl, columnsToAdd);
+                        } else {
+                            this->drop_create_with_loss(tImpl, db);
+                        }
+                        res = schema_stat;
                     }
                 }
             }
@@ -19539,10 +19650,12 @@ namespace sqlite_orm {
 
         template<class... Ts>
         template<class I>
-        void storage_t<Ts...>::copy_table(sqlite3* db,
-                                          const std::string& tableName,
-                                          const I& tImpl,
-                                          const std::vector<table_info*>& columnsToIgnore) const {
+        void storage_t<Ts...>::copy_table(
+            sqlite3* db,
+            const std::string& sourceTableName,
+            const std::string& destinationTableName,
+            const I& tImpl,
+            const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::stringstream ss;
             std::vector<std::string> columnNames;
             tImpl.table.for_each_column([&columnNames, &columnsToIgnore](auto& c) {
@@ -19556,7 +19669,7 @@ namespace sqlite_orm {
                 }
             });
             auto columnNamesCount = columnNames.size();
-            ss << "INSERT INTO " << quote_identifier(tableName) << " (";
+            ss << "INSERT INTO " << quote_identifier(destinationTableName) << " (";
             for(size_t i = 0; i < columnNamesCount; ++i) {
                 ss << columnNames[i];
                 if(i < columnNamesCount - 1) {
@@ -19572,10 +19685,9 @@ namespace sqlite_orm {
                     ss << ", ";
                 }
             }
-            ss << " FROM " << quote_identifier(tImpl.table.name) << std::flush;
+            ss << " FROM " << quote_identifier(sourceTableName) << std::flush;
             perform_void_exec(db, ss.str());
         }
-
     }
 }
 
