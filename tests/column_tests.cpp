@@ -13,10 +13,12 @@ TEST_CASE("column tests is_generated") {
         REQUIRE(!column.is_generated());
     }
     SECTION("1 constraint: generated") {
+#if SQLITE_VERSION_NUMBER >= 3031000
         SECTION("full") {
             auto column = make_column("age", &User::age, generated_always_as(add(&User::id, 5)));
             REQUIRE(column.is_generated());
         }
+#endif
         SECTION("not full") {
             auto column = make_column("age", &User::age, as(add(&User::id, 5)));
             REQUIRE(column.is_generated());
