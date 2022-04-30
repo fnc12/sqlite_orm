@@ -287,7 +287,7 @@ namespace sqlite_orm {
                 });
             }
 
-            std::vector<table_info> get_table_info() const;
+            std::vector<table_xinfo> get_table_info() const;
         };
     }
 

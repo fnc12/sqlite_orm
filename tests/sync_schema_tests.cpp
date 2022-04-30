@@ -365,7 +365,8 @@ TEST_CASE("sync_schema") {
                                                make_column(columnNames.age, &User::age)));
         std::map<std::string, sync_schema_result> syncSchemaSimulateRes;
         std::map<std::string, sync_schema_result> syncSchemaRes;
-        SECTION("preserve = true") {
+        SECTION(
+            "preserve = true") {  // there is NO way we can preserve data by adding a column with no default value and not nullable!
             syncSchemaSimulateRes = storage.sync_schema_simulate(true);
             syncSchemaRes = storage.sync_schema(true);
         }
@@ -507,6 +508,8 @@ TEST_CASE("sync_schema with generated columns") {
         }
         SECTION("stored") {
             generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
+            // with preserve == false nothing is preserved since this kind of generated column requires dropping the table
+            // thus we don't expect any users to be preserved!
         }
         auto storage2 = make_storage(storagePath,
                                      make_table("users",
@@ -529,7 +532,7 @@ TEST_CASE("sync_schema with generated columns") {
         }
         SECTION("stored") {
             generatedAlwaysConstraint = generatedAlwaysConstraint.stored();
-            //  expectedUsers.push_back({5, 9});    //  TODO: add sync_schema(true) support
+            expectedUsers.push_back({5, 9});
         }
         auto storage2 = make_storage(storagePath,
                                      make_table("users",
