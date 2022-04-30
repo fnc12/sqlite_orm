@@ -116,7 +116,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
             using node_type = T;
 
             template<class L>
@@ -192,7 +192,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct ast_iterator<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct ast_iterator<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
             using node_type = T;
 
             template<class L>

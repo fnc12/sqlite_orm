@@ -82,19 +82,11 @@ namespace sqlite_orm {
             };
 
             template<class S, class T>
-            struct storage_mapped_columns_impl<
-                S,
-                T,
-                typename std::enable_if<std::is_same<T, typename S::table_type::object_type>::value>::type> {
-                using table_type = typename S::table_type;
-                using type = typename table_types<table_type>::type;
-            };
+            struct storage_mapped_columns_impl<S, T, match_if<std::is_same, T, storage_object_type_t<S>>>
+                : table_types<table_type_t<S>> {};
 
             template<class S, class T>
-            struct storage_mapped_columns_impl<
-                S,
-                T,
-                typename std::enable_if<!std::is_same<T, typename S::table_type::object_type>::value>::type>
+            struct storage_mapped_columns_impl<S, T, match_if_not<std::is_same, T, storage_object_type_t<S>>>
                 : storage_mapped_columns_impl<typename S::super, T> {};
 
             /**
@@ -186,36 +178,32 @@ namespace sqlite_orm {
             };
 
             template<class A, class B, class O>
-            struct column_foreign_keys<
-                foreign_key_t<A, B>,
-                O,
-                typename std::enable_if<std::is_same<O, typename foreign_key_t<A, B>::target_type>::value>::type> {
+            struct column_foreign_keys<foreign_key_t<A, B>,
+                                       O,
+                                       match_if<std::is_same, O, typename foreign_key_t<A, B>::target_type>> {
                 using type = std::tuple<foreign_key_t<A, B>>;
             };
 
             template<class A, class B, class O>
-            struct column_foreign_keys<
-                foreign_key_t<A, B>,
-                O,
-                typename std::enable_if<!std::is_same<O, typename foreign_key_t<A, B>::target_type>::value>::type> {
+            struct column_foreign_keys<foreign_key_t<A, B>,
+                                       O,
+                                       match_if_not<std::is_same, O, typename foreign_key_t<A, B>::target_type>> {
                 using type = std::tuple<>;
             };
 
             template<class A, class B, class O>
-            struct column_fk_references<
-                foreign_key_t<A, B>,
-                O,
-                typename std::enable_if<std::is_same<O, typename foreign_key_t<A, B>::target_type>::value>::type> {
+            struct column_fk_references<foreign_key_t<A, B>,
+                                        O,
+                                        match_if<std::is_same, O, typename foreign_key_t<A, B>::target_type>> {
                 using target_type = typename foreign_key_t<A, B>::source_type;
 
                 using type = std::tuple<target_type>;
             };
 
             template<class A, class B, class O>
-            struct column_fk_references<
-                foreign_key_t<A, B>,
-                O,
-                typename std::enable_if<!std::is_same<O, typename foreign_key_t<A, B>::target_type>::value>::type> {
+            struct column_fk_references<foreign_key_t<A, B>,
+                                        O,
+                                        match_if_not<std::is_same, O, typename foreign_key_t<A, B>::target_type>> {
                 using type = std::tuple<>;
             };
 

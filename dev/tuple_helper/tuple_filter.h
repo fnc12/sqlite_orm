@@ -90,7 +90,7 @@ namespace sqlite_orm {
         using filter_tuple_sequence_t =
             typename filter_tuple_sequence<Tpl, F, std::make_index_sequence<std::tuple_size<Tpl>::value>>::type;
 
-        template<class T, template<class> class F>
+        template<class T, template<class...> class F>
         struct count_tuple {
             static constexpr int value = int(filter_tuple_sequence_t<T, F>::size());
         };

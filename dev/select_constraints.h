@@ -77,9 +77,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v = false;
-        template<class... Args>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v<columns_t<Args...>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_columns_v = polyfill::is_specialization_of_v<T, columns_t>;
 
         template<class T>
         using is_columns = polyfill::bool_constant<is_columns_v<T>>;
@@ -152,9 +150,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v = false;
-        template<class T, class... Args>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v<select_t<T, Args...>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_select_v = polyfill::is_specialization_of_v<T, select_t>;
 
         template<class T>
         using is_select = polyfill::bool_constant<is_select_v<T>>;

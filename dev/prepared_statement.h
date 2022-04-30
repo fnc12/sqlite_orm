@@ -12,6 +12,7 @@
 #include "connection_holder.h"
 #include "select_constraints.h"
 #include "values.h"
+#include "ast/upsert_clause.h"
 
 namespace sqlite_orm {
 
@@ -91,9 +92,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_prepared_statement_v = false;
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_prepared_statement_v<prepared_statement_t<T>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_prepared_statement_v =
+            polyfill::is_specialization_of_v<T, prepared_statement_t>;
 
         template<class T>
         using is_prepared_statement = polyfill::bool_constant<is_prepared_statement_v<T>>;
@@ -202,9 +202,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v = false;
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v<insert_t<T>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_v = polyfill::is_specialization_of_v<T, insert_t>;
 
         template<class T>
         using is_insert = polyfill::bool_constant<is_insert_v<T>>;
@@ -226,9 +224,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v = false;
-        template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v<replace_t<T>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_v = polyfill::is_specialization_of_v<T, replace_t>;
 
         template<class T>
         using is_replace = polyfill::bool_constant<is_replace_v<T>>;
@@ -245,9 +241,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v = false;
-        template<class It, class L, class O>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v<insert_range_t<It, L, O>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_range_v = polyfill::is_specialization_of_v<T, insert_range_t>;
 
         template<class T>
         using is_insert_range = polyfill::bool_constant<is_insert_range_v<T>>;
@@ -264,9 +258,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v = false;
-        template<class It, class L, class O>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v<replace_range_t<It, L, O>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_range_v = polyfill::is_specialization_of_v<T, replace_range_t>;
 
         template<class T>
         using is_replace_range = polyfill::bool_constant<is_replace_range_v<T>>;
@@ -279,9 +271,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v = false;
-        template<class... Args>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v<insert_raw_t<Args...>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_insert_raw_v = polyfill::is_specialization_of_v<T, insert_raw_t>;
 
         template<class T>
         using is_insert_raw = polyfill::bool_constant<is_insert_raw_v<T>>;
@@ -294,9 +284,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v = false;
-        template<class... Args>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v<replace_raw_t<Args...>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_replace_raw_v = polyfill::is_specialization_of_v<T, replace_raw_t>;
 
         template<class T>
         using is_replace_raw = polyfill::bool_constant<is_replace_raw_v<T>>;
@@ -312,7 +300,7 @@ namespace sqlite_orm {
         struct default_values_t {};
 
         template<class T>
-        using is_default_values = std::is_same<default_values_t, T>;
+        using is_default_values = std::is_same<T, default_values_t>;
 
         enum class conflict_action {
             abort,
@@ -331,10 +319,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        using is_insert_constraint = std::is_same<insert_constraint, T>;
-
-        template<class T>
-        struct is_upsert_clause;
+        using is_insert_constraint = std::is_same<T, insert_constraint>;
     }
 
     inline internal::insert_constraint or_rollback() {

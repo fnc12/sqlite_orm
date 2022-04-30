@@ -132,9 +132,6 @@ namespace sqlite_orm {
 
             template<typename Type, template<typename...> class Primary>
             struct is_specialization_of : bool_constant<is_specialization_of_v<Type, Primary>> {};
-
-            template<typename... T>
-            using is_specialization_of_t = typename is_specialization_of<T...>::type;
 #endif
 
             template<typename...>

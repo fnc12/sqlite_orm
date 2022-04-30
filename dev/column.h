@@ -103,67 +103,41 @@ namespace sqlite_orm {
             }
         };
 
-        // we are compelled to wrap all sfinae-implemented traits to prevent "error: type/value mismatch at argument 2 in template parameter list"
-        namespace sfinae {
-            /**
-             *  Column with insertable primary key traits. Common case.
-             */
-            template<class T, class SFINAE = void>
-            struct is_column_with_insertable_primary_key : public std::false_type {};
-
-            /**
-             *  Column with insertable primary key traits. Specialized case case.
-             */
-            template<class O, class T, class... Op>
-            struct is_column_with_insertable_primary_key<
-                column_t<O, T, Op...>,
-                std::enable_if_t<(
-                    tuple_helper::tuple_contains_type<primary_key_t<>,
-                                                      typename column_t<O, T, Op...>::constraints_type>::value)>> {
-                using column_type = column_t<O, T, Op...>;
-                static constexpr bool value = is_primary_key_insertable<column_type>::value;
-            };
-
-            /**
-             *  Column with noninsertable primary key traits. Common case.
-             */
-            template<class T, class SFINAE = void>
-            struct is_column_with_noninsertable_primary_key : public std::false_type {};
-
-            /**
-             *  Column with noninsertable primary key traits. Specialized case case.
-             */
-            template<class O, class T, class... Op>
-            struct is_column_with_noninsertable_primary_key<
-                column_t<O, T, Op...>,
-                std::enable_if_t<(
-                    tuple_helper::tuple_contains_type<primary_key_t<>,
-                                                      typename column_t<O, T, Op...>::constraints_type>::value)>> {
-                using column_type = column_t<O, T, Op...>;
-                static constexpr bool value = !is_primary_key_insertable<column_type>::value;
-            };
-
-        }
-
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_v = false;
-        template<class O, class T, class... Op>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_column_v<column_t<O, T, Op...>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_column_v = polyfill::is_specialization_of_v<T, column_t>;
 
         template<class T>
         using is_column = polyfill::bool_constant<is_column_v<T>>;
 
         /**
-         *  Column with insertable primary key traits.
+         *  Column with insertable primary key traits. Common case.
          */
-        template<class T>
-        struct is_column_with_insertable_primary_key : public sfinae::is_column_with_insertable_primary_key<T> {};
+        template<class T, class SFINAE = void>
+        struct is_column_with_insertable_primary_key : std::false_type {};
 
         /**
-         *  Column with noninsertable primary key traits.
+         *  Column with insertable primary key traits. Specialized case case.
          */
-        template<class T>
-        struct is_column_with_noninsertable_primary_key : public sfinae::is_column_with_noninsertable_primary_key<T> {};
+        template<class C>
+        struct is_column_with_insertable_primary_key<
+            C,
+            std::enable_if_t<tuple_helper::tuple_contains_type<primary_key_t<>, typename C::constraints_type>::value>>
+            : polyfill::bool_constant<is_primary_key_insertable<C>::value> {};
+
+        /**
+         *  Column with noninsertable primary key traits. Common case.
+         */
+        template<class T, class SFINAE = void>
+        struct is_column_with_noninsertable_primary_key : std::false_type {};
+
+        /**
+         *  Column with noninsertable primary key traits. Specialized case case.
+         */
+        template<class C>
+        struct is_column_with_noninsertable_primary_key<
+            C,
+            std::enable_if_t<tuple_helper::tuple_contains_type<primary_key_t<>, typename C::constraints_type>::value>>
+            : polyfill::bool_constant<!is_primary_key_insertable<C>::value> {};
 
         template<class T>
         struct column_field_type {

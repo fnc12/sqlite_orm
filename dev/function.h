@@ -68,67 +68,31 @@ namespace sqlite_orm {
                 step(move(step_)), finalCall(move(finalCall_)) {}
         };
 
-        //  got it from here https://stackoverflow.com/questions/87372/check-if-a-class-has-a-member-function-of-a-given-signature
         template<class F>
-        struct is_scalar_function_impl {
-
-            template<class U, class T>
-            struct SFINAE;
-
-            template<class U, class R>
-            struct SFINAE<U, R (U::*)() const> {};
-
-            template<class U>
-            static char test(SFINAE<U, decltype(&U::operator())> *);
-
-            template<class U>
-            static int test(...);
-
-            static constexpr bool has = sizeof(test<F>(0)) == sizeof(char);
-        };
+        using scalar_call_function_t = decltype(&F::operator());
 
         template<class F>
-        struct is_aggregate_function_impl {
-
-            template<class U, class T>
-            struct SFINAE;
-
-            template<class U, class R>
-            struct SFINAE<U, R (U::*)() const> {};
-
-            template<class U>
-            static char test(SFINAE<U, decltype(&U::step)> *);
-
-            template<class U>
-            static int test(...);
-
-            template<class U>
-            static char test2(SFINAE<U, decltype(&U::fin)> *);
-
-            template<class U>
-            static int test2(...);
-
-            static constexpr bool has = sizeof(test<F>(0)) == sizeof(char);
-            static constexpr bool has2 = sizeof(test2<F>(0)) == sizeof(char);
-            static constexpr bool has_both = has && has2;
-        };
+        using aggregate_step_function_t = decltype(&F::step);
 
         template<class F>
-        struct is_scalar_function : std::integral_constant<bool, is_scalar_function_impl<F>::has> {};
+        using aggregate_fin_function_t = decltype(&F::fin);
 
+        template<class F, class = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v = false;
         template<class F>
-        struct is_aggregate_function : std::integral_constant<bool, is_aggregate_function_impl<F>::has_both> {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_scalar_function_v<F, polyfill::void_t<scalar_call_function_t<F>>> =
+            true;
 
+        template<class F, class = void>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v = false;
         template<class F>
-        struct scalar_run_member_pointer {
-            using type = decltype(&F::operator());
-        };
-
-        template<class F>
-        struct aggregate_run_member_pointer {
-            using step_type = decltype(&F::step);
-            using fin_type = decltype(&F::fin);
-        };
+        SQLITE_ORM_INLINE_VAR constexpr bool is_aggregate_function_v<
+            F,
+            polyfill::void_t<aggregate_step_function_t<F>,
+                             aggregate_fin_function_t<F>,
+                             std::enable_if_t<std::is_member_function_pointer<aggregate_step_function_t<F>>::value>,
+                             std::enable_if_t<std::is_member_function_pointer<aggregate_fin_function_t<F>>::value>>> =
+            true;
 
         template<class T>
         struct member_function_arguments;
@@ -136,37 +100,34 @@ namespace sqlite_orm {
         template<class O, class R, class... Args>
         struct member_function_arguments<R (O::*)(Args...) const> {
             using member_function_type = R (O::*)(Args...) const;
-            using tuple_type = std::tuple<typename std::decay<Args>::type...>;
+            using tuple_type = std::tuple<std::decay_t<Args>...>;
             using return_type = R;
         };
 
         template<class O, class R, class... Args>
         struct member_function_arguments<R (O::*)(Args...)> {
             using member_function_type = R (O::*)(Args...);
-            using tuple_type = std::tuple<typename std::decay<Args>::type...>;
+            using tuple_type = std::tuple<std::decay_t<Args>...>;
             using return_type = R;
         };
 
-        template<class F, bool IsScalar>
+        template<class F, class SFINAE = void>
         struct callable_arguments_impl;
 
         template<class F>
-        struct callable_arguments_impl<F, true> {
-            using function_member_pointer = typename scalar_run_member_pointer<F>::type;
-            using args_tuple = typename member_function_arguments<function_member_pointer>::tuple_type;
-            using return_type = typename member_function_arguments<function_member_pointer>::return_type;
+        struct callable_arguments_impl<F, std::enable_if_t<is_scalar_function_v<F>>> {
+            using args_tuple = typename member_function_arguments<scalar_call_function_t<F>>::tuple_type;
+            using return_type = typename member_function_arguments<scalar_call_function_t<F>>::return_type;
         };
 
         template<class F>
-        struct callable_arguments_impl<F, false> {
-            using step_function_member_pointer = typename aggregate_run_member_pointer<F>::step_type;
-            using fin_function_member_pointer = typename aggregate_run_member_pointer<F>::fin_type;
-            using args_tuple = typename member_function_arguments<step_function_member_pointer>::tuple_type;
-            using return_type = typename member_function_arguments<fin_function_member_pointer>::return_type;
+        struct callable_arguments_impl<F, std::enable_if_t<is_aggregate_function_v<F>>> {
+            using args_tuple = typename member_function_arguments<aggregate_step_function_t<F>>::tuple_type;
+            using return_type = typename member_function_arguments<aggregate_fin_function_t<F>>::return_type;
         };
 
         template<class F>
-        struct callable_arguments : callable_arguments_impl<F, is_scalar_function<F>::value> {};
+        struct callable_arguments : callable_arguments_impl<F> {};
 
         template<class F, class... Args>
         struct function_call {
@@ -194,12 +155,11 @@ namespace sqlite_orm {
         }
 
         template<size_t I, class FnArg, class CallArg, class EnableIfTag = void>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_same_pvt_v = expected_pointer_value<I, FnArg, CallArg>();
+        constexpr bool is_same_pvt_v = expected_pointer_value<I, FnArg, CallArg>();
 
         // Always allow binding nullptr to a pointer argument
         template<size_t I, class PointerArg>
-        SQLITE_ORM_INLINE_VAR constexpr bool
-            is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
+        constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
 #if __cplusplus >= 201703L  // using C++17 or higher
         template<size_t I, const char *PointerArg, const char *Binding>
@@ -210,7 +170,7 @@ namespace sqlite_orm {
         }
 
         template<size_t I, class PointerArg, class Binding>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        constexpr bool
             is_same_pvt_v<I, PointerArg, Binding, polyfill::void_t<typename PointerArg::tag, typename Binding::tag>> =
                 assert_same_pointer_type<I, PointerArg::tag::value, Binding::tag::value>();
 #else
@@ -222,7 +182,7 @@ namespace sqlite_orm {
         }
 
         template<size_t I, class PointerArg, class Binding>
-        SQLITE_ORM_INLINE_VAR constexpr bool
+        constexpr bool
             is_same_pvt_v<I, PointerArg, Binding, polyfill::void_t<typename PointerArg::tag, typename Binding::tag>> =
                 assert_same_pointer_type<I, typename PointerArg::tag, typename Binding::tag>();
 #endif
