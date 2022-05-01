@@ -8,7 +8,7 @@
 
 using namespace sqlite_orm;
 
-TEST_CASE("Glob") {
+namespace {
     struct Employee {
         int id = 0;
         std::string firstName;
@@ -22,7 +22,8 @@ TEST_CASE("Glob") {
             id{id}, firstName{move(firstName)}, lastName{move(lastName)}, salary{salary}, deptId{deptId} {}
 #endif
     };
-
+}
+TEST_CASE("Glob") {
     auto storage = make_storage({},
                                 make_table("emp_master",
                                            make_column("emp_id", &Employee::id, primary_key(), autoincrement()),
@@ -33,15 +34,15 @@ TEST_CASE("Glob") {
     storage.sync_schema();
     {
         std::vector<Employee> employees = {
-            Employee{1, "Honey", "Patel", 10100, 1},
-            Employee{2, "Shweta", "Jariwala", 19300, 2},
-            Employee{3, "Vinay", "Jariwala", 35100, 3},
-            Employee{4, "Jagruti", "Viras", 9500, 2},
-            Employee{5, "Shweta", "Rana", 12000, 3},
-            Employee{6, "sonal", "Menpara", 13000, 1},
-            Employee{7, "Yamini", "Patel", 10000, 2},
-            Employee{8, "Khyati", "Shah", 500000, 3},
-            Employee{9, "Shwets", "Jariwala", 19400, 2},
+            {1, "Honey", "Patel", 10100, 1},
+            {2, "Shweta", "Jariwala", 19300, 2},
+            {3, "Vinay", "Jariwala", 35100, 3},
+            {4, "Jagruti", "Viras", 9500, 2},
+            {5, "Shweta", "Rana", 12000, 3},
+            {6, "sonal", "Menpara", 13000, 1},
+            {7, "Yamini", "Patel", 10000, 2},
+            {8, "Khyati", "Shah", 500000, 3},
+            {9, "Shwets", "Jariwala", 19400, 2},
         };
         storage.replace_range(employees.begin(), employees.end());
     }
