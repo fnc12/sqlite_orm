@@ -86,7 +86,7 @@ namespace sqlite_orm {
                             this->stmt.reset();
                             break;
                         default: {
-                            auto db = this->view->connection.get();
+                            sqlite3* db = this->view->connection.get();
                             throw_translated_sqlite_error(db);
                         }
                     }

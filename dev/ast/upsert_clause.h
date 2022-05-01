@@ -4,6 +4,8 @@
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::forward, std::move
 
+#include "../cxx_polyfill.h"
+
 namespace sqlite_orm {
     namespace internal {
 #if SQLITE_VERSION_NUMBER >= 3024000
@@ -37,10 +39,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_upsert_clause : std::false_type {};
-
-        template<class T, class A>
-        struct is_upsert_clause<upsert_clause<T, A>> : std::true_type {};
+        using is_upsert_clause = polyfill::is_specialization_of<T, upsert_clause>;
     }
 
     /**

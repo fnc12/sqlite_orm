@@ -12,43 +12,53 @@ skip_commits:
   - '*.png'
   - '*.sh'
 
-image:
-  - Visual Studio 2022
-
 # configurations to add to build matrix
-# TODO: MinGW Makefiles and MSYS Makefiles
 configuration:
   #- Debug
   - Release
 
-platform:
-  - x86
-  - x64
-  
 environment:
   matrix:
-   # using c++14
-   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
-   
-   # using C++17 (for std::optional support)
-   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
-   
-   # using C++20 (for concepts support)
-   - SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+    - job_name: Visual Studio 2015 Update 3, x64
+      appveyor_build_worker_image: Visual Studio 2015
+      platform: x64
+      SQLITE_ORM_CXX_STANDARD: ""
+
+    - job_name: Visual Studio 2022, x64, C++14
+      appveyor_build_worker_image: Visual Studio 2022
+      platform: x64
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+
+    - job_name: Visual Studio 2022, x64, C++17
+      appveyor_build_worker_image: Visual Studio 2022
+      platform: x64
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+
+    - job_name: Visual Studio 2022, x64, C++20
+      appveyor_build_worker_image: Visual Studio 2022
+      platform: x64
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+
+    - job_name: Visual Studio 2022, x86, C++14
+      appveyor_build_worker_image: Visual Studio 2022
+      platform: x86
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+
+matrix:
+  fast_finish: true
 
 init:
-  - echo %APPVEYOR_BUILD_WORKER_IMAGE% - %configuration% - %PLATFORM%
-  - if "%PLATFORM%"=="x64" (set architecture=-A x64)
-  - if "%PLATFORM%"=="x86" (set architecture=-A Win32)
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2019" (set generator="Visual Studio 16 2019" %architecture%)
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
-  - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2013" (set generator="Visual Studio 12 2013" %architecture%)
+  - echo %appveyor_build_worker_image% - %platform% - %configuration%
+  - if "%platform%"=="x64" (set architecture=-A x64)
+  - if "%platform%"=="x86" (set architecture=-A Win32)
+  - if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
+  - if "%appveyor_build_worker_image%"=="Visual Studio 2019" (set generator="Visual Studio 16 2019" %architecture%)
+  - if "%appveyor_build_worker_image%"=="Visual Studio 2017" (set generator="Visual Studio 15 2017" %architecture%)
+  - if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
 
 install:
   - C:\Tools\vcpkg\vcpkg integrate install
-  - vcpkg install sqlite3:%PLATFORM%-windows
+  - vcpkg install sqlite3:%platform%-windows
 
 # scripts to run before build
 before_build:

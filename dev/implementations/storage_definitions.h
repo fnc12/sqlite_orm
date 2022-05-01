@@ -28,8 +28,9 @@ namespace sqlite_orm {
             }
 #endif  //  SQLITE_ENABLE_DBSTAT_VTAB
             auto res = sync_schema_result::already_in_sync;
+            bool attempt_to_preserve = true;
 
-            auto schema_stat = this->schema_status(tImpl, db, preserve);
+            auto schema_stat = this->schema_status(tImpl, db, preserve, &attempt_to_preserve);
             if(schema_stat != sync_schema_result::already_in_sync) {
                 if(schema_stat == sync_schema_result::new_table_created) {
                     this->create_table(db, tImpl.table.name, tImpl);
@@ -42,13 +43,14 @@ namespace sqlite_orm {
                         //  get table info provided in `make_table` call..
                         auto storageTableInfo = tImpl.table.get_table_info();
 
-                        //  now get current table info from db using `PRAGMA table_info` query..
-                        auto dbTableInfo = this->pragma.table_info(tImpl.table.name);
+                        //  now get current table info from db using `PRAGMA table_xinfo` query..
+                        auto dbTableInfo =
+                            this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
 
                         //  this vector will contain pointers to columns that gotta be added..
-                        std::vector<table_info*> columnsToAdd;
+                        std::vector<const table_xinfo*> columnsToAdd;
 
-                        tImpl.calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                        this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                         if(schema_stat == sync_schema_result::old_columns_removed) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
@@ -77,14 +79,32 @@ namespace sqlite_orm {
 
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
-                            // remove extra columns
+                            auto storageTableInfo = tImpl.table.get_table_info();
+                            this->add_generated_cols(columnsToAdd, storageTableInfo);
+
+                            // remove extra columns and generated columns
                             this->backup_table(db, tImpl, columnsToAdd);
                             res = sync_schema_result::new_columns_added_and_old_columns_removed;
                         }
                     } else if(schema_stat == sync_schema_result::dropped_and_recreated) {
-                        this->drop_table_internal(tImpl.table.name, db);
-                        this->create_table(db, tImpl.table.name, tImpl);
-                        res = sync_schema_result::dropped_and_recreated;
+                        //  now get current table info from db using `PRAGMA table_xinfo` query..
+                        auto dbTableInfo =
+                            this->pragma.table_xinfo(tImpl.table.name);  // should include generated columns
+                        auto storageTableInfo = tImpl.table.get_table_info();
+
+                        //  this vector will contain pointers to columns that gotta be added..
+                        std::vector<const table_xinfo*> columnsToAdd;
+
+                        this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+
+                        this->add_generated_cols(columnsToAdd, storageTableInfo);
+
+                        if(preserve && attempt_to_preserve) {
+                            this->backup_table(db, tImpl, columnsToAdd);
+                        } else {
+                            this->drop_create_with_loss(db, tImpl);
+                        }
+                        res = schema_stat;
                     }
                 }
             }
@@ -93,17 +113,19 @@ namespace sqlite_orm {
 
         template<class... Ts>
         template<class I>
-        void storage_t<Ts...>::copy_table(sqlite3* db,
-                                          const std::string& tableName,
-                                          const I& tImpl,
-                                          const std::vector<table_info*>& columnsToIgnore) const {
+        void storage_t<Ts...>::copy_table(
+            sqlite3* db,
+            const std::string& sourceTableName,
+            const std::string& destinationTableName,
+            const I& tImpl,
+            const std::vector<const table_xinfo*>& columnsToIgnore) const {  // must ignore generated columns
             std::vector<std::reference_wrapper<const std::string>> columnNames;
             columnNames.reserve(tImpl.table.count_columns_amount());
             tImpl.table.for_each_column([&columnNames, &columnsToIgnore](const auto& c) {
                 auto& columnName = c.name;
                 auto columnToIgnoreIt = std::find_if(columnsToIgnore.begin(),
                                                      columnsToIgnore.end(),
-                                                     [&columnName](const table_info* tableInfo) {
+                                                     [&columnName](const table_xinfo* tableInfo) {
                                                          return columnName == tableInfo->name;
                                                      });
                 if(columnToIgnoreIt == columnsToIgnore.end()) {
@@ -112,11 +134,11 @@ namespace sqlite_orm {
             });
 
             std::stringstream ss;
-            ss << "INSERT INTO " << streaming_identifier(tableName) << " (" << streaming_identifiers(columnNames)
-               << ") "
-               << "SELECT " << streaming_identifiers(columnNames) << " FROM " << streaming_identifier(tImpl.table.name);
+            ss << "INSERT INTO " << streaming_identifier(destinationTableName) << " ("
+               << streaming_identifiers(columnNames) << ") "
+               << "SELECT " << streaming_identifiers(columnNames) << " FROM " << streaming_identifier(sourceTableName)
+               << std::flush;
             perform_void_exec(db, ss.str());
         }
-
     }
 }

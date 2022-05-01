@@ -2,11 +2,12 @@
 
 #include <system_error>  //  std::system_error
 #include <ostream>  //  std::ostream
-#include <sstream>  //  std::stringstream
 #include <string>  //  std::string
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
+#include "start_macros.h"
+#include "cxx_polyfill.h"
 #include "collate_argument.h"
 #include "error_code.h"
 #include "table_type.h"
@@ -310,6 +311,9 @@ namespace sqlite_orm {
 
         struct collate_constraint_t {
             collate_argument argument = collate_argument::binary;
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            collate_constraint_t(collate_argument argument) : argument{argument} {}
+#endif
 
             operator std::string() const {
                 return "COLLATE " + this->string_from_collate_argument(this->argument);
@@ -344,6 +348,10 @@ namespace sqlite_orm {
 
             bool full = true;
             storage_type storage = storage_type::not_specified;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            basic_generated_always(bool full, storage_type storage) : full{full}, storage{storage} {}
+#endif
         };
 
         template<class T>
@@ -365,50 +373,25 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_generated_always : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
+            polyfill::is_specialization_of_v<T, generated_always_t>;
 
         template<class T>
-        struct is_generated_always<generated_always_t<T>> : std::true_type {};
+        using is_generated_always = polyfill::bool_constant<is_generated_always_v<T>>;
 
         template<class T>
-        struct is_constraint : std::false_type {};
-
-        template<>
-        struct is_constraint<autoincrement_t> : std::true_type {};
-
-        template<class... Cs>
-        struct is_constraint<primary_key_t<Cs...>> : std::true_type {};
-
-        template<class... Args>
-        struct is_constraint<unique_t<Args...>> : std::true_type {};
-
-        template<class T>
-        struct is_constraint<default_t<T>> : std::true_type {};
-
-        template<class C, class R>
-        struct is_constraint<foreign_key_t<C, R>> : std::true_type {};
-
-        template<>
-        struct is_constraint<collate_constraint_t> : std::true_type {};
-
-        template<class T>
-        struct is_constraint<check_t<T>> : std::true_type {};
+        using is_constraint = polyfill::disjunction<std::is_same<T, autoincrement_t>,
+                                                    polyfill::is_specialization_of<T, primary_key_t>,
+                                                    polyfill::is_specialization_of<T, unique_t>,
+                                                    polyfill::is_specialization_of<T, default_t>,
+                                                    polyfill::is_specialization_of<T, foreign_key_t>,
+                                                    std::is_same<T, collate_constraint_t>,
+                                                    polyfill::is_specialization_of<T, check_t>,
 #if SQLITE_VERSION_NUMBER >= 3031000
-        template<class T>
-        struct is_constraint<generated_always_t<T>> : std::true_type {};
+                                                    polyfill::is_specialization_of<T, generated_always_t>,
 #endif
-        template<class... Args>
-        struct constraints_size;
-
-        template<>
-        struct constraints_size<> {
-            static constexpr int value = 0;
-        };
-
-        template<class H, class... Args>
-        struct constraints_size<H, Args...> {
-            static constexpr int value = is_constraint<H>::value + constraints_size<Args...>::value;
-        };
+                                                    // dummy tail because of SQLITE_VERSION_NUMBER checks above
+                                                    std::false_type>;
     }
 #if SQLITE_VERSION_NUMBER >= 3031000
     template<class T>
@@ -482,29 +465,17 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        /**
-         *  FOREIGN KEY traits. Common case
-         */
         template<class T>
-        struct is_foreign_key : std::false_type {};
+        SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
 
-        /**
-         *  FOREIGN KEY traits. Specialized case
-         */
-        template<class C, class R>
-        struct is_foreign_key<internal::foreign_key_t<C, R>> : std::true_type {};
-
-        /**
-         *  PRIMARY KEY traits. Common case
-         */
         template<class T>
-        struct is_primary_key : public std::false_type {};
+        using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
 
-        /**
-         *  PRIMARY KEY traits. Specialized case
-         */
-        template<class... Cs>
-        struct is_primary_key<internal::primary_key_t<Cs...>> : public std::true_type {};
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = polyfill::is_specialization_of_v<T, primary_key_t>;
+
+        template<class T>
+        using is_primary_key = polyfill::bool_constant<is_primary_key_v<T>>;
 
         /**
          * PRIMARY KEY INSERTABLE traits.

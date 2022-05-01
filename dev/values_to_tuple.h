@@ -18,7 +18,7 @@ namespace sqlite_orm {
         struct values_to_tuple {
 
             void extract(sqlite3_value **values, T &tuple, int argsCount) const {
-                using element_type = typename std::tuple_element<I, T>::type;
+                using element_type = std::tuple_element_t<I, T>;
                 std::get<I>(tuple) = row_extractor<element_type>().extract(values[I]);
 
                 values_to_tuple<T, I - 1>().extract(values, tuple, argsCount);

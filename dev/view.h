@@ -48,27 +48,20 @@ namespace sqlite_orm {
             }
 
             iterator_t<self> begin() {
-                sqlite3_stmt* stmt = nullptr;
-                auto db = this->connection.get();
                 using context_t = serializer_context<typename storage_type::impl_type>;
                 context_t context{obtain_const_impl(this->storage)};
                 context.skip_table_name = false;
                 context.replace_bindable_with_question = true;
                 auto query = serialize(this->args, context);
-                auto ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
-                if(ret == SQLITE_OK) {
-                    auto index = 1;
-                    iterate_ast(this->args.conditions, [&index, stmt, db](auto& node) {
-                        using node_type = typename std::decay<decltype(node)>::type;
-                        conditional_binder<node_type, is_bindable<node_type>> binder{stmt, index};
-                        if(SQLITE_OK != binder(node)) {
-                            throw_translated_sqlite_error(db);
-                        }
-                    });
-                    return {stmt, *this};
-                } else {
+
+                sqlite3* db = this->connection.get();
+                sqlite3_stmt* stmt = nullptr;
+                int ret = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr);
+                if(ret != SQLITE_OK) {
                     throw_translated_sqlite_error(db);
                 }
+                iterate_ast(this->args.conditions, conditional_binder{stmt});
+                return {stmt, *this};
             }
 
             iterator_t<self> end() {

@@ -10,6 +10,11 @@ namespace GetAllWithTwoTablesInternal {
     struct Item {
         int id = 0;
         std::string attributes;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Item() = default;
+        Item(int id, std::string attributes) : id{id}, attributes{move(attributes)} {}
+#endif
     };
 
     inline bool operator==(const Item& lhs, const Item& rhs) {

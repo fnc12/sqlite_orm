@@ -17,17 +17,6 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct storage_impl_base {
-
-            bool table_exists(const std::string& tableName, sqlite3* db) const;
-
-            void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const;
-
-            static bool calculate_remove_add_columns(std::vector<table_info*>& columnsToAdd,
-                                                     std::vector<table_info>& storageTableInfo,
-                                                     std::vector<table_info>& dbTableInfo);
-        };
-
         /**
          *  This is a generic implementation. Used as a tail in storage_impl inheritance chain
          */
@@ -51,7 +40,7 @@ namespace sqlite_orm {
         };
 
         template<>
-        struct storage_impl<> : storage_impl_base {
+        struct storage_impl<> {
 
             template<class L>
             void for_each(const L&) const {}
@@ -94,10 +83,10 @@ namespace sqlite_orm {
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         std::string lookup_table_name(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>{}>(empty_callable<std::string>(),
-                                                                                     [](const auto& tImpl) {
-                                                                                         return tImpl.table.name;
-                                                                                     })(tImpl);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(empty_callable<std::string>(),
+                                                                                          [](const auto& tImpl) {
+                                                                                              return tImpl.table.name;
+                                                                                          })(tImpl);
         }
 
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>

@@ -2,8 +2,8 @@
 
 #include <type_traits>  //  std::enable_if, std::is_member_object_pointer
 
-#include "is_getter.h"
 #include "field_member_traits.h"
+#include "is_getter.h"
 #include "is_setter.h"
 #include "getter_traits.h"
 #include "setter_traits.h"

@@ -93,12 +93,12 @@ namespace sqlite_orm {
 
         template<class St, class X, class... Rest, class S>
         struct column_result_t<St, built_in_function_t<internal::unique_ptr_result_of<X>, S, X, Rest...>, void> {
-            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
+            using type = std::unique_ptr<column_result_of_t<St, X>>;
         };
 
         template<class St, class X, class S>
         struct column_result_t<St, built_in_aggregate_function_t<internal::unique_ptr_result_of<X>, S, X>, void> {
-            using type = std::unique_ptr<typename column_result_t<St, X>::type>;
+            using type = std::unique_ptr<column_result_of_t<St, X>>;
         };
 
         template<class St, class T>
@@ -222,7 +222,7 @@ namespace sqlite_orm {
         struct column_result_t<St, select_t<T, Args...>> : column_result_t<St, T> {};
 
         template<class St, class T>
-        struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, compound_operator>::value>> {
+        struct column_result_t<St, T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
             using left_result = column_result_of_t<St, typename T::left_type>;
             using right_result = column_result_of_t<St, typename T::right_type>;
             static_assert(std::is_same<left_result, right_result>::value,
@@ -231,7 +231,7 @@ namespace sqlite_orm {
         };
 
         template<class St, class T>
-        struct column_result_t<St, T, std::enable_if_t<is_base_of_template<T, binary_condition>::value>> {
+        struct column_result_t<St, T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
             using type = typename T::result_type;
         };
 
