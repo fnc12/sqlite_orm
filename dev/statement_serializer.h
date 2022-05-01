@@ -1167,7 +1167,7 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "FOREIGN KEY(" << streaming_mapped_columns_expressions(fk.columns, context) << ") REFERENCES ";
                 {
-                    using references_type_t = typename std::decay<decltype(fk)>::type::references_type;
+                    using references_type_t = typename std::decay_t<decltype(fk)>::references_type;
                     using first_reference_t = std::tuple_element_t<0, references_type_t>;
                     using first_reference_mapped_type = typename internal::table_type<first_reference_t>::type;
                     auto refTableName = lookup_table_name<first_reference_mapped_type>(context.impl);
@@ -1831,7 +1831,7 @@ namespace sqlite_orm {
                     iterate_ast(sel.col, collector);
                     iterate_ast(sel.conditions, collector);
                     join_iterator<Args...>()([&collector, &context](const auto& c) {
-                        using original_join_type = typename std::decay<decltype(c)>::type::join_type::type;
+                        using original_join_type = typename std::decay_t<decltype(c)>::join_type::type;
                         using cross_join_type = mapped_type_proxy_t<original_join_type>;
                         auto crossJoinedTableName = lookup_table_name<cross_join_type>(context.impl);
                         auto tableAliasString = alias_extractor<original_join_type>::get();
@@ -1891,8 +1891,8 @@ namespace sqlite_orm {
                 if(statement.unique) {
                     ss << "UNIQUE ";
                 }
-                using elements_type = typename std::decay<decltype(statement)>::type::elements_type;
-                using head_t = typename std::tuple_element<0, elements_type>::type::column_type;
+                using elements_type = typename std::decay_t<decltype(statement)>::elements_type;
+                using head_t = typename std::tuple_element_t<0, elements_type>::column_type;
                 using indexed_type = typename table_type<head_t>::type;
                 ss << "INDEX IF NOT EXISTS " << streaming_identifier(statement.name) << " ON "
                    << streaming_identifier(lookup_table_name<indexed_type>(context.impl));

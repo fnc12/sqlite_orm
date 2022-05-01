@@ -26,7 +26,7 @@ namespace sqlite_orm {
         struct iterator_impl {
 
             template<class L>
-            void operator()(const std::tuple<Args...>& tuple, const L& lambda, bool reverse = true) {
+            void operator()(const std::tuple<Args...>& tuple, L& lambda, bool reverse = true) {
                 if(reverse) {
                     lambda(std::get<N>(tuple));
                     iterator_impl<N - 1, Args...>()(tuple, lambda, reverse);
@@ -37,7 +37,7 @@ namespace sqlite_orm {
             }
 
             template<class L>
-            void operator()(const L& lambda) {
+            void operator()(L& lambda) {
                 iterator_impl<N - 1, Args...>()(lambda);
                 lambda((const std::tuple_element_t<N - 1, std::tuple<Args...>>*)nullptr);
             }
@@ -47,12 +47,12 @@ namespace sqlite_orm {
         struct iterator_impl<0, Args...> {
 
             template<class L>
-            void operator()(const std::tuple<Args...>& tuple, const L& lambda, bool /*reverse*/ = true) {
+            void operator()(const std::tuple<Args...>& tuple, L& lambda, bool /*reverse*/ = true) {
                 lambda(std::get<0>(tuple));
             }
 
             template<class L>
-            void operator()(const L& lambda) {
+            void operator()(L& lambda) {
                 lambda((const std::tuple_element_t<0, std::tuple<Args...>>*)nullptr);
             }
         };
@@ -61,7 +61,7 @@ namespace sqlite_orm {
         struct iterator_impl<N> {
 
             template<class L>
-            void operator()(const std::tuple<>&, const L&, bool /*reverse*/ = true) {
+            void operator()(const std::tuple<>&, L&, bool /*reverse*/ = true) {
                 //..
             }
 
@@ -78,7 +78,7 @@ namespace sqlite_orm {
         struct iterator_impl2<> {
 
             template<class L>
-            void operator()(const L&) const {
+            void operator()(L&) const {
                 //..
             }
         };
@@ -87,7 +87,7 @@ namespace sqlite_orm {
         struct iterator_impl2<H, Tail...> {
 
             template<class L>
-            void operator()(const L& lambda) const {
+            void operator()(L& lambda) const {
                 lambda((const H*)nullptr);
                 iterator_impl2<Tail...>{}(lambda);
             }
@@ -100,7 +100,7 @@ namespace sqlite_orm {
         struct iterator<std::tuple<Args...>> {
 
             template<class L>
-            void operator()(const L& lambda) const {
+            void operator()(L& lambda) const {
                 iterator_impl2<Args...>{}(lambda);
             }
         };
@@ -141,13 +141,13 @@ namespace sqlite_orm {
         }
 
         template<class L, class... Args>
-        void iterate_tuple(const std::tuple<Args...>& tuple, const L& lambda) {
+        void iterate_tuple(const std::tuple<Args...>& tuple, L&& lambda) {
             using tuple_type = std::tuple<Args...>;
             tuple_helper::iterator_impl<std::tuple_size<tuple_type>::value - 1, Args...>()(tuple, lambda, false);
         }
 
         template<class T, class L>
-        void iterate_tuple(const L& lambda) {
+        void iterate_tuple(L&& lambda) {
             tuple_helper::iterator<T>{}(lambda);
         }
     }

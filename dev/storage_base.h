@@ -62,15 +62,14 @@ namespace sqlite_orm {
              *  Drops table with given name.
              */
             void drop_table(const std::string& tableName) {
-                this->drop_table_internal(tableName, this->get_connection().get());
+                this->drop_table_internal(this->get_connection().get(), tableName);
             }
 
             /**
              * Rename table named `from` to `to`.
              */
             void rename_table(const std::string& from, const std::string& to) {
-                auto con = get_connection();
-                rename_table(con.get(), from, to);
+                this->rename_table(this->get_connection().get(), from, to);
             }
 
           protected:
@@ -81,12 +80,10 @@ namespace sqlite_orm {
                 perform_void_exec(db, ss.str());
             }
 
-            bool table_exists(const std::string& tableName, sqlite3* db) const {
-                using namespace std::string_literals;
-
+            bool table_exists(sqlite3* db, const std::string& tableName) const {
                 bool result = false;
                 std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
                    << " AND name = " << quote_string_literal(tableName) << std::flush;
                 auto query = ss.str();
                 auto rc = sqlite3_exec(
@@ -747,7 +744,7 @@ namespace sqlite_orm {
                 return result;
             }
 
-            void drop_table_internal(const std::string& tableName, sqlite3* db) {
+            void drop_table_internal(sqlite3* db, const std::string& tableName) {
                 std::stringstream ss;
                 ss << "DROP TABLE " << quote_identifier(tableName);
                 perform_void_exec(db, ss.str());

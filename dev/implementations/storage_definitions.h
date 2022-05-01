@@ -49,7 +49,7 @@ namespace sqlite_orm {
                         //  this vector will contain pointers to columns that gotta be added..
                         std::vector<const table_xinfo*> columnsToAdd;
 
-                        calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                        this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
                         if(schema_stat == sync_schema_result::old_columns_removed) {
 #if SQLITE_VERSION_NUMBER >= 3035000  //  DROP COLUMN feature exists (v3.35.0)
@@ -79,7 +79,7 @@ namespace sqlite_orm {
                         if(schema_stat == sync_schema_result::new_columns_added_and_old_columns_removed) {
 
                             auto storageTableInfo = tImpl.table.get_table_info();
-                            add_generated_cols(columnsToAdd, storageTableInfo);
+                            this->add_generated_cols(columnsToAdd, storageTableInfo);
 
                             // remove extra columns and generated columns
                             this->backup_table(db, tImpl, columnsToAdd);
@@ -94,14 +94,14 @@ namespace sqlite_orm {
                         //  this vector will contain pointers to columns that gotta be added..
                         std::vector<const table_xinfo*> columnsToAdd;
 
-                        calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
+                        this->calculate_remove_add_columns(columnsToAdd, storageTableInfo, dbTableInfo);
 
-                        add_generated_cols(columnsToAdd, storageTableInfo);
+                        this->add_generated_cols(columnsToAdd, storageTableInfo);
 
                         if(preserve && attempt_to_preserve) {
                             this->backup_table(db, tImpl, columnsToAdd);
                         } else {
-                            this->drop_create_with_loss(tImpl, db);
+                            this->drop_create_with_loss(db, tImpl);
                         }
                         res = schema_stat;
                     }

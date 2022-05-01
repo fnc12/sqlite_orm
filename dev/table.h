@@ -118,7 +118,7 @@ namespace sqlite_orm {
              *  Calls **l** with every primary key dedicated constraint
              */
             template<class L>
-            void for_each_primary_key(const L& lambda) const {
+            void for_each_primary_key(L&& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
                     using element_type = std::decay_t<decltype(element)>;
                     static_if<is_primary_key_v<element_type>>(lambda)(element);
@@ -145,7 +145,7 @@ namespace sqlite_orm {
             }
 
             template<class L>
-            void for_each_primary_key_column(const L& lambda) const {
+            void for_each_primary_key_column(L&& lambda) const {
                 this->for_each_column_with<primary_key_t<>>([&lambda](auto& column) {
                     lambda(column.member_pointer);
                 });
@@ -155,7 +155,7 @@ namespace sqlite_orm {
             }
 
             template<class L, class... Args>
-            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, const L& lambda) const {
+            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, L&& lambda) const {
                 iterate_tuple(primarykey.columns, lambda);
             }
 
@@ -249,7 +249,7 @@ namespace sqlite_orm {
              *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class L>
-            void for_each_column(const L& lambda) const {
+            void for_each_column(L&& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
                     using element_type = std::decay_t<decltype(element)>;
                     static_if<is_column_v<element_type>>(lambda)(element);
@@ -257,7 +257,7 @@ namespace sqlite_orm {
             }
 
             template<class L>
-            void for_each_foreign_key(const L& lambda) const {
+            void for_each_foreign_key(L&& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
                     using element_type = std::decay_t<decltype(element)>;
                     static_if<is_foreign_key_v<element_type>>(lambda)(element);
@@ -265,7 +265,7 @@ namespace sqlite_orm {
             }
 
             template<class F, class L>
-            void for_each_column_with_field_type(const L& lambda) const {
+            void for_each_column_with_field_type(L&& lambda) const {
                 this->for_each_column([&lambda](auto& column) {
                     using column_type = std::decay_t<decltype(column)>;
                     using field_type = typename column_field_type<column_type>::type;
@@ -280,7 +280,7 @@ namespace sqlite_orm {
              *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class Op, class L>
-            void for_each_column_with(const L& lambda) const {
+            void for_each_column_with(L&& lambda) const {
                 this->for_each_column([&lambda](auto& column) {
                     using tuple_helper::tuple_contains_type;
                     using column_type = std::decay_t<decltype(column)>;
@@ -298,7 +298,7 @@ namespace sqlite_orm {
      *  Function used for table creation. Do not use table constructor - use this function
      *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
-    template<class... Cs, class T = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
+    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }

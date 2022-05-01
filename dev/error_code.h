@@ -162,4 +162,8 @@ namespace sqlite_orm {
     [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
         throw sqlite_to_system_error(db);
     }
+
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt* stmt) {
+        throw sqlite_to_system_error(sqlite3_db_handle(stmt));
+    }
 }

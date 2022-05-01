@@ -11,7 +11,7 @@ namespace sqlite_orm {
 
         /**
          *  If T is alias than mapped_type_proxy<T>::type is alias::type
-         *  otherwise T is T.
+         *  otherwise T is unqualified T.
          */
         template<class T, class SFINAE = void>
         struct mapped_type_proxy {

@@ -17,23 +17,23 @@ namespace sqlite_orm {
         }
 
         template<typename T, typename F>
-        decltype(auto) static_if(std::true_type, const T& t, const F&) {
-            return (t);
+        decltype(auto) static_if(std::true_type, T&& t, const F&) {
+            return std::forward<T>(t);
         }
 
         template<typename T, typename F>
-        decltype(auto) static_if(std::false_type, const T&, const F& f) {
-            return (f);
+        decltype(auto) static_if(std::false_type, const T&, F&& f) {
+            return std::forward<F>(f);
         }
 
         template<bool B, typename T, typename F>
-        decltype(auto) static_if(const T& t, const F& f) {
-            return static_if(std::integral_constant<bool, B>{}, t, f);
+        decltype(auto) static_if(T&& t, F&& f) {
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), std::forward<F>(f));
         }
 
         template<bool B, typename T>
-        decltype(auto) static_if(const T& t) {
-            return static_if(std::integral_constant<bool, B>{}, t, empty_callable());
+        decltype(auto) static_if(T&& t) {
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), empty_callable());
         }
     }
 

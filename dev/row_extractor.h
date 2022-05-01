@@ -317,7 +317,7 @@ namespace sqlite_orm {
       protected:
         template<size_t I, std::enable_if_t<I != 0, bool> = true>
         void extract(std::tuple<Args...>& t, sqlite3_stmt* stmt) const {
-            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
+            using tuple_type = std::tuple_element_t<I - 1, std::tuple<Args...>>;
             std::get<I - 1>(t) = row_extractor<tuple_type>().extract(stmt, I - 1);
             this->extract<I - 1>(t, stmt);
         }
@@ -329,7 +329,7 @@ namespace sqlite_orm {
 
         template<size_t I, std::enable_if_t<I != 0, bool> = true>
         void extract(std::tuple<Args...>& t, char** argv) const {
-            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
+            using tuple_type = std::tuple_element_t<I - 1, std::tuple<Args...>>;
             std::get<I - 1>(t) = row_extractor<tuple_type>().extract(argv[I - 1]);
             this->extract<I - 1>(t, argv);
         }

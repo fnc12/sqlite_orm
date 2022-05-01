@@ -25,8 +25,10 @@ namespace sqlite_orm {
             using elements_type = std::tuple<Els...>;
             using object_type = void;
 
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
             index_t(std::string name_, bool unique_, elements_type elements_) :
                 index_base{move(name_), unique_}, elements(move(elements_)) {}
+#endif
 
             elements_type elements;
         };
