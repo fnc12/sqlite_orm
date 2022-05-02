@@ -1,17 +1,6 @@
 #pragma once
 
-#include <sqlite3.h>
-#include <string>  //  std::string
-#include <type_traits>  //  std::is_same, std::decay
-#include <vector>  //  std::vector
-#include <typeindex>  //  std::type_index
 #include <utility>  //  std::forward, std::move
-
-#include "type_traits.h"
-#include "constraints.h"
-#include "table_info.h"
-#include "sync_schema_result.h"
-#include "storage_lookup.h"
 
 namespace sqlite_orm {
 
@@ -48,8 +37,15 @@ namespace sqlite_orm {
     }
 }
 
+#include <typeindex>  //  std::type_index
+#include <string>  //  std::string
+#include <type_traits>  //  std::is_same, std::decay
+#include <cstddef>  //  std::nullptr_t
+
 #include "static_magic.h"
+#include "type_traits.h"
 #include "select_constraints.h"
+#include "storage_lookup.h"
 
 // interface functions
 namespace sqlite_orm {

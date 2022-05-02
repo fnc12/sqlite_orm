@@ -1606,7 +1606,7 @@ namespace sqlite_orm {
                                 foreignKey.references,
                                 [&columnIndex, stmt, &object, this](auto& memberPointer) {
                                     using MemberPointer = std::decay_t<decltype(memberPointer)>;
-                                    using field_type = typename member_traits<MemberPointer>::field_type;
+                                    using field_type = member_field_type_t<MemberPointer>;
 
                                     auto& tImpl = this->get_impl<O>();
                                     auto value =

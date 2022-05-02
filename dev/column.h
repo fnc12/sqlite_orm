@@ -11,8 +11,8 @@
 #include "type_is_nullable.h"
 #include "tuple_helper/tuple_helper.h"
 #include "tuple_helper/tuple_filter.h"
-#include "constraints.h"
 #include "member_traits/member_traits.h"
+#include "constraints.h"
 
 namespace sqlite_orm {
 
@@ -165,9 +165,10 @@ namespace sqlite_orm {
     /**
      *  Column builder function. You should use it to create columns instead of constructor
      */
-    template<class O, class T, internal::satisfies<std::is_member_object_pointer, T O::*> = true, class... Op>
-    internal::column_t<O, T, T O::*, internal::empty_setter, Op...>
-    make_column(std::string name, T O::*m, Op... constraints) {
+    template<class M, internal::satisfies<std::is_member_object_pointer, M> = true, class... Op>
+    internal::
+        column_t<internal::member_object_type_t<M>, internal::object_field_type_t<M>, M, internal::empty_setter, Op...>
+        make_column(std::string name, M m, Op... constraints) {
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
@@ -182,14 +183,9 @@ namespace sqlite_orm {
              internal::satisfies<internal::is_getter, G> = true,
              internal::satisfies<internal::is_setter, S> = true,
              class... Op>
-    internal::column_t<typename internal::setter_traits<S>::object_type,
-                       typename internal::setter_traits<S>::field_type,
-                       G,
-                       S,
-                       Op...>
+    internal::column_t<internal::member_object_type_t<G>, internal::getter_field_type_t<G>, G, S, Op...>
     make_column(std::string name, S setter, G getter, Op... constraints) {
-        static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
-                                   typename internal::getter_traits<G>::field_type>::value,
+        static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
@@ -206,14 +202,9 @@ namespace sqlite_orm {
              internal::satisfies<internal::is_getter, G> = true,
              internal::satisfies<internal::is_setter, S> = true,
              class... Op>
-    internal::column_t<typename internal::setter_traits<S>::object_type,
-                       typename internal::setter_traits<S>::field_type,
-                       G,
-                       S,
-                       Op...>
+    internal::column_t<internal::member_object_type_t<G>, internal::getter_field_type_t<G>, G, S, Op...>
     make_column(std::string name, G getter, S setter, Op... constraints) {
-        static_assert(std::is_same<typename internal::setter_traits<S>::field_type,
-                                   typename internal::getter_traits<G>::field_type>::value,
+        static_assert(std::is_same<internal::setter_field_type_t<S>, internal::getter_field_type_t<G>>::value,
                       "Getter and setter must get and set same data type");
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,

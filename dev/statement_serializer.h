@@ -18,7 +18,6 @@
 #include "start_macros.h"
 #include "cxx_functional_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
-#include "member_traits/is_setter.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
 #include "ast/group_by.h"
@@ -1332,7 +1331,7 @@ namespace sqlite_orm {
                 iterate_tuple(ins.columns.columns,
                               [&ss, &context, &index, &object = get_ref(ins.obj)](auto& memberPointer) {
                                   using member_pointer_type = std::decay_t<decltype(memberPointer)>;
-                                  static_assert(!is_setter<member_pointer_type>::value,
+                                  static_assert(!is_setter_v<member_pointer_type>,
                                                 "Unable to use setter within insert explicit");
 
                                   if(index > 0) {

@@ -5,6 +5,7 @@
 #include <functional>  //  std::reference_wrapper
 
 #include "type_traits.h"
+#include "member_traits/member_traits.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
@@ -55,26 +56,8 @@ namespace sqlite_orm {
             using type = bool;
         };
 
-        template<class St, class O, class F>
-        struct column_result_t<St, F O::*, std::enable_if_t<std::is_member_object_pointer<F O::*>::value>> {
-            using type = F;
-        };
-
-        /**
-         *  Common case for all getter types. Getter types are defined in column.h file
-         */
         template<class St, class T>
-        struct column_result_t<St, T, match_if<is_getter, T>> {
-            using type = typename getter_traits<T>::field_type;
-        };
-
-        /**
-         *  Common case for all setter types. Setter types are defined in column.h file
-         */
-        template<class St, class T>
-        struct column_result_t<St, T, match_if<is_setter, T>> {
-            using type = typename setter_traits<T>::field_type;
-        };
+        struct column_result_t<St, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
         template<class St, class R, class S, class... Args>
         struct column_result_t<St, built_in_function_t<R, S, Args...>, void> {
