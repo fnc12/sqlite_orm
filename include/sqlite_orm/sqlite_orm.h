@@ -33,8 +33,16 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
 #endif
 
+#if __cpp_fold_expressions >= 201603L
+#define SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+#endif
+
 #if __cpp_inline_variables >= 201606L
 #define SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
+#endif
+
+#if __cpp_if_constexpr >= 201606L
+#define SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
 #endif
 
 #if __cpp_inline_variables >= 201606L
@@ -650,49 +658,9 @@ namespace sqlite_orm {
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::is_same
+#include <utility>  //  std::forward
 
 // #include "../cxx_polyfill.h"
-
-// #include "../static_magic.h"
-
-#include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
-
-namespace sqlite_orm {
-
-    //  got from here
-    //  https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
-    namespace internal {
-
-        template<class R = void>
-        static inline decltype(auto) empty_callable() {
-            static auto res = [](auto&&...) -> R {
-                return R();
-            };
-            return (res);
-        }
-
-        template<typename T, typename F>
-        decltype(auto) static_if(std::true_type, T&& t, const F&) {
-            return std::forward<T>(t);
-        }
-
-        template<typename T, typename F>
-        decltype(auto) static_if(std::false_type, const T&, F&& f) {
-            return std::forward<F>(f);
-        }
-
-        template<bool B, typename T, typename F>
-        decltype(auto) static_if(T&& t, F&& f) {
-            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), std::forward<F>(f));
-        }
-
-        template<bool B, typename T>
-        decltype(auto) static_if(T&& t) {
-            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), empty_callable());
-        }
-    }
-
-}
 
 namespace sqlite_orm {
 
@@ -710,6 +678,7 @@ namespace sqlite_orm {
         struct tuple_contains_some_type<TT, std::tuple<Args...>>
             : polyfill::disjunction<polyfill::is_specialization_of<Args, TT>...> {};
 
+#if !defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) || !defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<size_t N, class... Args>
         struct iterator_impl {
 
@@ -758,7 +727,9 @@ namespace sqlite_orm {
                 //..
             }
         };
+#endif
 
+#ifndef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         template<class... Args>
         struct iterator_impl2;
 
@@ -792,6 +763,7 @@ namespace sqlite_orm {
                 iterator_impl2<Args...>{}(lambda);
             }
         };
+#endif
     }
 
     namespace internal {
@@ -813,31 +785,42 @@ namespace sqlite_orm {
             return call(f, &Function::operator(), move(t));
         }
 
-        template<size_t N, size_t I, class L, class R>
-        void move_tuple_impl(L& lhs, R& rhs) {
-            std::get<I>(lhs) = std::move(std::get<I>(rhs));
-            internal::static_if<N != I + 1>([](auto& l, auto& r) {
-                move_tuple_impl<N, I + 1>(l, r);
-            })(lhs, rhs);
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+        template<bool reversed = false, class Tpl, class L, size_t... Idx>
+        void iterate_tuple(const Tpl& tpl, L&& lambda, std::index_sequence<Idx...>) {
+            if constexpr(reversed) {
+                (lambda(std::get<sizeof...(Idx) - 1u - Idx>(tpl)), ...);
+            } else {
+                (lambda(std::get<Idx>(tpl)), ...);
+            }
         }
-
-        template<size_t N, class L, class R>
-        void move_tuple(L& lhs, R& rhs) {
-            static_if<N != 0>([](auto& l, auto& r) {
-                move_tuple_impl<N, 0>(l, r);
-            })(lhs, rhs);
+        template<bool reversed = false, class Tpl, class L>
+        void iterate_tuple(const Tpl& tpl, L&& lambda) {
+            iterate_tuple<reversed>(tpl, std::forward<L>(lambda), std::make_index_sequence<std::tuple_size_v<Tpl>>{});
         }
-
+#else
         template<class L, class... Args>
         void iterate_tuple(const std::tuple<Args...>& tuple, L&& lambda) {
             using tuple_type = std::tuple<Args...>;
             tuple_helper::iterator_impl<std::tuple_size<tuple_type>::value - 1, Args...>()(tuple, lambda, false);
         }
+#endif
 
-        template<class T, class L>
-        void iterate_tuple(L&& lambda) {
-            tuple_helper::iterator<T>{}(lambda);
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+        template<class Tpl, class L, size_t... Idx>
+        void iterate_tuple(L&& lambda, std::index_sequence<Idx...>) {
+            (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
+        template<class Tpl, class L>
+        void iterate_tuple(L&& lambda) {
+            iterate_tuple<Tpl>(std::forward<L>(lambda), std::make_index_sequence<std::tuple_size_v<Tpl>>{});
+        }
+#else
+        template<class Tpl, class L>
+        void iterate_tuple(L&& lambda) {
+            tuple_helper::iterator<Tpl>{}(lambda);
+        }
+#endif
     }
 }
 
@@ -6032,7 +6015,7 @@ namespace sqlite_orm {
     /**
      *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
      */
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */
@@ -10079,6 +10062,45 @@ namespace sqlite_orm {
 }
 
 // #include "static_magic.h"
+
+#include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
+
+namespace sqlite_orm {
+
+    //  got from here
+    //  https://stackoverflow.com/questions/37617677/implementing-a-compile-time-static-if-logic-for-different-string-types-in-a-co
+    namespace internal {
+
+        template<class R = void>
+        static inline decltype(auto) empty_callable() {
+            static auto res = [](auto&&...) -> R {
+                return R();
+            };
+            return (res);
+        }
+
+        template<typename T, typename F>
+        decltype(auto) static_if(std::true_type, T&& t, const F&) {
+            return std::forward<T>(t);
+        }
+
+        template<typename T, typename F>
+        decltype(auto) static_if(std::false_type, const T&, F&& f) {
+            return std::forward<F>(f);
+        }
+
+        template<bool B, typename T, typename F>
+        decltype(auto) static_if(T&& t, F&& f) {
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), std::forward<F>(f));
+        }
+
+        template<bool B, typename T>
+        decltype(auto) static_if(T&& t) {
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), empty_callable());
+        }
+    }
+
+}
 
 // #include "typed_comparator.h"
 
@@ -14714,8 +14736,6 @@ namespace sqlite_orm {
 // #include "cxx_functional_polyfill.h"
 
 // #include "tuple_helper/tuple_filter.h"
-
-// #include "member_traits/is_getter.h"
 
 // #include "member_traits/is_setter.h"
 

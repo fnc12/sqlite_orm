@@ -1719,7 +1719,7 @@ namespace sqlite_orm {
     /**
      *  NULLIF(X,Y) function https://www.sqlite.org/lang_corefunc.html#nullif
      */
-#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#if defined(SQLITE_ORM_OPTIONAL_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
     /**
      *  NULLIF(X,Y) using common return type of X and Y
      */

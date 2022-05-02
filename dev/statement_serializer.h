@@ -18,7 +18,6 @@
 #include "start_macros.h"
 #include "cxx_functional_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
-#include "member_traits/is_getter.h"
 #include "member_traits/is_setter.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"

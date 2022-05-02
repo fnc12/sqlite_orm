@@ -2,9 +2,9 @@
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
 #include <type_traits>  //  std::is_same
+#include <utility>  //  std::forward
 
 #include "../cxx_polyfill.h"
-#include "../static_magic.h"
 
 namespace sqlite_orm {
 
@@ -22,6 +22,7 @@ namespace sqlite_orm {
         struct tuple_contains_some_type<TT, std::tuple<Args...>>
             : polyfill::disjunction<polyfill::is_specialization_of<Args, TT>...> {};
 
+#if !defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) || !defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
         template<size_t N, class... Args>
         struct iterator_impl {
 
@@ -70,7 +71,9 @@ namespace sqlite_orm {
                 //..
             }
         };
+#endif
 
+#ifndef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
         template<class... Args>
         struct iterator_impl2;
 
@@ -104,6 +107,7 @@ namespace sqlite_orm {
                 iterator_impl2<Args...>{}(lambda);
             }
         };
+#endif
     }
 
     namespace internal {
@@ -125,30 +129,41 @@ namespace sqlite_orm {
             return call(f, &Function::operator(), move(t));
         }
 
-        template<size_t N, size_t I, class L, class R>
-        void move_tuple_impl(L& lhs, R& rhs) {
-            std::get<I>(lhs) = std::move(std::get<I>(rhs));
-            internal::static_if<N != I + 1>([](auto& l, auto& r) {
-                move_tuple_impl<N, I + 1>(l, r);
-            })(lhs, rhs);
+#if defined(SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED) && defined(SQLITE_ORM_IF_CONSTEXPR_SUPPORTED)
+        template<bool reversed = false, class Tpl, class L, size_t... Idx>
+        void iterate_tuple(const Tpl& tpl, L&& lambda, std::index_sequence<Idx...>) {
+            if constexpr(reversed) {
+                (lambda(std::get<sizeof...(Idx) - 1u - Idx>(tpl)), ...);
+            } else {
+                (lambda(std::get<Idx>(tpl)), ...);
+            }
         }
-
-        template<size_t N, class L, class R>
-        void move_tuple(L& lhs, R& rhs) {
-            static_if<N != 0>([](auto& l, auto& r) {
-                move_tuple_impl<N, 0>(l, r);
-            })(lhs, rhs);
+        template<bool reversed = false, class Tpl, class L>
+        void iterate_tuple(const Tpl& tpl, L&& lambda) {
+            iterate_tuple<reversed>(tpl, std::forward<L>(lambda), std::make_index_sequence<std::tuple_size_v<Tpl>>{});
         }
-
+#else
         template<class L, class... Args>
         void iterate_tuple(const std::tuple<Args...>& tuple, L&& lambda) {
             using tuple_type = std::tuple<Args...>;
             tuple_helper::iterator_impl<std::tuple_size<tuple_type>::value - 1, Args...>()(tuple, lambda, false);
         }
+#endif
 
-        template<class T, class L>
-        void iterate_tuple(L&& lambda) {
-            tuple_helper::iterator<T>{}(lambda);
+#ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED
+        template<class Tpl, class L, size_t... Idx>
+        void iterate_tuple(L&& lambda, std::index_sequence<Idx...>) {
+            (lambda((std::tuple_element_t<Idx, Tpl>*)nullptr), ...);
         }
+        template<class Tpl, class L>
+        void iterate_tuple(L&& lambda) {
+            iterate_tuple<Tpl>(std::forward<L>(lambda), std::make_index_sequence<std::tuple_size_v<Tpl>>{});
+        }
+#else
+        template<class Tpl, class L>
+        void iterate_tuple(L&& lambda) {
+            tuple_helper::iterator<Tpl>{}(lambda);
+        }
+#endif
     }
 }
