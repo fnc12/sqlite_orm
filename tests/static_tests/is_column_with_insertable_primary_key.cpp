@@ -1,5 +1,6 @@
 #include <sqlite_orm/sqlite_orm.h>
 #include <catch2/catch.hpp>
+#include <type_traits>  //  std::std::decay
 
 using namespace sqlite_orm;
 
@@ -27,17 +28,15 @@ TEST_CASE("is_column_with_insertable_primary_key") {
     );
 
     iterate_tuple(insertable, [](auto& v) {
-        STATIC_REQUIRE(internal::is_column_with_insertable_primary_key<typename std::decay<decltype(v)>::type>::value);
+        STATIC_REQUIRE(internal::is_column_with_insertable_primary_key<std::decay_t<decltype(v)>>::value);
     });
 
     iterate_tuple(noninsertable, [](auto& v) {
-        STATIC_REQUIRE(
-            internal::is_column_with_noninsertable_primary_key<typename std::decay<decltype(v)>::type>::value);
+        STATIC_REQUIRE(internal::is_column_with_noninsertable_primary_key<std::decay_t<decltype(v)>>::value);
     });
 
     iterate_tuple(outside, [](auto& v) {
-        STATIC_REQUIRE(!internal::is_column_with_insertable_primary_key<typename std::decay<decltype(v)>::type>::value);
-        STATIC_REQUIRE(
-            !internal::is_column_with_noninsertable_primary_key<typename std::decay<decltype(v)>::type>::value);
+        STATIC_REQUIRE(!internal::is_column_with_insertable_primary_key<std::decay_t<decltype(v)>>::value);
+        STATIC_REQUIRE(!internal::is_column_with_noninsertable_primary_key<std::decay_t<decltype(v)>>::value);
     });
 }
