@@ -39,7 +39,7 @@ environment:
       platform: x64
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
-    - job_name: Visual Studio 2022, x86, C++14
+    - job_name: Visual Studio 2022, x86, C++20
       appveyor_build_worker_image: Visual Studio 2022
       platform: x86
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
