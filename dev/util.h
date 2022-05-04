@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <string>  //  std::basic_string
+#include <string>  //  std::string
 #include <utility>  //  std::move
 
 #include "error_code.h"

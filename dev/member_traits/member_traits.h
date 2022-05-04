@@ -1,21 +1,21 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_member_object_pointer
+#include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
 
+#include "../start_macros.h"
 #include "../cxx_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
         // SFINAE friendly trait to get a member object pointer's field type
-        template<class T, class SFINAE = void>
+        template<class T>
         struct object_field_type {};
 
         template<class T>
         using object_field_type_t = typename object_field_type<T>::type;
 
         template<class F, class O>
-        struct object_field_type<F O::*, std::enable_if_t<std::is_member_object_pointer<F O::*>::value>>
-            : polyfill::type_identity<F> {};
+        struct object_field_type<F O::*> : std::enable_if<!std::is_function<F>::value, F> {};
 
         // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified return type)
         template<class T>
@@ -75,21 +75,11 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_setter_v = is_setter<T>::value;
 
-        template<class T, class SFINAE = void>
-        struct member_field_type {};
+        template<class T>
+        struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};
 
         template<class T>
         using member_field_type_t = typename member_field_type<T>::type;
-
-        template<class T>
-        struct member_field_type<T, std::enable_if_t<std::is_member_object_pointer<T>::value>> : object_field_type<T> {
-        };
-
-        template<class T>
-        struct member_field_type<T, std::enable_if_t<is_getter_v<T>>> : getter_field_type<T> {};
-
-        template<class T>
-        struct member_field_type<T, std::enable_if_t<is_setter_v<T>>> : setter_field_type<T> {};
 
         template<class T>
         struct member_object_type {};

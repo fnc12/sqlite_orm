@@ -179,44 +179,12 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class M, satisfies<std::is_member_object_pointer, M> = true>
-            const std::string* find_column_name(M m) const {
+            template<class T, class O>
+            const std::string* find_column_name(T O::*m) const {
                 const std::string* res = nullptr;
-                using field_type = object_field_type_t<M>;
+                using field_type = member_field_type_t<T O::*>;
                 this->template for_each_column_with_field_type<field_type>([&res, m](auto& c) {
-                    if(compare_any(c.member_pointer, m)) {
-                        res = &c.name;
-                    }
-                });
-                return res;
-            }
-
-            /**
-             *  Searches column name by class getter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class G, satisfies<is_getter, G> = true>
-            const std::string* find_column_name(G getter) const {
-                const std::string* res = nullptr;
-                using field_type = getter_field_type_t<G>;
-                this->template for_each_column_with_field_type<field_type>([&res, getter](auto& c) {
-                    if(compare_any(c.member_pointer, getter)) {
-                        res = &c.name;
-                    }
-                });
-                return res;
-            }
-
-            /**
-             *  Searches column name by class setter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class S, satisfies<is_setter, S> = true>
-            const std::string* find_column_name(S setter) const {
-                const std::string* res = nullptr;
-                using field_type = setter_field_type_t<S>;
-                this->template for_each_column_with_field_type<field_type>([&res, setter](auto& c) {
-                    if(compare_any(c.setter, setter)) {
+                    if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                         res = &c.name;
                     }
                 });

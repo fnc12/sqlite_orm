@@ -89,6 +89,8 @@ __pragma(push_macro("max"))
 
 #include <type_traits>
 
+// #include "start_macros.h"
+
 // #include "cxx_polyfill.h"
 
 #include <type_traits>
@@ -237,6 +239,14 @@ namespace sqlite_orm {
 }
 
 namespace sqlite_orm {
+    namespace internal {
+        template<class T, class... Types>
+        using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
+
+        template<class T, class... Types>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_any_of_v = polyfill::disjunction_v<std::is_same<T, Types>...>;
+    }
+
     // C++ generic traits used throughout the library
     namespace internal {
         // enable_if for types
@@ -460,6 +470,40 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+// #include "type_traits.h"
+
+// #include "is_std_ptr.h"
+
+#include <type_traits>
+#include <memory>
+
+namespace sqlite_orm {
+
+    /**
+     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
+     */
+    template<typename T>
+    struct is_std_ptr : std::false_type {};
+
+    template<typename T>
+    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
+        using element_type = typename std::shared_ptr<T>::element_type;
+
+        static std::shared_ptr<T> make(std::remove_cv_t<T>&& v) {
+            return std::make_shared<T>(std::move(v));
+        }
+    };
+
+    template<typename T>
+    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
+        using element_type = typename std::unique_ptr<T>::element_type;
+
+        static auto make(std::remove_cv_t<T>&& v) {
+            return std::make_unique<T>(std::move(v));
+        }
+    };
+}
+
 namespace sqlite_orm {
 
     /**
@@ -469,98 +513,66 @@ namespace sqlite_orm {
     struct type_printer {};
 
     struct integer_printer {
-        inline const std::string& print() {
+        const std::string& print() {
             static const std::string res = "INTEGER";
             return res;
         }
     };
 
     struct text_printer {
-        inline const std::string& print() {
+        const std::string& print() {
             static const std::string res = "TEXT";
             return res;
         }
     };
 
     struct real_printer {
-        inline const std::string& print() {
+        const std::string& print() {
             static const std::string res = "REAL";
             return res;
         }
     };
 
     struct blob_printer {
-        inline const std::string& print() {
+        const std::string& print() {
             static const std::string res = "BLOB";
             return res;
         }
     };
 
-    // Note unsigned/signed char and simple char used for storing integer values, not char values.
-    template<>
-    struct type_printer<unsigned char, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<signed char, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<char, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<unsigned short int, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<short, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<unsigned int, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<int, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<unsigned long, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<long, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<unsigned long long, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<long long, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<bool, void> : public integer_printer {};
-
-    template<>
-    struct type_printer<std::string, void> : public text_printer {};
-
-    template<>
-    struct type_printer<std::wstring, void> : public text_printer {};
-
-    template<>
-    struct type_printer<const char*, void> : public text_printer {};
-
-    template<>
-    struct type_printer<float, void> : public real_printer {};
-
-    template<>
-    struct type_printer<double, void> : public real_printer {};
+    // Note: char, unsigned/signed char are used for storing integer values, not char values.
+    template<class T>
+    struct type_printer<T,
+                        std::enable_if_t<polyfill::conjunction_v<std::negation<internal::is_any_of<T,
+                                                                                                   wchar_t,
+#ifdef __cpp_char8_t
+                                                                                                   char8_t,
+#endif
+                                                                                                   char16_t,
+                                                                                                   char32_t>>,
+                                                                 std::is_integral<T>>>> : integer_printer {
+    };
 
     template<class T>
-    struct type_printer<std::shared_ptr<T>, void> : public type_printer<T> {};
+    struct type_printer<T, std::enable_if_t<std::is_floating_point<T>::value>> : real_printer {};
 
     template<class T>
-    struct type_printer<std::unique_ptr<T>, void> : public type_printer<T> {};
+    struct type_printer<T,
+                        std::enable_if_t<polyfill::disjunction_v<std::is_same<T, const char*>,
+                                                                 std::is_base_of<std::string, T>,
+                                                                 std::is_base_of<std::wstring, T>>>> : text_printer {};
+
+    template<class T>
+    struct type_printer<T, std::enable_if_t<is_std_ptr<T>::value>> : type_printer<typename T::element_type> {};
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct type_printer<std::optional<T>, void> : public type_printer<T> {};
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+    struct type_printer<T, std::enable_if_t<polyfill::is_specialization_of_v<T, std::optional>>>
+        : type_printer<typename T::value_type> {};
+#endif
 
     template<>
-    struct type_printer<std::vector<char>, void> : public blob_printer {};
+    struct type_printer<std::vector<char>, void> : blob_printer {};
 }
 #pragma once
 
@@ -1308,11 +1320,12 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::false_type, std::true_type
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+
+// #include "cxx_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -1324,43 +1337,12 @@ namespace sqlite_orm {
      *  of type_is_nullable for your type and derive from `std::true_type`.
      */
     template<class T>
-    struct type_is_nullable : public std::false_type {
-        bool operator()(const T&) const {
-            return true;
-        }
-    };
-
-    /**
-     *  This is a specialization for std::shared_ptr. std::shared_ptr is nullable in sqlite_orm.
-     */
-    template<class T>
-    struct type_is_nullable<std::shared_ptr<T>> : public std::true_type {
-        bool operator()(const std::shared_ptr<T>& t) const {
-            return static_cast<bool>(t);
-        }
-    };
-
-    /**
-     *  This is a specialization for std::unique_ptr. std::unique_ptr is nullable too.
-     */
-    template<class T>
-    struct type_is_nullable<std::unique_ptr<T>> : public std::true_type {
-        bool operator()(const std::unique_ptr<T>& t) const {
-            return static_cast<bool>(t);
-        }
-    };
-
+    using type_is_nullable = polyfill::disjunction<
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
-    /**
-     *  This is a specialization for std::optional. std::optional is nullable.
-     */
-    template<class T>
-    struct type_is_nullable<std::optional<T>> : public std::true_type {
-        bool operator()(const std::optional<T>& t) const {
-            return t.has_value();
-        }
-    };
-#endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
+        polyfill::is_specialization_of<T, std::optional>,
+#endif
+        polyfill::is_specialization_of<T, std::unique_ptr>,
+        polyfill::is_specialization_of<T, std::shared_ptr>>;
 
 }
 #pragma once
@@ -1786,22 +1768,23 @@ namespace sqlite_orm {
 }
 // #include "member_traits/member_traits.h"
 
-#include <type_traits>  //  std::enable_if, std::is_member_object_pointer
+#include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
+
+// #include "../start_macros.h"
 
 // #include "../cxx_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
         // SFINAE friendly trait to get a member object pointer's field type
-        template<class T, class SFINAE = void>
+        template<class T>
         struct object_field_type {};
 
         template<class T>
         using object_field_type_t = typename object_field_type<T>::type;
 
         template<class F, class O>
-        struct object_field_type<F O::*, std::enable_if_t<std::is_member_object_pointer<F O::*>::value>>
-            : polyfill::type_identity<F> {};
+        struct object_field_type<F O::*> : std::enable_if<!std::is_function<F>::value, F> {};
 
         // SFINAE friendly trait to get a member function pointer's field type (i.e. unqualified return type)
         template<class T>
@@ -1861,21 +1844,11 @@ namespace sqlite_orm {
         template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_setter_v = is_setter<T>::value;
 
-        template<class T, class SFINAE = void>
-        struct member_field_type {};
+        template<class T>
+        struct member_field_type : object_field_type<T>, getter_field_type<T>, setter_field_type<T> {};
 
         template<class T>
         using member_field_type_t = typename member_field_type<T>::type;
-
-        template<class T>
-        struct member_field_type<T, std::enable_if_t<std::is_member_object_pointer<T>::value>> : object_field_type<T> {
-        };
-
-        template<class T>
-        struct member_field_type<T, std::enable_if_t<is_getter_v<T>>> : getter_field_type<T> {};
-
-        template<class T>
-        struct member_field_type<T, std::enable_if_t<is_setter_v<T>>> : setter_field_type<T> {};
 
         template<class T>
         struct member_object_type {};
@@ -2108,36 +2081,6 @@ namespace sqlite_orm {
 // #include "cxx_polyfill.h"
 
 // #include "is_std_ptr.h"
-
-#include <type_traits>
-#include <memory>
-
-namespace sqlite_orm {
-
-    /**
-     *  Specialization for optional type (std::shared_ptr / std::unique_ptr).
-     */
-    template<typename T>
-    struct is_std_ptr : std::false_type {};
-
-    template<typename T>
-    struct is_std_ptr<std::shared_ptr<T>> : std::true_type {
-        using element_type = typename std::shared_ptr<T>::element_type;
-
-        static std::shared_ptr<T> make(std::remove_cv_t<T>&& v) {
-            return std::make_shared<T>(std::move(v));
-        }
-    };
-
-    template<typename T>
-    struct is_std_ptr<std::unique_ptr<T>> : std::true_type {
-        using element_type = typename std::unique_ptr<T>::element_type;
-
-        static auto make(std::remove_cv_t<T>&& v) {
-            return std::make_unique<T>(std::move(v));
-        }
-    };
-}
 
 namespace sqlite_orm {
 
@@ -7132,16 +7075,12 @@ namespace sqlite_orm {
     struct real_tag {};
 
     template<class V>
-    struct arithmetic_tag {
-        using type = std::conditional_t<std::is_integral<V>::value,
-                                        // Integer class
-                                        std::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
-                                        // Floating-point class
-                                        real_tag>;
-    };
-
-    template<class V>
-    using arithmetic_tag_t = typename arithmetic_tag<V>::type;
+    using arithmetic_tag_t =
+        std::conditional_t<std::is_integral<V>::value,
+                           // Integer class
+                           std::conditional_t<sizeof(V) <= sizeof(int), int_or_smaller_tag, bigint_tag>,
+                           // Floating-point class
+                           real_tag>;
 }
 #pragma once
 
@@ -8307,7 +8246,7 @@ namespace sqlite_orm {
 #pragma once
 
 #include <sqlite3.h>
-#include <string>  //  std::basic_string
+#include <string>  //  std::string
 #include <utility>  //  std::move
 
 // #include "error_code.h"
@@ -8582,9 +8521,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>
-
-// #include "cxx_polyfill.h"
+#include <type_traits>  //  std::enable_if, std::is_base_of, std::remove_const
 
 // #include "alias.h"
 
@@ -8597,9 +8534,7 @@ namespace sqlite_orm {
          *  otherwise T is unqualified T.
          */
         template<class T, class SFINAE = void>
-        struct mapped_type_proxy {
-            using type = std::remove_const_t<T>;
-        };
+        struct mapped_type_proxy : std::remove_const<T> {};
 
         template<class T>
         struct mapped_type_proxy<T, std::enable_if_t<std::is_base_of<alias_tag, T>::value>> {
@@ -8681,7 +8616,7 @@ namespace sqlite_orm {
 }
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_member_object_pointer, std::is_base_of
+#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
@@ -9705,14 +9640,12 @@ namespace sqlite_orm {
         struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, std::decay_t<E>> {};
 
         template<class St, class T>
-        struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
-            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
-        };
+        struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>>
+            : storage_traits::storage_mapped_columns<St, T> {};
 
         template<class St, class A>
-        struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
-            using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
-        };
+        struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>>
+            : storage_traits::storage_mapped_columns<St, type_t<A>> {};
 
         template<class St, class T>
         struct column_result_t<St, object_t<T>, void> {
@@ -10014,44 +9947,12 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class M, satisfies<std::is_member_object_pointer, M> = true>
-            const std::string* find_column_name(M m) const {
+            template<class T, class O>
+            const std::string* find_column_name(T O::*m) const {
                 const std::string* res = nullptr;
-                using field_type = object_field_type_t<M>;
+                using field_type = member_field_type_t<T O::*>;
                 this->template for_each_column_with_field_type<field_type>([&res, m](auto& c) {
-                    if(compare_any(c.member_pointer, m)) {
-                        res = &c.name;
-                    }
-                });
-                return res;
-            }
-
-            /**
-             *  Searches column name by class getter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class G, satisfies<is_getter, G> = true>
-            const std::string* find_column_name(G getter) const {
-                const std::string* res = nullptr;
-                using field_type = getter_field_type_t<G>;
-                this->template for_each_column_with_field_type<field_type>([&res, getter](auto& c) {
-                    if(compare_any(c.member_pointer, getter)) {
-                        res = &c.name;
-                    }
-                });
-                return res;
-            }
-
-            /**
-             *  Searches column name by class setter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class S, satisfies<is_setter, S> = true>
-            const std::string* find_column_name(S setter) const {
-                const std::string* res = nullptr;
-                using field_type = setter_field_type_t<S>;
-                this->template for_each_column_with_field_type<field_type>([&res, setter](auto& c) {
-                    if(compare_any(c.setter, setter)) {
+                    if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                         res = &c.name;
                     }
                 });
@@ -10451,8 +10352,6 @@ namespace sqlite_orm {
 // #include "type_printer.h"
 
 // #include "constraints.h"
-
-// #include "type_is_nullable.h"
 
 // #include "field_printer.h"
 

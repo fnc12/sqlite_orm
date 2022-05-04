@@ -28,7 +28,6 @@
 #include "error_code.h"
 #include "type_printer.h"
 #include "constraints.h"
-#include "type_is_nullable.h"
 #include "field_printer.h"
 #include "rowid.h"
 #include "operators.h"
