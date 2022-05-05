@@ -470,6 +470,8 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+// #include "cxx_polyfill.h"
+
 // #include "type_traits.h"
 
 // #include "is_std_ptr.h"
@@ -543,13 +545,13 @@ namespace sqlite_orm {
     // Note: char, unsigned/signed char are used for storing integer values, not char values.
     template<class T>
     struct type_printer<T,
-                        std::enable_if_t<polyfill::conjunction_v<std::negation<internal::is_any_of<T,
-                                                                                                   wchar_t,
+                        std::enable_if_t<polyfill::conjunction_v<polyfill::negation<internal::is_any_of<T,
+                                                                                                        wchar_t,
 #ifdef __cpp_char8_t
-                                                                                                   char8_t,
+                                                                                                        char8_t,
 #endif
-                                                                                                   char16_t,
-                                                                                                   char32_t>>,
+                                                                                                        char16_t,
+                                                                                                        char32_t>>,
                                                                  std::is_integral<T>>>> : integer_printer {
     };
 
@@ -9887,7 +9889,7 @@ namespace sqlite_orm {
              *  Calls **l** with every primary key dedicated constraint
              */
             template<class L>
-            void for_each_primary_key(L&& lambda) const {
+            void for_each_primary_key(const L& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
                     using element_type = std::decay_t<decltype(element)>;
                     static_if<is_primary_key_v<element_type>>(lambda)(element);
