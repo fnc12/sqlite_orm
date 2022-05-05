@@ -239,16 +239,14 @@ namespace sqlite_orm {
 }
 
 namespace sqlite_orm {
+    // C++ generic traits used throughout the library
     namespace internal {
         template<class T, class... Types>
         using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
 
         template<class T, class... Types>
         SQLITE_ORM_INLINE_VAR constexpr bool is_any_of_v = polyfill::disjunction_v<std::is_same<T, Types>...>;
-    }
 
-    // C++ generic traits used throughout the library
-    namespace internal {
         // enable_if for types
         template<template<typename...> class Op, class... Args>
         using match_if = std::enable_if_t<Op<Args...>::value>;
