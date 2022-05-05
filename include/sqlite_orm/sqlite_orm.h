@@ -13417,29 +13417,30 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     struct DbConnection {
-        DbConnection(const std::string& filename) : m_filename(filename) {}
+        DbConnection(const std::string& filename) :
+            connection(std::make_unique<internal::connection_holder>(filename)), holds_connection(get_connection()) {}
 
-        const std::string m_filename;
-
-        // internal::connection_ref& access_connection_ref() {
-        //     return holds_connection;
-        // }
+        internal::connection_ref& access_connection_ref() {
+            return holds_connection;
+        }
         std::string filename() const {  // so we can access filename from make_storage(DbConnection,...)
-            return m_filename;  // make_storage(DbConnection con,...) ==> calls make_storage(con.filename(), ....)
+            return connection->filename;
         }
 
-        // internal::connection_ref get_connection() {
-        //     internal::connection_ref res{ *this->connection };
-        //     if (1 == this->connection->retain_count()) {
-        //         // this->on_open_internal(this->connection->get()); // must be able to call it!
-        //     }
-        //     return res;
-        // }
-        // std::unique_ptr<internal::connection_holder> connection;
-        internal::connection_ref* holds_connection = nullptr;  // make connection stay alive...
+      private:
+        internal::connection_ref get_connection() {
+            internal::connection_ref res{*this->connection};
+            if(1 == this->connection->retain_count()) {
+                // this->on_open_internal(this->connection->get());
+            }
+            return res;
+        }
+        std::unique_ptr<internal::connection_holder> connection;
+        internal::connection_ref holds_connection;  // make connection stay alive...
     };
 
 }
+
 // end
 
 namespace sqlite_orm {
@@ -13931,8 +13932,8 @@ namespace sqlite_orm {
                 inMemory(con.filename().empty() || con.filename() == ":memory:"),
                 connection(std::make_unique<connection_holder>(con.filename())),
                 cachedForeignKeysCount(foreignKeysCount) {
-                this->connection->retain();  // make connection stay open
-                this->on_open_internal(this->connection->get());
+                // this->connection->retain();  // make connection stay open
+                // this->on_open_internal(this->connection->get());
             }
             // end jdh
             storage_base(const std::string& filename_, int foreignKeysCount) :

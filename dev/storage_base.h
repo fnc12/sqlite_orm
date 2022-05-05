@@ -518,8 +518,8 @@ namespace sqlite_orm {
                 inMemory(con.filename().empty() || con.filename() == ":memory:"),
                 connection(std::make_unique<connection_holder>(con.filename())),
                 cachedForeignKeysCount(foreignKeysCount) {
-                this->connection->retain();  // make connection stay open
-                this->on_open_internal(this->connection->get());
+                // this->connection->retain();  // make connection stay open
+                // this->on_open_internal(this->connection->get());
             }
             // end jdh
             storage_base(const std::string& filename_, int foreignKeysCount) :
