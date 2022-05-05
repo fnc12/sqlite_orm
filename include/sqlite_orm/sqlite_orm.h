@@ -509,34 +509,34 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     /**
-     *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
+     *  This class transforms a C++ type to a sqlite type name (int -> INTEGER, ...)
      */
     template<class T, typename Enable = void>
     struct type_printer {};
 
     struct integer_printer {
-        const std::string& print() {
+        const std::string& print() const {
             static const std::string res = "INTEGER";
             return res;
         }
     };
 
     struct text_printer {
-        const std::string& print() {
+        const std::string& print() const {
             static const std::string res = "TEXT";
             return res;
         }
     };
 
     struct real_printer {
-        const std::string& print() {
+        const std::string& print() const {
             static const std::string res = "REAL";
             return res;
         }
     };
 
     struct blob_printer {
-        const std::string& print() {
+        const std::string& print() const {
             static const std::string res = "BLOB";
             return res;
         }
@@ -9889,7 +9889,7 @@ namespace sqlite_orm {
              *  Calls **l** with every primary key dedicated constraint
              */
             template<class L>
-            void for_each_primary_key(const L& lambda) const {
+            void for_each_primary_key(L&& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
                     using element_type = std::decay_t<decltype(element)>;
                     static_if<is_primary_key_v<element_type>>(lambda)(element);

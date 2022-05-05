@@ -14,34 +14,34 @@
 namespace sqlite_orm {
 
     /**
-     *  This class accepts c++ type and transfers it to sqlite name (int -> INTEGER, std::string -> TEXT)
+     *  This class transforms a C++ type to a sqlite type name (int -> INTEGER, ...)
      */
     template<class T, typename Enable = void>
     struct type_printer {};
 
     struct integer_printer {
-        const std::string& print() {
+        const std::string& print() const {
             static const std::string res = "INTEGER";
             return res;
         }
     };
 
     struct text_printer {
-        const std::string& print() {
+        const std::string& print() const {
             static const std::string res = "TEXT";
             return res;
         }
     };
 
     struct real_printer {
-        const std::string& print() {
+        const std::string& print() const {
             static const std::string res = "REAL";
             return res;
         }
     };
 
     struct blob_printer {
-        const std::string& print() {
+        const std::string& print() const {
             static const std::string res = "BLOB";
             return res;
         }
