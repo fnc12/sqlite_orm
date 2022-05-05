@@ -28,7 +28,6 @@
 #include "error_code.h"
 #include "type_printer.h"
 #include "constraints.h"
-#include "type_is_nullable.h"
 #include "field_printer.h"
 #include "rowid.h"
 #include "operators.h"
@@ -1601,7 +1600,7 @@ namespace sqlite_orm {
                                 foreignKey.references,
                                 [&columnIndex, stmt, &object, this](auto& memberPointer) {
                                     using MemberPointer = std::decay_t<decltype(memberPointer)>;
-                                    using field_type = typename member_traits<MemberPointer>::field_type;
+                                    using field_type = member_field_type_t<MemberPointer>;
 
                                     auto& tImpl = this->get_impl<O>();
                                     auto value =

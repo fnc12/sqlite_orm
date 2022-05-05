@@ -8,7 +8,6 @@
 
 namespace sqlite_orm {
 
-    //  got from here http://stackoverflow.com/questions/25958259/how-do-i-find-out-if-a-tuple-contains-a-type
     namespace tuple_helper {
 
         template<class T, class Tuple>

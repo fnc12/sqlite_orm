@@ -1,10 +1,11 @@
 #pragma once
 
-#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_member_object_pointer, std::is_base_of
+#include <type_traits>  //  std::enable_if, std::is_same, std::decay, std::is_arithmetic, std::is_base_of
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
 #include "type_traits.h"
+#include "member_traits/member_traits.h"
 #include "core_functions.h"
 #include "select_constraints.h"
 #include "operators.h"
@@ -55,26 +56,8 @@ namespace sqlite_orm {
             using type = bool;
         };
 
-        template<class St, class O, class F>
-        struct column_result_t<St, F O::*, std::enable_if_t<std::is_member_object_pointer<F O::*>::value>> {
-            using type = F;
-        };
-
-        /**
-         *  Common case for all getter types. Getter types are defined in column.h file
-         */
         template<class St, class T>
-        struct column_result_t<St, T, match_if<is_getter, T>> {
-            using type = typename getter_traits<T>::field_type;
-        };
-
-        /**
-         *  Common case for all setter types. Setter types are defined in column.h file
-         */
-        template<class St, class T>
-        struct column_result_t<St, T, match_if<is_setter, T>> {
-            using type = typename setter_traits<T>::field_type;
-        };
+        struct column_result_t<St, T, match_if<std::is_member_pointer, T>> : member_field_type<T> {};
 
         template<class St, class R, class S, class... Args>
         struct column_result_t<St, built_in_function_t<R, S, Args...>, void> {
@@ -260,14 +243,12 @@ namespace sqlite_orm {
         struct column_result_t<St, as_t<T, E>, void> : column_result_t<St, std::decay_t<E>> {};
 
         template<class St, class T>
-        struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>> {
-            using type = typename storage_traits::storage_mapped_columns<St, T>::type;
-        };
+        struct column_result_t<St, asterisk_t<T>, match_if_not<std::is_base_of, alias_tag, T>>
+            : storage_traits::storage_mapped_columns<St, T> {};
 
         template<class St, class A>
-        struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>> {
-            using type = typename storage_traits::storage_mapped_columns<St, type_t<A>>::type;
-        };
+        struct column_result_t<St, asterisk_t<A>, match_if<std::is_base_of, alias_tag, A>>
+            : storage_traits::storage_mapped_columns<St, type_t<A>> {};
 
         template<class St, class T>
         struct column_result_t<St, object_t<T>, void> {

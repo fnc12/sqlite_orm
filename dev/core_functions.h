@@ -604,7 +604,7 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ENABLE_JSON1
 
         template<class T>
-        using field_type_or_type_t = polyfill::detected_or_t<T, field_type_t, member_traits<T>>;
+        using field_type_or_type_t = polyfill::detected_or_t<T, type_t, member_field_type<T>>;
     }
 
     /**

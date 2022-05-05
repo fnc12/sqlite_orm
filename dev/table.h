@@ -10,6 +10,8 @@
 #include "typed_comparator.h"
 #include "tuple_helper/tuple_helper.h"
 #include "tuple_helper/tuple_filter.h"
+#include "member_traits/member_traits.h"
+#include "type_traits.h"
 #include "constraints.h"
 #include "table_info.h"
 #include "column.h"
@@ -31,7 +33,6 @@ namespace sqlite_orm {
          */
         template<class T, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
-            using super = basic_table;
             using object_type = T;
             using elements_type = std::tuple<Cs...>;
 
@@ -41,7 +42,7 @@ namespace sqlite_orm {
             elements_type elements;
 
 #ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
-            table_t(std::string name_, elements_type elements_) : super{move(name_)}, elements{move(elements_)} {}
+            table_t(std::string name_, elements_type elements_) : basic_table{move(name_)}, elements{move(elements_)} {}
 #endif
 
             table_t<T, true, Cs...> without_rowid() const {
@@ -178,43 +179,12 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class F, class O, satisfies<std::is_member_object_pointer, F O::*> = true>
-            const std::string* find_column_name(F O::*m) const {
+            template<class T, class O>
+            const std::string* find_column_name(T O::*m) const {
                 const std::string* res = nullptr;
-                this->template for_each_column_with_field_type<F>([&res, m](auto& c) {
-                    if(compare_any(c.member_pointer, m)) {
-                        res = &c.name;
-                    }
-                });
-                return res;
-            }
-
-            /**
-             *  Searches column name by class getter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class G, satisfies<is_getter, G> = true>
-            const std::string* find_column_name(G getter) const {
-                const std::string* res = nullptr;
-                using field_type = typename getter_traits<G>::field_type;
-                this->template for_each_column_with_field_type<field_type>([&res, getter](auto& c) {
-                    if(compare_any(c.member_pointer, getter)) {
-                        res = &c.name;
-                    }
-                });
-                return res;
-            }
-
-            /**
-             *  Searches column name by class setter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class S, satisfies<is_setter, S> = true>
-            const std::string* find_column_name(S setter) const {
-                const std::string* res = nullptr;
-                using field_type = typename setter_traits<S>::field_type;
-                this->template for_each_column_with_field_type<field_type>([&res, setter](auto& c) {
-                    if(compare_any(c.setter, setter)) {
+                using field_type = member_field_type_t<T O::*>;
+                this->template for_each_column_with_field_type<field_type>([&res, m](auto& c) {
+                    if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                         res = &c.name;
                     }
                 });

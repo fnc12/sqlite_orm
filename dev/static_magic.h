@@ -18,12 +18,12 @@ namespace sqlite_orm {
 
         template<typename T, typename F>
         decltype(auto) static_if(std::true_type, T&& t, const F&) {
-            return std::forward<T>(t);
+            return static_cast<T&&>(t);
         }
 
         template<typename T, typename F>
         decltype(auto) static_if(std::false_type, const T&, F&& f) {
-            return std::forward<F>(f);
+            return static_cast<F&&>(f);
         }
 
         template<bool B, typename T, typename F>
