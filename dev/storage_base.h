@@ -25,6 +25,9 @@
 #include "function.h"
 #include "values_to_tuple.h"
 #include "arg_values.h"
+// jdh
+#include "DbConnection.h"
+// end
 
 namespace sqlite_orm {
 
@@ -508,6 +511,17 @@ namespace sqlite_orm {
             }
 
           protected:
+            // jdh
+            storage_base(const DbConnection& con, int foreignKeysCount) :
+                pragma(std::bind(&storage_base::get_connection, this)),
+                limit(std::bind(&storage_base::get_connection, this)),
+                inMemory(con.filename().empty() || con.filename() == ":memory:"),
+                connection(std::make_unique<connection_holder>(con.filename())),
+                cachedForeignKeysCount(foreignKeysCount) {
+                this->connection->retain();  // make connection stay open
+                this->on_open_internal(this->connection->get());
+            }
+            // end jdh
             storage_base(const std::string& filename_, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),

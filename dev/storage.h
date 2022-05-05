@@ -54,6 +54,9 @@
 #include "column.h"
 #include "index.h"
 #include "util.h"
+// jdh
+#include "DbConnection.h"
+// end
 
 namespace sqlite_orm {
 
@@ -83,6 +86,11 @@ namespace sqlite_orm {
                 storage_base{filename, foreign_keys_count(impl_)}, impl(std::move(impl_)) {}
 
             storage_t(const storage_t& other) : storage_base(other), impl(other.impl) {}
+
+            // jdh
+            storage_t(const DbConnection& con, impl_type impl_) :
+                storage_base(con, foreign_keys_count(impl_)), impl(std::move(impl_)) {}
+            // end
 
           protected:
             impl_type impl;
@@ -1757,6 +1765,13 @@ namespace sqlite_orm {
     internal::storage_t<Ts...> make_storage(const std::string& filename, Ts... tables) {
         return {filename, internal::storage_impl<Ts...>(std::forward<Ts>(tables)...)};
     }
+
+    // jdh
+    template<class... Ts>
+    internal::storage_t<Ts...> make_storage(const DbConnection& con, Ts... tables) {
+        return {con, internal::storage_impl<Ts...>(std::forward<Ts>(tables)...)};
+    }
+    // end jdh
 
     /**
      *  sqlite3_threadsafe() interface.

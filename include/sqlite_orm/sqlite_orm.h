@@ -13408,6 +13408,40 @@ namespace sqlite_orm {
 
 // #include "arg_values.h"
 
+// jdh
+// #include "DbConnection.h"
+
+#include <string>
+// #include "connection_holder.h"
+
+namespace sqlite_orm {
+
+    struct DbConnection {
+        DbConnection(const std::string& filename) : m_filename(filename) {}
+
+        const std::string m_filename;
+
+        // internal::connection_ref& access_connection_ref() {
+        //     return holds_connection;
+        // }
+        std::string filename() const {  // so we can access filename from make_storage(DbConnection,...)
+            return m_filename;  // make_storage(DbConnection con,...) ==> calls make_storage(con.filename(), ....)
+        }
+
+        // internal::connection_ref get_connection() {
+        //     internal::connection_ref res{ *this->connection };
+        //     if (1 == this->connection->retain_count()) {
+        //         // this->on_open_internal(this->connection->get()); // must be able to call it!
+        //     }
+        //     return res;
+        // }
+        // std::unique_ptr<internal::connection_holder> connection;
+        internal::connection_ref* holds_connection = nullptr;  // make connection stay alive...
+    };
+
+}
+// end
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -13890,6 +13924,17 @@ namespace sqlite_orm {
             }
 
           protected:
+            // jdh
+            storage_base(const DbConnection& con, int foreignKeysCount) :
+                pragma(std::bind(&storage_base::get_connection, this)),
+                limit(std::bind(&storage_base::get_connection, this)),
+                inMemory(con.filename().empty() || con.filename() == ":memory:"),
+                connection(std::make_unique<connection_holder>(con.filename())),
+                cachedForeignKeysCount(foreignKeysCount) {
+                this->connection->retain();  // make connection stay open
+                this->on_open_internal(this->connection->get());
+            }
+            // end jdh
             storage_base(const std::string& filename_, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
@@ -17112,6 +17157,11 @@ namespace sqlite_orm {
 
 // #include "util.h"
 
+// jdh
+// #include "DbConnection.h"
+
+// end
+
 namespace sqlite_orm {
 
     namespace internal {
@@ -17140,6 +17190,11 @@ namespace sqlite_orm {
                 storage_base{filename, foreign_keys_count(impl_)}, impl(std::move(impl_)) {}
 
             storage_t(const storage_t& other) : storage_base(other), impl(other.impl) {}
+
+            // jdh
+            storage_t(const DbConnection& con, impl_type impl_) :
+                storage_base(con, foreign_keys_count(impl_)), impl(std::move(impl_)) {}
+            // end
 
           protected:
             impl_type impl;
@@ -18814,6 +18869,13 @@ namespace sqlite_orm {
     internal::storage_t<Ts...> make_storage(const std::string& filename, Ts... tables) {
         return {filename, internal::storage_impl<Ts...>(std::forward<Ts>(tables)...)};
     }
+
+    // jdh
+    template<class... Ts>
+    internal::storage_t<Ts...> make_storage(const DbConnection& con, Ts... tables) {
+        return {con, internal::storage_impl<Ts...>(std::forward<Ts>(tables)...)};
+    }
+    // end jdh
 
     /**
      *  sqlite3_threadsafe() interface.
