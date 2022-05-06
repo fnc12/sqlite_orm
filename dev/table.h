@@ -179,10 +179,10 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class T, class O>
-            const std::string* find_column_name(T O::*m) const {
+            template<class M, satisfies<std::is_member_pointer, M> = true>
+            const std::string* find_column_name(M m) const {
                 const std::string* res = nullptr;
-                using field_type = member_field_type_t<T O::*>;
+                using field_type = member_field_type_t<M>;
                 this->template for_each_column_with_field_type<field_type>([&res, m](auto& c) {
                     if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                         res = &c.name;
