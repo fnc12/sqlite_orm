@@ -13446,6 +13446,7 @@ namespace sqlite_orm {
 
         struct storage_base {
             using collating_function = std::function<int(int, const void*, int, const void*)>;
+            using migrator = std::function<void(const DbConnection&)>;
 
             std::function<void(sqlite3*)> on_open;
             pragma_t pragma;
@@ -13618,6 +13619,31 @@ namespace sqlite_orm {
                 this->connection->retain();
                 if(1 == this->connection->retain_count()) {
                     this->on_open_internal(this->connection->get());
+                }
+            }
+
+            void register_migration(size_t from, size_t to, migrator m) {
+                auto p = std::make_pair(from, to);
+                this->migrations[p] = m;
+            }
+
+            void migrate_to(int target_version, const DbConnection& con) {
+                int from_version = pragma.user_version();
+                auto p = std::make_pair(from_version, target_version);
+                if(migrations.find(p) != migrations.end()) {
+                    auto lambda = migrations[p];
+                    lambda(con);
+                    return;
+                }
+
+                while(from_version < target_version) {
+                    auto p = std::make_pair(from_version, from_version + 1);
+                    if(migrations.find(p) != migrations.end()) {
+                        auto lambda = migrations[p];
+                        lambda(con);
+                        ++from_version;
+                    } else
+                        break;
                 }
             }
 
@@ -14256,6 +14282,7 @@ namespace sqlite_orm {
             std::function<int(int)> _busy_handler;
             std::vector<std::unique_ptr<user_defined_function_base>> scalarFunctions;
             std::vector<std::unique_ptr<user_defined_function_base>> aggregateFunctions;
+            std::map<std::pair<size_t, size_t>, migrator> migrations;  // <version pair, lambda>
         };
     }
 }
