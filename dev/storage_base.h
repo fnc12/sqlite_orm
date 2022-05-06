@@ -38,9 +38,9 @@ namespace sqlite_orm {
 
             transaction_guard_t transaction_guard() {
                 this->begin_transaction();
-                auto commitFunc = std::bind(static_cast<void (storage_base::*)()>(&storage_base::commit), this);
-                auto rollbackFunc = std::bind(static_cast<void (storage_base::*)()>(&storage_base::rollback), this);
-                return {this->get_connection(), move(commitFunc), move(rollbackFunc)};
+                return {this->get_connection(),
+                        std::bind(&storage_base::commit, this),
+                        std::bind(&storage_base::rollback, this)};
             }
 
             void drop_index(const std::string& indexName) {
@@ -140,14 +140,8 @@ namespace sqlite_orm {
             }
 
             bool transaction(const std::function<bool()>& f) {
-                auto guard = transaction_guard();
-                auto shouldCommit = f();
-                if(shouldCommit) {
-                    guard.commit();
-                } else {
-                    guard.rollback();
-                }
-                return shouldCommit;
+                auto guard = this->transaction_guard();
+                return guard.commit_on_destroy = f();
             }
 
             std::string current_timestamp() {

@@ -239,16 +239,14 @@ namespace sqlite_orm {
 }
 
 namespace sqlite_orm {
+    // C++ generic traits used throughout the library
     namespace internal {
         template<class T, class... Types>
         using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
 
         template<class T, class... Types>
         SQLITE_ORM_INLINE_VAR constexpr bool is_any_of_v = polyfill::disjunction_v<std::is_same<T, Types>...>;
-    }
 
-    // C++ generic traits used throughout the library
-    namespace internal {
         // enable_if for types
         template<template<typename...> class Op, class... Args>
         using match_if = std::enable_if_t<Op<Args...>::value>;
@@ -9949,10 +9947,10 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class T, class O>
-            const std::string* find_column_name(T O::*m) const {
+            template<class M, satisfies<std::is_member_pointer, M> = true>
+            const std::string* find_column_name(M m) const {
                 const std::string* res = nullptr;
-                using field_type = member_field_type_t<T O::*>;
+                using field_type = member_field_type_t<M>;
                 this->template for_each_column_with_field_type<field_type>([&res, m](auto& c) {
                     if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                         res = &c.name;
@@ -13078,10 +13076,10 @@ namespace sqlite_orm {
 
             ~transaction_guard_t() {
                 if(this->gotta_fire) {
-                    if(!this->commit_on_destroy) {
-                        this->rollback_func();
-                    } else {
+                    if(this->commit_on_destroy) {
                         this->commit_func();
+                    } else {
+                        this->rollback_func();
                     }
                 }
             }
@@ -13409,9 +13407,9 @@ namespace sqlite_orm {
 
             transaction_guard_t transaction_guard() {
                 this->begin_transaction();
-                auto commitFunc = std::bind(static_cast<void (storage_base::*)()>(&storage_base::commit), this);
-                auto rollbackFunc = std::bind(static_cast<void (storage_base::*)()>(&storage_base::rollback), this);
-                return {this->get_connection(), move(commitFunc), move(rollbackFunc)};
+                return {this->get_connection(),
+                        std::bind(&storage_base::commit, this),
+                        std::bind(&storage_base::rollback, this)};
             }
 
             void drop_index(const std::string& indexName) {
@@ -13511,14 +13509,8 @@ namespace sqlite_orm {
             }
 
             bool transaction(const std::function<bool()>& f) {
-                auto guard = transaction_guard();
-                auto shouldCommit = f();
-                if(shouldCommit) {
-                    guard.commit();
-                } else {
-                    guard.rollback();
-                }
-                return shouldCommit;
+                auto guard = this->transaction_guard();
+                return guard.commit_on_destroy = f();
             }
 
             std::string current_timestamp() {
