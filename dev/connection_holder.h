@@ -13,6 +13,12 @@ namespace sqlite_orm {
 
             connection_holder(std::string filename_) : filename(move(filename_)) {}
 
+            // jdh
+            connection_holder(const connection_holder& rhs) :
+                filename{rhs.filename}, db(rhs.db), _retain_count(rhs._retain_count) {
+                retain();  // 1 reta
+            }
+            // end
             void retain() {
                 ++this->_retain_count;
                 if(1 == this->_retain_count) {

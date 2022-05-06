@@ -515,9 +515,10 @@ namespace sqlite_orm {
             storage_base(const DbConnection& con, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
-                inMemory(con.filename().empty() || con.filename() == ":memory:"),
-                connection(std::make_unique<connection_holder>(con.filename())),
+                inMemory(con.get_filename().empty() || con.get_filename() == ":memory:"),
+                connection(std::make_unique<connection_holder>(*con.connection)),
                 cachedForeignKeysCount(foreignKeysCount) {
+                // con.connection->retain();       // make
                 // this->connection->retain();  // make connection stay open
                 // this->on_open_internal(this->connection->get());
             }
