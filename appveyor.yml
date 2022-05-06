@@ -37,41 +37,37 @@ build_script:
   - ctest --verbose --output-on-failure --build-config %configuration%
 
 for:
-  -
-    matrix:
-      only:
-        - appveyor_build_worker_image: Visual Studio 2015
-        - appveyor_build_worker_image: Visual Studio 2022
-  
-      init:
-        - echo %appveyor_build_worker_image% - %platform% - %configuration%
-        - if "%platform%"=="x64" (set architecture=-A x64)
-        - if "%platform%"=="x86" (set architecture=-A Win32)
-        - if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
-        - if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
-  
-      install:
-        - C:\Tools\vcpkg\vcpkg integrate install
-        - vcpkg install sqlite3:%platform%-windows
-      
-      before_build:
-        - mkdir compile
-        - cd compile
-        - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
-  -
-    matrix:
-      only:
-        - appveyor_build_worker_image: Ubuntu
-  
-      install:
-        - $HOME/vcpkg/vcpkg integrate install
-        - vcpkg install sqlite3
-  
-      init:
-        - sh: echo %appveyor_build_worker_image% - %platform% - %configuration%
-        - sh: export generator="Unix Makefiles"
-  
-      before_build:
-        - mkdir compile
-        - cd compile
-        - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+-
+  # Windows
+  matrix:
+    only:
+      - appveyor_build_worker_image: Visual Studio 2015
+      - appveyor_build_worker_image: Visual Studio 2022
+  init:
+    - echo %appveyor_build_worker_image% - %platform% - %configuration%
+    - if "%platform%"=="x64" (set architecture=-A x64)
+    - if "%platform%"=="x86" (set architecture=-A Win32)
+    - if "%appveyor_build_worker_image%"=="Visual Studio 2022" (set generator="Visual Studio 17 2022" %architecture%)
+    - if "%appveyor_build_worker_image%"=="Visual Studio 2015" (set generator="Visual Studio 14 2015" %architecture%)
+  install:
+    - C:\Tools\vcpkg\vcpkg integrate install
+    - vcpkg install sqlite3:%platform%-windows
+  before_build:
+    - mkdir compile
+    - cd compile
+    - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
+-
+  # Linux
+  matrix:
+    only:
+      - appveyor_build_worker_image: Ubuntu
+  install:
+    - $HOME/vcpkg/vcpkg integrate install
+    - vcpkg install sqlite3
+  init:
+    - sh: echo %appveyor_build_worker_image% - %platform% - %configuration%
+    - sh: export generator="Unix Makefiles"
+  before_build:
+    - mkdir compile
+    - cd compile
+    - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
