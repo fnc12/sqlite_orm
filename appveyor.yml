@@ -38,7 +38,7 @@ build_script:
 
 for:
   -
-    matrix
+    matrix:
       only:
         - appveyor_build_worker_image: Visual Studio 2015
         - appveyor_build_worker_image: Visual Studio 2022
@@ -59,7 +59,7 @@ for:
         - cd compile
         - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=C:/Tools/vcpkg/scripts/buildsystems/vcpkg.cmake
   -
-    matrix
+    matrix:
       only:
         - appveyor_build_worker_image: Ubuntu
   
@@ -75,4 +75,3 @@ for:
         - mkdir compile
         - cd compile
         - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
-  
