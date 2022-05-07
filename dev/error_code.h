@@ -1,8 +1,8 @@
 #pragma once
 
+#include <sqlite3.h>
 #include <system_error>  // std::error_code, std::system_error
 #include <string>  //  std::string
-#include <sqlite3.h>
 #include <stdexcept>
 #include <sstream>  //  std::ostringstream
 #include <type_traits>
@@ -161,5 +161,9 @@ namespace sqlite_orm {
 
     [[noreturn]] inline void throw_translated_sqlite_error(sqlite3* db) {
         throw sqlite_to_system_error(db);
+    }
+
+    [[noreturn]] inline void throw_translated_sqlite_error(sqlite3_stmt* stmt) {
+        throw sqlite_to_system_error(sqlite3_db_handle(stmt));
     }
 }

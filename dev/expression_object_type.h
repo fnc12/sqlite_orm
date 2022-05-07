@@ -13,24 +13,16 @@ namespace sqlite_orm {
         struct expression_object_type;
 
         template<class T>
-        struct expression_object_type<update_t<T>> {
-            using type = typename std::decay<T>::type;
-        };
+        struct expression_object_type<update_t<T>> : std::decay<T> {};
 
         template<class T>
-        struct expression_object_type<update_t<std::reference_wrapper<T>>> {
-            using type = typename std::decay<T>::type;
-        };
+        struct expression_object_type<update_t<std::reference_wrapper<T>>> : std::decay<T> {};
 
         template<class T>
-        struct expression_object_type<replace_t<T>> {
-            using type = typename std::decay<T>::type;
-        };
+        struct expression_object_type<replace_t<T>> : std::decay<T> {};
 
         template<class T>
-        struct expression_object_type<replace_t<std::reference_wrapper<T>>> {
-            using type = typename std::decay<T>::type;
-        };
+        struct expression_object_type<replace_t<std::reference_wrapper<T>>> : std::decay<T> {};
 
         template<class It, class L, class O>
         struct expression_object_type<replace_range_t<It, L, O>> {
@@ -53,18 +45,13 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct expression_object_type<insert_t<T>> {
-            using type = typename std::decay<T>::type;
-        };
+        struct expression_object_type<insert_t<T>> : std::decay<T> {};
 
         template<class T>
-        struct expression_object_type<insert_t<std::reference_wrapper<T>>> {
-            using type = typename std::decay<T>::type;
-        };
+        struct expression_object_type<insert_t<std::reference_wrapper<T>>> : std::decay<T> {};
 
         template<class It, class L, class O>
         struct expression_object_type<insert_range_t<It, L, O>> {
-            using transformer_type = L;
             using type = typename insert_range_t<It, L, O>::object_type;
         };
 
@@ -74,14 +61,10 @@ namespace sqlite_orm {
         };
 
         template<class T, class... Cols>
-        struct expression_object_type<insert_explicit<T, Cols...>> {
-            using type = typename std::decay<T>::type;
-        };
+        struct expression_object_type<insert_explicit<T, Cols...>> : std::decay<T> {};
 
         template<class T, class... Cols>
-        struct expression_object_type<insert_explicit<std::reference_wrapper<T>, Cols...>> {
-            using type = typename std::decay<T>::type;
-        };
+        struct expression_object_type<insert_explicit<std::reference_wrapper<T>, Cols...>> : std::decay<T> {};
 
         template<class T>
         struct get_ref_t {
@@ -103,7 +86,7 @@ namespace sqlite_orm {
 
         template<class T>
         auto& get_ref(T& t) {
-            using arg_type = typename std::decay<T>::type;
+            using arg_type = std::decay_t<T>;
             get_ref_t<arg_type> g;
             return g(t);
         }
@@ -116,7 +99,7 @@ namespace sqlite_orm {
 
         template<class T>
         auto& get_object(T& t) {
-            using expression_type = typename std::decay<T>::type;
+            using expression_type = std::decay_t<T>;
             get_object_t<expression_type> obj;
             return obj(t);
         }

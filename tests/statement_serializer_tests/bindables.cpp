@@ -259,6 +259,7 @@ TEST_CASE("bindables") {
         }
     }
 
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
     SECTION("bindable_pointer") {
         string value, expected;
         context.replace_bindable_with_question = false;
@@ -292,4 +293,5 @@ TEST_CASE("bindables") {
 
         REQUIRE(value == expected);
     }
+#endif
 }

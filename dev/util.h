@@ -1,7 +1,7 @@
 #pragma once
 
 #include <sqlite3.h>
-#include <string>  //  std::basic_string
+#include <string>  //  std::string
 #include <utility>  //  std::move
 
 #include "error_code.h"
@@ -49,10 +49,16 @@ namespace sqlite_orm {
     }
 
     namespace internal {
-        inline void perform_step(sqlite3* db, sqlite3_stmt* stmt) {
-            auto rc = sqlite3_step(stmt);
+        // Wrapper to reduce boiler-plate code
+        inline sqlite3_stmt* reset(sqlite3_stmt* stmt) {
+            sqlite3_reset(stmt);
+            return stmt;
+        }
+
+        inline void perform_step(sqlite3_stmt* stmt) {
+            int rc = sqlite3_step(stmt);
             if(rc != SQLITE_DONE) {
-                throw_translated_sqlite_error(db);
+                throw_translated_sqlite_error(stmt);
             }
         }
 

@@ -36,10 +36,10 @@ namespace sqlite_orm {
 
             ~transaction_guard_t() {
                 if(this->gotta_fire) {
-                    if(!this->commit_on_destroy) {
-                        this->rollback_func();
-                    } else {
+                    if(this->commit_on_destroy) {
                         this->commit_func();
+                    } else {
+                        this->rollback_func();
                     }
                 }
             }

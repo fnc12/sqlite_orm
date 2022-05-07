@@ -63,7 +63,9 @@ TEST_CASE("bindable_filter") {
 #endif
                                  std::unique_ptr<int>,
                                  std::shared_ptr<int>,
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
                                  static_pointer_binding<std::nullptr_t, carray_pvt>,
+#endif
                                  Custom,
                                  std::unique_ptr<Custom>>;
         using Res = bindable_filter<Tuple>::type;

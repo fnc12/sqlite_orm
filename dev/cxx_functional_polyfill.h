@@ -1,5 +1,5 @@
 #pragma once
-#if __cplusplus < 201703L  // C++14 or earlier
+#if __cpp_lib_invoke < 201411L
 #include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
 #endif
 #include <functional>
@@ -7,7 +7,9 @@
 namespace sqlite_orm {
     namespace internal {
         namespace polyfill {
-#if __cplusplus < 201703L  // C++14 or earlier
+#if __cpp_lib_invoke >= 201411L
+            using std::invoke;
+#else
             // pointer-to-data-member
             template<class Callable,
                      class Arg1,
@@ -27,8 +29,6 @@ namespace sqlite_orm {
             decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
                 return (static_cast<Arg1&&>(arg1).*obj)(static_cast<Args&&>(args)...);
             }
-#else
-            using std::invoke;
 #endif
         }
     }

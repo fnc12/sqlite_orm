@@ -1,7 +1,7 @@
 #pragma once
 
-#include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <sqlite3.h>
+#include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <type_traits>  //  std::decay
 #include <utility>  //  std::move
 #include <cstddef>  //  std::ptrdiff_t
@@ -86,7 +86,7 @@ namespace sqlite_orm {
                             this->stmt.reset();
                             break;
                         default: {
-                            auto db = this->view->connection.get();
+                            sqlite3* db = this->view->connection.get();
                             throw_translated_sqlite_error(db);
                         }
                     }

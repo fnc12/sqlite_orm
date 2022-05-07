@@ -74,12 +74,22 @@ TEST_CASE("join") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
 
     struct Visit {
         int id = 0;
         int userId = 0;
         time_t date = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        Visit() = default;
+        Visit(int id, int userId, time_t date) : id{id}, userId{userId}, date{date} {}
+#endif
     };
 
     auto storage =
