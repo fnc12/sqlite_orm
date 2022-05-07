@@ -13540,11 +13540,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3* db = con.get();
                 std::vector<std::string> tableNames;
-                std::string sql = "SELECT name FROM sqlite_master WHERE type='table'";
+                const char* sql = "SELECT name FROM sqlite_master WHERE type='table'";
                 using data_t = std::vector<std::string>;
                 int res = sqlite3_exec(
                     db,
-                    sql.c_str(),
+                    sql,
                     [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; ++i) {
@@ -15971,21 +15971,20 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& tImpl = pick_impl<object_type>(context.impl);
 
-                std::stringstream ss;
-                ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
-
-                std::vector<std::string> columnNames;
+                std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.for_each_column([&columnNames, &tImpl](auto& column) {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
                     if(table_type::is_without_rowid ||
                        (!column.template has<primary_key_t<>>() &&
                         !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
-                        columnNames.push_back(column.name);
+                        columnNames.push_back(cref(column.name));
                     }
                 });
+                const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
+                const size_t columnNamesCount = columnNames.size();
 
-                const auto valuesCount = std::distance(statement.range.first, statement.range.second);
-                const auto columnNamesCount = columnNames.size();
+                std::stringstream ss;
+                ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
                 if(columnNamesCount) {
                     ss << "(" << streaming_identifiers(columnNames) << ")";
                 } else {

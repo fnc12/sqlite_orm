@@ -1321,21 +1321,20 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& tImpl = pick_impl<object_type>(context.impl);
 
-                std::stringstream ss;
-                ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
-
-                std::vector<std::string> columnNames;
+                std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.for_each_column([&columnNames, &tImpl](auto& column) {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
                     if(table_type::is_without_rowid ||
                        (!column.template has<primary_key_t<>>() &&
                         !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
-                        columnNames.push_back(column.name);
+                        columnNames.push_back(cref(column.name));
                     }
                 });
+                const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
+                const size_t columnNamesCount = columnNames.size();
 
-                const auto valuesCount = std::distance(statement.range.first, statement.range.second);
-                const auto columnNamesCount = columnNames.size();
+                std::stringstream ss;
+                ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
                 if(columnNamesCount) {
                     ss << "(" << streaming_identifiers(columnNames) << ")";
                 } else {
