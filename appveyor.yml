@@ -73,7 +73,7 @@ for:
   init:
     - |-
       echo $appveyor_build_worker_image
-      c++ -v
+      c++ --version
   before_build:
     - |-
       mkdir compile
