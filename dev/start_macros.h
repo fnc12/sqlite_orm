@@ -8,5 +8,6 @@ __pragma(push_macro("max"))
 #endif  // defined(_MSC_VER)
 
 #include <iso646.h>  //  alternative operator representations
+#include <stddef.h> //  sqlite_orm is using size_t, ptrdiff_t everywhere, pull it in early
 
 #include "cxx_core_features.h"

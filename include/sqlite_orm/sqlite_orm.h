@@ -8,6 +8,7 @@ __pragma(push_macro("max"))
 #endif  // defined(_MSC_VER)
 
 #include <iso646.h>  //  alternative operator representations
+#include <stddef.h>  //  sqlite_orm is using size_t, ptrdiff_t everywhere, pull it in early
 
 // #include "cxx_core_features.h"
 
@@ -10216,7 +10217,6 @@ namespace sqlite_orm {
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
-#include <cstddef>  //  std::ptrdiff_t
 #include <iterator>  //  std::input_iterator_tag, std::iterator_traits, std::distance
 #include <functional>  //  std::function
 #include <sstream>  //  std::stringstream
