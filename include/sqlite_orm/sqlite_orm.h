@@ -7192,14 +7192,18 @@ namespace sqlite_orm {
 #if __cpp_lib_concepts >= 201907L
         template<typename D>
         concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
-                                            (can_yield_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+                                            (can_yield_fp<D> && !std::convertible<yielded_fn_t<D>, xdestroy_fn_t>));
 
+        /**
+         *  This concept tests whether a deleter yields a function pointer, which is convertible to an xdestroy function pointer.
+         *  Note: We are using 'is convertible' rather than 'is same' because of any exception specification.
+         */
         template<typename D>
-        concept can_yield_xdestroy = can_yield_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
+        concept can_yield_xdestroy = can_yield_fp<D> && std::convertible<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
         concept needs_xdestroy_proxy = (stateless_deleter<D> &&
-                                        (!can_yield_fp<D> || !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+                                        (!can_yield_fp<D> || !std::convertible<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  xDestroy function that constructs and invokes the stateless deleter.
@@ -7231,16 +7235,17 @@ namespace sqlite_orm {
 #else
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool is_unusable_for_xdestroy_v =
-            !is_stateless_deleter_v<D> && (can_yield_fp_v<D> && !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+            !is_stateless_deleter_v<D> &&
+            (can_yield_fp_v<D> && !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool can_yield_xdestroy_v =
-            can_yield_fp_v<D>&& std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value;
+            can_yield_fp_v<D>&& std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
 
         template<typename D, typename P>
-        SQLITE_ORM_INLINE_VAR constexpr bool
-            needs_xdestroy_proxy_v = is_stateless_deleter_v<D> &&
-                                     (!can_yield_fp_v<D> || !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+        SQLITE_ORM_INLINE_VAR constexpr bool needs_xdestroy_proxy_v =
+            is_stateless_deleter_v<D> &&
+            (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
         template<typename D, typename P, std::enable_if_t<!is_integral_fp_c_v<D>, bool> = true>
         void xdestroy_proxy(void* p) noexcept {
