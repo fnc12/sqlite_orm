@@ -86,10 +86,9 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
                    << " AND name = " << quote_string_literal(tableName) << std::flush;
-                auto query = ss.str();
-                auto rc = sqlite3_exec(
+                perform_exec(
                     db,
-                    query.c_str(),
+                    ss.str(),
                     [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
@@ -97,11 +96,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
@@ -169,13 +164,11 @@ namespace sqlite_orm {
              */
             std::vector<std::string> table_names() {
                 auto con = this->get_connection();
-                sqlite3* db = con.get();
                 std::vector<std::string> tableNames;
-                const char* sql = "SELECT name FROM sqlite_master WHERE type='table'";
                 using data_t = std::vector<std::string>;
-                int res = sqlite3_exec(
-                    db,
-                    sql,
+                perform_exec(
+                    con.get(),
+                    "SELECT name FROM sqlite_master WHERE type='table'",
                     [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; ++i) {
@@ -185,12 +178,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &tableNames,
-                    nullptr);
-
-                if(res != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &tableNames);
                 return tableNames;
             }
 
@@ -557,11 +545,10 @@ namespace sqlite_orm {
             }
 
             bool foreign_keys(sqlite3* db) {
-                const char* query = "PRAGMA foreign_keys";
-                auto result = false;
-                auto rc = sqlite3_exec(
+                bool result = false;
+                perform_exec(
                     db,
-                    query,
+                    "PRAGMA foreign_keys",
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
@@ -569,11 +556,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
@@ -721,10 +704,9 @@ namespace sqlite_orm {
 
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
-                const char* query = "SELECT CURRENT_TIMESTAMP";
-                auto rc = sqlite3_exec(
+                perform_exec(
                     db,
-                    query,
+                    "SELECT CURRENT_TIMESTAMP",
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::string*)data;
                         if(argc) {
@@ -734,11 +716,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 

@@ -8314,6 +8314,23 @@ namespace sqlite_orm {
                 throw_translated_sqlite_error(db);
             }
         }
+
+        inline void perform_exec(sqlite3* db,
+                                 const char* query,
+                                 int (*callback)(void* data, int argc, char** argv, char**),
+                                 void* user_data) {
+            int rc = sqlite3_exec(db, query, callback, user_data, nullptr);
+            if(rc != SQLITE_OK) {
+                throw_translated_sqlite_error(db);
+            }
+        }
+
+        inline void perform_exec(sqlite3* db,
+                                 const std::string& query,
+                                 int (*callback)(void* data, int argc, char** argv, char**),
+                                 void* user_data) {
+            return perform_exec(db, query.c_str(), callback, user_data);
+        }
     }
 }
 #pragma once
@@ -12780,16 +12797,15 @@ namespace sqlite_orm {
             // will include generated columns in response as opposed to table_info
             std::vector<sqlite_orm::table_xinfo> table_xinfo(const std::string& tableName) const {
                 auto connection = this->get_connection();
-                sqlite3* db = connection.get();
 
                 std::vector<sqlite_orm::table_xinfo> result;
                 std::ostringstream ss;
                 ss << "PRAGMA "
                       "table_xinfo("
                    << streaming_identifier(tableName) << ")" << std::flush;
-                auto rc = sqlite3_exec(
-                    db,
-                    ss.str().c_str(),
+                perform_exec(
+                    connection.get(),
+                    ss.str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_xinfo>*)data;
                         if(argc) {
@@ -12806,26 +12822,21 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
             std::vector<sqlite_orm::table_info> table_info(const std::string& tableName) const {
                 auto connection = this->get_connection();
-                sqlite3* db = connection.get();
 
-                std::vector<sqlite_orm::table_info> result;
                 std::ostringstream ss;
                 ss << "PRAGMA "
                       "table_info("
                    << streaming_identifier(tableName) << ")" << std::flush;
-                auto rc = sqlite3_exec(
-                    db,
-                    ss.str().c_str(),
+                std::vector<sqlite_orm::table_info> result;
+                perform_exec(
+                    connection.get(),
+                    ss.str(),
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::vector<sqlite_orm::table_info>*)data;
                         if(argc) {
@@ -12841,11 +12852,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
@@ -12859,15 +12866,9 @@ namespace sqlite_orm {
             template<class T>
             T get_pragma(const std::string& name) {
                 auto connection = this->get_connection();
-                sqlite3* db = connection.get();
-                auto query = "PRAGMA " + name;
                 T result;
-                auto rc = sqlite3_exec(db, query.c_str(), getPragmaCallback<T>, &result, nullptr);
-                if(rc == SQLITE_OK) {
-                    return result;
-                } else {
-                    throw_translated_sqlite_error(db);
-                }
+                perform_exec(connection.get(), "PRAGMA " + name, getPragmaCallback<T>, &result);
+                return result;
             }
 
             /**
@@ -13455,10 +13456,9 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
                    << " AND name = " << quote_string_literal(tableName) << std::flush;
-                auto query = ss.str();
-                auto rc = sqlite3_exec(
+                perform_exec(
                     db,
-                    query.c_str(),
+                    ss.str(),
                     [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
@@ -13466,11 +13466,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
@@ -13538,13 +13534,11 @@ namespace sqlite_orm {
              */
             std::vector<std::string> table_names() {
                 auto con = this->get_connection();
-                sqlite3* db = con.get();
                 std::vector<std::string> tableNames;
-                const char* sql = "SELECT name FROM sqlite_master WHERE type='table'";
                 using data_t = std::vector<std::string>;
-                int res = sqlite3_exec(
-                    db,
-                    sql,
+                perform_exec(
+                    con.get(),
+                    "SELECT name FROM sqlite_master WHERE type='table'",
                     [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; ++i) {
@@ -13554,12 +13548,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &tableNames,
-                    nullptr);
-
-                if(res != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &tableNames);
                 return tableNames;
             }
 
@@ -13926,11 +13915,10 @@ namespace sqlite_orm {
             }
 
             bool foreign_keys(sqlite3* db) {
-                const char* query = "PRAGMA foreign_keys";
-                auto result = false;
-                auto rc = sqlite3_exec(
+                bool result = false;
+                perform_exec(
                     db,
-                    query,
+                    "PRAGMA foreign_keys",
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
@@ -13938,11 +13926,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
@@ -14090,10 +14074,9 @@ namespace sqlite_orm {
 
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
-                const char* query = "SELECT CURRENT_TIMESTAMP";
-                auto rc = sqlite3_exec(
+                perform_exec(
                     db,
-                    query,
+                    "SELECT CURRENT_TIMESTAMP",
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::string*)data;
                         if(argc) {
@@ -14103,11 +14086,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
@@ -17633,11 +17612,7 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                auto query = serialize(tableImpl.table, context);
-                auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                perform_void_exec(db, serialize(tableImpl.table, context));
                 return res;
             }
 

@@ -937,11 +937,7 @@ namespace sqlite_orm {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                auto query = serialize(tableImpl.table, context);
-                auto rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                perform_void_exec(db, serialize(tableImpl.table, context));
                 return res;
             }
 
