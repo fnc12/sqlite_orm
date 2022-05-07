@@ -19,13 +19,13 @@ configuration:
 
 environment:
   matrix:
+    - job_name: GCC, C++20
+      appveyor_build_worker_image: Ubuntu
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+
     - job_name: Visual Studio 2022, x64, C++20
       appveyor_build_worker_image: Visual Studio 2022
       platform: x64
-      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
-
-    - job_name: GCC, C++20
-      appveyor_build_worker_image: Ubuntu
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
 matrix:
