@@ -7503,8 +7503,8 @@ namespace sqlite_orm {
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
-#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cstring>  //  ::strncpy, ::strlen
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 
