@@ -7242,16 +7242,16 @@ namespace sqlite_orm {
             needs_xdestroy_proxy_v = is_stateless_deleter_v<D> &&
                                      (!can_yield_fp_v<D> || !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
-        template<typename D, typename P>
-        std::enable_if_t<!is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+        template<typename D, typename P, std::enable_if_t<!is_integral_fp_c_v<D>, bool> = true>
+        void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
             (void)D{}(o);
         }
 
-        template<typename D, typename P>
-        std::enable_if_t<is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+        template<typename D, typename P, std::enable_if_t<is_integral_fp_c_v<D>, bool> = true>
+        void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code
