@@ -536,19 +536,24 @@ namespace sqlite_orm {
                 }
             }
 
+            connection_holder* get_connection_holder() const {
+                return this->connection.get();
+            }
+
           protected:
             // jdh
             storage_base(const DbConnection& con, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(con.get_filename().empty() || con.get_filename() == ":memory:"), connection(con.connection),
-                cachedForeignKeysCount(foreignKeysCount) {}
+                cachedForeignKeysCount(foreignKeysCount), initByConnection{true} {}
             // end jdh
             storage_base(const std::string& filename_, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename_.empty() || filename_ == ":memory:"),
-                connection(std::make_shared<connection_holder>(filename_)), cachedForeignKeysCount(foreignKeysCount) {
+                connection(std::make_shared<connection_holder>(filename_)),
+                cachedForeignKeysCount(foreignKeysCount), initByConnection{false} {
                 if(this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
@@ -558,8 +563,8 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(std::make_shared<connection_holder>(other.connection->filename)),
-                cachedForeignKeysCount(other.cachedForeignKeysCount) {
+                connection(other.connection), cachedForeignKeysCount(other.cachedForeignKeysCount),
+                initByConnection(other.initByConnection) {
                 if(this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
@@ -863,9 +868,10 @@ namespace sqlite_orm {
                 return notEqual;
             }
 
+            const bool initByConnection;
             const bool inMemory;
             bool isOpenedForever = false;
-            std::shared_ptr<connection_holder> connection;  // jdh
+            std::shared_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;

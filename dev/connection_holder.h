@@ -15,6 +15,10 @@ namespace sqlite_orm {
 
             connection_holder(const connection_holder&) = delete;
 
+            ~connection_holder() {
+                int i = 0;
+            }
+
             void retain() {
                 ++this->_retain_count;
                 if(1 == this->_retain_count) {

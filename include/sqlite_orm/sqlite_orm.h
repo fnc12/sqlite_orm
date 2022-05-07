@@ -10912,6 +10912,10 @@ namespace sqlite_orm {
 
             connection_holder(const connection_holder&) = delete;
 
+            ~connection_holder() {
+                int i = 0;
+            }
+
             void retain() {
                 ++this->_retain_count;
                 if(1 == this->_retain_count) {
@@ -13420,10 +13424,11 @@ namespace sqlite_orm {
 
     struct DbConnection {
         DbConnection(const std::string& filename) :
-            connection(std::make_shared<internal::connection_holder>(filename)) {
-            this->connection->retain();
-            db = this->connection->get();
+            connection{std::make_shared<internal::connection_holder>(filename)} {
+            this->connection->retain();  // opens the connection and stores the sqlite3*
         }
+
+        DbConnection(const DbConnection& o) = default;
 
         ~DbConnection() {
             this->connection->release();
@@ -13431,9 +13436,10 @@ namespace sqlite_orm {
         std::string get_filename() const {  // so we can access filename from make_storage(DbConnection,...)
             return this->connection->filename;
         }
-
         std::shared_ptr<internal::connection_holder> connection;
-        sqlite3* db = nullptr;
+        sqlite3* get() const {
+            return connection->get();
+        }
     };
 
 }
@@ -13947,19 +13953,24 @@ namespace sqlite_orm {
                 }
             }
 
+            connection_holder* get_connection_holder() const {
+                return this->connection.get();
+            }
+
           protected:
             // jdh
             storage_base(const DbConnection& con, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(con.get_filename().empty() || con.get_filename() == ":memory:"), connection(con.connection),
-                cachedForeignKeysCount(foreignKeysCount) {}
+                cachedForeignKeysCount(foreignKeysCount), initByConnection{true} {}
             // end jdh
             storage_base(const std::string& filename_, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(filename_.empty() || filename_ == ":memory:"),
-                connection(std::make_shared<connection_holder>(filename_)), cachedForeignKeysCount(foreignKeysCount) {
+                connection(std::make_shared<connection_holder>(filename_)),
+                cachedForeignKeysCount(foreignKeysCount), initByConnection{false} {
                 if(this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
@@ -13969,8 +13980,8 @@ namespace sqlite_orm {
             storage_base(const storage_base& other) :
                 on_open(other.on_open), pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)), inMemory(other.inMemory),
-                connection(std::make_shared<connection_holder>(other.connection->filename)),
-                cachedForeignKeysCount(other.cachedForeignKeysCount) {
+                connection(other.connection), cachedForeignKeysCount(other.cachedForeignKeysCount),
+                initByConnection(other.initByConnection) {
                 if(this->inMemory) {
                     this->connection->retain();
                     this->on_open_internal(this->connection->get());
@@ -14274,9 +14285,10 @@ namespace sqlite_orm {
                 return notEqual;
             }
 
+            const bool initByConnection;
             const bool inMemory;
             bool isOpenedForever = false;
-            std::shared_ptr<connection_holder> connection;  // jdh
+            std::shared_ptr<connection_holder> connection;
             std::map<std::string, collating_function> collatingFunctions;
             const int cachedForeignKeysCount;
             std::function<int(int)> _busy_handler;
