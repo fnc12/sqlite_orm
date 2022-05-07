@@ -712,13 +712,13 @@ TEST_CASE("obtain_xdestroy_for") {
 
         // free(int*)
         constexpr xdestroy_fn_t xDestroy2 = obtain_xdestroy_for(free, int_nullptr);
-        STATIC_REQUIRE(xDestroy2 == free);
-        REQUIRE(xDestroy2 == free);
+        STATIC_REQUIRE(xDestroy2 == &free);
+        REQUIRE(xDestroy2 == &free);
 
         // free_f(int*)
         constexpr xdestroy_fn_t xDestroy3 = obtain_xdestroy_for(free_f, int_nullptr);
-        STATIC_REQUIRE(xDestroy3 == free);
-        REQUIRE(xDestroy3 == free);
+        STATIC_REQUIRE(xDestroy3 == &free);
+        REQUIRE(xDestroy3 == &free);
 
 #if __cpp_constexpr >= 201603L  //  constexpr lambda
         // [](void* p){}
@@ -766,13 +766,13 @@ TEST_CASE("obtain_xdestroy_for") {
 #if __cpp_constexpr >= 201907L  //  Trivial default initialization in constexpr functions
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
-        STATIC_REQUIRE(xDestroy8 == free);
-        REQUIRE(xDestroy8 == free);
+        STATIC_REQUIRE(xDestroy8 == &free);
+        REQUIRE(xDestroy8 == &free);
 
         // xdestroy_holder{ free }(const int*)
         constexpr xdestroy_fn_t xDestroy9 = obtain_xdestroy_for(xdestroy_holder{free}, const_int_nullptr);
-        STATIC_REQUIRE(xDestroy9 == free);
-        REQUIRE(xDestroy9 == free);
+        STATIC_REQUIRE(xDestroy9 == &free);
+        REQUIRE(xDestroy9 == &free);
 
         // xdestroy_holder{ nullptr }(const int*)
         constexpr xdestroy_fn_t xDestroy10 = obtain_xdestroy_for(xdestroy_holder{nullptr}, const_int_nullptr);
