@@ -12678,6 +12678,7 @@ namespace sqlite_orm {
 // #include "transaction_guard.h"
 
 #include <functional>  //  std::function
+#include <utility>  //  std::move
 
 // #include "connection_holder.h"
 
@@ -12705,7 +12706,7 @@ namespace sqlite_orm {
                                 std::function<void()> commit_func_,
                                 std::function<void()> rollback_func_) :
                 connection(std::move(connection_)),
-                commit_func(std::move(commit_func_)), rollback_func(std::move(rollback_func_)) {}
+                commit_func(move(commit_func_)), rollback_func(move(rollback_func_)) {}
 
             transaction_guard_t(transaction_guard_t&& other) :
                 commit_on_destroy(other.commit_on_destroy), connection(std::move(other.connection)),
@@ -12732,8 +12733,8 @@ namespace sqlite_orm {
              *  in its destructor.
              */
             void commit() {
-                this->commit_func();
                 this->gotta_fire = false;
+                this->commit_func();
             }
 
             /**
@@ -12742,8 +12743,8 @@ namespace sqlite_orm {
              *  in its destructor.
              */
             void rollback() {
-                this->rollback_func();
                 this->gotta_fire = false;
+                this->rollback_func();
             }
 
           protected:
