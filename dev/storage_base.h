@@ -171,11 +171,11 @@ namespace sqlite_orm {
                 auto con = this->get_connection();
                 sqlite3* db = con.get();
                 std::vector<std::string> tableNames;
-                std::string sql = "SELECT name FROM sqlite_master WHERE type='table'";
+                const char* sql = "SELECT name FROM sqlite_master WHERE type='table'";
                 using data_t = std::vector<std::string>;
                 int res = sqlite3_exec(
                     db,
-                    sql.c_str(),
+                    sql,
                     [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; ++i) {
