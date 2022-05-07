@@ -12690,6 +12690,9 @@ namespace sqlite_orm {
          *  Has explicit `commit()` and `rollback()` functions. After explicit function is fired
          *  guard won't do anything in d-tor. Also you can set `commit_on_destroy` to true to
          *  make it call `COMMIT` on destroy.
+         * 
+         *  Note: The guard's destructor is explicitly marked as potentially throwing,
+         *  so exceptions that occur during commit or rollback are propagated to the caller.
          */
         struct transaction_guard_t {
             /**
@@ -12711,7 +12714,7 @@ namespace sqlite_orm {
                 other.gotta_fire = false;
             }
 
-            ~transaction_guard_t() {
+            ~transaction_guard_t() noexcept(false) {
                 if(this->gotta_fire) {
                     if(this->commit_on_destroy) {
                         this->commit_func();
