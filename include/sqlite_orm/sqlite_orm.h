@@ -16088,8 +16088,6 @@ namespace sqlite_orm {
                         return "IGNORE";
                     case conflict_action::rollback:
                         return "ROLLBACK";
-                    default:
-                        return {};
                 }
                 return {};
             }
