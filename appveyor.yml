@@ -66,8 +66,8 @@ for:
     - vcpkg install sqlite3
   init:
     - sh: echo %appveyor_build_worker_image% - %platform% - %configuration%
-    - sh: export generator="Unix Makefiles"
+    - sh: export generator="\"Unix Makefiles\""
   before_build:
     - mkdir compile
     - cd compile
-    - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G %generator% -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+    - cmake %SQLITE_ORM_CXX_STANDARD% -DSqliteOrm_BuildTests=ON .. -G $generator -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
