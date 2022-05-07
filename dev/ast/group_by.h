@@ -4,6 +4,8 @@
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::forward, std::move
 
+#include "../cxx_polyfill.h"
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -32,13 +34,8 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_group_by : std::false_type {};
-
-        template<class... Args>
-        struct is_group_by<group_by_t<Args...>> : std::true_type {};
-
-        template<class T, class... Args>
-        struct is_group_by<group_by_with_having<T, Args...>> : std::true_type {};
+        using is_group_by = polyfill::disjunction<polyfill::is_specialization_of<T, group_by_t>,
+                                                  polyfill::is_specialization_of<T, group_by_with_having>>;
 
         /**
          *  HAVING holder.
@@ -52,10 +49,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct is_having : std::false_type {};
-
-        template<class T>
-        struct is_having<having_t<T>> : std::true_type {};
+        using is_having = polyfill::is_specialization_of<T, having_t>;
     }
 
     /**

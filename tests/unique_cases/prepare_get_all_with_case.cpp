@@ -7,6 +7,11 @@ TEST_CASE("Prepare with case") {
     struct UserProfile {
         int id = 0;
         std::string firstName;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        UserProfile() = default;
+        UserProfile(int id, std::string firstName) : id{id}, firstName{move(firstName)} {}
+#endif
     };
 
     auto storage = make_storage({},

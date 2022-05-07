@@ -4,6 +4,7 @@
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <memory>
+#include <utility>  //  std::move, std::exchange
 
 #include "error_code.h"
 #include "connection_holder.h"
@@ -32,14 +33,12 @@ namespace sqlite_orm {
             }
 
             backup_t(backup_t&& other) :
-                handle(other.handle), holder(move(other.holder)), to(other.to), from(other.from) {
-                other.handle = nullptr;
-            }
+                handle(std::exchange(other.handle, nullptr)), holder(move(other.holder)), to(other.to),
+                from(other.from) {}
 
             ~backup_t() {
                 if(this->handle) {
                     (void)sqlite3_backup_finish(this->handle);
-                    this->handle = nullptr;
                 }
             }
 

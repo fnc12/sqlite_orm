@@ -11,10 +11,10 @@ namespace sqlite_orm {
 
     namespace internal {
 
-        struct limit_accesor {
+        struct limit_accessor {
             using get_connection_t = std::function<connection_ref()>;
 
-            limit_accesor(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
+            limit_accessor(get_connection_t get_connection_) : get_connection(std::move(get_connection_)) {}
 
             int length() {
                 return this->get(SQLITE_LIMIT_LENGTH);

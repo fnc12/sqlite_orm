@@ -7,6 +7,11 @@ TEST_CASE("explicit from") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
     auto storage = make_storage(
         {},
@@ -58,6 +63,11 @@ TEST_CASE("update set null") {
     struct User {
         int id = 0;
         std::unique_ptr<std::string> name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, decltype(name) name) : id{id}, name{move(name)} {}
+#endif
     };
 
     auto storage = make_storage(

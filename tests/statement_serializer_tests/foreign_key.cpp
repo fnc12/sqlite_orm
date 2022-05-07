@@ -285,6 +285,11 @@ TEST_CASE("statement_serializer foreign key") {
     SECTION("one to explicit one") {
         struct Object {
             int id = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+            Object() = default;
+            Object(int id) : id{id} {}
+#endif
         };
 
         struct User : Object {

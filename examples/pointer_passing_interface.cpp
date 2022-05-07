@@ -16,6 +16,7 @@
  *
  *  Note: pointers are only accessible within application code, and therefore unleakable.
  */
+#ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
 #include <type_traits>
 #include <tuple>
 #include <system_error>
@@ -36,8 +37,8 @@ using std::make_unique;
 using std::min;
 
 // name for our pointer value types
-SQLITE_ORM_INLINE_VAR constexpr const char ecat_pvt_name[] = "ecat";
-SQLITE_ORM_INLINE_VAR constexpr const char ecode_pvt_name[] = "ecode";
+inline constexpr const char ecat_pvt_name[] = "ecat";
+inline constexpr const char ecode_pvt_name[] = "ecode";
 // c++ integral constant for our pointer value types
 using ecat_pvt = std::integral_constant<const char*, ecat_pvt_name>;
 using ecode_pvt = std::integral_constant<const char*, ecode_pvt_name>;
@@ -218,3 +219,4 @@ int main() {
 
     return 0;
 }
+#endif

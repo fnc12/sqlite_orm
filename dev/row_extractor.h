@@ -315,26 +315,26 @@ namespace sqlite_orm {
         }
 
       protected:
-        template<size_t I, typename std::enable_if<I != 0>::type* = nullptr>
+        template<size_t I, std::enable_if_t<I != 0, bool> = true>
         void extract(std::tuple<Args...>& t, sqlite3_stmt* stmt) const {
-            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
+            using tuple_type = std::tuple_element_t<I - 1, std::tuple<Args...>>;
             std::get<I - 1>(t) = row_extractor<tuple_type>().extract(stmt, I - 1);
             this->extract<I - 1>(t, stmt);
         }
 
-        template<size_t I, typename std::enable_if<I == 0>::type* = nullptr>
+        template<size_t I, std::enable_if_t<I == 0, bool> = true>
         void extract(std::tuple<Args...>&, sqlite3_stmt*) const {
             //..
         }
 
-        template<size_t I, typename std::enable_if<I != 0>::type* = nullptr>
+        template<size_t I, std::enable_if_t<I != 0, bool> = true>
         void extract(std::tuple<Args...>& t, char** argv) const {
-            using tuple_type = typename std::tuple_element<I - 1, typename std::tuple<Args...>>::type;
+            using tuple_type = std::tuple_element_t<I - 1, std::tuple<Args...>>;
             std::get<I - 1>(t) = row_extractor<tuple_type>().extract(argv[I - 1]);
             this->extract<I - 1>(t, argv);
         }
 
-        template<size_t I, typename std::enable_if<I == 0>::type* = nullptr>
+        template<size_t I, std::enable_if_t<I == 0, bool> = true>
         void extract(std::tuple<Args...>&, char**) const {
             //..
         }
