@@ -152,9 +152,8 @@ target_link_libraries(unit_tests PRIVATE sqlite_orm Catch2::Catch2)
 
 if (UNIX)
     find_package(Threads REQUIRED)
-    target_link_libraries(unit_tests PRIVATE
-        ${CMAKE_DL_LIBS}
-        Threads::Threads)
+    target_link_libraries(unit_tests ${CMAKE_DL_LIBS})
+    target_link_libraries(unit_tests PRIVATE Threads::Threads)
 endif ()
 
 add_test(NAME "All_in_one_unit_test"
