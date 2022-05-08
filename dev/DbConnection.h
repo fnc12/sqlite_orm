@@ -10,7 +10,10 @@ namespace sqlite_orm {
             this->connection->retain();  // opens the connection and stores the sqlite3*
         }
 
-        DbConnection(const DbConnection& o) = default;
+        DbConnection(const DbConnection& o) {
+            this->connection = o.connection;
+            this->connection->retain();
+        }
 
         ~DbConnection() {
             this->connection->release();
