@@ -66,14 +66,17 @@ for:
   matrix:
     only:
       - appveyor_build_worker_image: Ubuntu
+  init:
+    - |-
+      echo $appveyor_build_worker_image
+      export CC=gcc
+      export CXX=g++
+      export CXXFLAGS="$CXXFLAGS -pipe"
+      $CXX --version
   install:
     - |-
       $HOME/vcpkg/vcpkg integrate install
       vcpkg install sqlite3
-  init:
-    - |-
-      echo $appveyor_build_worker_image
-      c++ --version
   before_build:
     - |-
       mkdir compile
