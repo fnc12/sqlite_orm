@@ -98,18 +98,18 @@ namespace sqlite_orm {
 #if __cpp_lib_concepts >= 201907L
         template<typename D>
         concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
-                                            (can_yield_fp<D> && !std::convertible<yielded_fn_t<D>, xdestroy_fn_t>));
+                                            (can_yield_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  This concept tests whether a deleter yields a function pointer, which is convertible to an xdestroy function pointer.
          *  Note: We are using 'is convertible' rather than 'is same' because of any exception specification.
          */
         template<typename D>
-        concept can_yield_xdestroy = can_yield_fp<D> && std::convertible<yielded_fn_t<D>, xdestroy_fn_t>;
+        concept can_yield_xdestroy = can_yield_fp<D> && std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
         concept needs_xdestroy_proxy = (stateless_deleter<D> &&
-                                        (!can_yield_fp<D> || !std::convertible<yielded_fn_t<D>, xdestroy_fn_t>));
+                                        (!can_yield_fp<D> || !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  xDestroy function that constructs and invokes the stateless deleter.
