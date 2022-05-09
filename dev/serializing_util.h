@@ -315,11 +315,7 @@ namespace sqlite_orm {
             const auto& table = get<1>(tpl);
 
             bool first = true;
-            table.for_each_column([&ss, &first](auto& column) {
-                if(column.is_generated()) {
-                    return;
-                }
-
+            table.for_each_column_excluding<is_generated_always>([&ss, &first](auto& column) {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, column.name);

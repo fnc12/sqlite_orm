@@ -292,6 +292,22 @@ namespace sqlite_orm {
             void operator()(const T&) const {}
         };
 
+        struct field_value_binder : conditional_binder {
+            using conditional_binder::conditional_binder;
+            using conditional_binder::operator();
+
+            template<class T, satisfies_not<is_bindable, T> = true>
+            void operator()(const T&) const = delete;
+
+            template<class T>
+            void operator()(const T* value) {
+                if(!value) {
+                    throw std::system_error{orm_error_code::value_is_null};
+                }
+                (*this)(*value);
+            }
+        };
+
         template<class T>
         struct bindable_filter;
 

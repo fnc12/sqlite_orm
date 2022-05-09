@@ -1,6 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::index_sequence, std::conditional, std::declval
+#include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #include <tuple>  //  std::tuple
 
 namespace sqlite_orm {
@@ -58,41 +58,83 @@ namespace sqlite_orm {
         struct concat_idx_seq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
             : concat_idx_seq<std::index_sequence<As..., Bs...>, Seq...> {};
 
-        template<class Tpl, template<class...> class F, class Seq>
+        template<class Tpl, template<class...> class Pred, template<class...> class Proj, class Seq>
         struct filter_tuple_sequence;
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class Tpl, template<class...> class F, size_t... Idx>
-        struct filter_tuple_sequence<Tpl, F, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<F<std::tuple_element_t<Idx, Tpl>>::value,
+        template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<std::conditional_t<Pred<Proj<std::tuple_element_t<Idx, Tpl>>>::value,
                                                 std::index_sequence<Idx>,
                                                 std::index_sequence<>>...> {};
 #else
-        template<size_t Idx, class T, template<class... C> class F, class SFINAE = void>
+        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj, class SFINAE = void>
         struct tuple_seq_single;
 
-        template<size_t Idx, class T, template<class... C> class F>
-        struct tuple_seq_single<Idx, T, F, std::enable_if_t<!F<T>::value>> {
+        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
+        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<!Pred<Proj<T>>::value>> {
             using type = std::index_sequence<>;
         };
 
-        template<size_t Idx, class T, template<class... C> class F>
-        struct tuple_seq_single<Idx, T, F, std::enable_if_t<F<T>::value>> {
+        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
+        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<Pred<Proj<T>>::value>> {
             using type = std::index_sequence<Idx>;
         };
 
-        template<class... Args, template<class...> class F, size_t... Idx>
-        struct filter_tuple_sequence<std::tuple<Args...>, F, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, Args, F>::type...> {};
+        template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<typename tuple_seq_single<Idx, std::tuple_element_t<Idx, Tpl>, Pred, Proj>::type...> {};
 #endif
 
-        template<class Tpl, template<class...> class F>
-        using filter_tuple_sequence_t =
-            typename filter_tuple_sequence<Tpl, F, std::make_index_sequence<std::tuple_size<Tpl>::value>>::type;
+        template<class Tpl,
+                 template<class...>
+                 class Pred,
+                 template<class...> class Proj = polyfill::type_identity_t,
+                 class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
+        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
 
         template<class T, template<class...> class F>
-        struct count_tuple {
-            static constexpr int value = int(filter_tuple_sequence_t<T, F>::size());
-        };
+        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, F>::size()> {};
+
+        namespace mpl {
+            /*
+             * Metafunction class equivalent to std::bind_front()
+             */
+            template<template<class...> class F, class... Args>
+            struct bind_front_fn {
+                template<class A>
+                struct apply : F<Args..., A> {};
+            };
+            template<template<template<class...> class /*TraitFn*/, class...> class F, template<class...> class TraitFn>
+            struct bind_front_trait_fn {
+                template<class A>
+                struct apply : F<TraitFn, A> {};
+            };
+
+            /*
+             * Metafunction class equivalent to std::negation
+             */
+            template<template<class...> class TraitFn>
+            struct not_fn {
+                template<class A>
+                struct apply : polyfill::negation<TraitFn<A>> {};
+            };
+            template<class Trait>
+            struct swallow_fn {
+                template<class A>
+                struct apply : Trait {};
+            };
+            template<template<class...> class... TraitFns>
+            struct conjunction_fn {
+                template<class A>
+                struct apply : polyfill::conjunction<TraitFns<A>...> {};
+            };
+            template<template<class...> class... TraitFns>
+            struct disjunction_fn {
+                template<class A>
+                struct apply : polyfill::disjunction<TraitFns<A>...> {};
+            };
+        }
+        using namespace mpl;
     }
 }

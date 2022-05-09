@@ -978,12 +978,8 @@ namespace sqlite_orm {
                    << " VALUES (";
 
                 auto columnIndex = 0;
-                tImpl.table.for_each_column(
+                tImpl.table.for_each_column_excluding<is_generated_always>(
                     [&ss, &columnIndex, &object = get_ref(statement.object), &context](auto& column) {
-                        if(column.is_generated()) {
-                            return;
-                        }
-
                         if(columnIndex > 0) {
                             ss << ", ";
                         }
@@ -1041,36 +1037,35 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE " << streaming_identifier(tImpl.table.name) << " SET ";
                 auto columnIndex = 0;
-                tImpl.table.for_each_column(
-                    [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
-                        if(column.template has<primary_key_t<>>() ||
-                           tImpl.table.exists_in_composite_primary_key(column) || column.is_generated()) {
-                            return;
-                        }
+                tImpl.table
+                    .for_each_column_excluding<disjunction_fn<is_primary_key, is_generated_always>::template apply>(
+                        [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
+                            if(tImpl.table.exists_in_composite_primary_key(column)) {
+                                return;
+                            }
 
-                        if(columnIndex > 0) {
-                            ss << ", ";
-                        }
-                        ss << streaming_identifier(column.name) << " = "
-                           << serialize(polyfill::invoke(column.member_pointer, object), context);
-                        ++columnIndex;
-                    });
+                            if(columnIndex > 0) {
+                                ss << ", ";
+                            }
+                            ss << streaming_identifier(column.name) << " = "
+                               << serialize(polyfill::invoke(column.member_pointer, object), context);
+                            ++columnIndex;
+                        });
                 ss << " WHERE ";
                 columnIndex = 0;
-                tImpl.table.for_each_column(
-                    [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
-                        if(!column.template has<primary_key_t<>>() &&
-                           !tImpl.table.exists_in_composite_primary_key(column)) {
-                            return;
-                        }
+                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](
+                                                auto& column) {
+                    if(!column.template is<is_primary_key>() && !tImpl.table.exists_in_composite_primary_key(column)) {
+                        return;
+                    }
 
-                        if(columnIndex > 0) {
-                            ss << " AND ";
-                        }
-                        ss << streaming_identifier(column.name) << " = "
-                           << serialize(polyfill::invoke(column.member_pointer, object), context);
-                        ++columnIndex;
-                    });
+                    if(columnIndex > 0) {
+                        ss << " AND ";
+                    }
+                    ss << streaming_identifier(column.name) << " = "
+                       << serialize(polyfill::invoke(column.member_pointer, object), context);
+                    ++columnIndex;
+                });
                 return ss.str();
             }
         };
@@ -1151,7 +1146,7 @@ namespace sqlite_orm {
                 tImpl.table.for_each_column([&tImpl, &columnIndex, &ss](auto& column) {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
                     if(!table_type::is_without_rowid &&
-                       (column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column) ||
+                       (column.template is<is_primary_key>() || tImpl.table.exists_in_composite_primary_key(column) ||
                         column.is_generated())) {
                         return;
                     }
@@ -1178,7 +1173,7 @@ namespace sqlite_orm {
                         [&tImpl, &columnIndex, &ss, &context, &object = get_ref(statement.object)](auto& column) {
                             using table_type = std::decay_t<decltype(tImpl.table)>;
                             if(!table_type::is_without_rowid &&
-                               (column.template has<primary_key_t<>>() ||
+                               (column.template is<is_primary_key>() ||
                                 tImpl.table.exists_in_composite_primary_key(column) || column.is_generated())) {
                                 return;
                             }
@@ -1320,16 +1315,17 @@ namespace sqlite_orm {
             std::string operator()(const statement_type& statement, const Ctx& context) const {
                 using object_type = typename expression_object_type<statement_type>::type;
                 auto& tImpl = pick_impl<object_type>(context.impl);
+                using table_type = std::decay_t<decltype(tImpl.table)>;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                tImpl.table.for_each_column([&columnNames, &tImpl](auto& column) {
-                    using table_type = std::decay_t<decltype(tImpl.table)>;
-                    if(table_type::is_without_rowid ||
-                       (!column.template has<primary_key_t<>>() &&
-                        !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
-                        columnNames.push_back(cref(column.name));
-                    }
-                });
+                tImpl.table.for_each_column_excluding<conjunction_fn<
+                    swallow_fn<polyfill::bool_constant<!table_type::is_without_rowid>>::template apply,
+                    disjunction_fn<is_generated_always, is_primary_key>::template apply>::template apply>(
+                    [&columnNames, &tImpl](auto& column) {
+                        if(!tImpl.table.exists_in_composite_primary_key(column)) {
+                            columnNames.push_back(cref(column.name));
+                        }
+                    });
                 const size_t valuesCount = std::distance(statement.range.first, statement.range.second);
                 const size_t columnNamesCount = columnNames.size();
 

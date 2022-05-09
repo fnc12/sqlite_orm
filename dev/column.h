@@ -73,13 +73,16 @@ namespace sqlite_orm {
             /**
              *  Simplified interface for `NOT NULL` constraint
              */
-            bool not_null() const {
+            constexpr bool not_null() const {
                 return !type_is_nullable<field_type>::value;
             }
 
-            template<class Opt>
-            constexpr bool has() const {
-                return tuple_helper::tuple_contains_type<Opt, constraints_type>::value;
+            /**
+             *  Checks whether contraints are of trait `Trait`
+             */
+            template<template<class...> class Trait>
+            constexpr bool is() const {
+                return tuple_helper::tuple_has<Trait, constraints_type>::value;
             }
 
             /**
@@ -88,16 +91,9 @@ namespace sqlite_orm {
              */
             std::unique_ptr<std::string> default_value() const;
 
-            bool is_generated() const {
+            constexpr bool is_generated() const {
 #if SQLITE_VERSION_NUMBER >= 3031000
-                auto res = false;
-                iterate_tuple(this->constraints, [&res](auto& constraint) {
-                    using constraint_type = std::decay_t<decltype(constraint)>;
-                    if(!res) {
-                        res = is_generated_always_v<constraint_type>;
-                    }
-                });
-                return res;
+                return is<is_generated_always>();
 #else
                 return false;
 #endif
@@ -122,7 +118,7 @@ namespace sqlite_orm {
         template<class C>
         struct is_column_with_insertable_primary_key<
             C,
-            std::enable_if_t<tuple_helper::tuple_contains_type<primary_key_t<>, typename C::constraints_type>::value>>
+            std::enable_if_t<tuple_helper::tuple_has<is_primary_key, typename C::constraints_type>::value>>
             : polyfill::bool_constant<is_primary_key_insertable<C>::value> {};
 
         /**
@@ -137,7 +133,7 @@ namespace sqlite_orm {
         template<class C>
         struct is_column_with_noninsertable_primary_key<
             C,
-            std::enable_if_t<tuple_helper::tuple_contains_type<primary_key_t<>, typename C::constraints_type>::value>>
+            std::enable_if_t<tuple_helper::tuple_has<is_primary_key, typename C::constraints_type>::value>>
             : polyfill::bool_constant<!is_primary_key_insertable<C>::value> {};
 
         template<class T>
@@ -151,6 +147,9 @@ namespace sqlite_orm {
         };
 
         template<class T>
+        using column_field_type_t = typename column_field_type<T>::type;
+
+        template<class T>
         struct column_constraints_type {
             using type = std::tuple<>;
         };
@@ -159,6 +158,9 @@ namespace sqlite_orm {
         struct column_constraints_type<column_t<O, T, Op...>> {
             using type = typename column_t<O, T, Op...>::constraints_type;
         };
+
+        template<class T>
+        using column_constraints_type_t = typename column_constraints_type<T>::type;
 
     }
 

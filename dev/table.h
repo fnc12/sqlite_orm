@@ -54,7 +54,8 @@ namespace sqlite_orm {
              */
             constexpr int foreign_keys_count() const {
 #if SQLITE_VERSION_NUMBER >= 3006019
-                return int(filter_tuple_sequence_t<elements_type, is_foreign_key>::size());
+                using fk_seq = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                return int(fk_seq::size());
 #else
                 return 0;
 #endif
@@ -63,8 +64,9 @@ namespace sqlite_orm {
             /**
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
-            template<class F, class C>
-            const F* get_object_field_pointer(const object_type& object, C memberPointer) const {
+            template<class C>
+            const member_field_type_t<C>* get_object_field_pointer(const object_type& object, C memberPointer) const {
+                using F = member_field_type_t<C>;
                 const F* res = nullptr;
                 this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
                     if(res) {
@@ -86,14 +88,14 @@ namespace sqlite_orm {
                     if(column.name != name) {
                         return;
                     }
-                    iterate_tuple(column.constraints, [&result](auto& constraint) {
-                        if(result) {
-                            return;
+
+                    using generated_col_seq =
+                        filter_tuple_sequence_t<polyfill::remove_cvref_t<decltype(column.constraints)>,
+                                                is_generated_always>;
+                    iterate_tuple(column.constraints, generated_col_seq{}, [&result](auto& constraint) {
+                        if(!result) {
+                            result = &constraint.storage;
                         }
-                        using constraint_type = std::decay_t<decltype(constraint)>;
-                        static_if<is_generated_always_v<constraint_type>>([&result](auto& generatedAlwaysConstraint) {
-                            result = &generatedAlwaysConstraint.storage;
-                        })(constraint);
                     });
                 });
 #endif
@@ -104,12 +106,11 @@ namespace sqlite_orm {
             bool exists_in_composite_primary_key(const C& column) const {
                 auto res = false;
                 this->for_each_primary_key([&column, &res](auto& primaryKey) {
-                    iterate_tuple(primaryKey.columns, [&res, &column](auto& value) {
-                        if(res) {
-                            return;
+                    iterate_tuple(primaryKey.columns, [&res, &column](auto& memberPointer) {
+                        if(!res) {
+                            res = compare_any(memberPointer, column.member_pointer) ||
+                                  compare_any(memberPointer, column.setter);
                         }
-
-                        res = compare_any(value, column.member_pointer) || compare_any(value, column.setter);
                     });
                 });
                 return res;
@@ -120,10 +121,8 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_primary_key(L&& lambda) const {
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = std::decay_t<decltype(element)>;
-                    static_if<is_primary_key_v<element_type>>(lambda)(element);
-                });
+                using pk_seq = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                iterate_tuple(this->elements, pk_seq{}, lambda);
             }
 
             std::vector<std::string> composite_key_columns_names() const {
@@ -136,7 +135,7 @@ namespace sqlite_orm {
 
             std::vector<std::string> primary_key_column_names() const {
                 std::vector<std::string> res;
-                this->for_each_column_with<primary_key_t<>>([&res](auto& column) {
+                this->for_each_column_with<is_primary_key>([&res](auto& column) {
                     res.push_back(column.name);
                 });
                 if(res.empty()) {
@@ -147,7 +146,7 @@ namespace sqlite_orm {
 
             template<class L>
             void for_each_primary_key_column(L&& lambda) const {
-                this->for_each_column_with<primary_key_t<>>([&lambda](auto& column) {
+                this->for_each_column_with<is_primary_key>([&lambda](auto& column) {
                     lambda(column.member_pointer);
                 });
                 this->for_each_primary_key([this, &lambda](auto& primaryKey) {
@@ -194,70 +193,93 @@ namespace sqlite_orm {
             /**
              *  Counts and returns amount of columns without GENERATED ALWAYS constraints. Skips table constraints.
              */
-            int non_generated_columns_count() const {
-                auto res = 0;
-                this->for_each_column([&res](auto& column) {
-                    if(!column.is_generated()) {
-                        ++res;
-                    }
-                });
-                return res;
+            constexpr int non_generated_columns_count() const {
+#if SQLITE_VERSION_NUMBER >= 3031000
+                //using excluding_trait_fn = ...;
+                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
+                using non_generated_col_seq =
+                    filter_tuple_sequence_t<elements_type,
+                                            not_fn<bind_front_trait_fn<tuple_helper::tuple_has, is_generated_always>::
+                                                       template apply>::template apply,
+                                            column_constraints_type_t,
+                                            col_seq>;
+                return int(non_generated_col_seq::size());
+#else
+                return 0;
+#endif
             }
 
             /**
              *  Counts and returns amount of columns. Skips constraints.
              */
             constexpr int count_columns_amount() const {
-                return int(filter_tuple_sequence_t<elements_type, is_column>::size());
+                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
+                return int(col_seq::size());
             }
 
             /**
-             *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument. Otherwise
-             *  code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
-             *  iterate columns with table constraints use iterate_tuple(columns, ...) instead. L is lambda type. Do
-             *  not specify it explicitly.
-             *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             *  Call passed lambda with all defined foreign keys.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             */
+            template<class L>
+            void for_each_foreign_key(L&& lambda) const {
+                using foreign_key_seq = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                iterate_tuple(this->elements, foreign_key_seq{}, lambda);
+            }
+
+            /**
+             *  Call passed lambda with all defined columns.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
             template<class L>
             void for_each_column(L&& lambda) const {
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = std::decay_t<decltype(element)>;
-                    static_if<is_column_v<element_type>>(lambda)(element);
-                });
-            }
-
-            template<class L>
-            void for_each_foreign_key(L&& lambda) const {
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = std::decay_t<decltype(element)>;
-                    static_if<is_foreign_key_v<element_type>>(lambda)(element);
-                });
-            }
-
-            template<class F, class L>
-            void for_each_column_with_field_type(L&& lambda) const {
-                this->for_each_column([&lambda](auto& column) {
-                    using column_type = std::decay_t<decltype(column)>;
-                    using field_type = typename column_field_type<column_type>::type;
-                    static_if<std::is_same<F, field_type>::value>(lambda)(column);
-                });
+                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
+                iterate_tuple(this->elements, col_seq{}, lambda);
             }
 
             /**
-             *  Iterates all columns that have specified constraints and fires passed lambda.
-             *  Lambda must have one and only templated argument Otherwise code will not compile.
-             *  L is lambda type. Do not specify it explicitly.
-             *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<class Op, class L>
+            template<template<class...> class Transform, template<class...> class Predicate, class L>
+            void for_each_column(L&& lambda) const {
+                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
+                using idx_seq = filter_tuple_sequence_t<elements_type, Predicate, Transform, col_seq>;
+                iterate_tuple(this->elements, idx_seq{}, lambda);
+            }
+
+            /**
+             *  Call passed lambda with columns having the specified field type `F`.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             */
+            template<class F, class L>
+            void for_each_column_with_field_type(L&& lambda) const {
+                //using is_field_type_fn = ...;
+                this->for_each_column<column_field_type_t, bind_front_fn<std::is_same, F>::template apply>(lambda);
+            }
+
+            /**
+             *  Call passed lambda with columns having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             */
+            template<template<class...> class OpTrait, class L>
             void for_each_column_with(L&& lambda) const {
-                this->for_each_column([&lambda](auto& column) {
-                    using tuple_helper::tuple_contains_type;
-                    using column_type = std::decay_t<decltype(column)>;
-                    using constraints_type = typename column_constraints_type<column_type>::type;
-                    constexpr bool c = tuple_contains_type<Op, constraints_type>::value;
-                    static_if<c>(lambda)(column);
-                });
+                //using having_op_fn = ...;
+                this->for_each_column<column_constraints_type_t,
+                                      bind_front_trait_fn<tuple_helper::tuple_has, OpTrait>::template apply>(lambda);
+            }
+
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             */
+            template<template<class...> class OpTrait, class L>
+            void for_each_column_excluding(L&& lambda) const {
+                //using excluding_trait_fn = ...;
+                this->for_each_column<
+                    column_constraints_type_t,
+                    not_fn<bind_front_trait_fn<tuple_helper::tuple_has, OpTrait>::template apply>::template apply>(
+                    lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;

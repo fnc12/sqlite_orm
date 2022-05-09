@@ -134,9 +134,12 @@ namespace sqlite_orm {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>::value>([](auto& r, auto& n) {
-                    r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
-                })(result, node);
+                internal::call_if_constexpr<std::is_same<result_tupe, node_type>::value>(
+                    [](auto& r, auto& n) {
+                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
+                    },
+                    result,
+                    node);
             }
         });
         return internal::get_ref(*result);
@@ -150,6 +153,7 @@ namespace sqlite_orm {
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
         using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         result_tupe* result = nullptr;
+
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
             using node_type = std::decay_t<decltype(node)>;
@@ -157,9 +161,12 @@ namespace sqlite_orm {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>::value>([](auto& r, auto& n) {
-                    r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
-                })(result, node);
+                internal::call_if_constexpr<std::is_same<result_tupe, node_type>::value>(
+                    [](auto& r, auto& n) {
+                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
+                    },
+                    result,
+                    node);
             }
         });
         return internal::get_ref(*result);

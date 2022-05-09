@@ -280,9 +280,6 @@ namespace sqlite_orm {
                 this->on_delete = {*this, false, other.on_delete._action};
                 return *this;
             }
-
-            template<class L>
-            void for_each_column(const L&) {}
         };
 
         template<class A, class B>
@@ -373,11 +370,10 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v =
-            polyfill::is_specialization_of_v<T, generated_always_t>;
+        using is_generated_always = polyfill::is_specialization_of<T, generated_always_t>;
 
         template<class T>
-        using is_generated_always = polyfill::bool_constant<is_generated_always_v<T>>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_generated_always_v = is_generated_always<T>::value;
 
         template<class T>
         using is_constraint = polyfill::disjunction<std::is_same<T, autoincrement_t>,
@@ -466,16 +462,22 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
+        using is_autoincrement = std::is_same<T, autoincrement_t>;
+
+        template<class T>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_autoincrement_v = is_autoincrement<T>::value;
+
+        template<class T>
         SQLITE_ORM_INLINE_VAR constexpr bool is_foreign_key_v = polyfill::is_specialization_of_v<T, foreign_key_t>;
 
         template<class T>
         using is_foreign_key = polyfill::bool_constant<is_foreign_key_v<T>>;
 
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = polyfill::is_specialization_of_v<T, primary_key_t>;
+        using is_primary_key = polyfill::is_specialization_of<T, primary_key_t>;
 
         template<class T>
-        using is_primary_key = polyfill::bool_constant<is_primary_key_v<T>>;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_primary_key_v = is_primary_key<T>::value;
 
         /**
          * PRIMARY KEY INSERTABLE traits.
@@ -485,13 +487,12 @@ namespace sqlite_orm {
             using field_type = typename T::field_type;
             using constraints_type = typename T::constraints_type;
 
-            static_assert((tuple_helper::tuple_contains_type<primary_key_t<>, constraints_type>::value),
+            static_assert((tuple_helper::tuple_has<is_primary_key, constraints_type>::value),
                           "an unexpected type was passed");
 
-            static constexpr bool value =
-                (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
-                 tuple_helper::tuple_contains_type<autoincrement_t, constraints_type>::value ||
-                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
+            static constexpr bool value = (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
+                                           tuple_helper::tuple_has<is_autoincrement, constraints_type>::value ||
+                                           std::is_base_of<integer_printer, type_printer<field_type>>::value);
         };
     }
 

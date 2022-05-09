@@ -29,7 +29,7 @@ namespace sqlite_orm {
                                  type_printer<field_type>().print(),
                                  col.not_null(),
                                  dft,
-                                 col.template has<primary_key_t<>>(),
+                                 col.template is<is_primary_key>(),
                                  col.is_generated());
             });
             auto compositeKeyColumnNames = this->composite_key_columns_names();
