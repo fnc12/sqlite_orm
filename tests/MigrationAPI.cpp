@@ -47,6 +47,11 @@ namespace version3 {
         std::string first_name;
         std::string last_name;
         std::string email;
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User(int id, std::string fn, std::string ln, std::string email) :
+            id{id}, first_name(fn), last_name(ln), email{email} {}
+        User(int id) : id{id} {}
+#endif
     };
 
     auto getStorage(const DbConnection& con) {
@@ -64,6 +69,9 @@ namespace {
     struct OldUser {
         int id = 0;
         std::string name;
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        OldUser(int i, std::string name) : id{id}, name{name} {}
+#endif
     };
 }
 
