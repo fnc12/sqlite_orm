@@ -1,7 +1,7 @@
 #pragma once
 
 #include <type_traits>  // std::integral_constant
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (__has_include(<concepts>))
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && SQLITE_ORM_HAS_INCLUDE(<concepts>)
 #include <concepts>
 #endif
 

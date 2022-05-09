@@ -18,6 +18,12 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
 #endif
 
+#ifdef __has_include
+#define SQLITE_ORM_HAS_INCLUDE(file) SQLITE_ORM_HAS_INCLUDE(file)
+#else
+#define SQLITE_ORM_HAS_INCLUDE(file) 0L
+#endif
+
 #if __cpp_aggregate_nsdmi >= 201304L
 #define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
 #endif
@@ -72,14 +78,12 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
-#if __cplusplus >= 201703L  // C++17 or later
-#if __has_include(<optional>)
+#if SQLITE_ORM_HAS_INCLUDE(<optional>)
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
 #endif
 
-#if __has_include(<string_view>)
+#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
-#endif
 #endif
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
@@ -7094,7 +7098,7 @@ namespace sqlite_orm {
 // #include "xdestroy_handling.h"
 
 #include <type_traits>  // std::integral_constant
-#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (__has_include(<concepts>))
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && SQLITE_ORM_HAS_INCLUDE(<concepts>)
 #include <concepts>
 #endif
 
