@@ -10,6 +10,10 @@ namespace version1 {
     struct User {
         int id = 0;
         std::string name;
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User(int id, std::string name) : id{id}, name(name) {}
+        User() = default;
+#endif
     };
 
     auto getStorage(const DbConnection& con) {
@@ -27,6 +31,10 @@ namespace version2 {
         int id = 0;
         std::string name;
         std::string email;
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User(int id, std::string name, std::string email) : id{id}, name(name), email{email} {}
+        User() = default;
+#endif
     };
 
     auto getStorage(const DbConnection& con) {
