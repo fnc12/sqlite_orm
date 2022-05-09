@@ -712,13 +712,13 @@ TEST_CASE("obtain_xdestroy_for") {
 
         // free(int*)
         constexpr xdestroy_fn_t xDestroy2 = obtain_xdestroy_for(free, int_nullptr);
-        STATIC_REQUIRE(xDestroy2 == free);
-        REQUIRE(xDestroy2 == free);
+        STATIC_REQUIRE(xDestroy2 == &free);
+        REQUIRE(xDestroy2 == &free);
 
         // free_f(int*)
         constexpr xdestroy_fn_t xDestroy3 = obtain_xdestroy_for(free_f, int_nullptr);
-        STATIC_REQUIRE(xDestroy3 == free);
-        REQUIRE(xDestroy3 == free);
+        STATIC_REQUIRE(xDestroy3 == &free);
+        REQUIRE(xDestroy3 == &free);
 
 #if __cpp_constexpr >= 201603L  //  constexpr lambda
         // [](void* p){}
@@ -742,37 +742,37 @@ TEST_CASE("obtain_xdestroy_for") {
         };
         using lambda4_2_t = std::remove_const_t<decltype(lambda4_2)>;
         constexpr xdestroy_fn_t xDestroy4_2 = obtain_xdestroy_for(lambda4_2, int_nullptr);
-        STATIC_REQUIRE(xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>);
-        REQUIRE((xDestroy4_2 == xdestroy_proxy<lambda4_2_t, int>));
+        STATIC_REQUIRE(xDestroy4_2 == &xdestroy_proxy<lambda4_2_t, int>);
+        REQUIRE((xDestroy4_2 == &xdestroy_proxy<lambda4_2_t, int>));
 #endif
 
         // default_delete<int>(int*)
         constexpr xdestroy_fn_t xDestroy5 = obtain_xdestroy_for(default_delete<int>{}, int_nullptr);
-        STATIC_REQUIRE(xDestroy5 == xdestroy_proxy<default_delete<int>, int>);
-        REQUIRE((xDestroy5 == xdestroy_proxy<default_delete<int>, int>));
+        STATIC_REQUIRE(xDestroy5 == &xdestroy_proxy<default_delete<int>, int>);
+        REQUIRE((xDestroy5 == &xdestroy_proxy<default_delete<int>, int>));
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
         // delete_default_f<int>(int*)
         constexpr xdestroy_fn_t xDestroy6 = obtain_xdestroy_for(delete_default_f<int>, int_nullptr);
-        STATIC_REQUIRE(xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>);
-        REQUIRE((xDestroy6 == xdestroy_proxy<delete_default_t<int>, int>));
+        STATIC_REQUIRE(xDestroy6 == &xdestroy_proxy<delete_default_t<int>, int>);
+        REQUIRE((xDestroy6 == &xdestroy_proxy<delete_default_t<int>, int>));
 
         // delete_default_f<int>(const int*)
         constexpr xdestroy_fn_t xDestroy7 = obtain_xdestroy_for(delete_default_f<int>, const_int_nullptr);
-        STATIC_REQUIRE(xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>);
-        REQUIRE((xDestroy7 == xdestroy_proxy<delete_default_t<int>, const int>));
+        STATIC_REQUIRE(xDestroy7 == &xdestroy_proxy<delete_default_t<int>, const int>);
+        REQUIRE((xDestroy7 == &xdestroy_proxy<delete_default_t<int>, const int>));
 #endif
 
 #if __cpp_constexpr >= 201907L  //  Trivial default initialization in constexpr functions
         // xdestroy_holder{ free }(int*)
         constexpr xdestroy_fn_t xDestroy8 = obtain_xdestroy_for(xdestroy_holder{free}, int_nullptr);
-        STATIC_REQUIRE(xDestroy8 == free);
-        REQUIRE(xDestroy8 == free);
+        STATIC_REQUIRE(xDestroy8 == &free);
+        REQUIRE(xDestroy8 == &free);
 
         // xdestroy_holder{ free }(const int*)
         constexpr xdestroy_fn_t xDestroy9 = obtain_xdestroy_for(xdestroy_holder{free}, const_int_nullptr);
-        STATIC_REQUIRE(xDestroy9 == free);
-        REQUIRE(xDestroy9 == free);
+        STATIC_REQUIRE(xDestroy9 == &free);
+        REQUIRE(xDestroy9 == &free);
 
         // xdestroy_holder{ nullptr }(const int*)
         constexpr xdestroy_fn_t xDestroy10 = obtain_xdestroy_for(xdestroy_holder{nullptr}, const_int_nullptr);

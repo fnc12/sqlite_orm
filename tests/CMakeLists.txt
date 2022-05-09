@@ -135,10 +135,10 @@ if (MSVC)
     target_compile_options(unit_tests PUBLIC /MP) # multi-processor compilation
     if (MSVC_VERSION LESS_EQUAL 1900)
         target_compile_options(unit_tests PUBLIC
-			# C4503: decorated name length exceeded
+            # C4503: decorated name length exceeded
             /wd"4503"
-			# C4800: forcing value to bool (performance warning)
-			/wd"4800")
+            # C4800: forcing value to bool (performance warning)
+            /wd"4800")
     endif()
 endif()
 

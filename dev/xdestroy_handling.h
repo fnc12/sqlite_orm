@@ -45,7 +45,7 @@ namespace sqlite_orm {
         };
 #endif
 
-#if __cpp_lib_concepts >= 202002L
+#if __cpp_lib_concepts >= 201907L
         /**
          *  Yield a deleter's function pointer.
          */
@@ -95,17 +95,21 @@ namespace sqlite_orm {
         template<typename D>
         using yielded_fn_t = typename yield_fp_of<D>::type;
 
-#if __cpp_lib_concepts >= 202002L
+#if __cpp_lib_concepts >= 201907L
         template<typename D>
         concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
-                                            (yields_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+                                            (yields_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
+        /**
+         *  This concept tests whether a deleter yields a function pointer, which is convertible to an xdestroy function pointer.
+         *  Note: We are using 'is convertible' rather than 'is same' because of any exception specification.
+         */
         template<typename D>
-        concept can_yield_xdestroy = yields_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
+        concept yields_xdestroy = yields_fp<D> && std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
         concept needs_xdestroy_proxy = (stateless_deleter<D> &&
-                                        (!yields_fp<D> || !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+                                        (!yields_fp<D> || !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  xDestroy function that constructs and invokes the stateless deleter.
@@ -137,27 +141,28 @@ namespace sqlite_orm {
 #else
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool is_unusable_for_xdestroy_v =
-            !is_stateless_deleter_v<D> && (can_yield_fp_v<D> && !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+            !is_stateless_deleter_v<D> &&
+            (can_yield_fp_v<D> && !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool can_yield_xdestroy_v =
-            can_yield_fp_v<D>&& std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value;
+            can_yield_fp_v<D>&& std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
 
         template<typename D, typename P>
-        SQLITE_ORM_INLINE_VAR constexpr bool
-            needs_xdestroy_proxy_v = is_stateless_deleter_v<D> &&
-                                     (!can_yield_fp_v<D> || !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+        SQLITE_ORM_INLINE_VAR constexpr bool needs_xdestroy_proxy_v =
+            is_stateless_deleter_v<D> &&
+            (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
-        template<typename D, typename P>
-        std::enable_if_t<!is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+        template<typename D, typename P, std::enable_if_t<!is_integral_fp_c_v<D>, bool> = true>
+        void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
             (void)D{}(o);
         }
 
-        template<typename D, typename P>
-        std::enable_if_t<is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+        template<typename D, typename P, std::enable_if_t<is_integral_fp_c_v<D>, bool> = true>
+        void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code
@@ -169,7 +174,7 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
-#if __cpp_lib_concepts >= 202002L
+#if __cpp_lib_concepts >= 201907L
     /**
      *  Prohibits using a yielded function pointer, which is not of type xdestroy_fn_t.
      *  
@@ -214,7 +219,7 @@ namespace sqlite_orm {
      *  is invocable with the non-q-qualified pointer value.
      */
     template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept requires(internal::can_yield_xdestroy<D>) {
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept requires(internal::yields_xdestroy<D>) {
         return d;
     }
 #else
