@@ -13042,6 +13042,7 @@ namespace sqlite_orm {
 // #include "transaction_guard.h"
 
 #include <functional>  //  std::function
+#include <utility>  //  std::move
 
 // #include "connection_holder.h"
 
@@ -13054,6 +13055,9 @@ namespace sqlite_orm {
          *  Has explicit `commit()` and `rollback()` functions. After explicit function is fired
          *  guard won't do anything in d-tor. Also you can set `commit_on_destroy` to true to
          *  make it call `COMMIT` on destroy.
+         * 
+         *  Note: The guard's destructor is explicitly marked as potentially throwing,
+         *  so exceptions that occur during commit or rollback are propagated to the caller.
          */
         struct transaction_guard_t {
             /**
@@ -13066,7 +13070,7 @@ namespace sqlite_orm {
                                 std::function<void()> commit_func_,
                                 std::function<void()> rollback_func_) :
                 connection(std::move(connection_)),
-                commit_func(std::move(commit_func_)), rollback_func(std::move(rollback_func_)) {}
+                commit_func(move(commit_func_)), rollback_func(move(rollback_func_)) {}
 
             transaction_guard_t(transaction_guard_t&& other) :
                 commit_on_destroy(other.commit_on_destroy), connection(std::move(other.connection)),
@@ -13075,7 +13079,7 @@ namespace sqlite_orm {
                 other.gotta_fire = false;
             }
 
-            ~transaction_guard_t() {
+            ~transaction_guard_t() noexcept(false) {
                 if(this->gotta_fire) {
                     if(this->commit_on_destroy) {
                         this->commit_func();
@@ -13093,8 +13097,8 @@ namespace sqlite_orm {
              *  in its destructor.
              */
             void commit() {
-                this->commit_func();
                 this->gotta_fire = false;
+                this->commit_func();
             }
 
             /**
@@ -13103,8 +13107,8 @@ namespace sqlite_orm {
              *  in its destructor.
              */
             void rollback() {
-                this->rollback_func();
                 this->gotta_fire = false;
+                this->rollback_func();
             }
 
           protected:
