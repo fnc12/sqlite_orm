@@ -7093,7 +7093,7 @@ namespace sqlite_orm {
 // #include "xdestroy_handling.h"
 
 #include <type_traits>  // std::integral_constant
-#if __cpp_lib_concepts >= 201907L
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && (__has_include(<concepts>))
 #include <concepts>
 #endif
 
@@ -7131,18 +7131,18 @@ namespace sqlite_orm {
          *  Constraints a deleter to be or to yield a function pointer.
          */
         template<typename D>
-        concept can_yield_fp = requires(D d) {
+        concept yields_fp = requires(D d) {
             // yielding function pointer by using the plus trick
             {+d};
             requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
         };
 #endif
 
-#if __cpp_lib_concepts >= 201907L
+#if __cpp_lib_concepts >= 202002L
         /**
          *  Yield a deleter's function pointer.
          */
-        template<can_yield_fp D>
+        template<yields_fp D>
         struct yield_fp_of {
             using type = decltype(+std::declval<D>());
         };
@@ -7178,7 +7178,7 @@ namespace sqlite_orm {
 
         template<typename D, bool = can_yield_fp_v<D>>
         struct yield_fp_of {
-            using type = polyfill::void_t<>;
+            using type = void;
         };
         template<typename D>
         struct yield_fp_of<D, true> {
@@ -7188,17 +7188,17 @@ namespace sqlite_orm {
         template<typename D>
         using yielded_fn_t = typename yield_fp_of<D>::type;
 
-#if __cpp_lib_concepts >= 201907L
+#if __cpp_lib_concepts >= 202002L
         template<typename D>
         concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
-                                            (can_yield_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+                                            (yields_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
 
         template<typename D>
-        concept can_yield_xdestroy = can_yield_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
+        concept can_yield_xdestroy = yields_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
         concept needs_xdestroy_proxy = (stateless_deleter<D> &&
-                                        (!can_yield_fp<D> || !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+                                        (!yields_fp<D> || !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  xDestroy function that constructs and invokes the stateless deleter.
@@ -7262,7 +7262,7 @@ namespace sqlite_orm {
 
 namespace sqlite_orm {
 
-#if __cpp_lib_concepts >= 201907L
+#if __cpp_lib_concepts >= 202002L
     /**
      *  Prohibits using a yielded function pointer, which is not of type xdestroy_fn_t.
      *  
