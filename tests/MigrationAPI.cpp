@@ -134,7 +134,7 @@ TEST_CASE("DbConnectionAPI") {
                 auto spaceIndex = oldUserName.find(' ');
                 version3::User newUser{oldUser.id};
                 if(spaceIndex != oldUserName.npos) {  // space is found
-                    auto firstName = oldUserName.substr(0, spaceIndex);
+                    auto firstName = oldUserName.substr(0, spaceIndex++);
                     auto lastName = oldUserName.substr(spaceIndex, oldUserName.size() - spaceIndex);
                     newUser.first_name = move(firstName);
                     newUser.last_name = move(lastName);
