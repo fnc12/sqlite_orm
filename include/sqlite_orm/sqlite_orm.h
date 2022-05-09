@@ -13401,7 +13401,6 @@ namespace sqlite_orm {
 
 // #include "arg_values.h"
 
-
 // #include "DbConnection.h"
 
 #include <string>
@@ -16807,7 +16806,6 @@ namespace sqlite_orm {
 // #include "index.h"
 
 // #include "util.h"
-
 
 // #include "DbConnection.h"
 

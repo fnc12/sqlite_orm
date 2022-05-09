@@ -56,7 +56,6 @@
 #include "DbConnection.h"
 #include "serializing_util.h"
 
-
 namespace sqlite_orm {
 
     namespace internal {
