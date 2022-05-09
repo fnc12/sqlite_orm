@@ -38,6 +38,7 @@ namespace sqlite_orm {
         index_is_out_of_bounds,
         value_is_null,
         no_tables_specified,
+        migration_is_missing,
     };
 
 }
@@ -98,6 +99,8 @@ namespace sqlite_orm {
                     return "Value is null";
                 case orm_error_code::no_tables_specified:
                     return "No tables specified";
+            	case orm_error_code::migration_is_missing:
+                    return "Migration is missing";
                 default:
                     return "unknown error";
             }

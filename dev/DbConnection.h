@@ -22,9 +22,6 @@ namespace sqlite_orm {
             return this->connection->filename;
         }
         std::shared_ptr<internal::connection_holder> connection;
-        sqlite3* get() const {
-            return connection->get();
-        }
     };
 
 }

@@ -88,62 +88,63 @@ TEST_CASE("DbConnectionAPI") {
     DbConnection con{"migration_api.sqlite"};
     REQUIRE(con.connection.use_count() == 1);
 
-    auto oldStorage = make_storage(
+    auto storage = make_storage(
         con,
         make_table("users", make_column("id", &OldUser::id, primary_key()), make_column("name", &OldUser::name)));
-    auto retain_count = oldStorage.get_connection_holder()->retain_count();
+    auto retain_count = storage.retain_count();
     REQUIRE(retain_count == 1);
     REQUIRE(con.connection.use_count() == 2);
 
     // This checks whether another connection is opened - which shouldn't because all make_storages() use the DbConnection sqlite3*
-    sqlite3* pDb = nullptr;
-    oldStorage.on_open = [&pDb](sqlite3* p) {
-        pDb =
-            p;  // must never be called because on_open_internal is only called once in DbConnection's constructor (since every further call uses an open shared connection)
+    int open_counter = 0;
+    storage.on_open = [&open_counter](sqlite3* p) {
+        open_counter++;
+    // must never be called because on_open_internal is only called once in DbConnection's constructor (since every further call uses an open shared connection)
     };
-    oldStorage.drop_table(oldStorage.tablename<OldUser>());
-    oldStorage.sync_schema();
-    oldStorage.pragma.user_version(1);
-    oldStorage.replace(OldUser{1, "juan dent"});
-    oldStorage.replace(OldUser{2, "klaus"});
-    oldStorage.replace(OldUser{3, "eugene"});
-    retain_count = oldStorage.get_connection_holder()->retain_count();
+    storage.drop_table(storage.tablename<OldUser>());
+    storage.sync_schema();
+    storage.pragma.user_version(1);
+    storage.replace(OldUser{1, "juan dent"});
+    storage.replace(OldUser{2, "klaus"});
+    storage.replace(OldUser{3, "eugene"});
+    retain_count = storage.retain_count();
     REQUIRE(retain_count == 1);
     REQUIRE(con.connection.use_count() == 2);
-    REQUIRE(pDb == nullptr);
+    REQUIRE(open_counter == 0);
 
     SECTION("register_migrations") {
-        oldStorage.register_migration(1, 2, [](const DbConnection& con) {
-            internal::connection_ref{*con.connection};
+        storage.register_migration(1, 2, [](const DbConnection& con) {
             std::map<int, std::string> emails = {
                 {1, "fnc12@me.com"},
                 {2, "megasuperhero@gmail.com"},
                 {3, "thor@hotmail.com"},
             };
             auto oldStorage = version1::getStorage(con);
-            auto retain_count = oldStorage.get_connection_holder()->retain_count();
+            auto retain_count = oldStorage.retain_count();
             REQUIRE(retain_count == 1);
             auto allOldUsers = oldStorage.get_all<version1::User>();
             auto nextStorage = version2::getStorage(con);
-            retain_count = nextStorage.get_connection_holder()->retain_count();
+            retain_count = nextStorage.retain_count();
             nextStorage.sync_schema();  // old users are dropped here
-            nextStorage.pragma.user_version(2);
-            retain_count = nextStorage.get_connection_holder()->retain_count();
+            // nextStorage.pragma.user_version(2);
+            retain_count = nextStorage.retain_count();
             REQUIRE(retain_count == 1);
             for(auto& oldUser: allOldUsers) {
                 version2::User newUser{oldUser.id, move(oldUser.name), emails[oldUser.id]};
                 nextStorage.insert(newUser);
             }
-            auto count = con.connection.use_count();
         });
-        oldStorage.register_migration(2, 3, [](const DbConnection& con) {
-            internal::connection_ref{*con.connection};
+        storage.register_migration(2, 3, [](const DbConnection& con) {
             auto oldStorage = version2::getStorage(con);
             auto allOldUsers = oldStorage.get_all<version2::User>();
+            int ver = oldStorage.pragma.user_version();
+
             auto nextStorage = version3::getStorage(con);
 
             nextStorage.sync_schema();  // old users are dropped here
-            nextStorage.pragma.user_version(3);
+            ver = nextStorage.pragma.user_version();
+
+            // nextStorage.pragma.user_version(3);  // ?????
 
             for(auto& oldUser: allOldUsers) {
                 auto& oldUserName = oldUser.name;
@@ -163,7 +164,6 @@ TEST_CASE("DbConnectionAPI") {
             }
         });
 
-        oldStorage.migrate_to(3, con);
-        REQUIRE(1 == 1);
+        storage.migrate_to(3, con);
     }
 }
