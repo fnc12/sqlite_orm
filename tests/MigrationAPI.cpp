@@ -11,7 +11,7 @@ namespace version1 {
         int id = 0;
         std::string name;
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User(int id, std::string name) : id{id}, name(name) {}
+        User(int id, std::string name) : id{id}, name(move(name)) {}
         User() = default;
 #endif
     };
@@ -32,7 +32,7 @@ namespace version2 {
         std::string name;
         std::string email;
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        User(int id, std::string name, std::string email) : id{id}, name(name), email{email} {}
+        User(int id, std::string name, std::string email) : id{id}, name(move(name)), email{move(email)} {}
         User() = default;
 #endif
     };
@@ -57,7 +57,7 @@ namespace version3 {
         std::string email;
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         User(int id, std::string fn, std::string ln, std::string email) :
-            id{id}, first_name(fn), last_name(ln), email{email} {}
+            id{id}, first_name(move(fn)), last_name(move(ln)), email{move(email)} {}
         User(int id) : id{id} {}
 #endif
     };
@@ -78,7 +78,7 @@ namespace {
         int id = 0;
         std::string name;
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
-        OldUser(int i, std::string name) : id{id}, name{name} {}
+        OldUser(int i, std::string name) : id{id}, name{move(name)} {}
 #endif
     };
 }
@@ -99,7 +99,7 @@ TEST_CASE("DbConnectionAPI") {
     int open_counter = 0;
     storage.on_open = [&open_counter](sqlite3* p) {
         open_counter++;
-    // must never be called because on_open_internal is only called once in DbConnection's constructor (since every further call uses an open shared connection)
+        // must never be called because on_open_internal is only called once in DbConnection's constructor (since every further call uses an open shared connection)
     };
     storage.drop_table(storage.tablename<OldUser>());
     storage.sync_schema();

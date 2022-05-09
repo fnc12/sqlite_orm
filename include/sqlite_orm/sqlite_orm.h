@@ -330,6 +330,7 @@ namespace sqlite_orm {
         index_is_out_of_bounds,
         value_is_null,
         no_tables_specified,
+        migration_is_missing,
     };
 
 }
@@ -390,6 +391,8 @@ namespace sqlite_orm {
                     return "Value is null";
                 case orm_error_code::no_tables_specified:
                     return "No tables specified";
+                case orm_error_code::migration_is_missing:
+                    return "Migration is missing";
                 default:
                     return "unknown error";
             }
@@ -13426,9 +13429,6 @@ namespace sqlite_orm {
             return this->connection->filename;
         }
         std::shared_ptr<internal::connection_holder> connection;
-        sqlite3* get() const {
-            return connection->get();
-        }
     };
 
 }
@@ -13605,26 +13605,28 @@ namespace sqlite_orm {
 
             void register_migration(size_t from, size_t to, migrator m) {
                 auto p = std::make_pair(from, to);
-                this->migrations[p] = m;
+                this->migrations[p] = std::move(m);
             }
 
             void migrate_to(int target_version, const DbConnection& con) {
-                int from_version = pragma.user_version();
+                int from_version = this->pragma.user_version();
                 auto p = std::make_pair(from_version, target_version);
                 if(migrations.find(p) != migrations.end()) {
-                    auto lambda = migrations[p];
+                    auto& lambda = migrations[p];
                     lambda(con);
+                    this->pragma.user_version(target_version);
                     return;
                 }
 
                 while(from_version < target_version) {
                     auto p = std::make_pair(from_version, from_version + 1);
                     if(migrations.find(p) != migrations.end()) {
-                        auto lambda = migrations[p];
+                        auto& lambda = migrations[p];
                         lambda(con);
-                        ++from_version;
-                    } else
-                        break;
+                        this->pragma.user_version(++from_version);
+                    } else {
+                        throw std::system_error{orm_error_code::migration_is_missing};
+                    }
                 }
             }
 
@@ -13925,18 +13927,17 @@ namespace sqlite_orm {
                 }
             }
 
-            connection_holder* get_connection_holder() const {
-                return this->connection.get();
+            int retain_count() const {
+                return this->get_connection_holder()->retain_count();
             }
 
           protected:
-            // jdh
             storage_base(const DbConnection& con, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
                 inMemory(con.get_filename().empty() || con.get_filename() == ":memory:"), connection(con.connection),
                 cachedForeignKeysCount(foreignKeysCount), initByConnection{true} {}
-            // end jdh
+
             storage_base(const std::string& filename_, int foreignKeysCount) :
                 pragma(std::bind(&storage_base::get_connection, this)),
                 limit(std::bind(&storage_base::get_connection, this)),
@@ -13967,6 +13968,10 @@ namespace sqlite_orm {
                 if(this->inMemory) {
                     this->connection->release();
                 }
+            }
+
+            connection_holder* get_connection_holder() const {
+                return this->connection.get();
             }
 
             void begin_transaction_internal(const std::string& query) {

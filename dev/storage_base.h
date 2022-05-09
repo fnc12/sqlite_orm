@@ -213,9 +213,8 @@ namespace sqlite_orm {
                         auto& lambda = migrations[p];
                         lambda(con);
                         this->pragma.user_version(++from_version);
-                    }
-                    else {
-                        throw std::system_error{ orm_error_code::migration_is_missing};
+                    } else {
+                        throw std::system_error{orm_error_code::migration_is_missing};
                     }
                 }
             }

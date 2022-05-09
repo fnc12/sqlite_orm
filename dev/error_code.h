@@ -99,7 +99,7 @@ namespace sqlite_orm {
                     return "Value is null";
                 case orm_error_code::no_tables_specified:
                     return "No tables specified";
-            	case orm_error_code::migration_is_missing:
+                case orm_error_code::migration_is_missing:
                     return "Migration is missing";
                 default:
                     return "unknown error";
