@@ -10,6 +10,11 @@ TEST_CASE("statement_serializer update") {
         int type = 0;
         int index = 0;
         double value = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        A() = default;
+        A(int address, int type, int index, double value) : address{address}, type{type}, index{index}, value{value} {}
+#endif
     };
     std::string value;
     decltype(value) expected;

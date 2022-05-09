@@ -139,9 +139,15 @@ TEST_CASE("issue521") {
 
     struct MockDatabasePoco {
         int id{-1};
-        std::string name{""};
+        std::string name;
         uint32_t alpha{0};
         float beta{0.0};
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        MockDatabasePoco() = default;
+        MockDatabasePoco(int id, std::string name, uint32_t alpha, float beta) :
+            id{id}, name{move(name)}, alpha{alpha}, beta{beta} {}
+#endif
     };
     std::vector<MockDatabasePoco> pocosToInsert;
 
@@ -485,6 +491,11 @@ TEST_CASE("sync_schema with generated columns") {
     struct User {
         int id = 0;
         int hash = 0;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, int hash = 0) : id{id}, hash{hash} {}
+#endif
 
         bool operator==(const User& other) const {
             return this->id == other.id && this->hash == other.hash;

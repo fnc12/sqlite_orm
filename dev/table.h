@@ -1,7 +1,7 @@
 #pragma once
 
 #include <string>  //  std::string
-#include <type_traits>  //  std::remove_reference, std::is_same
+#include <type_traits>  //  std::remove_reference, std::is_same, std::decay
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
@@ -10,6 +10,8 @@
 #include "typed_comparator.h"
 #include "tuple_helper/tuple_helper.h"
 #include "tuple_helper/tuple_filter.h"
+#include "member_traits/member_traits.h"
+#include "type_traits.h"
 #include "constraints.h"
 #include "table_info.h"
 #include "column.h"
@@ -31,16 +33,17 @@ namespace sqlite_orm {
          */
         template<class T, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
-            using super = basic_table;
             using object_type = T;
             using elements_type = std::tuple<Cs...>;
 
-            static constexpr const int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
-            static constexpr const bool is_without_rowid = WithoutRowId;
+            static constexpr int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
+            static constexpr bool is_without_rowid = WithoutRowId;
 
             elements_type elements;
 
-            table_t(std::string name_, elements_type elements_) : super{move(name_)}, elements{move(elements_)} {}
+#ifndef SQLITE_ORM_AGGREGATE_BASES_SUPPORTED
+            table_t(std::string name_, elements_type elements_) : basic_table{move(name_)}, elements{move(elements_)} {}
+#endif
 
             table_t<T, true, Cs...> without_rowid() const {
                 return {this->name, this->elements};
@@ -87,8 +90,8 @@ namespace sqlite_orm {
                         if(result) {
                             return;
                         }
-                        using constraint_type = typename std::decay<decltype(constraint)>::type;
-                        static_if<is_generated_always<constraint_type>{}>([&result](auto& generatedAlwaysConstraint) {
+                        using constraint_type = std::decay_t<decltype(constraint)>;
+                        static_if<is_generated_always_v<constraint_type>>([&result](auto& generatedAlwaysConstraint) {
                             result = &generatedAlwaysConstraint.storage;
                         })(constraint);
                     });
@@ -116,10 +119,10 @@ namespace sqlite_orm {
              *  Calls **l** with every primary key dedicated constraint
              */
             template<class L>
-            void for_each_primary_key(const L& lambda) const {
+            void for_each_primary_key(L&& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = typename std::decay<decltype(element)>::type;
-                    static_if<is_primary_key<element_type>{}>(lambda)(element);
+                    using element_type = std::decay_t<decltype(element)>;
+                    static_if<is_primary_key_v<element_type>>(lambda)(element);
                 });
             }
 
@@ -143,7 +146,7 @@ namespace sqlite_orm {
             }
 
             template<class L>
-            void for_each_primary_key_column(const L& lambda) const {
+            void for_each_primary_key_column(L&& lambda) const {
                 this->for_each_column_with<primary_key_t<>>([&lambda](auto& column) {
                     lambda(column.member_pointer);
                 });
@@ -153,7 +156,7 @@ namespace sqlite_orm {
             }
 
             template<class L, class... Args>
-            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, const L& lambda) const {
+            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, L&& lambda) const {
                 iterate_tuple(primarykey.columns, lambda);
             }
 
@@ -176,43 +179,12 @@ namespace sqlite_orm {
              *  Searches column name by class member pointer passed as the first argument.
              *  @return column name or empty string if nothing found.
              */
-            template<class F, class O, satisfies<std::is_member_object_pointer, F O::*> = true>
-            const std::string* find_column_name(F O::*m) const {
+            template<class M, satisfies<std::is_member_pointer, M> = true>
+            const std::string* find_column_name(M m) const {
                 const std::string* res = nullptr;
-                this->template for_each_column_with_field_type<F>([&res, m](auto& c) {
-                    if(compare_any(c.member_pointer, m)) {
-                        res = &c.name;
-                    }
-                });
-                return res;
-            }
-
-            /**
-             *  Searches column name by class getter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class G, satisfies<is_getter, G> = true>
-            const std::string* find_column_name(G getter) const {
-                const std::string* res = nullptr;
-                using field_type = typename getter_traits<G>::field_type;
-                this->template for_each_column_with_field_type<field_type>([&res, getter](auto& c) {
-                    if(compare_any(c.member_pointer, getter)) {
-                        res = &c.name;
-                    }
-                });
-                return res;
-            }
-
-            /**
-             *  Searches column name by class setter function member pointer passed as first argument.
-             *  @return column name or empty string if nothing found.
-             */
-            template<class S, satisfies<is_setter, S> = true>
-            const std::string* find_column_name(S setter) const {
-                const std::string* res = nullptr;
-                using field_type = typename setter_traits<S>::field_type;
-                this->template for_each_column_with_field_type<field_type>([&res, setter](auto& c) {
-                    if(compare_any(c.setter, setter)) {
+                using field_type = member_field_type_t<M>;
+                this->template for_each_column_with_field_type<field_type>([&res, m](auto& c) {
+                    if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                         res = &c.name;
                     }
                 });
@@ -236,7 +208,7 @@ namespace sqlite_orm {
              *  Counts and returns amount of columns. Skips constraints.
              */
             constexpr int count_columns_amount() const {
-                return filter_tuple_sequence_t<elements_type, is_column>::size();
+                return int(filter_tuple_sequence_t<elements_type, is_column>::size());
             }
 
             /**
@@ -247,27 +219,27 @@ namespace sqlite_orm {
              *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class L>
-            void for_each_column(const L& lambda) const {
+            void for_each_column(L&& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = typename std::decay<decltype(element)>::type;
-                    static_if<is_column<element_type>{}>(lambda)(element);
+                    using element_type = std::decay_t<decltype(element)>;
+                    static_if<is_column_v<element_type>>(lambda)(element);
                 });
             }
 
             template<class L>
-            void for_each_foreign_key(const L& lambda) const {
+            void for_each_foreign_key(L&& lambda) const {
                 iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = typename std::decay<decltype(element)>::type;
-                    static_if<is_foreign_key<element_type>{}>(lambda)(element);
+                    using element_type = std::decay_t<decltype(element)>;
+                    static_if<is_foreign_key_v<element_type>>(lambda)(element);
                 });
             }
 
             template<class F, class L>
-            void for_each_column_with_field_type(const L& lambda) const {
+            void for_each_column_with_field_type(L&& lambda) const {
                 this->for_each_column([&lambda](auto& column) {
-                    using column_type = typename std::decay<decltype(column)>::type;
+                    using column_type = std::decay_t<decltype(column)>;
                     using field_type = typename column_field_type<column_type>::type;
-                    static_if<std::is_same<F, field_type>{}>(lambda)(column);
+                    static_if<std::is_same<F, field_type>::value>(lambda)(column);
                 });
             }
 
@@ -278,12 +250,13 @@ namespace sqlite_orm {
              *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
              */
             template<class Op, class L>
-            void for_each_column_with(const L& lambda) const {
+            void for_each_column_with(L&& lambda) const {
                 this->for_each_column([&lambda](auto& column) {
                     using tuple_helper::tuple_contains_type;
-                    using column_type = typename std::decay<decltype(column)>::type;
+                    using column_type = std::decay_t<decltype(column)>;
                     using constraints_type = typename column_constraints_type<column_type>::type;
-                    static_if<tuple_contains_type<Op, constraints_type>{}>(lambda)(column);
+                    constexpr bool c = tuple_contains_type<Op, constraints_type>::value;
+                    static_if<c>(lambda)(column);
                 });
             }
 
@@ -295,7 +268,7 @@ namespace sqlite_orm {
      *  Function used for table creation. Do not use table constructor - use this function
      *  cause table class is templated and its constructing too (just like std::make_unique or std::make_pair).
      */
-    template<class... Cs, class T = typename std::tuple_element<0, std::tuple<Cs...>>::type::object_type>
+    template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
         return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
     }

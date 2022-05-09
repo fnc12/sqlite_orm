@@ -2,7 +2,7 @@
 #include <catch2/catch.hpp>
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
-#include <type_traits>  //  std::decay
+#include <type_traits>  //  std::remove_pointer
 
 using namespace sqlite_orm;
 
@@ -40,7 +40,7 @@ TEST_CASE("tuple_helper") {
     }
     SECTION("iterate_tuple with no tuple instance") {
         auto lambda = [&types](auto *itemPointer) {
-            using Item = typename std::remove_pointer<decltype(itemPointer)>::type;
+            using Item = std::remove_pointer_t<decltype(itemPointer)>;
             types.push_back(typeid(Item));
         };
         SECTION("empty") {

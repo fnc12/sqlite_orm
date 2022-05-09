@@ -2,18 +2,25 @@
 
 #include <type_traits>
 
+#include "start_macros.h"
 #include "cxx_polyfill.h"
 
 namespace sqlite_orm {
     // C++ generic traits used throughout the library
     namespace internal {
+        template<class T, class... Types>
+        using is_any_of = polyfill::disjunction<std::is_same<T, Types>...>;
+
+        template<class T, class... Types>
+        SQLITE_ORM_INLINE_VAR constexpr bool is_any_of_v = polyfill::disjunction_v<std::is_same<T, Types>...>;
+
         // enable_if for types
         template<template<typename...> class Op, class... Args>
         using match_if = std::enable_if_t<Op<Args...>::value>;
 
         // enable_if for types
         template<template<typename...> class Op, class... Args>
-        using match_if_not = std::enable_if_t<polyfill::negation<Op<Args...>>::value>;
+        using match_if_not = std::enable_if_t<polyfill::negation_v<Op<Args...>>>;
 
         // enable_if for types
         template<class T, template<typename...> class Primary>

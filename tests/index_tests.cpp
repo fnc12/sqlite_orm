@@ -80,6 +80,11 @@ TEST_CASE("filtered index") {
 TEST_CASE("Escaped index name") {
     struct User {
         std::string group;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(std::string group) : group{move(group)} {}
+#endif
     };
     auto storage = make_storage("index_group.sqlite",
                                 make_index("index", &User::group),
@@ -91,6 +96,11 @@ TEST_CASE("Compound index") {
     struct User {
         int id = 0;
         std::string name;
+
+#ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
+        User() = default;
+        User(int id, std::string name) : id{id}, name{move(name)} {}
+#endif
     };
     auto table = make_table("users", make_column("id", &User::id), make_column("name", &User::name));
 

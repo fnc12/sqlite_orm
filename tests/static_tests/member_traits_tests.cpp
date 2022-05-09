@@ -4,14 +4,15 @@
 using namespace sqlite_orm;
 
 TEST_CASE("member_traits_tests") {
-    using internal::field_member_traits;
-    using internal::getter_traits;
+    using internal::getter_field_type_t;
     using internal::is_getter;
     using internal::is_setter;
-    using internal::member_traits;
-    using internal::setter_traits;
+    using internal::member_field_type_t;
+    using internal::member_object_type_t;
+    using internal::object_field_type_t;
+    using internal::setter_field_type_t;
     using std::is_same;
-#if __cplusplus >= 201703L  // use of C++17 or higher
+#if __cpp_lib_type_trait_variable_templates >= 201510L
     using std::is_same_v;
 #endif
 
@@ -146,112 +147,148 @@ TEST_CASE("member_traits_tests") {
     STATIC_REQUIRE(is_setter<decltype(&User::setIdByConstRefNoexcept)>::value);
 #endif
 
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByValConst)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByValConst)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByValConst)>, User>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByValConst)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByValConst)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRefConst)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRefConst)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByRefConst)>, User>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByRefConst)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByRefConst)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRef)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByRef)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByRef)>, User>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByRef)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByRef)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByConstRefConst)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByConstRefConst)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByConstRefConst)>, User>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByConstRefConst)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByConstRefConst)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByConstRef)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename getter_traits<decltype(&User::getIdByConstRef)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByConstRef)>, User>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByConstRef)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByConstRef)>, int>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByValConstNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByValConstNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByValConstNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByValConstNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByValConstNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByValNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByValNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByValNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByValNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByValNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByRefConstNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByRefConstNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByRefConstNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByRefConstNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByRefConstNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByRefNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByRefNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByRefNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByRefNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByRefNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByConstRefConstNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByConstRefConstNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByConstRefConstNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByConstRefConstNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByConstRefConstNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByConstRefNoExcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename getter_traits<decltype(&User::getIdByConstRefNoExcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByConstRefNoExcept)>, User>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByConstRefNoExcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByConstRefNoExcept)>, int>);
 #endif
-    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByVal)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByVal)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByVal)>, User>::value);
+    STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByVal)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByVal)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByRef)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByRef)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByRef)>, User>::value);
+    STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByRef)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByRef)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByConstRef)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename setter_traits<decltype(&User::setIdByConstRef)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByConstRef)>, User>::value);
+    STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByConstRef)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByConstRef)>, int>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-    STATIC_REQUIRE(is_same_v<typename setter_traits<decltype(&User::setIdByValueNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename setter_traits<decltype(&User::setIdByValueNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByValueNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByValueNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByValueNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename setter_traits<decltype(&User::setIdByRefNoExcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename setter_traits<decltype(&User::setIdByRefNoExcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByRefNoExcept)>, User>);
+    STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByRefNoExcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByRefNoExcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename setter_traits<decltype(&User::setIdByConstRefNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename setter_traits<decltype(&User::setIdByConstRefNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByConstRefNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
 #endif
-    STATIC_REQUIRE(is_same<typename field_member_traits<decltype(&User::id)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename field_member_traits<decltype(&User::id)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::id)>, User>::value);
+    STATIC_REQUIRE(is_same<object_field_type_t<decltype(&User::id)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::id)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::id)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::id)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::id)>, User>::value);
+    STATIC_REQUIRE(is_same<object_field_type_t<decltype(&User::id)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::id)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByValConst)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByValConst)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByValConst)>, User>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByValConst)>, int>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByValConst)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRefConst)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRefConst)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByRefConst)>, User>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByRefConst)>, int>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByRefConst)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRef)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByRef)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByRef)>, User>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByRef)>, int>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByRef)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRefConst)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRefConst)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByConstRefConst)>, User>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByConstRefConst)>, int>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByConstRefConst)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRef)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRef)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByConstRef)>, User>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByConstRef)>, int>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByConstRef)>, int>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByValConstNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByValConstNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByValConstNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByValConstNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByValConstNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByValNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByValNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByValNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByValNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByValNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByRefConstNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByRefConstNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByRefConstNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByRefConstNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByRefConstNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByRefNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByRefNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByRefNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByRefNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByRefNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByConstRefConstNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::getIdByConstRefConstNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::getIdByConstRefConstNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<getter_field_type_t<decltype(&User::getIdByConstRefConstNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::getIdByConstRefConstNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRefNoExcept)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::getIdByConstRefNoExcept)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::getIdByConstRefNoExcept)>, User>::value);
+    STATIC_REQUIRE(is_same<getter_field_type_t<decltype(&User::getIdByConstRefNoExcept)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::getIdByConstRefNoExcept)>, int>::value);
 #endif
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByVal)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByVal)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByVal)>, User>::value);
+    STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByVal)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByVal)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByRef)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByRef)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByRef)>, User>::value);
+    STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByRef)>, int>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByRef)>, int>::value);
 
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByConstRef)>::object_type, User>::value);
-    STATIC_REQUIRE(is_same<typename member_traits<decltype(&User::setIdByConstRef)>::field_type, int>::value);
+    STATIC_REQUIRE(is_same<member_object_type_t<decltype(&User::setIdByConstRef)>, User>::value);
+    STATIC_REQUIRE(is_same<member_field_type_t<decltype(&User::setIdByConstRef)>, int>::value);
+    STATIC_REQUIRE(is_same<setter_field_type_t<decltype(&User::setIdByConstRef)>, int>::value);
 #ifdef SQLITE_ORM_NOTHROW_ALIASES_SUPPORTED
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::setIdByValueNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::setIdByValueNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByValueNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByValueNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByValueNoexcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::setIdByRefNoExcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::setIdByRefNoExcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByRefNoExcept)>, User>);
+    STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByRefNoExcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByRefNoExcept)>, int>);
 
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::setIdByConstRefNoexcept)>::object_type, User>);
-    STATIC_REQUIRE(is_same_v<typename member_traits<decltype(&User::setIdByConstRefNoexcept)>::field_type, int>);
+    STATIC_REQUIRE(is_same_v<member_object_type_t<decltype(&User::setIdByConstRefNoexcept)>, User>);
+    STATIC_REQUIRE(is_same_v<setter_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
+    STATIC_REQUIRE(is_same_v<member_field_type_t<decltype(&User::setIdByConstRefNoexcept)>, int>);
 #endif
 }

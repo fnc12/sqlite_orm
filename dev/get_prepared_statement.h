@@ -121,7 +121,7 @@ namespace sqlite_orm {
 
     template<int N, class T>
     const auto& get(const internal::prepared_statement_t<T>& statement) {
-        using statement_type = typename std::decay<decltype(statement)>::type;
+        using statement_type = std::decay_t<decltype(statement)>;
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
@@ -129,13 +129,13 @@ namespace sqlite_orm {
         const result_tupe* result = nullptr;
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
-            using node_type = typename std::decay<decltype(node)>::type;
+            using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto& r, auto& n) {
-                    r = const_cast<typename std::remove_reference<decltype(r)>::type>(&n);
+                internal::static_if<std::is_same<result_tupe, node_type>::value>([](auto& r, auto& n) {
+                    r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
                 })(result, node);
             }
         });
@@ -144,7 +144,7 @@ namespace sqlite_orm {
 
     template<int N, class T>
     auto& get(internal::prepared_statement_t<T>& statement) {
-        using statement_type = typename std::decay<decltype(statement)>::type;
+        using statement_type = std::decay_t<decltype(statement)>;
         using expression_type = typename statement_type::expression_type;
         using node_tuple = internal::node_tuple_t<expression_type>;
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
@@ -152,13 +152,13 @@ namespace sqlite_orm {
         result_tupe* result = nullptr;
         auto index = -1;
         internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
-            using node_type = typename std::decay<decltype(node)>::type;
+            using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
             }
             if(index == N) {
-                internal::static_if<std::is_same<result_tupe, node_type>{}>([](auto& r, auto& n) {
-                    r = const_cast<typename std::remove_reference<decltype(r)>::type>(&n);
+                internal::static_if<std::is_same<result_tupe, node_type>::value>([](auto& r, auto& n) {
+                    r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
                 })(result, node);
             }
         });

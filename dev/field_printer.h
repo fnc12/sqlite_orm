@@ -30,7 +30,9 @@ namespace sqlite_orm {
         template<class T, class SFINAE = void>
         SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v = false;
         template<class T>
-        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v<T, polyfill::void_t<decltype(field_printer<T>{})>> = true;
+        SQLITE_ORM_INLINE_VAR constexpr bool is_printable_v<T, polyfill::void_t<decltype(field_printer<T>{})>> = true
+            // Also see implementation note for `is_bindable_v`
+            ;
         template<class T>
         using is_printable = polyfill::bool_constant<is_printable_v<T>>;
     }
@@ -38,9 +40,9 @@ namespace sqlite_orm {
     template<class T>
     struct field_printer<T, std::enable_if_t<std::is_arithmetic<T>::value>> {
         std::string operator()(const T& t) const {
-            std::stringstream stream;
-            stream << t;
-            return stream.str();
+            std::stringstream ss;
+            ss << t;
+            return ss.str();
         }
     };
 
@@ -50,9 +52,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<unsigned char, void> {
         std::string operator()(const unsigned char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 
@@ -62,9 +64,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<signed char, void> {
         std::string operator()(const signed char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 
@@ -74,9 +76,9 @@ namespace sqlite_orm {
     template<>
     struct field_printer<char, void> {
         std::string operator()(const char& t) const {
-            std::stringstream stream;
-            stream << +t;
-            return stream.str();
+            std::stringstream ss;
+            ss << +t;
+            return ss.str();
         }
     };
 
@@ -125,9 +127,10 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<T,
-                         std::enable_if_t<is_std_ptr<T>::value &&
-                                          internal::is_printable_v<std::remove_cv_t<typename T::element_type>>>> {
+    struct field_printer<
+        T,
+        std::enable_if_t<polyfill::conjunction_v<is_std_ptr<T>,
+                                                 internal::is_printable<std::remove_cv_t<typename T::element_type>>>>> {
         using unqualified_type = std::remove_cv_t<typename T::element_type>;
 
         std::string operator()(const T& t) const {
@@ -141,9 +144,10 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
     template<class T>
-    struct field_printer<T,
-                         std::enable_if_t<polyfill::is_specialization_of_v<T, std::optional> &&
-                                          internal::is_printable_v<std::remove_cv_t<typename T::value_type>>>> {
+    struct field_printer<
+        T,
+        std::enable_if_t<polyfill::conjunction_v<polyfill::is_specialization_of<T, std::optional>,
+                                                 internal::is_printable<std::remove_cv_t<typename T::value_type>>>>> {
         using unqualified_type = std::remove_cv_t<typename T::value_type>;
 
         std::string operator()(const T& t) const {

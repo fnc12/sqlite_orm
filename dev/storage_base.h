@@ -1,7 +1,7 @@
 #pragma once
 
-#include <functional>  //  std::function, std::bind
 #include <sqlite3.h>
+#include <functional>  //  std::function, std::bind
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <utility>  //  std::move
@@ -10,24 +10,21 @@
 #include <memory>  //  std::make_shared, std::shared_ptr
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
-#include <algorithm>  //  std::iter_swap
 
 #include "pragma.h"
-#include "limit_accesor.h"
+#include "limit_accessor.h"
 #include "transaction_guard.h"
 #include "statement_finalizer.h"
-#include "type_printer.h"
 #include "tuple_helper/tuple_helper.h"
 #include "row_extractor.h"
-#include "util.h"
 #include "connection_holder.h"
 #include "backup.h"
 #include "function.h"
 #include "values_to_tuple.h"
 #include "arg_values.h"
-// jdh
 #include "DbConnection.h"
-// end
+#include "util.h"
+#include "serializing_util.h"
 
 namespace sqlite_orm {
 
@@ -39,60 +36,61 @@ namespace sqlite_orm {
 
             std::function<void(sqlite3*)> on_open;
             pragma_t pragma;
-            limit_accesor limit;
+            limit_accessor limit;
 
             transaction_guard_t transaction_guard() {
                 this->begin_transaction();
-                auto commitFunc = std::bind(static_cast<void (storage_base::*)()>(&storage_base::commit), this);
-                auto rollbackFunc = std::bind(static_cast<void (storage_base::*)()>(&storage_base::rollback), this);
-                return {this->get_connection(), move(commitFunc), move(rollbackFunc)};
+                return {this->get_connection(),
+                        std::bind(&storage_base::commit, this),
+                        std::bind(&storage_base::rollback, this)};
             }
 
             void drop_index(const std::string& indexName) {
                 std::stringstream ss;
-                ss << "DROP INDEX " << quote_identifier(indexName);
-                perform_void_exec(get_connection().get(), ss.str());
+                ss << "DROP INDEX " << quote_identifier(indexName) << std::flush;
+                perform_void_exec(this->get_connection().get(), ss.str());
+            }
+
+            void drop_trigger(const std::string& triggerName) {
+                std::stringstream ss;
+                ss << "DROP TRIGGER " << quote_identifier(triggerName) << std::flush;
+                perform_void_exec(this->get_connection().get(), ss.str());
             }
 
             void vacuum() {
-                perform_void_exec(get_connection().get(), "VACUUM");
+                perform_void_exec(this->get_connection().get(), "VACUUM");
             }
 
             /**
              *  Drops table with given name.
              */
             void drop_table(const std::string& tableName) {
-                auto con = this->get_connection();
-                this->drop_table_internal(tableName, con.get());
+                this->drop_table_internal(this->get_connection().get(), tableName);
             }
 
             /**
              * Rename table named `from` to `to`.
              */
             void rename_table(const std::string& from, const std::string& to) {
-                auto con = get_connection();
-                auto db = con.get();
-                rename_table(db, from, to);
+                this->rename_table(this->get_connection().get(), from, to);
             }
 
           protected:
             void rename_table(sqlite3* db, const std::string& oldName, const std::string& newName) const {
                 std::stringstream ss;
-                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName);
+                ss << "ALTER TABLE " << quote_identifier(oldName) << " RENAME TO " << quote_identifier(newName)
+                   << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
-            bool table_exists(const std::string& tableName, sqlite3* db) const {
-                using namespace std::string_literals;
-
+            bool table_exists(sqlite3* db, const std::string& tableName) const {
                 bool result = false;
                 std::stringstream ss;
-                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table"s)
-                   << " AND name = " << quote_string_literal(tableName);
-                auto query = ss.str();
-                auto rc = sqlite3_exec(
+                ss << "SELECT COUNT(*) FROM sqlite_master WHERE type = " << quote_string_literal("table")
+                   << " AND name = " << quote_string_literal(tableName) << std::flush;
+                perform_exec(
                     db,
-                    query.c_str(),
+                    ss.str(),
                     [](void* data, int argc, char** argv, char** /*azColName*/) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
@@ -100,11 +98,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
@@ -143,14 +137,8 @@ namespace sqlite_orm {
             }
 
             bool transaction(const std::function<bool()>& f) {
-                auto guard = transaction_guard();
-                auto shouldCommit = f();
-                if(shouldCommit) {
-                    guard.commit();
-                } else {
-                    guard.rollback();
-                }
-                return shouldCommit;
+                auto guard = this->transaction_guard();
+                return guard.commit_on_destroy = f();
             }
 
             std::string current_timestamp() {
@@ -179,12 +167,10 @@ namespace sqlite_orm {
             std::vector<std::string> table_names() {
                 auto con = this->get_connection();
                 std::vector<std::string> tableNames;
-                std::string sql = "SELECT name FROM sqlite_master WHERE type='table'";
                 using data_t = std::vector<std::string>;
-                auto db = con.get();
-                int res = sqlite3_exec(
-                    db,
-                    sql.c_str(),
+                perform_exec(
+                    con.get(),
+                    "SELECT name FROM sqlite_master WHERE type='table'",
                     [](void* data, int argc, char** argv, char** /*columnName*/) -> int {
                         auto& tableNames_ = *(data_t*)data;
                         for(int i = 0; i < argc; ++i) {
@@ -194,12 +180,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &tableNames,
-                    nullptr);
-
-                if(res != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &tableNames);
                 return tableNames;
             }
 
@@ -251,13 +232,15 @@ namespace sqlite_orm {
              *      }
              *  };
              * ```
+             * 
+             * Note: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F>
             void create_scalar_function() {
-                static_assert(is_scalar_function<F>::value, "F cannot be a scalar function");
+                static_assert(is_scalar_function_v<F>, "F can't be an aggregate function");
 
                 std::stringstream ss;
-                ss << F::name();
+                ss << F::name() << std::flush;
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
@@ -284,7 +267,7 @@ namespace sqlite_orm {
                 });
 
                 if(this->connection->retain_count() > 0) {
-                    auto db = this->connection->get();
+                    sqlite3* db = this->connection->get();
                     try_to_create_function(db,
                                            static_cast<user_defined_scalar_function_t&>(*this->scalarFunctions.back()));
                 }
@@ -312,13 +295,15 @@ namespace sqlite_orm {
              *       }
              *   };
              * ```
+             * 
+             * Note: Currently, a function's name must not contain white-space characters, because it doesn't get quoted.
              */
             template<class F>
             void create_aggregate_function() {
-                static_assert(is_aggregate_function<F>::value, "F cannot be an aggregate function");
+                static_assert(is_aggregate_function_v<F>, "F can't be a scalar function");
 
                 std::stringstream ss;
-                ss << F::name();
+                ss << F::name() << std::flush;
                 auto name = ss.str();
                 using args_tuple = typename callable_arguments<F>::args_tuple;
                 using return_type = typename callable_arguments<F>::return_type;
@@ -351,7 +336,7 @@ namespace sqlite_orm {
                 });
 
                 if(this->connection->retain_count() > 0) {
-                    auto db = this->connection->get();
+                    sqlite3* db = this->connection->get();
                     try_to_create_function(
                         db,
                         static_cast<user_defined_aggregate_function_t&>(*this->aggregateFunctions.back()));
@@ -363,11 +348,10 @@ namespace sqlite_orm {
              */
             template<class F>
             void delete_scalar_function() {
-                static_assert(is_scalar_function<F>::value, "F cannot be a scalar function");
+                static_assert(is_scalar_function_v<F>, "F cannot be an aggregate function");
                 std::stringstream ss;
-                ss << F::name();
-                auto name = ss.str();
-                this->delete_function_impl(name, this->scalarFunctions);
+                ss << F::name() << std::flush;
+                this->delete_function_impl(ss.str(), this->scalarFunctions);
             }
 
             /**
@@ -375,11 +359,10 @@ namespace sqlite_orm {
              */
             template<class F>
             void delete_aggregate_function() {
-                static_assert(is_aggregate_function<F>::value, "F cannot be an aggregate function");
+                static_assert(is_aggregate_function_v<F>, "F cannot be a scalar function");
                 std::stringstream ss;
-                ss << F::name();
-                auto name = ss.str();
-                this->delete_function_impl(name, this->aggregateFunctions);
+                ss << F::name() << std::flush;
+                this->delete_function_impl(ss.str(), this->aggregateFunctions);
             }
 
             template<class C>
@@ -389,10 +372,8 @@ namespace sqlite_orm {
                     return collatingObject(leftLength, lhs, rightLength, rhs);
                 };
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                this->create_collation(name, move(func));
+                ss << C::name() << std::flush;
+                this->create_collation(ss.str(), move(func));
             }
 
             void create_collation(const std::string& name, collating_function f) {
@@ -406,7 +387,7 @@ namespace sqlite_orm {
 
                 //  create collations if db is open
                 if(this->connection->retain_count() > 0) {
-                    auto db = this->connection->get();
+                    sqlite3* db = this->connection->get();
                     auto resultCode = sqlite3_create_collation(db,
                                                                name.c_str(),
                                                                SQLITE_UTF8,
@@ -421,10 +402,8 @@ namespace sqlite_orm {
             template<class C>
             void delete_collation() {
                 std::stringstream ss;
-                ss << C::name();
-                auto name = ss.str();
-                ss.flush();
-                this->create_collation(name, {});
+                ss << C::name() << std::flush;
+                this->create_collation(ss.str(), {});
             }
 
             void begin_transaction() {
@@ -444,7 +423,7 @@ namespace sqlite_orm {
             }
 
             void commit() {
-                auto db = this->connection->get();
+                sqlite3* db = this->connection->get();
                 perform_void_exec(db, "COMMIT");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
@@ -453,7 +432,7 @@ namespace sqlite_orm {
             }
 
             void rollback() {
-                auto db = this->connection->get();
+                sqlite3* db = this->connection->get();
                 perform_void_exec(db, "ROLLBACK");
                 this->connection->release();
                 if(this->connection->retain_count() < 0) {
@@ -519,8 +498,7 @@ namespace sqlite_orm {
              */
             bool get_autocommit() {
                 auto con = this->get_connection();
-                auto db = con.get();
-                return sqlite3_get_autocommit(db);
+                return sqlite3_get_autocommit(con.get());
             }
 
             int busy_handler(std::function<int(int)> handler) {
@@ -585,7 +563,7 @@ namespace sqlite_orm {
                 if(1 == this->connection->retain_count()) {
                     this->on_open_internal(this->connection->get());
                 }
-                auto db = this->connection->get();
+                sqlite3* db = this->connection->get();
                 perform_void_exec(db, query);
             }
 
@@ -601,16 +579,15 @@ namespace sqlite_orm {
 
             void foreign_keys(sqlite3* db, bool value) {
                 std::stringstream ss;
-                ss << "PRAGMA foreign_keys = " << value;
+                ss << "PRAGMA foreign_keys = " << value << std::flush;
                 perform_void_exec(db, ss.str());
             }
 
             bool foreign_keys(sqlite3* db) {
-                std::string query = "PRAGMA foreign_keys";
-                auto result = false;
-                auto rc = sqlite3_exec(
+                bool result = false;
+                perform_exec(
                     db,
-                    query.c_str(),
+                    "PRAGMA foreign_keys",
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(bool*)data;
                         if(argc) {
@@ -618,11 +595,7 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
@@ -681,7 +654,7 @@ namespace sqlite_orm {
                     it = functionsVector.end();
 
                     if(this->connection->retain_count() > 0) {
-                        auto db = this->connection->get();
+                        sqlite3* db = this->connection->get();
                         auto resultCode = sqlite3_create_function_v2(db,
                                                                      name.c_str(),
                                                                      0,
@@ -770,12 +743,9 @@ namespace sqlite_orm {
 
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
-                std::stringstream ss;
-                ss << "SELECT CURRENT_TIMESTAMP";
-                auto query = ss.str();
-                auto rc = sqlite3_exec(
+                perform_exec(
                     db,
-                    query.c_str(),
+                    "SELECT CURRENT_TIMESTAMP",
                     [](void* data, int argc, char** argv, char**) -> int {
                         auto& res = *(std::string*)data;
                         if(argc) {
@@ -785,17 +755,13 @@ namespace sqlite_orm {
                         }
                         return 0;
                     },
-                    &result,
-                    nullptr);
-                if(rc != SQLITE_OK) {
-                    throw_translated_sqlite_error(db);
-                }
+                    &result);
                 return result;
             }
 
-            void drop_table_internal(const std::string& tableName, sqlite3* db) {
+            void drop_table_internal(sqlite3* db, const std::string& tableName) {
                 std::stringstream ss;
-                ss << "DROP TABLE " << quote_identifier(tableName);
+                ss << "DROP TABLE " << streaming_identifier(tableName) << std::flush;
                 perform_void_exec(db, ss.str());
             }
 

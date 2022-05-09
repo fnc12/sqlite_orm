@@ -28,9 +28,9 @@ TEST_CASE("Select return types") {
         };
         using namespace sqlite_orm::internal::storage_traits;
 
-        //  test type_is_mapped
-        STATIC_REQUIRE(type_is_mapped<decltype(storage), User>::value);
-        STATIC_REQUIRE(!type_is_mapped<decltype(storage), Visit>::value);
+        //  test is_mapped
+        STATIC_REQUIRE(is_mapped_v<decltype(storage), User>);
+        STATIC_REQUIRE(!is_mapped_v<decltype(storage), Visit>);
 
         //  test is_storage
         STATIC_REQUIRE(internal::is_storage<decltype(storage)>::value);

@@ -768,7 +768,7 @@ TEST_CASE("Node tuple") {
         }
 #endif
         SECTION("coalesce") {
-            auto f = char_(10, 20);
+            auto f = coalesce(10, 20);
             using Fun = decltype(f);
             using Tuple = node_tuple_t<Fun>;
             using Expected = tuple<int, int>;

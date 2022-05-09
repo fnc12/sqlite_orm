@@ -88,7 +88,7 @@ namespace sqlite_orm {
         struct node_tuple<order_by_t<E>, void> : node_tuple<E> {};
 
         template<class T>
-        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, binary_condition>::value>::type> {
+        struct node_tuple<T, std::enable_if_t<is_base_of_template_v<T, binary_condition>>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
@@ -127,7 +127,7 @@ namespace sqlite_orm {
         };
 
         template<class T>
-        struct node_tuple<T, typename std::enable_if<is_base_of_template<T, compound_operator>::value>::type> {
+        struct node_tuple<T, std::enable_if_t<is_base_of_template_v<T, compound_operator>>> {
             using node_type = T;
             using left_type = typename node_type::left_type;
             using right_type = typename node_type::right_type;
