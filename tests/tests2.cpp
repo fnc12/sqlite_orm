@@ -550,7 +550,8 @@ TEST_CASE("obtain_xdestroy_for") {
 
     {
         constexpr int *int_nullptr = nullptr;
-#if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) || (__cpp_constexpr >= 201907L)  //  Trivial default initialization in constexpr functions
+#if !defined(SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION) ||                                                             \
+    (__cpp_constexpr >= 201907L)  //  Trivial default initialization in constexpr functions
         constexpr const int *const_int_nullptr = nullptr;
 #endif
 
