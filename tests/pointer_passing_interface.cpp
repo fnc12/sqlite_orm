@@ -45,9 +45,9 @@ TEST_CASE("pointer-passing") {
         using bindable_carray_ptr_t = carray_pointer_binding<int64, delete_int64>;
 
         bindable_carray_ptr_t operator()() const {
-            return bindable_pointer<bindable_carray_ptr_t>(new int64{ -1 });
+            return bindable_pointer<bindable_carray_ptr_t>(new int64{-1});
             // outline: low-level; must compile
-            return bindable_carray_pointer(new int64{ -1 }, delete_int64{});
+            return bindable_carray_pointer(new int64{-1}, delete_int64{});
         }
 
         static const char* name() {
@@ -58,7 +58,7 @@ TEST_CASE("pointer-passing") {
     // return value from a pointer of type "carray"
     struct fetch_from_pointer_fn {
         int64 operator()(carray_pointer_arg<const int64> pv) const {
-            if (const int64* v = pv) {
+            if(const int64* v = pv) {
                 return *v;
             }
             return 0;
@@ -85,12 +85,12 @@ TEST_CASE("pointer-passing") {
         int64 lastUpdatedId = -1;
         storage.update_all(set(
             c(&Object::id) =
-            add(1ll,
-                func<note_value_fn<int64>>(&Object::id, statically_bindable_pointer<carray_pvt>(&lastUpdatedId)))));
+                add(1ll,
+                    func<note_value_fn<int64>>(&Object::id, statically_bindable_pointer<carray_pvt>(&lastUpdatedId)))));
         REQUIRE(lastUpdatedId == 1);
         storage.update_all(set(
             c(&Object::id) =
-            add(1ll, func<note_value_fn<int64>>(&Object::id, statically_bindable_carray_pointer(&lastUpdatedId)))));
+                add(1ll, func<note_value_fn<int64>>(&Object::id, statically_bindable_carray_pointer(&lastUpdatedId)))));
         REQUIRE(lastUpdatedId == 2);
     }
 
@@ -109,12 +109,11 @@ TEST_CASE("pointer-passing") {
 
         SECTION("unbound is deleted") {
             try {
-                unique_ptr<int64, delete_int64> x{ new int64(42) };
+                unique_ptr<int64, delete_int64> x{new int64(42)};
                 auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(move(x))));
                 auto stmt = storage.prepare(std::move(ast));
-                throw std::system_error{ 0, std::system_category() };
-            }
-            catch (const std::system_error&) {
+                throw std::system_error{0, std::system_category()};
+            } catch(const std::system_error&) {
             }
             // unbound pointer value must be deleted in face of exceptions (unregistered sql function)
             REQUIRE(delete_int64::deleted == true);
@@ -122,7 +121,7 @@ TEST_CASE("pointer-passing") {
 
         SECTION("deleted with prepared statement") {
             {
-                unique_ptr<int64, delete_int64> x{ new int64(42) };
+                unique_ptr<int64, delete_int64> x{new int64(42)};
                 auto ast = select(func<fetch_from_pointer_fn>(bindable_pointer<carray_pvt>(move(x))));
                 auto stmt = storage.prepare(std::move(ast));
 
@@ -150,7 +149,7 @@ TEST_CASE("pointer-passing") {
         SECTION("test_pass_thru") {
             auto v = storage.select(func<note_value_fn<int64>>(
                 &Object::id,
-                func<pass_thru_pointer_fn>(bindable_carray_pointer(new int64{ -1 }, delete_int64{}))));
+                func<pass_thru_pointer_fn>(bindable_carray_pointer(new int64{-1}, delete_int64{}))));
             REQUIRE(delete_int64::deleted == true);
             REQUIRE(v.back() == delete_int64::lastSelectedId);
         }
