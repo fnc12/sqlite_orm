@@ -148,7 +148,7 @@ if (MSVC)
             # C4127: conditional expression is constant
             /wd"4127"
             # C4456: declaration of 'symbol' hides previous local declaration
-            /wd"4456")
+            /wd"4456"
             # C4458: declaration of 'symbol' hides class member
             /wd"4458")
     endif()
