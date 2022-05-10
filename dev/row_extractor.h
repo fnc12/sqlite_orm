@@ -31,14 +31,23 @@ namespace sqlite_orm {
     template<class V, typename Enable = void>
     struct row_extractor {
         //  used in sqlite3_exec (select)
-        V extract(const char* row_value) const;
+        V extract(const char* row_value) const = delete;
 
         //  used in sqlite_column (iteration, get_all)
-        V extract(sqlite3_stmt* stmt, int columnIndex) const;
+        V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
         //  used in user defined functions
-        V extract(sqlite3_value* value) const;
+        V extract(sqlite3_value* value) const = delete;
     };
+
+    template<class R>
+    int extract_single_value(void* data, int argc, char** argv, char**) {
+        auto& res = *(R*)data;
+        if(argc) {
+            res = row_extractor<R>{}.extract(argv[0]);
+        }
+        return 0;
+    }
 
     /**
      *  Specialization for the 'pointer-passing interface'.

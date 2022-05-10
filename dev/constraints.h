@@ -280,9 +280,6 @@ namespace sqlite_orm {
                 this->on_delete = {*this, false, other.on_delete._action};
                 return *this;
             }
-
-            template<class L>
-            void for_each_column(const L&) {}
         };
 
         template<class A, class B>

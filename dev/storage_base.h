@@ -11,6 +11,7 @@
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
 
+#include "static_magic.h"
 #include "pragma.h"
 #include "limit_accessor.h"
 #include "transaction_guard.h"
@@ -546,17 +547,7 @@ namespace sqlite_orm {
 
             bool foreign_keys(sqlite3* db) {
                 bool result = false;
-                perform_exec(
-                    db,
-                    "PRAGMA foreign_keys",
-                    [](void* data, int argc, char** argv, char**) -> int {
-                        auto& res = *(bool*)data;
-                        if(argc) {
-                            res = row_extractor<bool>().extract(argv[0]);
-                        }
-                        return 0;
-                    },
-                    &result);
+                perform_exec(db, "PRAGMA foreign_keys", extract_single_value<bool>, &result);
                 return result;
             }
 
@@ -704,19 +695,7 @@ namespace sqlite_orm {
 
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
-                perform_exec(
-                    db,
-                    "SELECT CURRENT_TIMESTAMP",
-                    [](void* data, int argc, char** argv, char**) -> int {
-                        auto& res = *(std::string*)data;
-                        if(argc) {
-                            if(argv[0]) {
-                                res = row_extractor<std::string>().extract(argv[0]);
-                            }
-                        }
-                        return 0;
-                    },
-                    &result);
+                perform_exec(db, "SELECT CURRENT_TIMESTAMP", extract_single_value<std::string>, &result);
                 return result;
             }
 
@@ -747,10 +726,13 @@ namespace sqlite_orm {
 
                 storageImpl.for_each([&res](const auto& tImpl) {
                     using qualified_type = std::decay_t<decltype(tImpl)>;
-                    static_if<std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value>(
+                    constexpr bool c = std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value;
+
+                    call_if_constexpr<c>(
                         [&res](const auto& tImpl) {
                             res += tImpl.table.foreign_keys_count();
-                        })(tImpl);
+                        },
+                        tImpl);
                 });
                 return res;
             }

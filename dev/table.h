@@ -55,7 +55,8 @@ namespace sqlite_orm {
              */
             constexpr int foreign_keys_count() const {
 #if SQLITE_VERSION_NUMBER >= 3006019
-                return int(filter_tuple_sequence_t<elements_type, is_foreign_key>::size());
+                using fk_seq = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                return int(fk_seq::size());
 #else
                 return 0;
 #endif
@@ -64,8 +65,9 @@ namespace sqlite_orm {
             /**
              *  Function used to get field value from object by mapped member pointer/setter/getter
              */
-            template<class F, class C>
-            const F* get_object_field_pointer(const object_type& object, C memberPointer) const {
+            template<class C>
+            const member_field_type_t<C>* get_object_field_pointer(const object_type& object, C memberPointer) const {
+                using F = member_field_type_t<C>;
                 const F* res = nullptr;
                 this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
                     if(res) {
@@ -105,12 +107,11 @@ namespace sqlite_orm {
             bool exists_in_composite_primary_key(const C& column) const {
                 auto res = false;
                 this->for_each_primary_key([&column, &res](auto& primaryKey) {
-                    iterate_tuple(primaryKey.columns, [&res, &column](auto& value) {
-                        if(res) {
-                            return;
+                    iterate_tuple(primaryKey.columns, [&res, &column](auto& memberPointer) {
+                        if(!res) {
+                            res = compare_any(memberPointer, column.member_pointer) ||
+                                  compare_any(memberPointer, column.setter);
                         }
-
-                        res = compare_any(value, column.member_pointer) || compare_any(value, column.setter);
                     });
                 });
                 return res;
@@ -121,10 +122,8 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_primary_key(L&& lambda) const {
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = std::decay_t<decltype(element)>;
-                    static_if<is_primary_key_v<element_type>>(lambda)(element);
-                });
+                using pk_seq = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                iterate_tuple(this->elements, pk_seq{}, lambda);
             }
 
             std::vector<std::string> composite_key_columns_names() const {
@@ -209,30 +208,28 @@ namespace sqlite_orm {
              *  Counts and returns amount of columns. Skips constraints.
              */
             constexpr int count_columns_amount() const {
-                return int(filter_tuple_sequence_t<elements_type, is_column>::size());
+                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
+                return int(col_seq::size());
             }
 
             /**
-             *  Iterates all columns and fires passed lambda. Lambda must have one and only templated argument. Otherwise
-             *  code will not compile. Excludes table constraints (e.g. foreign_key_t) at the end of the columns list. To
-             *  iterate columns with table constraints use iterate_tuple(columns, ...) instead. L is lambda type. Do
-             *  not specify it explicitly.
-             *  @param lambda Lambda to be called per column itself. Must have signature like this [] (auto col) -> void {}
+             *  Call passed lambda with all defined foreign keys.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             */
+            template<class L>
+            void for_each_foreign_key(L&& lambda) const {
+                using foreign_key_seq = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                iterate_tuple(this->elements, foreign_key_seq{}, lambda);
+            }
+
+            /**
+             *  Call passed lambda with all defined columns.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
             template<class L>
             void for_each_column(L&& lambda) const {
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = std::decay_t<decltype(element)>;
-                    static_if<is_column_v<element_type>>(lambda)(element);
-                });
-            }
-
-            template<class L>
-            void for_each_foreign_key(L&& lambda) const {
-                iterate_tuple(this->elements, [&lambda](auto& element) {
-                    using element_type = std::decay_t<decltype(element)>;
-                    static_if<is_foreign_key_v<element_type>>(lambda)(element);
-                });
+                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
+                iterate_tuple(this->elements, col_seq{}, lambda);
             }
 
             template<class F, class L>
