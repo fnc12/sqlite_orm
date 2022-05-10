@@ -153,7 +153,7 @@ TEST_CASE("bindables") {
 #endif
                             >;
 
-        constexpr Tuple t = make_default_tuple<Tuple>();
+        constexpr Tuple tpl = make_default_tuple<Tuple>();
 
         array<string, tuple_size<Tuple>::value> e{"0",
                                                   "0",
@@ -184,11 +184,11 @@ TEST_CASE("bindables") {
 
         SECTION("dump") {
             context.replace_bindable_with_question = false;
-            test_tuple(t, context, e);
+            test_tuple(tpl, context, e);
         }
         SECTION("parametrized") {
             context.replace_bindable_with_question = true;
-            test_tuple(t, context, single_value_array<tuple_size<Tuple>::value>("?"));
+            test_tuple(tpl, context, single_value_array<tuple_size<Tuple>::value>("?"));
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;
@@ -220,7 +220,7 @@ TEST_CASE("bindables") {
                             Custom,
                             unique_ptr<Custom>>;
 
-        Tuple t = make_default_tuple<Tuple>();
+        Tuple tpl = make_default_tuple<Tuple>();
 
         array<string, tuple_size<Tuple>::value> e{"''",
 #ifndef SQLITE_ORM_OMITS_CODECVT
@@ -246,11 +246,11 @@ TEST_CASE("bindables") {
 
         SECTION("dump") {
             context.replace_bindable_with_question = false;
-            test_tuple(t, context, e);
+            test_tuple(tpl, context, e);
         }
         SECTION("parametrized") {
             context.replace_bindable_with_question = true;
-            test_tuple(t, context, single_value_array<tuple_size<Tuple>::value>("?"));
+            test_tuple(tpl, context, single_value_array<tuple_size<Tuple>::value>("?"));
         }
         SECTION("non-bindable literals") {
             context.replace_bindable_with_question = true;

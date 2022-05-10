@@ -6136,7 +6136,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class L, class R>
-        bool compare_any(const L& lhs, const R& rhs) {
+        bool compare_any(const L& /*lhs*/, const R& /*rhs*/) {
             return false;
         }
         template<class O>
@@ -11797,7 +11797,7 @@ namespace sqlite_orm {
             using node_type = into_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            void operator()(const node_type& /*node*/, L& /*lambda*/) const {
                 //..
             }
         };
@@ -13424,7 +13424,7 @@ namespace sqlite_orm {
 
         template<class T>
         struct values_to_tuple<T, size_t(-1)> {
-            void extract(sqlite3_value** values, T& tuple, int argsCount) const {
+            void extract(sqlite3_value** /*values*/, T& /*tuple*/, int /*argsCount*/) const {
                 //..
             }
         };
@@ -13711,7 +13711,7 @@ namespace sqlite_orm {
                         return (int*)(new F());
                     },
                     /* step = */
-                    [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
+                    [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
@@ -15458,7 +15458,7 @@ namespace sqlite_orm {
             using statement_type = autoincrement_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx&) const {
+            std::string operator()(const statement_type&, const Ctx&) const {
                 return "AUTOINCREMENT";
             }
         };
@@ -15879,7 +15879,7 @@ namespace sqlite_orm {
             using statement_type = into_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx& context) const {
                 auto& tImpl = pick_impl<T>(context.impl);
 
                 std::stringstream ss;
@@ -16125,7 +16125,7 @@ namespace sqlite_orm {
             using statement_type = conflict_action;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case conflict_action::replace:
                         return "REPLACE";
@@ -16281,7 +16281,7 @@ namespace sqlite_orm {
             using statement_type = from_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx& context) const {
                 using tuple = std::tuple<Args...>;
 
                 std::stringstream ss;
@@ -16359,7 +16359,7 @@ namespace sqlite_orm {
             using statement_type = trigger_timing;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_timing::trigger_before:
                         return "BEFORE";
@@ -16377,7 +16377,7 @@ namespace sqlite_orm {
             using statement_type = trigger_type;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_type::trigger_delete:
                         return "DELETE";
@@ -16695,7 +16695,7 @@ namespace sqlite_orm {
             using statement_type = default_values_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx&) const {
                 return "DEFAULT VALUES";
             }
         };
@@ -16862,12 +16862,7 @@ namespace sqlite_orm {
             void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
                                     const std::vector<table_xinfo>& storageTableInfo) {
                 //  iterate through storage columns
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
-                    ++storageColumnInfoIndex) {
-
-                    //  get storage's column info
-                    auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto& columnName = storageColumnInfo.name;
+                for(const table_xinfo& storageColumnInfo: storageTableInfo) {
                     if(storageColumnInfo.hidden) {
                         columnsToAdd.push_back(&storageColumnInfo);
                     }
