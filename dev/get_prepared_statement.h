@@ -127,8 +127,7 @@ namespace sqlite_orm {
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
         using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         const result_tupe* result = nullptr;
-        auto index = -1;
-        internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
+        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
@@ -136,7 +135,7 @@ namespace sqlite_orm {
             if(index == N) {
                 internal::call_if_constexpr<std::is_same<result_tupe, node_type>::value>(
                     [](auto& r, auto& n) {
-                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
+                        r = &n;
                     },
                     result,
                     node);
@@ -154,8 +153,7 @@ namespace sqlite_orm {
         using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         result_tupe* result = nullptr;
 
-        auto index = -1;
-        internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
+        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;

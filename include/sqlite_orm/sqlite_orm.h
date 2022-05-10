@@ -15713,9 +15713,8 @@ namespace sqlite_orm {
                 ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
                 ss << "(" << streaming_mapped_columns_expressions(ins.columns.columns, context) << ") "
                    << "VALUES (";
-                auto index = 0;
                 iterate_tuple(ins.columns.columns,
-                              [&ss, &context, &index, &object = get_ref(ins.obj)](auto& memberPointer) {
+                              [&ss, &context, &object = get_ref(ins.obj), index = 0](auto& memberPointer) mutable {
                                   using member_pointer_type = std::decay_t<decltype(memberPointer)>;
                                   static_assert(!is_setter_v<member_pointer_type>,
                                                 "Unable to use setter within insert explicit");
@@ -15977,19 +15976,19 @@ namespace sqlite_orm {
                 iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
                     idsStrings.push_back(serialize(idValue, context));
                 });
-                auto index = 0;
-                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl, &idsStrings](auto& memberPointer) {
-                    auto* columnName = tImpl.table.find_column_name(memberPointer);
-                    if(!columnName) {
-                        throw std::system_error{orm_error_code::column_not_found};
-                    }
+                tImpl.table.for_each_primary_key_column(
+                    [&ss, &tImpl, &idsStrings, index = 0](auto& memberPointer) mutable {
+                        auto* columnName = tImpl.table.find_column_name(memberPointer);
+                        if(!columnName) {
+                            throw std::system_error{orm_error_code::column_not_found};
+                        }
 
-                    if(index > 0) {
-                        ss << " AND ";
-                    }
-                    ss << streaming_identifier(*columnName) << " = " << idsStrings[index];
-                    ++index;
-                });
+                        if(index > 0) {
+                            ss << " AND ";
+                        }
+                        ss << streaming_identifier(*columnName) << " = " << idsStrings[index];
+                        ++index;
+                    });
                 return ss.str();
             }
         };
@@ -16311,8 +16310,7 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << "FROM ";
-                size_t index = 0;
-                iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
+                iterate_tuple<tuple>([&context, &ss, index = 0](auto* itemPointer) mutable {
                     using from_type = std::remove_pointer_t<decltype(itemPointer)>;
 
                     if(index > 0) {
@@ -18800,8 +18798,7 @@ namespace sqlite_orm {
         using bind_tuple = typename internal::bindable_filter<node_tuple>::type;
         using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         const result_tupe* result = nullptr;
-        auto index = -1;
-        internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
+        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
@@ -18809,7 +18806,7 @@ namespace sqlite_orm {
             if(index == N) {
                 internal::call_if_constexpr<std::is_same<result_tupe, node_type>::value>(
                     [](auto& r, auto& n) {
-                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
+                        r = &n;
                     },
                     result,
                     node);
@@ -18827,8 +18824,7 @@ namespace sqlite_orm {
         using result_tupe = std::tuple_element_t<static_cast<size_t>(N), bind_tuple>;
         result_tupe* result = nullptr;
 
-        auto index = -1;
-        internal::iterate_ast(statement.expression, [&result, &index](auto& node) {
+        internal::iterate_ast(statement.expression, [&result, index = -1](auto& node) mutable {
             using node_type = std::decay_t<decltype(node)>;
             if(internal::is_bindable_v<node_type>) {
                 ++index;
