@@ -18746,7 +18746,7 @@ namespace sqlite_orm {
             if(index == N) {
                 internal::call_if_constexpr<std::is_same<result_tupe, node_type>::value>(
                     [](auto& r, auto& n) {
-                        r = const_cast<std::remove_reference_t<decltype(r)>>(&n);
+                        r = &n;
                     },
                     result,
                     node);
