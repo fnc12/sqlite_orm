@@ -20,13 +20,16 @@ configuration:
 environment:
   appveyor_yml_disable_ps_linux: true
   matrix:
-    - job_name: GCC, C++20
+    - job_name: gcc, C++20
       appveyor_build_worker_image: Ubuntu
+      CC: clang
+      CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
-    - job_name: Visual Studio 2022, x64, C++20
-      appveyor_build_worker_image: Visual Studio 2022
-      platform: x64
+    - job_name: clang, C++20
+      appveyor_build_worker_image: Ubuntu
+      CC: gcc
+      CXX: g++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
 
 matrix:
@@ -69,8 +72,6 @@ for:
   init:
     - |-
       echo $appveyor_build_worker_image
-      export CC=gcc
-      export CXX=g++
       $CXX --version
   # using custom triplets for building and linking dynamic dependent libraries
   install:
