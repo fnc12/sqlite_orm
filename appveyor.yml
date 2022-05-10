@@ -71,12 +71,12 @@ for:
       echo $appveyor_build_worker_image
       export CC=gcc
       export CXX=g++
-      export CXXFLAGS="$CXXFLAGS -pipe"
       $CXX --version
+  # using custom triplets for building and linking dynamic dependent libraries
   install:
     - |-
-      $HOME/vcpkg/vcpkg integrate install
-      vcpkg install sqlite3
+      $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
   before_build:
     - |-
       mkdir compile
