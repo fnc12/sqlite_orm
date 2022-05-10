@@ -722,14 +722,14 @@ TEST_CASE("obtain_xdestroy_for") {
 
 #if __cpp_constexpr >= 201603L  //  constexpr lambda
         // [](void* p){}
-        constexpr auto lambda4_1 = [](void *p) {};
+        constexpr auto lambda4_1 = [](void *) {};
         constexpr xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
         STATIC_REQUIRE(xDestroy4_1 == lambda4_1);
         REQUIRE(xDestroy4_1 == lambda4_1);
 #else
 #if !defined(_MSC_VER) || (_MSC_VER >= 1914)  //  conversion of lambda closure to function pointer using `+`
         // [](void* p){}
-        auto lambda4_1 = [](void *p) {};
+        auto lambda4_1 = [](void *) {};
         xdestroy_fn_t xDestroy4_1 = obtain_xdestroy_for(lambda4_1, int_nullptr);
         REQUIRE(xDestroy4_1 == lambda4_1);
 #endif

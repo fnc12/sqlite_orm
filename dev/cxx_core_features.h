@@ -6,6 +6,12 @@
 #define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
 #endif
 
+#ifdef __has_include
+#define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
+#else
+#define SQLITE_ORM_HAS_INCLUDE(file) 0L
+#endif
+
 #if __cpp_aggregate_nsdmi >= 201304L
 #define SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
 #endif
@@ -68,8 +74,4 @@
 #if __has_include(<string_view>)
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #endif
-#endif
-
-#if defined(_MSC_VER) && (_MSC_VER < 1920)
-#define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif

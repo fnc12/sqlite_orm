@@ -132,13 +132,25 @@ if(SQLITE_ORM_OMITS_CODECVT)
 endif()
 
 if (MSVC)
-    target_compile_options(unit_tests PUBLIC /MP) # multi-processor compilation
+    target_compile_options(unit_tests PUBLIC
+        # multi-processor compilation
+        /MP)
     if (MSVC_VERSION LESS_EQUAL 1900)
         target_compile_options(unit_tests PUBLIC
             # C4503: decorated name length exceeded
             /wd"4503"
             # C4800: forcing value to bool (performance warning)
             /wd"4800")
+    else()
+        target_compile_options(unit_tests PUBLIC
+            # warning-level 4
+            /W4
+            # C4127: conditional expression is constant
+            /wd"4127"
+            # C4456: declaration of 'symbol' hides previous local declaration
+            /wd"4456"
+            # C4458: declaration of 'symbol' hides class member
+            /wd"4458")
     endif()
 endif()
 

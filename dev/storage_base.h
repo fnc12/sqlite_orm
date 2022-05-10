@@ -292,7 +292,7 @@ namespace sqlite_orm {
                         return (int*)(new F());
                     },
                     /* step = */
-                    [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
+                    [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
