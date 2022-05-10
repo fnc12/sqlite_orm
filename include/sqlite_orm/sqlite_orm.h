@@ -9908,9 +9908,11 @@ namespace sqlite_orm {
                             return;
                         }
                         using constraint_type = std::decay_t<decltype(constraint)>;
-                        static_if<is_generated_always_v<constraint_type>>([&result](auto& generatedAlwaysConstraint) {
-                            result = &generatedAlwaysConstraint.storage;
-                        })(constraint);
+                        call_if_constexpr<is_generated_always_v<constraint_type>>(
+                            [&result](auto& generatedAlwaysConstraint) {
+                                result = &generatedAlwaysConstraint.storage;
+                            },
+                            constraint);
                     });
                 });
 #endif
@@ -10051,7 +10053,7 @@ namespace sqlite_orm {
                 this->for_each_column([&lambda](auto& column) {
                     using column_type = std::decay_t<decltype(column)>;
                     using field_type = typename column_field_type<column_type>::type;
-                    static_if<std::is_same<F, field_type>::value>(lambda)(column);
+                    call_if_constexpr<std::is_same<F, field_type>::value>(lambda, column);
                 });
             }
 
@@ -10068,7 +10070,7 @@ namespace sqlite_orm {
                     using column_type = std::decay_t<decltype(column)>;
                     using constraints_type = typename column_constraints_type<column_type>::type;
                     constexpr bool c = tuple_contains_type<Op, constraints_type>::value;
-                    static_if<c>(lambda)(column);
+                    call_if_constexpr<c>(lambda, column);
                 });
             }
 
