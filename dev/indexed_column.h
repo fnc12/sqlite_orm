@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>  //  std::string
+#include <utility>  //  std::move
 
 #include "start_macros.h"
 #include "ast/where.h"

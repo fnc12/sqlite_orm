@@ -11,3 +11,4 @@ __pragma(push_macro("max"))
 #include <stddef.h>  //  sqlite_orm is using size_t, ptrdiff_t everywhere, pull it in early
 
 #include "cxx_core_features.h"
+#include "cxx_compiler_quirks.h"

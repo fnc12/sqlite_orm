@@ -19,7 +19,7 @@ __pragma(push_macro("max"))
 #endif
 
 #ifdef __has_include
-#define SQLITE_ORM_HAS_INCLUDE(file) SQLITE_ORM_HAS_INCLUDE(file)
+#define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
 #endif
@@ -78,13 +78,42 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
-#if SQLITE_ORM_HAS_INCLUDE(<optional>)
+#if __cplusplus >= 201703L  // C++17 or later
+#if __has_include(<optional>)
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
 #endif
 
-#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
+#if __has_include(<string_view>)
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #endif
+#endif
+
+// #include "cxx_compiler_quirks.h"
+
+#ifdef __clang__
+#define SQLITE_ORM_DO_PRAGMA(...) _Pragma(#__VA_ARGS__)
+#endif
+
+#ifdef __clang__
+#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...)                                                                     \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic push)                                                                        \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic ignored warnoption)                                                          \
+    __VA_ARGS__                                                                                                        \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic pop)
+
+#else
+#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
+#endif
+
+// clang has the bad habit of diagnosing missing brace-init-lists when constructing aggregates with base classes.
+// This is a false positive, since the C++ standard is quite clear that braces for nested or base objects may be omitted,
+// see https://en.cppreference.com/w/cpp/language/aggregate_initialization:
+// "The braces around the nested initializer lists may be elided (omitted),
+//  in which case as many initializer clauses as necessary are used to initialize every member or element of the corresponding subaggregate,
+//  and the subsequent initializer clauses are used to initialize the following members of the object."
+// In this sense clang should only warn about missing field initializers.
+// Because we know what we are doing, we suppress the diagnostic message
+#define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
@@ -2026,7 +2055,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {move(name), m, {}, std::make_tuple(constraints...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), m, {}, std::make_tuple(constraints...)});
     }
 
     /**
@@ -2044,7 +2073,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {move(name), getter, setter, std::make_tuple(constraints...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
     }
 
     /**
@@ -2063,7 +2092,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {move(name), getter, setter, std::make_tuple(constraints...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
     }
 }
 #pragma once
@@ -6769,6 +6798,8 @@ namespace sqlite_orm {
 #include <string>
 #include <tuple>
 
+// #include "start_macros.h"
+
 // #include "tuple_helper/tuple_helper.h"
 
 // #include "optional_container.h"
@@ -6941,8 +6972,6 @@ namespace sqlite_orm {
         struct trigger_timing_t {
             trigger_timing timing;
 
-            trigger_timing_t(trigger_timing timing) : timing(timing) {}
-
             trigger_type_base_t delete_() {
                 return {timing, trigger_type::trigger_delete};
             }
@@ -7038,19 +7067,19 @@ namespace sqlite_orm {
 
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
-        return {move(name), std::move(part.base), std::move(part.statements)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), std::move(part.base), std::move(part.statements)});
     }
 
     inline internal::trigger_timing_t before() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_before)};
+        return {internal::trigger_timing::trigger_before};
     }
 
     inline internal::trigger_timing_t after() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_after)};
+        return {internal::trigger_timing::trigger_after};
     }
 
     inline internal::trigger_timing_t instead_of() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_instead_of)};
+        return {internal::trigger_timing::trigger_instead_of};
     }
 }
 #pragma once
@@ -8409,11 +8438,14 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
+// #include "start_macros.h"
+
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "indexed_column.h"
 
 #include <string>  //  std::string
+#include <utility>  //  std::move
 
 // #include "start_macros.h"
 
@@ -8534,7 +8566,8 @@ namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        return {name, false, std::make_tuple(internal::make_indexed_column(cols)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {name, false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 
     template<class... Cols>
@@ -8543,7 +8576,8 @@ namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        return {name, true, std::make_tuple(internal::make_indexed_column(cols)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {name, true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 }
 #pragma once
@@ -9715,6 +9749,8 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
+// #include "start_macros.h"
+
 // #include "cxx_functional_polyfill.h"
 
 #if __cpp_lib_invoke < 201411L
@@ -10065,12 +10101,12 @@ namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
-        return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
-        return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 }
 #pragma once

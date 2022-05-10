@@ -5,6 +5,7 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
+#include "start_macros.h"
 #include "cxx_functional_polyfill.h"
 #include "static_magic.h"
 #include "typed_comparator.h"
@@ -270,11 +271,11 @@ namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
-        return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
-        return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 }

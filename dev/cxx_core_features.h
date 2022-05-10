@@ -7,7 +7,7 @@
 #endif
 
 #ifdef __has_include
-#define SQLITE_ORM_HAS_INCLUDE(file) SQLITE_ORM_HAS_INCLUDE(file)
+#define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
 #else
 #define SQLITE_ORM_HAS_INCLUDE(file) 0L
 #endif
@@ -66,14 +66,12 @@
 #define SQLITE_ORM_CONCEPTS_SUPPORTED
 #endif
 
-#if SQLITE_ORM_HAS_INCLUDE(<optional>)
+#if __cplusplus >= 201703L  // C++17 or later
+#if __has_include(<optional>)
 #define SQLITE_ORM_OPTIONAL_SUPPORTED
 #endif
 
-#if SQLITE_ORM_HAS_INCLUDE(<string_view>)
+#if __has_include(<string_view>)
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #endif
-
-#if defined(_MSC_VER) && (_MSC_VER < 1920)
-#define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif
