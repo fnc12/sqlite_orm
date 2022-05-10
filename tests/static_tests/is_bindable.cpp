@@ -65,7 +65,7 @@ TEST_CASE("is_bindable") {
     STATIC_REQUIRE(!is_bindable_v<std::optional<User>>);
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-    STATIC_REQUIRE(is_bindable_v<static_pointer_binding<nullptr_t, carray_pvt>>);
+    STATIC_REQUIRE(is_bindable_v<static_pointer_binding<std::nullptr_t, carray_pvt>>);
 #endif
 
     STATIC_REQUIRE(is_bindable_v<Custom>);
