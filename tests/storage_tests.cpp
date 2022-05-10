@@ -168,7 +168,7 @@ TEST_CASE("has_dependent_rows") {
 
 #ifndef SQLITE_ORM_AGGREGATE_NSDMI_SUPPORTED
         Visit() = default;
-        Visit(int id, int userId, time_t time) : id{id}, userId{userId}, date{date} {}
+        Visit(int id, int userId, int date) : id{id}, userId{userId}, date{date} {}
 #endif
     };
     auto storage =

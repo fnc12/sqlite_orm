@@ -8,6 +8,7 @@ __pragma(push_macro("max"))
 #endif  // defined(_MSC_VER)
 
 #include <iso646.h>  //  alternative operator representations
+#include <stddef.h>  //  sqlite_orm is using size_t, ptrdiff_t everywhere, pull it in early
 
 // #include "cxx_core_features.h"
 
@@ -15,6 +16,12 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) __has_cpp_attribute(attr)
 #else
 #define SQLITE_ORM_HAS_CPP_ATTRIBUTE(attr) 0L
+#endif
+
+#ifdef __has_include
+#define SQLITE_ORM_HAS_INCLUDE(file) __has_include(file)
+#else
+#define SQLITE_ORM_HAS_INCLUDE(file) 0L
 #endif
 
 #if __cpp_aggregate_nsdmi >= 201304L
@@ -80,6 +87,33 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_STRING_VIEW_SUPPORTED
 #endif
 #endif
+
+// #include "cxx_compiler_quirks.h"
+
+#ifdef __clang__
+#define SQLITE_ORM_DO_PRAGMA(...) _Pragma(#__VA_ARGS__)
+#endif
+
+#ifdef __clang__
+#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...)                                                                     \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic push)                                                                        \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic ignored warnoption)                                                          \
+    __VA_ARGS__                                                                                                        \
+    SQLITE_ORM_DO_PRAGMA(clang diagnostic pop)
+
+#else
+#define SQLITE_ORM_CLANG_SUPPRESS(warnoption, ...) __VA_ARGS__
+#endif
+
+// clang has the bad habit of diagnosing missing brace-init-lists when constructing aggregates with base classes.
+// This is a false positive, since the C++ standard is quite clear that braces for nested or base objects may be omitted,
+// see https://en.cppreference.com/w/cpp/language/aggregate_initialization:
+// "The braces around the nested initializer lists may be elided (omitted),
+//  in which case as many initializer clauses as necessary are used to initialize every member or element of the corresponding subaggregate,
+//  and the subsequent initializer clauses are used to initialize the following members of the object."
+// In this sense clang should only warn about missing field initializers.
+// Because we know what we are doing, we suppress the diagnostic message
+#define SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(...) SQLITE_ORM_CLANG_SUPPRESS("-Wmissing-braces", __VA_ARGS__)
 
 #if defined(_MSC_VER) && (_MSC_VER < 1920)
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
@@ -1996,7 +2030,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {move(name), m, {}, std::make_tuple(constraints...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), m, {}, std::make_tuple(constraints...)});
     }
 
     /**
@@ -2014,7 +2048,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {move(name), getter, setter, std::make_tuple(constraints...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
     }
 
     /**
@@ -2033,7 +2067,7 @@ namespace sqlite_orm {
         static_assert(internal::count_tuple<std::tuple<Op...>, internal::is_constraint>::value ==
                           std::tuple_size<std::tuple<Op...>>::value,
                       "Incorrect constraints pack");
-        return {move(name), getter, setter, std::make_tuple(constraints...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), getter, setter, std::make_tuple(constraints...)});
     }
 }
 #pragma once
@@ -6077,7 +6111,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class L, class R>
-        bool compare_any(const L& lhs, const R& rhs) {
+        bool compare_any(const L& /*lhs*/, const R& /*rhs*/) {
             return false;
         }
         template<class O>
@@ -6739,6 +6773,8 @@ namespace sqlite_orm {
 #include <string>
 #include <tuple>
 
+// #include "start_macros.h"
+
 // #include "tuple_helper/tuple_helper.h"
 
 // #include "optional_container.h"
@@ -6911,8 +6947,6 @@ namespace sqlite_orm {
         struct trigger_timing_t {
             trigger_timing timing;
 
-            trigger_timing_t(trigger_timing timing) : timing(timing) {}
-
             trigger_type_base_t delete_() {
                 return {timing, trigger_type::trigger_delete};
             }
@@ -7008,19 +7042,19 @@ namespace sqlite_orm {
 
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...>& part) {
-        return {move(name), std::move(part.base), std::move(part.statements)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), std::move(part.base), std::move(part.statements)});
     }
 
     inline internal::trigger_timing_t before() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_before)};
+        return {internal::trigger_timing::trigger_before};
     }
 
     inline internal::trigger_timing_t after() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_after)};
+        return {internal::trigger_timing::trigger_after};
     }
 
     inline internal::trigger_timing_t instead_of() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_instead_of)};
+        return {internal::trigger_timing::trigger_instead_of};
     }
 }
 #pragma once
@@ -7068,7 +7102,7 @@ namespace sqlite_orm {
 // #include "xdestroy_handling.h"
 
 #include <type_traits>  // std::integral_constant
-#if __cpp_lib_concepts >= 201907L
+#if defined(SQLITE_ORM_CONCEPTS_SUPPORTED) && SQLITE_ORM_HAS_INCLUDE(<concepts>)
 #include <concepts>
 #endif
 
@@ -7106,7 +7140,7 @@ namespace sqlite_orm {
          *  Constraints a deleter to be or to yield a function pointer.
          */
         template<typename D>
-        concept can_yield_fp = requires(D d) {
+        concept yields_fp = requires(D d) {
             // yielding function pointer by using the plus trick
             {+d};
             requires std::is_function_v<std::remove_pointer_t<decltype(+d)>>;
@@ -7117,7 +7151,7 @@ namespace sqlite_orm {
         /**
          *  Yield a deleter's function pointer.
          */
-        template<can_yield_fp D>
+        template<yields_fp D>
         struct yield_fp_of {
             using type = decltype(+std::declval<D>());
         };
@@ -7153,7 +7187,7 @@ namespace sqlite_orm {
 
         template<typename D, bool = can_yield_fp_v<D>>
         struct yield_fp_of {
-            using type = polyfill::void_t<>;
+            using type = void;
         };
         template<typename D>
         struct yield_fp_of<D, true> {
@@ -7166,14 +7200,18 @@ namespace sqlite_orm {
 #if __cpp_lib_concepts >= 201907L
         template<typename D>
         concept is_unusable_for_xdestroy = (!stateless_deleter<D> &&
-                                            (can_yield_fp<D> && !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+                                            (yields_fp<D> && !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
+        /**
+         *  This concept tests whether a deleter yields a function pointer, which is convertible to an xdestroy function pointer.
+         *  Note: We are using 'is convertible' rather than 'is same' because of any exception specification.
+         */
         template<typename D>
-        concept can_yield_xdestroy = can_yield_fp<D> && std::same_as<yielded_fn_t<D>, xdestroy_fn_t>;
+        concept yields_xdestroy = yields_fp<D> && std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>;
 
         template<typename D, typename P>
         concept needs_xdestroy_proxy = (stateless_deleter<D> &&
-                                        (!can_yield_fp<D> || !std::same_as<yielded_fn_t<D>, xdestroy_fn_t>));
+                                        (!yields_fp<D> || !std::convertible_to<yielded_fn_t<D>, xdestroy_fn_t>));
 
         /**
          *  xDestroy function that constructs and invokes the stateless deleter.
@@ -7205,27 +7243,28 @@ namespace sqlite_orm {
 #else
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool is_unusable_for_xdestroy_v =
-            !is_stateless_deleter_v<D> && (can_yield_fp_v<D> && !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+            !is_stateless_deleter_v<D> &&
+            (can_yield_fp_v<D> && !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
         template<typename D>
         SQLITE_ORM_INLINE_VAR constexpr bool can_yield_xdestroy_v =
-            can_yield_fp_v<D>&& std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value;
+            can_yield_fp_v<D>&& std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value;
 
         template<typename D, typename P>
-        SQLITE_ORM_INLINE_VAR constexpr bool
-            needs_xdestroy_proxy_v = is_stateless_deleter_v<D> &&
-                                     (!can_yield_fp_v<D> || !std::is_same<yielded_fn_t<D>, xdestroy_fn_t>::value);
+        SQLITE_ORM_INLINE_VAR constexpr bool needs_xdestroy_proxy_v =
+            is_stateless_deleter_v<D> &&
+            (!can_yield_fp_v<D> || !std::is_convertible<yielded_fn_t<D>, xdestroy_fn_t>::value);
 
-        template<typename D, typename P>
-        std::enable_if_t<!is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+        template<typename D, typename P, std::enable_if_t<!is_integral_fp_c_v<D>, bool> = true>
+        void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>
             auto o = (P*)p;
             // ignoring return code
             (void)D{}(o);
         }
 
-        template<typename D, typename P>
-        std::enable_if_t<is_integral_fp_c_v<D>, void> xdestroy_proxy(void* p) noexcept {
+        template<typename D, typename P, std::enable_if_t<is_integral_fp_c_v<D>, bool> = true>
+        void xdestroy_proxy(void* p) noexcept {
             // C-casting `void* -> P*` like statement_binder<pointer_binding<P, T, D>>,
             auto o = (std::remove_cv_t<P>*)(P*)p;
             // ignoring return code
@@ -7282,7 +7321,7 @@ namespace sqlite_orm {
      *  is invocable with the non-q-qualified pointer value.
      */
     template<typename D, typename P>
-    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept requires(internal::can_yield_xdestroy<D>) {
+    constexpr xdestroy_fn_t obtain_xdestroy_for(D d, P*) noexcept requires(internal::yields_xdestroy<D>) {
         return d;
     }
 #else
@@ -7477,8 +7516,8 @@ namespace sqlite_orm {
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
 #include <cstddef>  //  std::nullptr_t
-#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cstring>  //  ::strncpy, ::strlen
+#ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 
@@ -8399,11 +8438,14 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
+// #include "start_macros.h"
+
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "indexed_column.h"
 
 #include <string>  //  std::string
+#include <utility>  //  std::move
 
 // #include "start_macros.h"
 
@@ -8524,7 +8566,8 @@ namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        return {name, false, std::make_tuple(internal::make_indexed_column(cols)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {name, false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 
     template<class... Cols>
@@ -8533,7 +8576,8 @@ namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        return {name, true, std::make_tuple(internal::make_indexed_column(cols)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {name, true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 }
 #pragma once
@@ -9705,6 +9749,8 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
+// #include "start_macros.h"
+
 // #include "cxx_functional_polyfill.h"
 
 #if __cpp_lib_invoke < 201411L
@@ -10109,12 +10155,12 @@ namespace sqlite_orm {
      */
     template<class... Cs, class T = typename std::tuple_element_t<0, std::tuple<Cs...>>::object_type>
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
-        return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 
     template<class T, class... Cs>
     internal::table_t<T, false, Cs...> make_table(const std::string& name, Cs... args) {
-        return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {name, std::make_tuple<Cs...>(std::forward<Cs>(args)...)});
     }
 }
 #pragma once
@@ -10287,7 +10333,6 @@ namespace sqlite_orm {
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
-#include <cstddef>  //  std::ptrdiff_t
 #include <iterator>  //  std::input_iterator_tag, std::iterator_traits, std::distance
 #include <functional>  //  std::function
 #include <sstream>  //  std::stringstream
@@ -11806,7 +11851,7 @@ namespace sqlite_orm {
             using node_type = into_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            void operator()(const node_type& /*node*/, L& /*lambda*/) const {
                 //..
             }
         };
@@ -13090,6 +13135,7 @@ namespace sqlite_orm {
 // #include "transaction_guard.h"
 
 #include <functional>  //  std::function
+#include <utility>  //  std::move
 
 // #include "connection_holder.h"
 
@@ -13102,6 +13148,9 @@ namespace sqlite_orm {
          *  Has explicit `commit()` and `rollback()` functions. After explicit function is fired
          *  guard won't do anything in d-tor. Also you can set `commit_on_destroy` to true to
          *  make it call `COMMIT` on destroy.
+         * 
+         *  Note: The guard's destructor is explicitly marked as potentially throwing,
+         *  so exceptions that occur during commit or rollback are propagated to the caller.
          */
         struct transaction_guard_t {
             /**
@@ -13114,7 +13163,7 @@ namespace sqlite_orm {
                                 std::function<void()> commit_func_,
                                 std::function<void()> rollback_func_) :
                 connection(std::move(connection_)),
-                commit_func(std::move(commit_func_)), rollback_func(std::move(rollback_func_)) {}
+                commit_func(move(commit_func_)), rollback_func(move(rollback_func_)) {}
 
             transaction_guard_t(transaction_guard_t&& other) :
                 commit_on_destroy(other.commit_on_destroy), connection(std::move(other.connection)),
@@ -13123,7 +13172,7 @@ namespace sqlite_orm {
                 other.gotta_fire = false;
             }
 
-            ~transaction_guard_t() {
+            ~transaction_guard_t() noexcept(false) {
                 if(this->gotta_fire) {
                     if(this->commit_on_destroy) {
                         this->commit_func();
@@ -13141,8 +13190,8 @@ namespace sqlite_orm {
              *  in its destructor.
              */
             void commit() {
-                this->commit_func();
                 this->gotta_fire = false;
+                this->commit_func();
             }
 
             /**
@@ -13151,8 +13200,8 @@ namespace sqlite_orm {
              *  in its destructor.
              */
             void rollback() {
-                this->rollback_func();
                 this->gotta_fire = false;
+                this->rollback_func();
             }
 
           protected:
@@ -13423,7 +13472,7 @@ namespace sqlite_orm {
 
         template<class T>
         struct values_to_tuple<T, size_t(-1)> {
-            void extract(sqlite3_value** values, T& tuple, int argsCount) const {
+            void extract(sqlite3_value** /*values*/, T& /*tuple*/, int /*argsCount*/) const {
                 //..
             }
         };
@@ -13710,7 +13759,7 @@ namespace sqlite_orm {
                         return (int*)(new F());
                     },
                     /* step = */
-                    [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
+                    [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
                         auto& functionPointer = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
@@ -15438,7 +15487,7 @@ namespace sqlite_orm {
             using statement_type = autoincrement_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx&) const {
+            std::string operator()(const statement_type&, const Ctx&) const {
                 return "AUTOINCREMENT";
             }
         };
@@ -15854,7 +15903,7 @@ namespace sqlite_orm {
             using statement_type = into_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx& context) const {
                 auto& tImpl = pick_impl<T>(context.impl);
 
                 std::stringstream ss;
@@ -16101,7 +16150,7 @@ namespace sqlite_orm {
             using statement_type = conflict_action;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case conflict_action::replace:
                         return "REPLACE";
@@ -16257,7 +16306,7 @@ namespace sqlite_orm {
             using statement_type = from_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx& context) const {
                 using tuple = std::tuple<Args...>;
 
                 std::stringstream ss;
@@ -16335,7 +16384,7 @@ namespace sqlite_orm {
             using statement_type = trigger_timing;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_timing::trigger_before:
                         return "BEFORE";
@@ -16353,7 +16402,7 @@ namespace sqlite_orm {
             using statement_type = trigger_type;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_type::trigger_delete:
                         return "DELETE";
@@ -16671,7 +16720,7 @@ namespace sqlite_orm {
             using statement_type = default_values_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx&) const {
                 return "DEFAULT VALUES";
             }
         };
@@ -16838,12 +16887,7 @@ namespace sqlite_orm {
             void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
                                     const std::vector<table_xinfo>& storageTableInfo) {
                 //  iterate through storage columns
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
-                    ++storageColumnInfoIndex) {
-
-                    //  get storage's column info
-                    auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto& columnName = storageColumnInfo.name;
+                for(const table_xinfo& storageColumnInfo: storageTableInfo) {
                     if(storageColumnInfo.hidden) {
                         columnsToAdd.push_back(&storageColumnInfo);
                     }

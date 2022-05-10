@@ -5,7 +5,6 @@
 #include <system_error>  //  std::system_error
 #include <string>  //  std::string
 #include <type_traits>  //  std::remove_reference, std::is_base_of, std::decay, std::false_type, std::true_type
-#include <cstddef>  //  std::ptrdiff_t
 #include <iterator>  //  std::input_iterator_tag, std::iterator_traits, std::distance
 #include <functional>  //  std::function
 #include <sstream>  //  std::stringstream
@@ -141,12 +140,7 @@ namespace sqlite_orm {
             void add_generated_cols(std::vector<const table_xinfo*>& columnsToAdd,
                                     const std::vector<table_xinfo>& storageTableInfo) {
                 //  iterate through storage columns
-                for(size_t storageColumnInfoIndex = 0; storageColumnInfoIndex < storageTableInfo.size();
-                    ++storageColumnInfoIndex) {
-
-                    //  get storage's column info
-                    auto& storageColumnInfo = storageTableInfo[storageColumnInfoIndex];
-                    auto& columnName = storageColumnInfo.name;
+                for(const table_xinfo& storageColumnInfo: storageTableInfo) {
                     if(storageColumnInfo.hidden) {
                         columnsToAdd.push_back(&storageColumnInfo);
                     }

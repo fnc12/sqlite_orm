@@ -5,6 +5,7 @@
 #include <string>
 #include <tuple>
 
+#include "start_macros.h"
 #include "tuple_helper/tuple_helper.h"
 #include "optional_container.h"
 
@@ -176,8 +177,6 @@ namespace sqlite_orm {
         struct trigger_timing_t {
             trigger_timing timing;
 
-            trigger_timing_t(trigger_timing timing) : timing(timing) {}
-
             trigger_type_base_t delete_() {
                 return {timing, trigger_type::trigger_delete};
             }
@@ -273,18 +272,18 @@ namespace sqlite_orm {
 
     template<class T, class... S>
     internal::trigger_t<T, S...> make_trigger(std::string name, const internal::partial_trigger_t<T, S...> &part) {
-        return {move(name), std::move(part.base), std::move(part.statements)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(return {move(name), std::move(part.base), std::move(part.statements)});
     }
 
     inline internal::trigger_timing_t before() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_before)};
+        return {internal::trigger_timing::trigger_before};
     }
 
     inline internal::trigger_timing_t after() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_after)};
+        return {internal::trigger_timing::trigger_after};
     }
 
     inline internal::trigger_timing_t instead_of() {
-        return {internal::trigger_timing_t(internal::trigger_timing::trigger_instead_of)};
+        return {internal::trigger_timing::trigger_instead_of};
     }
 }

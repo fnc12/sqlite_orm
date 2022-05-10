@@ -780,7 +780,7 @@ namespace sqlite_orm {
             using statement_type = autoincrement_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& c, const Ctx&) const {
+            std::string operator()(const statement_type&, const Ctx&) const {
                 return "AUTOINCREMENT";
             }
         };
@@ -1196,7 +1196,7 @@ namespace sqlite_orm {
             using statement_type = into_t<T>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx& context) const {
                 auto& tImpl = pick_impl<T>(context.impl);
 
                 std::stringstream ss;
@@ -1443,7 +1443,7 @@ namespace sqlite_orm {
             using statement_type = conflict_action;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case conflict_action::replace:
                         return "REPLACE";
@@ -1599,7 +1599,7 @@ namespace sqlite_orm {
             using statement_type = from_t<Args...>;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx& context) const {
                 using tuple = std::tuple<Args...>;
 
                 std::stringstream ss;
@@ -1677,7 +1677,7 @@ namespace sqlite_orm {
             using statement_type = trigger_timing;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_timing::trigger_before:
                         return "BEFORE";
@@ -1695,7 +1695,7 @@ namespace sqlite_orm {
             using statement_type = trigger_type;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type& statement, const Ctx&) const {
                 switch(statement) {
                     case trigger_type::trigger_delete:
                         return "DELETE";
@@ -2013,7 +2013,7 @@ namespace sqlite_orm {
             using statement_type = default_values_t;
 
             template<class Ctx>
-            std::string operator()(const statement_type& statement, const Ctx& context) const {
+            std::string operator()(const statement_type&, const Ctx&) const {
                 return "DEFAULT VALUES";
             }
         };

@@ -127,7 +127,7 @@ TEST_CASE("Custom collate") {
     };
 
     struct AlwaysEqualCollation {
-        int operator()(int leftLength, const void* lhs, int rightLength, const void* rhs) const {
+        int operator()(int /*leftLength*/, const void* /*lhs*/, int /*rightLength*/, const void* /*rhs*/) const {
             return 0;
         }
 

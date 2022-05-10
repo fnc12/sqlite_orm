@@ -27,7 +27,7 @@ namespace sqlite_orm {
 
         template<class T>
         struct values_to_tuple<T, size_t(-1)> {
-            void extract(sqlite3_value **values, T &tuple, int argsCount) const {
+            void extract(sqlite3_value ** /*values*/, T & /*tuple*/, int /*argsCount*/) const {
                 //..
             }
         };
