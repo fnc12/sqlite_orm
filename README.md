@@ -9,7 +9,6 @@
 [![Stack Overflow](https://img.shields.io/badge/-Stackoverflow-FE7A16?style=for-the-badge&logo=stack-overflow&logoColor=white)](https://stackoverflow.com/search?q=sqlite_orm)
 [![PayPal](https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/fnc12)
 [![Twitter](https://img.shields.io/badge/sqlite_orm-%231DA1F2.svg?style=for-the-badge&logo=Twitter&logoColor=white)](https://twitter.com/sqlite_orm)
-[![Patreon](https://img.shields.io/badge/Patreon-F96854?style=for-the-badge&logo=patreon&logoColor=white)](https://patreon.com/fnc12)
 
 # SQLite ORM
 SQLite ORM light header only library for modern C++. Please read the license precisely. The project has AGPL license for open source project and MIT license after purchasing it for 50$ (using [PayPal](https://paypal.me/fnc12) or any different way (contact using email fnc12@me.com)).
@@ -17,8 +16,8 @@ SQLite ORM light header only library for modern C++. Please read the license pre
 # Status
 | Branch | Travis | Appveyor |
 | :----- | :----- | :------- |
-| [`master`](https://github.com/fnc12/sqlite_orm/tree/master) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=master&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/) |
-| [`dev`](https://github.com/fnc12/sqlite_orm/tree/dev) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=dev)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=dev&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm/tree/dev) |
+| [`master`](https://github.com/fnc12/sqlite_orm_plus/tree/master) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=master)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=master&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm-plus/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm_plus/) |
+| [`dev`](https://github.com/fnc12/sqlite_orm_plus/tree/dev) | [![Build Status](https://travis-ci.org/fnc12/sqlite_orm.svg?branch=dev)](https://travis-ci.org/fnc12/sqlite_orm) | [![Build status](https://ci.appveyor.com/api/projects/status/github/fnc12/sqlite_orm?branch=dev&svg=true)](https://ci.appveyor.com/project/fnc12/sqlite-orm-plus/history) | | | [![Website](https://img.shields.io/badge/official-website-brightgreen.svg)](https://github.com/fnc12/sqlite_orm_plus/tree/dev) |
 
 # Advantages
 
