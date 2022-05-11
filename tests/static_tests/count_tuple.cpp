@@ -4,10 +4,12 @@
 using namespace sqlite_orm;
 using std::make_tuple;
 
-struct User {
-    int id = 0;
-    std::string name;
-};
+namespace {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+}
 
 TEST_CASE("count_tuple") {
     using internal::count_tuple;

@@ -7,9 +7,11 @@
 
 using namespace sqlite_orm;
 
-struct Custom {};
-template<class Elem>
-class StringVeneer : public std::basic_string<Elem> {};
+namespace {
+    struct Custom {};
+    template<class Elem>
+    class StringVeneer : public std::basic_string<Elem> {};
+}
 
 namespace sqlite_orm {
     template<>
