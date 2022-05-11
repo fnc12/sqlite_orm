@@ -73,7 +73,7 @@ TEST_CASE("issue937") {
             where(c(std::make_tuple(&Employee::m_ename, &Employee::m_job, &Employee::m_salary))
                       .in(select(columns(&Employee::m_ename, &Employee::m_job, &Employee::m_salary),
                                  where(c(&Employee::m_job) == "Clerk")))));
-        auto statement = storage.prepare(expression);
+        REQUIRE_NOTHROW(storage.prepare(expression));
     }
     {  //  issue969
         auto expression = select(
@@ -82,7 +82,7 @@ TEST_CASE("issue937") {
                      intersect(select(columns(&Employee::m_ename, &Employee::m_job, &Employee::m_salary)),
                                select(columns(&Employee::m_ename, &Employee::m_job, &Employee::m_salary),
                                       where(c(&Employee::m_job) == "Clerk"))))));
-        auto statement = storage.prepare(expression);
+        REQUIRE_NOTHROW(storage.prepare(expression));
     }
 }
 #endif

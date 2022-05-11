@@ -207,7 +207,7 @@ namespace sqlite_orm {
             using node_type = into_t<T>;
 
             template<class L>
-            void operator()(const node_type& node, L& lambda) const {
+            void operator()(const node_type& /*node*/, L& /*lambda*/) const {
                 //..
             }
         };

@@ -4,6 +4,7 @@
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
+#include "start_macros.h"
 #include "tuple_helper/tuple_filter.h"
 #include "indexed_column.h"
 
@@ -40,7 +41,8 @@ namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        return {name, false, std::make_tuple(internal::make_indexed_column(cols)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {name, false, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 
     template<class... Cols>
@@ -49,6 +51,7 @@ namespace sqlite_orm {
         using cols_tuple = std::tuple<Cols...>;
         static_assert(internal::count_tuple<cols_tuple, internal::is_where>::value <= 1,
                       "amount of where arguments can be 0 or 1");
-        return {name, true, std::make_tuple(internal::make_indexed_column(cols)...)};
+        SQLITE_ORM_CLANG_SUPPRESS_MISSING_BRACES(
+            return {name, true, std::make_tuple(internal::make_indexed_column(std::move(cols))...)});
     }
 }
