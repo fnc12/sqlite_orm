@@ -20,11 +20,35 @@ configuration:
 environment:
   appveyor_yml_disable_ps_linux: true
   matrix:
+    - job_name: clang, C++14
+      appveyor_build_worker_image: Ubuntu
+      CC: clang
+      CXX: clang++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+
+    - job_name: clang, C++17
+      appveyor_build_worker_image: Ubuntu
+      CC: clang
+      CXX: clang++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
+
     - job_name: clang, C++20
       appveyor_build_worker_image: Ubuntu
       CC: clang
       CXX: clang++
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_20=ON"
+
+    - job_name: gcc, C++14
+      appveyor_build_worker_image: Ubuntu
+      CC: gcc
+      CXX: g++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+
+    - job_name: gcc, C++17
+      appveyor_build_worker_image: Ubuntu
+      CC: gcc
+      CXX: g++
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_17=ON"
 
     - job_name: gcc, C++20
       appveyor_build_worker_image: Ubuntu
