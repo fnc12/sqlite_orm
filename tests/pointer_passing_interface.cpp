@@ -11,7 +11,7 @@ struct delete_int64 {
 
     void operator()(int64* p) const {
         // must not double-delete
-        assert(!deleted);
+        REQUIRE(!deleted);
 
         lastSelectedId = *p;
         delete p;

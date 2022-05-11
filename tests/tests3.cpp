@@ -339,7 +339,7 @@ TEST_CASE("Blob") {
     //  read data with get_all
     {
         auto vd = storage.get_all<BlobData>();
-        assert(vd.size() == 1);
+        REQUIRE(vd.size() == 1);
         auto& blob = vd.front();
         REQUIRE(blob.data.size() == size);
         REQUIRE(std::equal(data, data + size, blob.data.begin()));
@@ -348,7 +348,7 @@ TEST_CASE("Blob") {
     //  read data with select (single column)
     {
         auto blobData = storage.select(&BlobData::data);
-        assert(blobData.size() == 1);
+        REQUIRE(blobData.size() == 1);
         auto& blob = blobData.front();
         REQUIRE(blob.size() == size);
         REQUIRE(std::equal(data, data + size, blob.begin()));
