@@ -7,7 +7,7 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_polyfill.h"
 #include "type_traits.h"
 #include "is_std_ptr.h"
 

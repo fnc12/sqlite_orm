@@ -6,9 +6,27 @@ __pragma(push_macro("min"))
 __pragma(push_macro("max"))
 #undef max
 #endif  // defined(_MSC_VER)
+#pragma once
+
+#include <type_traits>
+
+// #include "functional/cxx_universal.h"
+
+/*
+ *  This header makes central C++ functionality on which sqlite_orm depends universally available:
+ *  - alternative operator representations
+ *  - ::size_t, ::ptrdiff_t, ::nullptr_t
+ *  - C++ core feature macros
+ *  - macros for dealing with compiler quirks
+ */
 
 #include <iso646.h>  //  alternative operator representations
-#include <stddef.h>  //  sqlite_orm is using size_t, ptrdiff_t everywhere, pull it in early
+#include <cstddef>  //  sqlite_orm is using size_t, ptrdiff_t, nullptr_t everywhere, pull it in early
+
+// earlier clang versions didn't make nullptr_t available in the global namespace via stddef.h,
+// though it should have according to C++ documentation (see https://en.cppreference.com/w/cpp/types/nullptr_t#Notes).
+// actually it should be available when including stddef.h
+using std::nullptr_t;
 
 // #include "cxx_core_features.h"
 
@@ -119,17 +137,11 @@ __pragma(push_macro("max"))
 #define SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
 #endif
 
-#pragma once
+// #include "functional/cxx_polyfill.h"
 
 #include <type_traits>
 
-// #include "start_macros.h"
-
-// #include "cxx_polyfill.h"
-
-#include <type_traits>
-
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -502,7 +514,7 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -630,9 +642,9 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "collate_argument.h"
 
@@ -706,7 +718,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward
 
-// #include "../cxx_polyfill.h"
+// #include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -1286,7 +1298,7 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -1619,9 +1631,9 @@ namespace sqlite_orm {
 #include <memory>  //  std::unique_ptr
 #include <type_traits>  //  std::true_type, std::false_type, std::is_same, std::enable_if, std::decay
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -1731,9 +1743,9 @@ namespace sqlite_orm {
 
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
 
-// #include "../start_macros.h"
+// #include "../functional/cxx_universal.h"
 
-// #include "../cxx_polyfill.h"
+// #include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -2028,7 +2040,6 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <sstream>  //  std::stringstream
 #include <vector>  //  std::vector
-#include <cstddef>  //  std::nullptr_t
 #include <memory>  //  std::shared_ptr, std::unique_ptr
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
 #include <optional>  // std::optional
@@ -2037,9 +2048,9 @@ namespace sqlite_orm {
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "is_std_ptr.h"
 
@@ -2139,8 +2150,8 @@ namespace sqlite_orm {
     };
 #endif  //  SQLITE_ORM_OMITS_CODECVT
     template<>
-    struct field_printer<std::nullptr_t, void> {
-        std::string operator()(const std::nullptr_t&) const {
+    struct field_printer<nullptr_t, void> {
+        std::string operator()(const nullptr_t&) const {
             return "null";
         }
     };
@@ -2163,7 +2174,7 @@ namespace sqlite_orm {
             if(t) {
                 return field_printer<unqualified_type>()(*t);
             } else {
-                return field_printer<std::nullptr_t>{}(nullptr);
+                return field_printer<nullptr_t>{}(nullptr);
             }
         }
     };
@@ -2194,9 +2205,9 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple, std::tuple_size
 #include <sstream>  //  std::stringstream
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -2280,6 +2291,15 @@ namespace sqlite_orm {
 // #include "tags.h"
 
 // #include "expression.h"
+
+#include <tuple>
+#include <utility>  //  std::move, std::forward
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>
+#endif
+
+// #include "functional/cxx_universal.h"
+
 // #include "operators.h"
 
 namespace sqlite_orm {
@@ -2306,7 +2326,7 @@ namespace sqlite_orm {
                 return {this->value, std::move(r)};
             }
 
-            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+            assign_t<T, nullptr_t> operator=(nullptr_t) const {
                 return {this->value, nullptr};
             }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -3903,7 +3923,7 @@ namespace sqlite_orm {
 #include <memory>  //  std::unique_ptr
 #include <vector>  //  std::vector
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "conditions.h"
 
@@ -3954,9 +3974,7 @@ namespace sqlite_orm {
 
 // #include "ast/into.h"
 
-#include <type_traits>  //  std::true_type, std::false_type
-
-// #include "../cxx_polyfill.h"
+// #include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -6081,9 +6099,9 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "is_base_of_template.h"
 
@@ -6096,9 +6114,9 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::move
 
-// #include "../start_macros.h"
+// #include "../functional/cxx_universal.h"
 
-// #include "../cxx_polyfill.h"
+// #include "../functional/cxx_polyfill.h"
 
 // #include "../serialize_result_type.h"
 
@@ -6153,7 +6171,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::forward, std::move
 
-// #include "../cxx_polyfill.h"
+// #include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -6671,7 +6689,7 @@ namespace sqlite_orm {
 
 #include <string>  //  std::string
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
 namespace sqlite_orm {
 
@@ -6725,7 +6743,7 @@ namespace sqlite_orm {
 #include <string>
 #include <tuple>
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
 // #include "tuple_helper/tuple_helper.h"
 
@@ -7049,7 +7067,7 @@ namespace sqlite_orm {
 #include <memory>
 #include <utility>
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
 // #include "xdestroy_handling.h"
 
@@ -7058,9 +7076,9 @@ namespace sqlite_orm {
 #include <concepts>
 #endif
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -7467,15 +7485,14 @@ namespace sqlite_orm {
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstddef>  //  std::nullptr_t
 #include <cstring>  //  ::strncpy, ::strlen
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "is_std_ptr.h"
 
@@ -7658,15 +7675,15 @@ namespace sqlite_orm {
 #endif
 
     /**
-     *  Specialization for std::nullptr_t.
+     *  Specialization for nullptr_t.
      */
     template<>
-    struct statement_binder<std::nullptr_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) const {
+    struct statement_binder<nullptr_t, void> {
+        int bind(sqlite3_stmt* stmt, int index, const nullptr_t&) const {
             return sqlite3_bind_null(stmt, index);
         }
 
-        void result(sqlite3_context* context, const std::nullptr_t&) const {
+        void result(sqlite3_context* context, const nullptr_t&) const {
             sqlite3_result_null(context);
         }
     };
@@ -7697,7 +7714,7 @@ namespace sqlite_orm {
             if(value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
-                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+                return statement_binder<nullptr_t>().bind(stmt, index, nullptr);
             }
         }
     };
@@ -7800,6 +7817,8 @@ namespace sqlite_orm {
 #include <algorithm>  //  std::copy
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
+
+// #include "functional/cxx_universal.h"
 
 // #include "arithmetic_tag.h"
 
@@ -8118,16 +8137,16 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
-    struct row_extractor<std::nullptr_t> {
-        std::nullptr_t extract(const char* /*row_value*/) const {
+    struct row_extractor<nullptr_t> {
+        nullptr_t extract(const char* /*row_value*/) const {
             return nullptr;
         }
 
-        std::nullptr_t extract(sqlite3_stmt* /*stmt*/, int /*columnIndex*/) const {
+        nullptr_t extract(sqlite3_stmt* /*stmt*/, int /*columnIndex*/) const {
             return nullptr;
         }
 
-        std::nullptr_t extract(sqlite3_value* /*value*/) const {
+        nullptr_t extract(sqlite3_value* /*value*/) const {
             return nullptr;
         }
     };
@@ -8390,7 +8409,7 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::forward
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
@@ -8399,7 +8418,7 @@ namespace sqlite_orm {
 #include <string>  //  std::string
 #include <utility>  //  std::move
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
 // #include "ast/where.h"
 
@@ -8633,6 +8652,8 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
+// #include "functional/cxx_universal.h"
+
 // #include "type_traits.h"
 
 // #include "member_traits/member_traits.h"
@@ -8659,7 +8680,7 @@ namespace sqlite_orm {
 
 #include <type_traits>
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -9185,11 +9206,11 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::function
 #include <algorithm>  //  std::min
-#include <cstddef>
+#include <utility>  //  std::move, std::forward
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -9339,7 +9360,7 @@ namespace sqlite_orm {
 
         // Always allow binding nullptr to a pointer argument
         template<size_t I, class PointerArg>
-        constexpr bool is_same_pvt_v<I, PointerArg, std::nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
+        constexpr bool is_same_pvt_v<I, PointerArg, nullptr_t, polyfill::void_t<typename PointerArg::tag>> = true;
 
 #if __cplusplus >= 201703L  // using C++17 or higher
         template<size_t I, const char* PointerArg, const char* Binding>
@@ -9500,8 +9521,8 @@ namespace sqlite_orm {
         };
 
         template<class St>
-        struct column_result_t<St, std::nullptr_t, void> {
-            using type = std::nullptr_t;
+        struct column_result_t<St, nullptr_t, void> {
+            using type = nullptr_t;
         };
 
         template<class St>
@@ -9701,9 +9722,9 @@ namespace sqlite_orm {
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_functional_polyfill.h"
+// #include "functional/cxx_functional_polyfill.h"
 
 #if __cpp_lib_invoke < 201411L
 #include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
@@ -10134,7 +10155,8 @@ namespace sqlite_orm {
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same, std::decay
-#include <cstddef>  //  std::nullptr_t
+
+// #include "functional/cxx_universal.h"
 
 // #include "static_magic.h"
 
@@ -10154,11 +10176,10 @@ namespace sqlite_orm {
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto lookup_table(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(
-                empty_callable<std::nullptr_t>(),
-                [](const auto& tImpl) {
-                    return &tImpl.table;
-                })(tImpl);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(empty_callable<nullptr_t>(),
+                                                                                          [](const auto& tImpl) {
+                                                                                              return &tImpl.table;
+                                                                                          })(tImpl);
         }
 
         template<class S, satisfies<is_storage_impl, S> = true>
@@ -10275,7 +10296,7 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-// #include "cxx_functional_polyfill.h"
+// #include "functional/cxx_functional_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -10287,7 +10308,7 @@ namespace sqlite_orm {
 
 // #include "row_extractor_builder.h"
 
-#include <cstddef>  //  std::nullptr_t
+// #include "functional/cxx_universal.h"
 
 // #include "row_extractor.h"
 
@@ -10380,7 +10401,7 @@ namespace sqlite_orm {
     namespace internal {
 
         template<class T>
-        row_extractor<T> make_row_extractor(std::nullptr_t) {
+        row_extractor<T> make_row_extractor(nullptr_t) {
             return {};
         }
 
@@ -10442,9 +10463,10 @@ namespace sqlite_orm {
 #include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <type_traits>  //  std::decay
 #include <utility>  //  std::move
-#include <cstddef>  //  std::ptrdiff_t
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
+
+// #include "functional/cxx_universal.h"
 
 // #include "row_extractor.h"
 
@@ -10490,7 +10512,7 @@ namespace sqlite_orm {
             }
 
           public:
-            using difference_type = std::ptrdiff_t;
+            using difference_type = ptrdiff_t;
             using pointer = value_type*;
             using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
@@ -10578,9 +10600,9 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::true_type, std::false_type
 #include <utility>  //  std::pair
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
@@ -10669,9 +10691,9 @@ namespace sqlite_orm {
 #include <tuple>  //  std::tuple
 #include <utility>  //  std::forward
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -10715,7 +10737,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::false_type, std::true_type
 #include <utility>  //  std::forward, std::move
 
-// #include "../cxx_polyfill.h"
+// #include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {
@@ -12341,6 +12363,8 @@ namespace sqlite_orm {
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
 
+// #include "functional/cxx_universal.h"
+
 // #include "static_magic.h"
 
 // #include "pragma.h"
@@ -12375,9 +12399,9 @@ namespace sqlite_orm {
 #include <algorithm>  //  std::find
 #endif
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "error_code.h"
 
@@ -14338,16 +14362,15 @@ namespace sqlite_orm {
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
-#include <cstddef>  // std::nullptr_t
 #include <memory>
 #include <array>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string_view>
 #endif
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
-// #include "cxx_functional_polyfill.h"
+// #include "functional/cxx_functional_polyfill.h"
 
 // #include "tuple_helper/tuple_filter.h"
 
@@ -14390,7 +14413,7 @@ namespace sqlite_orm {
 #include <functional>  //  std::function
 #include <typeindex>  //  std::type_index
 
-// #include "cxx_polyfill.h"
+// #include "functional/cxx_polyfill.h"
 
 // #include "type_traits.h"
 
@@ -14769,7 +14792,7 @@ namespace sqlite_orm {
             template<class P, class PT, class D>
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
-                return field_printer<std::nullptr_t>{}(nullptr);
+                return field_printer<nullptr_t>{}(nullptr);
             }
         };
 
@@ -18793,7 +18816,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::integral_constant
 #include <utility>  //  std::move
 
-// #include "start_macros.h"
+// #include "functional/cxx_universal.h"
 
 // #include "pointer_value.h"
 

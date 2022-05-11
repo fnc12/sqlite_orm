@@ -5,8 +5,8 @@
 #include <concepts>
 #endif
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 

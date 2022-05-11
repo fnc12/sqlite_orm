@@ -11,8 +11,8 @@
 #include <algorithm>  //  std::find
 #endif
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_polyfill.h"
 #include "error_code.h"
 #include "serializer_context.h"
 #include "util.h"

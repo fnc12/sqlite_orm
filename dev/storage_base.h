@@ -11,6 +11,7 @@
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
 
+#include "functional/cxx_universal.h"
 #include "static_magic.h"
 #include "pragma.h"
 #include "limit_accessor.h"

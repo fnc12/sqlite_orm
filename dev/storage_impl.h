@@ -40,8 +40,8 @@ namespace sqlite_orm {
 #include <typeindex>  //  std::type_index
 #include <string>  //  std::string
 #include <type_traits>  //  std::is_same, std::decay
-#include <cstddef>  //  std::nullptr_t
 
+#include "functional/cxx_universal.h"
 #include "static_magic.h"
 #include "type_traits.h"
 #include "select_constraints.h"
@@ -57,11 +57,10 @@ namespace sqlite_orm {
         template<class Lookup, class S, satisfies<is_storage_impl, S> = true>
         auto lookup_table(const S& strg) {
             const auto& tImpl = find_impl<Lookup>(strg);
-            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(
-                empty_callable<std::nullptr_t>(),
-                [](const auto& tImpl) {
-                    return &tImpl.table;
-                })(tImpl);
+            return static_if<std::is_same<decltype(tImpl), const storage_impl<>&>::value>(empty_callable<nullptr_t>(),
+                                                                                          [](const auto& tImpl) {
+                                                                                              return &tImpl.table;
+                                                                                          })(tImpl);
         }
 
         template<class S, satisfies<is_storage_impl, S> = true>

@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_polyfill.h"
 #include "type_traits.h"
 
 namespace sqlite_orm {

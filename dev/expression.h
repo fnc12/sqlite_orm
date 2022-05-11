@@ -1,3 +1,12 @@
+#pragma once
+
+#include <tuple>
+#include <utility>  //  std::move, std::forward
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+#include <optional>
+#endif
+
+#include "functional/cxx_universal.h"
 #include "operators.h"
 
 namespace sqlite_orm {
@@ -24,7 +33,7 @@ namespace sqlite_orm {
                 return {this->value, std::move(r)};
             }
 
-            assign_t<T, std::nullptr_t> operator=(std::nullptr_t) const {
+            assign_t<T, nullptr_t> operator=(nullptr_t) const {
                 return {this->value, nullptr};
             }
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED

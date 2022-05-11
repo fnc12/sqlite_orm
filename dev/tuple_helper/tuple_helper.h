@@ -4,7 +4,7 @@
 #include <type_traits>  //  std::is_same
 #include <utility>  //  std::forward
 
-#include "../cxx_polyfill.h"
+#include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 

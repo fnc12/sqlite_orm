@@ -3,7 +3,7 @@
 #include <string>  //  std::string
 #include <utility>  //  std::move
 
-#include "start_macros.h"
+#include "functional/cxx_universal.h"
 #include "ast/where.h"
 
 namespace sqlite_orm {

@@ -5,7 +5,7 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-#include "cxx_polyfill.h"
+#include "functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 
