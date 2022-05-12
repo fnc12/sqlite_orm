@@ -101,7 +101,7 @@ namespace {
     struct Custom {};
     template<class Elem>
     class StringVeneer : public std::basic_string<Elem> {
-    public:
+      public:
         using std::basic_string<Elem>::basic_string;
     };
 }

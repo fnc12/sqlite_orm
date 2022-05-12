@@ -1606,8 +1606,8 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<tuple>([&context, &ss, index = 0](auto* itemPointer) mutable {
-                    using from_type = std::remove_pointer_t<decltype(itemPointer)>;
+                iterate_tuple<tuple>([&context, &ss, index = 0](auto* item) mutable {
+                    using from_type = std::remove_pointer_t<decltype(item)>;
 
                     if(index > 0) {
                         ss << ", ";

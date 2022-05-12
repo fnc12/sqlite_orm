@@ -881,17 +881,17 @@ namespace sqlite_orm {
                     } else {
                         if(!columnsToAdd.empty()) {
                             // extra storage columns than table columns
-                            for(auto columnPointer: columnsToAdd) {
-                                auto generatedStorageTypePointer =
-                                    tImpl.table.find_column_generated_storage_type(columnPointer->name);
-                                if(generatedStorageTypePointer) {
-                                    if(*generatedStorageTypePointer == basic_generated_always::storage_type::stored) {
+                            for(const table_xinfo* colInfo: columnsToAdd) {
+                                const basic_generated_always::storage_type* generatedStorageType =
+                                    tImpl.table.find_column_generated_storage_type(colInfo->name);
+                                if(generatedStorageType) {
+                                    if(*generatedStorageType == basic_generated_always::storage_type::stored) {
                                         gottaCreateTable = true;
                                         break;
                                     }
                                     //  fallback cause VIRTUAL can be added
                                 } else {
-                                    if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
+                                    if(colInfo->notnull && colInfo->dflt_value.empty()) {
                                         gottaCreateTable = true;
                                         // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
                                         if(attempt_to_preserve) {
