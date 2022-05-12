@@ -9765,7 +9765,7 @@ namespace sqlite_orm {
     namespace polyfill = internal::polyfill;
 }
 
-// #include "static_magic.h"
+// #include "functional/static_magic.h"
 
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
 
@@ -10160,7 +10160,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "static_magic.h"
+// #include "functional/static_magic.h"
 
 // #include "type_traits.h"
 
@@ -10323,7 +10323,7 @@ namespace sqlite_orm {
 #include <sqlite3.h>
 #include <type_traits>  //  std::is_member_object_pointer
 
-// #include "static_magic.h"
+// #include "functional/static_magic.h"
 
 // #include "row_extractor.h"
 
@@ -10541,8 +10541,7 @@ namespace sqlite_orm {
             void next() {
                 this->current.reset();
                 if(this->stmt) {
-                    auto statementPointer = this->stmt->get();
-                    auto ret = sqlite3_step(statementPointer);
+                    int ret = sqlite3_step(this->stmt->get());
                     switch(ret) {
                         case SQLITE_ROW:
                             this->extract_value();
@@ -12367,7 +12366,7 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
-// #include "static_magic.h"
+// #include "functional/static_magic.h"
 
 // #include "pragma.h"
 
@@ -13385,8 +13384,8 @@ namespace sqlite_orm {
 
         arg_value operator[](int index) const {
             if(index < this->argsCount && index >= 0) {
-                auto valuePointer = this->values[index];
-                return {valuePointer};
+                sqlite3_value* value = this->values[index];
+                return {value};
             } else {
                 throw std::system_error{orm_error_code::index_is_out_of_bounds};
             }
@@ -13655,11 +13654,11 @@ namespace sqlite_orm {
                     },
                     /* call = */
                     [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
+                        auto& fn = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        auto result = call(functionPointer, std::move(argsTuple));
+                        auto result = call(fn, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -13719,16 +13718,16 @@ namespace sqlite_orm {
                     },
                     /* step = */
                     [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
+                        auto& fn = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        call(functionPointer, &F::step, move(argsTuple));
+                        call(fn, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
                     [](sqlite3_context* context, void* functionVoidPointer) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
-                        auto result = functionPointer.fin();
+                        auto& fn = *static_cast<F*>(functionVoidPointer);
+                        auto result = fn.fin();
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -13776,10 +13775,10 @@ namespace sqlite_orm {
             }
 
             void create_collation(const std::string& name, collating_function f) {
-                collating_function* functionPointer = nullptr;
+                collating_function* fn = nullptr;
                 const auto functionExists = bool(f);
                 if(functionExists) {
-                    functionPointer = &(collatingFunctions[name] = std::move(f));
+                    fn = &(collatingFunctions[name] = std::move(f));
                 } else {
                     collatingFunctions.erase(name);
                 }
@@ -13790,7 +13789,7 @@ namespace sqlite_orm {
                     auto resultCode = sqlite3_create_collation(db,
                                                                name.c_str(),
                                                                SQLITE_UTF8,
-                                                               functionPointer,
+                                                               fn,
                                                                functionExists ? collate_callback : nullptr);
                     if(resultCode != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
@@ -16272,8 +16271,8 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<tuple>([&context, &ss, index = 0](auto* itemPointer) mutable {
-                    using from_type = std::remove_pointer_t<decltype(itemPointer)>;
+                iterate_tuple<tuple>([&context, &ss, index = 0](auto* item) mutable {
+                    using from_type = std::remove_pointer_t<decltype(item)>;
 
                     if(index > 0) {
                         ss << ", ";
@@ -17588,17 +17587,17 @@ namespace sqlite_orm {
                     } else {
                         if(!columnsToAdd.empty()) {
                             // extra storage columns than table columns
-                            for(auto columnPointer: columnsToAdd) {
-                                auto generatedStorageTypePointer =
-                                    tImpl.table.find_column_generated_storage_type(columnPointer->name);
-                                if(generatedStorageTypePointer) {
-                                    if(*generatedStorageTypePointer == basic_generated_always::storage_type::stored) {
+                            for(const table_xinfo* colInfo: columnsToAdd) {
+                                const basic_generated_always::storage_type* generatedStorageType =
+                                    tImpl.table.find_column_generated_storage_type(colInfo->name);
+                                if(generatedStorageType) {
+                                    if(*generatedStorageType == basic_generated_always::storage_type::stored) {
                                         gottaCreateTable = true;
                                         break;
                                     }
                                     //  fallback cause VIRTUAL can be added
                                 } else {
-                                    if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
+                                    if(colInfo->notnull && colInfo->dflt_value.empty()) {
                                         gottaCreateTable = true;
                                         // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
                                         if(attempt_to_preserve) {
@@ -18635,11 +18634,11 @@ namespace sqlite_orm {
 
 #include <type_traits>  //  std::is_same, std::decay, std::remove_reference
 
+// #include "functional/static_magic.h"
+
 // #include "prepared_statement.h"
 
 // #include "ast_iterator.h"
-
-// #include "static_magic.h"
 
 // #include "expression_object_type.h"
 
@@ -19082,9 +19081,9 @@ namespace sqlite_orm {
                         }
 
                         if(schema_stat == sync_schema_result::new_columns_added) {
-                            for(auto* columnPointer: columnsToAdd) {
-                                tImpl.table.for_each_column([this, columnPointer, &tImpl, db](auto& column) {
-                                    if(column.name != columnPointer->name) {
+                            for(const table_xinfo* colInfo: columnsToAdd) {
+                                tImpl.table.for_each_column([this, colInfo, &tImpl, db](auto& column) {
+                                    if(column.name != colInfo->name) {
                                         return;
                                     }
                                     this->add_column(tImpl.table.name, column, db);

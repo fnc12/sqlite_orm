@@ -3,7 +3,7 @@
 #include <sqlite3.h>
 #include <type_traits>  //  std::is_member_object_pointer
 
-#include "static_magic.h"
+#include "functional/static_magic.h"
 #include "row_extractor.h"
 
 namespace sqlite_orm {

@@ -2,9 +2,9 @@
 
 #include <type_traits>  //  std::is_same, std::decay, std::remove_reference
 
+#include "functional/static_magic.h"
 #include "prepared_statement.h"
 #include "ast_iterator.h"
-#include "static_magic.h"
 #include "expression_object_type.h"
 
 namespace sqlite_orm {

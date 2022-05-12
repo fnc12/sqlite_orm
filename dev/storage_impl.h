@@ -42,7 +42,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::is_same, std::decay
 
 #include "functional/cxx_universal.h"
-#include "static_magic.h"
+#include "functional/static_magic.h"
 #include "type_traits.h"
 #include "select_constraints.h"
 #include "storage_lookup.h"
