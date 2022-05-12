@@ -76,8 +76,8 @@ namespace sqlite_orm {
             void next() {
                 this->current.reset();
                 if(this->stmt) {
-                    int ret = sqlite3_step(this->stmt->get());
-                    switch(ret) {
+                    int rc = sqlite3_step(this->stmt->get());
+                    switch(rc) {
                         case SQLITE_ROW:
                             this->extract_value();
                             break;

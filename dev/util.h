@@ -55,13 +55,6 @@ namespace sqlite_orm {
             return stmt;
         }
 
-        inline void perform_step(sqlite3_stmt* stmt) {
-            int rc = sqlite3_step(stmt);
-            if(rc != SQLITE_DONE) {
-                throw_translated_sqlite_error(stmt);
-            }
-        }
-
         inline void perform_void_exec(sqlite3* db, const std::string& query) {
             int rc = sqlite3_exec(db, query.c_str(), nullptr, nullptr, nullptr);
             if(rc != SQLITE_OK) {
@@ -84,6 +77,30 @@ namespace sqlite_orm {
                                  int (*callback)(void* data, int argc, char** argv, char**),
                                  void* user_data) {
             return perform_exec(db, query.c_str(), callback, user_data);
+        }
+
+        inline void perform_step(sqlite3_stmt* stmt) {
+            int rc = sqlite3_step(stmt);
+            if(rc != SQLITE_DONE) {
+                throw_translated_sqlite_error(stmt);
+            }
+        }
+
+        template<class L>
+        void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
+            int rc;
+            do {
+                switch(rc = sqlite3_step(stmt)) {
+                    case SQLITE_ROW: {
+                        lambda(stmt);
+                    } break;
+                    case SQLITE_DONE:
+                        break;
+                    default: {
+                        throw_translated_sqlite_error(stmt);
+                    }
+                }
+            } while(rc != SQLITE_DONE);
         }
     }
 }
