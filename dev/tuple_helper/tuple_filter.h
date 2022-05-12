@@ -3,6 +3,8 @@
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #include <tuple>  //  std::tuple
 
+#include "../functional/mpl.h"
+
 namespace sqlite_orm {
     namespace internal {
 
@@ -17,32 +19,32 @@ namespace sqlite_orm {
         template<class... Args>
         using conc_tuple_t = typename conc_tuple<Args...>::type;
 
-        template<class T, template<class... C> class F>
+        template<class T, template<class... C> class Fn>
         struct tuple_filter;
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class... Args, template<class... C> class F>
-        struct tuple_filter<std::tuple<Args...>, F>
-            : conc_tuple<std::conditional_t<F<Args>::value, std::tuple<Args>, std::tuple<>>...> {};
+        template<class... Types, template<class... C> class Fn>
+        struct tuple_filter<std::tuple<Types...>, Fn>
+            : conc_tuple<std::conditional_t<Fn<Types>::value, std::tuple<Types>, std::tuple<>>...> {};
 #else
-        template<class T, template<class... C> class F, class SFINAE = void>
+        template<class T, template<class... C> class Fn, class SFINAE = void>
         struct tuple_filter_single;
 
-        template<class T, template<class... C> class F>
-        struct tuple_filter_single<T, F, std::enable_if_t<!F<T>::value>> {
+        template<class T, template<class... C> class Fn>
+        struct tuple_filter_single<T, Fn, std::enable_if_t<!Fn<T>::value>> {
             using type = std::tuple<>;
         };
 
-        template<class T, template<class... C> class F>
-        struct tuple_filter_single<T, F, std::enable_if_t<F<T>::value>> {
+        template<class T, template<class... C> class Fn>
+        struct tuple_filter_single<T, Fn, std::enable_if_t<Fn<T>::value>> {
             using type = std::tuple<T>;
         };
 
-        template<class... Args, template<class... C> class F>
-        struct tuple_filter<std::tuple<Args...>, F> : conc_tuple<typename tuple_filter_single<Args, F>::type...> {};
+        template<class... Types, template<class... C> class Fn>
+        struct tuple_filter<std::tuple<Types...>, Fn> : conc_tuple<typename tuple_filter_single<Types, Fn>::type...> {};
 #endif
-        template<class Tpl, template<class... C> class F>
-        using filter_tuple_t = typename tuple_filter<Tpl, F>::type;
+        template<class Tpl, template<class... C> class Fn>
+        using filter_tuple_t = typename tuple_filter<Tpl, Fn>::type;
 
         template<class... Seq>
         struct concat_idx_seq {
@@ -93,48 +95,19 @@ namespace sqlite_orm {
                  class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
         using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
 
-        template<class T, template<class...> class F>
-        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, F>::size()> {};
+        template<class T, template<class...> class Fn>
+        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, Fn>::size()> {};
 
-        namespace mpl {
-            /*
-             * Metafunction class equivalent to std::bind_front()
-             */
-            template<template<class...> class F, class... Args>
-            struct bind_front_fn {
-                template<class A>
-                struct apply : F<Args..., A> {};
-            };
-            template<template<template<class...> class /*TraitFn*/, class...> class F, template<class...> class TraitFn>
-            struct bind_front_trait_fn {
-                template<class A>
-                struct apply : F<TraitFn, A> {};
-            };
+        template<template<class...> class TraitFn>
+        using mpl_tuple_has_fn = mpl::bind_front_higherorder_fn<tuple_helper::tuple_has, TraitFn>;
 
-            /*
-             * Metafunction class equivalent to std::negation
-             */
-            template<template<class...> class TraitFn>
-            struct not_fn {
-                template<class A>
-                struct apply : polyfill::negation<TraitFn<A>> {};
-            };
-            template<class Trait>
-            struct swallow_fn {
-                template<class A>
-                struct apply : Trait {};
-            };
-            template<template<class...> class... TraitFns>
-            struct conjunction_fn {
-                template<class A>
-                struct apply : polyfill::conjunction<TraitFns<A>...> {};
-            };
-            template<template<class...> class... TraitFns>
-            struct disjunction_fn {
-                template<class A>
-                struct apply : polyfill::disjunction<TraitFns<A>...> {};
-            };
-        }
-        using namespace mpl;
+        template<class T>
+        using mpl_tuple_has_type =
+            mpl::bind_front_higherorder_fn<tuple_helper::tuple_has, mpl::bind_front_fn<std::is_same, T>::template fn>;
+
+        template<template<class...> class Primary>
+        using mpl_tuple_has_some_type = mpl::bind_front_higherorder_fn<
+            tuple_helper::tuple_has,
+            mpl::bind_back_2_higherorder_fn<polyfill::is_specialization_of, Primary>::template fn>;
     }
 }

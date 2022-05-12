@@ -1,7 +1,7 @@
 #pragma once
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::is_same
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward
 
 #include "../cxx_polyfill.h"
@@ -10,16 +10,10 @@ namespace sqlite_orm {
 
     namespace tuple_helper {
 
-        template<template<class...> class Trait, class Tuple>
+        template<template<class...> class TraitFn, class Tuple>
         struct tuple_has {};
-        template<template<class...> class Trait, class... Args>
-        struct tuple_has<Trait, std::tuple<Args...>> : polyfill::disjunction<Trait<Args>...> {};
-
-        template<template<class> class TT, class Tuple>
-        struct tuple_contains_some_type;
-        template<template<class> class TT, class... Args>
-        struct tuple_contains_some_type<TT, std::tuple<Args...>>
-            : polyfill::disjunction<polyfill::is_specialization_of<Args, TT>...> {};
+        template<template<class...> class TraitFn, class... Types>
+        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
 
     }
 

@@ -19,6 +19,7 @@
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 #include "cxx_functional_polyfill.h"
+#include "functional/mpl.h"
 #include "type_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_helper.h"
@@ -183,10 +184,9 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                using mapped_types_tuples = std::tuple<typename Ts::object_type...>;
-                static_assert(
-                    tuple_helper::tuple_has<bind_front_fn<std::is_same, O>::template apply, mapped_types_tuples>::value,
-                    "type is not mapped to a storage");
+                using mapped_types_tuple = std::tuple<typename Ts::object_type...>;
+                static_assert(mpl::invoke_t<mpl_tuple_has_type<O>, mapped_types_tuple>::value,
+                              "type is not mapped to a storage");
             }
 
             template<class O>
@@ -1239,9 +1239,9 @@ namespace sqlite_orm {
                 field_value_binder bind_value{stmt};
                 auto processObject = [&tImpl, &bind_value](auto& object) {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
-                    tImpl.table.for_each_column_excluding<conjunction_fn<
-                        swallow_fn<polyfill::bool_constant<!table_type::is_without_rowid>>::template apply,
-                        disjunction_fn<is_generated_always, is_primary_key>::template apply>::template apply>(
+                    tImpl.table.for_each_column_excluding<
+                        mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
+                                         mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));
@@ -1289,13 +1289,12 @@ namespace sqlite_orm {
 
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
-                tImpl.table
-                    .for_each_column_excluding<disjunction_fn<is_generated_always, is_primary_key>::template apply>(
-                        [&tImpl, &bind_value, &object](auto& column) {
-                            if(!tImpl.table.exists_in_composite_primary_key(column)) {
-                                bind_value(polyfill::invoke(column.member_pointer, object));
-                            }
-                        });
+                tImpl.table.for_each_column_excluding<mpl::disjunction_fn<is_generated_always, is_primary_key>>(
+                    [&tImpl, &bind_value, &object](auto& column) {
+                        if(!tImpl.table.exists_in_composite_primary_key(column)) {
+                            bind_value(polyfill::invoke(column.member_pointer, object));
+                        }
+                    });
                 tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
                     if(column.template is<is_primary_key>() || tImpl.table.exists_in_composite_primary_key(column)) {
                         bind_value(polyfill::invoke(column.member_pointer, object));

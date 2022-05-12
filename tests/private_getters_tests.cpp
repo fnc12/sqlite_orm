@@ -5,6 +5,12 @@
 using namespace sqlite_orm;
 
 TEST_CASE("Issue 343") {
+    //using x = internal::fcs_tuple_has_type<int>;
+    //using y = internal::fcs_tuple_has_fn<internal::is_autoincrement>;
+    //using r1 = x::op<std::tuple<int, internal::autoincrement_t>>;
+    //using r2 = y::op<std::tuple<int, internal::autoincrement_t>>;
+    //r1::value;
+    //r2::value;
 
     class A {
       public:

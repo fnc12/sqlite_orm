@@ -490,9 +490,10 @@ namespace sqlite_orm {
             static_assert((tuple_helper::tuple_has<is_primary_key, constraints_type>::value),
                           "an unexpected type was passed");
 
-            static constexpr bool value = (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
-                                           tuple_helper::tuple_has<is_autoincrement, constraints_type>::value ||
-                                           std::is_base_of<integer_printer, type_printer<field_type>>::value);
+            static constexpr bool value =
+                (mpl::invoke_fn_t<mpl_tuple_has_some_type<default_t>, constraints_type>::value ||
+                 tuple_helper::tuple_has<is_autoincrement, constraints_type>::value ||
+                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
         };
     }
 

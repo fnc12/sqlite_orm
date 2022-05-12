@@ -5,16 +5,16 @@
 namespace sqlite_orm {
     namespace internal {
 
-        template<class T, template<class...> class F>
+        template<class T, template<class...> class Fn>
         struct tuple_transformer;
 
-        template<class... Args, template<class...> class F>
-        struct tuple_transformer<std::tuple<Args...>, F> {
-            using type = std::tuple<typename F<Args>::type...>;
+        template<class... Args, template<class...> class Fn>
+        struct tuple_transformer<std::tuple<Args...>, Fn> {
+            using type = std::tuple<typename Fn<Args>::type...>;
         };
 
-        template<class T, template<class...> class F>
-        using transform_tuple_t = typename tuple_transformer<T, F>::type;
+        template<class T, template<class...> class Fn>
+        using transform_tuple_t = typename tuple_transformer<T, Fn>::type;
 
     }
 }
