@@ -8,15 +8,14 @@
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
-#include <cstddef>  // std::nullptr_t
 #include <memory>
 #include <array>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string_view>
 #endif
 
-#include "start_macros.h"
-#include "cxx_functional_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_functional_polyfill.h"
 #include "functional/mpl.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"
@@ -130,7 +129,7 @@ namespace sqlite_orm {
             template<class P, class PT, class D>
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
-                return field_printer<std::nullptr_t>{}(nullptr);
+                return field_printer<nullptr_t>{}(nullptr);
             }
         };
 
@@ -1603,8 +1602,8 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << "FROM ";
-                iterate_tuple<tuple>([&context, &ss, index = 0](auto* itemPointer) mutable {
-                    using from_type = std::remove_pointer_t<decltype(itemPointer)>;
+                iterate_tuple<tuple>([&context, &ss, index = 0](auto* item) mutable {
+                    using from_type = std::remove_pointer_t<decltype(item)>;
 
                     if(index > 0) {
                         ss << ", ";

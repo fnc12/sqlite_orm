@@ -5,10 +5,10 @@
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
 
-#include "start_macros.h"
-#include "cxx_functional_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_functional_polyfill.h"
+#include "functional/static_magic.h"
 #include "functional/mpl.h"
-#include "static_magic.h"
 #include "typed_comparator.h"
 #include "tuple_helper/tuple_helper.h"
 #include "tuple_helper/tuple_filter.h"

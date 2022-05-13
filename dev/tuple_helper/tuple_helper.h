@@ -4,7 +4,7 @@
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward
 
-#include "../cxx_polyfill.h"
+#include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
 
@@ -66,7 +66,9 @@ namespace sqlite_orm {
 #endif
         template<bool reversed = false, class Tpl, class L>
         void iterate_tuple(const Tpl& tpl, L&& lambda) {
-            iterate_tuple<reversed>(tpl, std::make_index_sequence<std::tuple_size_v<Tpl>>{}, std::forward<L>(lambda));
+            iterate_tuple<reversed>(tpl,
+                                    std::make_index_sequence<std::tuple_size<Tpl>::value>{},
+                                    std::forward<L>(lambda));
         }
 
 #ifdef SQLITE_ORM_FOLD_EXPRESSIONS_SUPPORTED

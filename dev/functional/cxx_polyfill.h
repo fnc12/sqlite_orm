@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-#include "start_macros.h"
+#include "functional/cxx_universal.h"
 
 namespace sqlite_orm {
     namespace internal {

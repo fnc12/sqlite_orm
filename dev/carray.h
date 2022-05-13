@@ -10,7 +10,7 @@
 #include <type_traits>  //  std::integral_constant
 #include <utility>  //  std::move
 
-#include "start_macros.h"
+#include "functional/cxx_universal.h"
 #include "pointer_value.h"
 
 namespace sqlite_orm {

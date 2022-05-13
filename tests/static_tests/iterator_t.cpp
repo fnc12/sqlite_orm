@@ -5,10 +5,12 @@
 
 using namespace sqlite_orm;
 
-struct User {
-    int id = 0;
-    std::string name;
-};
+namespace {
+    struct User {
+        int id = 0;
+        std::string name;
+    };
+}
 
 TEST_CASE("iterator_t") {
     using storage = decltype(make_storage(

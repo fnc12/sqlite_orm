@@ -5,14 +5,13 @@
 #include <memory>  //  std::default_delete
 #include <string>  //  std::string, std::wstring
 #include <vector>  //  std::vector
-#include <cstddef>  //  std::nullptr_t
 #include <cstring>  //  ::strncpy, ::strlen
 #ifndef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <cwchar>  //  ::wcsncpy, ::wcslen
 #endif
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_polyfill.h"
 #include "is_std_ptr.h"
 #include "tuple_helper/tuple_filter.h"
 #include "error_code.h"
@@ -189,15 +188,15 @@ namespace sqlite_orm {
 #endif
 
     /**
-     *  Specialization for std::nullptr_t.
+     *  Specialization for nullptr_t.
      */
     template<>
-    struct statement_binder<std::nullptr_t, void> {
-        int bind(sqlite3_stmt* stmt, int index, const std::nullptr_t&) const {
+    struct statement_binder<nullptr_t, void> {
+        int bind(sqlite3_stmt* stmt, int index, const nullptr_t&) const {
             return sqlite3_bind_null(stmt, index);
         }
 
-        void result(sqlite3_context* context, const std::nullptr_t&) const {
+        void result(sqlite3_context* context, const nullptr_t&) const {
             sqlite3_result_null(context);
         }
     };
@@ -228,7 +227,7 @@ namespace sqlite_orm {
             if(value) {
                 return statement_binder<unqualified_type>().bind(stmt, index, *value);
             } else {
-                return statement_binder<std::nullptr_t>().bind(stmt, index, nullptr);
+                return statement_binder<nullptr_t>().bind(stmt, index, nullptr);
             }
         }
     };

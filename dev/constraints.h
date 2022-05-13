@@ -6,13 +6,15 @@
 #include <tuple>  //  std::tuple, std::make_tuple
 #include <type_traits>  //  std::is_base_of, std::false_type, std::true_type
 
-#include "start_macros.h"
-#include "cxx_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_polyfill.h"
+#include "functional/mpl.h"
 #include "collate_argument.h"
 #include "error_code.h"
 #include "table_type.h"
 #include "tuple_helper/same_or_void.h"
 #include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_filter.h"
 #include "type_printer.h"
 
 namespace sqlite_orm {

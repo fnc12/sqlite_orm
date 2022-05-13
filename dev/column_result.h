@@ -4,6 +4,7 @@
 #include <tuple>  //  std::tuple
 #include <functional>  //  std::reference_wrapper
 
+#include "functional/cxx_universal.h"
 #include "type_traits.h"
 #include "member_traits/member_traits.h"
 #include "core_functions.h"
@@ -90,8 +91,8 @@ namespace sqlite_orm {
         };
 
         template<class St>
-        struct column_result_t<St, std::nullptr_t, void> {
-            using type = std::nullptr_t;
+        struct column_result_t<St, nullptr_t, void> {
+            using type = nullptr_t;
         };
 
         template<class St>

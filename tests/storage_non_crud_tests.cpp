@@ -191,7 +191,7 @@ TEST_CASE("Select") {
     sqlite3 *db;
     auto dbFileName = "test.db";
     auto rc = sqlite3_open(dbFileName, &db);
-    assert(rc == SQLITE_OK);
+    REQUIRE(rc == SQLITE_OK);
     auto sql = "CREATE TABLE IF NOT EXISTS WORDS("
                "ID INTEGER PRIMARY        KEY AUTOINCREMENT      NOT NULL,"
                "CURRENT_WORD          TEXT     NOT NULL,"
