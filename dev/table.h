@@ -4,6 +4,7 @@
 #include <type_traits>  //  std::remove_reference, std::is_same, std::decay
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
+#include <utility>  //  std::forward, std::move
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_functional_polyfill.h"
@@ -30,7 +31,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Table class.
+         *  Table definition.
          */
         template<class T, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {

@@ -1466,7 +1466,7 @@ namespace sqlite_orm {
                         if constexpr(std::is_same<TargetType, O>::value) {
 #else
                         call_if_constexpr<std::is_same<TargetType, O>::value>(
-                            [this, &storageImpl, &foreignKey, &res, &object] {
+                            [this, &storageImpl, &res, &object](auto& foreignKey) {
 #endif
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
@@ -1511,7 +1511,8 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                         }
 #else
-                            });
+                            },
+                            foreignKey);
 #endif
                     });
                 });
