@@ -8343,7 +8343,7 @@ namespace sqlite_orm {
             }
         }
 
-        template<class L>
+        template<bool all = true, class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
             int rc;
             do {
@@ -8357,7 +8357,7 @@ namespace sqlite_orm {
                         throw_translated_sqlite_error(stmt);
                     }
                 }
-            } while(rc != SQLITE_DONE);
+            } while(all && rc != SQLITE_DONE);
         }
     }
 }
@@ -18031,7 +18031,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
                 std::unique_ptr<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
                     res = std::make_unique<T>();
                     object_from_column_builder<T> builder{*res, stmt};
                     tImpl.table.for_each_column(builder);
@@ -18047,9 +18047,8 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
                 std::optional<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
-                    res = std::make_optional<T>();
-                    object_from_column_builder<T> builder{res.value(), stmt};
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    object_from_column_builder<T> builder{res.emplace(), stmt};
                     tImpl.table.for_each_column(builder);
                 });
                 return res;
@@ -18064,9 +18063,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 std::optional<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
-                    res = std::make_optional<T>();
-                    object_from_column_builder<T> builder{res.value(), stmt};
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    object_from_column_builder<T> builder{res.emplace(), stmt};
                     tImpl.table.for_each_column(builder);
                 });
                 if(!res.has_value()) {

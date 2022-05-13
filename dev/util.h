@@ -86,7 +86,7 @@ namespace sqlite_orm {
             }
         }
 
-        template<class L>
+        template<bool all = true, class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
             int rc;
             do {
@@ -100,7 +100,7 @@ namespace sqlite_orm {
                         throw_translated_sqlite_error(stmt);
                     }
                 }
-            } while(rc != SQLITE_DONE);
+            } while(all && rc != SQLITE_DONE);
         }
     }
 }
