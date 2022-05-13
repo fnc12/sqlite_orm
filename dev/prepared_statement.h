@@ -29,7 +29,6 @@ namespace sqlite_orm {
             ~prepared_statement_base() {
                 if(this->stmt) {
                     sqlite3_finalize(this->stmt);
-                    this->stmt = nullptr;
                 }
             }
 
