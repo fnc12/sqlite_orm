@@ -646,6 +646,200 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_polyfill.h"
 
+// #include "functional/mpl.h"
+
+/*
+ *  Symbols for 'template metaprogramming' (compile-time template programming),
+ *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams'.
+ *  
+ *  Currently, the focus is on facilitating advanced type filtering, such as filtering columns by constraints.
+ *  
+ *  Two key concepts are critical to understanding:
+ *  1. A 'metafunction' is a class template that represents a function invocable at compile-time.
+ *  2. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
+ *     More precisely, it's a class with a nested metafunction called "fn"
+ *     Correspondingly, a metafunction class invocation is defined as invocation of its nested apply metafunction.
+ *  
+ *  Conventions:
+ *  - "Fn" is the name for a metafunction template template parameter.
+ *  - "FnCls" is the name for a metafunction class template parameter.
+ *  - "_fn" is a suffix for a type that accepts metafunctions and turns them into metafunction classes.
+ *  - "higher order" denotes a metafunction that operates on another metafunction (i.e. takes it as an argument).
+ */
+
+#include <type_traits>
+
+// #include "cxx_universal.h"
+
+// #include "cxx_polyfill.h"
+
+namespace sqlite_orm {
+    namespace internal {
+        namespace mpl {
+            /*
+             *  Wrap given type such that `typename T::type` is valid.
+             */
+            template<class T, class SFINAE = void>
+            struct type_wrap : polyfill::type_identity<T> {};
+            template<class T>
+            struct type_wrap<T, polyfill::void_t<typename T::type>> : T {};
+
+            /*
+             *  Invoke metafunction.
+             */
+            template<template<class...> class Fn, class... Args>
+            using invoke_fn_t = typename Fn<Args...>::type;
+
+            /*
+             *  Invoke metafunction class.
+             */
+            template<class FnCls, class... Args>
+            using invoke_t = typename FnCls::template fn<Args...>::type;
+
+            /*
+             *  Make metafunction class out of a metafunction.
+             */
+            template<template<class...> class Fn>
+            struct quote_fn {
+                template<class... Args>
+                struct fn : type_wrap<Fn<Args...>> {};
+            };
+
+            /*
+             *  Make metafunction class out of a higher-order metafunction.
+             */
+            template<template<template<class...> class Fn, class... Args2> class HigherFn>
+            struct quote_higherorder_front_fn {
+                template<class QuotedFn, class... Args2>
+                struct fn : type_wrap<HigherFn<typename QuotedFn::template fn, Args2...>> {};
+            };
+
+            /*
+             *  Make metafunction class out of a higher-order metafunction having 2 arguments.
+             */
+            template<template<class, template<class...> class> class HigherFn>
+            struct quote_2_higherorder_back_fn {
+                template<class Arg1, class QuotedFn>
+                struct fn : type_wrap<HigherFn<Arg1, typename QuotedFn::template fn>> {};
+            };
+
+            /*
+             *  Bind arguments at the front of a metafunction class.
+             *  Metafunction class equivalent to std::bind_front()
+             */
+            template<class FnCls, class... Bound>
+            struct bind_front {
+                template<class... Args>
+                struct fn : FnCls::template fn<Bound..., Args...> {};
+            };
+
+            /*
+             *  Bind arguments at the back of a metafunction class.
+             *  Metafunction class equivalent to std::bind_back()
+             */
+            template<class FnCls, class... Bound>
+            struct bind_back {
+                template<class... Args>
+                struct fn : FnCls::template fn<Args..., Bound...> {};
+            };
+
+            /*
+             *  Metafunction class equivalent to std::negation
+             */
+            template<class FnCls>
+            struct not_ {
+                template<class... Args>
+                struct fn : polyfill::negation<invoke_t<FnCls, Args...>> {};
+            };
+
+            /*
+             *  Metafunction class equivalent to std::identity
+             */
+            template<class T>
+            struct identity {
+                template<class...>
+                struct fn : type_wrap<T> {};
+            };
+
+            /*
+             *  Metafunction class equivalent to std::conjunction
+             */
+            template<class... TraitFnCls>
+            struct conjunction {
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+                template<class... Args>
+                struct fn : polyfill::conjunction<invoke_t<TraitFnCls, Args...>...> {};
+#else
+                template<class... Args>
+                struct fn : polyfill::conjunction<typename TraitFnCls::template fn<Args...>...> {};
+#endif
+            };
+
+            /*
+             *  Metafunction class equivalent to std::disjunction
+             */
+            template<class... TraitFnCls>
+            struct disjunction {
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+                template<class... Args>
+                struct fn : polyfill::disjunction<invoke_t<TraitFnCls, Args...>...> {};
+#else
+                template<class... Args>
+                struct fn : polyfill::disjunction<typename TraitFnCls::template fn<Args...>...> {};
+#endif
+            };
+
+            /*
+             *  Bind arguments to the front of a metafunction.
+             */
+            template<template<class...> class Fn, class... Bound>
+            using bind_front_fn = bind_front<quote_fn<Fn>, Bound...>;
+
+            /*
+             *  Bind arguments to the back of a metafunction.
+             */
+            template<template<class...> class Fn, class... Bound>
+            using bind_back_fn = bind_back<quote_fn<Fn>, Bound...>;
+
+            /*
+             *  Bind a metafunction at the front of a higher-order metafunction
+             */
+            template<template<template<class...> class Fn, class... Args2> class HigherFn,
+                     template<class...>
+                     class BoundFn>
+            using bind_front_higherorder_fn = bind_front<quote_higherorder_front_fn<HigherFn>, quote_fn<BoundFn>>;
+
+            /*
+             *  Bind a metafunction at the back of a higher-order metafunction having 2 arguments
+             */
+            template<template<class Arg1, template<class...> class Fn> class HigherFn, template<class...> class BoundFn>
+            using bind_back_2_higherorder_fn = bind_back<quote_2_higherorder_back_fn<HigherFn>, quote_fn<BoundFn>>;
+
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+            /*
+             *  Metafunction equivalent to std::conjunction
+             */
+            template<template<class...> class... TraitFn>
+            using conjunction_fn = conjunction<quote_fn<TraitFn>...>;
+
+            /*
+             *  Metafunction equivalent to std::disjunction
+             */
+            template<template<class...> class... TraitFn>
+            using disjunction_fn = disjunction<quote_fn<TraitFn>...>;
+#else
+            template<template<class...> class... TraitFn>
+            struct conjunction_fn : conjunction<quote_fn<TraitFn>...> {};
+
+            template<template<class...> class... TraitFn>
+            struct disjunction_fn : disjunction<quote_fn<TraitFn>...> {};
+#endif
+        }
+    }
+
+    namespace mpl = internal::mpl;
+}
+
 // #include "collate_argument.h"
 
 // #include "error_code.h"
@@ -715,7 +909,7 @@ namespace sqlite_orm {
 // #include "tuple_helper/tuple_helper.h"
 
 #include <tuple>  //  std::tuple, std::get, std::tuple_element, std::tuple_size
-#include <type_traits>  //  std::is_same
+#include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward
 
 // #include "../functional/cxx_polyfill.h"
@@ -724,16 +918,10 @@ namespace sqlite_orm {
 
     namespace tuple_helper {
 
-        template<template<class...> class Trait, class Tuple>
+        template<template<class...> class TraitFn, class Tuple>
         struct tuple_has {};
-        template<template<class...> class Trait, class... Args>
-        struct tuple_has<Trait, std::tuple<Args...>> : polyfill::disjunction<Trait<Args>...> {};
-
-        template<template<class> class TT, class Tuple>
-        struct tuple_contains_some_type;
-        template<template<class> class TT, class... Args>
-        struct tuple_contains_some_type<TT, std::tuple<Args...>>
-            : polyfill::disjunction<polyfill::is_specialization_of<Args, TT>...> {};
+        template<template<class...> class TraitFn, class... Types>
+        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
 
     }
 
@@ -810,6 +998,120 @@ namespace sqlite_orm {
         void iterate_tuple(L&& lambda) {
             iterate_tuple<Tpl>(std::make_index_sequence<std::tuple_size<Tpl>::value>{}, std::forward<L>(lambda));
         }
+    }
+}
+
+// #include "tuple_helper/tuple_filter.h"
+
+#include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
+#include <tuple>  //  std::tuple
+
+// #include "../functional/mpl.h"
+
+namespace sqlite_orm {
+    namespace internal {
+
+        template<typename... input_t>
+        using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
+
+        template<class... Args>
+        struct conc_tuple {
+            using type = tuple_cat_t<Args...>;
+        };
+
+        template<class... Args>
+        using conc_tuple_t = typename conc_tuple<Args...>::type;
+
+        template<class T, template<class... C> class Fn>
+        struct tuple_filter;
+
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+        template<class... Types, template<class... C> class Fn>
+        struct tuple_filter<std::tuple<Types...>, Fn>
+            : conc_tuple<std::conditional_t<Fn<Types>::value, std::tuple<Types>, std::tuple<>>...> {};
+#else
+        template<class T, template<class... C> class Fn, class SFINAE = void>
+        struct tuple_filter_single;
+
+        template<class T, template<class... C> class Fn>
+        struct tuple_filter_single<T, Fn, std::enable_if_t<!Fn<T>::value>> {
+            using type = std::tuple<>;
+        };
+
+        template<class T, template<class... C> class Fn>
+        struct tuple_filter_single<T, Fn, std::enable_if_t<Fn<T>::value>> {
+            using type = std::tuple<T>;
+        };
+
+        template<class... Types, template<class... C> class Fn>
+        struct tuple_filter<std::tuple<Types...>, Fn> : conc_tuple<typename tuple_filter_single<Types, Fn>::type...> {};
+#endif
+        template<class Tpl, template<class... C> class Fn>
+        using filter_tuple_t = typename tuple_filter<Tpl, Fn>::type;
+
+        template<class... Seq>
+        struct concat_idx_seq {
+            using type = std::index_sequence<>;
+        };
+
+        template<size_t... Idx>
+        struct concat_idx_seq<std::index_sequence<Idx...>> {
+            using type = std::index_sequence<Idx...>;
+        };
+
+        template<size_t... As, size_t... Bs, class... Seq>
+        struct concat_idx_seq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
+            : concat_idx_seq<std::index_sequence<As..., Bs...>, Seq...> {};
+
+        template<class Tpl, template<class...> class Pred, template<class...> class Proj, class Seq>
+        struct filter_tuple_sequence;
+
+#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
+        template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<std::conditional_t<Pred<Proj<std::tuple_element_t<Idx, Tpl>>>::value,
+                                                std::index_sequence<Idx>,
+                                                std::index_sequence<>>...> {};
+#else
+        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj, class SFINAE = void>
+        struct tuple_seq_single;
+
+        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
+        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<!Pred<Proj<T>>::value>> {
+            using type = std::index_sequence<>;
+        };
+
+        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
+        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<Pred<Proj<T>>::value>> {
+            using type = std::index_sequence<Idx>;
+        };
+
+        template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
+        struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
+            : concat_idx_seq<typename tuple_seq_single<Idx, std::tuple_element_t<Idx, Tpl>, Pred, Proj>::type...> {};
+#endif
+
+        template<class Tpl,
+                 template<class...>
+                 class Pred,
+                 template<class...> class Proj = polyfill::type_identity_t,
+                 class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
+        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
+
+        template<class T, template<class...> class Fn>
+        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, Fn>::size()> {};
+
+        template<template<class...> class TraitFn>
+        using mpl_tuple_has_fn = mpl::bind_front_higherorder_fn<tuple_helper::tuple_has, TraitFn>;
+
+        template<class T>
+        using mpl_tuple_has_type =
+            mpl::bind_front_higherorder_fn<tuple_helper::tuple_has, mpl::bind_front_fn<std::is_same, T>::template fn>;
+
+        template<template<class...> class Primary>
+        using mpl_tuple_has_some_type = mpl::bind_front_higherorder_fn<
+            tuple_helper::tuple_has,
+            mpl::bind_back_2_higherorder_fn<polyfill::is_specialization_of, Primary>::template fn>;
     }
 }
 
@@ -1290,9 +1592,10 @@ namespace sqlite_orm {
             static_assert((tuple_helper::tuple_has<is_primary_key, constraints_type>::value),
                           "an unexpected type was passed");
 
-            static constexpr bool value = (tuple_helper::tuple_contains_some_type<default_t, constraints_type>::value ||
-                                           tuple_helper::tuple_has<is_autoincrement, constraints_type>::value ||
-                                           std::is_base_of<integer_printer, type_printer<field_type>>::value);
+            static constexpr bool value =
+                (mpl::invoke_fn_t<mpl_tuple_has_some_type<default_t>, constraints_type>::value ||
+                 tuple_helper::tuple_has<is_autoincrement, constraints_type>::value ||
+                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
         };
     }
 
@@ -1649,144 +1952,6 @@ namespace sqlite_orm {
 
 // #include "tuple_helper/tuple_filter.h"
 
-#include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
-#include <tuple>  //  std::tuple
-
-namespace sqlite_orm {
-    namespace internal {
-
-        template<typename... input_t>
-        using tuple_cat_t = decltype(std::tuple_cat(std::declval<input_t>()...));
-
-        template<class... Args>
-        struct conc_tuple {
-            using type = tuple_cat_t<Args...>;
-        };
-
-        template<class... Args>
-        using conc_tuple_t = typename conc_tuple<Args...>::type;
-
-        template<class T, template<class... C> class F>
-        struct tuple_filter;
-
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class... Args, template<class... C> class F>
-        struct tuple_filter<std::tuple<Args...>, F>
-            : conc_tuple<std::conditional_t<F<Args>::value, std::tuple<Args>, std::tuple<>>...> {};
-#else
-        template<class T, template<class... C> class F, class SFINAE = void>
-        struct tuple_filter_single;
-
-        template<class T, template<class... C> class F>
-        struct tuple_filter_single<T, F, std::enable_if_t<!F<T>::value>> {
-            using type = std::tuple<>;
-        };
-
-        template<class T, template<class... C> class F>
-        struct tuple_filter_single<T, F, std::enable_if_t<F<T>::value>> {
-            using type = std::tuple<T>;
-        };
-
-        template<class... Args, template<class... C> class F>
-        struct tuple_filter<std::tuple<Args...>, F> : conc_tuple<typename tuple_filter_single<Args, F>::type...> {};
-#endif
-        template<class Tpl, template<class... C> class F>
-        using filter_tuple_t = typename tuple_filter<Tpl, F>::type;
-
-        template<class... Seq>
-        struct concat_idx_seq {
-            using type = std::index_sequence<>;
-        };
-
-        template<size_t... Idx>
-        struct concat_idx_seq<std::index_sequence<Idx...>> {
-            using type = std::index_sequence<Idx...>;
-        };
-
-        template<size_t... As, size_t... Bs, class... Seq>
-        struct concat_idx_seq<std::index_sequence<As...>, std::index_sequence<Bs...>, Seq...>
-            : concat_idx_seq<std::index_sequence<As..., Bs...>, Seq...> {};
-
-        template<class Tpl, template<class...> class Pred, template<class...> class Proj, class Seq>
-        struct filter_tuple_sequence;
-
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-        template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<std::conditional_t<Pred<Proj<std::tuple_element_t<Idx, Tpl>>>::value,
-                                                std::index_sequence<Idx>,
-                                                std::index_sequence<>>...> {};
-#else
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj, class SFINAE = void>
-        struct tuple_seq_single;
-
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
-        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<!Pred<Proj<T>>::value>> {
-            using type = std::index_sequence<>;
-        };
-
-        template<size_t Idx, class T, template<class...> class Pred, template<class...> class Proj>
-        struct tuple_seq_single<Idx, T, Pred, Proj, std::enable_if_t<Pred<Proj<T>>::value>> {
-            using type = std::index_sequence<Idx>;
-        };
-
-        template<class Tpl, template<class...> class Pred, template<class...> class Proj, size_t... Idx>
-        struct filter_tuple_sequence<Tpl, Pred, Proj, std::index_sequence<Idx...>>
-            : concat_idx_seq<typename tuple_seq_single<Idx, std::tuple_element_t<Idx, Tpl>, Pred, Proj>::type...> {};
-#endif
-
-        template<class Tpl,
-                 template<class...>
-                 class Pred,
-                 template<class...> class Proj = polyfill::type_identity_t,
-                 class Seq = std::make_index_sequence<std::tuple_size<Tpl>::value>>
-        using filter_tuple_sequence_t = typename filter_tuple_sequence<Tpl, Pred, Proj, Seq>::type;
-
-        template<class T, template<class...> class F>
-        struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, F>::size()> {};
-
-        namespace mpl {
-            /*
-             * Metafunction class equivalent to std::bind_front()
-             */
-            template<template<class...> class F, class... Args>
-            struct bind_front_fn {
-                template<class A>
-                struct apply : F<Args..., A> {};
-            };
-            template<template<template<class...> class /*TraitFn*/, class...> class F, template<class...> class TraitFn>
-            struct bind_front_trait_fn {
-                template<class A>
-                struct apply : F<TraitFn, A> {};
-            };
-
-            /*
-             * Metafunction class equivalent to std::negation
-             */
-            template<template<class...> class TraitFn>
-            struct not_fn {
-                template<class A>
-                struct apply : polyfill::negation<TraitFn<A>> {};
-            };
-            template<class Trait>
-            struct swallow_fn {
-                template<class A>
-                struct apply : Trait {};
-            };
-            template<template<class...> class... TraitFns>
-            struct conjunction_fn {
-                template<class A>
-                struct apply : polyfill::conjunction<TraitFns<A>...> {};
-            };
-            template<template<class...> class... TraitFns>
-            struct disjunction_fn {
-                template<class A>
-                struct apply : polyfill::disjunction<TraitFns<A>...> {};
-            };
-        }
-        using namespace mpl;
-    }
-}
 // #include "member_traits/member_traits.h"
 
 #include <type_traits>  //  std::enable_if, std::is_function, std::true_type, std::false_type
@@ -8391,7 +8556,7 @@ namespace sqlite_orm {
             }
         }
 
-        template<class L>
+        template<bool all = true, class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
             int rc;
             do {
@@ -8405,7 +8570,7 @@ namespace sqlite_orm {
                         throw_translated_sqlite_error(stmt);
                     }
                 }
-            } while(rc != SQLITE_DONE);
+            } while(all && rc != SQLITE_DONE);
         }
     }
 }
@@ -8935,16 +9100,16 @@ namespace sqlite_orm {
 namespace sqlite_orm {
     namespace internal {
 
-        template<class T, template<class...> class F>
+        template<class T, template<class...> class Fn>
         struct tuple_transformer;
 
-        template<class... Args, template<class...> class F>
-        struct tuple_transformer<std::tuple<Args...>, F> {
-            using type = std::tuple<typename F<Args>::type...>;
+        template<class... Args, template<class...> class Fn>
+        struct tuple_transformer<std::tuple<Args...>, Fn> {
+            using type = std::tuple<typename Fn<Args>::type...>;
         };
 
-        template<class T, template<class...> class F>
-        using transform_tuple_t = typename tuple_transformer<T, F>::type;
+        template<class T, template<class...> class Fn>
+        using transform_tuple_t = typename tuple_transformer<T, Fn>::type;
 
     }
 }
@@ -9788,6 +9953,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::remove_reference, std::is_same, std::decay
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
+#include <utility>  //  std::forward, std::move
 
 // #include "functional/cxx_universal.h"
 
@@ -9804,7 +9970,7 @@ namespace sqlite_orm {
 #if __cpp_lib_invoke >= 201411L
             using std::invoke;
 #else
-            // pointer-to-data-member
+            // pointer-to-data-member+object
             template<class Callable,
                      class Arg1,
                      class... Args,
@@ -9814,7 +9980,7 @@ namespace sqlite_orm {
                 return static_cast<Arg1&&>(arg1).*obj;
             }
 
-            // pointer-to-member-function
+            // pointer-to-member-function+object
             template<class Callable,
                      class Arg1,
                      class... Args,
@@ -9822,6 +9988,12 @@ namespace sqlite_orm {
                      std::enable_if_t<std::is_member_function_pointer<Unqualified>::value, bool> = true>
             decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
                 return (static_cast<Arg1&&>(arg1).*obj)(static_cast<Args&&>(args)...);
+            }
+
+            // pointer-to-member+reference-wrapped object
+            template<class Callable, class Arg1, class... Args>
+            decltype(auto) invoke(Callable&& obj, std::reference_wrapper<Arg1> arg1, Args&&... args) {
+                return invoke(static_cast<Callable&&>(obj), arg1.get(), static_cast<Args&&>(args)...);
             }
 #endif
         }
@@ -9903,6 +10075,8 @@ namespace sqlite_orm {
 
 }
 
+// #include "functional/mpl.h"
+
 // #include "typed_comparator.h"
 
 // #include "tuple_helper/tuple_helper.h"
@@ -9932,7 +10106,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Table class.
+         *  Table definition.
          */
         template<class T, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
@@ -9965,18 +10139,27 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Function used to get field value from object by mapped member pointer/setter/getter
+             *  Function used to get field value from object by mapped member pointer/setter/getter.
+             *  
+             *  For a setter the corresponding getter has to be searched,
+             *  so the method returns a pointer to the field as returned by the found getter.
+             *  Otherwise the method invokes the member pointer and returns its result.
              */
-            template<class C>
-            const member_field_type_t<C>* get_object_field_pointer(const object_type& object, C memberPointer) const {
-                using F = member_field_type_t<C>;
+            template<class M, satisfies_not<is_setter, M> = true>
+            decltype(auto) object_field_value(const object_type& object, M memberPointer) const {
+                return polyfill::invoke(memberPointer, object);
+            }
+
+            template<class M, satisfies<is_setter, M> = true>
+            const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
+                using F = member_field_type_t<M>;
                 const F* res = nullptr;
                 this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
                     if(res) {
                         return;
                     }
 
-                    if(compare_any(column.member_pointer, memberPointer) || compare_any(column.setter, memberPointer)) {
+                    if(compare_any(column.setter, memberPointer)) {
                         res = &polyfill::invoke(column.member_pointer, object);
                     }
                 });
@@ -10102,8 +10285,7 @@ namespace sqlite_orm {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
                 using non_generated_col_seq =
                     filter_tuple_sequence_t<elements_type,
-                                            not_fn<bind_front_trait_fn<tuple_helper::tuple_has, is_generated_always>::
-                                                       template apply>::template apply,
+                                            mpl::not_<mpl_tuple_has_fn<is_generated_always>>::template fn,
                                             column_constraints_type_t,
                                             col_seq>;
                 return int(non_generated_col_seq::size());
@@ -10152,13 +10334,25 @@ namespace sqlite_orm {
             }
 
             /**
+             *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
+             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             */
+            template<template<class...> class Transform, class PredicateFnClass, class L>
+            void for_each_column(L&& lambda) const {
+                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
+                using idx_seq =
+                    filter_tuple_sequence_t<elements_type, typename PredicateFnClass::template fn, Transform, col_seq>;
+                iterate_tuple(this->elements, idx_seq{}, lambda);
+            }
+
+            /**
              *  Call passed lambda with columns having the specified field type `F`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
             template<class F, class L>
             void for_each_column_with_field_type(L&& lambda) const {
                 //using is_field_type_fn = ...;
-                this->for_each_column<column_field_type_t, bind_front_fn<std::is_same, F>::template apply>(lambda);
+                this->for_each_column<column_field_type_t, mpl::bind_front<mpl::quote_fn<std::is_same>, F>>(lambda);
             }
 
             /**
@@ -10168,8 +10362,7 @@ namespace sqlite_orm {
             template<template<class...> class OpTrait, class L>
             void for_each_column_with(L&& lambda) const {
                 //using having_op_fn = ...;
-                this->for_each_column<column_constraints_type_t,
-                                      bind_front_trait_fn<tuple_helper::tuple_has, OpTrait>::template apply>(lambda);
+                this->for_each_column<column_constraints_type_t, mpl_tuple_has_fn<OpTrait>>(lambda);
             }
 
             /**
@@ -10179,10 +10372,13 @@ namespace sqlite_orm {
             template<template<class...> class OpTrait, class L>
             void for_each_column_excluding(L&& lambda) const {
                 //using excluding_trait_fn = ...;
-                this->for_each_column<
-                    column_constraints_type_t,
-                    not_fn<bind_front_trait_fn<tuple_helper::tuple_has, OpTrait>::template apply>::template apply>(
-                    lambda);
+                this->for_each_column<column_constraints_type_t, mpl::not_<mpl_tuple_has_fn<OpTrait>>>(lambda);
+            }
+            template<class FnClass, class L>
+            void for_each_column_excluding(L&& lambda) const {
+                //using excluding_trait_fn = ...;
+                this->for_each_column<column_constraints_type_t,
+                                      mpl::not_<mpl_tuple_has_fn<typename FnClass::template fn>>>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;
@@ -10387,6 +10583,8 @@ namespace sqlite_orm {
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
 // #include "functional/cxx_functional_polyfill.h"
+
+// #include "functional/mpl.h"
 
 // #include "type_traits.h"
 
@@ -10898,7 +11096,6 @@ namespace sqlite_orm {
             ~prepared_statement_base() {
                 if(this->stmt) {
                     sqlite3_finalize(this->stmt);
-                    this->stmt = nullptr;
                 }
             }
 
@@ -14457,6 +14654,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_functional_polyfill.h"
 
+// #include "functional/mpl.h"
+
 // #include "tuple_helper/tuple_filter.h"
 
 // #include "ast/upsert_clause.h"
@@ -15784,20 +15983,19 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE " << streaming_identifier(tImpl.table.name) << " SET ";
                 auto columnIndex = 0;
-                tImpl.table
-                    .for_each_column_excluding<disjunction_fn<is_primary_key, is_generated_always>::template apply>(
-                        [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
-                            if(tImpl.table.exists_in_composite_primary_key(column)) {
-                                return;
-                            }
+                tImpl.table.for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
+                    [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
+                        if(tImpl.table.exists_in_composite_primary_key(column)) {
+                            return;
+                        }
 
-                            if(columnIndex > 0) {
-                                ss << ", ";
-                            }
-                            ss << streaming_identifier(column.name) << " = "
-                               << serialize(polyfill::invoke(column.member_pointer, object), context);
-                            ++columnIndex;
-                        });
+                        if(columnIndex > 0) {
+                            ss << ", ";
+                        }
+                        ss << streaming_identifier(column.name) << " = "
+                           << serialize(polyfill::invoke(column.member_pointer, object), context);
+                        ++columnIndex;
+                    });
                 ss << " WHERE ";
                 columnIndex = 0;
                 tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](
@@ -16065,9 +16263,9 @@ namespace sqlite_orm {
                 using table_type = std::decay_t<decltype(tImpl.table)>;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                tImpl.table.for_each_column_excluding<conjunction_fn<
-                    swallow_fn<polyfill::bool_constant<!table_type::is_without_rowid>>::template apply,
-                    disjunction_fn<is_generated_always, is_primary_key>::template apply>::template apply>(
+                tImpl.table.for_each_column_excluding<
+                    mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
+                                     mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                     [&columnNames, &tImpl](auto& column) {
                         if(!tImpl.table.exists_in_composite_primary_key(column)) {
                             columnNames.push_back(cref(column.name));
@@ -16969,10 +17167,9 @@ namespace sqlite_orm {
 
             template<class O>
             void assert_mapped_type() const {
-                using mapped_types_tuples = std::tuple<typename Ts::object_type...>;
-                static_assert(
-                    tuple_helper::tuple_has<bind_front_fn<std::is_same, O>::template apply, mapped_types_tuples>::value,
-                    "type is not mapped to a storage");
+                using mapped_types_tuple = std::tuple<typename Ts::object_type...>;
+                static_assert(mpl::invoke_t<mpl_tuple_has_type<O>, mapped_types_tuple>::value,
+                              "type is not mapped to a storage");
             }
 
             template<class O>
@@ -17959,18 +18156,16 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<object_type>();
 
-                field_value_binder bind_value{stmt};
                 iterate_tuple(statement.expression.columns.columns,
-                              [&tImpl, &bind_value, &object = statement.expression.obj](auto& memberPointer) {
-                                  bind_value(tImpl.table.get_object_field_pointer(object, memberPointer));
+                              [&tImpl = this->get_impl<object_type>(),
+                               bind_value = field_value_binder{stmt},
+                               &object = statement.expression.obj](auto& memberPointer) mutable {
+                                  bind_value(tImpl.table.object_field_value(object, memberPointer));
                               });
                 perform_step(stmt);
-                return sqlite3_last_insert_rowid(db);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 
             template<class T,
@@ -17983,8 +18178,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 auto& tImpl = this->get_impl<object_type>();
 
-                field_value_binder bind_value{stmt};
-                auto processObject = [&tImpl, &bind_value](auto& object) {
+                auto processObject = [&tImpl, bind_value = field_value_binder{stmt}](auto& object) {
                     tImpl.table.for_each_column_excluding<is_generated_always>([&bind_value, &object](auto& column) {
                         bind_value(polyfill::invoke(column.member_pointer, object));
                     });
@@ -18014,34 +18208,19 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
                 sqlite3_stmt* stmt = reset(statement.stmt);
 
-                field_value_binder bind_value{stmt};
-<<<<<<< HEAD
-                auto processObject = [&tImpl, &bind_value](auto& object) {
+                auto processObject = [&tImpl = this->get_impl<object_type>(),
+                                      bind_value = field_value_binder{stmt}](auto& object) {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
-                    tImpl.table.for_each_column_excluding<conjunction_fn<
-                        swallow_fn<polyfill::bool_constant<!table_type::is_without_rowid>>::template apply,
-                        disjunction_fn<is_generated_always, is_primary_key>::template apply>::template apply>(
+                    tImpl.table.for_each_column_excluding<
+                        mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
+                                         mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {
                                 bind_value(polyfill::invoke(column.member_pointer, object));
                             }
                         });
-=======
-                auto processObject = [&tImpl = this->get_impl<object_type>(), &bind_value](auto& object) {
-                    tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
-                        using table_type = std::decay_t<decltype(tImpl.table)>;
-                        if(table_type::is_without_rowid ||
-                           (!column.template has<primary_key_t<>>() &&
-                            !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
-
-                            bind_value(polyfill::invoke(column.member_pointer, object));
-                        }
-                    });
->>>>>>> code_quality_2
                 };
 
                 static_if<is_insert_range_v<T>>(
@@ -18061,7 +18240,7 @@ namespace sqlite_orm {
                     })(statement);
 
                 perform_step(stmt);
-                return sqlite3_last_insert_rowid(db);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 
             template<class T, class... Ids>
@@ -18082,13 +18261,12 @@ namespace sqlite_orm {
 
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
-                tImpl.table
-                    .for_each_column_excluding<disjunction_fn<is_generated_always, is_primary_key>::template apply>(
-                        [&tImpl, &bind_value, &object](auto& column) {
-                            if(!tImpl.table.exists_in_composite_primary_key(column)) {
-                                bind_value(polyfill::invoke(column.member_pointer, object));
-                            }
-                        });
+                tImpl.table.for_each_column_excluding<mpl::disjunction_fn<is_generated_always, is_primary_key>>(
+                    [&tImpl, &bind_value, &object](auto& column) {
+                        if(!tImpl.table.exists_in_composite_primary_key(column)) {
+                            bind_value(polyfill::invoke(column.member_pointer, object));
+                        }
+                    });
                 tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
                     if(column.template is<is_primary_key>() || tImpl.table.exists_in_composite_primary_key(column)) {
                         bind_value(polyfill::invoke(column.member_pointer, object));
@@ -18104,7 +18282,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
                 std::unique_ptr<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
                     res = std::make_unique<T>();
                     object_from_column_builder<T> builder{*res, stmt};
                     tImpl.table.for_each_column(builder);
@@ -18120,9 +18298,8 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
                 std::optional<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
-                    res = std::make_optional<T>();
-                    object_from_column_builder<T> builder{res.value(), stmt};
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    object_from_column_builder<T> builder{res.emplace(), stmt};
                     tImpl.table.for_each_column(builder);
                 });
                 return res;
@@ -18137,9 +18314,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 std::optional<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
-                    res = std::make_optional<T>();
-                    object_from_column_builder<T> builder{res.value(), stmt};
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    object_from_column_builder<T> builder{res.emplace(), stmt};
                     tImpl.table.for_each_column(builder);
                 });
                 if(!res.has_value()) {
@@ -18264,7 +18440,7 @@ namespace sqlite_orm {
                         if constexpr(std::is_same<TargetType, O>::value) {
 #else
                             call_if_constexpr<std::is_same<TargetType, O>::value>(
-                                [this, &storageImpl, &foreignKey, &res, &object] {
+                                [this, &storageImpl, &res, &object](auto& foreignKey) {
 #endif
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
@@ -18294,10 +18470,11 @@ namespace sqlite_orm {
                             statement_finalizer finalizer{stmt};
 
                             auto& tImpl = this->get_impl<O>();
-                            field_value_binder bind_value{stmt};
-                            iterate_tuple(foreignKey.references, [&tImpl, &bind_value, &object](auto& memberPointer) {
-                                bind_value(tImpl.table.get_object_field_pointer(object, memberPointer));
-                            });
+                            iterate_tuple(
+                                foreignKey.references,
+                                [&tImpl, bind_value = field_value_binder{stmt}, &object](auto& memberPointer) mutable {
+                                    bind_value(tImpl.table.object_field_value(object, memberPointer));
+                                });
                             if(SQLITE_ROW != sqlite3_step(stmt)) {
                                 throw_translated_sqlite_error(stmt);
                             }
@@ -18309,7 +18486,8 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                         }
 #else
-                                });
+                                },
+                                foreignKey);
 #endif
                     });
                 });

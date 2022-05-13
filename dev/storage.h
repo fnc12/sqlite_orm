@@ -1173,18 +1173,16 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<object_type>();
 
-                field_value_binder bind_value{stmt};
                 iterate_tuple(statement.expression.columns.columns,
-                              [&tImpl, &bind_value, &object = statement.expression.obj](auto& memberPointer) {
-                                  bind_value(tImpl.table.get_object_field_pointer(object, memberPointer));
+                              [&tImpl = this->get_impl<object_type>(),
+                               bind_value = field_value_binder{stmt},
+                               &object = statement.expression.obj](auto& memberPointer) mutable {
+                                  bind_value(tImpl.table.object_field_value(object, memberPointer));
                               });
                 perform_step(stmt);
-                return sqlite3_last_insert_rowid(db);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 
             template<class T,
@@ -1197,8 +1195,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 auto& tImpl = this->get_impl<object_type>();
 
-                field_value_binder bind_value{stmt};
-                auto processObject = [&tImpl, &bind_value](auto& object) {
+                auto processObject = [&tImpl, bind_value = field_value_binder{stmt}](auto& object) {
                     tImpl.table.for_each_column_excluding<is_generated_always>([&bind_value, &object](auto& column) {
                         bind_value(polyfill::invoke(column.member_pointer, object));
                     });
@@ -1228,12 +1225,10 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
                 sqlite3_stmt* stmt = reset(statement.stmt);
 
-                field_value_binder bind_value{stmt};
-                auto processObject = [&tImpl = this->get_impl<object_type>(), &bind_value](auto& object) {
+                auto processObject = [&tImpl = this->get_impl<object_type>(),
+                                      bind_value = field_value_binder{stmt}](auto& object) {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
                     tImpl.table.for_each_column_excluding<
                         mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
@@ -1262,7 +1257,7 @@ namespace sqlite_orm {
                     })(statement);
 
                 perform_step(stmt);
-                return sqlite3_last_insert_rowid(db);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 
             template<class T, class... Ids>
@@ -1304,7 +1299,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
                 std::unique_ptr<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
                     res = std::make_unique<T>();
                     object_from_column_builder<T> builder{*res, stmt};
                     tImpl.table.for_each_column(builder);
@@ -1320,9 +1315,8 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
                 std::optional<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
-                    res = std::make_optional<T>();
-                    object_from_column_builder<T> builder{res.value(), stmt};
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    object_from_column_builder<T> builder{res.emplace(), stmt};
                     tImpl.table.for_each_column(builder);
                 });
                 return res;
@@ -1337,9 +1331,8 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 std::optional<T> res;
-                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
-                    res = std::make_optional<T>();
-                    object_from_column_builder<T> builder{res.value(), stmt};
+                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    object_from_column_builder<T> builder{res.emplace(), stmt};
                     tImpl.table.for_each_column(builder);
                 });
                 if(!res.has_value()) {
@@ -1464,7 +1457,7 @@ namespace sqlite_orm {
                         if constexpr(std::is_same<TargetType, O>::value) {
 #else
                         call_if_constexpr<std::is_same<TargetType, O>::value>(
-                            [this, &storageImpl, &foreignKey, &res, &object] {
+                            [this, &storageImpl, &res, &object](auto& foreignKey) {
 #endif
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
@@ -1494,10 +1487,11 @@ namespace sqlite_orm {
                             statement_finalizer finalizer{stmt};
 
                             auto& tImpl = this->get_impl<O>();
-                            field_value_binder bind_value{stmt};
-                            iterate_tuple(foreignKey.references, [&tImpl, &bind_value, &object](auto& memberPointer) {
-                                bind_value(tImpl.table.get_object_field_pointer(object, memberPointer));
-                            });
+                            iterate_tuple(
+                                foreignKey.references,
+                                [&tImpl, bind_value = field_value_binder{stmt}, &object](auto& memberPointer) mutable {
+                                    bind_value(tImpl.table.object_field_value(object, memberPointer));
+                                });
                             if(SQLITE_ROW != sqlite3_step(stmt)) {
                                 throw_translated_sqlite_error(stmt);
                             }
@@ -1509,7 +1503,8 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                         }
 #else
-                            });
+                            },
+                            foreignKey);
 #endif
                     });
                 });
