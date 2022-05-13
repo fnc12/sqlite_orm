@@ -1141,22 +1141,23 @@ namespace sqlite_orm {
                 ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
 
                 auto columnIndex = 0;
-                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss](auto& column) {
-                    using table_type = std::decay_t<decltype(tImpl.table)>;
-                    if(!table_type::is_without_rowid &&
-                       (column.template is<is_primary_key>() || tImpl.table.exists_in_composite_primary_key(column) ||
-                        column.is_generated())) {
-                        return;
-                    }
+                using table_type = std::decay_t<decltype(tImpl.table)>;
+                tImpl.table.for_each_column_excluding<
+                    mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
+                                     mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
+                    [&tImpl, &columnIndex, &ss](auto& column) {
+                        if(tImpl.table.exists_in_composite_primary_key(column)) {
+                            return;
+                        }
 
-                    if(columnIndex == 0) {
-                        ss << '(';
-                    } else {
-                        ss << ", ";
-                    }
-                    ss << streaming_identifier(column.name);
-                    ++columnIndex;
-                });
+                        if(columnIndex == 0) {
+                            ss << '(';
+                        } else {
+                            ss << ", ";
+                        }
+                        ss << streaming_identifier(column.name);
+                        ++columnIndex;
+                    });
                 auto columnsToInsertCount = columnIndex;
                 if(columnsToInsertCount > 0) {
                     ss << ')';
@@ -1167,12 +1168,11 @@ namespace sqlite_orm {
                 if(columnsToInsertCount > 0) {
                     ss << "(";
                     columnIndex = 0;
-                    tImpl.table.for_each_column(
+                    tImpl.table.for_each_column_excluding<
+                        mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
+                                         mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &columnIndex, &ss, &context, &object = get_ref(statement.object)](auto& column) {
-                            using table_type = std::decay_t<decltype(tImpl.table)>;
-                            if(!table_type::is_without_rowid &&
-                               (column.template is<is_primary_key>() ||
-                                tImpl.table.exists_in_composite_primary_key(column) || column.is_generated())) {
+                            if(tImpl.table.exists_in_composite_primary_key(column)) {
                                 return;
                             }
 
@@ -1317,7 +1317,7 @@ namespace sqlite_orm {
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.for_each_column_excluding<
-                    mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
+                    mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                      mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                     [&columnNames, &tImpl](auto& column) {
                         if(!tImpl.table.exists_in_composite_primary_key(column)) {

@@ -112,7 +112,7 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
                    << streaming_expressions_tuple(tImpl.table.elements, context) << ")";
-                if(table_type::is_without_rowid) {
+                if(table_type::is_without_rowid_v) {
                     ss << " WITHOUT ROWID";
                 }
                 ss.flush();
@@ -196,9 +196,9 @@ namespace sqlite_orm {
                 using elements_type = std::decay_t<decltype(tImpl.table.elements)>;
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                if constexpr(!table_type::is_without_rowid) {
+                if constexpr(!table_type::is_without_rowid_v) {
 #else
-                static_if<!table_type::is_without_rowid>(
+                static_if<!table_type::is_without_rowid_v>(
                     [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
                         std::ignore = tImpl;
 #endif
@@ -1228,7 +1228,7 @@ namespace sqlite_orm {
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
                     tImpl.table.for_each_column_excluding<
-                        mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
+                        mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {

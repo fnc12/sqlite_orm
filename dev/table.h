@@ -7,6 +7,7 @@
 #include <utility>  //  std::forward, std::move
 
 #include "functional/cxx_universal.h"
+#include "functional/cxx_polyfill.h"
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/static_magic.h"
 #include "functional/mpl.h"
@@ -39,8 +40,9 @@ namespace sqlite_orm {
             using object_type = T;
             using elements_type = std::tuple<Cs...>;
 
+            static constexpr bool is_without_rowid_v = WithoutRowId;
+            using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
             static constexpr int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
-            static constexpr bool is_without_rowid = WithoutRowId;
 
             elements_type elements;
 
@@ -211,7 +213,7 @@ namespace sqlite_orm {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
                 using non_generated_col_seq =
                     filter_tuple_sequence_t<elements_type,
-                                            mpl::not_<mpl_tuple_has_fn<is_generated_always>>::template fn,
+                                            mpl::not_<mpl_tuple_has_trait<is_generated_always>>::template fn,
                                             column_constraints_type_t,
                                             col_seq>;
                 return int(non_generated_col_seq::size());
@@ -252,10 +254,10 @@ namespace sqlite_orm {
              *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class Transform, template<class...> class Predicate, class L>
+            template<template<class...> class Transform, template<class...> class PredicateFn, class L>
             void for_each_column(L&& lambda) const {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                using idx_seq = filter_tuple_sequence_t<elements_type, Predicate, Transform, col_seq>;
+                using idx_seq = filter_tuple_sequence_t<elements_type, PredicateFn, Transform, col_seq>;
                 iterate_tuple(this->elements, idx_seq{}, lambda);
             }
 
@@ -263,11 +265,11 @@ namespace sqlite_orm {
              *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class Transform, class PredicateFnClass, class L>
+            template<template<class...> class Transform, class PredicateFnCls, class L>
             void for_each_column(L&& lambda) const {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
                 using idx_seq =
-                    filter_tuple_sequence_t<elements_type, typename PredicateFnClass::template fn, Transform, col_seq>;
+                    filter_tuple_sequence_t<elements_type, typename PredicateFnCls::template fn, Transform, col_seq>;
                 iterate_tuple(this->elements, idx_seq{}, lambda);
             }
 
@@ -278,7 +280,7 @@ namespace sqlite_orm {
             template<class F, class L>
             void for_each_column_with_field_type(L&& lambda) const {
                 //using is_field_type_fn = ...;
-                this->for_each_column<column_field_type_t, mpl::bind_front<mpl::quote_fn<std::is_same>, F>>(lambda);
+                this->for_each_column<column_field_type_t, mpl::bind_front_fn<std::is_same, F>>(lambda);
             }
 
             /**
@@ -287,24 +289,21 @@ namespace sqlite_orm {
              */
             template<template<class...> class OpTrait, class L>
             void for_each_column_with(L&& lambda) const {
-                //using having_op_fn = ...;
-                this->for_each_column<column_constraints_type_t, mpl_tuple_has_fn<OpTrait>>(lambda);
+                this->for_each_column<column_constraints_type_t, mpl_tuple_has_trait<OpTrait>>(lambda);
             }
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class OpTrait, class L>
+            template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
-                //using excluding_trait_fn = ...;
-                this->for_each_column<column_constraints_type_t, mpl::not_<mpl_tuple_has_fn<OpTrait>>>(lambda);
+                this->for_each_column<column_constraints_type_t, mpl::not_<mpl_tuple_has_trait<OpTraitFn>>>(lambda);
             }
-            template<class FnClass, class L>
+            template<class OpTraitFnCls, class L>
             void for_each_column_excluding(L&& lambda) const {
-                //using excluding_trait_fn = ...;
                 this->for_each_column<column_constraints_type_t,
-                                      mpl::not_<mpl_tuple_has_fn<typename FnClass::template fn>>>(lambda);
+                                      mpl::not_<mpl_tuple_has_trait<typename OpTraitFnCls::template fn>>>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;

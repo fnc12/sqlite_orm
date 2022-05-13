@@ -48,6 +48,9 @@ namespace sqlite_orm {
         using field_type_t = typename T::field_type;
 
         template<typename T>
+        using constraints_type_t = typename T::constraints_type;
+
+        template<typename T>
         using object_type_t = typename T::object_type;
 
         template<typename T>

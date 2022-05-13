@@ -2,15 +2,17 @@
 
 /*
  *  Symbols for 'template metaprogramming' (compile-time template programming),
- *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams'.
+ *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams.
  *  
- *  Currently, the focus is on facilitating advanced type filtering, such as filtering columns by constraints.
+ *  Currently, the focus is on facilitating advanced type filtering,
+ *  such as filtering columns by constraints having various traits.
+ *  Hence it contains only a very small subset of a full MPL.
  *  
  *  Two key concepts are critical to understanding:
  *  1. A 'metafunction' is a class template that represents a function invocable at compile-time.
  *  2. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
  *     More precisely, it's a class with a nested metafunction called "fn"
- *     Correspondingly, a metafunction class invocation is defined as invocation of its nested apply metafunction.
+ *     Correspondingly, a metafunction class invocation is defined as invocation of its nested "fn" metafunction.
  *  
  *  Conventions:
  *  - "Fn" is the name for a metafunction template template parameter.
@@ -57,21 +59,27 @@ namespace sqlite_orm {
             };
 
             /*
+             *  Metafunction class that extracts a metafunction of its argument,
+             *  quotes the extracted metafunction and passes it on to the next metafunction class
+             *  (kind of the inverse of quoting).
+             */
+            template<class FnCls>
+            struct pass_extracted_fn {
+                template<class... Args>
+                struct fn : FnCls::template fn<Args...> {};
+
+                // extract, quote, pass on
+                template<template<class...> class Fn, class... Args>
+                struct fn<Fn<Args...>> : FnCls::template fn<quote_fn<Fn>> {};
+            };
+
+            /*
              *  Make metafunction class out of a higher-order metafunction.
              */
             template<template<template<class...> class Fn, class... Args2> class HigherFn>
             struct quote_higherorder_front_fn {
                 template<class QuotedFn, class... Args2>
                 struct fn : type_wrap<HigherFn<typename QuotedFn::template fn, Args2...>> {};
-            };
-
-            /*
-             *  Make metafunction class out of a higher-order metafunction having 2 arguments.
-             */
-            template<template<class, template<class...> class> class HigherFn>
-            struct quote_2_higherorder_back_fn {
-                template<class Arg1, class QuotedFn>
-                struct fn : type_wrap<HigherFn<Arg1, typename QuotedFn::template fn>> {};
             };
 
             /*
@@ -95,21 +103,23 @@ namespace sqlite_orm {
             };
 
             /*
+             *  Metafunction class similar to polyfill::always_<>.
+             *  It ignores arguments passed to the metafunction,
+             *  and always returns the given type (like identity).
+             */
+            template<class T>
+            struct always {
+                template<class...>
+                struct fn : type_wrap<T> {};
+            };
+
+            /*
              *  Metafunction class equivalent to std::negation
              */
             template<class FnCls>
             struct not_ {
                 template<class... Args>
                 struct fn : polyfill::negation<invoke_t<FnCls, Args...>> {};
-            };
-
-            /*
-             *  Metafunction class equivalent to std::identity
-             */
-            template<class T>
-            struct identity {
-                template<class...>
-                struct fn : type_wrap<T> {};
             };
 
             /*
@@ -159,12 +169,6 @@ namespace sqlite_orm {
                      template<class...>
                      class BoundFn>
             using bind_front_higherorder_fn = bind_front<quote_higherorder_front_fn<HigherFn>, quote_fn<BoundFn>>;
-
-            /*
-             *  Bind a metafunction at the back of a higher-order metafunction having 2 arguments
-             */
-            template<template<class Arg1, template<class...> class Fn> class HigherFn, template<class...> class BoundFn>
-            using bind_back_2_higherorder_fn = bind_back<quote_2_higherorder_back_fn<HigherFn>, quote_fn<BoundFn>>;
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
             /*

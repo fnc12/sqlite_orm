@@ -327,6 +327,9 @@ namespace sqlite_orm {
         using field_type_t = typename T::field_type;
 
         template<typename T>
+        using constraints_type_t = typename T::constraints_type;
+
+        template<typename T>
         using object_type_t = typename T::object_type;
 
         template<typename T>
@@ -650,15 +653,17 @@ namespace sqlite_orm {
 
 /*
  *  Symbols for 'template metaprogramming' (compile-time template programming),
- *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams'.
+ *  inspired by the MPL of Aleksey Gurtovoy and David Abrahams.
  *  
- *  Currently, the focus is on facilitating advanced type filtering, such as filtering columns by constraints.
+ *  Currently, the focus is on facilitating advanced type filtering,
+ *  such as filtering columns by constraints having various traits.
+ *  Hence it contains only a very small subset of a full MPL.
  *  
  *  Two key concepts are critical to understanding:
  *  1. A 'metafunction' is a class template that represents a function invocable at compile-time.
  *  2. A 'metafunction class' is a certain form of metafunction representation that enables higher-order metaprogramming.
  *     More precisely, it's a class with a nested metafunction called "fn"
- *     Correspondingly, a metafunction class invocation is defined as invocation of its nested apply metafunction.
+ *     Correspondingly, a metafunction class invocation is defined as invocation of its nested "fn" metafunction.
  *  
  *  Conventions:
  *  - "Fn" is the name for a metafunction template template parameter.
@@ -706,21 +711,27 @@ namespace sqlite_orm {
             };
 
             /*
+             *  Metafunction class that extracts a metafunction of its argument,
+             *  quotes the extracted metafunction and passes it on to the next metafunction class
+             *  (kind of the inverse of quoting).
+             */
+            template<class FnCls>
+            struct pass_extracted_fn {
+                template<class... Args>
+                struct fn : FnCls::template fn<Args...> {};
+
+                // extract, quote, pass on
+                template<template<class...> class Fn, class... Args>
+                struct fn<Fn<Args...>> : FnCls::template fn<quote_fn<Fn>> {};
+            };
+
+            /*
              *  Make metafunction class out of a higher-order metafunction.
              */
             template<template<template<class...> class Fn, class... Args2> class HigherFn>
             struct quote_higherorder_front_fn {
                 template<class QuotedFn, class... Args2>
                 struct fn : type_wrap<HigherFn<typename QuotedFn::template fn, Args2...>> {};
-            };
-
-            /*
-             *  Make metafunction class out of a higher-order metafunction having 2 arguments.
-             */
-            template<template<class, template<class...> class> class HigherFn>
-            struct quote_2_higherorder_back_fn {
-                template<class Arg1, class QuotedFn>
-                struct fn : type_wrap<HigherFn<Arg1, typename QuotedFn::template fn>> {};
             };
 
             /*
@@ -744,21 +755,23 @@ namespace sqlite_orm {
             };
 
             /*
+             *  Metafunction class similar to polyfill::always_<>.
+             *  It ignores arguments passed to the metafunction,
+             *  and always returns the given type (like identity).
+             */
+            template<class T>
+            struct always {
+                template<class...>
+                struct fn : type_wrap<T> {};
+            };
+
+            /*
              *  Metafunction class equivalent to std::negation
              */
             template<class FnCls>
             struct not_ {
                 template<class... Args>
                 struct fn : polyfill::negation<invoke_t<FnCls, Args...>> {};
-            };
-
-            /*
-             *  Metafunction class equivalent to std::identity
-             */
-            template<class T>
-            struct identity {
-                template<class...>
-                struct fn : type_wrap<T> {};
             };
 
             /*
@@ -809,12 +822,6 @@ namespace sqlite_orm {
                      class BoundFn>
             using bind_front_higherorder_fn = bind_front<quote_higherorder_front_fn<HigherFn>, quote_fn<BoundFn>>;
 
-            /*
-             *  Bind a metafunction at the back of a higher-order metafunction having 2 arguments
-             */
-            template<template<class Arg1, template<class...> class Fn> class HigherFn, template<class...> class BoundFn>
-            using bind_back_2_higherorder_fn = bind_back<quote_2_higherorder_back_fn<HigherFn>, quote_fn<BoundFn>>;
-
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
             /*
              *  Metafunction equivalent to std::conjunction
@@ -839,6 +846,8 @@ namespace sqlite_orm {
 
     namespace mpl = internal::mpl;
 }
+
+// #include "type_traits.h"
 
 // #include "collate_argument.h"
 
@@ -1101,17 +1110,35 @@ namespace sqlite_orm {
         template<class T, template<class...> class Fn>
         struct count_tuple : std::integral_constant<int, filter_tuple_sequence_t<T, Fn>::size()> {};
 
+        /*
+         *  Metafunction class that checks whether a tuple contains a type with given trait.
+         */
         template<template<class...> class TraitFn>
-        using mpl_tuple_has_fn = mpl::bind_front_higherorder_fn<tuple_helper::tuple_has, TraitFn>;
+        using mpl_tuple_has_trait = mpl::bind_front_higherorder_fn<tuple_helper::tuple_has, TraitFn>;
 
+        /*
+         *  Metafunction class that checks whether a tuple contains given type.
+         */
         template<class T>
         using mpl_tuple_has_type =
             mpl::bind_front_higherorder_fn<tuple_helper::tuple_has, mpl::bind_front_fn<std::is_same, T>::template fn>;
 
+        /*
+         *  Metafunction class that checks whether a tuple contains a given template.
+         *  
+         *  Note: we are using 2 small tricks:
+         *  1. A template template parameter can be treated like a metafunction, so we can just "quote" a 'primary'
+         *     template into the MPL system (e.g. `std::vector`).
+         *  2. This metafunction class does the opposite of the trait function `is_specialization`:
+         *     `is_specialization` tries to instantiate the primary template template parameter using the
+         *     template parameters of a template type, then compares both instantiated types.
+         *     Here instead, `pass_extracted_fn` extracts the template template parameter from a template type,
+         *     then compares the resulting template template parameters.
+         */
         template<template<class...> class Primary>
-        using mpl_tuple_has_some_type = mpl::bind_front_higherorder_fn<
+        using mpl_tuple_has_template = mpl::bind_front_higherorder_fn<
             tuple_helper::tuple_has,
-            mpl::bind_back_2_higherorder_fn<polyfill::is_specialization_of, Primary>::template fn>;
+            mpl::pass_extracted_fn<mpl::bind_front_fn<std::is_same, mpl::quote_fn<Primary>>>::template fn>;
     }
 }
 
@@ -1585,17 +1612,14 @@ namespace sqlite_orm {
          * PRIMARY KEY INSERTABLE traits.
          */
         template<typename T>
-        struct is_primary_key_insertable {
-            using field_type = typename T::field_type;
-            using constraints_type = typename T::constraints_type;
+        struct is_primary_key_insertable
+            : std::disjunction<mpl::invoke_t<mpl::disjunction<mpl_tuple_has_template<default_t>,
+                                                              mpl_tuple_has_trait<is_autoincrement>>,
+                                             constraints_type_t<T>>,
+                               std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
-            static_assert((tuple_helper::tuple_has<is_primary_key, constraints_type>::value),
+            static_assert(tuple_helper::tuple_has<is_primary_key, constraints_type_t<T>>::value,
                           "an unexpected type was passed");
-
-            static constexpr bool value =
-                (mpl::invoke_fn_t<mpl_tuple_has_some_type<default_t>, constraints_type>::value ||
-                 tuple_helper::tuple_has<is_autoincrement, constraints_type>::value ||
-                 std::is_base_of<integer_printer, type_printer<field_type>>::value);
         };
     }
 
@@ -9957,6 +9981,8 @@ namespace sqlite_orm {
 
 // #include "functional/cxx_universal.h"
 
+// #include "functional/cxx_polyfill.h"
+
 // #include "functional/cxx_functional_polyfill.h"
 
 #if __cpp_lib_invoke < 201411L
@@ -10113,8 +10139,9 @@ namespace sqlite_orm {
             using object_type = T;
             using elements_type = std::tuple<Cs...>;
 
+            static constexpr bool is_without_rowid_v = WithoutRowId;
+            using is_without_rowid = polyfill::bool_constant<is_without_rowid_v>;
             static constexpr int elements_count = static_cast<int>(std::tuple_size<elements_type>::value);
-            static constexpr bool is_without_rowid = WithoutRowId;
 
             elements_type elements;
 
@@ -10285,7 +10312,7 @@ namespace sqlite_orm {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
                 using non_generated_col_seq =
                     filter_tuple_sequence_t<elements_type,
-                                            mpl::not_<mpl_tuple_has_fn<is_generated_always>>::template fn,
+                                            mpl::not_<mpl_tuple_has_trait<is_generated_always>>::template fn,
                                             column_constraints_type_t,
                                             col_seq>;
                 return int(non_generated_col_seq::size());
@@ -10326,10 +10353,10 @@ namespace sqlite_orm {
              *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class Transform, template<class...> class Predicate, class L>
+            template<template<class...> class Transform, template<class...> class PredicateFn, class L>
             void for_each_column(L&& lambda) const {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                using idx_seq = filter_tuple_sequence_t<elements_type, Predicate, Transform, col_seq>;
+                using idx_seq = filter_tuple_sequence_t<elements_type, PredicateFn, Transform, col_seq>;
                 iterate_tuple(this->elements, idx_seq{}, lambda);
             }
 
@@ -10337,11 +10364,11 @@ namespace sqlite_orm {
              *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class Transform, class PredicateFnClass, class L>
+            template<template<class...> class Transform, class PredicateFnCls, class L>
             void for_each_column(L&& lambda) const {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
                 using idx_seq =
-                    filter_tuple_sequence_t<elements_type, typename PredicateFnClass::template fn, Transform, col_seq>;
+                    filter_tuple_sequence_t<elements_type, typename PredicateFnCls::template fn, Transform, col_seq>;
                 iterate_tuple(this->elements, idx_seq{}, lambda);
             }
 
@@ -10352,7 +10379,7 @@ namespace sqlite_orm {
             template<class F, class L>
             void for_each_column_with_field_type(L&& lambda) const {
                 //using is_field_type_fn = ...;
-                this->for_each_column<column_field_type_t, mpl::bind_front<mpl::quote_fn<std::is_same>, F>>(lambda);
+                this->for_each_column<column_field_type_t, mpl::bind_front_fn<std::is_same, F>>(lambda);
             }
 
             /**
@@ -10361,24 +10388,21 @@ namespace sqlite_orm {
              */
             template<template<class...> class OpTrait, class L>
             void for_each_column_with(L&& lambda) const {
-                //using having_op_fn = ...;
-                this->for_each_column<column_constraints_type_t, mpl_tuple_has_fn<OpTrait>>(lambda);
+                this->for_each_column<column_constraints_type_t, mpl_tuple_has_trait<OpTrait>>(lambda);
             }
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class OpTrait, class L>
+            template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
-                //using excluding_trait_fn = ...;
-                this->for_each_column<column_constraints_type_t, mpl::not_<mpl_tuple_has_fn<OpTrait>>>(lambda);
+                this->for_each_column<column_constraints_type_t, mpl::not_<mpl_tuple_has_trait<OpTraitFn>>>(lambda);
             }
-            template<class FnClass, class L>
+            template<class OpTraitFnCls, class L>
             void for_each_column_excluding(L&& lambda) const {
-                //using excluding_trait_fn = ...;
                 this->for_each_column<column_constraints_type_t,
-                                      mpl::not_<mpl_tuple_has_fn<typename FnClass::template fn>>>(lambda);
+                                      mpl::not_<mpl_tuple_has_trait<typename OpTraitFnCls::template fn>>>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;
@@ -16088,22 +16112,23 @@ namespace sqlite_orm {
                 ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
 
                 auto columnIndex = 0;
-                tImpl.table.for_each_column([&tImpl, &columnIndex, &ss](auto& column) {
-                    using table_type = std::decay_t<decltype(tImpl.table)>;
-                    if(!table_type::is_without_rowid &&
-                       (column.template is<is_primary_key>() || tImpl.table.exists_in_composite_primary_key(column) ||
-                        column.is_generated())) {
-                        return;
-                    }
+                using table_type = std::decay_t<decltype(tImpl.table)>;
+                tImpl.table.for_each_column_excluding<
+                    mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
+                                     mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
+                    [&tImpl, &columnIndex, &ss](auto& column) {
+                        if(tImpl.table.exists_in_composite_primary_key(column)) {
+                            return;
+                        }
 
-                    if(columnIndex == 0) {
-                        ss << '(';
-                    } else {
-                        ss << ", ";
-                    }
-                    ss << streaming_identifier(column.name);
-                    ++columnIndex;
-                });
+                        if(columnIndex == 0) {
+                            ss << '(';
+                        } else {
+                            ss << ", ";
+                        }
+                        ss << streaming_identifier(column.name);
+                        ++columnIndex;
+                    });
                 auto columnsToInsertCount = columnIndex;
                 if(columnsToInsertCount > 0) {
                     ss << ')';
@@ -16114,12 +16139,11 @@ namespace sqlite_orm {
                 if(columnsToInsertCount > 0) {
                     ss << "(";
                     columnIndex = 0;
-                    tImpl.table.for_each_column(
+                    tImpl.table.for_each_column_excluding<
+                        mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
+                                         mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &columnIndex, &ss, &context, &object = get_ref(statement.object)](auto& column) {
-                            using table_type = std::decay_t<decltype(tImpl.table)>;
-                            if(!table_type::is_without_rowid &&
-                               (column.template is<is_primary_key>() ||
-                                tImpl.table.exists_in_composite_primary_key(column) || column.is_generated())) {
+                            if(tImpl.table.exists_in_composite_primary_key(column)) {
                                 return;
                             }
 
@@ -16264,7 +16288,7 @@ namespace sqlite_orm {
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.for_each_column_excluding<
-                    mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
+                    mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                      mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                     [&columnNames, &tImpl](auto& column) {
                         if(!tImpl.table.exists_in_composite_primary_key(column)) {
@@ -17095,7 +17119,7 @@ namespace sqlite_orm {
                 context_t context{this->impl};
                 ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
                    << streaming_expressions_tuple(tImpl.table.elements, context) << ")";
-                if(table_type::is_without_rowid) {
+                if(table_type::is_without_rowid_v) {
                     ss << " WITHOUT ROWID";
                 }
                 ss.flush();
@@ -17179,9 +17203,9 @@ namespace sqlite_orm {
                 using elements_type = std::decay_t<decltype(tImpl.table.elements)>;
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
-                if constexpr(!table_type::is_without_rowid) {
+                if constexpr(!table_type::is_without_rowid_v) {
 #else
-                    static_if<!table_type::is_without_rowid>(
+                    static_if<!table_type::is_without_rowid_v>(
                         [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
                             std::ignore = tImpl;
 #endif
@@ -18211,7 +18235,7 @@ namespace sqlite_orm {
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
                     tImpl.table.for_each_column_excluding<
-                        mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
+                        mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {

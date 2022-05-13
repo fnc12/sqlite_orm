@@ -2,22 +2,20 @@
 #include <catch2/catch.hpp>
 
 using namespace sqlite_orm;
-
-namespace {
-    template<class T>
-    class my_vector : public std::vector<T> {
-        using super = std::vector<T>;
-
-      public:
-        using super::super;
-    };
-}  // end of anonymous namespace
+using internal::default_t;
+using internal::is_primary_key;
+using internal::mpl_tuple_has_template;
+using internal::mpl_tuple_has_trait;
+using internal::mpl_tuple_has_type;
+using internal::primary_key_t;
 
 TEST_CASE("has_some_type") {
     using empty_tuple_type = std::tuple<>;
-    using tuple_type = std::tuple<int, char, my_vector<char>, std::string>;
+    using tuple_type = std::tuple<int, char, default_t<int>, primary_key_t<>, std::string>;
 
-    STATIC_REQUIRE(tuple_helper::tuple_contains_some_type<my_vector, tuple_type>::value);
-    STATIC_REQUIRE(!tuple_helper::tuple_contains_some_type<std::shared_ptr, tuple_type>::value);
-    STATIC_REQUIRE(!tuple_helper::tuple_contains_some_type<my_vector, empty_tuple_type>::value);
+    STATIC_REQUIRE(mpl::invoke_t<internal::mpl_tuple_has_trait<is_primary_key>, tuple_type>::value);
+    STATIC_REQUIRE(mpl::invoke_t<internal::mpl_tuple_has_type<int>, tuple_type>::value);
+    STATIC_REQUIRE(mpl::invoke_t<internal::mpl_tuple_has_template<default_t>, tuple_type>::value);
+    STATIC_REQUIRE(!mpl::invoke_t<internal::mpl_tuple_has_template<std::shared_ptr>, tuple_type>::value);
+    STATIC_REQUIRE(!mpl::invoke_t<internal::mpl_tuple_has_template<default_t>, empty_tuple_type>::value);
 }
