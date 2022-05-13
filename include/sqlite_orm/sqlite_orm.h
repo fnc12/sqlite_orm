@@ -9740,6 +9740,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::remove_reference, std::is_same, std::decay
 #include <vector>  //  std::vector
 #include <tuple>  //  std::tuple_size, std::tuple_element
+#include <utility>  //  std::forward, std::move
 
 // #include "functional/cxx_universal.h"
 
@@ -9756,7 +9757,7 @@ namespace sqlite_orm {
 #if __cpp_lib_invoke >= 201411L
             using std::invoke;
 #else
-            // pointer-to-data-member
+            // pointer-to-data-member+object
             template<class Callable,
                      class Arg1,
                      class... Args,
@@ -9766,7 +9767,7 @@ namespace sqlite_orm {
                 return static_cast<Arg1&&>(arg1).*obj;
             }
 
-            // pointer-to-member-function
+            // pointer-to-member-function+object
             template<class Callable,
                      class Arg1,
                      class... Args,
@@ -9774,6 +9775,12 @@ namespace sqlite_orm {
                      std::enable_if_t<std::is_member_function_pointer<Unqualified>::value, bool> = true>
             decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
                 return (static_cast<Arg1&&>(arg1).*obj)(static_cast<Args&&>(args)...);
+            }
+
+            // pointer-to-member+reference-wrapped object
+            template<class Callable, class Arg1, class... Args>
+            decltype(auto) invoke(Callable&& obj, std::reference_wrapper<Arg1> arg1, Args&&... args) {
+                return invoke(static_cast<Callable&&>(obj), arg1.get(), static_cast<Args&&>(args)...);
             }
 #endif
         }
@@ -9884,7 +9891,7 @@ namespace sqlite_orm {
         };
 
         /**
-         *  Table class.
+         *  Table definition.
          */
         template<class T, bool WithoutRowId, class... Cs>
         struct table_t : basic_table {
@@ -9917,18 +9924,27 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Function used to get field value from object by mapped member pointer/setter/getter
+             *  Function used to get field value from object by mapped member pointer/setter/getter.
+             *  
+             *  For a setter the corresponding getter has to be searched,
+             *  so the method returns a pointer to the field as returned by the found getter.
+             *  Otherwise the method invokes the member pointer and returns its result.
              */
-            template<class C>
-            const member_field_type_t<C>* get_object_field_pointer(const object_type& object, C memberPointer) const {
-                using F = member_field_type_t<C>;
+            template<class M, satisfies_not<is_setter, M> = true>
+            decltype(auto) object_field_value(const object_type& object, M memberPointer) const {
+                return polyfill::invoke(memberPointer, object);
+            }
+
+            template<class M, satisfies<is_setter, M> = true>
+            const member_field_type_t<M>* object_field_value(const object_type& object, M memberPointer) const {
+                using F = member_field_type_t<M>;
                 const F* res = nullptr;
                 this->for_each_column_with_field_type<F>([&res, &memberPointer, &object](auto& column) {
                     if(res) {
                         return;
                     }
 
-                    if(compare_any(column.member_pointer, memberPointer) || compare_any(column.setter, memberPointer)) {
+                    if(compare_any(column.setter, memberPointer)) {
                         res = &polyfill::invoke(column.member_pointer, object);
                     }
                 });
@@ -10827,7 +10843,6 @@ namespace sqlite_orm {
             ~prepared_statement_base() {
                 if(this->stmt) {
                     sqlite3_finalize(this->stmt);
-                    this->stmt = nullptr;
                 }
             }
 
@@ -17895,18 +17910,16 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<object_type>();
 
-                field_value_binder bind_value{stmt};
                 iterate_tuple(statement.expression.columns.columns,
-                              [&tImpl, &bind_value, &object = statement.expression.obj](auto& memberPointer) {
-                                  bind_value(tImpl.table.get_object_field_pointer(object, memberPointer));
+                              [&tImpl = this->get_impl<object_type>(),
+                               bind_value = field_value_binder{stmt},
+                               &object = statement.expression.obj](auto& memberPointer) mutable {
+                                  bind_value(tImpl.table.object_field_value(object, memberPointer));
                               });
                 perform_step(stmt);
-                return sqlite3_last_insert_rowid(db);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 
             template<class T,
@@ -17919,8 +17932,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 auto& tImpl = this->get_impl<object_type>();
 
-                field_value_binder bind_value{stmt};
-                auto processObject = [&tImpl, &bind_value](auto& object) {
+                auto processObject = [&tImpl, bind_value = field_value_binder{stmt}](auto& object) mutable {
                     tImpl.table.for_each_column([&bind_value, &object](auto& column) {
                         if(column.is_generated()) {
                             return;
@@ -17958,8 +17970,8 @@ namespace sqlite_orm {
                 sqlite3* db = con.get();
                 sqlite3_stmt* stmt = reset(statement.stmt);
 
-                field_value_binder bind_value{stmt};
-                auto processObject = [&tImpl = this->get_impl<object_type>(), &bind_value](auto& object) {
+                auto processObject = [&tImpl = this->get_impl<object_type>(),
+                                      bind_value = field_value_binder{stmt}](auto& object) mutable {
                     tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
                         using table_type = std::decay_t<decltype(tImpl.table)>;
                         if(table_type::is_without_rowid ||
@@ -18189,7 +18201,7 @@ namespace sqlite_orm {
                         if constexpr(std::is_same<TargetType, O>::value) {
 #else
                             call_if_constexpr<std::is_same<TargetType, O>::value>(
-                                [this, &storageImpl, &foreignKey, &res, &object] {
+                                [this, &storageImpl, &res, &object](auto& foreignKey) {
 #endif
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
@@ -18219,10 +18231,11 @@ namespace sqlite_orm {
                             statement_finalizer finalizer{stmt};
 
                             auto& tImpl = this->get_impl<O>();
-                            field_value_binder bind_value{stmt};
-                            iterate_tuple(foreignKey.references, [&tImpl, &bind_value, &object](auto& memberPointer) {
-                                bind_value(tImpl.table.get_object_field_pointer(object, memberPointer));
-                            });
+                            iterate_tuple(
+                                foreignKey.references,
+                                [&tImpl, bind_value = field_value_binder{stmt}, &object](auto& memberPointer) mutable {
+                                    bind_value(tImpl.table.object_field_value(object, memberPointer));
+                                });
                             if(SQLITE_ROW != sqlite3_step(stmt)) {
                                 throw_translated_sqlite_error(stmt);
                             }
@@ -18234,7 +18247,8 @@ namespace sqlite_orm {
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
                         }
 #else
-                                });
+                                },
+                                foreignKey);
 #endif
                     });
                 });

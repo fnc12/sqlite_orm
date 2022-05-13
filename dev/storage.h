@@ -1178,7 +1178,7 @@ namespace sqlite_orm {
                               [&tImpl = this->get_impl<object_type>(),
                                bind_value = field_value_binder{stmt},
                                &object = statement.expression.obj](auto& memberPointer) mutable {
-                                  bind_value(tImpl.table.get_object_field_pointer(object, memberPointer));
+                                  bind_value(tImpl.table.object_field_value(object, memberPointer));
                               });
                 perform_step(stmt);
                 return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
@@ -1496,7 +1496,7 @@ namespace sqlite_orm {
                             iterate_tuple(
                                 foreignKey.references,
                                 [&tImpl, bind_value = field_value_binder{stmt}, &object](auto& memberPointer) mutable {
-                                    bind_value(tImpl.table.get_object_field_pointer(object, memberPointer));
+                                    bind_value(tImpl.table.object_field_value(object, memberPointer));
                                 });
                             if(SQLITE_ROW != sqlite3_step(stmt)) {
                                 throw_translated_sqlite_error(stmt);
