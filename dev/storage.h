@@ -104,14 +104,14 @@ namespace sqlite_orm {
             }
 
             template<class I>
-            void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
-                using table_type = std::decay_t<decltype(tableImpl.table)>;
+            void create_table(sqlite3* db, const std::string& tableName, const I& tImpl) {
+                using table_type = std::decay_t<decltype(tImpl.table)>;
                 using context_t = serializer_context<impl_type>;
 
                 std::stringstream ss;
                 context_t context{this->impl};
                 ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
-                   << streaming_expressions_tuple(tableImpl.table.elements, context) << ")";
+                   << streaming_expressions_tuple(tImpl.table.elements, context) << ")";
                 if(table_type::is_without_rowid) {
                     ss << " WITHOUT ROWID";
                 }
@@ -155,11 +155,11 @@ namespace sqlite_orm {
             }
 
             template<class I>
-            void backup_table(sqlite3* db, const I& tableImpl, const std::vector<const table_xinfo*>& columnsToIgnore) {
+            void backup_table(sqlite3* db, const I& tImpl, const std::vector<const table_xinfo*>& columnsToIgnore) {
 
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
-                auto backupTableName = tableImpl.table.name + "_backup";
+                auto backupTableName = tImpl.table.name + "_backup";
                 if(this->table_exists(db, backupTableName)) {
                     int suffix = 1;
                     do {
@@ -173,13 +173,13 @@ namespace sqlite_orm {
                         ++suffix;
                     } while(true);
                 }
-                this->create_table(db, backupTableName, tableImpl);
+                this->create_table(db, backupTableName, tImpl);
 
-                this->copy_table(db, tableImpl.table.name, backupTableName, tableImpl, columnsToIgnore);
+                this->copy_table(db, tImpl.table.name, backupTableName, tImpl, columnsToIgnore);
 
-                this->drop_table_internal(db, tableImpl.table.name);
+                this->drop_table_internal(db, tImpl.table.name);
 
-                this->rename_table(db, backupTableName, tableImpl.table.name);
+                this->rename_table(db, backupTableName, tImpl.table.name);
             }
 
             template<class O>
@@ -924,22 +924,21 @@ namespace sqlite_orm {
             }
 
             template<class... Tss, class... Cols>
-            sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
+            sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                auto query = serialize(tableImpl.table, context);
+                auto query = serialize(tImpl.table, context);
                 perform_void_exec(db, query);
                 return res;
             }
 
             template<class... Tss, class... Cols>
-            sync_schema_result
-            sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
+            sync_schema_result sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                perform_void_exec(db, serialize(tableImpl.table, context));
+                perform_void_exec(db, serialize(tImpl.table, context));
                 return res;
             }
 
@@ -1006,11 +1005,10 @@ namespace sqlite_orm {
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 auto con = this->get_connection();
-                sqlite3* db = con.get();
                 std::map<std::string, sync_schema_result> result;
-                this->impl.for_each([&result, db, preserve, this](auto& storageImpl) {
-                    auto res = this->sync_table(storageImpl, db, preserve);
-                    result.insert({storageImpl.table.name, res});
+                this->impl.for_each([this, db = con.get(), preserve, &result](auto& tImpl) {
+                    auto res = this->sync_table(tImpl, db, preserve);
+                    result.insert({tImpl.table.name, res});
                 });
                 return result;
             }
@@ -1022,11 +1020,10 @@ namespace sqlite_orm {
              */
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
                 auto con = this->get_connection();
-                sqlite3* db = con.get();
                 std::map<std::string, sync_schema_result> result;
-                this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
-                    auto schemaStatus = this->schema_status(tableImpl, db, preserve, nullptr);
-                    result.insert({tableImpl.table.name, schemaStatus});
+                this->impl.for_each([this, db = con.get(), preserve, &result](auto& tImpl) {
+                    auto schemaStatus = this->schema_status(tImpl, db, preserve, nullptr);
+                    result.insert({tImpl.table.name, schemaStatus});
                 });
                 return result;
             }
@@ -1193,9 +1190,9 @@ namespace sqlite_orm {
                 using object_type = typename expression_object_type<expression_type>::type;
 
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<object_type>();
 
-                auto processObject = [&tImpl, bind_value = field_value_binder{stmt}](auto& object) {
+                auto processObject = [&tImpl = this->get_impl<object_type>(),
+                                      bind_value = field_value_binder{stmt}](auto& object) mutable {
                     tImpl.table.for_each_column_excluding<is_generated_always>([&bind_value, &object](auto& column) {
                         bind_value(polyfill::invoke(column.member_pointer, object));
                     });
@@ -1228,7 +1225,7 @@ namespace sqlite_orm {
                 sqlite3_stmt* stmt = reset(statement.stmt);
 
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
-                                      bind_value = field_value_binder{stmt}](auto& object) {
+                                      bind_value = field_value_binder{stmt}](auto& object) mutable {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
                     tImpl.table.for_each_column_excluding<
                         mpl::conjunction<mpl::identity<polyfill::bool_constant<!table_type::is_without_rowid>>,
