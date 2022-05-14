@@ -20,9 +20,10 @@
 
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/mpl.h"
-#include "type_traits.h"
+#include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
-#include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_iteration.h"
+#include "type_traits.h"
 #include "alias.h"
 #include "row_extractor_builder.h"
 #include "error_code.h"
@@ -185,7 +186,7 @@ namespace sqlite_orm {
             template<class O>
             void assert_mapped_type() const {
                 using mapped_types_tuple = std::tuple<typename Ts::object_type...>;
-                static_assert(mpl::invoke_t<mpl_tuple_has_type<O>, mapped_types_tuple>::value,
+                static_assert(mpl::invoke_t<check_if_tuple_has_type<O>, mapped_types_tuple>::value,
                               "type is not mapped to a storage");
             }
 

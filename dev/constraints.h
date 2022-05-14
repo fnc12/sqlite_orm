@@ -9,13 +9,13 @@
 #include "functional/cxx_universal.h"
 #include "functional/cxx_polyfill.h"
 #include "functional/mpl.h"
+#include "tuple_helper/same_or_void.h"
+#include "tuple_helper/tuple_traits.h"
+#include "tuple_helper/tuple_filter.h"
 #include "type_traits.h"
 #include "collate_argument.h"
 #include "error_code.h"
 #include "table_type.h"
-#include "tuple_helper/same_or_void.h"
-#include "tuple_helper/tuple_helper.h"
-#include "tuple_helper/tuple_filter.h"
 #include "type_printer.h"
 
 namespace sqlite_orm {
@@ -487,13 +487,12 @@ namespace sqlite_orm {
          */
         template<typename T>
         struct is_primary_key_insertable
-            : std::disjunction<mpl::invoke_t<mpl::disjunction<mpl_tuple_has_template<default_t>,
-                                                              mpl_tuple_has_trait<is_autoincrement>>,
+            : std::disjunction<mpl::invoke_t<mpl::disjunction<check_if_tuple_has_template<default_t>,
+                                                              check_if_tuple_has<is_autoincrement>>,
                                              constraints_type_t<T>>,
                                std::is_base_of<integer_printer, type_printer<field_type_t<T>>>> {
 
-            static_assert(tuple_helper::tuple_has<is_primary_key, constraints_type_t<T>>::value,
-                          "an unexpected type was passed");
+            static_assert(tuple_has<is_primary_key, constraints_type_t<T>>::value, "an unexpected type was passed");
         };
     }
 

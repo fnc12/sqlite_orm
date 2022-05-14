@@ -7,16 +7,6 @@
 #include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
-
-    namespace tuple_helper {
-
-        template<template<class...> class TraitFn, class Tuple>
-        struct tuple_has {};
-        template<template<class...> class TraitFn, class... Types>
-        struct tuple_has<TraitFn, std::tuple<Types...>> : polyfill::disjunction<TraitFn<Types>...> {};
-
-    }
-
     namespace internal {
 
         //  got it form here https://stackoverflow.com/questions/7858817/unpacking-a-tuple-to-call-a-matching-function-pointer

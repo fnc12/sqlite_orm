@@ -6,7 +6,6 @@
 #include <tuple>
 
 #include "functional/cxx_universal.h"
-#include "tuple_helper/tuple_helper.h"
 #include "optional_container.h"
 
 // NOTE Idea : Maybe also implement a custom trigger system to call a c++ callback when a trigger triggers ?

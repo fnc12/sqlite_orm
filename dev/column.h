@@ -7,11 +7,11 @@
 
 #include "functional/cxx_universal.h"
 #include "functional/cxx_polyfill.h"
-#include "type_traits.h"
-#include "type_is_nullable.h"
-#include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
+#include "type_traits.h"
 #include "member_traits/member_traits.h"
+#include "type_is_nullable.h"
 #include "constraints.h"
 
 namespace sqlite_orm {
@@ -82,7 +82,7 @@ namespace sqlite_orm {
              */
             template<template<class...> class Trait>
             constexpr bool is() const {
-                return tuple_helper::tuple_has<Trait, constraints_type>::value;
+                return tuple_has<Trait, constraints_type>::value;
             }
 
             /**
@@ -118,7 +118,7 @@ namespace sqlite_orm {
         template<class C>
         struct is_column_with_insertable_primary_key<
             C,
-            std::enable_if_t<tuple_helper::tuple_has<is_primary_key, typename C::constraints_type>::value>>
+            std::enable_if_t<tuple_has<is_primary_key, typename C::constraints_type>::value>>
             : polyfill::bool_constant<is_primary_key_insertable<C>::value> {};
 
         /**
@@ -133,7 +133,7 @@ namespace sqlite_orm {
         template<class C>
         struct is_column_with_noninsertable_primary_key<
             C,
-            std::enable_if_t<tuple_helper::tuple_has<is_primary_key, typename C::constraints_type>::value>>
+            std::enable_if_t<tuple_has<is_primary_key, typename C::constraints_type>::value>>
             : polyfill::bool_constant<!is_primary_key_insertable<C>::value> {};
 
         template<class T>

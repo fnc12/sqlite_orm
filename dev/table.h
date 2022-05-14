@@ -12,7 +12,8 @@
 #include "functional/static_magic.h"
 #include "functional/mpl.h"
 #include "typed_comparator.h"
-#include "tuple_helper/tuple_helper.h"
+#include "tuple_helper/tuple_iteration.h"
+#include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "member_traits/member_traits.h"
 #include "type_traits.h"
@@ -213,7 +214,7 @@ namespace sqlite_orm {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
                 using non_generated_col_seq =
                     filter_tuple_sequence_t<elements_type,
-                                            mpl::not_<mpl_tuple_has_trait<is_generated_always>>::template fn,
+                                            mpl::not_<check_if_tuple_has<is_generated_always>>::template fn,
                                             column_constraints_type_t,
                                             col_seq>;
                 return int(non_generated_col_seq::size());
@@ -265,7 +266,10 @@ namespace sqlite_orm {
              *  Call passed lambda with columns filtered on `Predicate(Transform(column_t))`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class Transform, class PredicateFnCls, class L>
+            template<template<class...> class Transform,
+                     class PredicateFnCls,
+                     class L,
+                     satisfies<mpl::is_metafunction_class, PredicateFnCls> = true>
             void for_each_column(L&& lambda) const {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
                 using idx_seq =
@@ -287,9 +291,9 @@ namespace sqlite_orm {
              *  Call passed lambda with columns having the specified constraint trait `OpTrait`.
              *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
              */
-            template<template<class...> class OpTrait, class L>
+            template<template<class...> class OpTraitFn, class L>
             void for_each_column_with(L&& lambda) const {
-                this->for_each_column<column_constraints_type_t, mpl_tuple_has_trait<OpTrait>>(lambda);
+                this->for_each_column<column_constraints_type_t, check_if_tuple_has<OpTraitFn>>(lambda);
             }
 
             /**
@@ -298,12 +302,12 @@ namespace sqlite_orm {
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column<column_constraints_type_t, mpl::not_<mpl_tuple_has_trait<OpTraitFn>>>(lambda);
+                this->for_each_column<column_constraints_type_t, mpl::not_<check_if_tuple_has<OpTraitFn>>>(lambda);
             }
-            template<class OpTraitFnCls, class L>
+            template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->for_each_column<column_constraints_type_t,
-                                      mpl::not_<mpl_tuple_has_trait<typename OpTraitFnCls::template fn>>>(lambda);
+                                      mpl::not_<check_if_tuple_has<mpl::fn_t<OpTraitFnCls>>>>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;
