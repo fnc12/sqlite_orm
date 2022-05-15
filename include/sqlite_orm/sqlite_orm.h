@@ -684,20 +684,21 @@ namespace sqlite_orm {
             template<template<class...> class Fn>
             struct indirectly_test_metafunction;
 
+            /*
+             *  Determines whether a class template has a nested metafunction `fn`.
+             * 
+             *  Implementation note: the technique of specialiazing on the inline variable must come first because
+             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+             */
             template<class T, class SFINAE = void>
-            struct is_metafunction_class : std::false_type {};
+            SQLITE_ORM_INLINE_VAR constexpr bool is_metafunction_class_v = false;
             template<class FnCls>
-            struct is_metafunction_class<FnCls, polyfill::void_t<indirectly_test_metafunction<typename FnCls::fn>>>
-                : std::true_type {};
+            SQLITE_ORM_INLINE_VAR constexpr bool
+                is_metafunction_class_v<FnCls, polyfill::void_t<indirectly_test_metafunction<FnCls::template fn>>> =
+                    true;
 
             template<class T>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_metafunction_class_v = is_metafunction_class<T>::value;
-
-            /*
-             *  Operation to access a metafunction class's nested metafunction.
-             */
-            template<class FnCls>
-            using fn_t = typename FnCls::template fn;
+            struct is_metafunction_class : polyfill::bool_constant<is_metafunction_class_v<T>> {};
 
             /*
              *  Invoke metafunction.
@@ -728,12 +729,12 @@ namespace sqlite_orm {
              */
             template<template<class...> class Fn>
             struct quote_fn {
-                template<class InvocableTest, template<class...> class Fn, class... Args>
+                template<class InvocableTest, template<class...> class, class...>
                 struct invoke_fn;
 
-                template<template<class...> class Fn, class... Args>
-                struct invoke_fn<polyfill::void_t<Fn<Args...>>, Fn, Args...> {
-                    using type = type_wrap<Fn<Args...>>;
+                template<template<class...> class F, class... Args>
+                struct invoke_fn<polyfill::void_t<F<Args...>>, F, Args...> {
+                    using type = type_wrap<F<Args...>>;
                 };
 
                 template<class... Args>
@@ -742,7 +743,7 @@ namespace sqlite_orm {
 
             /*
              *  Indirection wrapper for higher-order metafunctions,
-             *  specialized on the indexes arguments where metafunctions appear.
+             *  specialized on the argument indexes where metafunctions appear.
              */
             template<size_t...>
             struct higherorder;
@@ -755,7 +756,7 @@ namespace sqlite_orm {
                 template<template<template<class...> class Fn, class... Args2> class HigherFn>
                 struct quote_fn {
                     template<class QuotedFn, class... Args2>
-                    struct fn : HigherFn<typename QuotedFn::template fn, Args2...> {};
+                    struct fn : HigherFn<QuotedFn::template fn, Args2...> {};
                 };
             };
 
@@ -827,13 +828,8 @@ namespace sqlite_orm {
              */
             template<class... TraitFnCls>
             struct conjunction {
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-                template<class... Args>
-                struct fn : polyfill::conjunction<invoke_t<TraitFnCls, Args...>...> {};
-#else
                 template<class... Args>
                 struct fn : polyfill::conjunction<typename TraitFnCls::template fn<Args...>...> {};
-#endif
             };
 
             /*
@@ -841,13 +837,8 @@ namespace sqlite_orm {
              */
             template<class... TraitFnCls>
             struct disjunction {
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-                template<class... Args>
-                struct fn : polyfill::disjunction<invoke_t<TraitFnCls, Args...>...> {};
-#else
                 template<class... Args>
                 struct fn : polyfill::disjunction<typename TraitFnCls::template fn<Args...>...> {};
-#endif
             };
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
@@ -10431,8 +10422,7 @@ namespace sqlite_orm {
                      satisfies<mpl::is_metafunction_class, PredicateFnCls> = true>
             void for_each_column(L&& lambda) const {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                using idx_seq =
-                    filter_tuple_sequence_t<elements_type, typename PredicateFnCls::template fn, Transform, col_seq>;
+                using idx_seq = filter_tuple_sequence_t<elements_type, PredicateFnCls::template fn, Transform, col_seq>;
                 iterate_tuple(this->elements, idx_seq{}, lambda);
             }
 
@@ -10466,7 +10456,7 @@ namespace sqlite_orm {
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->for_each_column<column_constraints_type_t,
-                                      mpl::not_<check_if_tuple_has<mpl::fn_t<OpTraitFnCls>>>>(lambda);
+                                      mpl::not_<check_if_tuple_has<OpTraitFnCls::template fn>>>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;
@@ -13085,7 +13075,7 @@ namespace sqlite_orm {
             const auto& table = get<1>(tpl);
 
             bool first = true;
-            table.for_each_column_excluding<is_generated_always>([&ss, &first](auto& column) {
+            table.template for_each_column_excluding<is_generated_always>([&ss, &first](auto& column) {
                 constexpr std::array<const char*, 2> sep = {", ", ""};
                 ss << sep[std::exchange(first, false)];
                 stream_identifier(ss, column.name);
@@ -16015,7 +16005,7 @@ namespace sqlite_orm {
                    << " VALUES (";
 
                 auto columnIndex = 0;
-                tImpl.table.for_each_column_excluding<is_generated_always>(
+                tImpl.table.template for_each_column_excluding<is_generated_always>(
                     [&ss, &columnIndex, &object = get_ref(statement.object), &context](auto& column) {
                         if(columnIndex > 0) {
                             ss << ", ";
@@ -16073,19 +16063,20 @@ namespace sqlite_orm {
                 std::stringstream ss;
                 ss << "UPDATE " << streaming_identifier(tImpl.table.name) << " SET ";
                 auto columnIndex = 0;
-                tImpl.table.for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
-                    [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
-                        if(tImpl.table.exists_in_composite_primary_key(column)) {
-                            return;
-                        }
+                tImpl.table
+                    .template for_each_column_excluding<mpl::disjunction_fn<is_primary_key, is_generated_always>>(
+                        [&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](auto& column) {
+                            if(tImpl.table.exists_in_composite_primary_key(column)) {
+                                return;
+                            }
 
-                        if(columnIndex > 0) {
-                            ss << ", ";
-                        }
-                        ss << streaming_identifier(column.name) << " = "
-                           << serialize(polyfill::invoke(column.member_pointer, object), context);
-                        ++columnIndex;
-                    });
+                            if(columnIndex > 0) {
+                                ss << ", ";
+                            }
+                            ss << streaming_identifier(column.name) << " = "
+                               << serialize(polyfill::invoke(column.member_pointer, object), context);
+                            ++columnIndex;
+                        });
                 ss << " WHERE ";
                 columnIndex = 0;
                 tImpl.table.for_each_column([&tImpl, &columnIndex, &ss, &object = get_ref(statement.object), &context](
@@ -16179,7 +16170,7 @@ namespace sqlite_orm {
 
                 auto columnIndex = 0;
                 using table_type = std::decay_t<decltype(tImpl.table)>;
-                tImpl.table.for_each_column_excluding<
+                tImpl.table.template for_each_column_excluding<
                     mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                      mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                     [&tImpl, &columnIndex, &ss](auto& column) {
@@ -16205,7 +16196,7 @@ namespace sqlite_orm {
                 if(columnsToInsertCount > 0) {
                     ss << "(";
                     columnIndex = 0;
-                    tImpl.table.for_each_column_excluding<
+                    tImpl.table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &columnIndex, &ss, &context, &object = get_ref(statement.object)](auto& column) {
@@ -16353,7 +16344,7 @@ namespace sqlite_orm {
                 using table_type = std::decay_t<decltype(tImpl.table)>;
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
-                tImpl.table.for_each_column_excluding<
+                tImpl.table.template for_each_column_excluding<
                     mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                      mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                     [&columnNames, &tImpl](auto& column) {
@@ -18266,9 +18257,10 @@ namespace sqlite_orm {
 
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
-                    tImpl.table.for_each_column_excluding<is_generated_always>([&bind_value, &object](auto& column) {
-                        bind_value(polyfill::invoke(column.member_pointer, object));
-                    });
+                    tImpl.table.template for_each_column_excluding<is_generated_always>(
+                        [&bind_value, &object](auto& column) {
+                            bind_value(polyfill::invoke(column.member_pointer, object));
+                        });
                 };
 
                 static_if<is_replace_range_v<T>>(
@@ -18300,7 +18292,7 @@ namespace sqlite_orm {
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
-                    tImpl.table.for_each_column_excluding<
+                    tImpl.table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
@@ -18348,12 +18340,13 @@ namespace sqlite_orm {
 
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
-                tImpl.table.for_each_column_excluding<mpl::disjunction_fn<is_generated_always, is_primary_key>>(
-                    [&tImpl, &bind_value, &object](auto& column) {
-                        if(!tImpl.table.exists_in_composite_primary_key(column)) {
-                            bind_value(polyfill::invoke(column.member_pointer, object));
-                        }
-                    });
+                tImpl.table
+                    .template for_each_column_excluding<mpl::disjunction_fn<is_generated_always, is_primary_key>>(
+                        [&tImpl, &bind_value, &object](auto& column) {
+                            if(!tImpl.table.exists_in_composite_primary_key(column)) {
+                                bind_value(polyfill::invoke(column.member_pointer, object));
+                            }
+                        });
                 tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
                     if(column.template is<is_primary_key>() || tImpl.table.exists_in_composite_primary_key(column)) {
                         bind_value(polyfill::invoke(column.member_pointer, object));

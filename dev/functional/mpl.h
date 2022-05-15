@@ -32,20 +32,21 @@ namespace sqlite_orm {
             template<template<class...> class Fn>
             struct indirectly_test_metafunction;
 
+            /*
+             *  Determines whether a class template has a nested metafunction `fn`.
+             * 
+             *  Implementation note: the technique of specialiazing on the inline variable must come first because
+             *  of older compilers having problems with the detection of dependent templates [SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION].
+             */
             template<class T, class SFINAE = void>
-            struct is_metafunction_class : std::false_type {};
+            SQLITE_ORM_INLINE_VAR constexpr bool is_metafunction_class_v = false;
             template<class FnCls>
-            struct is_metafunction_class<FnCls, polyfill::void_t<indirectly_test_metafunction<typename FnCls::fn>>>
-                : std::true_type {};
+            SQLITE_ORM_INLINE_VAR constexpr bool
+                is_metafunction_class_v<FnCls, polyfill::void_t<indirectly_test_metafunction<FnCls::template fn>>> =
+                    true;
 
             template<class T>
-            SQLITE_ORM_INLINE_VAR constexpr bool is_metafunction_class_v = is_metafunction_class<T>::value;
-
-            /*
-             *  Operation to access a metafunction class's nested metafunction.
-             */
-            template<class FnCls>
-            using fn_t = typename FnCls::template fn;
+            struct is_metafunction_class : polyfill::bool_constant<is_metafunction_class_v<T>> {};
 
             /*
              *  Invoke metafunction.
@@ -76,12 +77,12 @@ namespace sqlite_orm {
              */
             template<template<class...> class Fn>
             struct quote_fn {
-                template<class InvocableTest, template<class...> class Fn, class... Args>
+                template<class InvocableTest, template<class...> class, class...>
                 struct invoke_fn;
 
-                template<template<class...> class Fn, class... Args>
-                struct invoke_fn<polyfill::void_t<Fn<Args...>>, Fn, Args...> {
-                    using type = type_wrap<Fn<Args...>>;
+                template<template<class...> class F, class... Args>
+                struct invoke_fn<polyfill::void_t<F<Args...>>, F, Args...> {
+                    using type = type_wrap<F<Args...>>;
                 };
 
                 template<class... Args>
@@ -90,7 +91,7 @@ namespace sqlite_orm {
 
             /*
              *  Indirection wrapper for higher-order metafunctions,
-             *  specialized on the indexes arguments where metafunctions appear.
+             *  specialized on the argument indexes where metafunctions appear.
              */
             template<size_t...>
             struct higherorder;
@@ -103,7 +104,7 @@ namespace sqlite_orm {
                 template<template<template<class...> class Fn, class... Args2> class HigherFn>
                 struct quote_fn {
                     template<class QuotedFn, class... Args2>
-                    struct fn : HigherFn<typename QuotedFn::template fn, Args2...> {};
+                    struct fn : HigherFn<QuotedFn::template fn, Args2...> {};
                 };
             };
 
@@ -175,13 +176,8 @@ namespace sqlite_orm {
              */
             template<class... TraitFnCls>
             struct conjunction {
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-                template<class... Args>
-                struct fn : polyfill::conjunction<invoke_t<TraitFnCls, Args...>...> {};
-#else
                 template<class... Args>
                 struct fn : polyfill::conjunction<typename TraitFnCls::template fn<Args...>...> {};
-#endif
             };
 
             /*
@@ -189,13 +185,8 @@ namespace sqlite_orm {
              */
             template<class... TraitFnCls>
             struct disjunction {
-#ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
-                template<class... Args>
-                struct fn : polyfill::disjunction<invoke_t<TraitFnCls, Args...>...> {};
-#else
                 template<class... Args>
                 struct fn : polyfill::disjunction<typename TraitFnCls::template fn<Args...>...> {};
-#endif
             };
 
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION

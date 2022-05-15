@@ -1194,9 +1194,10 @@ namespace sqlite_orm {
 
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
-                    tImpl.table.for_each_column_excluding<is_generated_always>([&bind_value, &object](auto& column) {
-                        bind_value(polyfill::invoke(column.member_pointer, object));
-                    });
+                    tImpl.table.template for_each_column_excluding<is_generated_always>(
+                        [&bind_value, &object](auto& column) {
+                            bind_value(polyfill::invoke(column.member_pointer, object));
+                        });
                 };
 
                 static_if<is_replace_range_v<T>>(
@@ -1228,7 +1229,7 @@ namespace sqlite_orm {
                 auto processObject = [&tImpl = this->get_impl<object_type>(),
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
-                    tImpl.table.for_each_column_excluding<
+                    tImpl.table.template for_each_column_excluding<
                         mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
@@ -1276,12 +1277,13 @@ namespace sqlite_orm {
 
                 field_value_binder bind_value{stmt};
                 auto& object = get_object(statement.expression);
-                tImpl.table.for_each_column_excluding<mpl::disjunction_fn<is_generated_always, is_primary_key>>(
-                    [&tImpl, &bind_value, &object](auto& column) {
-                        if(!tImpl.table.exists_in_composite_primary_key(column)) {
-                            bind_value(polyfill::invoke(column.member_pointer, object));
-                        }
-                    });
+                tImpl.table
+                    .template for_each_column_excluding<mpl::disjunction_fn<is_generated_always, is_primary_key>>(
+                        [&tImpl, &bind_value, &object](auto& column) {
+                            if(!tImpl.table.exists_in_composite_primary_key(column)) {
+                                bind_value(polyfill::invoke(column.member_pointer, object));
+                            }
+                        });
                 tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
                     if(column.template is<is_primary_key>() || tImpl.table.exists_in_composite_primary_key(column)) {
                         bind_value(polyfill::invoke(column.member_pointer, object));

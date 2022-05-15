@@ -272,8 +272,7 @@ namespace sqlite_orm {
                      satisfies<mpl::is_metafunction_class, PredicateFnCls> = true>
             void for_each_column(L&& lambda) const {
                 using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                using idx_seq =
-                    filter_tuple_sequence_t<elements_type, typename PredicateFnCls::template fn, Transform, col_seq>;
+                using idx_seq = filter_tuple_sequence_t<elements_type, PredicateFnCls::template fn, Transform, col_seq>;
                 iterate_tuple(this->elements, idx_seq{}, lambda);
             }
 
@@ -307,7 +306,7 @@ namespace sqlite_orm {
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
                 this->for_each_column<column_constraints_type_t,
-                                      mpl::not_<check_if_tuple_has<mpl::fn_t<OpTraitFnCls>>>>(lambda);
+                                      mpl::not_<check_if_tuple_has<OpTraitFnCls::template fn>>>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;
