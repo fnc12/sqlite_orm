@@ -20,6 +20,7 @@
 
 #include "functional/cxx_functional_polyfill.h"
 #include "functional/mpl.h"
+#include "functional/static_magic.h"
 #include "tuple_helper/tuple_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_iteration.h"
@@ -1230,7 +1231,7 @@ namespace sqlite_orm {
                                       bind_value = field_value_binder{stmt}](auto& object) mutable {
                     using table_type = std::decay_t<decltype(tImpl.table)>;
                     tImpl.table.template for_each_column_excluding<
-                        mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
+                        mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &bind_value, &object](auto& column) {
                             if(!tImpl.table.exists_in_composite_primary_key(column)) {

@@ -4,6 +4,7 @@
 #include <type_traits>  //  std::index_sequence, std::make_index_sequence
 #include <utility>  //  std::forward
 
+#include "../functional/cxx_universal.h"
 #include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {

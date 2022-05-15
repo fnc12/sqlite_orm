@@ -1144,7 +1144,7 @@ namespace sqlite_orm {
                 auto columnIndex = 0;
                 using table_type = std::decay_t<decltype(tImpl.table)>;
                 tImpl.table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
+                    mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
                                      mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                     [&tImpl, &columnIndex, &ss](auto& column) {
                         if(tImpl.table.exists_in_composite_primary_key(column)) {
@@ -1170,7 +1170,7 @@ namespace sqlite_orm {
                     ss << "(";
                     columnIndex = 0;
                     tImpl.table.template for_each_column_excluding<
-                        mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
+                        mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
                                          mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                         [&tImpl, &columnIndex, &ss, &context, &object = get_ref(statement.object)](auto& column) {
                             if(tImpl.table.exists_in_composite_primary_key(column)) {
@@ -1318,7 +1318,7 @@ namespace sqlite_orm {
 
                 std::vector<std::reference_wrapper<const std::string>> columnNames;
                 tImpl.table.template for_each_column_excluding<
-                    mpl::conjunction<mpl::not_<mpl::always<table_type::is_without_rowid>>,
+                    mpl::conjunction<mpl::not_<mpl::always<typename table_type::is_without_rowid>>,
                                      mpl::disjunction_fn<is_generated_always, is_primary_key>>>(
                     [&columnNames, &tImpl](auto& column) {
                         if(!tImpl.table.exists_in_composite_primary_key(column)) {

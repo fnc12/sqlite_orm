@@ -99,20 +99,18 @@ namespace sqlite_orm {
             find_column_generated_storage_type(const std::string& name) const {
                 const basic_generated_always::storage_type* result = nullptr;
 #if SQLITE_VERSION_NUMBER >= 3031000
-                this->for_each_column([&result, &name](auto& column) {
-                    if(column.name != name) {
-                        return;
-                    }
-
-                    using generated_col_seq =
-                        filter_tuple_sequence_t<polyfill::remove_cvref_t<decltype(column.constraints)>,
-                                                is_generated_always>;
-                    iterate_tuple(column.constraints, generated_col_seq{}, [&result](auto& constraint) {
-                        if(!result) {
-                            result = &constraint.storage;
+                this->for_each_column<column_constraints_type_t, check_if_tuple_has<is_generated_always>>(
+                    [&result, &name](auto& column) {
+                        if(column.name != name) {
+                            return;
                         }
+
+                        using generated_op_index_sequence =
+                            filter_tuple_sequence_t<polyfill::remove_cvref_t<decltype(column.constraints)>,
+                                                    is_generated_always>;
+                        constexpr size_t opIndex = first_index_sequence_value(generated_op_index_sequence{});
+                        result = &get<opIndex>(column.constraints).storage;
                     });
-                });
 #endif
                 return result;
             }
@@ -132,7 +130,7 @@ namespace sqlite_orm {
             }
 
             /**
-             *  Calls **l** with every primary key dedicated constraint
+             *  Call passed lambda with all defined primary keys.
              */
             template<class L>
             void for_each_primary_key(L&& lambda) const {
@@ -170,8 +168,8 @@ namespace sqlite_orm {
             }
 
             template<class L, class... Args>
-            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, L&& lambda) const {
-                iterate_tuple(primarykey.columns, lambda);
+            void for_each_column_in_primary_key(const primary_key_t<Args...>& primaryKey, L&& lambda) const {
+                iterate_tuple(primaryKey.columns, lambda);
             }
 
             template<class... Args>
@@ -197,7 +195,7 @@ namespace sqlite_orm {
             const std::string* find_column_name(M m) const {
                 const std::string* res = nullptr;
                 using field_type = member_field_type_t<M>;
-                this->template for_each_column_with_field_type<field_type>([&res, m](auto& c) {
+                this->for_each_column_with_field_type<field_type>([&res, m](auto& c) {
                     if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                         res = &c.name;
                     }
@@ -210,14 +208,13 @@ namespace sqlite_orm {
              */
             constexpr int non_generated_columns_count() const {
 #if SQLITE_VERSION_NUMBER >= 3031000
-                //using excluding_trait_fn = ...;
-                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                using non_generated_col_seq =
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                using non_generated_col_index_sequence =
                     filter_tuple_sequence_t<elements_type,
-                                            mpl::not_<check_if_tuple_has<is_generated_always>>::template fn,
+                                            check_if_tuple_has_not<is_generated_always>::template fn,
                                             column_constraints_type_t,
-                                            col_seq>;
-                return int(non_generated_col_seq::size());
+                                            col_index_sequence>;
+                return int(non_generated_col_index_sequence::size());
 #else
                 return 0;
 #endif
@@ -257,9 +254,10 @@ namespace sqlite_orm {
              */
             template<template<class...> class Transform, template<class...> class PredicateFn, class L>
             void for_each_column(L&& lambda) const {
-                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                using idx_seq = filter_tuple_sequence_t<elements_type, PredicateFn, Transform, col_seq>;
-                iterate_tuple(this->elements, idx_seq{}, lambda);
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                using filtered_index_sequence =
+                    filter_tuple_sequence_t<elements_type, PredicateFn, Transform, col_index_sequence>;
+                iterate_tuple(this->elements, filtered_index_sequence{}, lambda);
             }
 
             /**
@@ -271,9 +269,7 @@ namespace sqlite_orm {
                      class L,
                      satisfies<mpl::is_metafunction_class, PredicateFnCls> = true>
             void for_each_column(L&& lambda) const {
-                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                using idx_seq = filter_tuple_sequence_t<elements_type, PredicateFnCls::template fn, Transform, col_seq>;
-                iterate_tuple(this->elements, idx_seq{}, lambda);
+                return this->for_each_column<Transform, PredicateFnCls::template fn>(lambda);
             }
 
             /**
@@ -282,8 +278,8 @@ namespace sqlite_orm {
              */
             template<class F, class L>
             void for_each_column_with_field_type(L&& lambda) const {
-                //using is_field_type_fn = ...;
-                this->for_each_column<column_field_type_t, mpl::bind_front_fn<std::is_same, F>>(lambda);
+                using check_if_same_field_type = mpl::bind_front_fn<std::is_same, F>;
+                this->for_each_column<column_field_type_t, check_if_same_field_type>(lambda);
             }
 
             /**
@@ -297,16 +293,20 @@ namespace sqlite_orm {
 
             /**
              *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
-             *  @param lambda Lambda to be called for each column. Must have signature like this [] (auto col) -> void {}
+             *  @param lambda Lambda to be called for each column.
              */
             template<template<class...> class OpTraitFn, class L>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column<column_constraints_type_t, mpl::not_<check_if_tuple_has<OpTraitFn>>>(lambda);
+                this->for_each_column<column_constraints_type_t, check_if_tuple_has_not<OpTraitFn>>(lambda);
             }
+
+            /**
+             *  Call passed lambda with columns not having the specified constraint trait `OpTrait`.
+             *  @param lambda Lambda to be called for each column.
+             */
             template<class OpTraitFnCls, class L, satisfies<mpl::is_metafunction_class, OpTraitFnCls> = true>
             void for_each_column_excluding(L&& lambda) const {
-                this->for_each_column<column_constraints_type_t,
-                                      mpl::not_<check_if_tuple_has<OpTraitFnCls::template fn>>>(lambda);
+                this->for_each_column_excluding<OpTraitFnCls::template fn>(lambda);
             }
 
             std::vector<table_xinfo> get_table_info() const;

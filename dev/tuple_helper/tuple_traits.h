@@ -25,6 +25,12 @@ namespace sqlite_orm {
         using check_if_tuple_has = mpl::bind_front_higherorder_fn<tuple_has, TraitFn>;
 
         /*
+         *  Metafunction class that checks whether a tuple doesn't contain a type with given trait.
+         */
+        template<template<class...> class TraitFn>
+        using check_if_tuple_has_not = mpl::not_<check_if_tuple_has<TraitFn>>;
+
+        /*
          *  Metafunction class that checks whether a tuple contains given type.
          */
         template<class T>

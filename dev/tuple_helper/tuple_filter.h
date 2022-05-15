@@ -3,6 +3,7 @@
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #include <tuple>  //  std::tuple
 
+#include "../functional/cxx_universal.h"
 #include "../functional/mpl.h"
 
 namespace sqlite_orm {
@@ -45,6 +46,14 @@ namespace sqlite_orm {
 #endif
         template<class Tpl, template<class... C> class Fn>
         using filter_tuple_t = typename tuple_filter<Tpl, Fn>::type;
+
+        /**
+         *  Get the first value of an index_sequence.
+         */
+        template<size_t I, size_t... Idx>
+        SQLITE_ORM_CONSTEVAL size_t first_index_sequence_value(std::index_sequence<I, Idx...>) {
+            return I;
+        }
 
         template<class... Seq>
         struct concat_idx_seq {
