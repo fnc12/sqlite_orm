@@ -70,7 +70,9 @@ namespace sqlite_orm {
             /*
              *  Turn metafunction into a metafunction class.
              *  
-             *  Invocation of the nested metafunction `fn<>` is SFINAE-friendly (detection idiom).
+             *  Invocation of the nested metafunction `fn` is SFINAE-friendly (detection idiom).
+             *  This is necessary because `fn` is a proxy to the originally quoted metafunction,
+             *  and the instantiation of the metafunction might be an invalid expression.
              */
             template<template<class...> class Fn>
             struct quote_fn {
