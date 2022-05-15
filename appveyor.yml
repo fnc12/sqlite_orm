@@ -21,7 +21,7 @@ environment:
   appveyor_yml_disable_ps_linux: true
   matrix:
     - job_name: clang, C++14
-      appveyor_build_worker_image: macos
+      appveyor_build_worker_image: macOS
       SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
 
     - job_name: clang, C++14
@@ -139,10 +139,10 @@ for:
       ctest --verbose --output-on-failure
 
 -
-  # macos
+  # macOS
   matrix:
     only:
-      - appveyor_build_worker_image: macos
+      - appveyor_build_worker_image: macOS
   init:
     - |-
       echo $appveyor_build_worker_image
