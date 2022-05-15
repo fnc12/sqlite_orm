@@ -56,8 +56,8 @@ namespace sqlite_orm {
              */
             constexpr int foreign_keys_count() const {
 #if SQLITE_VERSION_NUMBER >= 3006019
-                using fk_seq = filter_tuple_sequence_t<elements_type, is_foreign_key>;
-                return int(fk_seq::size());
+                using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                return int(fk_index_sequence::size());
 #else
                 return 0;
 #endif
@@ -134,8 +134,8 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_primary_key(L&& lambda) const {
-                using pk_seq = filter_tuple_sequence_t<elements_type, is_primary_key>;
-                iterate_tuple(this->elements, pk_seq{}, lambda);
+                using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                iterate_tuple(this->elements, pk_index_sequence{}, lambda);
             }
 
             std::vector<std::string> composite_key_columns_names() const {
@@ -220,8 +220,8 @@ namespace sqlite_orm {
              *  Counts and returns amount of columns. Skips constraints.
              */
             constexpr int count_columns_amount() const {
-                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                return int(col_seq::size());
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                return int(col_index_sequence::size());
             }
 
             /**
@@ -230,8 +230,8 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_foreign_key(L&& lambda) const {
-                using foreign_key_seq = filter_tuple_sequence_t<elements_type, is_foreign_key>;
-                iterate_tuple(this->elements, foreign_key_seq{}, lambda);
+                using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                iterate_tuple(this->elements, fk_index_sequence{}, lambda);
             }
 
             /**
@@ -240,8 +240,8 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_column(L&& lambda) const {
-                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                iterate_tuple(this->elements, col_seq{}, lambda);
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                iterate_tuple(this->elements, col_index_sequence{}, lambda);
             }
 
             template<class F, class L>
