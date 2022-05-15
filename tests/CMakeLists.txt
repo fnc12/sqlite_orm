@@ -3,6 +3,7 @@ cmake_minimum_required (VERSION 3.2)
 option(SQLITE_ORM_OMITS_CODECVT "Omits codec testing" OFF)
 
 add_executable(unit_tests
+    static_tests/functional/static_if_tests.cpp
     static_tests/is_printable.cpp
     static_tests/is_bindable.cpp
     static_tests/iterator_t.cpp
