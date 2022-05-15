@@ -168,16 +168,16 @@ namespace sqlite_orm {
             }
 
             template<class L, class... Args>
-            void for_each_column_in_primary_key(const primary_key_t<Args...>& primarykey, L&& lambda) const {
-                iterate_tuple(primarykey.columns, lambda);
+            void for_each_column_in_primary_key(const primary_key_t<Args...>& primaryKey, L&& lambda) const {
+                iterate_tuple(primaryKey.columns, lambda);
             }
 
             template<class... Args>
-            std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& pk) const {
+            std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
                 std::vector<std::string> res;
-                using pk_columns_tuple = decltype(pk.columns);
+                using pk_columns_tuple = decltype(primaryKey.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
-                iterate_tuple(pk.columns, [this, &res](auto& memberPointer) {
+                iterate_tuple(primaryKey.columns, [this, &res](auto& memberPointer) {
                     if(auto* columnName = this->find_column_name(memberPointer)) {
                         res.push_back(*columnName);
                     } else {
@@ -195,7 +195,7 @@ namespace sqlite_orm {
             const std::string* find_column_name(M m) const {
                 const std::string* res = nullptr;
                 using field_type = member_field_type_t<M>;
-                this->template for_each_column_with_field_type<field_type>([&res, m](auto& c) {
+                this->for_each_column_with_field_type<field_type>([&res, m](auto& c) {
                     if(compare_any(c.member_pointer, m) || compare_any(c.setter, m)) {
                         res = &c.name;
                     }

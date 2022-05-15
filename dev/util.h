@@ -9,10 +9,10 @@
 namespace sqlite_orm {
 
     /** 
-         *  Escape the provided character in the given string by doubling it.
-         *  @param str A copy of the original string
-         *  @param char2Escape The character to escape
-         */
+     *  Escape the provided character in the given string by doubling it.
+     *  @param str A copy of the original string
+     *  @param char2Escape The character to escape
+     */
     inline std::string sql_escape(std::string str, char char2Escape) {
         for(size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
             str.replace(pos, 1, 2, char2Escape);
@@ -86,7 +86,21 @@ namespace sqlite_orm {
             }
         }
 
-        template<bool all = true, class L>
+        template<class L>
+        void perform_step(sqlite3_stmt* stmt, L&& lambda) {
+            switch(int rc = sqlite3_step(stmt)) {
+                case SQLITE_ROW: {
+                    lambda(stmt);
+                } break;
+                case SQLITE_DONE:
+                    break;
+                default: {
+                    throw_translated_sqlite_error(stmt);
+                }
+            }
+        }
+
+        template<class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
             int rc;
             do {
@@ -100,7 +114,7 @@ namespace sqlite_orm {
                         throw_translated_sqlite_error(stmt);
                     }
                 }
-            } while(all && rc != SQLITE_DONE);
+            } while(rc != SQLITE_DONE);
         }
     }
 }
