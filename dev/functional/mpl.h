@@ -89,12 +89,22 @@ namespace sqlite_orm {
             };
 
             /*
-             *  Turn higher-order metafunction into a metafunction class.
+             *  Indirection wrapper for higher-order metafunctions,
+             *  specialized on the indexes arguments where metafunctions appear.
              */
-            template<template<template<class...> class Fn, class... Args2> class HigherFn>
-            struct quote_higherorder_front_fn {
-                template<class QuotedFn, class... Args2>
-                struct fn : HigherFn<typename QuotedFn::template fn, Args2...> {};
+            template<size_t...>
+            struct higherorder;
+
+            template<>
+            struct higherorder<0u> {
+                /*
+                 *  Turn higher-order metafunction into a metafunction class.
+                 */
+                template<template<template<class...> class Fn, class... Args2> class HigherFn>
+                struct quote_fn {
+                    template<class QuotedFn, class... Args2>
+                    struct fn : HigherFn<typename QuotedFn::template fn, Args2...> {};
+                };
             };
 
             /*
@@ -114,7 +124,7 @@ namespace sqlite_orm {
 
             /*
              *  Bind arguments at the front of a metafunction class.
-             *  Metafunction class equivalent to std::bind_front()
+             *  Metafunction class equivalent to std::bind_front().
              */
             template<class FnCls, class... Bound>
             struct bind_front {
@@ -152,7 +162,7 @@ namespace sqlite_orm {
             };
 
             /*
-             *  Metafunction class equivalent to std::negation
+             *  Metafunction class equivalent to std::negation.
              */
             template<class FnCls>
             struct not_ {
@@ -175,7 +185,7 @@ namespace sqlite_orm {
             };
 
             /*
-             *  Metafunction class equivalent to std::disjunction
+             *  Metafunction class equivalent to std::disjunction.
              */
             template<class... TraitFnCls>
             struct disjunction {
@@ -188,37 +198,15 @@ namespace sqlite_orm {
 #endif
             };
 
-            /*
-             *  Bind arguments to the front of a metafunction.
-             */
-            template<template<class...> class Fn, class... Bound>
-            using bind_front_fn = bind_front<quote_fn<Fn>, Bound...>;
-
-            /*
-             *  Bind arguments to the back of a metafunction.
-             */
-            template<template<class...> class Fn, class... Bound>
-            using bind_back_fn = bind_back<quote_fn<Fn>, Bound...>;
-
-            /*
-            *  Bind a metafunction at the front of a higher-order metafunction
-            */
-            template<template<template<class...> class Fn, class... Args2> class HigherFn,
-                     template<class...>
-                     class BoundFn,
-                     class... Bound>
-            using bind_front_higherorder_fn =
-                bind_front<quote_higherorder_front_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
-
 #ifndef SQLITE_ORM_BROKEN_VARIADIC_PACK_EXPANSION
             /*
-             *  Metafunction equivalent to std::conjunction
+             *  Metafunction equivalent to std::conjunction.
              */
             template<template<class...> class... TraitFn>
             using conjunction_fn = conjunction<quote_fn<TraitFn>...>;
 
             /*
-             *  Metafunction equivalent to std::disjunction
+             *  Metafunction equivalent to std::disjunction.
              */
             template<template<class...> class... TraitFn>
             using disjunction_fn = disjunction<quote_fn<TraitFn>...>;
@@ -229,6 +217,28 @@ namespace sqlite_orm {
             template<template<class...> class... TraitFn>
             struct disjunction_fn : disjunction<quote_fn<TraitFn>...> {};
 #endif
+
+            /*
+             *  Convenience template alias for binding arguments at the front of a metafunction.
+             */
+            template<template<class...> class Fn, class... Bound>
+            using bind_front_fn = bind_front<quote_fn<Fn>, Bound...>;
+
+            /*
+             *  Convenience template alias for binding arguments at the back of a metafunction.
+             */
+            template<template<class...> class Fn, class... Bound>
+            using bind_back_fn = bind_back<quote_fn<Fn>, Bound...>;
+
+            /*
+             *  Convenience template alias for binding a metafunction at the front of a higher-order metafunction.
+             */
+            template<template<template<class...> class Fn, class... Args2> class HigherFn,
+                     template<class...>
+                     class BoundFn,
+                     class... Bound>
+            using bind_front_higherorder_fn =
+                bind_front<higherorder<0>::quote_fn<HigherFn>, quote_fn<BoundFn>, Bound...>;
         }
     }
 
