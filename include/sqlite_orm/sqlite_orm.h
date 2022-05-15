@@ -8484,10 +8484,10 @@ namespace sqlite_orm {
 namespace sqlite_orm {
 
     /** 
-         *  Escape the provided character in the given string by doubling it.
-         *  @param str A copy of the original string
-         *  @param char2Escape The character to escape
-         */
+     *  Escape the provided character in the given string by doubling it.
+     *  @param str A copy of the original string
+     *  @param char2Escape The character to escape
+     */
     inline std::string sql_escape(std::string str, char char2Escape) {
         for(size_t pos = 0; (pos = str.find(char2Escape, pos)) != str.npos; pos += 2) {
             str.replace(pos, 1, 2, char2Escape);
@@ -8561,7 +8561,21 @@ namespace sqlite_orm {
             }
         }
 
-        template<bool all = true, class L>
+        template<class L>
+        void perform_step(sqlite3_stmt* stmt, L&& lambda) {
+            switch(int rc = sqlite3_step(stmt)) {
+                case SQLITE_ROW: {
+                    lambda(stmt);
+                } break;
+                case SQLITE_DONE:
+                    break;
+                default: {
+                    throw_translated_sqlite_error(stmt);
+                }
+            }
+        }
+
+        template<class L>
         void perform_steps(sqlite3_stmt* stmt, L&& lambda) {
             int rc;
             do {
@@ -8575,7 +8589,7 @@ namespace sqlite_orm {
                         throw_translated_sqlite_error(stmt);
                     }
                 }
-            } while(all && rc != SQLITE_DONE);
+            } while(rc != SQLITE_DONE);
         }
     }
 }
@@ -10341,11 +10355,11 @@ namespace sqlite_orm {
             }
 
             template<class... Args>
-            std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& pk) const {
+            std::vector<std::string> composite_key_columns_names(const primary_key_t<Args...>& primaryKey) const {
                 std::vector<std::string> res;
-                using pk_columns_tuple = decltype(pk.columns);
+                using pk_columns_tuple = decltype(primaryKey.columns);
                 res.reserve(std::tuple_size<pk_columns_tuple>::value);
-                iterate_tuple(pk.columns, [this, &res](auto& memberPointer) {
+                iterate_tuple(primaryKey.columns, [this, &res](auto& memberPointer) {
                     if(auto* columnName = this->find_column_name(memberPointer)) {
                         res.push_back(*columnName);
                     } else {
@@ -10678,11 +10692,13 @@ namespace sqlite_orm {
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
+// #include "functional/cxx_universal.h"
+
 // #include "functional/cxx_functional_polyfill.h"
 
-// #include "functional/mpl.h"
-
 // #include "functional/static_magic.h"
+
+// #include "functional/mpl.h"
 
 // #include "tuple_helper/tuple_traits.h"
 
@@ -18382,7 +18398,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
                 std::unique_ptr<T> res;
-                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                perform_step(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
                     res = std::make_unique<T>();
                     object_from_column_builder<T> builder{*res, stmt};
                     tImpl.table.for_each_column(builder);
@@ -18398,7 +18414,7 @@ namespace sqlite_orm {
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
 
                 std::optional<T> res;
-                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                perform_step(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
                     object_from_column_builder<T> builder{res.emplace(), stmt};
                     tImpl.table.for_each_column(builder);
                 });
@@ -18414,7 +18430,7 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
                 std::optional<T> res;
-                perform_steps<false>(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                perform_step(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
                     object_from_column_builder<T> builder{res.emplace(), stmt};
                     tImpl.table.for_each_column(builder);
                 });
