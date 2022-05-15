@@ -21,6 +21,10 @@ environment:
   appveyor_yml_disable_ps_linux: true
   matrix:
     - job_name: clang, C++14
+      appveyor_build_worker_image: macos
+      SQLITE_ORM_CXX_STANDARD: "-DSQLITE_ORM_ENABLE_CXX_14=ON"
+
+    - job_name: clang, C++14
       appveyor_build_worker_image: Ubuntu
       CC: clang
       CXX: clang++
@@ -121,6 +125,33 @@ for:
   # using custom triplets for building and linking dynamic dependent libraries
   install:
     - |-
+      $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
+      vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
+  before_build:
+    - |-
+      mkdir compile
+      cd compile
+      cmake $SQLITE_ORM_CXX_STANDARD -DSqliteOrm_BuildTests=ON .. -DCMAKE_TOOLCHAIN_FILE=$HOME/vcpkg/scripts/buildsystems/vcpkg.cmake
+  # build examples, and run tests (ie make & make test)
+  build_script:
+    - |-
+      cmake --build .
+      ctest --verbose --output-on-failure
+
+-
+  # macos
+  matrix:
+    only:
+      - appveyor_build_worker_image: macos
+  init:
+    - |-
+      echo $appveyor_build_worker_image
+      $CXX --version
+  # using custom triplets for building and linking dynamic dependent libraries
+  install:
+    - |-
+      git clone --depth 1 --branch 2022.05.10 https://github.com/microsoft/vcpkg.git $HOME/vcpkg
+      $HOME/vcpkg/booststrap.sh
       $HOME/vcpkg/vcpkg integrate install --overlay-triplets=vcpkg/triplets
       vcpkg install sqlite3 --overlay-triplets=vcpkg/triplets
   before_build:
