@@ -3,7 +3,7 @@
 #include <type_traits>  //  std::integral_constant, std::index_sequence, std::conditional, std::declval
 #include <tuple>  //  std::tuple
 
-#include "../functional/cxx_universal.h" 
+#include "../functional/cxx_universal.h"
 
 namespace sqlite_orm {
     namespace internal {
