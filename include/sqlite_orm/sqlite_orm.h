@@ -9951,6 +9951,7 @@ namespace sqlite_orm {
 #include <type_traits>  //  std::enable_if, std::is_member_object_pointer, std::is_member_function_pointer
 #endif
 #include <functional>
+#include <utility>  //  std::forward
 
 namespace sqlite_orm {
     namespace internal {
@@ -9965,7 +9966,7 @@ namespace sqlite_orm {
                      class Unqualified = remove_cvref_t<Callable>,
                      std::enable_if_t<std::is_member_object_pointer<Unqualified>::value, bool> = true>
             decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
-                return static_cast<Arg1&&>(arg1).*obj;
+                return std::forward<Arg1>(arg1).*obj;
             }
 
             // pointer-to-member-function+object
@@ -9975,13 +9976,13 @@ namespace sqlite_orm {
                      class Unqualified = remove_cvref_t<Callable>,
                      std::enable_if_t<std::is_member_function_pointer<Unqualified>::value, bool> = true>
             decltype(auto) invoke(Callable&& obj, Arg1&& arg1, Args&&... args) {
-                return (static_cast<Arg1&&>(arg1).*obj)(static_cast<Args&&>(args)...);
+                return (std::forward<Arg1>(arg1).*obj)(std::forward<Args>(args)...);
             }
 
             // pointer-to-member+reference-wrapped object
             template<class Callable, class Arg1, class... Args>
             decltype(auto) invoke(Callable&& obj, std::reference_wrapper<Arg1> arg1, Args&&... args) {
-                return invoke(static_cast<Callable&&>(obj), arg1.get(), static_cast<Args&&>(args)...);
+                return invoke(std::forward<Callable>(obj), arg1.get(), std::forward<Args>(args)...);
             }
 #endif
         }
@@ -9993,6 +9994,7 @@ namespace sqlite_orm {
 // #include "functional/static_magic.h"
 
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
+#include <utility>  //  std::forward
 
 namespace sqlite_orm {
 
@@ -10010,18 +10012,18 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
         template<bool B, typename T, typename F>
-        decltype(auto) static_if(T&& t, F&& f) {
+        decltype(auto) static_if(T&& trueFn, F&& falseFn) {
             if constexpr(B) {
-                return static_cast<T&&>(t);
+                return std::forward<T>(trueFn);
             } else {
-                return static_cast<F&&>(f);
+                return std::forward<F>(falseFn);
             }
         }
 
         template<bool B, typename T>
-        decltype(auto) static_if(T&& t) {
+        decltype(auto) static_if(T&& trueFn) {
             if constexpr(B) {
-                return static_cast<T&&>(t);
+                return std::forward<T>(trueFn);
             } else {
                 return empty_callable();
             }
@@ -10030,33 +10032,33 @@ namespace sqlite_orm {
         template<bool B, typename L, typename... Args>
         void call_if_constexpr(L&& lambda, Args&&... args) {
             if constexpr(B) {
-                lambda(static_cast<Args&&>(args)...);
+                lambda(std::forward<Args>(args)...);
             }
         }
 #else
         template<typename T, typename F>
-        decltype(auto) static_if(std::true_type, T&& t, const F&) {
-            return static_cast<T&&>(t);
+        decltype(auto) static_if(std::true_type, T&& trueFn, const F&) {
+            return std::forward<T>(trueFn);
         }
 
         template<typename T, typename F>
-        decltype(auto) static_if(std::false_type, const T&, F&& f) {
-            return static_cast<F&&>(f);
+        decltype(auto) static_if(std::false_type, const T&, F&& falseFn) {
+            return std::forward<F>(falseFn);
         }
 
         template<bool B, typename T, typename F>
-        decltype(auto) static_if(T&& t, F&& f) {
-            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), std::forward<F>(f));
+        decltype(auto) static_if(T&& trueFn, F&& falseFn) {
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(trueFn), std::forward<F>(falseFn));
         }
 
         template<bool B, typename T>
-        decltype(auto) static_if(T&& t) {
-            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), empty_callable());
+        decltype(auto) static_if(T&& trueFn) {
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(trueFn), empty_callable());
         }
 
         template<bool B, typename L, typename... Args>
         void call_if_constexpr(L&& lambda, Args&&... args) {
-            static_if<B>(static_cast<L&&>(lambda))(static_cast<Args&&>(args)...);
+            static_if<B>(std::forward<L>(lambda))(std::forward<Args>(args)...);
         }
 #endif
     }
@@ -10205,8 +10207,8 @@ namespace sqlite_orm {
              */
             constexpr int foreign_keys_count() const {
 #if SQLITE_VERSION_NUMBER >= 3006019
-                using fk_seq = filter_tuple_sequence_t<elements_type, is_foreign_key>;
-                return int(fk_seq::size());
+                using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                return int(fk_index_sequence::size());
 #else
                 return 0;
 #endif
@@ -10281,8 +10283,8 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_primary_key(L&& lambda) const {
-                using pk_seq = filter_tuple_sequence_t<elements_type, is_primary_key>;
-                iterate_tuple(this->elements, pk_seq{}, lambda);
+                using pk_index_sequence = filter_tuple_sequence_t<elements_type, is_primary_key>;
+                iterate_tuple(this->elements, pk_index_sequence{}, lambda);
             }
 
             std::vector<std::string> composite_key_columns_names() const {
@@ -10372,8 +10374,8 @@ namespace sqlite_orm {
              *  Counts and returns amount of columns. Skips constraints.
              */
             constexpr int count_columns_amount() const {
-                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                return int(col_seq::size());
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                return int(col_index_sequence::size());
             }
 
             /**
@@ -10382,8 +10384,8 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_foreign_key(L&& lambda) const {
-                using foreign_key_seq = filter_tuple_sequence_t<elements_type, is_foreign_key>;
-                iterate_tuple(this->elements, foreign_key_seq{}, lambda);
+                using fk_index_sequence = filter_tuple_sequence_t<elements_type, is_foreign_key>;
+                iterate_tuple(this->elements, fk_index_sequence{}, lambda);
             }
 
             /**
@@ -10392,8 +10394,8 @@ namespace sqlite_orm {
              */
             template<class L>
             void for_each_column(L&& lambda) const {
-                using col_seq = filter_tuple_sequence_t<elements_type, is_column>;
-                iterate_tuple(this->elements, col_seq{}, lambda);
+                using col_index_sequence = filter_tuple_sequence_t<elements_type, is_column>;
+                iterate_tuple(this->elements, col_index_sequence{}, lambda);
             }
 
             /**
@@ -14011,11 +14013,11 @@ namespace sqlite_orm {
                     },
                     /* call = */
                     [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& fn = *static_cast<F*>(functionVoidPointer);
+                        auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        auto result = call(fn, std::move(argsTuple));
+                        auto result = call(function, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -14075,16 +14077,16 @@ namespace sqlite_orm {
                     },
                     /* step = */
                     [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& fn = *static_cast<F*>(functionVoidPointer);
+                        auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        call(fn, &F::step, move(argsTuple));
+                        call(function, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
                     [](sqlite3_context* context, void* functionVoidPointer) {
-                        auto& fn = *static_cast<F*>(functionVoidPointer);
-                        auto result = fn.fin();
+                        auto& function = *static_cast<F*>(functionVoidPointer);
+                        auto result = function.fin();
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -14132,10 +14134,10 @@ namespace sqlite_orm {
             }
 
             void create_collation(const std::string& name, collating_function f) {
-                collating_function* fn = nullptr;
+                collating_function* function = nullptr;
                 const auto functionExists = bool(f);
                 if(functionExists) {
-                    fn = &(collatingFunctions[name] = std::move(f));
+                    function = &(collatingFunctions[name] = std::move(f));
                 } else {
                     collatingFunctions.erase(name);
                 }
@@ -14146,7 +14148,7 @@ namespace sqlite_orm {
                     auto resultCode = sqlite3_create_collation(db,
                                                                name.c_str(),
                                                                SQLITE_UTF8,
-                                                               fn,
+                                                               function,
                                                                functionExists ? collate_callback : nullptr);
                     if(resultCode != SQLITE_OK) {
                         throw_translated_sqlite_error(db);

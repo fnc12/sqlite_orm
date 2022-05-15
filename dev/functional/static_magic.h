@@ -1,6 +1,7 @@
 #pragma once
 
 #include <type_traits>  //  std::false_type, std::true_type, std::integral_constant
+#include <utility>  //  std::forward
 
 namespace sqlite_orm {
 
@@ -18,18 +19,18 @@ namespace sqlite_orm {
 
 #ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
         template<bool B, typename T, typename F>
-        decltype(auto) static_if(T&& t, F&& f) {
+        decltype(auto) static_if(T&& trueFn, F&& falseFn) {
             if constexpr(B) {
-                return static_cast<T&&>(t);
+                return std::forward<T>(trueFn);
             } else {
-                return static_cast<F&&>(f);
+                return std::forward<F>(falseFn);
             }
         }
 
         template<bool B, typename T>
-        decltype(auto) static_if(T&& t) {
+        decltype(auto) static_if(T&& trueFn) {
             if constexpr(B) {
-                return static_cast<T&&>(t);
+                return std::forward<T>(trueFn);
             } else {
                 return empty_callable();
             }
@@ -38,33 +39,33 @@ namespace sqlite_orm {
         template<bool B, typename L, typename... Args>
         void call_if_constexpr(L&& lambda, Args&&... args) {
             if constexpr(B) {
-                lambda(static_cast<Args&&>(args)...);
+                lambda(std::forward<Args>(args)...);
             }
         }
 #else
         template<typename T, typename F>
-        decltype(auto) static_if(std::true_type, T&& t, const F&) {
-            return static_cast<T&&>(t);
+        decltype(auto) static_if(std::true_type, T&& trueFn, const F&) {
+            return std::forward<T>(trueFn);
         }
 
         template<typename T, typename F>
-        decltype(auto) static_if(std::false_type, const T&, F&& f) {
-            return static_cast<F&&>(f);
+        decltype(auto) static_if(std::false_type, const T&, F&& falseFn) {
+            return std::forward<F>(falseFn);
         }
 
         template<bool B, typename T, typename F>
-        decltype(auto) static_if(T&& t, F&& f) {
-            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), std::forward<F>(f));
+        decltype(auto) static_if(T&& trueFn, F&& falseFn) {
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(trueFn), std::forward<F>(falseFn));
         }
 
         template<bool B, typename T>
-        decltype(auto) static_if(T&& t) {
-            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(t), empty_callable());
+        decltype(auto) static_if(T&& trueFn) {
+            return static_if(std::integral_constant<bool, B>{}, std::forward<T>(trueFn), empty_callable());
         }
 
         template<bool B, typename L, typename... Args>
         void call_if_constexpr(L&& lambda, Args&&... args) {
-            static_if<B>(static_cast<L&&>(lambda))(static_cast<Args&&>(args)...);
+            static_if<B>(std::forward<L>(lambda))(std::forward<Args>(args)...);
         }
 #endif
     }
