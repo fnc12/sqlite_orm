@@ -3,7 +3,7 @@
 
 using namespace sqlite_orm;
 
-namespace GetAllWithTwoTablesInternal {
+namespace {
     struct Pattern {
         std::string value;
     };
@@ -24,7 +24,6 @@ namespace GetAllWithTwoTablesInternal {
 
 TEST_CASE("get_all with two tables") {
     using Catch::Matchers::UnorderedEquals;
-    using namespace GetAllWithTwoTablesInternal;
 
     auto storage = make_storage(
         {},

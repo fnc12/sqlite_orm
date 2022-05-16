@@ -66,9 +66,9 @@ namespace sqlite_orm {
                         }
 
                         if(schema_stat == sync_schema_result::new_columns_added) {
-                            for(auto columnPointer: columnsToAdd) {
-                                tImpl.table.for_each_column([this, columnPointer, &tImpl, db](auto& column) {
-                                    if(column.name != columnPointer->name) {
+                            for(const table_xinfo* colInfo: columnsToAdd) {
+                                tImpl.table.for_each_column([this, colInfo, &tImpl, db](auto& column) {
+                                    if(column.name != colInfo->name) {
                                         return;
                                     }
                                     this->add_column(tImpl.table.name, column, db);

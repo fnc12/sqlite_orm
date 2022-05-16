@@ -18,7 +18,9 @@
 #include <optional>  // std::optional
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
-#include "cxx_functional_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_functional_polyfill.h"
+#include "functional/static_magic.h"
 #include "type_traits.h"
 #include "tuple_helper/tuple_filter.h"
 #include "tuple_helper/tuple_helper.h"
@@ -103,14 +105,14 @@ namespace sqlite_orm {
             }
 
             template<class I>
-            void create_table(sqlite3* db, const std::string& tableName, const I& tableImpl) {
-                using table_type = std::decay_t<decltype(tableImpl.table)>;
+            void create_table(sqlite3* db, const std::string& tableName, const I& tImpl) {
+                using table_type = std::decay_t<decltype(tImpl.table)>;
                 using context_t = serializer_context<impl_type>;
 
                 std::stringstream ss;
                 context_t context{this->impl};
                 ss << "CREATE TABLE " << streaming_identifier(tableName) << " ( "
-                   << streaming_expressions_tuple(tableImpl.table.elements, context) << ")";
+                   << streaming_expressions_tuple(tImpl.table.elements, context) << ")";
                 if(table_type::is_without_rowid) {
                     ss << " WITHOUT ROWID";
                 }
@@ -154,11 +156,11 @@ namespace sqlite_orm {
             }
 
             template<class I>
-            void backup_table(sqlite3* db, const I& tableImpl, const std::vector<const table_xinfo*>& columnsToIgnore) {
+            void backup_table(sqlite3* db, const I& tImpl, const std::vector<const table_xinfo*>& columnsToIgnore) {
 
                 //  here we copy source table to another with a name with '_backup' suffix, but in case table with such
                 //  a name already exists we append suffix 1, then 2, etc until we find a free name..
-                auto backupTableName = tableImpl.table.name + "_backup";
+                auto backupTableName = tImpl.table.name + "_backup";
                 if(this->table_exists(db, backupTableName)) {
                     int suffix = 1;
                     do {
@@ -172,13 +174,13 @@ namespace sqlite_orm {
                         ++suffix;
                     } while(true);
                 }
-                this->create_table(db, backupTableName, tableImpl);
+                this->create_table(db, backupTableName, tImpl);
 
-                this->copy_table(db, tableImpl.table.name, backupTableName, tableImpl, columnsToIgnore);
+                this->copy_table(db, tImpl.table.name, backupTableName, tImpl, columnsToIgnore);
 
-                this->drop_table_internal(db, tableImpl.table.name);
+                this->drop_table_internal(db, tImpl.table.name);
 
-                this->rename_table(db, backupTableName, tableImpl.table.name);
+                this->rename_table(db, backupTableName, tImpl.table.name);
             }
 
             template<class O>
@@ -194,21 +196,27 @@ namespace sqlite_orm {
                 using table_type = std::decay_t<decltype(tImpl.table)>;
                 using elements_type = std::decay_t<decltype(tImpl.table.elements)>;
 
-                static_if<table_type::is_without_rowid>(
-                    [](auto&) {},  // all right. it's a "without_rowid" table
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                if constexpr(!table_type::is_without_rowid) {
+#else
+                static_if<!table_type::is_without_rowid>(
                     [](auto& tImpl) {  // unfortunately, this static_assert's can't see any composite keys((
                         std::ignore = tImpl;
-                        static_assert(
-                            count_tuple<elements_type, is_column_with_insertable_primary_key>::value <= 1,
-                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                            "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
-                            "'insert', or you can use 'insert' with explicit column listing.");
-                        static_assert(
-                            count_tuple<elements_type, is_column_with_noninsertable_primary_key>::value == 0,
-                            "Attempting to execute 'insert' request into an noninsertable table was detected. "
-                            "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
-                            "of 'insert', or you can use 'insert' with explicit column listing.");
+#endif
+                    static_assert(count_tuple<elements_type, is_column_with_insertable_primary_key>::value <= 1,
+                                  "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                                  "Insertable table cannot contain > 1 primary keys. Please use 'replace' instead of "
+                                  "'insert', or you can use 'insert' with explicit column listing.");
+                    static_assert(
+                        count_tuple<elements_type, is_column_with_noninsertable_primary_key>::value == 0,
+                        "Attempting to execute 'insert' request into an noninsertable table was detected. "
+                        "Insertable table cannot contain non-standard primary keys. Please use 'replace' instead "
+                        "of 'insert', or you can use 'insert' with explicit column listing.");
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                }
+#else
                     })(tImpl);
+#endif
             }
 
             template<class O>
@@ -875,17 +883,17 @@ namespace sqlite_orm {
                     } else {
                         if(!columnsToAdd.empty()) {
                             // extra storage columns than table columns
-                            for(auto columnPointer: columnsToAdd) {
-                                auto generatedStorageTypePointer =
-                                    tImpl.table.find_column_generated_storage_type(columnPointer->name);
-                                if(generatedStorageTypePointer) {
-                                    if(*generatedStorageTypePointer == basic_generated_always::storage_type::stored) {
+                            for(const table_xinfo* colInfo: columnsToAdd) {
+                                const basic_generated_always::storage_type* generatedStorageType =
+                                    tImpl.table.find_column_generated_storage_type(colInfo->name);
+                                if(generatedStorageType) {
+                                    if(*generatedStorageType == basic_generated_always::storage_type::stored) {
                                         gottaCreateTable = true;
                                         break;
                                     }
                                     //  fallback cause VIRTUAL can be added
                                 } else {
-                                    if(columnPointer->notnull && columnPointer->dflt_value.empty()) {
+                                    if(colInfo->notnull && colInfo->dflt_value.empty()) {
                                         gottaCreateTable = true;
                                         // no matter if preserve is true or false, there is no way to preserve data, so we wont try!
                                         if(attempt_to_preserve) {
@@ -917,22 +925,21 @@ namespace sqlite_orm {
             }
 
             template<class... Tss, class... Cols>
-            sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
+            sync_schema_result sync_table(const storage_impl<index_t<Cols...>, Tss...>& tImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                auto query = serialize(tableImpl.table, context);
+                auto query = serialize(tImpl.table, context);
                 perform_void_exec(db, query);
                 return res;
             }
 
             template<class... Tss, class... Cols>
-            sync_schema_result
-            sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tableImpl, sqlite3* db, bool) {
+            sync_schema_result sync_table(const storage_impl<trigger_t<Cols...>, Tss...>& tImpl, sqlite3* db, bool) {
                 auto res = sync_schema_result::already_in_sync;  // TODO Change accordingly
                 using context_t = serializer_context<impl_type>;
                 context_t context{this->impl};
-                perform_void_exec(db, serialize(tableImpl.table, context));
+                perform_void_exec(db, serialize(tImpl.table, context));
                 return res;
             }
 
@@ -999,11 +1006,10 @@ namespace sqlite_orm {
              */
             std::map<std::string, sync_schema_result> sync_schema(bool preserve = false) {
                 auto con = this->get_connection();
-                sqlite3* db = con.get();
                 std::map<std::string, sync_schema_result> result;
-                this->impl.for_each([&result, db, preserve, this](auto& storageImpl) {
-                    auto res = this->sync_table(storageImpl, db, preserve);
-                    result.insert({storageImpl.table.name, res});
+                this->impl.for_each([this, db = con.get(), preserve, &result](auto& tImpl) {
+                    auto res = this->sync_table(tImpl, db, preserve);
+                    result.insert({tImpl.table.name, res});
                 });
                 return result;
             }
@@ -1015,11 +1021,10 @@ namespace sqlite_orm {
              */
             std::map<std::string, sync_schema_result> sync_schema_simulate(bool preserve = false) {
                 auto con = this->get_connection();
-                sqlite3* db = con.get();
                 std::map<std::string, sync_schema_result> result;
-                this->impl.for_each([&result, db, preserve, this](auto& tableImpl) {
-                    auto schemaStatus = this->schema_status(tableImpl, db, preserve, nullptr);
-                    result.insert({tableImpl.table.name, schemaStatus});
+                this->impl.for_each([this, db = con.get(), preserve, &result](auto& tImpl) {
+                    auto schemaStatus = this->schema_status(tImpl, db, preserve, nullptr);
+                    result.insert({tImpl.table.name, schemaStatus});
                 });
                 return result;
             }
@@ -1148,7 +1153,6 @@ namespace sqlite_orm {
 
             template<class... Args>
             void execute(const prepared_statement_t<replace_raw_t<Args...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 iterate_ast(statement.expression.args, conditional_binder{statement.stmt});
                 perform_step(stmt);
@@ -1156,7 +1160,6 @@ namespace sqlite_orm {
 
             template<class... Args>
             void execute(const prepared_statement_t<insert_raw_t<Args...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 iterate_ast(statement.expression.args, conditional_binder{stmt});
                 perform_step(stmt);
@@ -1168,27 +1171,16 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<object_type>();
 
-                auto index = 1;
                 iterate_tuple(statement.expression.columns.columns,
-                              [&object = statement.expression.obj, &index, &stmt, &tImpl](auto& memberPointer) {
-                                  using column_type = std::decay_t<decltype(memberPointer)>;
-                                  using field_type = column_result_of_t<self, column_type>;
-                                  const auto* value =
-                                      tImpl.table.template get_object_field_pointer<field_type>(object, memberPointer);
-                                  if(!value) {
-                                      throw std::system_error{orm_error_code::value_is_null};
-                                  }
-                                  if(SQLITE_OK != statement_binder<field_type>{}.bind(stmt, index++, *value)) {
-                                      throw_translated_sqlite_error(stmt);
-                                  }
+                              [&tImpl = this->get_impl<object_type>(),
+                               bind_value = field_value_binder{stmt},
+                               &object = statement.expression.obj](auto& memberPointer) mutable {
+                                  bind_value(tImpl.table.object_field_value(object, memberPointer));
                               });
                 perform_step(stmt);
-                return sqlite3_last_insert_rowid(db);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 
             template<class T,
@@ -1198,26 +1190,16 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<object_type>();
 
-                auto index = 1;
-                auto processObject = [&index, &stmt, &tImpl](auto& object) {
-                    tImpl.table.for_each_column([&index, stmt, &object](auto& column) {
+                auto processObject = [&tImpl = this->get_impl<object_type>(),
+                                      bind_value = field_value_binder{stmt}](auto& object) mutable {
+                    tImpl.table.for_each_column([&bind_value, &object](auto& column) {
                         if(column.is_generated()) {
                             return;
                         }
 
-                        using column_type = std::decay_t<decltype(column)>;
-                        using field_type = typename column_type::field_type;
-
-                        if(SQLITE_OK !=
-                           statement_binder<field_type>{}.bind(stmt,
-                                                               index++,
-                                                               polyfill::invoke(column.member_pointer, object))) {
-                            throw_translated_sqlite_error(stmt);
-                        }
+                        bind_value(polyfill::invoke(column.member_pointer, object));
                     });
                 };
 
@@ -1245,27 +1227,17 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
-                sqlite3* db = con.get();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<object_type>();
 
-                auto index = 1;
-                auto processObject = [&index, stmt, &tImpl](auto& object) {
-                    tImpl.table.for_each_column([&tImpl, &index, &object, stmt](auto& column) {
+                auto processObject = [&tImpl = this->get_impl<object_type>(),
+                                      bind_value = field_value_binder{stmt}](auto& object) mutable {
+                    tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
                         using table_type = std::decay_t<decltype(tImpl.table)>;
                         if(table_type::is_without_rowid ||
                            (!column.template has<primary_key_t<>>() &&
                             !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated())) {
-                            using column_type = std::decay_t<decltype(column)>;
-                            using field_type = typename column_type::field_type;
 
-                            if(SQLITE_OK !=
-                               statement_binder<field_type>{}.bind(stmt,
-                                                                   index++,
-                                                                   polyfill::invoke(column.member_pointer, object))) {
-                                throw_translated_sqlite_error(stmt);
-                            }
+                            bind_value(polyfill::invoke(column.member_pointer, object));
                         }
                     });
                 };
@@ -1287,12 +1259,11 @@ namespace sqlite_orm {
                     })(statement);
 
                 perform_step(stmt);
-                return sqlite3_last_insert_rowid(db);
+                return sqlite3_last_insert_rowid(sqlite3_db_handle(stmt));
             }
 
             template<class T, class... Ids>
             void execute(const prepared_statement_t<remove_t<T, Ids...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
                 perform_step(stmt);
@@ -1304,37 +1275,21 @@ namespace sqlite_orm {
                 using expression_type = typename statement_type::expression_type;
                 using object_type = typename expression_object_type<expression_type>::type;
 
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 auto& tImpl = this->get_impl<object_type>();
 
-                auto& o = get_object(statement.expression);
-                auto index = 1;
-                tImpl.table.for_each_column([&o, stmt, &index, &tImpl](auto& column) {
+                field_value_binder bind_value{stmt};
+                auto& object = get_object(statement.expression);
+                tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
                     if(!column.template has<primary_key_t<>>() &&
                        !tImpl.table.exists_in_composite_primary_key(column) && !column.is_generated()) {
-                        using column_type = std::decay_t<decltype(column)>;
-                        using field_type = typename column_type::field_type;
 
-                        if(SQLITE_OK !=
-                           statement_binder<field_type>{}.bind(stmt,
-                                                               index++,
-                                                               polyfill::invoke(column.member_pointer, o))) {
-                            throw_translated_sqlite_error(stmt);
-                        }
+                        bind_value(polyfill::invoke(column.member_pointer, object));
                     }
                 });
-                tImpl.table.for_each_column([&o, stmt, &index, &tImpl](auto& column) {
+                tImpl.table.for_each_column([&tImpl, &bind_value, &object](auto& column) {
                     if(column.template has<primary_key_t<>>() || tImpl.table.exists_in_composite_primary_key(column)) {
-                        using column_type = std::decay_t<decltype(column)>;
-                        using field_type = typename column_type::field_type;
-
-                        if(SQLITE_OK !=
-                           statement_binder<field_type>{}.bind(stmt,
-                                                               index++,
-                                                               polyfill::invoke(column.member_pointer, o))) {
-                            throw_translated_sqlite_error(stmt);
-                        }
+                        bind_value(polyfill::invoke(column.member_pointer, object));
                     }
                 });
                 perform_step(stmt);
@@ -1342,61 +1297,53 @@ namespace sqlite_orm {
 
             template<class T, class... Ids>
             std::unique_ptr<T> execute(const prepared_statement_t<get_pointer_t<T, Ids...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<T>();
 
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
-                auto stepRes = sqlite3_step(stmt);
-                switch(stepRes) {
-                    case SQLITE_ROW: {
-                        auto res = std::make_unique<T>();
-                        object_from_column_builder<T> builder{*res, stmt};
-                        tImpl.table.for_each_column(builder);
-                        return res;
-                    } break;
-                    case SQLITE_DONE: {
-                        return {};
-                    } break;
-                    default: {
-                        throw_translated_sqlite_error(stmt);
-                    }
-                }
+
+                std::unique_ptr<T> res;
+                perform_step(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    res = std::make_unique<T>();
+                    object_from_column_builder<T> builder{*res, stmt};
+                    tImpl.table.for_each_column(builder);
+                });
+                return res;
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class... Ids>
             std::optional<T> execute(const prepared_statement_t<get_optional_t<T, Ids...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<T>();
 
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
-                auto stepRes = sqlite3_step(stmt);
-                switch(stepRes) {
-                    case SQLITE_ROW: {
-                        auto res = std::make_optional<T>();
-                        object_from_column_builder<T> builder{res.value(), stmt};
-                        tImpl.table.for_each_column(builder);
-                        return res;
-                    } break;
-                    case SQLITE_DONE: {
-                        return {};
-                    } break;
-                    default: {
-                        throw_translated_sqlite_error(stmt);
-                    }
-                }
+
+                std::optional<T> res;
+                perform_step(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    object_from_column_builder<T> builder{res.emplace(), stmt};
+                    tImpl.table.for_each_column(builder);
+                });
+                return res;
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
 
             template<class T, class... Ids>
             T execute(const prepared_statement_t<get_t<T, Ids...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<T>();
 
                 iterate_ast(statement.expression.ids, conditional_binder{stmt});
+
+#ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
+                std::optional<T> res;
+                perform_step(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    object_from_column_builder<T> builder{res.emplace(), stmt};
+                    tImpl.table.for_each_column(builder);
+                });
+                if(!res.has_value()) {
+                    throw std::system_error{orm_error_code::not_found};
+                }
+                return move(res).value();
+#else
+                auto& tImpl = this->get_impl<T>();
                 auto stepRes = sqlite3_step(stmt);
                 switch(stepRes) {
                     case SQLITE_ROW: {
@@ -1412,11 +1359,11 @@ namespace sqlite_orm {
                         throw_translated_sqlite_error(stmt);
                     }
                 }
+#endif
             }
 
             template<class T, class... Args>
             void execute(const prepared_statement_t<remove_all_t<T, Args...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 iterate_ast(statement.expression.conditions, conditional_binder{stmt});
                 perform_step(stmt);
@@ -1424,7 +1371,6 @@ namespace sqlite_orm {
 
             template<class... Args, class... Wargs>
             void execute(const prepared_statement_t<update_all_t<set_t<Args...>, Wargs...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
                 conditional_binder bind_node{stmt};
                 iterate_tuple(statement.expression.set.assigns, [&bind_node](auto& setArg) {
@@ -1436,112 +1382,65 @@ namespace sqlite_orm {
 
             template<class T, class... Args, class R = column_result_of_t<self, T>>
             std::vector<R> execute(const prepared_statement_t<select_t<T, Args...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
+
                 std::vector<R> res;
-                auto tablePointer = lookup_table<R>(this->impl);
-                int stepRes;
-                do {
-                    stepRes = sqlite3_step(stmt);
-                    switch(stepRes) {
-                        case SQLITE_ROW: {
-                            auto rowExtractor = make_row_extractor<R>(tablePointer);
-                            res.push_back(rowExtractor.extract(stmt, 0));
-                        } break;
-                        case SQLITE_DONE:
-                            break;
-                        default: {
-                            throw_translated_sqlite_error(stmt);
-                        }
-                    }
-                } while(stepRes != SQLITE_DONE);
+                perform_steps(
+                    stmt,
+                    [rowExtractor = make_row_extractor<R>(lookup_table<R>(this->impl)), &res](sqlite3_stmt* stmt) {
+                        res.push_back(rowExtractor.extract(stmt, 0));
+                    });
                 return res;
             }
 
             template<class T, class R, class... Args>
             R execute(const prepared_statement_t<get_all_t<T, R, Args...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<T>();
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
+
                 R res;
-                int stepRes;
-                do {
-                    stepRes = sqlite3_step(stmt);
-                    switch(stepRes) {
-                        case SQLITE_ROW: {
-                            T obj;
-                            object_from_column_builder<T> builder{obj, stmt};
-                            tImpl.table.for_each_column(builder);
-                            res.push_back(std::move(obj));
-                        } break;
-                        case SQLITE_DONE:
-                            break;
-                        default: {
-                            throw_translated_sqlite_error(stmt);
-                        }
-                    }
-                } while(stepRes != SQLITE_DONE);
+                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    T obj;
+                    object_from_column_builder<T> builder{obj, stmt};
+                    tImpl.table.for_each_column(builder);
+                    res.push_back(std::move(obj));
+                });
                 return res;
             }
 
             template<class T, class R, class... Args>
             R execute(const prepared_statement_t<get_all_pointer_t<T, R, Args...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<T>();
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
+
                 R res;
-                int stepRes;
-                do {
-                    stepRes = sqlite3_step(stmt);
-                    switch(stepRes) {
-                        case SQLITE_ROW: {
-                            auto obj = std::make_unique<T>();
-                            object_from_column_builder<T> builder{*obj, stmt};
-                            tImpl.table.for_each_column(builder);
-                            res.push_back(move(obj));
-                        } break;
-                        case SQLITE_DONE:
-                            break;
-                        default: {
-                            throw_translated_sqlite_error(stmt);
-                        }
-                    }
-                } while(stepRes != SQLITE_DONE);
+                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    auto obj = std::make_unique<T>();
+                    object_from_column_builder<T> builder{*obj, stmt};
+                    tImpl.table.for_each_column(builder);
+                    res.push_back(move(obj));
+                });
                 return res;
             }
 
 #ifdef SQLITE_ORM_OPTIONAL_SUPPORTED
             template<class T, class R, class... Args>
             R execute(const prepared_statement_t<get_all_optional_t<T, R, Args...>>& statement) {
-                auto con = this->get_connection();
                 sqlite3_stmt* stmt = reset(statement.stmt);
-                auto& tImpl = this->get_impl<T>();
 
                 iterate_ast(statement.expression, conditional_binder{stmt});
+
                 R res;
-                int stepRes;
-                do {
-                    stepRes = sqlite3_step(stmt);
-                    switch(stepRes) {
-                        case SQLITE_ROW: {
-                            auto obj = std::make_optional<T>();
-                            object_from_column_builder<T> builder{*obj, stmt};
-                            tImpl.table.for_each_column(builder);
-                            res.push_back(move(obj));
-                        } break;
-                        case SQLITE_DONE:
-                            break;
-                        default: {
-                            throw_translated_sqlite_error(stmt);
-                        }
-                    }
-                } while(stepRes != SQLITE_DONE);
+                perform_steps(stmt, [&tImpl = this->get_impl<T>(), &res](sqlite3_stmt* stmt) {
+                    auto obj = std::make_optional<T>();
+                    object_from_column_builder<T> builder{*obj, stmt};
+                    tImpl.table.for_each_column(builder);
+                    res.push_back(move(obj));
+                });
                 return res;
             }
 #endif  // SQLITE_ORM_OPTIONAL_SUPPORTED
@@ -1553,11 +1452,16 @@ namespace sqlite_orm {
                     if(res) {
                         return;
                     }
-                    storageImpl.table.for_each_foreign_key([&storageImpl, this, &object, &res](auto& foreignKey) {
+                    storageImpl.table.for_each_foreign_key([this, &storageImpl, &object, &res](auto& foreignKey) {
                         using ForeignKey = std::decay_t<decltype(foreignKey)>;
                         using TargetType = typename ForeignKey::target_type;
 
-                        static_if<std::is_same<TargetType, O>::value>([&storageImpl, this, &foreignKey, &res, &object] {
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                        if constexpr(std::is_same<TargetType, O>::value) {
+#else
+                        call_if_constexpr<std::is_same<TargetType, O>::value>(
+                            [this, &storageImpl, &res, &object](auto& foreignKey) {
+#endif
                             std::stringstream ss;
                             ss << "SELECT COUNT(*)"
                                << " FROM " << streaming_identifier(storageImpl.table.name);
@@ -1583,25 +1487,13 @@ namespace sqlite_orm {
                             if(sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, nullptr) != SQLITE_OK) {
                                 throw_translated_sqlite_error(db);
                             }
+                            statement_finalizer finalizer{stmt};
 
-                            statement_finalizer finalizer(stmt);
-                            columnIndex = 1;
+                            auto& tImpl = this->get_impl<O>();
                             iterate_tuple(
                                 foreignKey.references,
-                                [&columnIndex, stmt, &object, this](auto& memberPointer) {
-                                    using MemberPointer = std::decay_t<decltype(memberPointer)>;
-                                    using field_type = member_field_type_t<MemberPointer>;
-
-                                    auto& tImpl = this->get_impl<O>();
-                                    auto value =
-                                        tImpl.table.template get_object_field_pointer<field_type>(object,
-                                                                                                  memberPointer);
-                                    if(!value) {
-                                        throw std::system_error{orm_error_code::value_is_null};
-                                    }
-                                    if(SQLITE_OK != statement_binder<field_type>{}.bind(stmt, columnIndex++, *value)) {
-                                        throw_translated_sqlite_error(stmt);
-                                    }
+                                [&tImpl, bind_value = field_value_binder{stmt}, &object](auto& memberPointer) mutable {
+                                    bind_value(tImpl.table.object_field_value(object, memberPointer));
                                 });
                             if(SQLITE_ROW != sqlite3_step(stmt)) {
                                 throw_translated_sqlite_error(stmt);
@@ -1611,7 +1503,12 @@ namespace sqlite_orm {
                             if(SQLITE_DONE != sqlite3_step(stmt)) {
                                 throw_translated_sqlite_error(stmt);
                             }
-                        })();
+#ifdef SQLITE_ORM_IF_CONSTEXPR_SUPPORTED
+                        }
+#else
+                            },
+                            foreignKey);
+#endif
                     });
                 });
                 return res;

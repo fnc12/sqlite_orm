@@ -8,15 +8,14 @@
 #ifndef SQLITE_ORM_OMITS_CODECVT
 #include <codecvt>  //  std::codecvt_utf8_utf16
 #endif  //  SQLITE_ORM_OMITS_CODECVT
-#include <cstddef>  // std::nullptr_t
 #include <memory>
 #include <array>
 #ifdef SQLITE_ORM_STRING_VIEW_SUPPORTED
 #include <string_view>
 #endif
 
-#include "start_macros.h"
-#include "cxx_functional_polyfill.h"
+#include "functional/cxx_universal.h"
+#include "functional/cxx_functional_polyfill.h"
 #include "tuple_helper/tuple_filter.h"
 #include "ast/upsert_clause.h"
 #include "ast/excluded.h"
@@ -129,7 +128,7 @@ namespace sqlite_orm {
             template<class P, class PT, class D>
             std::string do_serialize(const pointer_binding<P, PT, D>&) const {
                 // always serialize null (security reasons)
-                return field_printer<std::nullptr_t>{}(nullptr);
+                return field_printer<nullptr_t>{}(nullptr);
             }
         };
 
@@ -1010,9 +1009,8 @@ namespace sqlite_orm {
                 ss << "INSERT INTO " << streaming_identifier(tImpl.table.name) << " ";
                 ss << "(" << streaming_mapped_columns_expressions(ins.columns.columns, context) << ") "
                    << "VALUES (";
-                auto index = 0;
                 iterate_tuple(ins.columns.columns,
-                              [&ss, &context, &index, &object = get_ref(ins.obj)](auto& memberPointer) {
+                              [&ss, &context, &object = get_ref(ins.obj), index = 0](auto& memberPointer) mutable {
                                   using member_pointer_type = std::decay_t<decltype(memberPointer)>;
                                   static_assert(!is_setter_v<member_pointer_type>,
                                                 "Unable to use setter within insert explicit");
@@ -1275,19 +1273,19 @@ namespace sqlite_orm {
                 iterate_tuple(statement.ids, [&idsStrings, &context](auto& idValue) {
                     idsStrings.push_back(serialize(idValue, context));
                 });
-                auto index = 0;
-                tImpl.table.for_each_primary_key_column([&ss, &index, &tImpl, &idsStrings](auto& memberPointer) {
-                    auto* columnName = tImpl.table.find_column_name(memberPointer);
-                    if(!columnName) {
-                        throw std::system_error{orm_error_code::column_not_found};
-                    }
+                tImpl.table.for_each_primary_key_column(
+                    [&ss, &tImpl, &idsStrings, index = 0](auto& memberPointer) mutable {
+                        auto* columnName = tImpl.table.find_column_name(memberPointer);
+                        if(!columnName) {
+                            throw std::system_error{orm_error_code::column_not_found};
+                        }
 
-                    if(index > 0) {
-                        ss << " AND ";
-                    }
-                    ss << streaming_identifier(*columnName) << " = " << idsStrings[index];
-                    ++index;
-                });
+                        if(index > 0) {
+                            ss << " AND ";
+                        }
+                        ss << streaming_identifier(*columnName) << " = " << idsStrings[index];
+                        ++index;
+                    });
                 return ss.str();
             }
         };
@@ -1608,9 +1606,8 @@ namespace sqlite_orm {
 
                 std::stringstream ss;
                 ss << "FROM ";
-                size_t index = 0;
-                iterate_tuple<tuple>([&context, &ss, &index](auto* itemPointer) {
-                    using from_type = std::remove_pointer_t<decltype(itemPointer)>;
+                iterate_tuple<tuple>([&context, &ss, index = 0](auto* item) mutable {
+                    using from_type = std::remove_pointer_t<decltype(item)>;
 
                     if(index > 0) {
                         ss << ", ";

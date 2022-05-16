@@ -15,6 +15,7 @@
 #include <iterator>  //  std::back_inserter
 #include <tuple>  //  std::tuple, std::tuple_size, std::tuple_element
 
+#include "functional/cxx_universal.h"
 #include "arithmetic_tag.h"
 #include "pointer_value.h"
 #include "journal_mode.h"
@@ -31,14 +32,23 @@ namespace sqlite_orm {
     template<class V, typename Enable = void>
     struct row_extractor {
         //  used in sqlite3_exec (select)
-        V extract(const char* row_value) const;
+        V extract(const char* row_value) const = delete;
 
         //  used in sqlite_column (iteration, get_all)
-        V extract(sqlite3_stmt* stmt, int columnIndex) const;
+        V extract(sqlite3_stmt* stmt, int columnIndex) const = delete;
 
         //  used in user defined functions
-        V extract(sqlite3_value* value) const;
+        V extract(sqlite3_value* value) const = delete;
     };
+
+    template<class R>
+    int extract_single_value(void* data, int argc, char** argv, char**) {
+        auto& res = *(R*)data;
+        if(argc) {
+            res = row_extractor<R>{}.extract(argv[0]);
+        }
+        return 0;
+    }
 
     /**
      *  Specialization for the 'pointer-passing interface'.
@@ -247,16 +257,16 @@ namespace sqlite_orm {
 #endif  //  SQLITE_ORM_OPTIONAL_SUPPORTED
 
     template<>
-    struct row_extractor<std::nullptr_t> {
-        std::nullptr_t extract(const char* /*row_value*/) const {
+    struct row_extractor<nullptr_t> {
+        nullptr_t extract(const char* /*row_value*/) const {
             return nullptr;
         }
 
-        std::nullptr_t extract(sqlite3_stmt* /*stmt*/, int /*columnIndex*/) const {
+        nullptr_t extract(sqlite3_stmt* /*stmt*/, int /*columnIndex*/) const {
             return nullptr;
         }
 
-        std::nullptr_t extract(sqlite3_value* /*value*/) const {
+        nullptr_t extract(sqlite3_value* /*value*/) const {
             return nullptr;
         }
     };

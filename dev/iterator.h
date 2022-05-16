@@ -4,10 +4,10 @@
 #include <memory>  //  std::shared_ptr, std::unique_ptr, std::make_shared
 #include <type_traits>  //  std::decay
 #include <utility>  //  std::move
-#include <cstddef>  //  std::ptrdiff_t
 #include <iterator>  //  std::input_iterator_tag
 #include <system_error>  //  std::system_error
 
+#include "functional/cxx_universal.h"
 #include "row_extractor.h"
 #include "statement_finalizer.h"
 #include "error_code.h"
@@ -49,7 +49,7 @@ namespace sqlite_orm {
             }
 
           public:
-            using difference_type = std::ptrdiff_t;
+            using difference_type = ptrdiff_t;
             using pointer = value_type*;
             using reference = value_type&;
             using iterator_category = std::input_iterator_tag;
@@ -76,9 +76,8 @@ namespace sqlite_orm {
             void next() {
                 this->current.reset();
                 if(this->stmt) {
-                    auto statementPointer = this->stmt->get();
-                    auto ret = sqlite3_step(statementPointer);
-                    switch(ret) {
+                    int rc = sqlite3_step(this->stmt->get());
+                    switch(rc) {
                         case SQLITE_ROW:
                             this->extract_value();
                             break;

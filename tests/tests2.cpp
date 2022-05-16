@@ -56,7 +56,7 @@ TEST_CASE("Remove") {
                                                primary_key(&Object::id, &Object::name)));
         storage.sync_schema();
         storage.replace(Object{1, "Skillet"});
-        assert(storage.count<Object>() == 1);
+        REQUIRE(storage.count<Object>() == 1);
         storage.remove<Object>(1, "Skillet");
         REQUIRE(storage.count<Object>() == 0);
 

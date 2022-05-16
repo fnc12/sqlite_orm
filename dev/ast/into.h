@@ -1,8 +1,6 @@
 #pragma once
 
-#include <type_traits>  //  std::true_type, std::false_type
-
-#include "../cxx_polyfill.h"
+#include "../functional/cxx_polyfill.h"
 
 namespace sqlite_orm {
     namespace internal {

@@ -12,9 +12,15 @@
 using namespace sqlite_orm;
 using internal::is_bindable_v;
 
-struct Custom {};
-template<class Elem>
-class StringVeneer : public std::basic_string<Elem> {};
+namespace {
+    struct Custom {};
+    template<class Elem>
+    class StringVeneer : public std::basic_string<Elem> {};
+
+    struct User {
+        int id;
+    };
+}
 
 namespace sqlite_orm {
     template<>
@@ -24,9 +30,6 @@ namespace sqlite_orm {
 }
 
 TEST_CASE("is_bindable") {
-    struct User {
-        int id;
-    };
     STATIC_REQUIRE(is_bindable_v<bool>);
     STATIC_REQUIRE(is_bindable_v<char>);
     STATIC_REQUIRE(is_bindable_v<signed char>);

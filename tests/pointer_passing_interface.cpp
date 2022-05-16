@@ -5,28 +5,30 @@ using namespace sqlite_orm;
 using std::unique_ptr;
 
 #ifdef SQLITE_ORM_INLINE_VARIABLES_SUPPORTED
-struct delete_int64 {
-    static int64 lastSelectedId;
-    static bool deleted;
+namespace {
+    struct delete_int64 {
+        static int64 lastSelectedId;
+        static bool deleted;
 
-    void operator()(int64* p) const {
-        // must not double-delete
-        assert(!deleted);
+        void operator()(int64* p) const {
+            // must not double-delete
+            REQUIRE(!deleted);
 
-        lastSelectedId = *p;
-        delete p;
-        deleted = true;
-    }
-};
+            lastSelectedId = *p;
+            delete p;
+            deleted = true;
+        }
+    };
 
-int64 delete_int64::lastSelectedId = -1;
-bool delete_int64::deleted = false;
+    int64 delete_int64::lastSelectedId = -1;
+    bool delete_int64::deleted = false;
 
-TEST_CASE("pointer-passing") {
     struct Object {
         int64 id = 0;
     };
+}
 
+TEST_CASE("pointer-passing") {
     // accept and return a pointer of type "carray"
     struct pass_thru_pointer_fn {
         using bindable_carray_ptr_t = static_carray_pointer_binding<int64>;

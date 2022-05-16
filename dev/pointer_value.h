@@ -4,7 +4,7 @@
 #include <memory>
 #include <utility>
 
-#include "start_macros.h"
+#include "functional/cxx_universal.h"
 #include "xdestroy_handling.h"
 
 namespace sqlite_orm {

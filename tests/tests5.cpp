@@ -22,7 +22,7 @@ TEST_CASE("Iterate blob") {
     db.sync_schema(true);
 
     std::vector<char> key(255);
-    iota(key.begin(), key.end(), 0);
+    iota(key.begin(), key.end(), '\0');
 
     Test v{5, key};
 

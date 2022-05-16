@@ -11,6 +11,8 @@
 #include <map>  //  std::map
 #include <type_traits>  //  std::decay, std::is_same
 
+#include "functional/cxx_universal.h"
+#include "functional/static_magic.h"
 #include "pragma.h"
 #include "limit_accessor.h"
 #include "transaction_guard.h"
@@ -229,11 +231,11 @@ namespace sqlite_orm {
                     },
                     /* call = */
                     [](sqlite3_context* context, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
+                        auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        auto result = call(functionPointer, std::move(argsTuple));
+                        auto result = call(function, std::move(argsTuple));
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -293,16 +295,16 @@ namespace sqlite_orm {
                     },
                     /* step = */
                     [](sqlite3_context*, void* functionVoidPointer, int argsCount, sqlite3_value** values) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
+                        auto& function = *static_cast<F*>(functionVoidPointer);
                         args_tuple argsTuple;
                         using tuple_size = std::tuple_size<args_tuple>;
                         values_to_tuple<args_tuple, tuple_size::value - 1>().extract(values, argsTuple, argsCount);
-                        call(functionPointer, &F::step, move(argsTuple));
+                        call(function, &F::step, move(argsTuple));
                     },
                     /* finalCall = */
                     [](sqlite3_context* context, void* functionVoidPointer) {
-                        auto& functionPointer = *static_cast<F*>(functionVoidPointer);
-                        auto result = functionPointer.fin();
+                        auto& function = *static_cast<F*>(functionVoidPointer);
+                        auto result = function.fin();
                         statement_binder<return_type>().result(context, result);
                     },
                     delete_function_callback<F>,
@@ -350,10 +352,10 @@ namespace sqlite_orm {
             }
 
             void create_collation(const std::string& name, collating_function f) {
-                collating_function* functionPointer = nullptr;
+                collating_function* function = nullptr;
                 const auto functionExists = bool(f);
                 if(functionExists) {
-                    functionPointer = &(collatingFunctions[name] = std::move(f));
+                    function = &(collatingFunctions[name] = std::move(f));
                 } else {
                     collatingFunctions.erase(name);
                 }
@@ -364,7 +366,7 @@ namespace sqlite_orm {
                     auto resultCode = sqlite3_create_collation(db,
                                                                name.c_str(),
                                                                SQLITE_UTF8,
-                                                               functionPointer,
+                                                               function,
                                                                functionExists ? collate_callback : nullptr);
                     if(resultCode != SQLITE_OK) {
                         throw_translated_sqlite_error(db);
@@ -546,17 +548,7 @@ namespace sqlite_orm {
 
             bool foreign_keys(sqlite3* db) {
                 bool result = false;
-                perform_exec(
-                    db,
-                    "PRAGMA foreign_keys",
-                    [](void* data, int argc, char** argv, char**) -> int {
-                        auto& res = *(bool*)data;
-                        if(argc) {
-                            res = row_extractor<bool>().extract(argv[0]);
-                        }
-                        return 0;
-                    },
-                    &result);
+                perform_exec(db, "PRAGMA foreign_keys", extract_single_value<bool>, &result);
                 return result;
             }
 
@@ -704,19 +696,7 @@ namespace sqlite_orm {
 
             std::string current_timestamp(sqlite3* db) {
                 std::string result;
-                perform_exec(
-                    db,
-                    "SELECT CURRENT_TIMESTAMP",
-                    [](void* data, int argc, char** argv, char**) -> int {
-                        auto& res = *(std::string*)data;
-                        if(argc) {
-                            if(argv[0]) {
-                                res = row_extractor<std::string>().extract(argv[0]);
-                            }
-                        }
-                        return 0;
-                    },
-                    &result);
+                perform_exec(db, "SELECT CURRENT_TIMESTAMP", extract_single_value<std::string>, &result);
                 return result;
             }
 
@@ -747,10 +727,13 @@ namespace sqlite_orm {
 
                 storageImpl.for_each([&res](const auto& tImpl) {
                     using qualified_type = std::decay_t<decltype(tImpl)>;
-                    static_if<std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value>(
+                    constexpr bool c = std::is_base_of<basic_table, table_type_or_none_t<qualified_type>>::value;
+
+                    call_if_constexpr<c>(
                         [&res](const auto& tImpl) {
                             res += tImpl.table.foreign_keys_count();
-                        })(tImpl);
+                        },
+                        tImpl);
                 });
                 return res;
             }
