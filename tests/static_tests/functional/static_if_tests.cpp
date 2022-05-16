@@ -6,49 +6,51 @@ using internal::call_if_constexpr;
 using internal::static_if;
 
 TEST_CASE("static_if") {
+    using called_pair = std::pair<int, int>;
+    called_pair called;
     {  //  simple true
-        auto value = 0;
+        called = {};
         static_if<std::true_type::value>(
-            [&value] {
-                value = 1;
+            [&called] {
+                ++called.first;
             },
-            [&value] {
-                value = -1;
+            [&called] {
+                ++called.second;
             })();
-        REQUIRE(value == 1);
+        REQUIRE(called == called_pair{1, 0});
     }
     {  //  simple false
-        auto value = 0;
+        called = {};
         static_if<std::false_type::value>(
-            [&value] {
-                value = 1;
+            [&called] {
+                ++called.first;
             },
-            [&value] {
-                value = -1;
+            [&called] {
+                ++called.second;
             })();
-        REQUIRE(value == -1);
+        REQUIRE(called == called_pair{0, 1});
     }
     {  //  tuple is empty
-        auto value = 0;
+        called = {};
         static_if<std::is_empty<std::tuple<>>::value>(
-            [&value] {
-                value = 1;
+            [&called] {
+                ++called.first;
             },
-            [&value] {
-                value = -1;
+            [&called] {
+                ++called.second;
             })();
-        REQUIRE(value == 1);
+        REQUIRE(called == called_pair{1, 0});
     }
     {  //  tuple is not empty
-        auto value = 0;
+        called = {};
         static_if<polyfill::negation_v<std::is_empty<std::tuple<>>>>(
-            [&value] {
-                value = 1;
+            [&called] {
+                ++called.first;
             },
-            [&value] {
-                value = -1;
+            [&called] {
+                ++called.second;
             })();
-        REQUIRE(value == -1);
+        REQUIRE(called == called_pair{0, 1});
     }
     {
         struct User {
@@ -56,28 +58,28 @@ TEST_CASE("static_if") {
         };
         auto ch = check(length(&User::name) > 5);
         STATIC_REQUIRE(!internal::is_column_v<decltype(ch)>);
-        int called = 0;
+        called = {};
         static_if<internal::is_column_v<decltype(ch)>>(
             [&called] {
-                called = 1;
+                ++called.first;
             },
             [&called] {
-                called = -1;
+                ++called.second;
             })();
-        REQUIRE(called == -1);
+        REQUIRE(called == called_pair{0, 1});
     }
     {  //  simple true
-        auto called = false;
+        called = {};
         call_if_constexpr<std::true_type::value>([&called] {
-            called = true;
+            ++called.first;
         });
-        REQUIRE(called);
+        REQUIRE(called == called_pair{1, 0});
     }
     {  //  simple false
-        auto called = false;
+        called = {};
         call_if_constexpr<std::false_type::value>([&called] {
-            called = true;
+            ++called.first;
         });
-        REQUIRE(!called);
+        REQUIRE(called == called_pair{0, 0});
     }
 }
